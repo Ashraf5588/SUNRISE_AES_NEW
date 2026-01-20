@@ -1,0 +1,352 @@
+/* filepath: c:\Users\Dell\Downloads\V2aes\aes\public\subject-list.css */
+/* Subject List Page Styling */
+@import url("https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap");
+
+:root {
+  --primary: #0ea5e9; /* skyblue */
+  --primary-dark: #0284c7; /* darker skyblue */
+  --secondary: #8b5a2b; /* brown */
+  --secondary-dark: #6b4423; /* darker brown */
+  --accent: #a16207; /* amber brown for accent */
+  --light: #f8fafc;
+  --dark: #1e293b;
+  --gray: #64748b;
+  --success: #22c55e;
+  --error: #ef4444;
+  --warning: #f59e0b;
+}
+
+/* Main container styles */
+.subject-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Page title styling */
+.subject-title {
+  color: #1e293b;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.subject-title span {
+  color: darkblue;
+  text-decoration: underline;
+}
+
+/* Form styling */
+.subject-form {
+  background-color: white;
+  border-radius: 8px;
+  padding: 25px;
+  margin-bottom: 30px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: var(--dark);
+}
+
+.form-control {
+  width: 100%;
+  padding: 10px 15px;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.2);
+}
+
+.form-select {
+  width: 100%;
+  padding: 10px 15px;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  font-size: 1rem;
+  background-color: white;
+}
+
+/* Button styles */
+.addbutton {
+  background: linear-gradient(
+    135deg,
+    var(--primary) 0%,
+    var(--primary-dark) 100%
+  );
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: block;
+  margin: 20px auto 0;
+  min-width: 150px;
+}
+
+.addbutton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Sub question container */
+#subQuestionContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 15px;
+  margin-top: 20px;
+}
+
+#subQuestionContainer label {
+  font-weight: 500;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.question-container {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 15px;
+  transition: all 0.2s ease;
+}
+
+.question-container:hover {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  border-color: var(--primary);
+}
+
+.question-label {
+  font-weight: 500;
+  color: var(--primary-dark);
+  margin-bottom: 10px;
+}
+
+.sub-input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  margin-bottom: 10px;
+}
+
+.fm-container {
+  margin-top: 15px;
+  background-color: white;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.fm-heading {
+  font-weight: 500;
+  color: var(--secondary);
+  margin-bottom: 10px;
+  font-size: 0.9rem;
+}
+
+.fm-inputs-wrapper {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.fm-input-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.fm-label {
+  font-size: 0.8rem;
+  margin-bottom: 5px;
+  color: var(--dark);
+}
+
+.fm-input {
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+}
+
+.fm-container input {
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+}
+
+/* Table styling */
+.table-container {
+  width: 100%;
+  margin-top: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden; /* Hide overflow but don't add scroll */
+}
+
+/* The outer container will have the scrollbar */
+.table-scroll-container {
+  width: 100%;
+  max-height: 600px;
+  overflow: auto; /* Add scrollbars when needed */
+  /* Fix for Firefox */
+  scrollbar-width: thin;
+  /* For WebKit browsers, improve scrollbar appearance */
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--gray);
+    border-radius: 4px;
+  }
+  &::-webkit-scrollbar-track {
+    background-color: #f1f1f1;
+  }
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  min-width: 800px; /* Ensure table is wide enough for content */
+  table-layout: fixed; /* Fixed layout for better column width control */
+}
+
+thead {
+  background: linear-gradient(
+    90deg,
+    var(--primary-dark) 0%,
+    var(--secondary-dark) 100%
+  );
+}
+
+th {
+  color: white;
+  text-align: left;
+  padding: 12px 15px;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 10; /* Ensure headers are above content when scrolling vertically */
+  white-space: nowrap; /* Prevent text wrapping */
+}
+
+/* Make the action column sticky on the right side */
+th:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 11; /* Higher than regular headers */
+  background: linear-gradient(
+    90deg,
+    var(--secondary-dark) 0%,
+    var(--secondary-dark) 100%
+  ); /* Ensure gradient background shows */
+}
+
+td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #e2e8f0;
+  color: var(--dark);
+  white-space: nowrap; /* Prevent text wrapping for better readability */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Make the last column (action column) sticky on the right */
+td:last-child {
+  position: sticky;
+  right: 0;
+  background-color: white; /* Ensure background covers content behind it */
+  z-index: 1;
+  box-shadow: -5px 0 5px -5px rgba(0,0,0,0.1); /* Add left shadow to distinguish */
+}
+
+/* Add shadow to sticky header */
+thead::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -5px;
+  height: 5px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.1), transparent);
+  z-index: 9;
+}
+
+/* Conditional background for last column to ensure scrolling works properly */
+tr:nth-child(even) td:last-child {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+tr:nth-child(even) {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Ensure hover effect carries to the last column */
+tr:hover td:last-child {
+  background-color: rgba(14, 165, 233, 0.05);
+}
+
+tr:hover {
+  background-color: rgba(14, 165, 233, 0.05);
+}
+
+/* Action buttons */
+#subjectedit {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  min-width: 70px;
+}
+
+#subjectedit:hover {
+  background-color: var(--primary-dark);
+  transform: translateY(-2px);
+}
+
+.deletebtn {
+  background-color: white;
+  color: var(--error) !important;
+  border: 1px solid var(--error);
+  padding: 7px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-decoration: none;
+  display: inline-block;
+  margin-left: 10px;
+  transition: all 0.2s ease;
+}
+
+.deletebtn:hover {
+  background-color: var(--error);
+  color: white !important;
+  transform: translateY(-2px);
+}
+
+.deletebtn i {
+  margin-left: 5px;
+}

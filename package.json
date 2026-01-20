@@ -1,0 +1,17 @@
+{
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "bikram-sambat-js": "^1.0.2",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "csv-parser": "^3.2.0",
+    "csvtojson": "^2.0.10",
+    "docx-pdf": "^0.0.1",
+    "dotenv": "^16.4.7",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.9.2",
+    "multer": "^2.0.1"
+  }
+}

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Result Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+<style>
+    /* Base Styles */
+    :root {
+        --primary-orange: #ff9d41;
+        --primary-orange-dark: #e67e22;
+        --primary-blue: #1e096f;
+        --primary-blue-light: #2c3e50;
+        --bg-color: #f4f6f9;
+        --text-color: #333;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Inter', sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+    }
+
+    /* Theme Wrapper */
+    .theme-wrapper {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #1e096f 0%, #3b1bb3 100%);
+        padding: 20px;
+        box-sizing: border-box;
+    }
+
+    /* Card Design */
+    .result-card {
+        background: white;
+        width: 100%;
+        max-width: 850px;
+        border-radius: 20px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        animation: slideUp 0.5s ease-out;
+    }
+
+    @keyframes slideUp {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    .card-header {
+        background: var(--primary-orange);
+        padding: 35px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    /* Decorative circle in header */
+    .card-header::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -10%;
+        width: 200px;
+        height: 200px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 50%;
+    }
+
+    .card-header h2 {
+        color: white;
+        margin: 0;
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+
+    .card-header p {
+        color: rgba(255, 255, 255, 0.8);
+        margin: 10px 0 0;
+        font-size: 14px;
+    }
+
+    .card-body {
+        padding: 40px;
+    }
+
+    /* Form Grid */
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 25px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .form-group.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .form-group label {
+        font-weight: 600;
+        color: var(--primary-blue-light);
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .required {
+        color: #e74c3c;
+        font-weight: bold;
+    }
+
+    .form-control {
+        padding: 14px 16px;
+        border: 2px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 15px;
+        transition: all 0.3s ease;
+        background-color: #f8fafc;
+        width: 100%;
+        box-sizing: border-box;
+        font-family: inherit;
+        color: #2d3748;
+    }
+
+    .form-control:hover {
+        border-color: #cbd5e1;
+    }
+
+    .form-control:focus {
+        border-color: var(--primary-orange);
+        background-color: #fff;
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(255, 157, 65, 0.15);
+    }
+
+    select.form-control {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 16px center;
+        background-size: 18px;
+        cursor: pointer;
+    }
+
+    /* Button Area */
+    .action-area {
+        margin-top: 35px;
+        text-align: center;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #ff9d41 0%, #e67e22 100%);
+        color: white;
+        border: none;
+        padding: 16px 60px;
+        border-radius: 50px;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 10px 20px rgba(255, 157, 65, 0.3);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 30px rgba(255, 157, 65, 0.4);
+        background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);
+    }
+
+    .btn-primary:active {
+        transform: translateY(1px);
+        box-shadow: 0 5px 10px rgba(255, 157, 65, 0.3);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .card-body {
+            padding: 25px;
+        }
+        .form-grid {
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        .card-header {
+            padding: 25px;
+        }
+        .card-header h2 {
+            font-size: 24px;
+        }
+    }
+</style>
+</head>
+<body>
+    <div class="theme-wrapper">
+        <div class="result-card">
+            <div class="card-header">
+                <h2>Student Result Portal</h2>
+                <p>Please enter your details to view the result</p>
+            </div>
+            
+            <div class="card-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="classSection">Class & Section <span class="required">*</span></label>
+                        <select name="classSection" id="classSection" class="form-control">
+                            <option value="" selected disabled>Select Class & Section</option>
+                            <% studentClassdata.forEach((data)=>{%>
+                                <option value="<%=data.studentClass%>-<%=data.section%>"><%=data.studentClass%> - <%=data.section%></option>
+                            <%})%>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="terminal">Terminal <span class="required">*</span></label>
+                        <select name="terminals" id="terminal" class="form-control">
+                            <option value="" selected disabled>Select Terminal</option>
+                            <% marksheetSetups[0].terminals.forEach((terminal)=>{%>
+                                <option value="<%=terminal.name%>"><%=terminal.name%></option>
+                            <% }) %>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="academicYear">Academic Year <span class="required">*</span></label>
+                        <select name="academicYear" id="academicYear" class="form-control">
+                            <option value="" selected disabled>Select Year</option>
+                            <% currentYear = Number(marksheetSetups[0].academicYear) %>;
+                            <% for (let i = 0; i < 5; i++) { %>
+                                <option value="<%= currentYear - i %>"><%= currentYear - i %></option>
+                            <% } %>
+                        </select>
+                    </div>
+
+                    <div class="form-group full-width">
+                        <label for="reg">Registration Number <span class="required">*</span></label>
+                        <input type="text" id="reg" class="form-control" placeholder="Enter your registration number">
+                    </div>
+                </div>
+
+                <div class="action-area">
+                    <button onclick="loadform()" class="btn-primary">
+                        View Result
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function loadform() {
+            const reg = document.getElementById('reg').value;
+            const classSection = document.getElementById('classSection').value;
+            const academicYear = document.getElementById('academicYear').value;
+            const terminal = document.getElementById('terminal').value;
+
+            if (!reg || !classSection || !terminal || !academicYear) {
+                alert("Please fill in all required fields: Class, Terminal, Academic Year, and Registration Number.");
+                return;
+            }
+
+            const studentClass = classSection.split("-")[0];
+            const section = classSection.split("-")[1];
+
+            // Add loading state to button
+            const btn = document.querySelector('.btn-primary');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'Loading...';
+            btn.style.opacity = '0.8';
+            btn.style.pointerEvents = 'none';
+
+            window.location.href = (`/formatchoosestudent?studentClass=${studentClass}&section=${section}&reg=${reg}&terminal=${terminal}&academicYear=${academicYear}`);
+        }
+    </script>
+</body>
+</html>

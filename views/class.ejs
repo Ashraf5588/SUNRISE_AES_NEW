@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Select Class - <%= subject %></title>
+    
+    <link rel="stylesheet" href="/nav.css">
+    <link rel="stylesheet" href="/class-selector.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet">
+    <!-- Add Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0ea5e9;  /* skyblue */
+            --primary-dark: #0284c7;  /* darker skyblue */
+            --secondary: #8b5a2b;  /* brown */
+            --secondary-dark: #6b4423;  /* darker brown */
+            --light: #f8fafc;
+            --dark: #1e293b;
+            --accent: #a16207;  /* amber brown for accent */
+            --gray: #64748b;
+        }
+        
+        body {
+            background-color: #f8fafc;
+            font-family: 'Lexend', sans-serif;
+            color: var(--dark);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header {
+            padding-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 80%);
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+            color: white;
+        }
+        
+        .hero-section {
+            padding: 2rem 1rem;
+            text-align: center;
+        }
+        
+        #firstheading {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-top: 0;
+            color: white;
+        }
+        
+        #firstspan {
+            color: var(--accent);
+            font-weight: 800;
+        }
+        
+        .subheading {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 1.2rem;
+            display: block;
+            margin-top: 0.5rem;
+        }
+        
+        .page-title {
+            position: relative;
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 1rem;
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+        
+        .page-title::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 2px;
+        }
+          .class-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+            perspective: 1000px;
+        }
+          .class-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+            height: 100%;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        .class-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            text-decoration: none;
+            color: inherit;
+            border-color: var(--primary);
+        }
+        
+        .class-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .class-card:hover::after {
+            opacity: 1;
+        }
+          .class-card-body {
+            padding: 1.5rem;
+            text-align: center;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .class-card-body::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            transform: rotate(45deg);
+        }
+        
+        .class-icon {
+            background-color: white;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .class-icon i {
+            font-size: 2rem;
+            color: var(--secondary);
+        }
+        
+        .class-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .class-section {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        
+        .class-footer {
+            padding: 1rem;
+            text-align: center;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+        }
+          .select-btn {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 0.75rem 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+        
+        .select-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            z-index: -1;
+        }
+        
+        .select-btn:hover::before {
+            left: 0;
+        }
+        
+        .select-btn:hover {
+            background: var(--secondary-dark);
+            color: white;
+        }
+        
+        .container {
+            flex: 1;
+            padding-bottom: 2rem;
+        }
+        
+        .subject-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 30px;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+          @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .class-card {
+            animation: fadeIn 0.5s ease forwards;
+            opacity: 0;
+        }
+        
+        /* Additional styles are in class-selector.css */
+    </style>
+</head>
+<body>
+  <%- include('./partials/nav',{currentPage:'home'}) %>
+  
+  <%- include('partials/sidenav', { 
+      subjects: subjects, 
+      studentClassdata: studentClassdata,
+      terminals: terminals 
+  }) %>
+  
+    <div class="container">
+    <div class="row mb-5">
+      <div class="col-md-8 offset-md-2">
+       
+    <!-- New Class Selector -->
+    <div class="row">
+      <div class="col-md-6 mx-auto">
+        <div class="class-selector-container">
+          <label for="classSelector" class="form-label fw-bold">Choose Class</label>
+          <div class="class-icon mb-4">
+            <i class="fa-solid fa-chalkboard-user"></i>
+          </div>
+          <select id="classSelector" class="form-select form-select-lg mb-4">
+            <option value="" selected disabled>-- Select a class and section --</option>
+          
+              <% studentClassdata.forEach(studentclass => { %>
+                <option 
+                  value="<%=controller.trim()%>/<%=subject.trim()%>/<%=studentclass.studentClass.trim()%>/<%=studentclass.section.trim()%>"
+                  data-class="<%=studentclass.studentClass%>"
+                  data-section="<%=studentclass.section%>">
+                  <%=studentclass.studentClass%>-<%= studentclass.section %>
+                </option>
+              <% }); %>
+              </optgroup>
+          
+          </select>
+          
+          
+        </div>
+      </div>
+    </div>
+    
+    <!-- Original Class Grid (now hidden) -->
+    <div class="class-grid" style="display: none;">
+      <% studentClassdata.forEach((studentclass, index) => { %>
+        <a href="/<%=controller.trim()%>/<%=subject.trim()%>/<%=studentclass.studentClass.trim()%>/<%=studentclass.section.trim()%>" 
+           class="class-card" 
+           style="animation: fadeIn 0.5s ease forwards; animation-delay: <%= index * 0.1 %>s; opacity: 0;">
+          <div class="class-card-body">
+            <div class="class-icon">
+              <i class="fa-solid fa-chalkboard-user"></i>
+            </div>
+            <h3 class="class-name">Class <%=studentclass.studentClass%></h3>
+            <p class="class-section">Section <%=studentclass.section%></p>
+            <div class="mt-2">
+              <span class="badge bg-white text-primary">Assessment Ready</span>
+            </div>
+          </div>
+          <div class="class-footer">
+            <button class="select-btn">
+              <i class="fas fa-check-circle me-2"></i>
+              Select Class
+            </button>
+          </div>
+        </a>
+      <% }) %>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const classSelector = document.getElementById('classSelector');
+      const classPreview = document.getElementById('classPreview');
+      const previewClassName = document.getElementById('previewClassName');
+      const previewSection = document.getElementById('previewSection');
+      const selectClassBtn = document.getElementById('selectClassBtn');
+      const refreshBtn = document.getElementById('refreshBtn');
+      
+      // Redirect immediately when a class is selected
+      classSelector.addEventListener('change', function() {
+        const selectedValue = this.value;
+        
+        if (selectedValue) {
+          // Immediately redirect to the selected class
+          window.location.href = `/${selectedValue}`;
+        }
+      });
+      
+      // Handle refresh button click
+      refreshBtn.addEventListener('click', function() {
+        location.reload();
+      });
+    });
+  </script>
+  
+  <script>
+    // Class selection page loader handling
+    document.addEventListener('DOMContentLoaded', function() {
+      // Show loader for class selection links
+      const classLinks = document.querySelectorAll('a[href*="/terminal/"]');
+      classLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+          if (window.pageLoader) {
+            const className = this.querySelector('.class-title')?.textContent || 'Class';
+            window.pageLoader.show(
+              `Loading ${className}...`,                                     
+              'Preparing terminal examinations for selected class'
+            );
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

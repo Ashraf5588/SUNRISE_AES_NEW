@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marksheet Setup</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: linear-gradient(135deg, #87CEEB 0%, #E0F6FF 40%, #B0E0E6 100%);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+      color: #2c3e50;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .header-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .header-card h1 {
+      color: #4a90e2;
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .header-card p {
+      color: #7f8c8d;
+      font-size: 1.1rem;
+    }
+
+    .form-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      margin-bottom: 2rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #34495e;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    input[type="text"], 
+    input[type="email"], 
+    input[type="number"] {
+      width: 100%;
+      padding: 1rem;
+      border: 2px solid #e9ecef;
+      border-radius: 12px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      background: rgba(255, 255, 255, 0.8);
+      color: #2c3e50;
+    }
+
+    input[type="text"]:focus, 
+    input[type="email"]:focus, 
+    input[type="number"]:focus {
+      outline: none;
+      border-color: #4a90e2;
+      box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+      background: rgba(255, 255, 255, 1);
+    }
+
+    .btn {
+      padding: 1rem 2rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+      text-align: center;
+      margin: 0.5rem;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #4a90e2, #357abd);
+      color: white;
+      box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(74, 144, 226, 0.4);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #27ae60, #229954);
+      color: white;
+      box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+    }
+
+    .btn-success:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #e74c3c, #c0392b);
+      color: white;
+      box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+      padding: 0.5rem 1rem;
+      font-size: 0.8rem;
+    }
+
+    .btn-danger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #f39c12, #e67e22);
+      color: white;
+      box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);
+      padding: 0.5rem 1rem;
+      font-size: 0.8rem;
+    }
+
+    .btn-warning:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(243, 156, 18, 0.4);
+    }
+
+    .terminal-section {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      border: 1px solid rgba(74, 144, 226, 0.3);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    }
+
+    .terminal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 2px solid rgba(74, 144, 226, 0.2);
+    }
+
+    .terminal-header h3 {
+      color: #4a90e2;
+      margin: 0;
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    .submit-section {
+      text-align: center;
+      margin-top: 2rem;
+    }
+
+    /* Table Styles for Existing Data */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .data-table th,
+    .data-table td {
+      padding: 1rem 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .data-table th {
+      background: linear-gradient(135deg, #4a90e2, #357abd);
+      color: white;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .data-table tr:nth-child(even) {
+      background-color: #f8f9fa;
+    }
+
+    .data-table tr:hover {
+      background-color: #e3f2fd;
+      transform: translateY(-1px);
+      transition: all 0.3s ease;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* Data Table Styles */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(74, 144, 226, 0.1);
+      margin-top: 1rem;
+    }
+
+    .data-table th,
+    .data-table td {
+      padding: 1rem;
+      text-align: left;
+      border-bottom: 1px solid #e8f4f8;
+    }
+
+    .data-table th {
+      background: linear-gradient(135deg, #4a90e2, #357abd);
+      color: white;
+      font-weight: 600;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .data-table tbody tr {
+      transition: all 0.3s ease;
+    }
+
+    .data-table tbody tr:hover {
+      background-color: #f8fbff;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(74, 144, 226, 0.1);
+    }
+
+    .data-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #f39c12, #e67e22);
+      color: white;
+    }
+
+    .btn-warning:hover {
+      background: linear-gradient(135deg, #e67e22, #d35400);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(243, 156, 18, 0.3);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #e74c3c, #c0392b);
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: linear-gradient(135deg, #c0392b, #a93226);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      body {
+        padding: 1rem 0.5rem;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .header-card {
+        padding: 1.5rem;
+      }
+
+      .form-card {
+        padding: 1.5rem;
+      }
+
+      /* Table Responsive */
+      .data-table {
+        font-size: 0.8rem;
+      }
+      
+      .data-table th,
+      .data-table td {
+        padding: 0.5rem;
+      }
+      
+      .action-buttons {
+        flex-direction: column;
+      }
+      
+      .btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.75rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .data-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+
+      .header-card h1 {
+        font-size: 2rem;
+      }
+
+      .action-buttons {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header-card">
+      <h1>📋 Marksheet Setup</h1>
+      <p>Configure school information and academic year settings</p>
+    </div>
+
+    <div class="form-card">
+      <form action="/marksheetsetup<% if (typeof editData !== 'undefined' && editData) { %>?edit=true&id=<%= editData._id %><% } %>" method="POST" id="marksheetForm">
+        <h2 style="color: #4a90e2; margin-bottom: 1.5rem; text-align: center;">School Information</h2>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="schoolName">School Name</label>
+            <input type="text" name="schoolName" id="schoolName" placeholder="Enter School Name" value="<%= typeof editData !== 'undefined' && editData ? editData.schoolName : '' %>" required>
+          </div>
+          <div class="form-group">
+            <label for="address">Address</label>
+            <input type="text" name="address" id="address" placeholder="Enter Address" value="<%= typeof editData !== 'undefined' && editData ? editData.address : '' %>" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="phone">Phone Number</label>
+            <input type="text" name="phone" id="phone" placeholder="Enter Phone Number" value="<%= typeof editData !== 'undefined' && editData ? editData.phone : '' %>" required>
+          </div>
+          <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" name="email" id="email" placeholder="Enter Email Address" value="<%= typeof editData !== 'undefined' && editData ? editData.email : '' %>" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="academicYear">Academic Year</label>
+            <input type="text" name="academicYear" id="academicYear" placeholder="Enter Academic Year (e.g., 2024-2025)" value="<%= typeof editData !== 'undefined' && editData ? editData.academicYear : '' %>" required>
+          </div>
+          <div class="form-group">
+            <label for="website">Website URL</label>
+            <input type="text" name="website" id="website" placeholder="Enter Website URL" value="<%= typeof editData !== 'undefined' && editData ? editData.website : '' %>">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="totalTerminals">Total Terminals</label>
+          <input type="number" name="totalTerminals" id="totalTerminals" placeholder="Enter Total Terminals" min="1" max="10" value="<%= typeof editData !== 'undefined' && editData && editData.terminals ? editData.terminals.length : '1' %>" oninput="addMoreTerminals()" required>
+        </div>
+
+        <div id="terminalsContainer">
+          <!-- Terminal inputs will be dynamically added here -->
+        </div>
+
+        <div class="submit-section">
+          <input type="submit" class="btn btn-primary" value="<%= typeof editData !== 'undefined' && editData ? '✏️ Update Marksheet Setup' : '💾 Save Marksheet Setup' %>">
+          <% if (typeof editData !== 'undefined' && editData) { %>
+            <a href="/marksheetsetup" class="btn btn-warning">Cancel Edit</a>
+          <% } %>
+        </div>
+      </form>
+    </div>
+
+    <!-- Display Existing Marksheet Setup Data -->
+    <% if (typeof marksheetData !== 'undefined' && marksheetData && marksheetData.length > 0) { %>
+    <div class="form-card">
+      <h2 style="color: #4a90e2; margin-bottom: 1.5rem; text-align: center;">📊 Existing Marksheet Configurations</h2>
+      
+      <div style="overflow-x: auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>School Name</th>
+              <th>Academic Year</th>
+              <th>Phone</th>
+              <th>Email</th>
+              <th>Terminals</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% marksheetData.forEach((setup, index) => { %>
+              <tr>
+                <td><strong><%= setup.schoolName %></strong></td>
+                <td><%= setup.academicYear %></td>
+                <td><%= setup.phone %></td>
+                <td><%= setup.email %></td>
+                <td>
+                  <% if (setup.terminals && setup.terminals.length > 0) { %>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
+                      <% setup.terminals.forEach((terminal, termIndex) => { %>
+                        <span style="background: #e3f2fd; color: #1976d2; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.8rem;">
+                          <%= terminal.name %> (<%= terminal.workingDays %>d)
+                        </span>
+                      <% }); %>
+                    </div>
+                  <% } else { %>
+                    <span style="color: #95a5a6; font-style: italic;">No terminals</span>
+                  <% } %>
+                </td>
+                <td>
+                  <div class="action-buttons">
+                    <a href="/marksheetsetup?edit=true&id=<%= setup._id %>" class="btn btn-warning">
+                      ✏️ Edit
+                    </a>
+                    <a href="/marksheetsetup/delete/<%= setup._id %>" 
+                       onclick="return confirm('Are you sure you want to delete this marksheet setup? This action cannot be undone.')" 
+                       class="btn btn-danger">
+                      🗑️ Delete
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Summary Statistics -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1.5rem;">
+        <div style="background: linear-gradient(135deg, #4a90e2, #357abd); color: white; padding: 1rem; border-radius: 12px; text-align: center; box-shadow: 0 4px 15px rgba(74, 144, 226, 0.3);">
+          <div style="font-size: 1.5rem; font-weight: 700;"><%= marksheetData.length %></div>
+          <div style="font-size: 0.9rem; opacity: 0.9; margin-top: 0.25rem;">Total Configurations</div>
+        </div>
+        
+        <div style="background: linear-gradient(135deg, #27ae60, #229954); color: white; padding: 1rem; border-radius: 12px; text-align: center; box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);">
+          <div style="font-size: 1.5rem; font-weight: 700;">
+            <%= marksheetData.reduce((total, setup) => total + (setup.terminals ? setup.terminals.length : 0), 0) %>
+          </div>
+          <div style="font-size: 0.9rem; opacity: 0.9; margin-top: 0.25rem;">Total Terminals</div>
+        </div>
+        
+        <div style="background: linear-gradient(135deg, #f39c12, #e67e22); color: white; padding: 1rem; border-radius: 12px; text-align: center; box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);">
+          <div style="font-size: 1.5rem; font-weight: 700;">
+            <%= marksheetData.filter(setup => setup.academicYear).length %>
+          </div>
+          <div style="font-size: 0.9rem; opacity: 0.9; margin-top: 0.25rem;">Active Years</div>
+        </div>
+      </div>
+    </div>
+    <% } else { %>
+    <div class="form-card" style="text-align: center; padding: 2rem;">
+      <div style="color: #95a5a6; font-size: 1.1rem;">
+        <i style="font-size: 2rem; margin-bottom: 1rem; display: block;">📋</i>
+        No marksheet configurations found. Create your first setup above!
+      </div>
+    </div>
+    <% } %>
+  </div>
+  <script>
+    let terminalCount = 1;
+
+    function addMoreTerminals() {
+      const totalterm = document.getElementById('totalTerminals').value;
+      const container = document.getElementById('terminalsContainer');
+      
+      // Clear previous terminals first
+      container.innerHTML = '';
+      terminalCount = parseInt(totalterm) || 1;
+
+      for (let i = 1; i <= totalterm; i++) {
+        const terminalDiv = document.createElement('div');
+        terminalDiv.className = 'form-row';
+        terminalDiv.innerHTML = `
+          <div class="form-group">
+            <label for="terminalName${i}">Terminal ${i} Name:</label>
+            <input type="text" id="terminalName${i}" name="name${i}" 
+                   placeholder="e.g., 1st Terminal, Mid-term" required 
+                   style="background: #f8fbff; border: 2px solid #e3f2fd;">
+          </div>
+          <div class="form-group">
+            <label for="workingDays${i}">Working Days:</label>
+            <input type="number" id="workingDays${i}" name="workingDays${i}" 
+                   placeholder="Number of working days" min="1" max="365" required
+                   style="background: #f8fbff; border: 2px solid #e3f2fd;">
+          </div>
+          ${i > 1 ? `
+            <div class="form-group" style="display: flex; align-items: end;">
+              <button type="button" onclick="removeTerminal(this)" 
+                      style="background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; border: none; padding: 0.75rem 1rem; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.3s ease;">
+                🗑️ Remove
+              </button>
+            </div>
+          ` : ''}
+        `;
+        
+        container.appendChild(terminalDiv);
+        
+        // Add fade-in animation
+        terminalDiv.style.opacity = '0';
+        terminalDiv.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+          terminalDiv.style.transition = 'all 0.3s ease';
+          terminalDiv.style.opacity = '1';
+          terminalDiv.style.transform = 'translateY(0)';
+        }, i * 100);
+      }
+    }
+
+    function removeTerminal(button) {
+      const terminalRow = button.closest('.form-row');
+      const totalTerminalsInput = document.getElementById('totalTerminals');
+      
+      if (document.querySelectorAll('#terminalsContainer .form-row').length > 1) {
+        terminalRow.style.transition = 'all 0.3s ease';
+        terminalRow.style.opacity = '0';
+        terminalRow.style.transform = 'translateY(-20px)';
+        setTimeout(() => {
+          terminalRow.remove();
+          updateTerminalNumbers();
+          totalTerminalsInput.value = document.querySelectorAll('#terminalsContainer .form-row').length;
+        }, 300);
+      } else {
+        alert('At least one terminal is required!');
+      }
+    }
+
+    function updateTerminalNumbers() {
+      const terminals = document.querySelectorAll('#terminalsContainer .form-row');
+      terminals.forEach((terminal, index) => {
+        const label = terminal.querySelector('label');
+        if (label && label.textContent.includes('Terminal')) {
+          label.textContent = `Terminal ${index + 1} Name:`;
+        }
+        
+        // Update input names for proper form submission
+        const nameInput = terminal.querySelector('input[name*="name"]');
+        const daysInput = terminal.querySelector('input[name*="workingDays"]');
+        
+        if (nameInput) {
+          nameInput.name = `name${index + 1}`;
+          nameInput.id = `terminalName${index + 1}`;
+        }
+        if (daysInput) {
+          daysInput.name = `workingDays${index + 1}`;
+          daysInput.id = `workingDays${index + 1}`;
+        }
+      });
+      
+      terminalCount = terminals.length;
+    }
+
+    // Form validation and enhancement
+    document.addEventListener('DOMContentLoaded', function() {
+      const form = document.querySelector('form');
+      const inputs = form.querySelectorAll('input[required]');
+      
+      // Trigger terminal generation if totalTerminals has a value on page load
+      const totalTerminalsInput = document.getElementById('totalTerminals');
+      if (totalTerminalsInput.value && totalTerminalsInput.value > 0) {
+        addMoreTerminals();
+      }
+      
+      // Add real-time validation
+      inputs.forEach(input => {
+        input.addEventListener('blur', function() {
+          if (this.value.trim() === '') {
+            this.style.borderColor = '#e74c3c';
+            this.style.background = '#fdf2f2';
+          } else {
+            this.style.borderColor = '#27ae60';
+            this.style.background = '#f8fff8';
+          }
+        });
+        
+        input.addEventListener('input', function() {
+          if (this.style.borderColor === '#e74c3c' && this.value.trim() !== '') {
+            this.style.borderColor = '#e3f2fd';
+            this.style.background = '#f8fbff';
+          }
+        });
+      });
+      
+      // Form submission enhancement
+      form.addEventListener('submit', function(e) {
+        let isValid = true;
+        const requiredInputs = form.querySelectorAll('input[required]');
+        
+        // Debug: Log form data before submission
+        console.log('Form submission - checking terminal data...');
+        const terminalInputs = form.querySelectorAll('input[name*="name"], input[name*="workingDays"]');
+        console.log('Terminal inputs found:', terminalInputs.length);
+        terminalInputs.forEach((input, index) => {
+          console.log(`Terminal input ${index}:`, input.name, '=', input.value);
+        });
+        
+        requiredInputs.forEach(input => {
+          if (input.value.trim() === '') {
+            input.style.borderColor = '#e74c3c';
+            input.style.background = '#fdf2f2';
+            if (isValid) input.focus();
+            isValid = false;
+          }
+        });
+        
+        // Check if terminals are properly generated
+        const terminalNameInputs = form.querySelectorAll('input[name*="name"]:not([name="schoolName"])');
+        const terminalDaysInputs = form.querySelectorAll('input[name*="workingDays"]');
+        
+        if (terminalNameInputs.length === 0 || terminalDaysInputs.length === 0) {
+          e.preventDefault();
+          alert('Please generate terminal inputs by entering the number of terminals first!');
+          return false;
+        }
+        
+        if (!isValid) {
+          e.preventDefault();
+          alert('Please fill in all required fields!');
+          return false;
+        }
+        
+        // Show loading state
+        const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+        const originalText = submitBtn.value || submitBtn.innerHTML;
+        if (submitBtn.tagName === 'INPUT') {
+          submitBtn.value = '⏳ Saving...';
+        } else {
+          submitBtn.innerHTML = '⏳ Saving...';
+        }
+        submitBtn.disabled = true;
+        
+        // Re-enable after a delay (in case of error)
+        setTimeout(() => {
+          if (submitBtn.tagName === 'INPUT') {
+            submitBtn.value = originalText;
+          } else {
+            submitBtn.innerHTML = originalText;
+          }
+          submitBtn.disabled = false;
+        }, 5000);
+      });
+
+      // Auto-populate existing data if in edit mode
+      const editData = <%- typeof editData !== "undefined" && editData ? JSON.stringify(editData) : "null" %>;
+      
+      if (editData && editData.terminals) {
+        setTimeout(() => {
+          // Ensure totalTerminals input matches data
+          const totalTerminalsInput = document.getElementById('totalTerminals');
+          if (totalTerminalsInput && totalTerminalsInput.value != editData.terminals.length) {
+             totalTerminalsInput.value = editData.terminals.length;
+          }
+          
+          addMoreTerminals();
+          
+          editData.terminals.forEach((terminal, index) => {
+            const nameInput = document.getElementById(`terminalName${index + 1}`);
+            const daysInput = document.getElementById(`workingDays${index + 1}`);
+            if (nameInput) nameInput.value = terminal.name;
+            if (daysInput) daysInput.value = terminal.workingDays;
+          });
+        }, 100);
+      }
+    });
+
+    // Enhanced button hover effects
+    document.addEventListener('DOMContentLoaded', function() {
+      const buttons = document.querySelectorAll('.btn, button');
+      buttons.forEach(btn => {
+        btn.addEventListener('mouseenter', function() {
+          this.style.transform = 'translateY(-2px) scale(1.02)';
+        });
+        
+        btn.addEventListener('mouseleave', function() {
+          this.style.transform = 'translateY(0) scale(1)';
+        });
+      });
+    });
+  </script>
+</body>
+</html>

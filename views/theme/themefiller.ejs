@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Rubriks Creation</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root{--primary:#ff8c42;--primary-dark:#e67a2e;--secondary:#1a3a52;--secondary-light:#2c5f8d;--bg:#f8f9fa;--card:#fff;--border:#e1e8ed;--text:#2d3748;--success:#48bb78;--hover:#fff5eb}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(135deg,var(--secondary) 0%,var(--secondary-light) 100%);min-height:100vh;padding:15px;color:var(--text)}
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .header-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .header-card h2 {
+      color: #2c3e50;
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .header-card p {
+      color: #7f8c8d;
+      font-size: 1rem;
+    }
+
+    .form-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      margin-bottom: 2rem;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .form-group {
+      position: relative;
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #34495e;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    input[type="text"], 
+    input[type="number"],
+    textarea {
+      width: 100%;
+      padding: 0.875rem 1rem;
+      border: 2px solid #e9ecef;
+      border-radius: 12px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      background: rgba(255, 255, 255, 0.8);
+      color: #2c3e50;
+      font-family: inherit;
+      line-height: 1.5;
+    }
+
+    textarea {
+      min-height: 50px;
+      resize: vertical;
+      overflow: hidden;
+    }
+
+    input[type="text"]:focus, 
+    input[type="number"]:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #3498db;
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+      background: rgba(255, 255, 255, 1);
+    }
+
+    input[readonly] {
+      background: #f8f9fa;
+      color: #6c757d;
+    }
+
+    .theme-section {
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .theme-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid #3498db;
+    }
+
+    .theme-header h3 {
+      color: #2c3e50;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .outcome-section {
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+
+    .outcome-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .outcome-header h4 {
+      color: #2c3e50;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .indicator-group {
+      display: grid;
+      grid-template-columns: 2fr 1fr auto;
+      gap: 0.5rem;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      padding: 0.5rem;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 8px;
+    }
+
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+      text-align: center;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #3498db, #2980b9);
+      color: white;
+      box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #27ae60, #229954);
+      color: white;
+      box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #e74c3c, #c0392b);
+      color: white;
+      box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+    }
+
+    .btn-danger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #f39c12, #e67e22);
+      color: white;
+      box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);
+    }
+
+    .btn-warning:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(243, 156, 18, 0.4);
+    }
+
+    .theme-section {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    .theme-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 2px solid rgba(52, 152, 219, 0.2);
+    }
+
+    .theme-header h3 {
+      color: #2c3e50;
+      margin: 0;
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+
+    .outcome-section {
+      background: rgba(52, 152, 219, 0.05);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-left: 4px solid #3498db;
+    }
+
+    .outcome-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .outcome-header h4 {
+      color: #2c3e50;
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .indicators-container {
+      margin: 1rem 0;
+    }
+
+    .total-display {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(39, 174, 96, 0.1);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: 1px solid rgba(39, 174, 96, 0.3);
+    }
+
+    .total-display label {
+      color: #27ae60;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .total-display input[readonly] {
+      color: #27ae60;
+      font-size: 1.1rem;
+      width: 60px;
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #e74c3c, #c0392b);
+      color: white;
+      padding: 0.5rem 1rem;
+      font-size: 0.8rem;
+      box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+    }
+
+    .btn-danger:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #f39c12, #e67e22);
+      color: white;
+      padding: 0.5rem 1rem;
+      font-size: 0.8rem;
+      box-shadow: 0 2px 8px rgba(243, 156, 18, 0.3);
+    }
+
+    .btn-warning:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(243, 156, 18, 0.4);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .submit-section {
+      text-align: center;
+      margin-top: 2rem;
+    }
+
+    .submit-btn {
+      background: linear-gradient(135deg, #27ae60, #229954);
+      color: white;
+      padding: 1rem 3rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+      min-width: 200px;
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+    }
+
+    .total-display {
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+      border-radius: 8px;
+      padding: 0.75rem;
+      text-align: center;
+      border: 1px solid #dee2e6;
+    }
+
+    .total-display label {
+      color: #6c757d;
+      font-size: 0.8rem;
+      margin-bottom: 0.25rem;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      body {
+        padding: 1rem 0.5rem;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .indicator-group {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+      }
+
+      .theme-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+
+      .outcome-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+
+      .btn-group {
+        justify-content: center;
+      }
+
+      .form-card {
+        padding: 1.5rem;
+      }
+
+      .header-card {
+        padding: 1.5rem;
+      }
+
+      .header-card h2 {
+        font-size: 1.5rem;
+      }
+
+      /* Enhanced mobile input styling */
+      input[type="text"], 
+      input[type="number"],
+      textarea {
+        font-size: 16px; /* Prevents zoom on iOS */
+        padding: 1rem;
+        min-height: 50px;
+      }
+
+      textarea {
+        min-height: 80px;
+        max-height: 200px;
+      }
+
+      /* Make form groups full width on mobile */
+      .form-group {
+        margin-bottom: 1.5rem;
+      }
+
+      /* Better spacing for mobile */
+      .theme-section {
+        padding: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .outcome-section {
+        padding: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      /* Mobile-friendly buttons */
+      .btn {
+        padding: 0.875rem 1.5rem;
+        font-size: 0.95rem;
+        min-height: 44px; /* Touch target size */
+      }
+
+      /* Better mobile table */
+      .table-scroll-wrapper {
+        margin: 10px auto; /* Center align like form */
+        border-radius: 8px;
+        max-width: calc(100% - 2rem); /* Match form responsive behavior */
+      }
+
+      .data-table {
+        width: 100%;
+        min-width: 600px; /* Reduced minimum width for mobile */
+        font-size: 14px;
+      }
+
+      .data-table th,
+      .data-table td {
+        padding: 12px 8px;
+        font-size: 13px;
+      }
+
+      .data-table th {
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .action-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+        display: block;
+        margin: 2px 0;
+        width: 100%;
+        text-align: center;
+      }
+
+      /* Show scroll hint on mobile */
+      .table-scroll-wrapper::after {
+        content: "👈 Scroll horizontally to see more";
+        display: block;
+        text-align: center;
+        padding: 10px;
+        font-size: 12px;
+        color: #666;
+        background: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+      }
+    }
+
+    /* Extra small mobile devices */
+    @media (max-width: 480px) {
+      .container {
+        padding: 0 0.5rem;
+      }
+
+      .form-card,
+      .header-card {
+        padding: 1rem;
+        margin-bottom: 1rem;
+      }
+
+      .theme-section,
+      .outcome-section {
+        padding: 0.75rem;
+      }
+
+      input[type="text"], 
+      input[type="number"],
+      textarea {
+        padding: 0.875rem;
+        font-size: 16px;
+      }
+
+      textarea {
+        min-height: 100px;
+      }
+
+      .btn {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+        width: 100%;
+        margin-bottom: 0.5rem;
+      }
+
+      .btn-group {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .submit-btn {
+        width: 100%;
+        padding: 1rem;
+      }
+
+      /* Ultra compact table for very small screens */
+      .table-scroll-wrapper {
+        margin: 5px auto; /* Center align like form */
+        max-width: calc(100% - 1rem); /* Match form responsive behavior */
+      }
+
+      .data-table {
+        min-width: 500px; /* Further reduced for very small screens */
+        font-size: 12px;
+      }
+
+      .data-table th,
+      .data-table td {
+        padding: 8px 4px;
+        font-size: 11px;
+      }
+
+      .action-btn {
+        padding: 4px 8px;
+        font-size: 10px;
+      }
+
+      .marks-display {
+        padding: 4px 8px;
+        font-size: 12px;
+        min-width: 35px;
+      }
+    }
+
+    /* Loading state */
+    .loading {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+    
+    .form-loading {
+      position: relative;
+    }
+    
+    .form-loading::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(255, 255, 255, 0.8);
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Animation for adding elements */
+    .theme-section, .outcome-section, .indicator-group {
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Save status indicator styles */
+    .save-status {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      border-left: 4px solid;
+      font-family: inherit;
+    }
+    
+    .save-status-success {
+      border-left-color: #4CAF50;
+    }
+    
+    .save-status-error {
+      border-left-color: #f44336;
+    }
+    
+    .save-status-info {
+      border-left-color: #2196F3;
+    }
+
+    /* Table Styling */
+    .data-table {
+      width: 100%;
+      min-width: 800px; /* Minimum width to ensure proper layout */
+      border-collapse: collapse;
+      background: white;
+      border-radius: 0; /* Remove border radius as container handles it */
+      overflow: hidden;
+      border: none; /* Remove border as container handles it */
+      margin: 0; /* Remove margin as container handles spacing */
+    }
+
+    .data-table thead {
+      background: linear-gradient(135deg, #87ceeb 0%, #b0e0e6 100%);
+      color: #2c3e50;
+    }
+
+    .data-table th {
+      padding: 18px 15px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 16px;
+      border: none;
+      border-bottom: 3px solid #87ceeb;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .data-table td {
+      padding: 16px 15px;
+      text-align: center;
+      border: none;
+      border-bottom: 1px solid #f0f8ff;
+      vertical-align: middle;
+      font-size: 15px;
+      color: #2c3e50;
+      font-weight: 500;
+    }
+
+    .data-table tbody tr {
+      transition: all 0.3s ease;
+    }
+
+    .data-table tbody tr:hover {
+      background-color: #f8fdff;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(135, 206, 235, 0.15);
+    }
+
+    .data-table tbody tr:nth-child(even) {
+      background-color: #fafcff;
+    }
+
+    .data-table tbody tr:nth-child(odd) {
+      background-color: #ffffff;
+    }
+
+    /* Action buttons styling */
+    .data-table .action-btn {
+      display: inline-block;
+      padding: 8px 16px;
+      margin: 2px;
+      border: none;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .data-table .edit-btn {
+      background: linear-gradient(135deg, #4fc3f7, #29b6f6);
+      color: white;
+    }
+
+    .data-table .edit-btn:hover {
+      background: linear-gradient(135deg, #29b6f6, #0288d1);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(41, 182, 246, 0.3);
+    }
+
+    .data-table .delete-btn {
+      background: linear-gradient(135deg, #ef5350, #f44336);
+      color: white;
+    }
+
+    .data-table .delete-btn:hover {
+      background: linear-gradient(135deg, #f44336, #d32f2f);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+    }
+
+    /* Marks display styling */
+    .marks-display {
+      background: linear-gradient(135deg, #e3f2fd, #f1f8ff);
+      border: 2px solid #87ceeb;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-weight: 600;
+      color: #1565c0;
+      min-width: 50px;
+      display: inline-block;
+    }
+
+    /* Table container */
+    .table-container {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      margin: 20px 0;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+      border: 1px solid #e8f4f8;
+    }
+
+    /* Scrollable table wrapper */
+    .table-scroll-wrapper {
+      overflow-x: auto;
+      overflow-y: visible;
+      margin: 20px auto;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+      border: 1px solid #e8f4f8;
+      background: white;
+      max-width: 800px; /* Match container width */
+      width: 100%;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .table-scroll-wrapper::-webkit-scrollbar {
+      height: 8px;
+    }
+
+    .table-scroll-wrapper::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+
+    .table-scroll-wrapper::-webkit-scrollbar-thumb {
+      background: #87ceeb;
+      border-radius: 10px;
+    }
+
+    .table-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+      background: #5bb3d4;
+    }
+
+    .table-title {
+      color: #2c3e50;
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 20px;
+      text-align: center;
+      padding-bottom: 12px;
+      border-bottom: 3px solid #87ceeb;
+    }
+  </style>
+</head>
+<body>
+  <%- include('../partials/mainnav') %>
+  <div class="container">
+    <div class="header-card">
+      <h2><% if (studentClass<3) { %>Theme Configuration<% } else { %>
+        
+        Evaluation Criteria Configuration
+        <% } %></h2>
+      <p>Set up themes, learning outcomes, and indicators for evaluation</p>
+      <% if (typeof studentClass !== 'undefined') { %>
+        <div style="background-color: #e8f4f8; padding: 10px; margin-top: 15px; border-radius: 8px; font-weight: bold; color: #2980b9;">
+          Configuring for Class <%= studentClass %>
+        </div>
+      <% } %>
+    </div>
+
+    <div class="form-card">
+     <form action="/themefillupform?studentClass=<%= studentClass %><%= editing ? '&editing=true&projectId=' + existingData._id : '' %>&subject=<%= subject %>&terminal=<%= terminal %>" method="POST" id="mainForm">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="studentClass">Student Class</label>
+            <input type="text" name="studentClass" id="studentClass" value="<%= typeof studentClass !== 'undefined' ? studentClass : '' %>" readonly>
+          </div>
+        
+          <div class="form-group">
+            <label for="subject">Subject</label>
+            <input type="text" name="subject" id="subject" value="<%= subject %>" required>
+          </div>
+
+          <div class="form-group">
+            <label for="credit">Credit Hour</label>
+            <input type="text" name="credit" id="credit" placeholder="Enter credit hour" required value="<%= subjectData[0] ? subjectData[0].theoryCreditHour+subjectData[0].practicalCreditHour : '' %>">
+          </div>
+           <div class="form-group">
+            <label for="credit">Copy same format from another class</label>
+            <select name="copyFormatClass" id="copyFormatClass"  onchange="getDataFromAnotherClass()" style="text-align: center;
+    border: 2px solid #dadada;
+    font-size: 17px;
+    height: 3rem;
+    width: 22rem;
+    border-radius: 7px;">
+              <option value="" selected disabled>choose format of class</option>
+              <% uniqueClasses = new Set(accessibleClasses.map(cls => cls.studentClass)); %>
+              <% uniqueClasses.forEach(function(cls) { %>
+                <% if(cls != studentClass) { %>
+                  <option value="<%= cls%>">Class <%= cls %></option>
+                <% } %>
+              <% }) %>
+            </select>
+          </div>
+
+        </div>
+
+        <div id="themes-container"></div>
+
+        <div class="btn-group" style="justify-content: center; margin-bottom: 2rem;">
+          <button type="button" class="btn btn-primary" onclick="addTheme()"><% if(studentClass<=3) { %>+ Add Theme<% }else{ %>+ मुल्याङ्कनका आधार थप्नुहोस (Add evaluation Criteria)<% } %></button>
+        </div>
+
+        
+          <a href="/themefillupform" style="text-decoration: none;">
+            <button type="button" class="btn btn-warning" style="padding: 10px 20px; min-width: 200px;">
+              Back to Class Selection
+            </button>
+          </a> <br>
+        <div class="submit-section">
+          Total Rubriks Marks:
+          <center><input type="text" id="totalRubriksmarks" style="width: 30%;text-align: center;" readonly> </center>
+          <br><br>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scrollable Table Container -->
+  <div class="table-scroll-wrapper">
+    <table class="data-table"> 
+      <thead>
+        <tr>
+          <th>SN</th>
+          <th>आधार</th>
+          <th>पक्ष</th>
+          <th>सूचक</th>
+          <th>प्राप्तांक</th>
+          <th colspan="2">Action</th>
+        </tr>
+      </thead>
+                              <tbody>
+                                <% let iIndex = 0 %>
+                                <% practicalFormatData.forEach(function(doc) { %>
+                                  <% doc.themes.forEach(function(theme) { %>
+                                    <% let themeRowspan = theme.learningOutcome.reduce((sum, lo) => sum + lo.indicators.length, 0); %>
+                                    <% let firstThemeRow = true; %>
+
+                                    <% theme.learningOutcome.forEach(function(lo,loIdx) { %>
+                                      <% let loRowspan = lo.indicators.length; %>
+                                      <% let mulyIndex = iIndex; %>
+
+                                      <% lo.indicators.forEach(function(ind, indIndex) { %>
+                                        <tr>
+                                          <% if(firstThemeRow && indIndex === 0) { %>
+                                            <td rowspan="<%= themeRowspan %>"><%= iIndex+1 %></td>
+                                            <td rowspan="<%= themeRowspan %>"><%= theme.themeName %></td>
+                                            <% firstThemeRow = false; %>
+                                          <% } %>
+
+                                          <% if(indIndex === 0) { %>
+                                            <td rowspan="<%= loRowspan %>"><%= lo.learningOutcomeName %></td>
+                                          <% } %>
+
+                                          <td><%= ind.indicatorName %></td>
+                                          <td>
+                                            <div class="marks-display">
+                                              <%= ind.indicatorsMarks %>
+                                            </div>
+                                          </td>
+                                          <td>
+                                            <a href="/editpracticalrubriks?projectId=<%= doc._id %>&studentClass=<%= doc.studentClass %>&editing=true&subject=<%= doc.subject %>" 
+                                               class="action-btn edit-btn">Edit</a>
+                                          </td>
+                                          <td>
+                                            <a href="/deletepracticalrubriks?projectId=<%= doc._id %>&studentClass=<%= doc.studentClass %>&editing=true&subject=<%= doc.subject %>&terminal=<%=doc.terminal%>" 
+                                               class="action-btn delete-btn"
+                                               onclick="return confirm('Are you sure you want to delete this rubrik?')">Delete</a>
+                                          </td>
+                                        </tr>
+                                      <% }) %>
+                                      
+                                      <% iIndex++ %>
+                                      
+                                    <% }) %>
+                                    
+                                  <% }) %>
+                                  
+                                <% }) %>
+                              </tbody>
+    </table>
+  </div>
+
+  <script>
+    let themeIndex = 0;
+    let autoSaveTimeout;
+    let isLoading = false;
+
+    // Auto-resize textarea function
+    function autoResize(textarea) {
+      // Reset height to auto to get the correct scrollHeight
+      textarea.style.height = 'auto';
+      
+      // Calculate the new height based on scrollHeight
+      const newHeight = Math.max(textarea.scrollHeight, 50); // Minimum 50px
+      const maxHeight = 200; // Maximum 200px
+      
+      // Set the height, but not more than maxHeight
+      textarea.style.height = Math.min(newHeight, maxHeight) + 'px';
+      
+      // If content exceeds maxHeight, enable scrolling
+      if (newHeight > maxHeight) {
+        textarea.style.overflowY = 'auto';
+      } else {
+        textarea.style.overflowY = 'hidden';
+      }
+    }
+
+    // Initialize auto-resize for existing textareas
+    function initializeAutoResize() {
+      document.querySelectorAll('textarea').forEach(textarea => {
+        autoResize(textarea);
+        
+        // Add event listeners for dynamic resizing
+        textarea.addEventListener('input', function() {
+          autoResize(this);
+        });
+        
+        textarea.addEventListener('paste', function() {
+          // Delay to allow paste content to be processed
+          setTimeout(() => autoResize(this), 10);
+        });
+      });
+    }
+
+    // Load existing data if available
+ 
+    let themesData = <%- JSON.stringify(editing ? existingData.themes : []) %>;
+    const practicalDataObj = <%- JSON.stringify(typeof existingPracticalData !== 'undefined' && existingPracticalData && existingPracticalData.length > 0 ? existingPracticalData[0] : null) %>;
+    
+    // If we are not in "editing" mode but we found practical data, use that.
+    if ((!themesData || themesData.length === 0) && practicalDataObj && practicalDataObj.themes) {
+        console.log("Using existingPracticalData for themes");
+        themesData = practicalDataObj.themes;
+        
+        // Ensure subject/class are set
+        setTimeout(() => {
+            const scInput = document.getElementById('studentClass');
+            const subInput = document.getElementById('subject');
+            const creditInput = document.getElementById('credit');
+            
+            if(scInput && !scInput.value && practicalDataObj.studentClass) scInput.value = practicalDataObj.studentClass;
+            if(subInput && !subInput.value && practicalDataObj.subject) subInput.value = practicalDataObj.subject;
+            if(creditInput && !creditInput.value && practicalDataObj.credit) creditInput.value = practicalDataObj.credit;
+        }, 0);
+    }
+
+    const studentClass = <%= typeof studentClass !== 'undefined' ? studentClass : 'null' %>;
+    
+    console.log("Themes Data to load:", themesData);
+
+    if (themesData && Array.isArray(themesData) && themesData.length > 0) {
+      themesData.forEach((themeData, idx) => {
+        console.log(`Processing theme ${idx}`, themeData);
+        try {
+          addTheme(themeData);
+        } catch (e) {
+          console.error(`Error adding theme ${idx}:`, e);
+        }
+      });
+    } else {
+      addTheme(); // Start with one theme by default
+    }
+
+
+    function addTheme(themeData = null) {
+      try {
+        const themesContainer = document.getElementById('themes-container');
+        if (!themesContainer) {
+            console.error("Themes container not found!");
+            return;
+        }
+
+        const themeDiv = document.createElement('div');
+        themeDiv.className = 'theme-section';
+        themeDiv.dataset.index = themeIndex;
+
+        themeDiv.innerHTML = `
+          <div class="theme-header">
+            <h3><% if(studentClass<=3) { %>थीम ${themeIndex + 1}<% }else{ %> मुल्याङ्कन आधार ${themeIndex + 1} (Evaluation Criteria-${themeIndex + 1})<% } %></h3>
+            <button type="button" class="btn btn-danger" onclick="removeTheme(this)">Remove Theme</button>
+          </div>
+          <div class="form-group">
+            <label for="themeName_${themeIndex}"><% if(studentClass<=3){ %>Theme Name<% }else{ %>मुल्याङ्कन आधारको नाम (Evaluation Criteria Name)<% } %></label>
+            <textarea  name="themes[${themeIndex}][themeName]" id="themeName_${themeIndex}" data-index="${themeIndex}"
+                  placeholder="<% if(studentClass<=3){ %>Enter Theme Name<% }else{ %>Enter मुल्याङ्कन आधारको नाम (Enter Evaluation Criteria Name)<% } %>" 
+                  required rows="1" 
+                  oninput="autoResize(this); scheduleAutoSave();">${themeData ? themeData.themeName || '' : ''}</textarea>
+          </div>
+          <div class="outcomes-container" id="outcomes-${themeIndex}"></div>
+          <div class="btn-group">
+            <button type="button" class="btn btn-primary" onclick="addOutcome(${themeIndex})">+ <% if(studentClass<=3){ %>+ Add Learning Outcome<% }else{ %>परिक्षण पक्षको नाम थप्नुहोस (Add Examination Criteria Name)<% } %></button>
+          </div>
+        `;
+
+        themesContainer.appendChild(themeDiv);
+        
+        // Add existing outcomes or create a default one
+        if (themeData && Array.isArray(themeData.learningOutcome) && themeData.learningOutcome.length > 0) {
+          console.log(`Theme ${themeIndex} has ${themeData.learningOutcome.length} outcomes`);
+          themeData.learningOutcome.forEach((outcomeData, idx) => {
+            console.log(`Adding outcome ${idx} to theme ${themeIndex}`, outcomeData);
+            try {
+              addOutcome(themeIndex, outcomeData);
+            } catch (e) {
+              console.error(`Error adding outcome ${idx} to theme ${themeIndex}:`, e);
+            }
+          });
+        } else {
+          console.log(`Theme ${themeIndex} has no outcomes, adding default`);
+          addOutcome(themeIndex);
+        }
+        
+        // Initialize auto-resize for new textareas
+        setTimeout(() => {
+          themeDiv.querySelectorAll('textarea').forEach(textarea => {
+            autoResize(textarea);
+          });
+        }, 10);
+        
+        themeIndex++;
+      } catch (e) {
+        console.error("Fatal error in addTheme:", e);
+      }
+    }
+
+    function addOutcome(themeIdx, outcomeData = null) {
+      try {
+        const outcomesContainer = document.getElementById(`outcomes-${themeIdx}`);
+        if (!outcomesContainer) {
+            console.error(`Outcomes container outcomes-${themeIdx} not found`);
+            return;
+        }
+        
+        const outcomeIndex = outcomesContainer.children.length;
+
+        const outcomeDiv = document.createElement('div');
+        outcomeDiv.className = 'outcome-section';
+        outcomeDiv.dataset.index = outcomeIndex;
+
+        outcomeDiv.innerHTML = `
+          <div class="outcome-header">
+            <h4><% if(studentClass<=3){ %>मुख्य सिकाइ उपलब्धि ${outcomeIndex + 1}<% }else{ %>परिक्षण पक्ष (Examination Criteria) ${outcomeIndex + 1}<% } %></h4>
+            <button type="button" class="btn btn-warning" onclick="removeOutcome(this)">Remove</button>
+          </div>
+          <div class="form-group">
+            <label for="outcomeName_${themeIdx}_${outcomeIndex}"><% if(studentClass<=3){ %>Learning Outcome Name<% }else{ %>परिक्षण पक्षको नाम (Examination Criteria Name)<% } %></label>
+            <textarea  name="themes[${themeIdx}][learningOutcome][${outcomeIndex}][learningOutcomeName]" 
+                  id="outcomeName_${themeIdx}_${outcomeIndex}" data-theme-index="${themeIdx}" data-outcome-index="${outcomeIndex}"
+                  placeholder="Enter <% if(studentClass<=3){ %>Learning Outcome Name<% }else{ %>परिक्षण पक्षको नाम (Examination Criteria Name)<% } %>" 
+                    rows="1"
+                  oninput="autoResize(this); scheduleAutoSave();">${outcomeData ? outcomeData.learningOutcomeName || '' : ''}</textarea>
+          </div>
+          <div class="indicators-container" id="indicators-${themeIdx}-${outcomeIndex}"></div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+            <button type="button" class="btn btn-primary" onclick="addIndicator(${themeIdx}, ${outcomeIndex})">+ Add Indicator</button>
+            <div class="total-display">
+              <label>कुल अंक (Total Marks):</label>
+              <input type="number" step="0.01" readonly id="totalMarks-${themeIdx}-${outcomeIndex}" 
+                    style="border: none; background: transparent; text-align: center; font-weight: bold;"
+                    value="${outcomeData ? outcomeData.totalMarks || 0 : 0}">
+              <input type="hidden" name="themes[${themeIdx}][learningOutcome][${outcomeIndex}][totalMarks]" 
+                    id="totalMarksInput-${themeIdx}-${outcomeIndex}" 
+                    value="${outcomeData ? outcomeData.totalMarks || 0 : 0}">
+            </div>
+          </div>
+        `;
+
+        outcomesContainer.appendChild(outcomeDiv);
+        
+        // Add existing indicators or create a default one
+        if (outcomeData && Array.isArray(outcomeData.indicators) && outcomeData.indicators.length > 0) {
+          console.log(`Outcome ${outcomeIndex} (Theme ${themeIdx}) has ${outcomeData.indicators.length} indicators`);
+          outcomeData.indicators.forEach((indicatorData, idx) => {
+            try {
+              addIndicator(themeIdx, outcomeIndex, indicatorData);
+            } catch (e) {
+              console.error(`Error adding indicator ${idx} to outcome ${outcomeIndex}:`, e);
+            }
+          });
+        } else {
+          console.log(`Outcome ${outcomeIndex} (Theme ${themeIdx}) has no indicators, adding default`);
+          addIndicator(themeIdx, outcomeIndex);
+        }
+
+        // Initialize auto-resize for new textareas
+        setTimeout(() => {
+          outcomeDiv.querySelectorAll('textarea').forEach(textarea => {
+            autoResize(textarea);
+          });
+        }, 10);
+      } catch (e) {
+        console.error(`Fatal error in addOutcome (Theme ${themeIdx}):`, e);
+      }
+    }
+
+    function addIndicator(themeIdx, outcomeIdx, indicatorData = null) {
+      try {
+        const container = document.getElementById(`indicators-${themeIdx}-${outcomeIdx}`);
+        if (!container) {
+            console.error(`Indicators container indicators-${themeIdx}-${outcomeIdx} not found`);
+            return;
+        }
+        
+        const indicatorIndex = container.children.length;
+
+        const group = document.createElement('div');
+        group.className = 'indicator-group';
+
+        group.innerHTML = `
+          <textarea  name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][indicators][${indicatorIndex}][indicatorName]" data-theme-index="${themeIdx}" data-outcome-index="${outcomeIdx}" data-indicator-index="${indicatorIndex}"
+                placeholder="Enter indicator name (सूचक)" required rows="1"
+                oninput="autoResize(this); scheduleAutoSave();">${indicatorData ? indicatorData.indicatorName || '' : ''}</textarea>
+          <input type="number" step="0.01" class="indicator-marks" 
+                name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][indicators][${indicatorIndex}][indicatorsMarks]" 
+                placeholder="Marks" required min="0"
+                value="${indicatorData ? indicatorData.indicatorsMarks || '' : ''}"
+                oninput="updateTotalMarks(${themeIdx}, ${outcomeIdx}); scheduleAutoSave();">
+          <button type="button" class="btn btn-danger" onclick="removeIndicator(this, ${themeIdx}, ${outcomeIdx})">Remove</button>
+        `;
+
+        container.appendChild(group);
+        
+        // Initialize auto-resize for the new textarea
+        const textarea = group.querySelector('textarea');
+        if (textarea) {
+          setTimeout(() => autoResize(textarea), 10);
+        }
+        
+        updateTotalMarks(themeIdx, outcomeIdx);
+      } catch (e) {
+        console.error(`Fatal error in addIndicator (Theme ${themeIdx}, Outcome ${outcomeIdx}):`, e);
+      }
+    }
+
+    function updateTotalMarks(themeIdx, outcomeIdx) {
+      const container = document.getElementById(`indicators-${themeIdx}-${outcomeIdx}`);
+      let total = 0;
+      container.querySelectorAll('.indicator-marks').forEach(input => {
+        const val = parseFloat(input.value);
+        if (!isNaN(val)) total = Math.max(total, val);
+      });
+
+      document.getElementById(`totalMarks-${themeIdx}-${outcomeIdx}`).value = total;
+      document.getElementById(`totalMarksInput-${themeIdx}-${outcomeIdx}`).value = total;
+    }
+
+    function removeTheme(button) {
+      if (confirm('Are you sure you want to remove this theme?')) {
+        button.closest('.theme-section').remove();
+       
+      }
+    }
+
+    function removeOutcome(button) {
+      if (confirm('Are you sure you want to remove this learning outcome?')) {
+        button.closest('.outcome-section').remove();
+        scheduleAutoSave();
+      }
+    }
+
+    function removeIndicator(button, themeIdx, outcomeIdx) {
+      button.closest('.indicator-group').remove();
+      updateTotalMarks(themeIdx, outcomeIdx);
+      scheduleAutoSave();
+    }
+
+    // Auto-save functionality
+    function scheduleAutoSave() {
+      if (isLoading) return;
+      
+      clearTimeout(autoSaveTimeout);
+      autoSaveTimeout = setTimeout(() => {
+        performAutoSave();
+      }, 1000); // Save after 1 second of inactivity
+    }
+
+
+    async function performAutoSave() {
+      const studentClass = document.getElementById('studentClass').value;
+      const subject = document.getElementById('subject').value;
+      const credit = document.getElementById('credit').value;
+      
+      if (!studentClass || !subject) {
+        return; // Don't save if required fields are missing
+      }
+
+      try {
+        const formData = collectFormData();
+        
+        // Show saving indicator
+        
+        
+        const response = await fetch('/autosave-themefillup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            studentClass: studentClass,
+            subject: subject,
+            credit: credit,
+            themes: formData.themes,
+            outcomes: formData.outcomes,
+            indicators: formData.indicators
+          })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+          showSaveStatus(result.action === 'updated' ? 'Updated' : 'Saved', 'success');
+        } else {
+         
+          console.error('Auto-save failed:', result.message);
+        }
+      } catch (error) {
+    
+        console.error('Auto-save error:', error);
+      }
+    }
+
+    function collectFormData() {
+      const themes = [];
+      const outcomes = [];
+      const indicators = [];
+      
+      document.querySelectorAll('.theme-section').forEach((themeSection, themeIdx) => {
+        const themeName = themeSection.querySelector(`[name="themes[${themeIdx}][themeName]"]`)?.value || '';
+        
+        const themeOutcomes = [];
+        themeSection.querySelectorAll('.outcome-section').forEach((outcomeSection, outcomeIdx) => {
+          const outcomeName = outcomeSection.querySelector(`[name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][learningOutcomeName]"]`)?.value || '';
+          const totalMarks = outcomeSection.querySelector(`[name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][totalMarks]"]`)?.value || 0;
+          
+          const outcomeIndicators = [];
+          outcomeSection.querySelectorAll('.indicator-group').forEach((indicatorGroup, indicatorIdx) => {
+            const indicatorName = indicatorGroup.querySelector(`[name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][indicators][${indicatorIdx}][indicatorName]"]`)?.value || '';
+            const indicatorMarks = indicatorGroup.querySelector(`[name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][indicators][${indicatorIdx}][indicatorsMarks]"]`)?.value || 0;
+            
+            if (indicatorName || indicatorMarks) {
+              outcomeIndicators.push({
+                indicatorName: indicatorName,
+                indicatorsMarks: indicatorMarks
+              });
+            }
+          });
+          
+          if (outcomeName || outcomeIndicators.length > 0) {
+            themeOutcomes.push({
+              learningOutcomeName: outcomeName,
+              totalMarks: totalMarks,
+              indicators: outcomeIndicators
+            });
+          }
+        });
+        
+        if (themeName || themeOutcomes.length > 0) {
+          themes.push({
+            themeName: themeName,
+            learningOutcome: themeOutcomes
+          });
+        }
+      });
+      
+      return { themes, outcomes, indicators };
+    }
+
+    function showSaveStatus(message, type) {
+      // Remove existing status
+      const existingStatus = document.querySelector('.save-status');
+      if (existingStatus) {
+        existingStatus.remove();
+      }
+      
+      // Create new status indicator
+      const status = document.createElement('div');
+      status.className = `save-status save-status-${type}`;
+      status.textContent = message;
+      status.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 10px 15px;
+        border-radius: 5px;
+        font-size: 14px;
+        font-weight: bold;
+        z-index: 1000;
+        transition: all 0.3s ease;
+        ${type === 'success' ? 'background-color: #4CAF50; color: white;' : ''}
+        ${type === 'error' ? 'background-color: #f44336; color: white;' : ''}
+        ${type === 'info' ? 'background-color: #2196F3; color: white;' : ''}
+      `;
+      
+      document.body.appendChild(status);
+      
+      // Auto-remove after 3 seconds for success/error, 1 second for info
+      setTimeout(() => {
+        if (status.parentNode) {
+          status.style.opacity = '0';
+          setTimeout(() => status.remove(), 300);
+        }
+      }, type === 'info' ? 1000 : 3000);
+    }
+
+    // Load existing data on page load
+  
+    // Load data for specific subject
+    async function loadSubjectData(subject) {
+      if (!subject) {
+        clearForm();
+        return;
+      }
+
+      const studentClass = document.getElementById('studentClass').value;
+      
+      try {
+        showSaveStatus('Loading...', 'info');
+        
+        const response = await fetch(`/theme/getData?studentClass=${encodeURIComponent(studentClass)}&subject=${encodeURIComponent(subject)}`);
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+          // Clear existing form
+          clearForm();
+          
+          isLoading = true;
+          
+          // Populate credit if available  
+          if (result.data.credit) {
+            const creditInput = document.getElementById('credit');
+            creditInput.value = result.data.credit;
+          }
+          
+          // Load themes
+          if (result.data.themes && result.data.themes.length > 0) {
+            result.data.themes.forEach(themeData => {
+              addTheme(themeData);
+            });
+          } else {
+            addTheme(); // Add empty theme if no data
+          }
+          
+          isLoading = false;
+          showSaveStatus('Data loaded', 'success');
+        } else {
+          // No existing data for this subject
+          clearForm();
+          addTheme(); // Add empty theme
+          showSaveStatus('No existing data', 'info');
+        }
+        
+      } catch (error) {
+        console.error('Error loading subject data:', error);
+        
+        clearForm();
+        addTheme(); // Add empty theme as fallback
+      }
+    }
+
+    // Clear form function
+    function clearForm() {
+      // Clear credit
+      document.getElementById('credit').value = '';
+      
+      // Clear all themes
+      const themesContainer = document.getElementById('themes-container');
+      themesContainer.innerHTML = '';
+      
+      // Reset theme index
+      themeIndex = 0;
+    }
+
+    // Handle subject change
+    function onSubjectChange() {
+      const subjectSelect = document.getElementById('subject');
+      const selectedSubject = subjectSelect.value;
+      
+      if (selectedSubject) {
+        loadSubjectData(selectedSubject);
+      } else {
+        clearForm();
+        addTheme(); // Add empty theme
+      }
+    }
+
+    // Initialize on page load
+    window.onload = () => {
+      
+      // Initialize auto-resize for existing textareas
+      initializeAutoResize();
+      
+      // Add event listeners for subject and credit changes
+      document.getElementById('subject').addEventListener('change', function() {
+        onSubjectChange();
+        scheduleAutoSave();
+      });
+      document.getElementById('credit').addEventListener('input', scheduleAutoSave);
+    };
+
+    // Form validation
+    document.getElementById('mainForm').addEventListener('submit', function(e) {
+      const themes = document.querySelectorAll('.theme-section');
+      if (themes.length === 0) {
+        e.preventDefault();
+        alert('Please add at least one theme before submitting.');
+        return;
+      }
+
+      let hasValidTheme = false;
+      themes.forEach(theme => {
+        const outcomes = theme.querySelectorAll('.outcome-section');
+        if (outcomes.length > 0) {
+          hasValidTheme = true;
+        }
+      });
+
+      if (!hasValidTheme) {
+        e.preventDefault();
+        alert('Each theme must have at least one learning outcome.');
+        return;
+      }
+    });
+  </script>
+  <script>
+   async function getDataFromAnotherClass()
+   {
+    const selectedClass = document.getElementById('copyFormatClass').value;
+    const subject = document.getElementById('subject').value;
+    if(!selectedClass) return;
+    try{
+const response = await fetch(`/datafromanotherclass?studentClass=${encodeURIComponent(selectedClass)}&subject=${encodeURIComponent(subject)}`);
+      const result = await response.json();
+      console.log("Data from another class:", result);
+      
+      // Handle both wrapped response {success: true, data: ...} and direct data object
+      const data = (result.success && result.data) ? result.data : result;
+      
+      if(data && (data.themes || data.credit))
+      {
+        // Clear existing form
+        clearForm();
+        
+        isLoading = true;
+        
+        // Populate credit if available  
+        if (data.credit) {
+          const creditInput = document.getElementById('credit');
+          if(creditInput) creditInput.value = data.credit;
+        }
+
+        // Load themes
+        if (data.themes && data.themes.length > 0) {
+          data.themes.forEach(themeData => {
+            addTheme(themeData);
+          });
+        } else {
+          addTheme(); // Add empty theme if no data
+        }
+        
+        isLoading = false;
+        showSaveStatus('Data loaded from Class ' + selectedClass, 'success');
+        scheduleAutoSave();
+      } else {
+        showSaveStatus('No data found for Class ' + selectedClass, 'info');
+      }
+     
+    }catch(err)
+    {
+      console.error("Error fetching data from another class:", err);
+    }
+   }
+  </script>
+  <script>
+    window.onload = function() {
+     
+      const totalMarksInput = document.getElementById('totalRubriksmarks');
+      if (totalMarksInput) {
+        let total = 0;
+        document.querySelectorAll('.total-display').forEach(markDiv => {
+          const val =parseFloat(markDiv.querySelector('input[type="number"]').value);
+          if (!isNaN(val)) {
+            total += val;
+          }
+        });
+        
+        totalMarksInput.value = total;
+      }
+    };
+  </script>
+</body>
+</html>

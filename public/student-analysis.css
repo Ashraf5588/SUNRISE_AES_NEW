@@ -1,0 +1,142 @@
+/* Student Analysis 5-Column Layout Styling */
+
+.question-analysis-card {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: none;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+
+.question-analysis-card .card-header {
+  border-bottom: 0;
+  padding: 1rem;
+}
+
+.row.g-0 .col {
+  border-right: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.row.g-0 .col:last-child {
+  border-right: none;
+}
+
+.student-list-column {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.column-header {
+  font-weight: 600;
+  text-align: center;
+  padding: 0.75rem;
+  font-size: 0.9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.column-body {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 300px;
+  background-color: white;
+}
+
+.student-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.student-item:last-child {
+  border-bottom: none;
+}
+
+.student-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 70%;
+}
+
+.student-marks {
+  font-weight: 600;
+  min-width: 40px;
+  text-align: center;
+}
+
+.correct-column .column-header {
+  background-color: var(--success);
+  color: white;
+}
+
+.incorrect-column .column-header {
+  background-color: var(--error);
+  color: white;
+}
+
+.fifty-column .column-header {
+  background-color: var(--primary);
+  color: white;
+}
+
+.below50-column .column-header {
+  background-color: var(--warning);
+  color: #333;
+}
+
+.not-attempted-column .column-header {
+  background-color: var(--gray);
+  color: white;
+}
+
+/* Empty state styling */
+.text-muted.text-center.py-3 {
+  font-size: 0.85rem;
+  color: #adb5bd !important;
+}
+
+/* Responsive fixes */
+@media (max-width: 992px) {
+  .row.g-0 {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+  }
+  
+  .row.g-0 .col {
+    min-width: 200px;
+    scroll-snap-align: start;
+  }
+  
+  .column-header {
+    font-size: 0.8rem;
+  }
+  
+  .student-name {
+    font-size: 0.8rem;
+  }
+}
+
+/* Scrollbar styling */
+.column-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.column-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.column-body::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 3px;
+}
+
+.column-body::-webkit-scrollbar-thumb:hover {
+  background: #bbb;
+}

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Set Holiday</title>
+</head>
+<style>
+  .checkbox-days{
+    width: 20px;
+    height: 20px;
+    margin: 5px;
+  }
+ 
+  .checkbox-days
+  {
+display:none;
+  }
+  .checkbox-days:checked + .box{
+    background-color: red;
+    color: white;
+  }
+  .daysbox{
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr 1fr 1fr ;
+    width: 40px;
+    height: 40px;
+    text-align: center;
+    margin: 2px;
+
+  }
+.monthcontainter{
+ 
+  margin: 15%;
+  padding: 10px;
+  width: fit-content;
+  height: fit-content;
+  font-size: large;
+  font-weight: bold;
+  display: flex;
+
+}
+.checkcontainer{
+width: 3rem;
+height: 3rem;
+}
+.box
+{
+  display: flex;
+  width: 3rem;
+  height: 3rem;
+
+  align-items: center;
+  justify-content: center;
+}
+</style>
+<body>
+  <select name="academicYear" id="academicYear">
+    <% academicYear = Number(marksheetSetups[0].academicYear) %>
+    <option value="" selected disabled>Choose Academic Year</option>
+    <% for(let i=academicYear;i>academicYear-5;i--){ %>
+      <option value="<%=i%>"><%=i%></option>
+    <% } %>
+  </select>
+  <div class="calendarContainer">
+ <form action="/setholiday" method="POST">
+<% monthNames = [{1: 'Baisakh'},
+  {2: 'Jestha'},
+  {3: 'Ashadh'},
+  {4: 'Shrawan'},
+  {5: 'Bhadra'},
+  {6: 'Ashwin'},
+  {7: 'Kartik'},
+  {8: 'Mangsir'},
+  {9: 'Poush'},
+  {10: 'Magh'},
+  {11: 'Falgun'},
+  {12: 'Chaitra'
+  }] %>
+  <% for(let month=0;month<12;month++){ %>
+    <div class="monthcontainter">
+    <center><%= monthNames[month][month + 1] %>-<span class="year"></span></center>
+    <input type="text" name="month[<%=month%>][monthName]" value="<%= monthNames[month][month + 1] %>" hidden>
+    <div  class="daysbox" >
+    <% for (let days=1; days<=32; days++){ %>
+        <div style="border: 2px solid rgb(0, 0, 0);" class="checkcontainer">
+      <input type="checkbox" id="<%=month%>_checkbox_<%=days%>" name="month[<%=month%>][holidayDays][]" value="<%=days%>" class="checkbox-days">
+      <label for="<%=month%>_checkbox_<%=days%>" class="box"><%=days%></label>
+      </div>
+
+      <% } %> 
+         <br></div>
+         </div>
+  <% } %>
+
+
+
+<input type="text" name="academicYear" id="academicYearbox" >
+<input type="submit">
+
+ </form> 
+ </div>
+ <script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const academicYear = urlParams.get('academicYear');
+  if(academicYear){
+    document.getElementsByClassName('calendarContainer')[0].style.display='block';
+    document.querySelectorAll('.year').forEach(el => el.innerText = academicYear);
+    document.getElementById('academicYearbox').value=academicYear;
+
+  }
+  else{
+    document.getElementsByClassName('calendarContainer')[0].style.display='none';
+  }
+  
+ 
+  document.getElementById('academicYear').addEventListener('change',function(){
+    const year = this.value;
+    window.location.href=`/setholiday?academicYear=${year}`;
+
+  })
+ </script>
+ <script>
+  window.onload = function() {
+    const oldHolidayData = <%- JSON.stringify(oldHolidayData) %>;
+    populateHolidays(oldHolidayData);
+  };
+  function populateHolidays(oldHolidayData){
+    if(!oldHolidayData) return;
+    document.getElementById('academicYearbox').value = oldHolidayData.academicYear;
+     document.getElementById('academicYear').value = oldHolidayData.academicYear;
+  
+     oldHolidayData.month.forEach((monthData,idx)=>{
+      monthData.holidayDays.forEach(day=>{
+        const checkboxId = `${idx}_checkbox_${day}`;
+        console.log('Checkbox ID to check:', checkboxId);
+        const checkbox = document.getElementById(checkboxId);
+        if(checkbox){
+          checkbox.checked = true;
+        }
+      })
+     })
+
+    
+  }
+ </script>
+
+ <script>
+  document.querySelectorAll('.checkbox-days').forEach(checkbox=>{
+    checkbox.addEventListener('change',function(){
+      autoSaveHoliday();
+    })
+  })
+ async function autoSaveHoliday()
+  {
+    const formData = new FormData();
+    const academicYear = document.getElementById('academicYearbox').value;
+   
+    formData.append('academicYear', academicYear);
+    console.log(formData)
+
+    for(let month=0; month<12; month++){
+      const monthName = document.querySelector(`input[name="month[${month}][monthName]"]`).value;
+      formData.append(`month[${month}][monthName]`, monthName);
+      const holidayDays = [];
+      document.querySelectorAll(`input[id^="${month}_checkbox_"]`).forEach(checkbox=>{
+        if(checkbox.checked){
+          holidayDays.push(checkbox.value);
+        }
+      });
+      holidayDays.forEach(day=>{
+        formData.append(`month[${month}][holidayDays][]`, day);
+      });
+    }
+
+    try{
+      const response = await fetch('/setholiday', {
+        method: 'POST',
+        body: formData
+      });
+      if(response.ok){
+        console.log('Holiday data auto-saved successfully.');
+      } else {
+        console.error('Error auto-saving holiday data.');
+      }
+    } catch(error){
+      console.error('Error during auto-save:', error);
+    }
+  }
+ </script>
+</body>
+</html>

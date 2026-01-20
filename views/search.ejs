@@ -1,0 +1,180 @@
+  <!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Individual Student Record</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet">
+  <!-- Add Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0ea5e9;  /* skyblue */
+      --primary-dark: #0284c7;  /* darker skyblue */
+      --secondary: #8b5a2b;  /* brown */
+      --secondary-dark: #6b4423;  /* darker brown */
+      --light: #f8fafc;
+      --dark: #1e293b;
+      --accent: #a16207;  /* amber brown for accent */
+      --gray: #64748b;
+    }
+    
+    body {
+      background-color: #f8fafc;
+      font-family: 'Lexend', sans-serif;
+      color: var(--dark);
+      padding: 2rem 0;
+    }
+    
+    .header-container {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 80%);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .header-container::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 100%;
+      height: 200%;
+      background: rgba(255, 255, 255, 0.1);
+      transform: rotate(30deg);
+      pointer-events: none;
+    }
+    
+    h1 {
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      position: relative;
+      z-index: 1;
+    }
+    
+    h1 span {
+      color: var(--accent);
+      font-weight: 800;
+    }
+    
+    .record-container {
+      background-color: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2rem;
+      border-top: 3px solid var(--primary);
+      border-bottom: 3px solid var(--secondary);
+    }
+    
+    .table {
+      margin-bottom: 0;
+    }
+    
+    .table th {
+      background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      font-weight: 600;
+      border: none;
+      padding: 1rem;
+    }
+    
+    .table td {
+      padding: 1rem;
+      vertical-align: middle;
+    }
+    
+    .table tr:nth-child(even) {
+      background-color: rgba(14, 165, 233, 0.05);
+    }
+    
+    .table tr:hover {
+      background-color: rgba(14, 165, 233, 0.1);
+    }
+    
+    .key-field {
+      font-weight: 600;
+      color: var(--dark);
+    }
+    
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.75rem 1.5rem;
+      background: linear-gradient(90deg, var(--secondary) 0%, var(--secondary-dark) 100%);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.3s ease;
+    }
+    
+    .back-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      color: white;
+    }
+    
+    .back-btn i {
+      margin-right: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <%- include('partials/sidenav', { 
+      subjects: subjects, 
+      studentClassdata: studentClassdata,
+      terminals: terminals 
+  }) %>
+  
+  <div class="container">
+    <div class="header-container text-center">
+      <h1>Student <span>Records</span></h1>
+      <p class="mb-0">Detailed information about the student's assessment</p>
+    </div>
+    
+    <div class="record-container">
+      <div class="table-responsive">
+        <table class="table table-borderless mb-0">
+          <thead>
+            <tr>
+              <th>Field</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% individualData.forEach(record => { %>
+              <% Object.entries(record).forEach(([key, value]) => { %>
+                <tr>
+                  <td class="key-field"><%= key %></td>
+                  <td><%= value %></td>
+                </tr>
+              <% }) %>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <div class="text-center">
+      <a href="/findData/<%=subject%>/<%=studentClass %>/<%=section %>/<%=terminal %>" class="back-btn">
+        <i class="fas fa-arrow-left"></i> Back to Results
+      </a>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
+</body>
+</html>

@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard | Answer Evaluation System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/nav.css">
+      <style>
+        :root {
+            --primary: #0ea5e9;  /* skyblue */
+            --primary-dark: #0284c7;  /* darker skyblue */
+            --secondary: #8b5a2b;  /* brown */
+            --secondary-dark: #6b4423;  /* darker brown */
+            --accent: #a16207;  /* amber brown for accent */
+            --light: #f8fafc;
+            --dark: #1e293b;
+            --gray: #64748b;
+            --success: #22c55e;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background-color: #f8fafc;
+            font-family: 'Lexend', sans-serif;
+            color: var(--dark);
+            padding-bottom: 3rem;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 80%);
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+            color: white;
+            padding-bottom: 1rem;
+        }
+        
+        .hero-section {
+            padding: 2rem 1rem;
+            text-align: center;
+        }
+        
+        #firstheading {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-top: 0;
+            color: white;
+        }
+        
+        #firstspan {
+            color: var(--accent);
+            font-weight: 800;
+        }
+        
+        .subheading {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 1.2rem;
+            display: block;
+            margin-bottom: 1rem;
+        }
+        
+        .intro-section {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        
+        .intro-section img {
+            max-width: 150px;
+            margin-bottom: 1rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .intro-section img:hover {
+            transform: scale(1.1);
+        }
+        
+        .subject-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .subject-card {
+            background-color: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            text-decoration: none;
+            color: var(--dark);
+        }
+        
+        .subject-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .subject-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            padding: 2rem 1rem;
+            text-align: center;
+        }
+        
+        .subject-header .icon {
+            width: 70px;
+            height: 70px;
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .subject-body {
+            padding: 1.5rem;
+            text-align: center;
+        }
+        
+        .subject-name {
+            font-size: 1.5rem;
+            color: var(--secondary-dark);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subject-action {
+            margin-top: 1rem;
+            color: var(--primary);
+            font-weight: 500;
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border: 2px solid var(--primary);
+            border-radius: 30px;
+            transition: all 0.3s ease;
+        }
+        
+        .subject-card:hover .subject-action {
+            background-color: var(--primary);
+            color: white;
+        }
+          footer {
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 3px solid var(--accent);
+            text-align: center;
+            color: var(--gray);
+        }
+        
+        /* Custom Select Field Styling */
+        .custom-select {
+            position: relative;
+            display: block;
+            width: 100%;
+            max-width: 300px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .custom-select select {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 100%;
+            padding: 0.75rem 2.5rem 0.75rem 1rem;
+            font-size: 1rem;
+            line-height: 1.5;
+            color: var(--dark);
+            background-color: #fff;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%238b5a2b' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 16px 12px;
+            border: 2px solid var(--primary);
+            border-radius: 8px;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s ease;
+        }
+        
+        .custom-select select:focus {
+            border-color: var(--accent);
+            outline: 0;
+            box-shadow: 0 0 0 4px rgba(161, 98, 7, 0.25);
+        }
+        
+        .custom-select select:hover {
+            border-color: var(--secondary);
+        }
+        
+        .custom-select label {
+            position: absolute;
+            top: -10px;
+            left: 10px;
+            padding: 0 5px;
+            font-size: 0.875rem;
+            color: var(--primary-dark);
+            background-color: white;
+            font-weight: 600;
+        }
+        
+        /* Add New Subject Button */
+        .new-subject-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow-lg);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            border: none;
+        }
+        
+        .new-subject-btn:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 15px 20px -5px rgba(8, 145, 178, 0.4);
+        }
+        
+        .new-subject-btn i {
+            font-size: 1.5rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .new-subject-btn:hover i {
+            transform: rotate(90deg);
+        }
+        
+        .tooltip-text {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            background-color: var(--dark);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 0.875rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            transform: translateY(10px);
+            white-space: nowrap;
+        }
+        
+        .new-subject-btn:hover .tooltip-text {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Subject Filter */
+        .subject-filter {
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+   <% const uniqueSubjects = [...new Set(subjects.map(item => item.subject))]; %>
+    <header>
+        <%- include('partials/nav',{currentPage:'teacher'}) %>
+        <div class="hero-section">
+            <h1 id="firstheading">Answer Evaluation <span id="firstspan">System</span></h1>
+            <span class="subheading">A comprehensive platform for analyzing student performance and responses</span>
+        </div>
+    </header>
+    
+    <%- include('partials/sidenav', { 
+        subjects: subjects, 
+        studentClassdata: studentClassdata,
+        terminals: terminals 
+    }) %>
+    
+    <div class="container">
+        <div class="intro-section">
+            <div class="row align-items-center">
+                <div class="col-md-4">
+                    <img src="/report.png" alt="Report" class="img-fluid animate__animated animate__fadeInLeft" id="report">
+                </div>
+                <div class="col-md-8 text-start ps-md-4">
+                    <h2 class="mb-3">Subject Performance Reports</h2>
+                    <p class="lead mb-4">Select a subject below to view detailed assessment analytics, track student progress, and identify areas that need attention.</p>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i> All reports are generated in real-time using the latest student data.
+                    </div>
+                </div>
+            </div>
+        </div>
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>
+                <i class="fas fa-book me-2"></i> Available Subjects for Analysis
+            </h3>
+            
+            <div class="subject-filter">
+                <div class="custom-select">
+                    <label>Filter by</label>
+                    <select id="subjectFilter" class="filter-select">
+                        <option value="all">All Subjects</option>
+                       
+                            <% uniqueSubjects.forEach((sub) => { %>
+                                <% if (sub) { %>
+                                <option value="<%= sub %>"><%= sub %></option>
+                                <% } %>
+                            <% }); %>
+                       
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <div class="subject-grid">
+       
+                    <% uniqueSubjects.forEach((sub)=>{%>
+                    <% if (sub) { %>
+                <a href="/teacher/<%=sub%>/<%=controller%>" class="subject-card">
+                    <div class="subject-header">
+                        <div class="icon">
+                            <script src="https://cdn.lordicon.com/lordicon.js"></script>
+                            <lord-icon
+                                src="https://cdn.lordicon.com/xmaezqzk.json"
+                                trigger="hover"
+                                stroke="bold"
+                                colors="primary:#ffffff,secondary:#c7d2fe"
+                                style="width:70px;height:70px;">
+                            </lord-icon>
+                        </div>
+                    </div>
+                    <div class="subject-body">
+                        <h3 class="subject-name"><%=sub%></h3>
+                        <p class="mb-3">Analyze questions, student responses, and performance metrics</p>
+                        <div class="subject-action">
+                            <i class="fas fa-chart-bar me-1"></i> View Reports
+                        </div>
+                    </div>
+                </a>
+                    <% } %>
+                    <% }) %>
+      
+        </div>
+    </div>
+      <footer>
+        <div class="container">
+            <p>© <%= new Date().getFullYear() %> Answer Evaluation System | All Rights Reserved</p>
+        </div>
+    </footer>
+    
+    <!-- Add New Subject Button -->
+    <button class="new-subject-btn" id="newSubjectBtn">
+        <i class="fas fa-plus"></i>
+        <span class="tooltip-text">Add New Subject</span>
+    </button>    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
+    <script src="index.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Subject filter functionality
+            const filterSelect = document.getElementById('subjectFilter');
+            const subjectCards = document.querySelectorAll('.subject-card');
+            
+            if (filterSelect) {
+                filterSelect.addEventListener('change', function() {
+                    const selectedValue = this.value;
+                    
+                    subjectCards.forEach(card => {
+                        const subjectName = card.querySelector('.subject-name').textContent;
+                        
+                        if (selectedValue === 'all' || subjectName === selectedValue) {
+                            card.style.display = 'block';
+                        } else {
+                            card.style.display = 'none';
+                        }
+                    });
+                });
+            }
+            
+            // New Subject Button
+            const newSubjectBtn = document.getElementById('newSubjectBtn');
+            
+            if (newSubjectBtn) {
+                newSubjectBtn.addEventListener('click', function() {
+                    // Redirect to the subject creation page
+                    window.location.href = '/admin/subject';
+                });
+            }
+        });
+    </script>
+</body>
+    <script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
+</body>
+</html>

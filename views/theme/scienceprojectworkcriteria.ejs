@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Theme Configuration</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #1a1a1a;
+      min-height: 100vh;
+      line-height: 1.6;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .header-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .header-card h2 {
+      color: #2c3e50;
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .header-card p {
+      color: #7f8c8d;
+      font-size: 1rem;
+    }
+
+    .form-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      margin-bottom: 2rem;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .form-group {
+      position: relative;
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #34495e;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    input[type="text"], 
+    input[type="number"] {
+      width: 100%;
+      padding: 0.875rem 1rem;
+      border: 2px solid #e9ecef;
+      border-radius: 12px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      background: rgba(255, 255, 255, 0.8);
+      color: #2c3e50;
+    }
+
+    input[type="text"]:focus, 
+    input[type="number"]:focus {
+      outline: none;
+      border-color: #3498db;
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+      background: rgba(255, 255, 255, 1);
+    }
+
+    input[readonly] {
+      background: #f8f9fa;
+      color: #6c757d;
+    }
+
+    .theme-section {
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .theme-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid #3498db;
+    }
+
+    .theme-header h3 {
+      color: #2c3e50;
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .outcome-section {
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+    }
+
+    .outcome-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .outcome-header h4 {
+      color: #2c3e50;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .indicator-group {
+      display: grid;
+      grid-template-columns: 2fr 1fr auto;
+      gap: 0.5rem;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      padding: 0.5rem;
+      background: rgba(255, 255, 255, 0.7);
+      border-radius: 8px;
+    }
+
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+      text-align: center;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #3498db, #2980b9);
+      color: white;
+      box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #27ae60, #229954);
+      color: white;
+      box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #e74c3c, #c0392b);
+      color: white;
+      box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+    }
+
+    .btn-danger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(231, 76, 60, 0.4);
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #f39c12, #e67e22);
+      color: white;
+      box-shadow: 0 4px 15px rgba(243, 156, 18, 0.3);
+    }
+
+    .btn-warning:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(243, 156, 18, 0.4);
+    }
+
+    .theme-section {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    .theme-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 2px solid rgba(52, 152, 219, 0.2);
+    }
+
+    .theme-header h3 {
+      color: #2c3e50;
+      margin: 0;
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+
+    .outcome-section {
+      background: rgba(52, 152, 219, 0.05);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-left: 4px solid #3498db;
+    }
+
+    .outcome-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .outcome-header h4 {
+      color: #2c3e50;
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .indicators-container {
+      margin: 1rem 0;
+    }
+
+    .total-display {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(39, 174, 96, 0.1);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: 1px solid rgba(39, 174, 96, 0.3);
+    }
+
+    .total-display label {
+      color: #27ae60;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .total-display input[readonly] {
+      color: #27ae60;
+      font-size: 1.1rem;
+      width: 60px;
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #e74c3c, #c0392b);
+      color: white;
+      padding: 0.5rem 1rem;
+      font-size: 0.8rem;
+      box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+    }
+
+    .btn-danger:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #f39c12, #e67e22);
+      color: white;
+      padding: 0.5rem 1rem;
+      font-size: 0.8rem;
+      box-shadow: 0 2px 8px rgba(243, 156, 18, 0.3);
+    }
+
+    .btn-warning:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(243, 156, 18, 0.4);
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .submit-section {
+      text-align: center;
+      margin-top: 2rem;
+    }
+
+    .submit-btn {
+      background: linear-gradient(135deg, #27ae60, #229954);
+      color: white;
+      padding: 1rem 3rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+      min-width: 200px;
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+    }
+
+    .total-display {
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+      border-radius: 8px;
+      padding: 0.75rem;
+      text-align: center;
+      border: 1px solid #dee2e6;
+    }
+
+    .total-display label {
+      color: #6c757d;
+      font-size: 0.8rem;
+      margin-bottom: 0.25rem;
+    }
+
+    /* Copy checkbox styling */
+    .copy-checkbox-container {
+      transition: all 0.3s ease;
+    }
+
+    .copy-checkbox-container:hover {
+      background: rgba(52, 152, 219, 0.15) !important;
+    }
+
+    .copy-checkbox-container label:hover {
+      color: #2980b9 !important;
+    }
+
+    .copy-checkbox-container input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: #3498db;
+    }
+
+    .copy-checkbox-container span {
+      user-select: none;
+      font-size: 0.9rem;
+    }
+
+    /* Science Practicals styling */
+    .unit-section {
+      animation: slideIn 0.3s ease-out;
+    }
+
+    .unit-section input:focus {
+      outline: none;
+      border-color: #27ae60 !important;
+      box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.1);
+    }
+
+    .practical-item input:focus {
+      outline: none;
+      border-color: #27ae60 !important;
+      box-shadow: 0 0 0 2px rgba(39, 174, 96, 0.1);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #27ae60, #229954);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 3px 12px rgba(39, 174, 96, 0.3);
+    }
+
+    .btn-success:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 5px 15px rgba(39, 174, 96, 0.4);
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      body {
+        padding: 1rem 0.5rem;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .indicator-group {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+      }
+
+      .theme-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+
+      .outcome-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+
+      .btn-group {
+        justify-content: center;
+      }
+
+      .form-card {
+        padding: 1.5rem;
+      }
+
+      .header-card {
+        padding: 1.5rem;
+      }
+
+      .header-card h2 {
+        font-size: 1.5rem;
+      }
+    }
+
+    /* Loading state */
+    .loading {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    /* Animation for adding elements */
+    .theme-section, .outcome-section, .indicator-group {
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+<body>
+       <%- include('../partials/mainnav') %>
+  <div class="container">
+    <div class="header-card">
+      <h2>Project Work Rubrik Creation</h2>
+      <p>Set up themes, learning outcomes, and indicators for evaluation</p>
+      <% if (typeof studentClass !== 'undefined') { %>
+        <div style="background-color: #e8f4f8; padding: 10px; margin-top: 15px; border-radius: 8px; font-weight: bold; color: #2980b9;">
+          Configuring for Class <%= studentClass %>
+        </div>
+      <% } %>
+    </div>
+
+    <div class="form-card">
+      <form action="/themefillupform?studentClass=<%= typeof studentClass !== 'undefined' ? studentClass : '' %>" method="POST" id="mainForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="studentClass">Student Class</label>
+            <input type="text" name="studentClass" id="studentClass" value="<%= typeof studentClass !== 'undefined' ? studentClass : '' %>" readonly>
+          </div>
+          <div class="form-group">
+            <label for="section">Section (Optional)</label>
+            <input type="text" name="section" id="section" placeholder="Enter section (optional)">
+          </div>
+          <div class="form-group">
+            <label for="subject">Subject</label>
+            <input type="text" name="subject" id="subject" placeholder="Enter subject name" required>
+          </div>
+          <div class="form-group">
+            <label for="credit">Credit Hour</label>
+            <input type="text" name="credit" id="credit" placeholder="Enter credit hour" required>
+          </div>
+        </div>
+
+        <div id="themes-container"></div>
+
+        <div class="btn-group" style="justify-content: center; margin-bottom: 2rem;">
+          <button type="button" class="btn btn-primary" onclick="addTheme()">+ Add Theme</button>
+        </div>
+
+        <!-- Science Practicals Link -->
+        <div class="form-card" style="background: rgba(46, 204, 113, 0.1); border-left: 4px solid #2ecc71; margin-top: 2rem; text-align: center;">
+          <div style="margin-bottom: 1rem;">
+            <h3 style="color: #27ae60; margin: 0; font-size: 1.3rem; font-weight: 700;">
+              🧪 Science Practicals (Optional)
+            </h3>
+            <p style="color: #666; margin: 0.5rem 0;">Configure units and practicals separately</p>
+          </div>
+          
+          <div class="btn-group" style="justify-content: center;">
+            <a href="/sciencepracticalform?studentClass=<%= typeof studentClass !== 'undefined' ? studentClass : '' %>" style="text-decoration: none;">
+              <button type="button" class="btn btn-success" style="padding: 1rem 2rem; font-size: 1rem;">
+                🧪 Configure Science Practicals
+              </button>
+            </a>
+          </div>
+        </div>
+
+        <div class="submit-section" style="display: flex; flex-direction: column; gap: 15px; align-items: center;">
+          <button type="submit" class="submit-btn">Save Configuration</button>
+          <a href="/themefillupform" style="text-decoration: none;">
+            <button type="button" class="btn btn-warning" style="padding: 10px 20px; min-width: 200px;">
+              Back to Class Selection
+            </button>
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let themeIndex = 0;
+
+    function addTheme() {
+      const themesContainer = document.getElementById('themes-container');
+
+      const themeDiv = document.createElement('div');
+      themeDiv.className = 'theme-section';
+      themeDiv.dataset.index = themeIndex;
+
+      // Show copy checkbox only if this is not the first theme
+      const copyCheckboxHtml = themeIndex > 0 ? `
+        <div class="copy-checkbox-container" style="margin-bottom: 1rem; padding: 10px; background: rgba(52, 152, 219, 0.1); border-radius: 8px; border-left: 4px solid #3498db;">
+          <label style="display: flex; align-items: center; gap: 8px; font-weight: 500; color: #2c3e50; cursor: pointer;">
+            <input type="checkbox" id="copyAbove_${themeIndex}" onchange="copyFromPreviousTheme(${themeIndex})" style="margin: 0;">
+            <span>📋 Copy data from Theme ${themeIndex}</span>
+          </label>
+        </div>
+      ` : '';
+
+      themeDiv.innerHTML = `
+        <div class="theme-header">
+          <h3>थीम ${themeIndex + 1}</h3>
+          <button type="button" class="btn btn-danger" onclick="removeTheme(this)">Remove Theme</button>
+        </div>
+        ${copyCheckboxHtml}
+        <div class="form-group">
+          <label for="themeName_${themeIndex}">Theme Name</label>
+          <input type="text" name="themes[${themeIndex}][themeName]" id="themeName_${themeIndex}" placeholder="Enter theme name" required>
+        </div>
+        <div class="outcomes-container" id="outcomes-${themeIndex}"></div>
+        <div class="btn-group">
+          <button type="button" class="btn btn-primary" onclick="addOutcome(${themeIndex})">+ Add Learning Outcome</button>
+        </div>
+      `;
+
+      themesContainer.appendChild(themeDiv);
+      addOutcome(themeIndex);
+      themeIndex++;
+    }
+
+    function addOutcome(themeIdx) {
+      const outcomesContainer = document.getElementById(`outcomes-${themeIdx}`);
+      const outcomeIndex = outcomesContainer.children.length;
+
+      const outcomeDiv = document.createElement('div');
+      outcomeDiv.className = 'outcome-section';
+      outcomeDiv.dataset.index = outcomeIndex;
+
+      outcomeDiv.innerHTML = `
+        <div class="outcome-header">
+          <h4>मुख्य सिकाइ उपलब्धि ${outcomeIndex + 1}</h4>
+          <button type="button" class="btn btn-warning" onclick="removeOutcome(this)">Remove Outcome</button>
+        </div>
+        <div class="form-group">
+          <label for="outcomeName_${themeIdx}_${outcomeIndex}">Learning Outcome Name</label>
+          <input type="text" name="themes[${themeIdx}][learningOutcome][${outcomeIndex}][learningOutcomeName]" 
+                 id="outcomeName_${themeIdx}_${outcomeIndex}" 
+                 placeholder="Enter learning outcome name" required>
+        </div>
+        <div class="indicators-container" id="indicators-${themeIdx}-${outcomeIndex}"></div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+          <button type="button" class="btn btn-primary" onclick="addIndicator(${themeIdx}, ${outcomeIndex})">+ Add Indicator</button>
+          <div class="total-display">
+            <label>कुल अंक (Total Marks):</label>
+            <input type="number" readonly id="totalMarks-${themeIdx}-${outcomeIndex}" style="border: none; background: transparent; text-align: center; font-weight: bold;">
+            <input type="hidden" name="themes[${themeIdx}][learningOutcome][${outcomeIndex}][totalMarks]" id="totalMarksInput-${themeIdx}-${outcomeIndex}">
+          </div>
+        </div>
+      `;
+
+      outcomesContainer.appendChild(outcomeDiv);
+      addIndicator(themeIdx, outcomeIndex);
+    }
+
+    function addIndicator(themeIdx, outcomeIdx) {
+      const container = document.getElementById(`indicators-${themeIdx}-${outcomeIdx}`);
+      const indicatorIndex = container.children.length;
+
+      const group = document.createElement('div');
+      group.className = 'indicator-group';
+
+      group.innerHTML = `
+        <input type="text" name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][indicators][${indicatorIndex}][indicatorName]" 
+               placeholder="Enter indicator name (सूचक)" required>
+        <input type="number" class="indicator-marks" 
+               name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][indicators][${indicatorIndex}][indicatorsMarks]" 
+               placeholder="Marks" required min="0"
+               oninput="updateTotalMarks(${themeIdx}, ${outcomeIdx})">
+        <button type="button" class="btn btn-danger" onclick="removeIndicator(this, ${themeIdx}, ${outcomeIdx})">Remove</button>
+      `;
+
+      container.appendChild(group);
+      updateTotalMarks(themeIdx, outcomeIdx);
+    }
+
+    function updateTotalMarks(themeIdx, outcomeIdx) {
+      const container = document.getElementById(`indicators-${themeIdx}-${outcomeIdx}`);
+      let total = 0;
+      container.querySelectorAll('.indicator-marks').forEach(input => {
+        const val = parseFloat(input.value);
+        if (!isNaN(val)) total += val;
+      });
+
+      document.getElementById(`totalMarks-${themeIdx}-${outcomeIdx}`).value = total;
+      document.getElementById(`totalMarksInput-${themeIdx}-${outcomeIdx}`).value = total;
+    }
+
+    function removeTheme(button) {
+      if (confirm('Are you sure you want to remove this theme?')) {
+        button.closest('.theme-section').remove();
+      }
+    }
+
+    function removeOutcome(button) {
+      if (confirm('Are you sure you want to remove this learning outcome?')) {
+        button.closest('.outcome-section').remove();
+      }
+    }
+
+    function removeIndicator(button, themeIdx, outcomeIdx) {
+      button.closest('.indicator-group').remove();
+      updateTotalMarks(themeIdx, outcomeIdx);
+    }
+
+    // Function to copy data from previous theme
+    function copyFromPreviousTheme(currentThemeIndex) {
+      const checkbox = document.getElementById(`copyAbove_${currentThemeIndex}`);
+      
+      if (!checkbox.checked) {
+        return; // If unchecked, don't copy
+      }
+
+      const previousThemeIndex = currentThemeIndex - 1;
+      
+      if (previousThemeIndex < 0) {
+        checkbox.checked = false;
+        alert('No previous theme to copy from!');
+        return;
+      }
+
+      // Copy theme name
+      const previousThemeName = document.getElementById(`themeName_${previousThemeIndex}`);
+      const currentThemeName = document.getElementById(`themeName_${currentThemeIndex}`);
+      
+      if (previousThemeName && currentThemeName) {
+        currentThemeName.value = previousThemeName.value;
+      }
+
+      // Get previous theme's outcomes container
+      const previousOutcomesContainer = document.getElementById(`outcomes-${previousThemeIndex}`);
+      const currentOutcomesContainer = document.getElementById(`outcomes-${currentThemeIndex}`);
+      
+      if (!previousOutcomesContainer || !currentOutcomesContainer) {
+        console.error('Could not find theme containers');
+        return;
+      }
+
+      // Clear current outcomes first
+      currentOutcomesContainer.innerHTML = '';
+
+      // Copy each outcome from previous theme
+      const previousOutcomes = previousOutcomesContainer.children;
+      
+      for (let outcomeIdx = 0; outcomeIdx < previousOutcomes.length; outcomeIdx++) {
+        // Add a new outcome to current theme
+        addOutcome(currentThemeIndex);
+        
+        // Get the learning outcome name from previous theme
+        const prevOutcomeName = document.getElementById(`outcomeName_${previousThemeIndex}_${outcomeIdx}`);
+        const currentOutcomeName = document.getElementById(`outcomeName_${currentThemeIndex}_${outcomeIdx}`);
+        
+        if (prevOutcomeName && currentOutcomeName) {
+          currentOutcomeName.value = prevOutcomeName.value;
+        }
+
+        // Copy indicators
+        const prevIndicatorsContainer = document.getElementById(`indicators-${previousThemeIndex}-${outcomeIdx}`);
+        const currentIndicatorsContainer = document.getElementById(`indicators-${currentThemeIndex}-${outcomeIdx}`);
+        
+        if (prevIndicatorsContainer && currentIndicatorsContainer) {
+          // Clear current indicators first (one is added by default)
+          currentIndicatorsContainer.innerHTML = '';
+          
+          // Copy each indicator
+          const prevIndicators = prevIndicatorsContainer.children;
+          
+          for (let indicatorIdx = 0; indicatorIdx < prevIndicators.length; indicatorIdx++) {
+            // Add new indicator
+            addIndicator(currentThemeIndex, outcomeIdx);
+            
+            // Get indicator inputs from previous theme
+            const prevIndicatorName = prevIndicators[indicatorIdx].querySelector('input[type="text"]');
+            const prevIndicatorMarks = prevIndicators[indicatorIdx].querySelector('input[type="number"]');
+            
+            // Get current indicator inputs
+            const currentIndicators = currentIndicatorsContainer.children;
+            const currentIndicator = currentIndicators[indicatorIdx];
+            
+            if (currentIndicator && prevIndicatorName && prevIndicatorMarks) {
+              const currentIndicatorName = currentIndicator.querySelector('input[type="text"]');
+              const currentIndicatorMarks = currentIndicator.querySelector('input[type="number"]');
+              
+              if (currentIndicatorName && currentIndicatorMarks) {
+                currentIndicatorName.value = prevIndicatorName.value;
+                currentIndicatorMarks.value = prevIndicatorMarks.value;
+              }
+            }
+          }
+          
+          // Update total marks for the current outcome
+          updateTotalMarks(currentThemeIndex, outcomeIdx);
+        }
+      }
+
+      // Show success message
+      const themeSection = document.querySelector(`[data-index="${currentThemeIndex}"]`);
+      if (themeSection) {
+        const successMsg = document.createElement('div');
+        successMsg.style.cssText = 'background: #d4edda; color: #155724; padding: 8px 12px; border-radius: 4px; margin: 10px 0; border: 1px solid #c3e6cb; font-size: 14px;';
+        successMsg.textContent = `✓ Data copied from Theme ${currentThemeIndex}`;
+        
+        // Insert after copy checkbox
+        const copyContainer = themeSection.querySelector('.copy-checkbox-container');
+        if (copyContainer) {
+          copyContainer.insertAdjacentElement('afterend', successMsg);
+          
+          // Remove success message after 3 seconds
+          setTimeout(() => {
+            if (successMsg.parentNode) {
+              successMsg.remove();
+            }
+          }, 3000);
+        }
+      }
+
+      // Uncheck the checkbox after copying
+      checkbox.checked = false;
+    }
+
+    // Add first theme by default
+    window.onload = () => {
+      addTheme();
+    };
+
+    // Form validation
+    document.getElementById('mainForm').addEventListener('submit', function(e) {
+      const themes = document.querySelectorAll('.theme-section');
+      if (themes.length === 0) {
+        e.preventDefault();
+        alert('Please add at least one theme before submitting.');
+        return;
+      }
+
+      let hasValidTheme = false;
+      themes.forEach(theme => {
+        const outcomes = theme.querySelectorAll('.outcome-section');
+        if (outcomes.length > 0) {
+          hasValidTheme = true;
+        }
+      });
+
+      if (!hasValidTheme) {
+        e.preventDefault();
+        alert('Each theme must have at least one learning outcome.');
+        return;
+      }
+    });
+  </script>
+</body>
+</html>

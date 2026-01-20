@@ -1,0 +1,35 @@
+@import url('https://fonts.googleapis.com/css2?family=Agbalumo&family=Alexandria:wght@100..900&family=Lexend:wght@100..900&family=Manrope:wght@200..800&display=swap');
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+   
+    
+}
+@font-face {
+    font-family: 'Alexandria Regular';
+    font-style: normal;
+    font-weight:300;
+    src: local('Alexandria Regular'), url('Alexandria[wght].woff') format('woff');
+    }
+body{
+      font-family: 'Alexandria Regular';
+      font-weight: normal;
+    }
+.reportcontainer
+{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+}
+td,th
+{
+  width: 100%;
+  color: darkblue;
+}
+th
+{
+  background-color: rgb(0, 56, 139);
+  color: white;
+  font-weight: 900
+}

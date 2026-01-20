@@ -1,0 +1,279 @@
+/* Modern Navigation Bar Styling */
+:root {
+  --primary: #0ea5e9;  /* skyblue */
+  --primary-dark: #0284c7;  /* darker skyblue */
+  --secondary: #8b5a2b;  /* brown */
+  --accent: #fbbf24;  /* amber */
+  --nav-bg: linear-gradient(to right, #0ea5e9, #8b5a2b);  /* Skyblue to brown gradient */
+  --nav-text: #ffffff;
+  --nav-hover: rgba(255, 255, 255, 0.9);
+  --nav-active: #fbbf24;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --transition: all 0.3s ease;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Lexend', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+  padding-top: 70px; /* Account for fixed navbar */
+}
+
+/* Ensure admin pages with sidebar have proper spacing */
+body.has-sidebar {
+  padding-top: 70px;
+}
+
+body.has-sidebar .admin-main {
+  padding-top: 0; /* Remove duplicate padding from admin-main */
+}
+
+.horizontal-navbar {
+  background: var(--nav-bg);
+  box-shadow: var(--shadow-md);
+  
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1001;
+  width: 100%;
+  height: 70px;
+  display: flex;
+  align-items: center;
+}
+
+.navbar-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 2rem;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  height: 100%;
+  color: white;
+  position: relative;
+}
+
+/* When sidebar is present, adjust navbar positioning for desktop */
+@media (min-width: 993px) {
+  body.has-sidebar .horizontal-navbar {
+    left: 280px;
+    width: calc(100% - 280px);
+  }
+  
+  body.has-sidebar .navbar-container {
+    justify-content: center;
+    margin: 0;
+  }
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.navbar-logo {
+  width: 50px;
+  height: 50px;
+  margin-right: 15px;
+  object-fit: contain;
+  border-radius: 8px;
+  transition: var(--transition);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.navbar-logo:hover {
+  transform: translateY(-3px);
+}
+
+.navbar-title {
+  color: var(--nav-text);
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-left: 5px;
+}
+
+@media (max-width: 768px) {
+  .navbar-title {
+    font-size: 1.2rem;
+  }
+  
+  .navbar-logo {
+    width: 45px;
+    height: 45px;
+    margin-right: 12px;
+  }
+}
+
+@media (max-width: 576px) {
+  .navbar-title {
+    font-size: 0.95rem;
+  }
+  
+  .navbar-logo {
+    width: 35px;
+    height: 35px;
+    margin-right: 8px;
+  }
+}
+
+.nav-link:hover {
+  color: var(--accent);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.nav-link.active {
+  color: rgb(69, 194, 244);
+  position: relative;
+}
+
+.nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background-color: rgb(69, 194, 244);
+}
+
+/* Admin submenu styles */
+.admin-submenu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  border-radius: 8px;
+  box-shadow: var(--shadow-lg);
+  padding: 10px 0;
+  width: 200px;
+  z-index: 100;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.nav-item:hover .admin-submenu,
+.nav-item:focus-within .admin-submenu {
+  display: flex;
+  flex-direction: column;
+  opacity: 1;
+}
+
+.admin-submenu a {
+  color: var(--primary-dark);
+  padding: 10px 15px;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  transition: var(--transition);
+}
+
+.admin-submenu a i {
+  margin-right: 10px;
+  width: 20px;
+  text-align: center;
+}
+
+.admin-submenu a:hover,
+.admin-submenu a.active {
+  background-color: rgba(14, 165, 233, 0.1);
+  color: var(--primary);
+}
+
+.admin-submenu a.active {
+  font-weight: 500;
+}
+
+/* Additional styles */
+.choose {
+  background: linear-gradient(135deg, #0ea5e9 0%, #8b5a2b 100%);
+  width: 95%;
+  font-size: 18px;
+  height: 4rem;
+  margin-top: 2%;
+  text-align: center;
+  border-radius: 10px;
+  color: white;
+  line-height: 4rem;
+  box-shadow: var(--shadow-md);
+  transition: var(--transition);
+  font-weight: 600;
+}
+
+.choose:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+
+#teachersubject {
+  margin-top: 1%;
+}
+
+.reportcontainer img {
+  width: 80%;
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .horizontal-navbar {
+    height: 60px;
+    left: 0 !important;
+    width: 100% !important;
+  }
+  
+  body.has-sidebar .horizontal-navbar {
+    left: 0 !important;
+    width: 100% !important;
+  }
+  
+  .navbar-container {
+    justify-content: center;
+    padding: 0 1rem;
+    margin: 0 !important;
+  }
+  
+  .navbar-title {
+    font-size: 1.2rem;
+  }
+  
+  .navbar-logo {
+    width: 45px;
+    height: 45px;
+    margin-right: 12px;
+  }
+}
+
+@media (max-width: 576px) {  
+  .horizontal-navbar {
+    height: 55px;
+  }
+  
+  .navbar-logo {
+    width: 35px;
+    height: 35px;
+    margin-right: 8px;
+  }
+  
+  .navbar-title {
+    font-size: 0.9rem;
+  }
+  
+  .choose {
+    font-size: 16px;
+    height: 3.5rem;
+    line-height: 3.5rem;
+  }
+}

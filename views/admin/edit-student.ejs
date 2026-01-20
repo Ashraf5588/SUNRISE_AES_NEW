@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Student | <%= student.name %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet">
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/nav.css">
+  <style>
+    :root {
+      --primary: #0ea5e9;  /* skyblue */
+      --primary-dark: #0284c7;  /* darker skyblue */
+      --secondary: #8b5a2b;  /* brown */
+      --secondary-dark: #6b4423;  /* darker brown */
+      --light: #f8fafc;
+      --dark: #1e293b;
+      --accent: #a16207;  /* amber brown */
+    }
+    
+    body {
+      font-family: 'Lexend', sans-serif;
+      background-color: #f8fafc;
+      color: var(--dark);
+    }
+    
+    .edit-container {
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 2rem;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .header h1 {
+      color: var(--primary);
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    
+    .header p {
+      color: var(--secondary);
+      font-weight: 500;
+    }
+    
+    .btn-primary {
+      background-color: var(--primary);
+      border-color: var(--primary);
+    }
+    
+    .btn-primary:hover {
+      background-color: var(--primary-dark);
+      border-color: var(--primary-dark);
+    }
+    
+    .btn-secondary {
+      background-color: var(--secondary);
+      border-color: var(--secondary);
+    }
+    
+    .btn-secondary:hover {
+      background-color: var(--secondary-dark);
+      border-color: var(--secondary-dark);
+    }
+    
+    .form-label {
+      font-weight: 600;
+      color: var(--dark);
+    }
+    
+    .readonly-field {
+      background-color: #f8fafc;
+    }
+  </style>
+</head>
+<body>
+  <%- include('../partials/nav', { currentPage: 'teacher' }) %>
+  
+  <div class="container">
+    <div class="edit-container">
+      <div class="header">
+        <h1>Edit Student Record</h1>
+        <p>Update information for <%= student.name %>, Roll No. <%= student.roll %></p>
+      </div>
+      
+      <form action="/update-student/<%= student._id %>/<%= student.subject %>/<%= student.studentClass %>/<%= student.section %>/<%= student.terminal %>?controller=<%=controller%>" method="POST">
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <label for="name" class="form-label">Student Name</label>
+            <input type="text" class="form-control" id="name" name="name" value="<%= student.name %>" required>
+          </div>
+          <div class="col-md-6">
+            <label for="roll" class="form-label">Roll Number</label>
+            <input type="number" class="form-control" id="roll" name="roll" value="<%= student.roll %>" required>
+          </div>
+        </div>
+        
+        <div class="row mb-3">
+          <div class="col-md-4">
+            <label for="studentClass" class="form-label">Class</label>
+            <input type="text" class="form-control readonly-field" id="studentClass" name="studentClass" value="<%= student.studentClass %>" readonly>
+          </div>
+          <div class="col-md-4">
+            <label for="section" class="form-label">Section</label>
+            <input type="text" class="form-control readonly-field" id="section" name="section" value="<%= student.section %>" readonly>
+          </div>
+          <div class="col-md-4">
+            <label for="subject" class="form-label">Subject</label>
+            <input type="text" class="form-control readonly-field" id="subject" name="subject" value="<%= student.subject %>" readonly>
+          </div>
+        </div>
+        
+        <div class="row mb-3">
+          <div class="col-md-4">
+            <label for="terminal" class="form-label">Terminal</label>
+            <input type="text" class="form-control readonly-field" id="terminal" name="terminal" value="<%= student.terminal %>" readonly>
+          </div>
+        </div>
+         <script>
+        const subject = document.getElementById('subject').value.trim();
+const studentClass = document.getElementById('studentClass').value.trim();
+const section = document.getElementById('section').value.trim();
+const terminal = document.getElementById('terminal').value.trim();
+let debounceTimeout;
+
+        const rollInput = document.getElementById('roll');
+        rollInput.addEventListener('input',async function() {
+            clearTimeout(debounceTimeout);
+
+    debounceTimeout = setTimeout(async () => {
+      const rollValue = rollInput.value.trim();
+      if (!rollValue) return;
+        
+            
+          // Debounce to avoid too many requests
+
+            // logic to check if the input roll number already exist in the database;
+            const responseBack = await fetch(`/checkroll/${encodeURIComponent(subject)}/${studentClass}/${encodeURIComponent(section)}/${terminal}?roll=${encodeURIComponent(rollInput.value)}`);
+            if (!responseBack.ok) {
+                console.error('Error checking roll number:', responseBack.statusText);
+                return;
+            }
+            const rollExists = await responseBack.json();
+            console.log(rollExists);
+            
+            if (rollExists) {
+                alert(`Roll number  ${rollExists.roll} with Name ${rollExists.studentName} with Total Marks ${rollExists.totalMarks} already exists for ${rollExists.studentClass}-${rollExists.section} for ${rollExists.terminal} Terminal. Please enter a different roll number or delete previous one.`);
+                rollInput.value = ''; // Clear the input
+                document.getElementById('name').value = ''; // Clear the name field
+                return;
+                
+            }
+            
+                // Fetch student data based on the roll number
+                // Only fetch if the roll number is valid and does not already exist
+             const res = await fetch(`/student_data/${encodeURIComponent(subject)}/${studentClass}/${encodeURIComponent(section)}/${terminal}?roll=${encodeURIComponent(rollInput.value)}`);
+            if (!res.ok) {
+                console.error('Error fetching student data:', res.statusText);
+                return;
+            }
+
+            const data = await res.json();
+            console.log(data)
+            if (data && data.length > 0) {
+                // Autofill the other fields with the retrieved data
+
+                
+               document.getElementById('name').value = data[0].name || '';
+                document.getElementById('roll').value = data[0].roll || '';
+            }
+        
+            // Do something with the data
+        }, 600); // Adjust the debounce time as needed
+        });
+    </script>
+        
+        
+        <% 
+          // Process all question fields
+          Object.keys(student).forEach(key => {
+            if (key.startsWith('q') && !['_id', '__v', 'studentClass', 'section', 'subject', 'terminal', 'name', 'roll'].includes(key)) { 
+        %>
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label for="<%= key %>" class="form-label">Question <%= key %></label>
+              <input type="Number" class="form-control box" id="<%= key %>" name="<%= key %>" value="<%= student[key] %>" required oninput="sum(this.value)" step="0.01">
+            </div>
+          </div>
+        <% }});
+        %>
+        <input type="number" name="totalMarks" id="totalmarks" class="form-container" placeholder="Total Marks" step="0.01" value="<%= student.totalMarks %>"> <br>
+         <script>
+           allinput = document.querySelectorAll('.box');
+           allinput.forEach(element => {
+             element.addEventListener('input', () => {
+               let totalMarks = 0;
+               allinput.forEach(input => {
+                 totalMarks += parseFloat(input.value) || 0;
+               });
+               document.getElementById('totalmarks').value = totalMarks;
+             });
+           });
+
+         </script>
+        
+        <div class="d-flex justify-content-between mt-4">
+          <a href="/<%=controller%>/<%= student.subject %>/<%= student.studentClass %>/<%= student.section %>/<%= student.terminal %>" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-2"></i> Cancel
+          </a>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save me-2"></i> Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+   
+  <script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

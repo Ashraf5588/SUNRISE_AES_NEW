@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>eAnalyst</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/nav.css">
+    <link rel="stylesheet" href="/subject-selector.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Agbalumo&family=Alexandria:wght@100..900&family=Lexend:wght@100..900&family=Manrope:wght@200..800&display=swap" rel="stylesheet">
+    <!-- Add Bootstrap CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Add custom styles -->
+      <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Agbalumo&family=Alexandria:wght@100..900&family=Lexend:wght@100..900&family=Manrope:wght@200..800&display=swap');
+          :root {
+            --primary: #1954a6;  /* skyblue */
+            --primary-dark: #0e2c5c;  /* darker skyblue */
+            --secondary: #f0841f;  /* brown */
+            --secondary-dark: #9d4a06;  /* darker brown */
+            --light: #f8fafc;
+            --dark: #1e293b;
+            --accent: #e08d19;  /* amber brown for accent */
+            --gray: #db8025;
+        }
+        
+        body {
+            background-color: #f8fafc;
+            font-family: 'Lexend', sans-serif;
+            color: var(--dark);
+        }
+        
+        /* Subject selector styles */
+        .subject-selector-container {
+            background-color: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            border: 1px solid #eaeaea;
+            transition: all 0.3s ease;
+        }
+        
+        .subject-selector-container:hover {
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+        }
+        
+        #subjectSelector {
+            font-size: 1.1rem;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        #subjectSelector:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+        }
+        
+        #enterDataBtn, #viewReportBtn {
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        
+        #enterDataBtn:hover, #viewReportBtn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        }
+        
+          header {
+            padding-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 80%);
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+        }
+        
+        .hero-section {
+            padding: 2rem 1rem;
+            color: white;
+            text-align: center;
+        }
+        
+        #firstheading {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-top: 0;
+            color: white;
+        }
+        
+        #firstspan {
+            color: var(--accent);
+            font-weight: 800;
+        }
+        
+        .subheading {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 1.2rem;
+            display: block;
+            margin-top: 0.5rem;
+        }
+          .action-section {
+            background-color: white;
+            border-radius: 10px;
+            padding: 2rem;
+            margin: 2rem auto;
+            max-width: 1200px;
+            box-shadow: 0 10px 15px -3px rgba(14, 165, 233, 0.1), 0 4px 6px -2px rgba(139, 90, 43, 0.05);
+            border-top: 3px solid var(--primary);
+            border-bottom: 3px solid var(--secondary);
+        }
+        
+        .section-title {
+            color: var(--dark);
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #e2e8f0;
+            position: relative;
+        }
+          .section-title::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: -2px;
+            width: 100px;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .action-card {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            color: white !important;
+            gap: 0.75rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            min-width: 200px;
+        }
+
+        .action-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.15);
+        }
+
+        .icon-wrapper {
+            font-size: 1.2rem;
+        }
+
+        .card-blue { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); }
+        .card-orange { background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%); }
+        .card-green { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        .card-yellow { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+        .card-skyblue { background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); }
+        .card-oranges { background: linear-gradient(135deg, #f97316 0%, #f83228 100%); }
+        
+        .subject-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        
+        .subject-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .subject-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+          .subject-header {
+            padding: 1.25rem;
+            background: linear-gradient(45deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .subject-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            transform: rotate(45deg);
+        }
+        
+        .subject-icon {
+            background-color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .subject-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .subject-body {
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-grow: 1;
+            justify-content: center;
+        }
+        
+        .subject-action {
+            margin-top: auto;
+            padding: 0.75rem 1.25rem;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+          .subject-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .subject-btn:hover {
+            background: var(--primary-dark);
+            color: white;
+            text-decoration: none;
+        }
+          .btn-enter {
+            background: var(--primary);
+        }
+        
+        .btn-report {
+            background: var(--secondary);
+        }
+        
+        .btn-enter:hover {
+            background: var(--primary-dark);
+        }
+        
+        .btn-report:hover {
+            background: var(--secondary-dark);
+        }
+          footer {
+            background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%);
+            color: white;
+            padding: 1rem 0;
+            margin-top: 3rem;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+        }
+        
+        .footer-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                background-color: #fff7ed;
+            }
+
+            #firstheading {
+                font-size: 2rem;
+            }
+            
+            .subject-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-buttons {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1.5rem 1rem;
+                padding: 1rem 0.5rem;
+                background-color: #e7e7e7;
+                backdrop-filter: var(--light);
+                opacity: 0.95;
+                border-radius: 12px;
+            }
+
+            .action-card {
+                flex-direction: column;
+                text-align: center;
+                padding: 0;
+                aspect-ratio: auto;
+                background: transparent !important;
+                border: none;
+                box-shadow: none !important;
+                color: var(--dark) !important;
+                min-width: auto;
+            }
+
+            .action-card .icon-wrapper {
+                font-size: 1.75rem;
+                margin-bottom: 0.5rem;
+                width: 65px;
+                height: 65px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 18px;
+                margin: 0 auto 0.5rem auto;
+                color: white !important;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            }
+
+            .action-card .text-wrapper {
+                font-size: 0.85rem;
+                line-height: 1.3;
+                font-weight: 600;
+                color: #334155;
+            }
+
+            /* Mobile Color Scheme */
+            .card-blue .icon-wrapper { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); }
+            .card-orange .icon-wrapper { background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%); }
+            .card-green .icon-wrapper { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+            .card-yellow .icon-wrapper { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
+            
+            .action-section {
+                padding: 1.5rem 1rem;
+                margin: 1rem auto;
+                border-top-width: 2px;
+                border-bottom-width: 2px;
+                background: transparent;
+                box-shadow: none;
+                border: none;
+            }
+            
+            .section-title {
+                font-size: 1.3rem;
+                margin-bottom: 1rem;
+                padding-bottom: 0.5rem;
+            }
+            
+            .section-title::after {
+                width: 60px;
+            }
+            
+            .hero-section {
+                padding: 1.5rem 1rem;
+            }
+            
+            .subheading {
+                font-size: 1rem;
+                padding: 0 1rem;
+            }
+        }
+        
+        /* Extra small devices (phones, 576px and down) */
+        @media (max-width: 576px) {
+            #firstheading {
+                font-size: 1.8rem;
+            }
+            
+            .footer-content p {
+                font-size: 0.8rem;
+                text-align: center;
+                line-height: 1.4;
+            }
+            
+            .container {
+                padding-left: 0.75rem;
+                padding-right: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <%- include('partials/nav') %>
+
+        <div class="hero-section">
+            <h1 id="firstheading">Answersheet Analysis <span id="firstspan">System</span></h1>
+            <span class="subheading">A professional system designed to analyze and evaluate student performance</span>
+        </div>
+    </header>
+    <%- include('partials/sidenav', { 
+        subjects: subjects, 
+        studentClassdata: studentClassdata,
+        terminals: terminals 
+    }) %>
+   
+ 
+
+    
+    <div class="container">
+        <div class="action-section">
+            <div class="action-buttons">
+                 <a href="/addchapterselect" class="action-card card-skyblue" >
+                    <div class="icon-wrapper"><i class="fa-solid fa-list" style="color: #ffffff;"></i></div>
+                    <div class="text-wrapper">Add Chapter Name</div>
+                </a>
+                <a href="/admin/subject" class="action-card card-green">
+                    <div class="icon-wrapper"><i class="fa-solid fa-clipboard-question"></i></div>
+                    <div class="text-wrapper">Set Question Paper Format</div>
+                </a>
+                
+                <a href="#subject-section" class="action-card card-blue">
+                    <div class="icon-wrapper"><i class="fas fa-pen-to-square"></i></div>
+                    <div class="text-wrapper">Enter Analysis Data</div>
+                </a>
+                <a href="/class" class="action-card card-orange">
+                    <div class="icon-wrapper"><i class="fas fa-pen-to-square"></i></div>
+                    <div class="text-wrapper">Internal Assessment</div>
+                </a>
+                <a href="/examform" class="action-card card-oranges">
+                    <div class="icon-wrapper"><i class="fa-solid fa-file-circle-question"></i></div>
+                    <div class="text-wrapper">Exam Marks Entry</div>
+                </a>
+                <a href="/studentportfolio" class="action-card card-yellow">
+                    <div class="icon-wrapper"><i class="fa-solid fa-user" style="color: #ffffff;"></i></div>
+                    <div class="text-wrapper">Student Portfolio</div>
+                </a>
+                 <a href="/onlineattendance" class="action-card card-orange">
+                    <div class="icon-wrapper"><i class="fas fa-pen-to-square"></i></div>
+                    <div class="text-wrapper">Online Attendance</div>
+                </a>
+            </div>
+            
+            <h2 class="section-title" id="subject-section">Select Subject to Enter Data</h2>
+            
+            <!-- New Subject Selector -->
+            <div class="row mb-4">
+                <div class="col-md-6 mx-auto">
+                    <div class="subject-selector-container">
+                        <label for="subjectSelector" class="form-label fw-bold">Choose Subject</label>
+                        <div class="subject-icon-container mb-3 d-none d-md-flex">
+                            <div class="subject-icon-select">
+                                <i class="fas fa-book-open"></i>
+                            </div>
+                        </div>
+                        <select id="subjectSelector" class="form-select form-select-lg mb-3">
+                            <option value="" selected disabled>-- Select a subject --</option>
+                            <% const uniqueSubjects = [...new Set(subjects.map(item => item.subject))]; %>
+                            <% uniqueSubjects.forEach((sub)=>{ %>
+                                <% if (sub) { %>
+                                    <option value="<%= sub.trim() %>"><%= sub %></option>
+                                <% } %>
+                            <% }) %>
+                        </select>
+                        <div class="d-grid gap-2 mt-3">
+                            <button id="enterDataBtn" class="btn btn-primary btn-lg" disabled>
+                                <i class="fas fa-pen-to-square me-2"></i> Enter Data
+                            </button>
+                            <button id="viewReportBtn" class="btn btn-secondary btn-lg" disabled>
+                                <i class="fas fa-chart-line me-2"></i> View Report
+                            </button>
+                        </div>
+                      
+                    </div>
+             
+                </div>
+                
+
+            </div>
+          
+          
+    </div>
+    
+    <footer>
+        <div class="footer-content">
+            <p>© <%= new Date().getFullYear() %> Answer Analysis System | Designed & Developed by Amedtech Solutions | United English Boarding School</p>
+        </div>
+    </footer>
+
+    <script src="https://cdn.lordicon.com/lordicon.js"></script>
+    <script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const subjectSelector = document.getElementById('subjectSelector');
+            const enterDataBtn = document.getElementById('enterDataBtn');
+            const viewReportBtn = document.getElementById('viewReportBtn');
+            
+            // Enable/disable buttons based on selection
+            subjectSelector.addEventListener('change', function() {
+                const selectedSubject = this.value;
+                if (selectedSubject) {
+                    enterDataBtn.disabled = false;
+                    viewReportBtn.disabled = false;
+                } else {
+                    enterDataBtn.disabled = true;
+                    viewReportBtn.disabled = true;
+                }
+            });
+            
+            // Handle enter data button click
+            enterDataBtn.addEventListener('click', function() {
+                const selectedSubject = subjectSelector.value;
+                if (selectedSubject) {
+                    window.location.href = `/forms/${selectedSubject.trim()}`;
+                }
+            });
+            
+            // Handle view report button click
+            viewReportBtn.addEventListener('click', function() {
+                const selectedSubject = subjectSelector.value;
+                if (selectedSubject) {
+                    window.location.href = `/teacher/${selectedSubject.trim()}/findData`;
+                }
+            });
+        });
+    </script>
+    
+    <script>
+      // Home page loader handling
+      document.addEventListener('DOMContentLoaded', function() {
+        // Show loader for subject cards
+        const subjectCards = document.querySelectorAll('.subject-card a');
+        subjectCards.forEach(link => {
+          link.addEventListener('click', function(e) {
+            if (window.pageLoader) {
+              const subjectName = this.querySelector('h3')?.textContent || 'Subject';
+              window.pageLoader.show(
+                `Loading ${subjectName}...`,
+                'Preparing class selection for this subject'
+              );
+            }
+          });
+        });
+        
+        // Show loader for quick analysis button
+        const quickAnalysisBtn = document.getElementById('quickAnalysis');
+        if (quickAnalysisBtn) {
+          quickAnalysisBtn.addEventListener('click', function(e) {
+            if (window.pageLoader) {
+              window.pageLoader.show(
+                'Loading Quick Analysis...',
+                'Preparing data analysis tools'
+              );
+            }
+          });
+        }
+      });
+    </script>
+    
+    <script src="/index.js"></script>
+</body>
+</html>

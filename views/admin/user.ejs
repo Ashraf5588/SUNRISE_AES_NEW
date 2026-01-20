@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Management | Admin Dashboard</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+      <script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      --primary: #0ea5e9; /* Sky Blue */
+      --primary-light: #7dd3fc;
+      --primary-dark: #0369a1;
+      --secondary: #8b5a2b; /* Brown */
+      --secondary-light: #a67c52;
+      --secondary-dark: #6f4518;
+      --light: #f8fafc;
+      --dark: #1e293b;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --gray: #64748b;
+      --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+      --card-hover-shadow: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+    
+    /* Animation classes */
+    .animate__animated {
+      animation-duration: 0.5s;
+      animation-fill-mode: both;
+    }
+    .animate__fadeIn {
+      animation-name: fadeIn;
+    }
+    .animate__fadeOut {
+      animation-name: fadeOut;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes fadeOut {
+      from { opacity: 1; transform: translateY(0); }
+      to { opacity: 0; transform: translateY(10px); }
+    }
+    
+    body {
+      font-family: 'Lexend', sans-serif;
+      background-color: #f1f5f9;
+      color: var(--dark);
+      line-height: 1.6;
+    }
+    
+    .page-header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary-dark) 100%);
+      color: white;
+      padding: 2rem 0;
+      margin-bottom: 2rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+    
+    .page-title {
+      font-weight: 600;
+      margin: 0;
+    }
+    
+    .card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: var(--card-shadow);
+      transition: all 0.3s ease;
+    }
+    
+    .card:hover {
+      box-shadow: var(--card-hover-shadow);
+    }
+    
+    .card-header {
+      background-color: white;
+      border-bottom: 2px solid var(--primary-light);
+      font-weight: 600;
+      padding: 1rem 1.5rem;
+    }
+    
+    .form-label {
+      font-weight: 500;
+      color: var(--dark);
+      margin-bottom: 0.5rem;
+    }
+    
+    .form-control, .form-select {
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      padding: 0.75rem 1rem;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+    }
+    
+    .form-control:focus, .form-select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.25);
+    }
+    
+    .btn-primary {
+      background-color: var(--primary);
+      border-color: var(--primary);
+      font-weight: 500;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      transition: all 0.3s;
+    }
+    
+    .btn-primary:hover {
+      background-color: var(--primary-dark);
+      border-color: var(--primary-dark);
+      transform: translateY(-2px);
+    }
+    
+    .btn-outline-secondary {
+      color: var(--secondary);
+      border-color: var(--secondary);
+      font-weight: 500;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+    }
+    
+    .btn-outline-secondary:hover {
+      background-color: var(--secondary);
+      color: white;
+    }
+    
+    .table {
+      border-collapse: separate;
+      border-spacing: 0;
+      width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--card-shadow);
+    }
+    
+    .table thead th {
+      background-color: var(--primary);
+      color: white;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.85rem;
+      padding: 1rem;
+      letter-spacing: 0.5px;
+    }
+    
+    .table tbody tr:nth-child(even) {
+      background-color: rgba(14, 165, 233, 0.05);
+    }
+    
+    .table tbody td {
+      padding: 1rem;
+      vertical-align: middle;
+      border-top: 1px solid #e2e8f0;
+    }
+    
+    .table tbody tr:hover {
+      background-color: rgba(14, 165, 233, 0.1);
+    }
+    
+    .badge {
+      padding: 0.5rem 0.75rem;
+      font-weight: 500;
+      border-radius: 6px;
+    }
+    
+    .badge-role-admin {
+      background-color: var(--secondary);
+      color: white;
+    }
+    
+    .badge-role-teacher {
+      background-color: var(--primary);
+      color: white;
+    }
+    
+    /* Custom select styling */
+    .select-container {
+      position: relative;
+      margin-bottom: 0;
+    }
+    
+    .select-icon {
+      position: absolute;
+      right: 1rem;
+      top: calc(50% - 0.5rem);
+      color: var(--gray);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+      <%- include('../partials/sidenav', { 
+        subjects: subjects || [], 
+        studentClassdata: studentClassdata || [],
+        terminals: terminals || [] 
+    }) %>
+  <header class="page-header">
+    <div class="container">
+      <div class="row align-items-center">
+        <div class="col">
+          <h1 class="page-title"><i class="fas fa-users-cog me-2"></i>User Management</h1>
+          <p class="mb-0 text-white-50">Create and manage user accounts</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="container mb-5">
+    <div class="row g-4">
+      <div class="col-lg-5">
+        <div class="card">
+          <div class="card-header d-flex align-items-center">
+            <i class="fas fa-user-plus me-2 text-primary"></i>
+            <span>Add New User</span>
+          </div>
+          <div class="card-body p-4">
+            <form action="<%= editing ? '/user/' + userData._id : '/user' %>" method="POST">
+              <% if (editing) { %>
+                <input type="hidden" id="isEditingMode" value="1">
+                <!-- Preload subject data for editing mode -->
+                <% if (userData && userData.allowedSubjects) { %>
+                  <% userData.allowedSubjects.forEach(subject => { %>
+                    <div class="preloaded-subject-data" 
+                         data-subject="<%= subject.subject %>" 
+                         data-class="<%= subject.studentClass %>" 
+                         data-section="<%= subject.section %>">
+                    </div>
+                  <% }); %>
+                <% } %>
+              <% } %>
+              
+              <div class="mb-3">
+                <label for="teacherName" class="form-label">Teacher Name</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white"><i class="fas fa-user text-primary"></i></span>
+                  <input type="text" class="form-control" name="teacherName" id="teacherName" placeholder="Enter full name" value="<%= editing?userData.teacherName:'' %>" required>
+                </div>
+              </div>
+              
+          
+           
+              
+              <div class="mb-3">
+                <label for="role" class="form-label">Role</label>
+                <div class="select-container">
+                  <select name="role" id="role" class="form-select" required>
+                    <option value="TEACHER">Teacher</option>
+                    <option value="ADMIN">Admin</option>
+                  </select>
+                  <div class="select-icon">
+                   
+                  </div>
+                </div>
+              </div>
+              
+              <div class="entry row mb-3" style="border: 2px solid rgb(106, 108, 108);border-radius: 8px; padding: 1rem;display: flex;">
+                <div class="col-md-6" id="entry">
+                  <label for="allowedSubjects" class="form-label">Allowed Subjects</label>
+                  <div class="select-container">
+                    <select name="allowedSubjects" id="allowedSubjects" class="form-select combine">
+                      <% uniqueSubjects = [...new Set(subjects.map(sub => sub.newsubject))]; %>
+                      <option value="" disabled selected>Select subjects</option>
+                      <% uniqueSubjects.forEach(subject => { %>
+                        <option value="<%= subject %>"><%= subject %></option>
+                      <% }); %>
+                    </select>
+                    <div class="select-icon">
+                      
+                    </div>
+                  </div>
+                </div>
+              
+                <div class="col-md-6">
+                  <label for="classSelector" class="form-label">Class & Section</label>
+                  <div class="select-container">
+                    <select id="classSelector" class="form-select  combine" name="classSection">
+                      <option value="" selected disabled>Select class & section</option>
+                    <% 
+                      // Sort classlist by class number
+                      const sortedClassList = [...classlist].sort((a, b) => {
+                        // Convert class to number for proper numeric sorting
+                        const classA = parseInt(a.studentClass);
+                        const classB = parseInt(b.studentClass);
+                        
+                        // First sort by class number
+                        if (classA !== classB) {
+                          return classA - classB;
+                        }
+                        
+                        // If same class, sort by section
+                        return a.section.localeCompare(b.section);
+                      });
+                      
+                      // Group by class for optgroup
+                      const classGroups = {};
+                      classlist.forEach(item => {
+                        const classNum = item.studentClass;
+                        if (!classGroups[classNum]) {
+                          classGroups[classNum] = [];
+                        }
+                        classGroups[classNum].push(item);
+                      });
+                      
+                      // Get sorted class numbers
+                      const sortedClassNumbers = Object.keys(classGroups).sort((a, b) => parseInt(a) - parseInt(b));
+                      
+                      // Loop through each class group
+                      sortedClassNumbers.forEach(classNum => {
+                        const sections = classGroups[classNum];
+                    %>
+                      <optgroup label="Class <%= classNum %> 📚">
+                      <% sections.forEach(studentclass => { %>
+                        <option 
+                          value="<%=studentclass.studentClass%>_<%=studentclass.section%>"
+                          data-class="<%=studentclass.studentClass%>"
+                          data-section="<%=studentclass.section%>">
+                          <%= studentclass.section %>
+                        </option>
+                      <% }); %>
+                      </optgroup>
+                    <% }); %>
+                  </select>
+                 
+                </div>
+                
+                </div>
+                 <div class="d-flex gap-2">
+                   <button class="btn btn-primary flex-grow-1" type="button" onclick="addsubject()">
+                     <i class="fa-solid fa-circle-plus me-1"></i> Add Subject Access
+                   </button>
+                   <% if (editing) { %>
+                   <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#bulkImportModal">
+                     <i class="fas fa-file-import me-1"></i> Bulk Import
+                   </button>
+                   <% } %>
+                 </div>
+                 
+                 <div id="selectedSubjectsList" class="mt-3">
+                   <!-- Subject items will be added here dynamically -->
+                 </div>
+                 
+                 <div class="progress mt-2 mb-1" style="height: 4px; display: none;" id="subjectsProgress">
+                   <div class="progress-bar bg-info" role="progressbar" style="width: 0%"></div>
+                 </div>
+                 
+                 <small class="text-muted d-block mt-2 mb-2">
+                   <i class="fas fa-info-circle me-1"></i> 
+                   Select subject and class/section, then click "Add Subject Access" to grant permission
+                 </small>
+                 
+                 <!-- This hidden wrapper holds the actual form data that will be submitted -->
+                 <div class="hiddenWWrapper" id="hiddenWrapper"></div>
+                 
+                 <!-- Debug information - can be removed in production -->
+                 <small class="text-muted d-block mt-2 mb-0">
+                   <span id="subjectCount">0</span> subject permissions added
+                 </small>
+              </div>
+              
+              <div class="mb-3">
+                <label for="username" class="form-label">Username</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white"><i class="fas fa-at text-primary"></i></span>
+                  <input type="text" class="form-control" name="username" id="username" placeholder="Choose a username" value="<%= editing?userData.username:'' %>" required>
+                </div>
+              </div>
+              
+              <!-- New User Password -->
+              <div class="mb-3" style="display:<%=editing?'none':'block'%>">
+                <label for="password" class="form-label">Password</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white"><i class="fas fa-lock text-primary"></i></span>
+                  <input type="password" class="form-control" name="password" id="password"   placeholder="Create a password" <%= editing ? '' : 'required' %>>
+                  <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                </div>
+                <small class="form-text text-muted mt-1">Password should be at least 8 characters long.</small>
+              </div>
+              
+              <!-- Reset Password (Only for editing) -->
+           
+              <div class="d-grid gap-2 mt-4">
+                <button type="submit" class="btn btn-primary">
+                  <i class="fas <%= editing ? 'fa-save' : 'fa-user-plus' %> me-2"></i>
+                  <%= editing ? 'Update User' : 'Add User' %>
+                </button>
+                <div class="finalAllowedSubjects" id="finalAllowedSubjects"></div>
+              </div>
+              </div>
+            </form>
+          
+        </div>
+      </div>
+      <script>
+function addsubject() {
+  const subjectSelect = document.getElementById('allowedSubjects');
+  const classSelector = document.getElementById('classSelector');
+
+  const subject = subjectSelect.value;
+  const classValue = classSelector.value;
+
+  if (!subject || !classValue) {
+    alert('Please select both a subject and a class/section.');
+    return;
+  }
+
+  const [studentClass, section] = classValue.split('_');
+  const combinedValue = `${subject}_${studentClass}_${section}`;
+
+  // ✅ Avoid duplicates
+  if (document.querySelector(`[data-value="${combinedValue}"]`)) {
+    alert("This subject/class is already added!");
+    return;
+  }
+
+  const selectedSubjectsList = document.getElementById('selectedSubjectsList');
+  const subjectItem = document.createElement('div');
+  subjectItem.classList.add('d-flex', 'justify-content-between', 'align-items-center', 'p-2', 'border', 'rounded', 'mb-2');
+  subjectItem.dataset.value = combinedValue;
+
+  subjectItem.innerHTML = `
+    <span>✅ <strong>${subject}</strong> (Class ${studentClass}, ${section})</span>
+    <input type="hidden" name="allowedSubjects[]" value="${combinedValue}">
+    <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="removeSubject('${combinedValue}')">
+      ❌ Remove
+    </button>
+  `;
+  selectedSubjectsList.appendChild(subjectItem);
+
+  // Reset dropdowns
+  subjectSelect.selectedIndex = 0;
+  classSelector.selectedIndex = 0;
+}
+
+function removeSubject(value) {
+  const item = document.querySelector(`[data-value="${value}"]`);
+  if (item) item.remove();
+}
+
+// ✅ NEW: Preload existing subjects when editing
+function preloadSubjects() {
+  const selectedSubjectsList = document.getElementById('selectedSubjectsList');
+
+  <% if (editing && userData.allowedSubjects) { %>
+    <% userData.allowedSubjects.forEach(subject => { %>
+      (function() {
+        const preloadValue = "<%= subject.subject %>_<%= subject.studentClass %>_<%= subject.section %>";
+        const subjectItem = document.createElement('div');
+        subjectItem.classList.add('d-flex', 'justify-content-between', 'align-items-center', 'p-2', 'border', 'rounded', 'mb-2');
+        subjectItem.dataset.value = preloadValue;
+        subjectItem.innerHTML = `
+          <span>✅ <strong><%= subject.subject %></strong> (Class <%= subject.studentClass %>, <%= subject.section %>)</span>
+          <input type="hidden" name="allowedSubjects[]" value="${preloadValue}">
+          <button type="button" class="btn btn-sm btn-outline-danger ms-2" onclick="removeSubject('${preloadValue}')">
+            ❌ Remove
+          </button>
+        `;
+        selectedSubjectsList.appendChild(subjectItem);
+      })();
+    <% }); %>
+  <% } %>
+}
+
+// ✅ Wait for DOM then preload
+document.addEventListener("DOMContentLoaded", preloadSubjects);
+</script>
+
+
+      <div class="col-lg-7">
+        <div class="card">
+          <div class="card-header d-flex align-items-center justify-content-between">
+            <div>
+              <i class="fas fa-users me-2 text-primary"></i>
+              <span>User Accounts</span>
+            </div>
+            <div class="input-group" style="max-width: 250px;">
+              <input type="text" class="form-control" id="searchUsers" placeholder="Search users...">
+              <button class="btn btn-outline-secondary" type="button">
+                <i class="fas fa-search"></i>
+              </button>
+            </div>
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table mb-0">
+                <thead>
+                  <tr>
+                    <th><i class="fas fa-user me-1"></i> Name</th>
+                    
+                    <th><i class="fas fa-user-tag me-1"></i> Role</th>
+                    <th><i class="fas fa-book me-1"></i> Subjects</th>
+                    <th><i class="fas fa-at me-1"></i> Username</th>
+                    
+                    <th><i class="fas fa-cog me-1"></i> Actions</th>
+                    
+                  </tr>
+                </thead>
+                <tbody>
+                  <% userlist.forEach(user => { %>
+                  
+                  <tr>
+                    <td class="fw-medium"><%= user.teacherName %></td>
+                    
+                    <td><span class="badge badge-role-teacher"><%= user.role %></span></td>
+                    <td>
+                      <% user.allowedSubjects.forEach(subject => { %>
+                        <span class="badge bg-light text-dark mb-1 d-inline-block"><%= subject.subject %> (<%= subject.studentClass %>_<%= subject.section %>)</span>
+                      <% }) %>
+                    </td>
+                    <td><%= user.username %></td>
+                
+                    <td>
+                      <div class="btn-group btn-group-sm">
+                        <a href="/user/edit-teacher/<%= user._id %>?editing=true" class="btn btn-outline-primary" title="Edit user">
+                          <i class="fas fa-edit"></i>
+                        </a> 
+                        <button class="btn btn-outline-info" title="Reset password" onclick="openResetModal('<%= user._id %>', '<%= user.teacherName %>')">
+                          <i class="fas fa-key"></i>
+                        </button>
+                        <a href="/user/delete-teacher/<%= user._id %>" class="btn btn-outline-danger" title="Delete user" onclick="return confirm('Are you sure you want to delete <%= user.teacherName %>?')">
+                          <i class="fas fa-trash-alt"></i>
+                        </a>
+                      </div>
+                    </td>
+                  </tr>
+                  <%})%>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Password Reset Modal -->
+  <div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-labelledby="resetPasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="resetPasswordModalLabel"><i class="fas fa-key me-2"></i>Reset Password</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="resetPasswordForm" method="POST" action="/reset-password">
+          <div class="modal-body">
+            <input type="hidden" name="userId" id="resetUserId">
+            <div class="mb-3">
+              <label class="form-label">Reset password for: <span id="resetUserName" class="fw-bold text-primary"></span></label>
+            </div>
+            <div class="mb-3">
+              <label for="resetNewPassword" class="form-label">New Password</label>
+              <div class="input-group">
+                <span class="input-group-text bg-white"><i class="fas fa-lock text-primary"></i></span>
+                <input type="password" class="form-control" id="resetNewPassword" name="newPassword" placeholder="Enter new password" required>
+                <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility('resetNewPassword', 'resetToggleIcon')">
+                  <i id="resetToggleIcon" class="fas fa-eye"></i>
+                </button>
+              </div>
+              <small class="form-text text-muted">Password should be at least 8 characters long</small>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Reset Password</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bulk Import Modal -->
+  <div class="modal fade" id="bulkImportModal" tabindex="-1" aria-labelledby="bulkImportModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="bulkImportModalLabel"><i class="fas fa-file-import me-2"></i>Bulk Import Subject Access</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-3">Select a template to quickly assign multiple subjects:</p>
+          
+          <div class="list-group mb-3">
+            <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" onclick="bulkImport('allMath')">
+              <div>
+                <strong>All Math Classes</strong>
+                <small class="d-block text-muted">Adds Math for all available classes</small>
+              </div>
+              <span class="badge bg-primary rounded-pill">Quick Add</span>
+            </button>
+            <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" onclick="bulkImport('allScience')">
+              <div>
+                <strong>All Science Classes</strong>
+                <small class="d-block text-muted">Adds Science for all available classes</small>
+              </div>
+              <span class="badge bg-primary rounded-pill">Quick Add</span>
+            </button>
+            <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" onclick="bulkImport('primaryClasses')">
+              <div>
+                <strong>All Primary Classes (1-5)</strong>
+                <small class="d-block text-muted">Adds all subjects for classes 1-5</small>
+              </div>
+              <span class="badge bg-primary rounded-pill">Quick Add</span>
+            </button>
+          </div>
+          
+          <p class="small text-muted"><i class="fas fa-info-circle me-1"></i> These will be added to existing selections</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap Bundle with Popper -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Custom Script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Toggle password visibility
+      const togglePassword = document.getElementById('togglePassword');
+      const passwordInput = document.getElementById('password');
+      
+      if (togglePassword && passwordInput) {
+        togglePassword.addEventListener('click', function() {
+          const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+          passwordInput.setAttribute('type', type);
+          
+          // Toggle icon
+          const icon = this.querySelector('i');
+          icon.classList.toggle('fa-eye');
+          icon.classList.toggle('fa-eye-slash');
+        });
+      }
+      
+      // Search functionality
+      const searchInput = document.getElementById('searchUsers');
+      if (searchInput) {
+        searchInput.addEventListener('keyup', function() {
+          const searchTerm = this.value.toLowerCase();
+          const tableRows = document.querySelectorAll('tbody tr');
+          
+          tableRows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            row.style.display = text.includes(searchTerm) ? '' : 'none';
+          });
+        });
+      }
+    });
+  // Form validation
+  document.querySelector("form").addEventListener("submit", function (e) {
+    const hiddenWrapper = document.getElementById("hiddenWrapper");
+    
+    // Check if there are any allowed subjects
+    if (!hiddenWrapper.children.length) {
+      showToast("Please add at least one allowed subject before saving.", "warning");
+      e.preventDefault(); // Stop submission
+      
+      // Highlight the subjects section
+      document.querySelector(".entry").classList.add("border-danger");
+      setTimeout(() => {
+        document.querySelector(".entry").classList.remove("border-danger");
+      }, 3000);
+      
+      return false;
+    }
+    
+    // Debug information before submit
+    console.log(`Submitting form with ${hiddenWrapper.children.length} allowed subjects`);
+    return true;
+  });
+  
+  // Password toggle functionality for all password fields
+  function togglePasswordVisibility(inputId, iconId) {
+    const input = document.getElementById(inputId);
+    const icon = document.getElementById(iconId);
+    
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.classList.replace('fa-eye', 'fa-eye-slash');
+    } else {
+      input.type = 'password';
+      icon.classList.replace('fa-eye-slash', 'fa-eye');
+    }
+  }
+  
+  // Reset password modal functions
+  function openResetModal(userId, userName) {
+    document.getElementById('resetUserId').value = userId;
+    document.getElementById('resetUserName').textContent = userName;
+    const resetModal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
+    resetModal.show();
+  }
+  
+  // Toggle reset password fields
+  function toggleResetPassword() {
+    const resetFields = document.getElementById('resetPasswordFields');
+    resetFields.style.display = document.getElementById('resetPasswordToggle').checked ? 'block' : 'none';
+  }
+  
+  // Handle bulk import of subjects
+  function bulkImport(template) {
+    // Get all available subjects and classes
+    const subjectSelect = document.getElementById('allowedSubjects');
+    const classSelector = document.getElementById('classSelector');
+    const subjects = Array.from(subjectSelect.options).map(opt => opt.value).filter(val => val);
+    const classes = {};
+    
+    Array.from(classSelector.options).forEach(opt => {
+      if (opt.value && opt.dataset.class && opt.dataset.section) {
+        if (!classes[opt.dataset.class]) {
+          classes[opt.dataset.class] = [];
+        }
+        classes[opt.dataset.class].push(opt.dataset.section);
+      }
+    });
+    
+    // Progress tracking
+    const progressBar = document.querySelector('#subjectsProgress .progress-bar');
+    const progressContainer = document.getElementById('subjectsProgress');
+    let progress = 0;
+    progressContainer.style.display = 'block';
+    
+    // Process template
+    const toAdd = [];
+    
+    switch(template) {
+      case 'allMath':
+        // Find math subject
+        const mathSubject = subjects.find(s => s.toLowerCase().includes('math') || s.toLowerCase() === 'mathematics');
+        if (mathSubject) {
+          Object.keys(classes).forEach(classNum => {
+            classes[classNum].forEach(section => {
+              toAdd.push({subject: mathSubject, class: classNum, section: section});
+            });
+          });
+        }
+        break;
+        
+      case 'allScience':
+        // Find science subject
+        const scienceSubject = subjects.find(s => s.toLowerCase().includes('science'));
+        if (scienceSubject) {
+          Object.keys(classes).forEach(classNum => {
+            classes[classNum].forEach(section => {
+              toAdd.push({subject: scienceSubject, class: classNum, section: section});
+            });
+          });
+        }
+        break;
+        
+      case 'primaryClasses':
+        // Add all subjects for classes 1-5
+        const primaryClasses = Object.keys(classes).filter(c => parseInt(c) >= 1 && parseInt(c) <= 5);
+        primaryClasses.forEach(classNum => {
+          classes[classNum].forEach(section => {
+            subjects.forEach(subject => {
+              toAdd.push({subject: subject, class: classNum, section: section});
+            });
+          });
+        });
+        break;
+    }
+    
+    // Add items with delay to show progress
+    let added = 0;
+    const total = toAdd.length;
+    
+    if (total === 0) {
+      showToast("No matching items found for the selected template", "info");
+      progressContainer.style.display = 'none';
+      return;
+    }
+    
+    const addWithDelay = (index) => {
+      if (index >= toAdd.length) {
+        // Done
+        setTimeout(() => {
+          progressContainer.style.display = 'none';
+          showToast(`Added ${added} subject permissions successfully`, "success");
+          const bulkModal = bootstrap.Modal.getInstance(document.getElementById('bulkImportModal'));
+          bulkModal.hide();
+        }, 500);
+        return;
+      }
+      
+      const item = toAdd[index];
+      const combinedValue = `${item.subject}_${item.class}_${item.section}`;
+      
+      // Skip if already exists
+      if (!document.querySelector(`[data-value="${combinedValue}"]`)) {
+        addSubjectToList(item.subject, item.class, item.section);
+        added++;
+      }
+      
+      // Update progress
+      progress = Math.round((index + 1) / total * 100);
+      progressBar.style.width = progress + '%';
+      
+      // Process next item
+      setTimeout(() => addWithDelay(index + 1), 50);
+    };
+    
+    // Start adding
+    addWithDelay(0);
+  }
+  
+  // Add subject to the list (extracted from addsubject for reuse)
+  function addSubjectToList(subject, studentClass, section) {
+    const combinedValue = `${subject}_${studentClass}_${section}`;
+    
+    // Avoid duplicates
+    if (document.querySelector(`[data-value="${combinedValue}"]`)) {
+      return false;
+    }
+    
+    const selectedSubjectsList = document.getElementById('selectedSubjectsList');
+    const hiddenWrapper = document.getElementById('hiddenWrapper');
+    const subjectCountElement = document.getElementById('subjectCount');
+    
+    // Create the visual item
+    const subjectItem = document.createElement('div');
+    subjectItem.classList.add('d-flex', 'justify-content-between', 'align-items-center', 'p-2', 'border', 'rounded', 'mb-2', 'animate__animated', 'animate__fadeIn');
+    subjectItem.dataset.value = combinedValue;
+    
+    subjectItem.innerHTML = `
+      <div>
+        <span class="badge bg-primary me-1">${subject}</span>
+        <span class="badge bg-secondary">Class ${studentClass} ${section}</span>
+      </div>
+      <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSubject('${combinedValue}')">
+        <i class="fas fa-times"></i>
+      </button>
+    `;
+    selectedSubjectsList.appendChild(subjectItem);
+    
+    // Add a hidden input to ensure it gets submitted
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.name = 'allowedSubjects[]';
+    hiddenInput.value = combinedValue;
+    hiddenInput.dataset.value = combinedValue;
+    hiddenWrapper.appendChild(hiddenInput);
+    
+    // Update subject count
+    if (subjectCountElement) {
+      subjectCountElement.textContent = hiddenWrapper.children.length;
+    }
+    
+    return true;
+  }
+  
+  // Toast notification system
+  function showToast(message, type = 'info') {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.id = 'toast-container';
+      toastContainer.className = 'position-fixed bottom-0 end-0 p-3';
+      toastContainer.style.zIndex = '5';
+      document.body.appendChild(toastContainer);
+    }
+    
+    // Create toast
+    const toastId = 'toast-' + Date.now();
+    const bgClass = type === 'success' ? 'bg-success' : 
+                   type === 'warning' ? 'bg-warning text-dark' : 
+                   type === 'danger' ? 'bg-danger' : 'bg-primary';
+    
+    const toast = document.createElement('div');
+    toast.className = `toast ${bgClass} text-white`;
+    toast.id = toastId;
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    toast.setAttribute('aria-atomic', 'true');
+    
+    toast.innerHTML = `
+      <div class="toast-header ${bgClass} text-white">
+        <strong class="me-auto">User Management</strong>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+      <div class="toast-body">
+        ${message}
+      </div>
+    `;
+    
+    toastContainer.appendChild(toast);
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+    
+    // Remove after shown
+    toast.addEventListener('hidden.bs.toast', function() {
+      toast.remove();
+    });
+  }
+</script>
+
+<!-- Update the original addsubject function -->
+<script>
+function addsubject() {
+  const subjectSelect = document.getElementById('allowedSubjects');
+  const classSelector = document.getElementById('classSelector');
+
+  const subject = subjectSelect.value;
+  const classValue = classSelector.value;
+
+  if (!subject || !classValue) {
+    showToast('Please select both a subject and a class/section.', 'warning');
+    return;
+  }
+
+  const [studentClass, section] = classValue.split('_');
+  
+  // Use the common function to add the subject
+  if (addSubjectToList(subject, studentClass, section)) {
+    // Reset dropdowns
+    subjectSelect.selectedIndex = 0;
+    classSelector.selectedIndex = 0;
+  } else {
+    showToast("This subject/class combination is already added!", "info");
+  }
+}
+
+function removeSubject(value) {
+  const item = document.querySelector(`[data-value="${value}"]`);
+  if (item) {
+    // Add fade out animation
+    item.classList.add('animate__fadeOut');
+    
+    // Also remove any hidden inputs with the same value in the hiddenWrapper
+    const hiddenInputs = document.querySelectorAll(`input[name="allowedSubjects[]"][value="${value}"]`);
+    hiddenInputs.forEach(input => {
+      if (input.parentElement !== item) {
+        input.remove();
+      }
+    });
+    
+    // Show feedback
+    showToast(`Removed subject access: ${value.replace(/_/g, ' / ')}`, "info");
+    
+    // Remove the element after animation completes
+    setTimeout(() => item.remove(), 300);
+  }
+}
+
+// Preload existing subjects when editing
+function preloadSubjects() {
+  // Clear existing items first
+  const selectedSubjectsList = document.getElementById('selectedSubjectsList');
+  const hiddenWrapper = document.getElementById('hiddenWrapper');
+  
+  if (selectedSubjectsList) {
+    selectedSubjectsList.innerHTML = '';
+  }
+  
+  if (hiddenWrapper) {
+    hiddenWrapper.innerHTML = '';
+  }
+  
+  // For editing mode, we'll populate from the data attributes we've defined in the page
+  if (document.getElementById('isEditingMode')) {
+    // Get all preloaded subject data from the page
+    const subjectDataElements = document.querySelectorAll('.preloaded-subject-data');
+    
+    if (subjectDataElements && subjectDataElements.length) {
+      subjectDataElements.forEach(element => {
+        const subject = element.getAttribute('data-subject');
+        const studentClass = element.getAttribute('data-class');
+        const section = element.getAttribute('data-section');
+        
+        if (subject && studentClass && section) {
+          addSubjectToList(subject, studentClass, section);
+        }
+      });
+      console.log(`Preloaded ${subjectDataElements.length} subjects from data attributes`);
+    }
+  }
+}
+
+// Wait for DOM then preload
+document.addEventListener("DOMContentLoaded", function() {
+  preloadSubjects();
+  
+  // Also set up toggles for password fields
+  const toggleNewPassword = document.getElementById('toggleNewPassword');
+  if (toggleNewPassword) {
+    toggleNewPassword.addEventListener('click', function() {
+      togglePasswordVisibility('newPassword', 'toggleNewPassword');
+    });
+  }
+});
+</script>
+</body>
+</html>

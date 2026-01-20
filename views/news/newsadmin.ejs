@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>News Admin Dashboard</title>
+
+  <!-- Open Graph / Facebook Meta Tags -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="News Admin Dashboard - UEBS">
+  <meta property="og:description" content="Professional news management system for creating and sharing articles">
+  <meta property="og:site_name" content="UEBS News Portal">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:url" content="https://uebschool.edu.np/newsadmin">
+
+  <!-- Facebook App ID - Remove or replace with actual app ID when available -->
+  <!-- <meta property="fb:app_id" content="your_facebook_app_id"> -->
+
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #e6f3ff 0%, #b3d9ff 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 25px;
+      margin-bottom: 30px;
+      box-shadow: 0 8px 32px rgba(0, 123, 255, 0.1);
+      border: 1px solid rgba(135, 206, 250, 0.2);
+    }
+
+    .header h1 {
+      color: #2c5aa0;
+      font-size: 2.2rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .header h1 i {
+      color: #87ceeb;
+    }
+
+    .header p {
+      color: #5a7ba7;
+      margin-top: 8px;
+      font-size: 1.1rem;
+    }
+
+    .form-container {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 12px 40px rgba(0, 123, 255, 0.15);
+      border: 1px solid rgba(135, 206, 250, 0.3);
+    }
+
+    .form-group {
+      margin-bottom: 30px;
+    }
+
+    .form-group label {
+      display: block;
+      color: #2c5aa0;
+      font-weight: 600;
+      margin-bottom: 10px;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-group label i {
+      color: #87ceeb;
+      width: 20px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 15px 20px;
+      border: 2px solid #e1f0ff;
+      border-radius: 12px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      background: rgba(255, 255, 255, 0.8);
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #87ceeb;
+      box-shadow: 0 0 20px rgba(135, 206, 250, 0.3);
+      background: #fff;
+    }
+
+    .form-textarea {
+      min-height: 120px;
+      resize: vertical;
+      font-family: inherit;
+    }
+
+    .editor-container {
+      border: 2px solid #e1f0ff;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.8);
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .editor-container:focus-within {
+      border-color: #87ceeb;
+      box-shadow: 0 0 20px rgba(135, 206, 250, 0.3);
+      background: #fff;
+    }
+
+    .editor-toolbar {
+      background: linear-gradient(135deg, #f8fbff 0%, #e6f3ff 100%);
+      padding: 12px 15px;
+      border-bottom: 1px solid #e1f0ff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar-btn {
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid #d1e9ff;
+      border-radius: 6px;
+      padding: 8px 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      color: #2c5aa0;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 32px;
+      height: 32px;
+    }
+
+    .toolbar-btn:hover {
+      background: rgba(135, 206, 250, 0.2);
+      border-color: #87ceeb;
+      transform: translateY(-1px);
+    }
+
+    .toolbar-btn:active,
+    .toolbar-btn.active {
+      background: rgba(135, 206, 250, 0.4);
+      border-color: #5a9fd4;
+      transform: translateY(0);
+    }
+
+    .toolbar-separator {
+      width: 1px;
+      height: 24px;
+      background: #d1e9ff;
+      margin: 0 4px;
+    }
+
+    .color-picker {
+      width: 32px;
+      height: 32px;
+      border: 1px solid #d1e9ff;
+      border-radius: 6px;
+      cursor: pointer;
+      background: none;
+      padding: 0;
+    }
+
+    .color-picker::-webkit-color-swatch-wrapper {
+      padding: 0;
+      border-radius: 6px;
+    }
+
+    .color-picker::-webkit-color-swatch {
+      border: none;
+      border-radius: 4px;
+    }
+
+    .rich-editor {
+      min-height: 200px;
+      padding: 20px;
+      outline: none;
+      font-family: inherit;
+      font-size: 1rem;
+      line-height: 1.6;
+      color: #2c5aa0;
+    }
+
+    .rich-editor:empty:before {
+      content: attr(placeholder);
+      color: #9bb5d6;
+      pointer-events: none;
+    }
+
+    .rich-editor h1,
+    .rich-editor h2,
+    .rich-editor h3 {
+      margin: 15px 0 10px 0;
+      color: #2c5aa0;
+    }
+
+    .rich-editor p {
+      margin: 10px 0;
+    }
+
+    .rich-editor ul,
+    .rich-editor ol {
+      margin: 10px 0;
+      padding-left: 30px;
+    }
+
+    .rich-editor li {
+      margin: 5px 0;
+    }
+
+    .rich-editor strong {
+      font-weight: bold;
+    }
+
+    .rich-editor em {
+      font-style: italic;
+    }
+
+    .rich-editor u {
+      text-decoration: underline;
+    }
+
+    .file-input-wrapper {
+      position: relative;
+      overflow: hidden;
+      display: inline-block;
+      width: 100%;
+    }
+
+    .file-input {
+      position: absolute;
+      left: -9999px;
+    }
+
+    .file-input-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 15px 20px;
+      border: 2px dashed #87ceeb;
+      border-radius: 12px;
+      background: rgba(135, 206, 250, 0.1);
+      color: #2c5aa0;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 500;
+    }
+
+    .file-input-label:hover {
+      background: rgba(135, 206, 250, 0.2);
+      border-color: #5a9fd4;
+      transform: translateY(-2px);
+    }
+
+    .file-input-label i {
+      font-size: 1.2rem;
+    }
+
+    .submit-btn {
+      background: linear-gradient(135deg, #5a9fd4 0%, #4a8bc2 100%);
+      color: white;
+      border: none;
+      padding: 18px 40px;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 6px 20px rgba(90, 159, 212, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin: 30px auto 0;
+      min-width: 200px;
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(90, 159, 212, 0.4);
+      background: linear-gradient(135deg, #4a8bc2 0%, #3a7ba2 100%);
+    }
+
+    .submit-btn:active {
+      transform: translateY(-1px);
+    }
+
+    .file-preview {
+      margin-top: 10px;
+      padding: 10px;
+      background: rgba(135, 206, 250, 0.1);
+      border-radius: 8px;
+      color: #2c5aa0;
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    .breadcrumb {
+      color: #5a7ba7;
+      margin-bottom: 20px;
+      font-size: 0.95rem;
+    }
+
+    .breadcrumb a {
+      color: #4a8bc2;
+      text-decoration: none;
+    }
+
+    .breadcrumb a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 10px;
+      }
+
+      .header,
+      .form-container {
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+
+      .header h1 {
+        font-size: 1.8rem;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+    }
+
+    /* Loading animation */
+    .loading {
+      display: none;
+    }
+
+    .loading .submit-btn {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+
+    .loading .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      border-top-color: transparent;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* News Table Styles */
+    .news-table-container {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 30px;
+      margin-top: 40px;
+      box-shadow: 0 12px 40px rgba(0, 123, 255, 0.15);
+      border: 1px solid rgba(135, 206, 250, 0.3);
+      overflow-x: auto;
+    }
+
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .table-title {
+      color: #2c5aa0;
+      font-size: 1.8rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .table-title i {
+      color: #87ceeb;
+    }
+
+    .table-stats {
+      background: linear-gradient(135deg, #e6f3ff 0%, #d1e9ff 100%);
+      padding: 8px 16px;
+      border-radius: 25px;
+      color: #2c5aa0;
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+
+    .news-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 123, 255, 0.1);
+    }
+
+    .news-table th {
+      background: linear-gradient(135deg, #5a9fd4 0%, #4a8bc2 100%);
+      color: white;
+      padding: 18px 15px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 1rem;
+      border: none;
+      position: relative;
+    }
+
+    .news-table th:first-child {
+      border-top-left-radius: 15px;
+    }
+
+    .news-table th:last-child {
+      border-top-right-radius: 15px;
+    }
+
+    .news-table td {
+      padding: 15px;
+      border-bottom: 1px solid rgba(135, 206, 250, 0.2);
+      color: #2c5aa0;
+      vertical-align: top;
+      position: relative;
+    }
+
+    .news-table tr:nth-child(even) {
+      background: rgba(135, 206, 250, 0.05);
+    }
+
+    .news-table tr:hover {
+      background: rgba(135, 206, 250, 0.15);
+      transform: translateY(-2px);
+      transition: all 0.3s ease;
+    }
+
+    .news-table tr:last-child td:first-child {
+      border-bottom-left-radius: 15px;
+    }
+
+    .news-table tr:last-child td:last-child {
+      border-bottom-right-radius: 15px;
+    }
+
+    .thumbnail-img {
+      width: 80px;
+      height: 60px;
+      object-fit: cover;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
+      transition: transform 0.3s ease;
+    }
+
+    .thumbnail-img:hover {
+      transform: scale(1.1);
+    }
+
+    .content-preview {
+      max-width: 200px;
+      line-height: 1.4;
+      font-size: 0.9rem;
+    }
+
+    .headline-cell {
+      max-width: 180px;
+      font-weight: 500;
+      line-height: 1.3;
+    }
+
+    .date-cell {
+      white-space: nowrap;
+      font-size: 0.9rem;
+      color: #5a7ba7;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      min-width: 70px;
+      justify-content: center;
+    }
+
+    .edit-btn {
+      background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+      color: white;
+    }
+
+    .edit-btn:hover {
+      background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+    }
+
+    .delete-btn {
+      background: linear-gradient(135deg, #f44336 0%, #da190b 100%);
+      color: white;
+    }
+
+    .delete-btn:hover {
+      background: linear-gradient(135deg, #da190b 0%, #c70a0a 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+    }
+
+    .share-btn {
+      background: linear-gradient(135deg, #1877f2 0%, #166fe5 100%);
+      color: white;
+    }
+
+    .share-btn:hover {
+      background: linear-gradient(135deg, #166fe5 0%, #1558c7 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(24, 119, 242, 0.3);
+    }
+
+    .no-data {
+      text-align: center;
+      padding: 40px;
+      color: #5a7ba7;
+      font-style: italic;
+    }
+
+    .no-data i {
+      font-size: 3rem;
+      color: #87ceeb;
+      margin-bottom: 15px;
+      display: block;
+    }
+
+    /* Modal Styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(44, 90, 160, 0.5);
+      backdrop-filter: blur(5px);
+    }
+
+    .modal-content {
+      background: rgba(255, 255, 255, 0.95);
+      margin: 5% auto;
+      padding: 30px;
+      border-radius: 20px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 20px 60px rgba(0, 123, 255, 0.2);
+      border: 1px solid rgba(135, 206, 250, 0.3);
+      position: relative;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .modal-title {
+      color: #2c5aa0;
+      font-size: 1.5rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .close {
+      color: #87ceeb;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: color 0.3s ease;
+    }
+
+    .close:hover {
+      color: #2c5aa0;
+    }
+
+    .confirm-text {
+      color: #5a7ba7;
+      margin-bottom: 25px;
+      line-height: 1.5;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 15px;
+      justify-content: flex-end;
+    }
+
+    .modal-btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+
+    .modal-btn-cancel {
+      background: rgba(135, 206, 250, 0.2);
+      color: #2c5aa0;
+      border: 1px solid #87ceeb;
+    }
+
+    .modal-btn-cancel:hover {
+      background: rgba(135, 206, 250, 0.3);
+    }
+
+    .modal-btn-confirm {
+      background: linear-gradient(135deg, #f44336 0%, #da190b 100%);
+      color: white;
+    }
+
+    .modal-btn-confirm:hover {
+      background: linear-gradient(135deg, #da190b 0%, #c70a0a 100%);
+      transform: translateY(-2px);
+    }
+
+    @media (max-width: 768px) {
+      .news-table-container {
+        padding: 20px;
+        margin-top: 30px;
+      }
+
+      .table-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .table-title {
+        font-size: 1.5rem;
+      }
+
+      .news-table {
+        font-size: 0.9rem;
+      }
+
+      .news-table th,
+      .news-table td {
+        padding: 12px 8px;
+      }
+
+      .thumbnail-img {
+        width: 60px;
+        height: 45px;
+      }
+
+      .content-preview,
+      .headline-cell {
+        max-width: 120px;
+      }
+
+      .action-buttons {
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .action-btn {
+        font-size: 0.8rem;
+        padding: 6px 10px;
+      }
+
+      .modal-content {
+        margin: 10% auto;
+        padding: 20px;
+        width: 95%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="breadcrumb">
+      <a href="/admin">Dashboard</a> / <span>News Management</span>
+    </div>
+
+    <div class="header">
+      <h1>
+        <i class="fas fa-<%= editing ? 'edit' : 'newspaper' %>"></i>
+        <%= editing ? 'Edit News Article' : 'News Administration' %>
+      </h1>
+      <p>
+        <%= editing ? 'Update and modify existing news article' : 'Create and manage news articles for your platform' %>
+      </p>
+      <% if (editing) { %>
+        <a href="/newsadmin"
+          style="display: inline-block; margin-top: 10px; padding: 8px 16px; background: linear-gradient(135deg, #5a9fd4 0%, #4a8bc2 100%); color: white; text-decoration: none; border-radius: 8px; font-size: 0.9rem;">
+          <i class="fas fa-arrow-left"></i> Back to News List
+        </a>
+        <% } %>
+    </div>
+
+    <div class="form-container">
+      <form action="<%= editing ? '/newsadmin/update' : '/newsadmin' %>" method="POST" enctype="multipart/form-data"
+        id="newsForm">
+        <% if (editing) { %>
+          <input type="hidden" name="newsId" value="<%= newsItem._id %>">
+          <% } %>
+
+            <div class="form-group">
+              <label for="title">
+                <i class="fas fa-heading"></i>
+                News Headline
+              </label>
+              <input type="text" id="title" name="headline" class="form-input" required
+                value="<%= editing ? newsItem.headline : '' %>"
+                placeholder="Enter an engaging headline for your news article">
+            </div>
+
+            <div class="form-group">
+              <label for="content">
+                <i class="fas fa-edit"></i>
+                Article Content
+              </label>
+              <div class="editor-container">
+                <div class="editor-toolbar">
+                  <button type="button" class="toolbar-btn" onclick="formatText('bold')" title="Bold">
+                    <i class="fas fa-bold"></i>
+                  </button>
+                  <button type="button" class="toolbar-btn" onclick="formatText('italic')" title="Italic">
+                    <i class="fas fa-italic"></i>
+                  </button>
+                  <button type="button" class="toolbar-btn" onclick="formatText('underline')" title="Underline">
+                    <i class="fas fa-underline"></i>
+                  </button>
+                  <div class="toolbar-separator"></div>
+                  <button type="button" class="toolbar-btn" onclick="formatText('justifyLeft')" title="Align Left">
+                    <i class="fas fa-align-left"></i>
+                  </button>
+                  <button type="button" class="toolbar-btn" onclick="formatText('justifyCenter')" title="Align Center">
+                    <i class="fas fa-align-center"></i>
+                  </button>
+                  <button type="button" class="toolbar-btn" onclick="formatText('justifyRight')" title="Align Right">
+                    <i class="fas fa-align-right"></i>
+                  </button>
+                  <div class="toolbar-separator"></div>
+                  <button type="button" class="toolbar-btn" onclick="formatText('insertUnorderedList')"
+                    title="Bullet List">
+                    <i class="fas fa-list-ul"></i>
+                  </button>
+                  <button type="button" class="toolbar-btn" onclick="formatText('insertOrderedList')"
+                    title="Numbered List">
+                    <i class="fas fa-list-ol"></i>
+                  </button>
+                  <div class="toolbar-separator"></div>
+                  <input type="color" id="textColor" class="color-picker" onchange="changeTextColor(this.value)"
+                    title="Text Color">
+                  <button type="button" class="toolbar-btn" onclick="formatText('removeFormat')"
+                    title="Clear Formatting">
+                    <i class="fas fa-eraser"></i>
+                  </button>
+                </div>
+                <div id="editor" class="rich-editor" contenteditable="true"
+                  placeholder="Write your news article content here...">
+                  <% if (editing) { %><%- newsItem.content %>
+                      <% } %>
+                </div>
+                <textarea id="content" name="content" style="display: none;"
+                  required><% if (editing) { %><%- newsItem.content %><% } %></textarea>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="image1">
+                <i class="fas fa-image"></i>
+                Thumbnail Image<% if (editing && newsItem.image1Url) { %> (Current: <%=
+                    newsItem.image1Url.split('/').pop() %>)<% } %>
+              </label>
+              <div class="file-input-wrapper">
+                <input type="file" id="image1" name="image1" accept="image/*" class="file-input" <%=editing ? ''
+                  : 'required' %>>
+                <label for="image1" class="file-input-label">
+                  <i class="fas fa-cloud-upload-alt"></i>
+                  <%= editing ? 'Change thumbnail image (optional)' : 'Choose thumbnail image or drag and drop' %>
+                </label>
+              </div>
+              <div class="file-preview" id="preview1"></div>
+              <% if (editing && newsItem.image1Url) { %>
+                <div style="margin-top: 10px;">
+                  <img src="<%= newsItem.image1Url %>" alt="Current thumbnail"
+                    style="max-width: 200px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                </div>
+                <% } %>
+            </div>
+
+            <div class="form-group">
+              <label for="image2">
+                <i class="fas fa-images"></i>
+                Secondary Image (Optional)<% if (editing && newsItem.image2Url) { %> (Current: <%=
+                    newsItem.image2Url.split('/').pop() %>)<% } %>
+              </label>
+              <div class="file-input-wrapper">
+                <input type="file" id="image2" name="image2" accept="image/*" class="file-input">
+                <label for="image2" class="file-input-label">
+                  <i class="fas fa-cloud-upload-alt"></i>
+                  Choose secondary image or drag and drop
+                </label>
+              </div>
+              <div class="file-preview" id="preview2"></div>
+              <% if (editing && newsItem.image2Url) { %>
+                <div style="margin-top: 10px;">
+                  <img src="<%= newsItem.image2Url %>" alt="Current secondary image"
+                    style="max-width: 200px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                </div>
+                <% } %>
+            </div>
+
+            <button type="submit" class="submit-btn" id="submitBtn">
+              <i class="fas fa-<%= editing ? 'save' : 'paper-plane' %>"></i>
+              <%= editing ? 'Update News Article' : 'Publish News Article' %>
+            </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- News Management Table -->
+  <div class="container">
+    <div class="news-table-container">
+      <div class="table-header">
+        <h2 class="table-title">
+          <i class="fas fa-list-ul"></i>
+          Published Articles
+        </h2>
+        <div class="table-stats">
+          <i class="fas fa-chart-line"></i>
+          Total: <%= news ? news.length : 0 %> articles
+        </div>
+      </div>
+
+      <% if (news && news.length> 0) { %>
+        <table class="news-table">
+          <thead>
+            <tr>
+              <th><i class="fas fa-hashtag"></i> SN</th>
+              <th><i class="fas fa-calendar"></i> Date</th>
+              <th><i class="fas fa-heading"></i> Headline</th>
+              <th><i class="fas fa-image"></i> Thumbnail</th>
+              <th><i class="fas fa-file-alt"></i> Content</th>
+              <th><i class="fas fa-cogs"></i> Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% news.forEach(function(article, index) { %>
+              <tr>
+                <td class="date-cell">
+                  <%= index + 1 %>
+                </td>
+                <td class="date-cell">
+                  <%= new Date(article.date).toLocaleDateString('en-US', { year: 'numeric' , month: 'short' ,
+                    day: 'numeric' }) %>
+                </td>
+                <td class="headline-cell">
+                  <%= article.headline %>
+                </td>
+                <td>
+                  <% if (article.image1Url) { %>
+                    <img src="<%= article.image1Url %>" alt="Thumbnail" class="thumbnail-img">
+                    <% } else { %>
+                      <span style="color: #9bb5d6; font-style: italic;">No image</span>
+                      <% } %>
+                </td>
+                <td class="content-preview">
+                  <%= article.content.replace(/<[^>]+>/g, '').substring(0, 120) %>
+                    <% if (article.content.replace(/<[^>]+>/g, '').length > 120) { %>...
+                      <% } %>
+                </td>
+                <td>
+                  <div class="action-buttons">
+                    <button class="action-btn edit-btn" onclick="editArticle('<%= article._id %>')"
+                      title="Edit Article">
+                      <i class="fas fa-edit"></i>
+                      Edit
+                    </button>
+                    <button class="action-btn delete-btn" data-article-id="<%= article._id %>"
+                      data-article-title="<%= article.headline %>"
+                      onclick="showDeleteModal(this.dataset.articleId, this.dataset.articleTitle)"
+                      title="Delete Article">
+                      <i class="fas fa-trash"></i>
+                      Delete
+                    </button>
+                    <button class="action-btn share-btn" data-article-id="<%= article._id %>"
+                      data-article-title="<%= article.headline %>"
+                      onclick="shareToFacebook(this.dataset.articleId, this.dataset.articleTitle)"
+                      title="Share to Facebook">
+                      <i class="fab fa-facebook-f"></i>
+                      Share
+                    </button>
+                    <button class="action-btn" style="background: linear-gradient(135deg, #FF6B35 0%, #FF4500 100%);"
+                      data-article-id="<%= article._id %>" onclick="debugFacebookShare(this.dataset.articleId)"
+                      title="Debug Facebook Share">
+                      <i class="fas fa-bug"></i>
+                      Debug
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <% }); %>
+          </tbody>
+        </table>
+        <% } else { %>
+          <div class="no-data">
+            <i class="fas fa-newspaper"></i>
+            <h3>No articles published yet</h3>
+            <p>Create your first news article using the form above.</p>
+          </div>
+          <% } %>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div id="deleteModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fas fa-exclamation-triangle" style="color: #f44336;"></i>
+          Confirm Deletion
+        </h3>
+        <span class="close" onclick="closeDeleteModal()">&times;</span>
+      </div>
+      <div class="confirm-text">
+        Are you sure you want to delete the article "<strong id="articleTitle"></strong>"?
+        <br><br>
+        <span style="color: #f44336; font-weight: 500;">This action cannot be undone.</span>
+      </div>
+      <div class="modal-buttons">
+        <button class="modal-btn modal-btn-cancel" onclick="closeDeleteModal()">
+          <i class="fas fa-times"></i> Cancel
+        </button>
+        <button class="modal-btn modal-btn-confirm" onclick="confirmDelete()" id="confirmDeleteBtn">
+          <i class="fas fa-trash"></i> Delete Article
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // File input handling
+    function handleFileInput(inputId, previewId) {
+      const input = document.getElementById(inputId);
+      const preview = document.getElementById(previewId);
+      
+      input.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          preview.style.display = 'block';
+          preview.innerHTML = '<i class="fas fa-check-circle"></i> Selected: ' + file.name + ' (' + (file.size / 1024 / 1024).toFixed(2) + ' MB)';
+        } else {
+          preview.style.display = 'none';
+        }
+      });
+    }
+
+    // Initialize file inputs
+    handleFileInput('image1', 'preview1');
+    handleFileInput('image2', 'preview2');
+
+    // Drag and drop functionality
+    function setupDragDrop(labelSelector, inputSelector) {
+      const label = document.querySelector(labelSelector);
+      const input = document.querySelector(inputSelector);
+
+      if (!label || !input) return;
+
+      label.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        label.style.background = 'rgba(135, 206, 250, 0.3)';
+        label.style.borderColor = '#5a9fd4';
+      });
+
+      label.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        label.style.background = 'rgba(135, 206, 250, 0.1)';
+        label.style.borderColor = '#87ceeb';
+      });
+
+      label.addEventListener('drop', function(e) {
+        e.preventDefault();
+        label.style.background = 'rgba(135, 206, 250, 0.1)';
+        label.style.borderColor = '#87ceeb';
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0 && files[0].type.startsWith('image/')) {
+          input.files = files;
+          const event = new Event('change', { bubbles: true });
+          input.dispatchEvent(event);
+        }
+      });
+    }
+
+    setupDragDrop('label[for="image1"]', '#image1');
+    setupDragDrop('label[for="image2"]', '#image2');
+
+    // Rich text editor functionality
+    const textarea = document.getElementById('content');
+    const editor = document.getElementById('editor');
+    
+    if (editor && textarea) {
+      function formatText(command, value) {
+        if (value === undefined) value = null;
+        document.execCommand(command, false, value);
+        editor.focus();
+        updateHiddenTextarea();
+        updateToolbarState();
+      }
+
+      function changeTextColor(color) {
+        formatText('foreColor', color);
+      }
+
+      function updateHiddenTextarea() {
+        textarea.value = editor.innerHTML;
+      }
+
+      function updateToolbarState() {
+        const commands = ['bold', 'italic', 'underline'];
+        commands.forEach(function(command) {
+          const button = document.querySelector('[onclick="formatText(\'' + command + '\')"]');
+          if (button) {
+            if (document.queryCommandState(command)) {
+              button.classList.add('active');
+            } else {
+              button.classList.remove('active');
+            }
+          }
+        });
+      }
+
+      // Initialize editor
+      editor.addEventListener('input', function() {
+        updateHiddenTextarea();
+      });
+
+      editor.addEventListener('keyup', function() {
+        updateToolbarState();
+      });
+
+      editor.addEventListener('mouseup', function() {
+        updateToolbarState();
+      });
+
+      // Handle paste events to clean up formatting
+      editor.addEventListener('paste', function(e) {
+        e.preventDefault();
+        const text = e.clipboardData.getData('text/plain');
+        document.execCommand('insertText', false, text);
+        updateHiddenTextarea();
+      });
+
+      // Keyboard shortcuts
+      editor.addEventListener('keydown', function(e) {
+        if (e.ctrlKey || e.metaKey) {
+          switch(e.key) {
+            case 'b':
+              e.preventDefault();
+              formatText('bold');
+              break;
+            case 'i':
+              e.preventDefault();
+              formatText('italic');
+              break;
+            case 'u':
+              e.preventDefault();
+              formatText('underline');
+              break;
+          }
+        }
+      });
+
+      // Make functions globally available
+      window.formatText = formatText;
+      window.changeTextColor = changeTextColor;
+    }
+
+    // Form submission handling
+    const newsForm = document.getElementById('newsForm');
+    if (newsForm) {
+      newsForm.addEventListener('submit', function(e) {
+        if (editor && textarea) {
+          updateHiddenTextarea();
+        }
+        
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) {
+          submitBtn.innerHTML = '<div class="spinner"></div> Publishing...';
+          submitBtn.disabled = true;
+          document.body.classList.add('loading');
+        }
+      });
+    }
+
+    // Article Management Functions
+    let currentDeleteId = null;
+
+    function editArticle(articleId) {
+      if (!articleId) {
+        console.error('No article ID provided for editing');
+        return;
+      }
+      // Redirect to edit page
+      window.location.href = '/newsadmin/edit?newsId=' + articleId;
+    }
+
+    function showDeleteModal(articleId, articleTitle) {
+      if (!articleId) {
+        console.error('No article ID provided for deletion');
+        return;
+      }
+      
+      currentDeleteId = articleId;
+      const titleElement = document.getElementById('articleTitle');
+      const modal = document.getElementById('deleteModal');
+      
+      if (titleElement) {
+        titleElement.textContent = articleTitle || 'this article';
+      }
+      if (modal) {
+        modal.style.display = 'block';
+      }
+    }
+
+    function closeDeleteModal() {
+      const modal = document.getElementById('deleteModal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+      currentDeleteId = null;
+    }
+
+    function confirmDelete() {
+      if (!currentDeleteId) {
+        console.error('No article selected for deletion');
+        return;
+      }
+
+      const confirmBtn = document.getElementById('confirmDeleteBtn');
+      if (confirmBtn) {
+        confirmBtn.innerHTML = '<div class="spinner"></div> Deleting...';
+        confirmBtn.disabled = true;
+      }
+      
+      // Send delete request
+      fetch('/newsadmin/delete/' + currentDeleteId, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+      .then(response => {
+        if (response.ok) {
+          // Success - reload page to show updated list
+          window.location.reload();
+        } else {
+          return response.json().then(err => {
+            throw new Error(err.message || 'Failed to delete article');
+          });
+        }
+      })
+      .catch(error => {
+        console.error('Delete error:', error);
+        alert('Failed to delete article: ' + error.message);
+        
+        if (confirmBtn) {
+          confirmBtn.innerHTML = '<i class="fas fa-trash"></i> Delete Article';
+          confirmBtn.disabled = false;
+        }
+      });
+    }
+
+    function debugFacebookShare(articleId) {
+      if (!articleId) {
+        console.error('No article ID provided for debugging');
+        return;
+      }
+
+      // Create the news URL to debug
+      const newsUrl = `${window.location.protocol}//${window.location.host}/newsdescription?newsId=${articleId}`;
+      
+      // Facebook's Sharing Debugger URL
+      const debugUrl = `https://developers.facebook.com/tools/debug/?q=${encodeURIComponent(newsUrl)}`;
+      
+      // Show debug info in console
+      console.log('=== Facebook Share Debug Info ===');
+      console.log('Article ID:', articleId);
+      console.log('News URL:', newsUrl);
+      console.log('Debug URL:', debugUrl);
+      console.log('================================');
+      
+      // Show alert with the URL being shared
+      const confirmDebug = confirm(`Debug Facebook sharing for this article?\n\nURL to be shared: ${newsUrl}\n\nThis will open Facebook's Sharing Debugger where you can:\n1. See how Facebook reads your page\n2. Refresh Facebook's cache\n3. View Open Graph tags\n\nClick OK to open the debugger.`);
+      
+      if (confirmDebug) {
+        // Open Facebook's Sharing Debugger
+        window.open(debugUrl, '_blank');
+      }
+    }
+
+    function shareToFacebook(articleId, articleTitle) {
+      if (!articleId) {
+        console.error('No article ID provided for sharing');
+        return;
+      }
+
+      // Create the proper news description URL
+      const newsUrl = `${window.location.protocol}//${window.location.host}/newsdescription?newsId=${articleId}`;
+      
+      // Facebook share URL with additional parameters
+      const facebookShareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(newsUrl)}&quote=${encodeURIComponent(articleTitle)}`;
+      
+      // Show loading state
+      const shareButtons = document.querySelectorAll('.share-btn');
+      shareButtons.forEach(btn => {
+        if (btn.dataset.articleId === articleId) {
+          const originalContent = btn.innerHTML;
+          btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sharing...';
+          btn.disabled = true;
+          
+          // Reset button after 3 seconds
+          setTimeout(() => {
+            btn.innerHTML = '<i class="fas fa-check"></i> Shared!';
+            btn.style.background = 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)';
+            btn.disabled = false;
+            
+            setTimeout(() => {
+              btn.innerHTML = originalContent;
+              btn.style.background = 'linear-gradient(135deg, #1877f2 0%, #166fe5 100%)';
+            }, 2000);
+          }, 1000);
+        }
+      });
+      
+      // Open Facebook share dialog with proper dimensions
+      try {
+        const shareWindow = window.open(
+          facebookShareUrl,
+          'facebook-share-dialog',
+          'width=626,height=436,resizable=yes,scrollbars=yes,toolbar=no,menubar=no,status=no,location=no,directories=no'
+        );
+        
+        // Check if popup was blocked
+        if (!shareWindow || shareWindow.closed || typeof shareWindow.closed == 'undefined') {
+          // Fallback: direct navigation
+          window.open(facebookShareUrl, '_blank');
+        }
+      } catch (error) {
+        console.error('Failed to open share dialog:', error);
+        // Fallback: navigate to the share URL
+        window.open(facebookShareUrl, '_blank');
+      }
+    }
+
+    // Modal event handlers
+    window.addEventListener('click', function(event) {
+      const modal = document.getElementById('deleteModal');
+      if (event.target === modal) {
+        closeDeleteModal();
+      }
+    });
+
+    // Keyboard shortcuts for modal
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape') {
+        closeDeleteModal();
+      }
+    });
+
+    // Make functions globally available
+    window.editArticle = editArticle;
+    window.showDeleteModal = showDeleteModal;
+    window.closeDeleteModal = closeDeleteModal;
+    window.confirmDelete = confirmDelete;
+    window.shareToFacebook = shareToFacebook;
+    window.debugFacebookShare = debugFacebookShare;
+
+    // Page load initialization
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('News Admin interface loaded successfully');
+      
+      // Initialize any additional features here
+      const tableContainer = document.querySelector('.news-table-container');
+      if (tableContainer) {
+        console.log('News table initialized with', document.querySelectorAll('.news-table tbody tr').length, 'articles');
+      }
+    });
+
+    // Error handling for uncaught errors
+    window.addEventListener('error', function(event) {
+      console.error('JavaScript error:', event.error);
+    });
+  </script>
+
+
+
+</body>
+
+</html>

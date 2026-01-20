@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= subjectname %> Assessment Form</title>
+    <link rel="stylesheet" href="/nav.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet">
+    <!-- Add Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom styles -->
+    <style>
+        :root {
+            --primary: #0ea5e9;  /* skyblue */
+            --primary-dark: #0284c7;  /* darker skyblue */
+            --secondary: #8b5a2b;  /* brown */
+            --secondary-dark: #6b4423;  /* darker brown */
+            --light: #f8fafc;
+            --dark: #1e293b;
+            --accent: #a16207;  /* amber brown for accent */
+            --gray: #64748b;
+            --success: #22c55e;
+            --error: #ef4444;
+            --warning: #f59e0b;
+        }
+        
+        body {
+            background-color: #f8fafc;
+            font-family: 'Lexend', sans-serif;
+            color: var(--dark);
+            padding-bottom: 2rem;
+        }
+        
+        header {
+            padding-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 80%);
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+            color: white;
+        }
+        
+        .hero-section {
+            padding: 2rem 1rem;
+            text-align: center;
+        }
+        
+        #firstheading {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-top: 0;
+            color: white;
+        }
+        
+        #firstspan {
+            color: var(--accent);
+            font-weight: 800;
+        }
+        
+        .subheading {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 1.2rem;
+            display: block;
+            margin-top: 0.5rem;
+        }
+        
+        .form-container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 2rem;
+            margin: 2rem auto;
+            max-width: 1200px;
+            box-shadow: 0 10px 15px -3px rgba(14, 165, 233, 0.1), 0 4px 6px -2px rgba(139, 90, 43, 0.05);
+            border-top: 3px solid var(--primary);
+            border-bottom: 3px solid var(--secondary);
+        }
+        
+        .section-title {
+            color: var(--dark);
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid #e2e8f0;
+            position: relative;
+        }
+        
+        .section-title::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: -2px;
+            width: 100px;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+        }
+        
+        .info-card {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .info-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            transform: rotate(45deg);
+        }
+        
+        .info-card-icon {
+            font-size: 3rem;
+            margin-right: 1rem;
+        }
+        
+        .info-card-content {
+            flex-grow: 1;
+            z-index: 1;
+        }
+        
+        .info-card-title {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .info-card-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        
+        .info-card-entries {
+            background: var(--secondary);
+            position: relative;
+        }
+        
+        .form-control:focus {
+            box-shadow: 0 0 0 0.25rem rgba(14, 165, 233, 0.25);
+            border-color: var(--primary);
+        }
+        
+        .form-label {
+            font-weight: 500;
+            color: var(--dark);
+        }
+        
+        .question-section {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: all 0.2s ease;
+        }
+        
+        .question-section:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.1);
+        }
+        
+        .question-heading {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+            color: var(--dark);
+        }
+        
+        .option-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .option-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+            background-color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+            font-weight: 500;
+            flex: 1;
+            min-width: 140px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .option-btn input[type="radio"] {
+            margin-right: 0.5rem;
+        }
+        
+        .option-btn-correct {
+            border-color: var(--success);
+            color: var(--success);
+        }
+        
+        .option-btn-correct:hover, .option-btn-correct.active {
+            background-color: var(--success);
+            color: white;
+        }
+        
+        .option-btn-incorrect {
+            border-color: var(--error);
+            color: var(--error);
+        }
+        
+        .option-btn-incorrect:hover, .option-btn-incorrect.active {
+            background-color: var(--error);
+            color: white;
+        }
+        
+        .option-btn-not-attempted {
+            border-color: var(--gray);
+            color: var(--gray);
+        }
+        
+        .option-btn-not-attempted:hover, .option-btn-not-attempted.active {
+            background-color: var(--gray);
+            color: white;
+        }
+        
+        .option-btn-cabv50 {
+            border-color: #059669;
+            color: #059669;
+        }
+        
+        .option-btn-cabv50:hover, .option-btn-cabv50.active {
+            background-color: #059669;
+            color: white;
+        }
+        
+        .option-btn-cblw50 {
+            border-color: var(--warning);
+            color: var(--warning);
+        }
+        
+        .option-btn-cblw50:hover, .option-btn-cblw50.active {
+            background-color: var(--warning);
+            color: white;
+        }
+        
+        .submit-btn {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 2rem;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        }
+        
+        @media (max-width: 768px) {
+            .form-container {
+                padding: 1rem;
+            }
+            
+            .info-card {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .info-card-icon {
+                margin-bottom: 1rem;
+                margin-right: 0;
+            }
+            
+            .option-container {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <%- include('./partials/nav',{currentPage:'home'}) %>
+        <div class="hero-section">
+            <h1 id="firstheading">Answer Evaluation <span id="firstspan">System</span></h1>
+            <span class="subheading">A professional system designed to analyze and evaluate student performance</span>
+        </div>
+    </header>
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="info-card">
+                    <div class="info-card-icon">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <div class="info-card-content">
+                        <h3 class="info-card-title">Subject</h3>
+                        <div class="info-card-value"><%= subjectname %></div>
+                        <div class="mt-2">Class <%= studentClass %> (<%= section %>)</div>
+                        <div class="mt-1"><%= terminal %> Term</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="info-card info-card-entries">
+                    <div class="info-card-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="info-card-content">
+                        <h3 class="info-card-title">Total Student Entries</h3>
+                        <div class="info-card-value"><%= totalEntries %></div>
+                        <div class="mt-2">Class <%= studentClass %> (<%= section %>)</div>
+                        <div class="mt-1"><%= terminal %> Term</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-container mt-4">    <form action="/forms/<%=subjectname%>/<%=studentClass%>/<%=section%>/<%=terminal%>" method="POST">
+        
+        <section class="mb-5">
+            <h2 class="section-title">Student Information</h2>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="name" class="form-label">Student Name</label>
+                    <input type="text" name="name" id="name" placeholder="Enter student name" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="roll" class="form-label">Roll Number</label>
+                    <input type="number" name="roll" id="roll" placeholder="Enter roll number" class="form-control" required>
+                </div>
+                <div class="col-md-3">
+                    <label for="studentClass" class="form-label">Class</label>
+                    <input type="text" name="studentClass" id="studentClass" value="<%=studentClass%>" class="form-control" readonly required>
+                </div>
+                <div class="col-md-3">
+                    <label for="section" class="form-label">Section</label>
+                    <input type="text" name="section" id="section" value="<%=section%>" class="form-control" readonly>
+                </div>
+                <div class="col-md-3">
+                    <label for="subject" class="form-label">Subject</label>
+                    <input type="text" name="subject" id="subject" value="<%= subjectname %>" class="form-control" readonly required>
+                </div>
+                <div class="col-md-3">
+                    <label for="terminal" class="form-label">Term</label>
+                    <input type="text" name="terminal" id="terminal" value="<%= terminal %>" class="form-control" required placeholder="Add Terminal Name" <%= terminal ? 'readonly' : '' %>>
+                </div>
+            </div>
+        </section>    <section>
+        <h2 class="section-title">Question Assessment</h2>
+          <% 
+        // Find the specific subject from the subjects array
+        let subjectData = subjects.find(subject => subject.subject === subjectname);
+        let max = parseInt(subjectData.max); // Get the max number of questions for the selected subject
+        %>
+        
+        <div class="accordion" id="questionAccordion">
+        <% for (let i = 1; i <= max; i++) { %>
+            <% let subQuestionCount = subjectData[i] || 0; %>
+            <% 
+            // For any question with 0 sub-questions, set to 1 sub-question
+            // This ensures they all have at least one option group
+            if (subQuestionCount === 0) {
+                subQuestionCount = 1;
+            }
+            %>
+            
+            <div class="accordion-item mb-3 border">
+                <h2 class="accordion-header" id="heading<%= i %>">
+                    <button class="accordion-button <%= i !== 1 ? 'collapsed' : '' %>" type="button" data-bs-toggle="collapse" data-bs-target="#collapse<%= i %>" aria-expanded="<%= i === 1 ? 'true' : 'false' %>" aria-controls="collapse<%= i %>">
+                        Question <%= i %>
+                    </button>
+                </h2>
+                <div id="collapse<%= i %>" class="accordion-collapse collapse <%= i === 1 ? 'show' : '' %>" aria-labelledby="heading<%= i %>" data-bs-parent="#questionAccordion">
+                    <div class="accordion-body">
+                        <!-- Loop through the sub-questions -->
+                        <% for (let j = 0; j < subQuestionCount; j++) { %>
+                            <% 
+                            // For Q2 and Q3 with no sub-questions, explicitly label as "a"
+                            const hasSubLabel = (i === 2 || i === 3) && subjectData[i] === 0;
+                            %>                            <div class="question-section">
+                                <h4 class="question-heading">
+                                    <% if ((i === 2 || i === 3) && subjectData[i] === 0) { %>
+                                        Question <%= i %>a
+                                    <% } else { %>
+                                        Question <%= i %><%= String.fromCharCode(97 + j) %>
+                                    <% } %>
+                                </h4>
+                                  <div class="option-container">
+                                    <% 
+                                    // Set labels and IDs correctly for Q2 and Q3
+                                    let subLabel = String.fromCharCode(97 + j);
+                                    if ((i === 2 || i === 3) && subjectData[i] === 0) {
+                                        subLabel = 'a';
+                                    }
+                                    %>
+                                    
+                                    <label class="option-btn option-btn-correct" id="label-correct<%= i %><%= subLabel %>">
+                                        <input type="radio" id="correct<%= i %><%= subLabel %>" value="correct" name="q<%= i %><%= subLabel %>" class="form-check-input">
+                                        Correct
+                                    </label>
+                                    
+                                    <label class="option-btn option-btn-incorrect" id="label-incorrect<%= i %><%= subLabel %>">
+                                        <input type="radio" id="incorrect<%= i %><%= subLabel %>" value="incorrect" name="q<%= i %><%= subLabel %>" class="form-check-input">
+                                        Incorrect
+                                    </label>
+                                    
+                                    <label class="option-btn option-btn-not-attempted" id="label-notattempt<%= i %><%= subLabel %>">
+                                        <input type="radio" id="notattempt<%= i %><%= subLabel %>" value="notattempt" name="q<%= i %><%= subLabel %>" class="form-check-input">
+                                        Not Attempted
+                                    </label>
+                                    
+                                    <label class="option-btn option-btn-cabv50" id="label-cabv50<%= i %><%= subLabel %>">
+                                        <input type="radio" id="cabv50<%= i %><%= subLabel %>" value="correctabove50" name="q<%= i %><%= subLabel %>" class="form-check-input">
+                                        Correct above 50%
+                                    </label>
+                                    
+                                    <label class="option-btn option-btn-cblw50" id="label-cblw50<%= i %><%= subLabel %>">
+                                        <input type="radio" id="cblw50<%= i %><%= subLabel %>" value="correctbelow50" name="q<%= i %><%= subLabel %>" class="form-check-input">
+                                        Correct below 50%
+                                    </label>
+                                </div>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        <% } %>
+        </div>
+    </section>    <div class="text-center">
+        <button type="submit" id="submit" class="submit-btn">
+            <i class="fas fa-save me-2"></i> Save Assessment
+        </button>
+    </div>
+    </form>
+    
+    <div class="mt-4 text-center">
+        <a href="/forms" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i> Back to Subjects
+        </a>
+    </div>
+    
+    <script>
+    // Add active class to selected options
+    document.addEventListener('DOMContentLoaded', function() {
+        const optionBtns = document.querySelectorAll('.option-btn input');
+        optionBtns.forEach(btn => {
+            btn.addEventListener('change', function() {
+                // Remove active class from all siblings
+                const parentLabel = this.parentElement;
+                const allOptions = parentLabel.parentElement.querySelectorAll('.option-btn');
+                allOptions.forEach(opt => opt.classList.remove('active'));
+                
+                // Add active class to selected option
+                if(this.checked) {
+                    parentLabel.classList.add('active');
+                }
+            });
+        });
+        
+        // Initialize accordion functionality
+        const accordionItems = document.querySelectorAll('.accordion-item');
+        accordionItems.forEach((item, index) => {
+            const header = item.querySelector('.accordion-header');
+            const body = item.querySelector('.accordion-collapse');
+            
+            if (header && body) {
+                // Check if any radio in this section is checked
+                const anyChecked = Array.from(item.querySelectorAll('input[type="radio"]')).some(radio => radio.checked);
+                
+                // Apply visual cue for completed sections
+                if (anyChecked) {
+                    header.classList.add('bg-light');
+                    header.querySelector('.accordion-button').classList.add('text-success');
+                }
+            }
+        });
+    });
+    </script>
+
+    <script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
+</body>
+</html>

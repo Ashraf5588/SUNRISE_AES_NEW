@@ -1,0 +1,2048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#3498db">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Theme Evaluation Form</title>
+  <!-- Nepali Datepicker -->
+ <link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css"/>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    /* Student navigation bar */
+    .student-nav-bar {
+      display: flex;
+      align-items: center;
+      padding: 10px 16px;
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+      border-radius: 8px;
+      margin: 0 20px 16px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+      overflow-x: auto;
+    }
+    
+    .student-nav-title {
+      font-weight: bold;
+      margin-right: 16px;
+      white-space: nowrap;
+      color: #2c3e50;
+    }
+    
+    .student-nav-buttons {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      flex: 1;
+    }
+    
+    .student-nav-button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      background: #fff;
+      color: #2c3e50;
+      font-size: 14px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .student-nav-button:hover {
+      background: #f1f1f1;
+    }
+    
+    .student-nav-button.active {
+      background: #3498db;
+      color: white;
+      font-weight: bold;
+    }
+
+    body {
+      background: linear-gradient(135deg, #87CEEB 0%, #E0F6FF 50%, #B0E0E6 100%);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #1a1a1a;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    .nav-header {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding: 1rem 0;
+      box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .nav-header h1 {
+      text-align: center;
+      color: #2c3e50;
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    .form-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .form-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .form-header h1 {
+      color: #2c3e50;
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .form-header p {
+      color: #7f8c8d;
+      font-size: 1rem;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group {
+      position: relative;
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #34495e;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    input[type="text"], 
+    input[type="number"], 
+    input[type="date"],
+    select {
+      width: 100%;
+      padding: 0.875rem 1rem;
+      border: 2px solid #e9ecef;
+      border-radius: 12px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      background: rgba(255, 255, 255, 0.8);
+      color: #2c3e50;
+    }
+
+    input[type="text"]:focus, 
+    input[type="number"]:focus, 
+    input[type="date"]:focus,
+    select:focus {
+      outline: none;
+      border-color: #3498db;
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+      background: rgba(255, 255, 255, 1);
+    }
+
+    select {
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+      background-position: right 0.75rem center;
+      background-repeat: no-repeat;
+      background-size: 1.5em 1.5em;
+      padding-right: 2.5rem;
+    }
+
+    .learning-outcome-section {
+      margin-top: 2rem;
+      padding: 1.5rem;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .learning-outcome-section h2 {
+      color: #2c3e50;
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid #3498db;
+    }
+
+    .evaluation-table {
+      width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+      background: white;
+      margin-top: 1rem;
+    }
+
+    .evaluation-table th {
+      background: linear-gradient(135deg, #3498db, #2980b9);
+      color: white;
+      padding: 1rem 0.75rem;
+      font-weight: 600;
+      font-size: 0.875rem;
+      text-align: center;
+      border: none;
+    }
+
+    .evaluation-table td {
+      padding: 1rem 0.75rem;
+      text-align: center;
+      border: 1px solid #ecf0f1;
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .evaluation-table tr:nth-child(even) td {
+      background: rgba(52, 152, 219, 0.02);
+    }
+
+    .section-header {
+      background: linear-gradient(135deg, #e74c3c, #c0392b);
+      color: white;
+      text-align: center;
+      font-weight: 600;
+      padding: 0.75rem;
+    }
+
+    .tools-header {
+      background: linear-gradient(135deg, #f39c12, #e67e22);
+      color: white;
+      text-align: center;
+      font-weight: 600;
+      padding: 0.75rem;
+    }
+
+    .custom-checkbox {
+      position: relative;
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+    }
+
+    .custom-checkbox input[type="checkbox"] {
+      opacity: 0;
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      cursor: pointer;
+      z-index: 1;
+    }
+
+    .checkbox-custom {
+      width: 24px;
+      height: 24px;
+      border: 2px solid #bdc3c7;
+      border-radius: 6px;
+      display: inline-block;
+      position: relative;
+      transition: all 0.3s ease;
+      background: white;
+      pointer-events: none;
+    }
+
+    .custom-checkbox input[type="checkbox"]:checked + .checkbox-custom {
+      background: #3498db;
+      border-color: #3498db;
+      transform: scale(1.05);
+    }
+
+    .custom-checkbox input[type="checkbox"]:checked + .checkbox-custom::after {
+      content: '✓';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-weight: bold;
+      font-size: 14px;
+      opacity: 1;
+      animation: checkmark 0.3s ease-in-out;
+    }
+
+    @keyframes checkmark {
+      0% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.5);
+      }
+      100% {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+    }
+
+    .custom-checkbox:hover .checkbox-custom {
+      border-color: #3498db;
+      box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
+    }
+    
+    /* Marks input styling */
+    .marks-input-container {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    input.marks-input {
+      width: 40px;
+      text-align: center;
+      padding: 6px 2px;
+      border: 1px solid #bdc3c7;
+      border-radius: 6px;
+      background-color: #fff;
+      font-size: 14px;
+      transition: all 0.3s ease;
+    }
+    
+    input.marks-input:focus {
+      outline: none;
+      border-color: #3498db;
+      box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+    }
+    
+    input.marks-input:hover {
+      border-color: #3498db;
+    }
+    
+    /* Custom styling for input[type="number"] */
+    input.marks-input::-webkit-outer-spin-button,
+    input.marks-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    
+    input.marks-input[type="number"] {
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+    
+    /* Increment/Decrement buttons */
+    .btn-increment,
+    .btn-decrement {
+      width: 24px;
+      height: 24px;
+      border: 1px solid #bdc3c7;
+      background-color: #f8f9fa;
+      color: #333;
+      font-size: 16px;
+      font-weight: bold;
+      line-height: 1;
+      cursor: pointer;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 2px;
+      transition: all 0.2s ease;
+      padding: 0;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    
+    .btn-increment:hover,
+    .btn-decrement:hover {
+      background-color: #e9ecef;
+      border-color: #3498db;
+    }
+    
+    .btn-increment:active,
+    .btn-decrement:active {
+      background-color: #3498db;
+      color: white;
+    }
+    
+    /* Mobile responsive adjustments */
+    @media (max-width: 768px) {
+      /* Form structure */
+      .container {
+        padding: 10px;
+        width: 100%;
+      }
+      
+      .form-container {
+        padding: 15px;
+        margin: 0;
+      }
+      
+      .form-row {
+        flex-direction: column;
+      }
+      
+      .form-group {
+        width: 100%;
+        margin-right: 0;
+        margin-bottom: 15px;
+      }
+      
+      /* Table adjustments */
+      .evaluation-table {
+        font-size: 14px;
+      }
+      
+      .evaluation-table th {
+        padding: 8px 4px;
+        font-size: 12px;
+      }
+      
+      .evaluation-table td {
+        padding: 8px 4px;
+      }
+      
+      /* Number input adjustments */
+      .marks-input-container {
+        flex-direction: row;
+      }
+      
+      input.marks-input {
+        width: 36px;
+        padding: 8px 2px;
+        font-size: 16px; /* Larger font size for mobile */
+      }
+      
+      .btn-increment,
+      .btn-decrement {
+        width: 30px;
+        height: 30px;
+        font-size: 18px; /* Larger buttons for touch */
+      }
+      
+      /* Section headers */
+      .section-header {
+        font-size: 14px;
+        padding: 8px 4px;
+      }
+      
+      /* Tools row */
+      input[type="text"].tools-input {
+        padding: 6px 4px;
+        font-size: 14px;
+      }
+      
+      /* Learning outcome section */
+      .learning-outcome-section h2 {
+        font-size: 16px;
+        margin: 10px 0;
+      }
+    }
+
+    input[type="text"].tools-input {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .totals-section {
+      margin-top: 2rem;
+      padding: 1.5rem;
+      background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+      border-radius: 16px;
+      border: 1px solid #dee2e6;
+    }
+
+    .totals-section h3 {
+      color: #2c3e50;
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+
+    .totals-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .total-item {
+      background: white;
+      padding: 1rem;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .total-item.full-width {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-around;
+      background: rgba(52, 152, 219, 0.1);
+    }
+    
+    .outcome-totals-box {
+      margin-top: 1rem;
+      margin-bottom: 2rem;
+      padding: 0.75rem;
+      background: linear-gradient(135deg, #e8f4f8, #d1ecf1);
+      border-radius: 12px;
+      border: 1px solid #bee5eb;
+    }
+    
+    .outcome-totals-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    
+    .outcome-total-item {
+      background: white;
+      padding: 0.75rem;
+      border-radius: 10px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    
+    .outcome-total-item label {
+      display: block;
+      font-size: 0.8rem;
+      color: #5d6778;
+      margin-bottom: 0.25rem;
+    }
+    
+    .outcome-total-item .total-value {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #3498db;
+    }
+
+    .total-item label {
+      font-size: 0.875rem;
+      color: #7f8c8d;
+      margin-bottom: 0.5rem;
+    }
+
+    .total-item input {
+      font-size: 1.125rem;
+      font-weight: 600;
+      text-align: center;
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+    }
+
+    .submit-btn {
+      background: linear-gradient(135deg, #27ae60, #229954);
+      color: white;
+      padding: 1rem 2rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      width: 100%;
+      margin-top: 2rem;
+      box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+    }
+
+    .submit-btn:active {
+      transform: translateY(0);
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .container {
+        margin: 1rem auto;
+        padding: 0 0.5rem;
+      }
+
+      .form-card {
+        padding: 1.5rem;
+        border-radius: 16px;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+
+      .nav-header h1 {
+        font-size: 1.25rem;
+        padding: 0 1rem;
+      }
+
+      .form-header h1 {
+        font-size: 1.5rem;
+      }
+
+      .evaluation-table {
+        font-size: 0.875rem;
+      }
+
+      .evaluation-table th,
+      .evaluation-table td {
+        padding: 0.75rem 0.5rem;
+      }
+
+      .totals-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .learning-outcome-section {
+        padding: 1rem;
+      }
+
+      .totals-section {
+        padding: 1rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .evaluation-table {
+        font-size: 0.75rem;
+      }
+
+      .evaluation-table th,
+      .evaluation-table td {
+        padding: 0.5rem 0.25rem;
+      }
+
+      .custom-checkbox {
+        width: 20px;
+        height: 20px;
+      }
+
+      .checkbox-custom {
+        width: 20px;
+        height: 20px;
+      }
+    }
+
+    /* Loading state */
+    .loading {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    /* Hidden elements */
+    .learning-outcome-wrapper {
+      display: none;
+    }
+
+    .learning-outcome-wrapper[style*="display: block"] {
+      display: block !important;
+    }
+
+    /* Responsive adjustments for mobile devices */
+@media (max-width: 900px) {
+  .container {
+    max-width: 100%;
+    margin: 0;
+    padding: 0 4px;
+  }
+  .form-card {
+    padding: 1rem;
+    border-radius: 12px;
+  }
+  .form-header h1 {
+    font-size: 1.2rem;
+  }
+  .form-header p {
+    font-size: 0.95rem;
+  }
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .form-group {
+    margin-bottom: 0.5rem;
+  }
+  .student-nav-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    margin: 0 4px 10px;
+    padding: 8px 6px;
+  }
+  .student-nav-title {
+    margin-bottom: 6px;
+    margin-right: 0;
+    font-size: 1rem;
+  }
+  .student-nav-buttons {
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
+  }
+  .student-nav-button {
+    font-size: 13px;
+    padding: 6px 10px;
+    margin-bottom: 2px;
+  }
+  .learning-outcome-section {
+    padding: 0.75rem;
+    margin-top: 1rem;
+    border-radius: 10px;
+  }
+  .evaluation-table th,
+  .evaluation-table td {
+    padding: 0.5rem 0.25rem;
+    font-size: 0.85rem;
+  }
+  .evaluation-table {
+    font-size: 0.85rem;
+    min-width: 600px;
+  }
+  .totals-section {
+    padding: 0.75rem;
+    border-radius: 10px;
+    margin-top: 1rem;
+  }
+  .totals-grid {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  .total-item {
+    padding: 0.5rem;
+    border-radius: 8px;
+    font-size: 0.95rem;
+  }
+  .outcome-totals-box {
+    margin-top: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    border-radius: 8px;
+  }
+  .outcome-totals-grid {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  .submit-btn {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    border-radius: 10px;
+    margin-top: 1rem;
+  }
+  .evaluation-table {
+    overflow-x: auto;
+    display: block;
+  }
+}
+@media (max-width: 480px) {
+  .form-header h1 {
+    font-size: 1rem;
+  }
+  .evaluation-table {
+    font-size: 0.75rem;
+    min-width: 400px;
+  }
+  .student-nav-button {
+    font-size: 12px;
+    padding: 5px 6px;
+  }
+}
+    
+    /* Responsive select and input fixes */
+@media (max-width: 900px) {
+  select {
+    width: 100%;
+    min-width: 0;
+    font-size: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    box-sizing: border-box;
+  }
+  input[type="text"],
+  input[type="number"],
+  input[type="date"] {
+    width: 100%;
+    min-width: 0;
+    font-size: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    box-sizing: border-box;
+  }
+  .evaluation-table td input[type="text"],
+  .evaluation-table td input[type="number"] {
+    width: 100%;
+    min-width: 0;
+    font-size: 1rem;
+    padding: 0.5rem 0.5rem;
+    border-radius: 8px;
+    box-sizing: border-box;
+  }
+}
+@media (max-width: 600px) {
+  select {
+    font-size: 0.95rem;
+    padding: 0.5rem 0.5rem;
+  }
+  input[type="text"],
+  input[type="number"],
+  input[type="date"] {
+    font-size: 0.95rem;
+    padding: 0.5rem 0.5rem;
+  }
+  .evaluation-table td input[type="text"],
+  .evaluation-table td input[type="number"] {
+    font-size: 0.95rem;
+    padding: 0.4rem 0.4rem;
+  }
+}
+  </style>
+  
+  <!-- Theme loader fix script -->
+  <script src="/theme-loader-fix.js"></script>
+  
+  <!-- Auto theme manager for initialization and auto-save -->
+  <script src="/auto-theme-manager.js"></script>
+  
+  <!-- URL update helper script -->
+  <script>
+    // Function to update URL with student roll for sharing purposes
+    function updateUrlWithStudentRoll(studentIndex) {
+      console.log('updateUrlWithStudentRoll called with studentIndex:', studentIndex);
+      
+      const rollElement = document.getElementById(`roll-${studentIndex}`);
+      const nameElement = document.getElementById(`name-${studentIndex}`);
+      
+      console.log('Found elements:', {
+        roll: !!rollElement,
+        name: !!nameElement,
+        rollValue: rollElement?.value,
+        nameValue: nameElement?.value
+      });
+      
+      if (rollElement) {
+        const studentroll = rollElement.value.trim();
+        console.log('Student roll:', studentroll);
+
+        if (studentroll) {
+          // Keep other queries intact
+          const params = new URLSearchParams(window.location.search);
+          params.set("roll", studentroll);
+          
+          // Also add name if available
+          if (nameElement && nameElement.value.trim()) {
+            params.set("name", nameElement.value.trim());
+            console.log('Added name to URL:', nameElement.value.trim());
+          }
+
+          const newUrl = window.location.pathname + "?" + params.toString();
+          console.log('Updating URL to:', newUrl);
+          window.history.replaceState({}, "", newUrl);
+        }
+      } else {
+        console.log('Roll element not found for studentIndex:', studentIndex);
+      }
+    }
+    
+    // Add event listeners to update URL when roll/name fields change
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('DOM loaded, setting up URL update listeners');
+      
+      // Monitor all roll and name inputs for changes
+      const rollInputs = document.querySelectorAll('[id^="roll-"]');
+      const nameInputs = document.querySelectorAll('[id^="name-"]');
+      
+      console.log('Found inputs:', {
+        rollInputs: rollInputs.length,
+        nameInputs: nameInputs.length
+      });
+      
+      // Also look for inputs without the dash format (fallback)
+      const rollInputsAlt = document.querySelectorAll('input[name="roll"]');
+      const nameInputsAlt = document.querySelectorAll('input[name="name"]');
+      
+      console.log('Found alternative inputs:', {
+        rollInputsAlt: rollInputsAlt.length,
+        nameInputsAlt: nameInputsAlt.length
+      });
+      
+      // Add listeners to student navigation buttons
+      const studentNavButtons = document.querySelectorAll('.student-nav-button');
+      console.log('Found student nav buttons:', studentNavButtons.length);
+      
+      studentNavButtons.forEach((button, index) => {
+        button.addEventListener('click', function() {
+          console.log('Student nav button clicked, index:', index);
+          // Small delay to allow form switch to complete
+          setTimeout(() => {
+            updateUrlWithStudentRoll(index.toString());
+          }, 100);
+        });
+      });
+      
+      rollInputs.forEach((input, index) => {
+        console.log('Adding listener to roll input:', input.id);
+        input.addEventListener('blur', function() {
+          console.log('Roll input blur event fired for:', this.id);
+          const studentIndex = this.id.split('-')[1];
+          if (studentIndex !== undefined) {
+            updateUrlWithStudentRoll(studentIndex);
+          }
+        });
+        
+        // Also add input event for real-time updates
+        input.addEventListener('input', function() {
+          const studentIndex = this.id.split('-')[1];
+          if (studentIndex !== undefined && this.value.trim()) {
+            setTimeout(() => updateUrlWithStudentRoll(studentIndex), 500);
+          }
+        });
+      });
+      
+      nameInputs.forEach((input, index) => {
+        console.log('Adding listener to name input:', input.id);
+        input.addEventListener('blur', function() {
+          console.log('Name input blur event fired for:', this.id);
+          const studentIndex = this.id.split('-')[1];
+          if (studentIndex !== undefined) {
+            updateUrlWithStudentRoll(studentIndex);
+          }
+        });
+        
+        // Also add input event for real-time updates
+        input.addEventListener('input', function() {
+          const studentIndex = this.id.split('-')[1];
+          if (studentIndex !== undefined && this.value.trim()) {
+            setTimeout(() => updateUrlWithStudentRoll(studentIndex), 500);
+          }
+        });
+      });
+      
+      // Fallback for inputs without dash format
+      rollInputsAlt.forEach((input, index) => {
+        console.log('Adding fallback listener to roll input:', input.id || input.name);
+        input.addEventListener('blur', function() {
+          updateUrlWithStudentRoll(0); // Default to index 0
+        });
+      });
+      
+      nameInputsAlt.forEach((input, index) => {
+        console.log('Adding fallback listener to name input:', input.id || input.name);
+        input.addEventListener('blur', function() {
+          updateUrlWithStudentRoll(0); // Default to index 0
+        });
+      });
+    });
+    
+    // Also provide a global function that can be called manually for testing
+    window.testUrlUpdate = function(studentIndex = 0) {
+      console.log('Manual test of URL update');
+      updateUrlWithStudentRoll(studentIndex);
+    };
+  </script>
+</head>
+<body>
+<nav class="nav-header">
+  <h1>Class <%= studentClass %>-<%=section%> | <%= subject %> Theme Evaluation</h1>
+</nav>
+
+<div class="container">
+  <div class="form-card">
+
+    
+    <div class="form-header">
+      <h1>Theme Evaluation Form</h1>
+      <p>Complete the evaluation for your selected theme</p>
+     
+    </div>
+    
+    <!-- Student Navigation Bar -->
+    <div class="student-nav-bar">
+      <div class="student-nav-title">Students:</div>
+      <div class="student-nav-buttons">
+        <% studentData.forEach((student, idx) => { %>
+          <button type="button" class="student-nav-button " onclick="autofill('<%= student.roll %>', '<%= student.name %>')">
+            <%= student.roll %> - <%= student.name %>
+          </button>
+        <% }) %>
+      </div>
+    </div>
+    <script>
+  async function autofill(roll, name) {
+      
+      if(roll && name) {
+        //change background color of selected button
+        document.querySelectorAll('.student-nav-button').forEach(btn => btn.classList.remove('active'));
+        event.currentTarget.classList.add('active');
+        
+
+
+        document.getElementById('roll').value = roll;
+        document.getElementById('name').value = name;
+        
+        const response = await fetch(`/getThemeDataFromDB?roll=${roll}&studentClass=<%= studentClass %>&section=<%= section %>&subject=<%= subject %>`);
+        const themeDataFetched = await response.json();
+        console.log("Fetched data:", themeDataFetched);
+        
+        if(themeDataFetched) {
+          // Fill basic student info
+          if(themeDataFetched.roll)
+            document.getElementById('roll').value = themeDataFetched.roll;
+          if(themeDataFetched.name)
+            document.getElementById('name').value = themeDataFetched.name;
+          if(themeDataFetched.studentClass)
+            document.getElementById('studentClass').value = themeDataFetched.studentClass;
+          if(themeDataFetched.section)
+            document.getElementById('section').value = themeDataFetched.section;
+            
+          if(themeDataFetched.subjects && themeDataFetched.subjects.length > 0) {
+            const subject = themeDataFetched.subjects[0];
+            if(subject.name)
+              document.getElementById('subject').value = subject.name;
+              
+            // Get the currently selected theme from the form
+            const themeSelect = document.getElementById('themeName');
+            const currentlySelectedTheme = themeSelect ? themeSelect.value : '';
+            
+            if(subject.themes && subject.themes.length > 0) {
+              // Store all themes for later use when user switches themes
+              window.studentThemeData = subject.themes;
+              
+              // If a theme is currently selected, populate only that theme's data
+              if(currentlySelectedTheme) {
+                populateThemeData(currentlySelectedTheme, subject.themes);
+              }
+              // If no theme selected yet, don't auto-select any theme
+              // Let the user choose which theme they want to work with
+            }
+          }
+        } else if(themeDataFetched === null) {
+  function clearFormInputs() {
+  // Fields to keep safe
+  const excludeIds = ['roll', 'name', 'studentClass', 'section', 'subject'];
+
+  // Clear text, number, date inputs
+  document.querySelectorAll('#themeEvaluationForm input').forEach(input => {
+    if (!excludeIds.includes(input.id)) {
+      if (input.type === "number" || input.type === "text" || input.type === "date") {
+        input.value = 0;
+      }
+    }
+  });
+
+  // Reset total displays
+  document.querySelectorAll('.total-value').forEach(div => {
+    div.textContent = "0";
+  });
+
+  // Reset readonly fields, but not roll/name/class/section/subject
+  document.querySelectorAll('#themeEvaluationForm input[readonly]').forEach(input => {
+    if (!excludeIds.includes(input.id)) {
+      if (input.type === "number") {
+        input.value = 0;
+      } else {
+        input.value = "";
+      }
+    }
+  });
+
+  // Reset selects but keep subject select
+  document.querySelectorAll('#themeEvaluationForm select').forEach(select => {
+    if (!excludeIds.includes(select.id)) {
+      select.value = "";
+    }
+  });
+}
+  clearFormInputs(); // 🔹 clears only theme-related inputs
+  window.studentThemeData = null;
+        }
+      }
+    }
+    
+    // New function to populate data for a specific theme
+    function populateThemeData(themeName, allThemes) {
+      console.log("Populating data for theme:", themeName);
+      
+      // Find the specific theme data
+      const themeData = allThemes.find(theme => theme.themeName === themeName);
+      if (!themeData) {
+        console.log("No data found for theme:", themeName);
+        return;
+      }
+      
+      // Find the theme wrapper that matches this theme name
+      const themeWrapper = document.querySelector(`.learning-outcome-wrapper[data-theme="${themeName}"]`);
+      if (!themeWrapper) {
+        console.log("Theme wrapper not found for:", themeName);
+        return;
+      }
+      
+      // Get the original theme index from the wrapper
+      const originalThemeIndex = themeWrapper.dataset.themeIndex;
+      console.log("Using original theme index:", originalThemeIndex);
+      
+      // Populate learning outcomes for this specific theme
+      if(themeData.learningOutcomes && themeData.learningOutcomes.length > 0) {
+        themeData.learningOutcomes.forEach((outcome, outcomeIndex) => {
+          // Set evaluation date
+          if(outcome.evaluationDateBefore
+
+          ) {
+            const dateInput = document.getElementById(`nepali-datepicker${originalThemeIndex}${outcomeIndex}`);
+            if(dateInput) {
+              dateInput.value = outcome.evaluationDateBefore;
+            }
+          }
+          
+          // Populate indicators
+          if(outcome.indicators && outcome.indicators.length > 0) {
+            outcome.indicators.forEach((indicator, indicatorIndex) => {
+              const beforeInput = document.getElementById(`indicatorBefore_${originalThemeIndex}_${outcomeIndex}_${indicatorIndex}`);
+              const afterInput = document.getElementById(`indicatorAfter_${originalThemeIndex}_${outcomeIndex}_${indicatorIndex}`);
+              
+              if (beforeInput) {
+                beforeInput.value = indicator.marksBeforeIntervention || 0;
+                // Also update the hidden input (these will have updated names after filterLearningOutcomes)
+                const hiddenBefore = themeWrapper.querySelector(`input[name*="[marksBeforeIntervention]"][name*="[${outcomeIndex}]"][name*="[${indicatorIndex}]"]`);
+                if(hiddenBefore) hiddenBefore.value = indicator.marksBeforeIntervention || 0;
+              }
+              
+              if (afterInput) {
+                afterInput.value = indicator.marksAfterIntervention || 0;
+                // Also update the hidden input
+                const hiddenAfter = themeWrapper.querySelector(`input[name*="[marksAfterIntervention]"][name*="[${outcomeIndex}]"][name*="[${indicatorIndex}]"]`);
+                if(hiddenAfter) hiddenAfter.value = indicator.marksAfterIntervention || 0;
+              }
+              
+              // Update tools used
+              const toolInput = themeWrapper.querySelector(`input[name*="[toolsUsed]"][name*="[${outcomeIndex}]"][name*="[${indicatorIndex}]"]`);
+              if (toolInput && indicator.toolsUsed) {
+                toolInput.value = indicator.toolsUsed;
+              }
+            });
+          }
+          
+          // Set totals for this learning outcome
+          const totalBefore = document.getElementById(`totalBefore_${originalThemeIndex}_${outcomeIndex}`);
+          const totalAfter = document.getElementById(`totalAfter_${originalThemeIndex}_${outcomeIndex}`);
+          const outcomeBeforeDisplay = document.getElementById(`outcomeBeforeDisplay_${originalThemeIndex}_${outcomeIndex}`);
+          const outcomeAfterDisplay = document.getElementById(`outcomeAfterDisplay_${originalThemeIndex}_${outcomeIndex}`);
+          
+          if(totalBefore) totalBefore.value = outcome.totalMarksBeforeIntervention || 0;
+          if(totalAfter) totalAfter.value = outcome.totalMarksAfterIntervention || 0;
+          if(outcomeBeforeDisplay) outcomeBeforeDisplay.textContent = outcome.totalMarksBeforeIntervention || 0;
+          if(outcomeAfterDisplay) outcomeAfterDisplay.textContent = outcome.totalMarksAfterIntervention || 0;
+        });
+        
+        // Set overall theme totals
+        const overallTotalBefore = document.getElementById(`overallTotalBefore_${originalThemeIndex}`);
+        const overallTotalAfter = document.getElementById(`overallTotalAfter_${originalThemeIndex}`);
+        
+        if(overallTotalBefore) overallTotalBefore.value = themeData.overallTotalBefore || 0;
+        if(overallTotalAfter) overallTotalAfter.value = themeData.overallTotalAfter || 0;
+      }
+    }
+
+   </script>
+
+   <!-- Form submission handler to only submit selected theme data -->
+   <script>
+     // Debug function to log form data before submission
+     function debugFormData() {
+       const form = document.getElementById('themeEvaluationForm');
+       const formData = new FormData(form);
+       
+       console.log('=== FORM DEBUG DATA ===');
+       console.log('Selected theme:', document.getElementById('themeName').value);
+       
+       for (let [key, value] of formData.entries()) {
+         if (key.includes('themes') || key.includes('learningOutcomes')) {
+           console.log(`${key}: ${value}`);
+         }
+       }
+       console.log('=== END FORM DEBUG ===');
+     }
+     
+     document.addEventListener('DOMContentLoaded', function() {
+       const form = document.getElementById('themeEvaluationForm');
+       
+       if (form) {
+         form.addEventListener('submit', function(e) {
+           const selectedTheme = document.getElementById('themeName').value;
+           
+           if (!selectedTheme) {
+             alert('Please select a theme before submitting.');
+             e.preventDefault();
+             return;
+           }
+           
+           console.log('Form submitting with selected theme:', selectedTheme);
+           
+           // Debug: Log form data before processing
+           debugFormData();
+           
+           // Find the currently visible/selected theme wrapper
+           const selectedWrapper = document.querySelector('.learning-outcome-wrapper[style*="display: block"], .learning-outcome-wrapper[style*="display:block"]');
+           if (selectedWrapper) {
+             // Ensure the selected theme's field names are correct
+             updateFieldNamesForSelectedTheme(selectedWrapper);
+             console.log('Updated field names for selected theme');
+           }
+           
+           // Debug: Log form data after updating field names
+           console.log('Form data after field name updates:');
+           debugFormData();
+           
+           // Find all form elements that belong to non-selected themes and disable them
+           const allWrappers = document.querySelectorAll('.learning-outcome-wrapper');
+           const fieldsToDisable = [];
+           
+           allWrappers.forEach(wrapper => {
+             const isVisible = wrapper.style.display === 'block' || 
+                              (wrapper.style.display === '' && wrapper.dataset.theme === selectedTheme);
+             
+             if (!isVisible) {
+               // This wrapper is not selected, disable all its fields
+               const fields = wrapper.querySelectorAll('input, select, textarea');
+               fields.forEach(field => {
+                 if (!field.disabled) {
+                   field.disabled = true;
+                   fieldsToDisable.push(field);
+                 }
+               });
+             }
+           });
+           
+           console.log(`Disabled ${fieldsToDisable.length} fields from non-selected themes`);
+           
+           // Final debug: Log form data after disabling non-selected fields
+           console.log('Final form data to be submitted:');
+           debugFormData();
+           
+           // Re-enable disabled fields after form submission
+           setTimeout(() => {
+             fieldsToDisable.forEach(field => {
+               field.disabled = false;
+             });
+           }, 100);
+         });
+       }
+     });
+
+
+     function clearFormInputs() {
+  // Clear all text, number, and date inputs
+  document.querySelectorAll('#themeEvaluationForm input[type="text"], #themeEvaluationForm input[type="number"]').forEach(input => {
+    input.value = "";
+  });
+
+  // Reset totals and displays
+  document.querySelectorAll('.total-value').forEach(div => {
+    div.textContent = "0";
+  });
+
+  document.querySelectorAll('#themeEvaluationForm input[readonly]').forEach(input => {
+    if (input.type === "number") {
+      input.value = 0;
+    } else {
+      input.value = "";
+    }
+  });
+
+  // Reset selects
+  document.querySelectorAll('#themeEvaluationForm select').forEach(select => {
+    select.value = "";
+  });
+}
+
+   </script>
+
+
+   
+  
+    <form action="/themeform" method="POST" id="themeEvaluationForm" class="themeEvaluationForm"  >
+      <!-- Student Information Section -->
+      <div class="form-row">
+        <div class="form-group">
+          <label for="roll">Roll Number</label>
+          <input type="text" name="roll" id="roll" required placeholder="Enter roll number"  >
+        </div>
+        <div class="form-group">
+          <label for="name">Student Name</label>
+          <input type="text" name="name" id="name" required placeholder="Enter student name" >
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="studentClass">Class</label>
+          <input type="text" name="studentClass" id="studentClass" required value="<%= studentClass %>" readonly >
+        </div>
+        <div class="form-group">
+          <label for="section">Section</label>
+          <input type="text" name="section" id="section" required value="<%= section %>" readonly >
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="subject">Subject</label>
+          <input type="text" name="subjects[0][name]" id="subject" required value="<%= subject %>" readonly >
+        </div>
+        <div class="form-group">
+          <label for="themeName" >Theme Name</label>
+          <select id="themeName" name="subjects[0][themes][0][themeName]" required onchange="filterLearningOutcomes(this,0)">
+            <option value="" selected>Select a theme</option>
+            <% themeData.forEach(theme => { %>
+              <% theme.themes.forEach((themeitem,themeItemIndex) => { %>
+                <option value="<%= themeitem.themeName %>"  required><%= themeitem.themeName %></option>
+              <% }) %>
+            <% }) %>
+          </select>
+        </div>
+      </div>
+
+      <!-- Learning Outcomes Section -->
+      <% themeData.forEach((themeDoc, themeIndex) => { %>
+        <% themeDoc.themes.forEach((themeItem, themeItemIndex) => { %>
+          <div class="learning-outcome-wrapper" data-theme="<%= themeItem.themeName %>" data-theme-index="<%= themeItemIndex %>">
+          <% themeItem.learningOutcome.forEach((outcome, outcomeIndex) => { %>
+            <div class="learning-outcome-section">
+              <h2><%= outcome.learningOutcomeName %></h2>
+              <input type="hidden" class="theme-field" name="subjects[0][themes][<%= themeItemIndex %>][learningOutcomes][<%= outcomeIndex %>][name]" value="<%= outcome.learningOutcomeName %>">
+              
+              <div class="form-group">
+                <label for="evaluationDateBefore_<%= themeItemIndex %>_<%= outcomeIndex %>">Evaluation Date Before</label>
+                 <p>
+ <input type="text" 
+       id="nepali-datepickerBefore<%= themeItemIndex %><%= outcomeIndex %>" 
+       placeholder="YYYY-MM-DD" 
+       class="theme-field nepali-datepicker" 
+       name="subjects[0][themes][<%= themeItemIndex %>][learningOutcomes][<%= outcomeIndex %>][evaluationDateBefore]"  
+       />
+ </p>
+ <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
+<script type="text/javascript">
+  window.onload = function() {
+    // Get all inputs with class "nepali-datepicker"
+    var dateInputs = document.querySelectorAll('.nepali-datepicker');
+    
+    dateInputs.forEach(function(input) {
+      input.nepaliDatePicker();  // Initialize for each
+    });
+  };
+</script>
+                
+              </div>
+              
+              <table class="evaluation-table">
+                <thead>
+                  <tr>
+                    <% outcome.indicators.forEach(indicator => { %>
+                      <th><%= indicator.indicatorName %></th>
+                    <% }); %>
+                    <th>Total Marks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <% outcome.indicators.forEach((indicator, indicatorIndex) => { %>
+                      <td>
+                        <input type="hidden" class="theme-field" name="subjects[0][themes][<%= themeItemIndex %>][learningOutcomes][<%= outcomeIndex %>][indicators][<%= indicatorIndex %>][name]" value="<%= indicator.indicatorName %>">
+                        <input type="hidden" class="theme-field" name="subjects[0][themes][<%= themeItemIndex %>][learningOutcomes][<%= outcomeIndex %>][indicators][<%= indicatorIndex %>][maxMarks]" value="<%= indicator.indicatorsMarks %>">
+                        <div class="marks-input-container">
+                          <button type="button" class="btn-decrement" onclick="decrementValue(this, '<%= outcomeIndex %>', '<%= indicatorIndex %>', 'Before')" >−</button>
+                          <input type="number" 
+                                 min="0" 
+                                 id="indicatorBefore_<%= themeItemIndex %>_<%= outcomeIndex %>_<%= indicatorIndex %>"
+                                 max="<%= indicator.indicatorsMarks %>" 
+                                 step="any" 
+                                 data-max-marks="<%= indicator.indicatorsMarks %>"
+                                 onchange="updateMarks(this, '<%= outcomeIndex %>', '<%= indicatorIndex %>', 'Before')"
+                                 class="marks-input indicator-before"
+                                 value="0"
+                                >
+                          <button type="button" class="btn-increment" onclick="incrementValue(this, '<%= outcomeIndex %>', '<%= indicatorIndex %>', 'Before')">+</button>
+                        </div>
+                        <input type="hidden" 
+                               class="theme-field"
+                               name="subjects[0][themes][<%= themeItemIndex %>][learningOutcomes][<%= outcomeIndex %>][indicators][<%= indicatorIndex %>][marksBeforeIntervention]" 
+                               value="0"
+                               >
+                      </td>
+                    <% }); %>
+                    <td>
+                      
+                      <input type="number" 
+                             id="totalBefore_<%= themeItemIndex %>_<%= outcomeIndex %>" 
+                             class="theme-field"
+                             name="subjects[0][themes][<%= themeItemIndex %>][learningOutcomes][<%= outcomeIndex %>][totalMarksBeforeIntervention]" 
+                             readonly
+                            >
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="<%= outcome.indicators.length + 1 %>" class="section-header" style="color: #2980b9;">थप सहायता पछि (After Intervention)</td>
+                    
+                     
+                  </tr>
+                  <tr><td>Evaluation Date After <br><input type="text" 
+       id="nepali-datepickerAfter<%= themeItemIndex %><%= outcomeIndex %>" 
+       placeholder="YYYY-MM-DD" 
+       class="theme-field nepali-datepicker" 
+       name="subjects[0][themes][<%= themeItemIndex %>][learningOutcomes][<%= outcomeIndex %>][evaluationDateAfter]"  
+       /></tr></td>
+                  <tr>
+                    <% outcome.indicators.forEach((indicator, indicatorIndex) => { %>
+                      <td>
+                        <div class="marks-input-container">
+                          <button type="button" class="btn-decrement" onclick="decrementValue(this, '<%= outcomeIndex %>', '<%= indicatorIndex %>', 'After')">−</button>
+                          <input type="number" 
+                                 min="0" 
+                                 max="<%= indicator.indicatorsMarks %>" 
+                                 step="any" 
+                                 data-max-marks="<%= indicator.indicatorsMarks %>"
+                                 onchange="updateMarks(this, '<%= outcomeIndex %>', '<%= indicatorIndex %>', 'After')"
+                                 class="marks-input indicator-after"
+                                 value="0"
+                                 id="indicatorAfter_<%= themeItemIndex %>_<%= outcomeIndex %>_<%= indicatorIndex %>">
+                          <button type="button" class="btn-increment" onclick="incrementValue(this, '<%= outcomeIndex %>', '<%= indicatorIndex %>', 'After')">+</button>
+                         
+                        </div>
+                        <input type="hidden" 
+                               class="theme-field"
+                               name="subjects[0][themes][<%= themeItemIndex %>][learningOutcomes][<%= outcomeIndex %>][indicators][<%= indicatorIndex %>][marksAfterIntervention]" 
+                               value="0"
+                               id="indicatorAfter_<%= themeItemIndex %>_<%= outcomeIndex %>_<%= indicatorIndex %>">
+                      </td>
+                    <% }); %>
+                    <td>
+                      <input type="number" 
+                             id="totalAfter_<%= themeItemIndex %>_<%= outcomeIndex %>" 
+                             class="theme-field"
+                             name="subjects[0][themes][<%= themeItemIndex %>][learningOutcomes][<%= outcomeIndex %>][totalMarksAfterIntervention]" 
+                             readonly
+                            >
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colspan="<%= outcome.indicators.length + 1 %>" class="tools-header">प्रयोग गरिएको साधन (Tools Used)</td>
+                  </tr>
+                  <tr>
+                    <% outcome.indicators.forEach((indicator, indicatorIndex) => { %>
+                      <td>
+                        <input type="text" class="theme-field tools-input" name="subjects[0][themes][<%= themeItemIndex %>][learningOutcomes][<%= outcomeIndex %>][indicators][<%= indicatorIndex %>][toolsUsed]" placeholder="Tools used">
+                      </td>
+                    <% }); %>
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+              
+              <!-- Individual outcome totals box -->
+              <div class="outcome-totals-box">
+                <div class="outcome-totals-grid">
+                  <div class="outcome-total-item">
+                    <label for="outcomeBeforeTotal_<%= themeItemIndex %>_<%= outcomeIndex %>">Before Intervention Total</label>
+                    <div class="total-value" id="outcomeBeforeDisplay_<%= themeItemIndex %>_<%= outcomeIndex %>">0</div>
+                  </div>
+                  <div class="outcome-total-item">
+                    <label for="outcomeAfterTotal_<%= themeItemIndex %>_<%= outcomeIndex %>">After Intervention Total</label>
+                    <div class="total-value" id="outcomeAfterDisplay_<%= themeItemIndex %>_<%= outcomeIndex %>">0</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          <% }); %>
+          
+          <!-- Overall theme totals -->
+          <div class="totals-section">
+            <h3>Overall Theme Totals</h3>
+            <div class="totals-grid">
+              <div class="total-item">
+                <label for="overallTotalBefore_<%= themeItemIndex %>">Total Before Intervention</label>
+                <input type="number" id="overallTotalBefore_<%= themeItemIndex %>" class="theme-field" name="subjects[0][themes][<%= themeItemIndex %>][overallTotalBefore]" readonly>
+              </div>
+              <div class="total-item">
+                <label for="overallTotalAfter_<%= themeItemIndex %>">Total After Intervention</label>
+                <input type="number" id="overallTotalAfter_<%= themeItemIndex %>" class="theme-field" name="subjects[0][themes][<%= themeItemIndex %>][overallTotalAfter]" readonly >
+              </div>
+              <div class="total-item full-width">
+                <label>Total Learning Outcomes: <span id="totalOutcomes_<%= themeItemIndex %>">0</span></label>
+                <label>Total Max Marks: <span id="totalMaxMarks_<%= themeItemIndex %>">0</span></label>
+              </div>
+            </div>
+          </div>
+          </div>
+        <% }); %>
+      <% }); %>
+      
+      <button type="submit" class="submit-btn">
+        Save Evaluation
+      </button>
+      
+     
+    </form>
+   
+  </div>
+</div>
+<script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
+  <script>
+        
+    function filterLearningOutcomes(selectElement, themeIndex) {
+      const selectedTheme = selectElement.value;
+      const themeItemIndex = themeIndex;
+
+      console.log(`Filtering for theme: ${selectedTheme}, themeItemIndex: ${themeItemIndex}`);
+
+      // Get wrappers for this specific student only
+      const outcomeWrappers = document.querySelectorAll(`.learning-outcome-wrapper`);
+      
+      console.log('Found wrappers:', outcomeWrappers.length);
+
+      let selectedWrapper = null;
+      outcomeWrappers.forEach((wrapper, index) => {
+        const wrapperTheme = wrapper.dataset.theme;
+        const isSelected = wrapperTheme === selectedTheme;
+        
+        console.log(`Wrapper ${index}: theme="${wrapperTheme}", selected=${isSelected}`);
+        
+        wrapper.style.display = isSelected ? 'block' : 'none';
+        
+        if (isSelected) {
+          selectedWrapper = wrapper;
+        }
+        
+        // Important: Don't disable fields - instead modify form submission behavior
+        // This ensures that all theme data is preserved but only selected theme is submitted
+        
+        const themeFields = wrapper.querySelectorAll('.theme-field');
+        themeFields.forEach(field => {
+          // Add a data attribute to identify if this field belongs to the selected theme
+          field.setAttribute('data-theme-selected', isSelected ? 'true' : 'false');
+          
+          // Don't disable the fields - this was causing the issue
+          // field.disabled = !isSelected;
+        });
+        
+        // Handle mark inputs - also don't disable them
+        const markInputs = wrapper.querySelectorAll('.marks-input');
+        markInputs.forEach(input => {
+          input.setAttribute('data-theme-selected', isSelected ? 'true' : 'false');
+          // Don't disable: input.disabled = !isSelected;
+        });
+      });
+      
+      // CRITICAL FIX: Update form field names for the selected theme to use index [0]
+      // This ensures the backend receives data in the expected format
+      if (selectedWrapper && selectedTheme) {
+        updateFieldNamesForSelectedTheme(selectedWrapper);
+      }
+      
+      // If a theme is selected and we have stored theme data, populate it
+      if (selectedTheme && window.studentThemeData) {
+        console.log('Attempting to populate stored data for theme:', selectedTheme);
+        populateThemeData(selectedTheme, window.studentThemeData);
+      }
+    }
+    
+    // New function to update field names for the selected theme
+    function updateFieldNamesForSelectedTheme(selectedWrapper) {
+      console.log('Updating field names for selected theme wrapper');
+      
+      // Update all form fields within the selected wrapper to use index [0]
+      const allInputs = selectedWrapper.querySelectorAll('input, select, textarea');
+      
+      allInputs.forEach(input => {
+        if (input.name && input.name.includes('[themes][')) {
+          // Replace any [themes][X] with [themes][0] to ensure consistency
+          const originalName = input.name;
+          const updatedName = input.name.replace(/\[themes\]\[\d+\]/, '[themes][0]');
+          
+          if (originalName !== updatedName) {
+            console.log(`Updated field name: ${originalName} -> ${updatedName}`);
+            input.name = updatedName;
+          }
+        }
+      });
+      
+      // Also update the theme name field to use index [0]
+      const themeNameSelect = document.getElementById('themeName');
+      if (themeNameSelect) {
+        themeNameSelect.name = 'subjects[0][themes][0][themeName]';
+      }
+    }
+
+    
+    
+    function updateMarks(input, outcomeIndex, indicatorIndex, timing, themeIndex) {
+      // Ensure the input value is valid
+      let value = parseFloat(input.value) || 0;
+      const maxMarks = parseFloat(input.dataset.maxMarks) || 0;
+      
+      // Cap the value at the maximum marks
+      if (value > maxMarks) {
+        value = maxMarks;
+        input.value = maxMarks;
+      }
+      
+      // Ensure value is not negative
+      if (value < 0) {
+        value = 0;
+        input.value = 0;
+      }
+      
+      console.log('Input value changed:', {
+        value: value,
+        maxMarks: maxMarks,
+        timing: timing,
+        outcomeIndex: outcomeIndex,
+        indicatorIndex: indicatorIndex
+      });
+      
+      // Set the appropriate field name based on timing (Before or After intervention)
+      const fieldName = timing === 'Before' ? 
+        `subjects[0][themes][0][learningOutcomes][${outcomeIndex}][indicators][${indicatorIndex}][marksBeforeIntervention]` :
+        `subjects[0][themes][0][learningOutcomes][${outcomeIndex}][indicators][${indicatorIndex}][marksAfterIntervention]`;
+
+      // Get the hidden input field - try multiple approaches to find it
+      let inputField = null;
+      
+      // Look for hidden field with matching name pattern in the same cell
+      const cell = input.closest('td');
+      if (cell) {
+        inputField = cell.querySelector(`input[name$="[marks${timing}Intervention]"]`);
+      }
+      
+      // If not found, try to find by name in the entire active wrapper
+      if (!inputField || inputField.type !== 'hidden') {
+        // Use student-specific wrapper if provided
+        const activeWrapperSelector = studentIndex !== null 
+          ? `.learning-outcome-wrapper[data-student-index="${studentIndex}"][style*="display: block"], .learning-outcome-wrapper[data-student-index="${studentIndex}"][style*="display:block"]`
+          : '.learning-outcome-wrapper[style*="display: block"], .learning-outcome-wrapper[style*="display:block"]';
+        
+        const activeWrapper = document.querySelector(activeWrapperSelector);
+        if (activeWrapper) {
+          // Create a partial name match for the field
+          const partialName = `[${outcomeIndex}][indicators][${indicatorIndex}][marks${timing}Intervention]`;
+          inputField = activeWrapper.querySelector(`input[name*="${partialName}"]`);
+        }
+      }
+      
+      // Set the value based on input value
+      if (inputField && inputField.type === 'hidden') {
+        inputField.value = value;
+        console.log('Updated hidden field value:', inputField.value);
+      } else {
+        console.warn('Could not find hidden input field for', fieldName);
+        
+        // Create the field if it doesn't exist
+        if (cell && !inputField) {
+          inputField = document.createElement('input');
+          inputField.type = 'hidden';
+          inputField.name = fieldName;
+          inputField.value = value;
+          cell.appendChild(inputField);
+          console.log('Created missing hidden field:', fieldName);
+        }
+      }
+      
+      // Update total for this learning outcome
+      updateLearningOutcomeTotal(outcomeIndex, timing, studentIndex=null);
+      
+      // Update overall theme totals
+      calculateOverallTotals();
+      
+      // Trigger autosave immediately after marks are updated - but use a short delay to batch changes
+      if (window.markUpdateTimeout) {
+        clearTimeout(window.markUpdateTimeout);
+      }
+      
+    }
+    
+    // Increment value function for + buttons
+    function incrementValue(button, outcomeIndex, indicatorIndex, timing, studentIndex = null) {
+      // Get the input element (sibling of the button)
+      const inputElement = button.previousElementSibling;
+      if (!inputElement || !inputElement.classList.contains('marks-input')) return;
+      
+      // Get current and max values
+      let currentValue = parseFloat(inputElement.value) || 0;
+      const maxMarks = parseFloat(inputElement.dataset.maxMarks) || 0;
+      
+      // Increment by 1, but don't exceed max marks
+      if (currentValue < maxMarks) {
+        currentValue += 1;
+        inputElement.value = currentValue;
+        
+        // Update marks using the existing function
+        updateMarks(inputElement, outcomeIndex, indicatorIndex, timing, studentIndex);
+      }
+    }
+    
+    // Decrement value function for - buttons
+    function decrementValue(button, outcomeIndex, indicatorIndex, timing, studentIndex = null) {
+      // Get the input element (sibling of the button)
+      const inputElement = button.nextElementSibling;
+      if (!inputElement || !inputElement.classList.contains('marks-input')) return;
+      
+      // Get current value
+      let currentValue = parseFloat(inputElement.value) || 0;
+      
+      // Decrement by 1, but not below zero
+      if (currentValue > 0) {
+        currentValue -= 1;
+        inputElement.value = currentValue;
+        
+        // Update marks using the existing function
+        updateMarks(inputElement, outcomeIndex, indicatorIndex, timing, studentIndex);
+      }
+    }
+    
+    function updateLearningOutcomeTotal(outcomeIndex, timing, studentIndex = null) {
+      // Get the currently active wrapper for the specified student (or active wrapper if not specified)
+      const activeWrapperSelector = studentIndex !== null 
+        ? `.learning-outcome-wrapper[data-student-index="${studentIndex}"][style*="display: block"], .learning-outcome-wrapper[data-student-index="${studentIndex}"][style*="display:block"]`
+        : '.learning-outcome-wrapper[style*="display: block"], .learning-outcome-wrapper[style*="display:block"]';
+      
+      const activeWrapper = document.querySelector(activeWrapperSelector);
+      if (!activeWrapper) return;
+      
+      const themeIndex = activeWrapper.dataset.themeIndex;
+      const totalId = timing === 'Before' ? `totalBefore_${themeIndex}_${outcomeIndex}` : `totalAfter_${themeIndex}_${outcomeIndex}`;
+      const inputSelector = timing === 'Before' ? '.indicator-before' : '.indicator-after';
+      
+      // First try with student index if provided
+      let totalField = null;
+      if (studentIndex !== null) {
+        const studentSpecificId = `${totalId}-student-${studentIndex}`;
+        totalField = document.getElementById(studentSpecificId);
+      }
+      
+      // If not found with student index, try the regular ID
+      if (!totalField) {
+        totalField = document.getElementById(totalId);
+      }
+      
+      if (!totalField) {
+        console.error(`Total field not found for outcome ${outcomeIndex}, timing ${timing}, student ${studentIndex}`);
+        return;
+      }
+      
+      // Get all indicators for this learning outcome within the active wrapper
+      const outcomeSection = totalField.closest('.learning-outcome-section');
+      const inputs = outcomeSection.querySelectorAll(inputSelector);
+      
+      let total = 0;
+      inputs.forEach(input => {
+        // Add the input value to the total
+        total += parseFloat(input.value) || 0;
+      });
+      
+      // Check if the value has changed before updating
+      const previousValue = parseFloat(totalField.value) || 0;
+      let valueChanged = previousValue !== total;
+      
+      // Update the hidden field for form submission
+      if (valueChanged) {
+        totalField.value = total;
+      }
+      
+      // Update the display value in the outcome totals box
+      const displayId = studentIndex !== null ? 
+        `outcome${timing}Display_${themeIndex}_${outcomeIndex}-student-${studentIndex}` : 
+        `outcome${timing}Display_${themeIndex}_${outcomeIndex}`;
+      
+      const displayElement = document.getElementById(displayId);
+      if (displayElement) {
+        displayElement.textContent = total;
+      } else {
+        console.error(`Display element not found: ${displayId}`);
+      }
+      
+      // The updateMarks function already triggers autosave, so we don't need to trigger it here
+    }
+    
+    function calculateOverallTotals(studentIndex = null) {
+      // Only calculate for visible learning outcome wrapper (the currently selected theme)
+      const activeWrapperSelector = studentIndex !== null 
+        ? `.learning-outcome-wrapper[data-student-index="${studentIndex}"][style*="display: block"], .learning-outcome-wrapper[data-student-index="${studentIndex}"][style*="display:block"]`
+        : '.learning-outcome-wrapper[style*="display: block"], .learning-outcome-wrapper[style*="display:block"]';
+      
+      const activeWrapper = document.querySelector(activeWrapperSelector);
+      if (!activeWrapper) return;
+      
+      const themeIndex = activeWrapper.dataset.themeIndex;
+      const studentSuffix = studentIndex !== null ? `-student-${studentIndex}` : '';
+      
+      let overallBefore = 0;
+      let overallAfter = 0;
+      let totalMaxMarks = 0;
+      
+      // Sum up all learning outcome totals for the active theme
+      // Get all before and after total inputs in the active wrapper
+      const beforeTotals = activeWrapper.querySelectorAll('input[id^="totalBefore_"]');
+      const afterTotals = activeWrapper.querySelectorAll('input[id^="totalAfter_"]');
+      
+      beforeTotals.forEach(input => {
+        overallBefore += parseFloat(input.value) || 0;
+      });
+      
+      afterTotals.forEach(input => {
+        overallAfter += parseFloat(input.value) || 0;
+      });
+      
+      // Count total learning outcomes
+      const totalOutcomes = beforeTotals.length;
+      
+      // Calculate total max marks
+      const allMaxMarksInputs = activeWrapper.querySelectorAll('input[name$="[maxMarks]"]');
+      allMaxMarksInputs.forEach(input => {
+        totalMaxMarks += parseFloat(input.value) || 0;
+      });
+      
+      // Update the overall total fields
+      const overallBeforeId = `overallTotalBefore_${themeIndex}${studentSuffix}`;
+      const overallAfterId = `overallTotalAfter_${themeIndex}${studentSuffix}`;
+      const totalOutcomesId = `totalOutcomes_${themeIndex}${studentSuffix}`;
+      const totalMaxMarksId = `totalMaxMarks_${themeIndex}${studentSuffix}`;
+      
+      const overallBeforeField = document.getElementById(overallBeforeId);
+      const overallAfterField = document.getElementById(overallAfterId);
+      const totalOutcomesElement = document.getElementById(totalOutcomesId);
+      const totalMaxMarksElement = document.getElementById(totalMaxMarksId);
+      
+      // Check if values have changed before updating
+      let valuesChanged = false;
+      
+      if (overallBeforeField && parseFloat(overallBeforeField.value) !== overallBefore) {
+        overallBeforeField.value = overallBefore;
+        valuesChanged = true;
+      }
+      
+      if (overallAfterField && parseFloat(overallAfterField.value) !== overallAfter) {
+        overallAfterField.value = overallAfter;
+        valuesChanged = true;
+      }
+      
+      if (totalOutcomesElement) totalOutcomesElement.textContent = totalOutcomes;
+      if (totalMaxMarksElement) totalMaxMarksElement.textContent = totalMaxMarks;
+    }
+  </script>
+
+  <!-- autofill name  -->
+    <script>
+        // Declare global variables first
+        var isEditModeByStudent = {}; // Track edit mode state for each student
+        var currentThemeDataByStudent = {}; // Store theme data for each student
+        var currentThemeData = null; // For backward compatibility
+        var isEditMode = false; // For global compatibility
+        
+        const subject = document.getElementById('subject').value.trim();
+        const studentClass = document.getElementById('studentClass').value.trim();
+        const section = document.getElementById('section').value.trim();
+        
+
+        let debounceTimeout;
+
+       
+       
+        
+        // Show loading indicator for data operations
+        function showLoadingIndicator() {
+          let loader = document.getElementById('data-loading-indicator');
+          if (!loader) {
+            loader = document.createElement('div');
+            loader.id = 'data-loading-indicator';
+            loader.innerHTML = `
+              <div class="spinner"></div>
+              <div class="loading-text">Loading data...</div>
+            `;
+            loader.style.position = 'fixed';
+            loader.style.top = '50%';
+            loader.style.left = '50%';
+            loader.style.transform = 'translate(-50%, -50%)';
+            loader.style.background = 'rgba(255, 255, 255, 0.9)';
+            loader.style.padding = '20px 30px';
+            loader.style.borderRadius = '10px';
+            loader.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+            loader.style.zIndex = '1000';
+            loader.style.display = 'flex';
+            loader.style.flexDirection = 'column';
+            loader.style.alignItems = 'center';
+            loader.style.gap = '10px';
+            document.body.appendChild(loader);
+            
+            // Add spinner styles
+            const style = document.createElement('style');
+            style.textContent = `
+              .spinner {
+                width: 30px;
+                height: 30px;
+                border: 3px solid rgba(52, 152, 219, 0.3);
+                border-radius: 50%;
+                border-top-color: #3498db;
+                animation: spin 1s ease-in-out infinite;
+              }
+              
+              @keyframes spin {
+                to { transform: rotate(360deg); }
+              }
+              
+              .loading-text {
+                color: #2c3e50;
+                font-weight: 500;
+              }
+            `;
+            document.head.appendChild(style);
+          } else {
+            loader.style.display = 'flex';
+          }
+        }
+        
+        // Hide loading indicator
+        function hideLoadingIndicator() {
+          const loader = document.getElementById('data-loading-indicator');
+          if (loader) {
+            loader.style.display = 'none';
+          }
+        }
+        
+        // Function to populate the form with theme data
+      // Update the populateThemeData function in your script section
+function populateThemeData(themeName, allThemes) {
+  console.log("Populating data for theme:", themeName);
+  
+  // Find the specific theme data
+  const themeData = allThemes.find(theme => theme.themeName === themeName);
+  if (!themeData) {
+    console.log("No data found for theme:", themeName);
+    return;
+  }
+  
+  // Find the theme wrapper that matches this theme name
+  const themeWrapper = document.querySelector(`.learning-outcome-wrapper[data-theme="${themeName}"]`);
+  if (!themeWrapper) {
+    console.log("Theme wrapper not found for:", themeName);
+    return;
+  }
+  
+  // Get the original theme index from the wrapper
+  const originalThemeIndex = themeWrapper.dataset.themeIndex;
+  console.log("Using original theme index:", originalThemeIndex);
+  
+  // Populate learning outcomes for this specific theme
+  if(themeData.learningOutcomes && themeData.learningOutcomes.length > 0) {
+    themeData.learningOutcomes.forEach((outcome, outcomeIndex) => {
+      
+      // Set evaluation date BEFORE - Fixed to handle both date formats
+      if(outcome.evaluationDateBefore && outcome.evaluationDateBefore !== "0") {
+        const dateBeforeInput = document.getElementById(`nepali-datepickerBefore${originalThemeIndex}${outcomeIndex}`);
+        if(dateBeforeInput) {
+          dateBeforeInput.value = outcome.evaluationDateBefore;
+          console.log(`Set evaluationDateBefore for outcome ${outcomeIndex}:`, outcome.evaluationDateBefore);
+        }
+        
+        // Also try alternative selector in case the ID format is different
+        const altDateBeforeInput = themeWrapper.querySelector(`input[name*="[evaluationDateBefore]"][name*="[${outcomeIndex}]"]`);
+        if(altDateBeforeInput && !dateBeforeInput) {
+          altDateBeforeInput.value = outcome.evaluationDateBefore;
+          console.log(`Set evaluationDateBefore (alt selector) for outcome ${outcomeIndex}:`, outcome.evaluationDateBefore);
+        }
+      }
+      
+      // Set evaluation date AFTER - NEW: Handle evaluationDateAfter
+      if(outcome.evaluationDateAfter && outcome.evaluationDateAfter !== "0") {
+        // Try multiple possible selectors for the "after" date input
+        const dateAfterInput = document.getElementById(`nepali-datepickerAfter${originalThemeIndex}${outcomeIndex}`) ||
+                              themeWrapper.querySelector(`input[name*="[evaluationDateAfter]"][name*="[${outcomeIndex}]"]`);
+        
+        if(dateAfterInput) {
+          dateAfterInput.value = outcome.evaluationDateAfter;
+          console.log(`Set evaluationDateAfter for outcome ${outcomeIndex}:`, outcome.evaluationDateAfter);
+        } else {
+          console.warn(`Could not find evaluationDateAfter input for outcome ${outcomeIndex}`);
+        }
+      }
+      
+      // Populate indicators (existing code)
+      if(outcome.indicators && outcome.indicators.length > 0) {
+        outcome.indicators.forEach((indicator, indicatorIndex) => {
+          const beforeInput = document.getElementById(`indicatorBefore_${originalThemeIndex}_${outcomeIndex}_${indicatorIndex}`);
+          const afterInput = document.getElementById(`indicatorAfter_${originalThemeIndex}_${outcomeIndex}_${indicatorIndex}`);
+          
+          if (beforeInput) {
+            beforeInput.value = indicator.marksBeforeIntervention || 0;
+            // Also update the hidden input (these will have updated names after filterLearningOutcomes)
+            const hiddenBefore = themeWrapper.querySelector(`input[name*="[marksBeforeIntervention]"][name*="[${outcomeIndex}]"][name*="[${indicatorIndex}]"]`);
+            if(hiddenBefore) hiddenBefore.value = indicator.marksBeforeIntervention || 0;
+          }
+          
+          if (afterInput) {
+            afterInput.value = indicator.marksAfterIntervention || 0;
+            // Also update the hidden input
+            const hiddenAfter = themeWrapper.querySelector(`input[name*="[marksAfterIntervention]"][name*="[${outcomeIndex}]"][name*="[${indicatorIndex}]"]`);
+            if(hiddenAfter) hiddenAfter.value = indicator.marksAfterIntervention || 0;
+          }
+          
+          // Update tools used
+          const toolInput = themeWrapper.querySelector(`input[name*="[toolsUsed]"][name*="[${outcomeIndex}]"][name*="[${indicatorIndex}]"]`);
+          if (toolInput && indicator.toolsUsed) {
+            toolInput.value = indicator.toolsUsed;
+          }
+        });
+      }
+      
+      // Set totals for this learning outcome
+      const totalBefore = document.getElementById(`totalBefore_${originalThemeIndex}_${outcomeIndex}`);
+      const totalAfter = document.getElementById(`totalAfter_${originalThemeIndex}_${outcomeIndex}`);
+      const outcomeBeforeDisplay = document.getElementById(`outcomeBeforeDisplay_${originalThemeIndex}_${outcomeIndex}`);
+      const outcomeAfterDisplay = document.getElementById(`outcomeAfterDisplay_${originalThemeIndex}_${outcomeIndex}`);
+      
+      if(totalBefore) totalBefore.value = outcome.totalMarksBeforeIntervention || 0;
+      if(totalAfter) totalAfter.value = outcome.totalMarksAfterIntervention || 0;
+      if(outcomeBeforeDisplay) outcomeBeforeDisplay.textContent = outcome.totalMarksBeforeIntervention || 0;
+      if(outcomeAfterDisplay) outcomeAfterDisplay.textContent = outcome.totalMarksAfterIntervention || 0;
+    });
+    
+    // Set overall theme totals
+    const overallTotalBefore = document.getElementById(`overallTotalBefore_${originalThemeIndex}`);
+    const overallTotalAfter = document.getElementById(`overallTotalAfter_${originalThemeIndex}`);
+    
+    if(overallTotalBefore) overallTotalBefore.value = themeData.overallTotalBefore || 0;
+    if(overallTotalAfter) overallTotalAfter.value = themeData.overallTotalAfter || 0;
+  }
+}   
+    </script>
+
+   
+</body>
+</html>

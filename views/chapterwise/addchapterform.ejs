@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add Chapter Manager</title>
+  <!-- Google Fonts for modern feel -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+     /* CSS Variables for Light/Clean Theme (Like iOS) */
+     :root {
+        --primary-bg: #f5f7fa; /* Very Light Grey */
+        --card-bg: #ffffff;    /* White */
+        --accent-orange: #f97316; /* Keeping the orange accent */
+        --accent-orange-hover: #ea580c;
+        --text-primary: #1e293b; /* Dark Slate Blue */
+        --text-secondary: #64748b; /* Medium Slate Blue */
+        --border-color: #e2e8f0;   /* Light Grey Border */
+        --input-bg: #ffffff;
+        --radius: 12px;           /* Softer corners like iOS */
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+     }
+
+     * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+     }
+
+     body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; /* System Fonts */
+        background-color: var(--primary-bg);
+        color: var(--text-primary);
+        line-height: 1.6;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2rem;
+     }
+
+     /* Layout */
+     .container {
+        width: 100%;
+        max-width: 800px;
+        background-color: var(--card-bg);
+        border-radius: var(--radius);
+        padding: 2.5rem;
+        box-shadow: var(--shadow-lg);
+     }
+
+     h1, h2 {
+        color: var(--text-primary);
+        margin-bottom: 1.5rem;
+        font-weight: 700;
+        letter-spacing: -0.025em;
+     }
+
+     h2.page-title {
+        font-size: 1.8rem;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 1rem;
+        margin-bottom: 2rem;
+     }
+
+     /* Selector Panel */
+     .selector-panel {
+        width: 100%;
+        max-width: 800px;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        padding: 2rem;
+        border-radius: var(--radius);
+        margin-bottom: 2rem;
+        box-shadow: var(--shadow-md);
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+     }
+
+     .selector-title {
+        color: var(--text-primary);
+        font-weight: 700;
+        font-size: 1.25rem;
+        margin-bottom: 0.5rem;
+     }
+
+     .selector-grid {
+        display: grid;
+        gap: 1rem;
+        width: 100%;
+     }
+
+     .form-control, select {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        background-color: var(--input-bg);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        color: var(--text-primary);
+        font-size: 1rem;
+        transition: all 0.2s ease;
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 1rem;
+        -webkit-appearance: none; /* Remove default styling on Safari/Chrome */
+        appearance: none; 
+     }
+
+     .form-control:focus, select:focus {
+        outline: none;
+        border-color: var(--accent-orange);
+        box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+     }
+     
+     /* Select Dropdown Arrow */
+     select {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+        background-position: right 0.75rem center;
+        background-repeat: no-repeat;
+        background-size: 1.25rem;
+        padding-right: 2.5rem;
+     }
+
+     label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+     }
+
+     /* Button Styles */
+     .btn, button[type="submit"], .load-btn {
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        padding: 0.75rem 1.5rem;
+        background-color: var(--accent-orange);
+        color: white;
+        border: none;
+        border-radius: var(--radius);
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        width: 100%;
+        text-decoration: none;
+        box-shadow: var(--shadow-sm);
+     }
+
+     .btn:hover, button[type="submit"]:hover, .load-btn:hover {
+        background-color: var(--accent-orange-hover);
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+     }
+
+     .btn:active, button[type="submit"]:active, .load-btn:active {
+        transform: translateY(0);
+        box-shadow: var(--shadow-sm);
+     }
+     
+     .btn-outline {
+        background-color: transparent;
+        border: 1px solid var(--border-color);
+        color: var(--text-secondary);
+     }
+     
+     .btn-outline:hover {
+        background-color: #f8fafc;
+        border-color: var(--text-secondary);
+        color: var(--text-primary);
+     }
+
+     /* Checkbox Group */
+     .class-selection {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background-color: #f8fafc;
+        border-radius: var(--radius);
+        border: 1px solid var(--border-color);
+     }
+
+     .checkbox-label {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        background-color: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.2s;
+        user-select: none;
+        font-size: 0.95rem;
+        color: var(--text-primary);
+        box-shadow: var(--shadow-sm);
+     }
+
+     .checkbox-label:hover {
+        border-color: var(--accent-orange);
+        background-color: #fff7ed; /* Very light orange */
+     }
+
+     .checkbox-label input[type="checkbox"] {
+        appearance: none;
+        background-color: white;
+        margin: 0 0.5rem 0 0;
+        font: inherit;
+        color: currentColor;
+        width: 1.15em;
+        height: 1.15em;
+        border: 1.5px solid var(--border-color);
+        border-radius: 4px;
+        display: grid;
+        place-content: center;
+        transition: all 0.2s;
+     }
+
+     .checkbox-label input[type="checkbox"]::before {
+        content: "";
+        width: 0.65em;
+        height: 0.65em;
+        transform: scale(0);
+        transition: 120ms transform ease-in-out;
+        box-shadow: inset 1em 1em white;
+        background-color: white;
+        transform-origin: center;
+        clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+     }
+
+     .checkbox-label input[type="checkbox"]:checked::before {
+        transform: scale(1);
+     }
+     .checkbox-label input[type="checkbox"]:checked {
+        border-color: var(--accent-orange);
+        background-color: var(--accent-orange);
+     }
+
+     /* Dynamic Chapter Inputs */
+     #chapterinputcontainer {
+        display: grid;
+        gap: 1rem;
+        margin-top: 1.5rem;
+        margin-bottom: 2rem;
+     }
+     
+     #chapterinputcontainer input {
+        animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        border-left: 4px solid var(--accent-orange);
+        padding-left: 1rem !important; /* Override general padding */
+     }
+
+     @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+     }
+     
+     .section-header {
+        margin-top: 2rem;
+        margin-bottom: 1rem;
+        color: var(--text-primary);
+        font-size: 1.25rem;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+     }
+
+     /* Main Form Container */
+     .form-wrapper {
+         width: 100%;
+         max-width: 800px;
+         background: var(--card-bg);
+         border-radius: var(--radius);
+         padding: 2.5rem;
+         box-shadow: var(--shadow-lg);
+         animation: fadeIn 0.5s ease-out;
+     }
+
+     .info-badge {
+         display: inline-block;
+         padding: 0.35rem 0.85rem;
+         background-color: #fff7ed;
+         color: var(--accent-orange);
+         border-radius: 20px;
+         font-size: 0.875rem;
+         font-weight: 600;
+         margin-bottom: 1.5rem;
+         border: 1px solid rgba(249, 115, 22, 0.2);
+     }
+
+     /* Table & Group Styles */
+     .chapter-group {
+        width: 100%;
+        max-width: 800px;
+        background: var(--card-bg);
+        border-radius: var(--radius);
+        padding: 2rem;
+        box-shadow: var(--shadow-md);
+        margin-top: 2rem;
+        margin-bottom: 2rem;
+        border: 1px solid var(--border-color);
+        animation: fadeIn 0.6s ease-out;
+     }
+
+     .chapter-group-header {
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+     }
+
+     .styled-table {
+        width: 100%;
+        border-collapse: separate; 
+        border-spacing: 0;
+        font-size: 0.95rem;
+        border-radius: var(--radius);
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+     }
+
+     .styled-table th {
+        text-align: left;
+        padding: 1rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        border-bottom: 1px solid var(--border-color);
+        background-color: #f8fafc;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        letter-spacing: 0.05em;
+     }
+
+     .styled-table td {
+        padding: 0.85rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+        vertical-align: middle;
+        background-color: white;
+     }
+     
+     .styled-table tr:last-child td {
+        border-bottom: none;
+     }
+     
+     .styled-table tr:hover td {
+        background-color: #fcfcfc;
+     }
+
+     .action-buttons {
+         display: flex;
+         gap: 0.5rem;
+     }
+
+     .action-btn {
+        padding: 0.4rem 0.8rem;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        text-decoration: none;
+     }
+
+     .edit-btn {
+        background-color: #f0f9ff;
+        color: #0369a1;
+        border: 1px solid #bae6fd;
+     }
+     .edit-btn:hover { background-color: #e0f2fe; color: #0284c7; }
+
+     .delete-btn {
+        background-color: #fef2f2;
+        color: #b91c1c;
+        border: 1px solid #fecaca;
+     }
+     .delete-btn:hover { background-color: #fee2e2; color: #dc2626; }
+     
+     /* Modal Styles */
+     .modal-overlay {
+         position: fixed;
+         top: 0; left: 0; right: 0; bottom: 0;
+         background: rgba(0,0,0,0.5);
+         display: flex;
+         justify-content: center;
+         align-items: center;
+         opacity: 0;
+         pointer-events: none;
+         transition: opacity 0.3s;
+         z-index: 1000;
+         backdrop-filter: blur(2px);
+     }
+     .modal-overlay.active {
+         opacity: 1;
+         pointer-events: all;
+     }
+     .modal-card {
+         background: white;
+         padding: 2rem;
+         border-radius: var(--radius);
+         width: 100%;
+         max-width: 400px;
+         box-shadow: var(--shadow-lg);
+         transform: translateY(20px);
+         transition: transform 0.3s;
+     }
+     .modal-overlay.active .modal-card {
+         transform: translateY(0);
+     }
+     .modal-title {
+         font-size: 1.25rem;
+         font-weight: 600;
+         margin-bottom: 1rem;
+     }
+     .modal-actions {
+         display: flex;
+         justify-content: flex-end;
+         gap: 0.5rem;
+         margin-top: 1.5rem;
+     }
+  </style>
+</head>
+<body>
+  <div class="selector-panel">
+  <div class="selector-title">Select Subject</div>
+  <div class="selector-grid">
+     <div class="form-group">
+        <label for="subject">Subject</label>
+        <select name="subject" id="subject">
+          <option value="">Choose subject</option>
+          <% uniqueSubjects = new Set(subjects.map((subject)=>subject.subject)) %>
+          <%uniqueSubjects.forEach((subject)=>{%>
+            <option value="<%=subject%>"><%=subject%></option>
+          <%})%>
+        </select>
+      </div>
+  </div>
+  <button class="load-btn" onclick="loadform()">
+    <span>Load Form</span>
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-left: 8px;">
+      <path fill-rule="evenodd" d="M1 8a7 7 0 1 0 14 0A7 7 0 0 0 1 8zm15 0A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM4.5 7.5a.5.5 0 0 0 0 1h5.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L10.293 7.5H4.5z"/>
+    </svg>
+  </button>
+</div>
+
+
+<script>
+
+  document.getElementById('subject').value = "<%= subject %>";
+</script>
+
+  <script>
+    function loadform()
+    {
+        const selectedSubject = document.getElementById('subject').value;
+       
+       
+        
+
+        window.location.href=(`/addchapter?subject=${selectedSubject}`)
+      
+    }
+  </script>
+
+  <div class="form-wrapper">
+    <div class="info-badge">Subject: <%= subject %></div>
+    
+  <form action="/addchapter?studentClass=<%=studentClass%>&subject=<%=subject%>" method="POST">
+    <input type="hidden" name="studentClass" value="<%=studentClass%>">
+    <input type="hidden" name="subject" value="<%=subject%>">
+    
+    <div class="form-group">
+      <label>Target Classes</label>
+      <div class="class-selection">
+         <% uniqueClasses = new Set(studentClassdata.map((data)=>data.studentClass )) %>
+         <% uniqueClasses.forEach((studentClass)=>{%>
+            <label class="checkbox-label">
+                <input type="checkbox" name="forClass[]" value="<%=studentClass%>">
+                <span>Class <%=studentClass%></span>
+            </label>
+         <%})%> 
+      </div>
+    </div>
+
+    <div class="form-group">
+        <label for="totalchapter">Number of Chapters</label>
+        <input type="number" id="totalchapter" name="totalchapters" class="form-control" placeholder="Enter total number of chapters" required>
+    </div>
+     
+    <div id="chapterinputcontainer"></div>
+    
+    <div style="margin-top: 2rem;">
+      <button type="submit">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
+          <path d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H9.5a1 1 0 0 0-1 1v7.293l2.646-2.647a.5.5 0 0 1 .708.708l-3.5 3.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L7.5 9.293V2a2 2 0 0 1 2-2H14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h2.5a.5.5 0 0 1 0 1H2z"/>
+        </svg>
+        Save Chapters
+      </button>
+    </div>
+  </form>
+  </div>
+  <div class="chapternametable">
+      <% if (oldchapterData && oldchapterData.length > 0) { %>
+      <div class="section-header">Existing Chapters By Class Group</div>
+      <% oldchapterData.forEach(function(chapter, index) { %>
+        <div class="chapter-group">
+         <div class="chapter-group-header">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            <span style="flex-grow: 1;">Classes: <span id="class-display-<%= chapter._id %>"><%= chapter.forClass.join(", ") %></span></span>
+            <button class="action-btn" style="background-color: #ecfccb; color: #3f6212; border: 1px solid #d9f99d; margin-right: 0.5rem;" onclick="openAddChapterModal('<%= chapter._id %>')">
+               + Add Chapter
+            </button>
+            <button class="action-btn edit-btn" onclick='openClassEditModal("<%= chapter._id %>", <%= JSON.stringify(chapter.forClass) %>)'>
+               Edit Classes
+            </button>
+            <button class="action-btn delete-btn" onclick="deleteChapterGroup('<%= chapter._id %>')">
+                Delete Group
+            </button>
+         </div>
+         <table class="styled-table">
+            <thead>
+                <tr>
+                    <th style="width: 60px;">SN</th>
+                    <th>Chapter Name</th>
+                    <th style="width: 180px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% if(chapter.chapters && chapter.chapters.length > 0) { %>
+                    <% chapter.chapters.forEach(function(chapName, idx) { %>
+                    <tr>
+                        <td style="color: var(--text-secondary); font-variant-numeric: tabular-nums;"><%= idx + 1 %></td>
+                        <td style="font-weight: 500;"><%= chapName %></td>
+                        <td>
+                            <div class="action-buttons">
+                                <button type="button" class="action-btn edit-btn" onclick="openEditModal('<%= chapter._id %>', <%= idx %>, '<%= chapName.replace(/'/g, "\\'") %>')">
+                                    Edit
+                                </button>
+                                <button type="button" class="action-btn delete-btn" onclick="deleteChapter('<%= chapter._id %>', <%= idx %>)">
+                                    Delete
+                                </button>
+                            </div>
+                        </td>
+                    </tr> 
+                    <% }); %>
+                <% } else { %>
+                    <tr><td colspan="3" style="text-align:center; padding: 2rem; color: var(--text-secondary);">No chapters found.</td></tr>
+                <% } %>
+            </tbody>
+         </table> 
+        </div> <!-- End Group -->
+      <% }); %>
+      <% } else { %>
+        <div style="text-align: center; margin-top: 3rem; color: var(--text-secondary);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="opacity: 0.5; margin-bottom: 1rem;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+            <p>No chapters added yet for this subject.</p>
+        </div>
+      <% } %>
+  </div>
+
+  <!-- Edit Modal -->
+  <div class="modal-overlay" id="editModal">
+      <div class="modal-card">
+          <div class="modal-title">Edit Chapter</div>
+          <div class="form-group">
+              <label for="editChapterName">Chapter Name</label>
+              <input type="text" id="editChapterName" class="form-control">
+              <input type="hidden" id="editChapterId">
+              <input type="hidden" id="editChapterIndex">
+          </div>
+          <div class="modal-actions">
+              <button class="btn btn-outline" onclick="closeEditModal()" style="width: auto;">Cancel</button>
+              <button class="btn" onclick="saveEditedChapter()" style="width: auto;">Save Changes</button>
+          </div>
+      </div>
+  </div>
+
+  <!-- Edit Classes Modal -->
+  <div class="modal-overlay" id="editClassModal">
+      <div class="modal-card" style="max-width: 500px;"> 
+          <div class="modal-title">Edit Targeted Classes</div>
+          <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">Select classes that this chapter list applies to:</p>
+          
+          <div class="class-selection" id="modalClassCheckboxes">
+              <!-- Dynamically populated -->
+          </div>
+          
+          <input type="hidden" id="editClassChapterId">
+
+          <div class="modal-actions">
+              <button class="btn btn-outline" onclick="closeClassEditModal()" style="width: auto;">Cancel</button>
+              <button class="btn" onclick="saveEditedClasses()" style="width: auto;">Save Changes</button>
+          </div>
+      </div>
+  </div>
+
+  <!-- Add Single Chapter Modal -->
+  <div class="modal-overlay" id="addChapterModal">
+      <div class="modal-card">
+          <div class="modal-title">Add New Chapter</div>
+          <div class="form-group">
+              <label for="newChapterNameInput">Chapter Name</label>
+              <input type="text" id="newChapterNameInput" class="form-control" placeholder="Enter chapter name">
+              <input type="hidden" id="addChapterIdInput">
+          </div>
+          <div class="modal-actions">
+              <button class="btn btn-outline" onclick="closeAddChapterModal()" style="width: auto;">Cancel</button>
+              <button class="btn" onclick="saveNewChapter()" style="width: auto;">Add</button>
+          </div>
+      </div>
+  </div>
+
+  <script>
+      const currentSubject = "<%= subject %>";
+
+      const currentClass = "<%= studentClass %>";
+      // Get all available classes as a JSON array from EJS
+      const availableClasses = <%- JSON.stringify(Array.from(new Set(studentClassdata.map(data => data.studentClass)))) %>;
+
+
+      function deleteChapter(chapterId, index) {
+          if(!confirm('Are you sure you want to delete this chapter? This action cannot be undone.')) return;
+
+          fetch(`/addchapter?chapterId=${chapterId}&index=${index}&subject=${currentSubject}&studentClass=${currentClass}`, {
+              method: 'DELETE'
+          })
+          .then(res => {
+             // Since backend redirects, we just reload effectively
+             window.location.reload();
+          })
+          .catch(err => {
+              console.error(err);
+              window.location.reload(); 
+          });
+      }
+
+      const modal = document.getElementById('editModal');
+      const nameInput = document.getElementById('editChapterName');
+      const idInput = document.getElementById('editChapterId');
+      const indexInput = document.getElementById('editChapterIndex');
+
+      function openEditModal(id, idx, name) {
+          idInput.value = id;
+          indexInput.value = idx;
+          nameInput.value = name;
+          modal.classList.add('active');
+          nameInput.focus();
+      }
+
+      function closeEditModal() {
+          modal.classList.remove('active');
+      }
+
+      function saveEditedChapter() {
+          const id = idInput.value;
+          const idx = indexInput.value;
+          const name = nameInput.value;
+
+          if(!name.trim()) {
+              alert('Chapter name is required');
+              return;
+          }
+
+          fetch('/addchapter', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  chapterId: id,
+                  index: parseInt(idx),
+                  newChapterName: name,
+                  subject: currentSubject,
+                  studentClass: currentClass
+              })
+          })
+          .then(res => res.json())
+          .then(data => {
+              if(data.error) {
+                  alert(data.error);
+              } else {
+                  closeEditModal();
+                  window.location.reload();
+              }
+          })
+          .catch(err => {
+              console.error(err);
+              alert('An error occurred while saving.');
+          });
+      }
+      
+      // Close modal on outside click
+      modal.addEventListener('click', (e) => {
+          if (e.target === modal) closeEditModal();
+      });
+
+      // --- Class Edit Modal Scripts ---
+      const classModal = document.getElementById('editClassModal');
+      const classCheckboxesContainer = document.getElementById('modalClassCheckboxes');
+      const classChapterIdInput = document.getElementById('editClassChapterId');
+
+      function openClassEditModal(chapterId, currentClasses) {
+          classChapterIdInput.value = chapterId;
+          
+          // Clear and repopulate
+          classCheckboxesContainer.innerHTML = '';
+          
+          availableClasses.forEach(cls => {
+              const label = document.createElement('label');
+              label.className = 'checkbox-label';
+              
+              const checkbox = document.createElement('input');
+              checkbox.type = 'checkbox';
+              checkbox.value = cls;
+              checkbox.checked = currentClasses.includes(cls);
+              
+              const span = document.createElement('span');
+              span.textContent = `Class ${cls}`;
+              
+              label.appendChild(checkbox);
+              label.appendChild(span);
+              classCheckboxesContainer.appendChild(label);
+          });
+
+          classModal.classList.add('active');
+      }
+
+      function closeClassEditModal() {
+          classModal.classList.remove('active');
+      }
+      
+      classModal.addEventListener('click', (e) => {
+          if (e.target === classModal) closeClassEditModal();
+      });
+
+      function saveEditedClasses() {
+          const chapterId = classChapterIdInput.value;
+          const checkboxes = classCheckboxesContainer.querySelectorAll('input[type="checkbox"]:checked');
+          const selectedClasses = Array.from(checkboxes).map(cb => cb.value);
+          
+          if (selectedClasses.length === 0) {
+              alert("Please select at least one class.");
+              return;
+          }
+
+          fetch('/addchapter/classes', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  chapterId: chapterId,
+                  newClasses: selectedClasses
+              })
+          })
+          .then(async res => {
+             if (!res.ok) {
+                 const text = await res.text();
+                 try {
+                     const json = JSON.parse(text);
+                     throw new Error(json.error || res.statusText);
+                 } catch (e) {
+                     // If JSON parse fails, it means we got HTML error page or similar
+                     // Use the text but limit length just in case
+                     throw new Error(text.substring(0, 100) || res.statusText);
+                 }
+             }
+             return res.json();
+          })
+          .then(data => {
+              if(data.error) {
+                  alert(data.error);
+              } else {
+                  closeClassEditModal();
+                  window.location.reload();
+              }
+          })
+          .catch(err => {
+              console.error(err);
+              alert('An error occurred: ' + err.message);
+          });
+      }
+
+      // --- Add Chapter Modal Scripts ---
+      const addChapterModal = document.getElementById('addChapterModal');
+      const newChapterNameInput = document.getElementById('newChapterNameInput');
+      const addChapterIdInput = document.getElementById('addChapterIdInput');
+
+      function openAddChapterModal(chapterId) {
+          addChapterIdInput.value = chapterId;
+          newChapterNameInput.value = '';
+          addChapterModal.classList.add('active');
+          newChapterNameInput.focus();
+      }
+
+      function closeAddChapterModal() {
+          addChapterModal.classList.remove('active');
+      }
+      
+      addChapterModal.addEventListener('click', (e) => {
+          if (e.target === addChapterModal) closeAddChapterModal();
+      });
+
+      function saveNewChapter() {
+          const chapterId = addChapterIdInput.value;
+          const chapterName = newChapterNameInput.value;
+
+          if (!chapterName.trim()) {
+              alert("Please enter a chapter name.");
+              return;
+          }
+
+          fetch('/addchapter/single', {
+              method: 'POST', // or PUT depending on how you see it, POST usually for creating new sub-resource
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  chapterId: chapterId,
+                  chapterName: chapterName
+              })
+          })
+          .then(async res => {
+             if (!res.ok) {
+                 const text = await res.text();
+                 try {
+                     const json = JSON.parse(text);
+                     throw new Error(json.error || res.statusText);
+                 } catch (e) {
+                     throw new Error(text.substring(0, 100) || res.statusText);
+                 }
+             }
+             return res.json();
+          })
+          .then(data => {
+              if(data.error) {
+                  alert(data.error);
+              } else {
+                  closeAddChapterModal();
+                  window.location.reload();
+              }
+          })
+          .catch(err => {
+              console.error(err);
+              alert('An error occurred: ' + err.message);
+          });
+      }
+
+      function deleteChapterGroup(chapterId) {
+          if (!confirm('Are you sure you want to delete this ENTIRE group of chapters? This action cannot be undone.')) return;
+
+          fetch('/addchapter/group', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ chapterId: chapterId })
+          })
+          .then(async res => {
+             if (!res.ok) {
+                 const text = await res.text();
+                  try {
+                     const json = JSON.parse(text);
+                     throw new Error(json.error || res.statusText);
+                 } catch (e) {
+                     throw new Error(text.substring(0, 100) || res.statusText);
+                 }
+             }
+             return res.json();
+          })
+          .then(data => {
+              window.location.reload();
+          })
+          .catch(err => {
+              console.error(err);
+              alert('Error deleting group: ' + err.message);
+          });
+      }
+  </script>
+  <script>
+    document.getElementById('totalchapter').addEventListener('input', function() {
+      const totalChapters = parseInt(this.value);
+      const container = document.getElementById('chapterinputcontainer');
+      container.innerHTML = '';
+      
+      if (!totalChapters || totalChapters <= 0) return;
+
+      for(let i = 1; i <= totalChapters; i++) {
+        let chapterInput = document.createElement('input');
+        chapterInput.type = 'text';
+        chapterInput.name = `chapters[]`;
+        chapterInput.className = 'form-control';
+        chapterInput.placeholder = `Enter name for Chapter ${i}`;
+        chapterInput.required = true;
+        container.appendChild(chapterInput);
+      }
+     
+    });
+  </script>
+
+  
+  <script>
+    window.addEventListener('load', function() {
+      const totalChapters = parseInt(document.getElementById('totalchapter').value);
+      if (totalChapters) {
+        const event = new Event('input');
+        document.getElementById('totalchapter').dispatchEvent(event);
+      }
+    });
+  </script>
+</body>
+</html>

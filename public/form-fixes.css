@@ -1,0 +1,104 @@
+/* Additional fixes for the form */
+.option-container, .optionsinfo {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1rem 0;
+}
+
+.ansradio {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 140px;
+    margin: 0.25rem;
+    background-color: white;
+}
+
+.ansradio input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+}
+
+.ansradio .clabel {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.ansradio.active {
+    background-color: #57bcff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Color styles for different answer types */
+.ansradio[data-color="success"] {
+    border-color: var(--success);
+}
+.ansradio[data-color="success"] .clabel {
+    color: var(--success);
+}
+.ansradio.active[data-color="success"] {
+    background-color: var(--success);
+}
+.ansradio.active[data-color="success"] .clabel {
+    color: white;
+}
+
+.ansradio[data-color="error"] {
+    border-color: var(--error);
+}
+.ansradio[data-color="error"] .clabel {
+    color: var(--error);
+}
+.ansradio.active[data-color="error"] {
+    background-color: var(--error);
+}
+.ansradio.active[data-color="error"] .clabel {
+    color: white;
+}
+
+.ansradio[data-color="gray"] {
+    border-color: var(--gray);
+}
+.ansradio[data-color="gray"] .clabel {
+    color: var(--gray);
+}
+.ansradio.active[data-color="gray"] {
+    background-color: var(--gray);
+}
+.ansradio.active[data-color="gray"] .clabel {
+    color: white;
+}
+
+.ansradio[data-color="green"] {
+    border-color: #059669;
+}
+.ansradio[data-color="green"] .clabel {
+    color: #059669;
+}
+.ansradio.active[data-color="green"] {
+    background-color: #059669;
+}
+.ansradio.active[data-color="green"] .clabel {
+    color: white;
+}
+
+.ansradio[data-color="warning"] {
+    border-color: var(--warning);
+}
+.ansradio[data-color="warning"] .clabel {
+    color: var(--warning);
+}
+.ansradio.active[data-color="warning"] {
+    background-color: var(--warning);
+}
+.ansradio.active[data-color="warning"] .clabel {
+    color: white;
+}

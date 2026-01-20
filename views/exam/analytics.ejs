@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Comprehensive Analytics Report</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #2563eb;
+      --secondary: #1e293b;
+      --accent: #f59e0b;
+      --bg-gray: #f8fafc;
+      --border: #e2e8f0;
+      --text: #334155;
+      --success: #10b981;
+      --danger: #ef4444;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f3f4f6;
+      color: var(--text);
+      line-height: 1.5;
+      margin: 0;
+      padding: 0;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* Dashboard Layout */
+    .dashboard-container {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 300px;
+      background: var(--secondary);
+      color: white;
+      padding: 2rem;
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .main-content {
+      flex-grow: 1;
+      padding: 2rem;
+      overflow-y: auto;
+      height: 100vh;
+    }
+
+    /* Profile Section */
+    .profile-section {
+      text-align: center;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid rgba(235, 81, 81, 0.1);
+    }
+
+    .profile-img {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: #cbd5e1;
+      margin: 0 auto 1rem;
+      border: 4px solid rgba(255,255,255,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3rem;
+      overflow: hidden;
+    }
+    
+    .profile-img img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .profile-name {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: white;
+    }
+
+    .profile-detail {
+      font-size: 0.9rem;
+      color: #94a3b8;
+      margin-bottom: 0.25rem;
+    }
+
+    /* Navigation/Filters in Sidebar */
+    .sidebar-filters {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .sidebar-filters label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #cbd5e1;
+        margin-bottom: 0.25rem;
+        display: block;
+    }
+
+    .sidebar-filters select {
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.2);
+        color: white;
+    }
+    
+    .sidebar-filters select option {
+        background: var(--secondary);
+        color: white;
+    }
+
+    .sidebar-btn {
+        background: var(--primary);
+        color: white;
+        width: 100%;
+        padding: 12px;
+        margin-top: 1rem;
+    }
+
+    /* Action Buttons & Form */
+    .action-buttons {
+      /* Hidden in main view, moved to sidebar */
+      display: none; 
+    }
+    
+    /* Report Page - Adjusted for Dashboard */
+    .page {
+      width: 100%;
+      max-width: 1200px;
+      min-height: auto;
+      margin: 0 auto 2rem;
+      background: #fff;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      padding: 2rem;
+      border-radius: 12px;
+    }
+    
+    .page:last-child { page-break-after: auto; }
+    
+    .report-header {
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 1rem;
+      margin-bottom: 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    
+    .report-title {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--secondary);
+      text-transform: uppercase;
+      letter-spacing: -0.5px;
+    }
+    
+    .report-subtitle {
+      font-size: 14px;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .section-header {
+        margin: 2rem 0 1rem;
+        color: var(--secondary);
+        font-size: 18px;
+        font-weight: 700;
+        border-left: 4px solid var(--accent);
+        padding-left: 10px;
+    }
+    
+    /* Insight Box */
+    .insight-box {
+        background-color: #f8fafc;
+        border: 1px solid var(--border);
+        border-left: 4px solid var(--primary);
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+        border-radius: 4px;
+    }
+
+    .insight-box h4 {
+        color: var(--secondary);
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .insight-text {
+        font-size: 0.9rem;
+        color: #475569;
+        line-height: 1.6;
+    }
+
+    /* Tables */
+    .table-container {
+        margin-bottom: 2rem;
+        overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+      border: 1px solid var(--border);
+    }
+    
+    thead th {
+      background-color: #f1f5f9;
+      color: var(--secondary);
+      font-weight: 700;
+      padding: 10px 8px;
+      text-transform: uppercase;
+      border: 1px solid var(--border);
+      letter-spacing: 0.5px;
+    }
+
+    tbody td {
+      padding: 8px;
+      border: 1px solid var(--border);
+      text-align: center;
+      color: var(--text);
+      vertical-align: middle;
+    }
+    
+    tbody tr:nth-child(even) { background: #fcfcfc; }
+    tbody tr:hover { background: #f1f5f9; }
+    
+    /* Summary Cards */
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+        page-break-inside: avoid;
+    }
+
+    .stat-card {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .stat-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        color: #64748b;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+
+    .stat-value {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--secondary);
+    }
+
+    .stat-detail {
+        font-size: 11px;
+        color: #94a3b8;
+        margin-top: 2px;
+    }
+
+    .fail-list {
+        margin-top: 1rem;
+        font-size: 12px;
+        color: var(--danger);
+        background: #fef2f2;
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid #fee2e2;
+    }
+
+    @media print {
+      body { background: none; padding: 0; display: block; }
+      .dashboard-container { display: block; }
+      .sidebar { display: none; }
+      .main-content { padding: 0; height: auto; overflow: visible; }
+      .action-buttons, .no-print { display: none !important; }
+      .page { 
+          margin: 0; 
+          box-shadow: none; 
+          width: 100%; 
+          max-width: none;
+          padding: 10mm;
+          page-break-after: always;
+          border-radius: 0;
+      }
+      .page:last-child { page-break-after: auto; }
+      table { page-break-inside: auto; }
+      tr { page-break-inside: avoid; page-break-after: auto; }
+      thead { display: table-header-group; }
+      tfoot { display: table-footer-group; }
+    }
+    
+    @page { size: A4 landscape; margin: 0; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<div class="dashboard-container">
+  <!-- Sidebar with Profile and Filters -->
+  <div class="sidebar no-print">
+      <div class="profile-section">
+          <div class="profile-img">
+             <!-- Placeholder for user image or initial -->
+             <span>🎓</span>
+          </div>
+          <div class="profile-name">School Admin</div>
+          <div class="profile-detail">UEBS AES System</div>
+          <div class="profile-detail">Academic Year: <%= academicYear %></div>
+      </div>
+
+      <div class="sidebar-filters">
+          <div class="selector-title">Report Configuration</div>
+           <div class="form-group">
+              <label>Subject</label>
+              <select name="subject" id="subject">
+                <option value="">Choose subject</option>
+                <% uniqueSubjects = new Set(subjects.map((subject)=>subject.newsubject)) %>
+                <%uniqueSubjects.forEach((subject)=>{%>
+                  <option value="<%=subject%>"><%=subject%></option>
+                <%})%>
+              </select>
+            </div>
+          <div class="form-group">
+            <label>Class</label>
+            <select name="classSection" id="classSection">
+                <% uniqueClasses = [...new Set(studentClassdata.map((data)=>(data.studentClass)))] %>
+                <option value="" selected disabled>Choose Class</option>
+                <% uniqueClasses.forEach((data)=>{%>
+                <option value="<%=data%>"><%=data%></option>
+                <%})%>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Section</label>
+            <select name="section" id="section">
+                <option value="" selected disabled>Choose Section</option>
+                <% studentClassdata.forEach((data)=>{ %>
+                    <option value="<%=data.section%>"><%=data.section%></option>
+                <% }) %>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Terminal</label>
+            <select name="terminals" id="terminal">
+                <option value="" selected disabled>Choose Terminal</option>
+                <%marksheetSetups[0].terminals.forEach((terminal)=>{%>
+                <option value="<%=terminal.name%>"><%=terminal.name%></option>
+                <% }) %>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Academic Year</label>
+            <select name="academicYear" id="academicYear">
+                    <option value="" selected disabled>Choose Academic Year</option>
+                    <% currentYear = Number(marksheetSetups[0].academicYear) %>;
+                    <% for (let i = 0; i < 5; i++) { %>
+                        <option value="<%= currentYear - i %>"><%= currentYear - i %></option>
+                    <% } %>
+            </select>
+          </div>
+          
+          <button class="sidebar-btn" onclick="loadform()">Generate Report</button>
+          <button class="sidebar-btn" style="background: #ff9a60;" onclick="window.print()">Print Report</button>
+      </div>
+  </div>
+
+  <!-- Main Content Area -->
+  <div class="main-content">
+
+  <script>
+    function loadform()
+    {
+        const selectedSubject = document.getElementById('subject').value;
+        const classSection = document.getElementById('classSection').value
+        const studentClass = document.getElementById('classSection').value;
+        const section = document.getElementById('section').value;
+        const academicYear = document.getElementById('academicYear').value;
+        const terminal = document.getElementById('terminal').value
+
+        window.location.href=(`/analytics?studentClass=${studentClass}&section=${section}&subject=${selectedSubject}&terminal=${terminal}&academicYear=${academicYear}`)
+      
+    }
+  </script>
+  
+  <div class="page">
+    <div class="report-header">
+      <div>
+          <h1 class="report-title">Academic Progress Report</h1>
+          <p class="report-subtitle">Comprehensive Performance Analysis</p>
+      </div>
+      <div class="report-meta">Generated on: <%= new Date().toLocaleDateString() %></div>
+    </div>
+    
+    <div class="section-header">Class Wise Analysis Per Subject</div>
+    
+<% const groupedByterminal = Object.groupBy(classSubjectAnalysis,item=>item._id.terminal); %>
+
+
+<% for (const terminal in groupedByterminal) { %>
+
+  <h3>Terminal: <%= terminal %></h3>
+
+  <% const data = groupedByterminal[terminal]; %>
+
+  <!-- Extract subjects dynamically -->
+  <% const subjectsArr = [...new Set(data.map(i => i._id.subject))]; %>
+
+  <!-- Group by class -->
+  <% const byClass = Object.groupBy(data, i => i._id.studentClass); %>
+
+  <div class="table-container">
+  <table border="1" cellspacing="0" cellpadding="5">
+    <thead>
+        <tr>
+        <th>Class</th>
+        <% subjectsArr.forEach(sub => { %>
+            <th colspan="4"><%= sub %></th>
+        <% }) %>
+        </tr>
+
+        <tr>
+        <th></th>
+        <% subjectsArr.forEach(sub => { %>
+            <th>Total</th>
+            <th>Pass</th>
+            <th>Fail</th>
+            <th>Avg</th>
+        <% }) %>
+        </tr>
+    </thead>
+    <tbody>
+    <% for (const classNo in byClass) { %>
+      <tr>
+        <td style="font-weight:bold;"><%= classNo %></td>
+
+        <% 
+          // Group subjects inside this class
+          const subGroup = Object.groupBy(byClass[classNo], i => i._id.subject);
+        %>
+
+
+        <% subjectsArr.forEach(sub => { 
+             const row = subGroup[sub]?.[0]; 
+        %>
+
+            <% if (row) { %>
+                <td><%= row.totalStudents %></td>
+                <td style="color:var(--success)"><%= row.pass %></td>
+                <td style="color:var(--danger)"><%= row.fail %></td>
+                <td><%= row.avgMarks.toFixed(2)  %></td>
+            <% } else { %>
+                <td>-</td><td>-</td><td>-</td><td>-</td>
+            <% } %>
+
+        <% }) %>
+
+      </tr>
+    <% } %>
+    </tbody>
+  </table>
+  </div>
+
+<% } %>
+
+  </div>
+
+
+  <div class="page">
+  <div class="report-header">
+    <div>
+        <h1 class="report-title">Section Wise Analysis</h1>
+        <p class="report-subtitle">Detailed Subject Performance</p>
+    </div>
+  </div>
+    
+    <div class="insight-box">
+        <h4><span style="font-size:1.2em">💡</span> Key Insights</h4>
+        <div class="insight-text">
+            १) तल दिएको data ले कुनै पनि section मा कुन विषयको अवस्था कस्तो छ भन्ने देखाउँछ। <br>
+            २) एउटा Section मा सबै भन्दा धेरै विद्यार्थी कुन विषयमा फेल भए र कति जना फेल भए भन्ने देखाउँछ।
+        </div>
+    </div>
+    
+    <% Object.entries(finalStructureSectionAnalysis).forEach(([academicYear, yearData]) =>{
+      Object.entries(yearData).forEach(([terminal, terminalData])=>{
+    %>
+
+        <% Object.entries(terminalData).forEach(([classSection, records])=>{%>
+          <div class="section-header">
+             Academic Year: <%= academicYear %> | Terminal: <%= terminal %> | Class-Section: <%= classSection %>
+          </div>
+          
+          <div class="table-container">
+          <table cellspacing="0" border="1">
+            <thead>
+              <tr>
+                <th>Subject</th>
+                <th>Total Students</th>
+                <th>Pass</th>
+                <th>Fail</th>
+                <th>Pass %</th>
+                <th>Fail %</th>
+                <th>Average Marks</th>
+                <th>Highest Marks</th>
+                <th>Lowest Marks</th>
+                <th>Median Marks</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% records.forEach((record) => { %>
+                <tr>
+                  <td style="font-weight:600; text-align:left;"><%= record._id.subject %></td>
+                  <td><%= record.totalStudents %></td>
+                  <td style="color:var(--success)"><%= record.pass %></td>
+                  <td style="color:var(--danger)"><%= record.fail %></td>
+                  <td><%= ((record.pass / record.totalStudents) * 100).toFixed(2) %></td>
+                  <td><%= ((record.fail / record.totalStudents) * 100).toFixed(2) %></td>
+                  <td><%= record.avgMarks.toFixed(2) %></td>
+                  <td><%= record.highestMarks %></td>
+                  <td><%= record.lowestMarks %></td>
+                  <td><%= record.medianMarks %></td>
+                </tr>
+               
+              <% }) %>
+            </tbody>
+          </table>
+          </div>
+
+          <% 
+             const maxFailRec = records.reduce((max, rec) => rec.fail > max.fail ? rec : max, records[0]);
+             const maxPassRec = records.reduce((acc,rec)=> acc.pass>rec.pass?acc:rec,records[0]);
+             const highestAvgRec = records.reduce((max, rec) => rec.avgMarks > max.avgMarks ? rec : max, records[0]);
+          %>
+
+          <div class="summary-grid">
+              <div class="stat-card" style="border-left: 4px solid var(--danger);">
+                  <div class="stat-label">Max Fail Subject</div>
+                  <div class="stat-value"><%= maxFailRec._id.subject %></div>
+                  <div class="stat-detail">Fail Count: <%= maxFailRec.fail %></div>
+              </div>
+              
+              <div class="stat-card" style="border-left: 4px solid var(--success);">
+                  <div class="stat-label">Max Pass Subject</div>
+                  <div class="stat-value"><%= maxPassRec._id.subject %></div>
+                  <div class="stat-detail">Pass Count: <%= maxPassRec.pass %></div>
+              </div>
+              
+              <div class="stat-card" style="border-left: 4px solid var(--primary);">
+                  <div class="stat-label">Highest Average</div>
+                  <div class="stat-value"><%= highestAvgRec._id.subject %></div>
+                  <div class="stat-detail">Avg Marks: <%= highestAvgRec.avgMarks.toFixed(2) %></div>
+              </div>
+          </div>
+
+          <% const key = `${classSection}`; %>
+          <% const failData = failpersectionlookup[key]; %>
+          
+          <% if(failData && failData.length > 0) { %>
+          <div class="fail-list">
+             <strong>Fail Count Distribution:</strong>
+             <div style="display:flex; flex-wrap:wrap; gap:15px; margin-top:5px;">
+                 <% failData.forEach((data)=>{ %>
+                  <span>• <%=data._id.failCount %>-subject Fail: <strong><%= data.totalFailCount %></strong> Student(s)</span>
+                 <%})%>
+             </div>
+          </div>
+          <% } %>
+          
+          <hr style="margin: 2rem 0; border:0; border-top:1px dashed #ccc;">
+        <%})%>
+    <%})%>
+    <%})%>
+  </div> <br>
+  <div class="page">
+  <div class="report-header">
+    <div>
+        <h1 class="report-title">Subject Specific Analysis</h1>
+        <p class="report-subtitle">Performance Across Classes</p>
+    </div>
+  </div>
+  
+    <div class="insight-box">
+        <h4><span style="font-size:1.2em">💡</span> Key Insights</h4>
+        <div class="insight-text">
+            1) तल दिएको data ले कुन विषय कुन कक्षामा राम्रो प्रदशन गरिरहेको छ र कुन कक्षा मा खराब प्रदर्शन गरिरहेको छ भन्ने देखाउँछ।<br>
+            २) विद्यार्थीहरुको marks कुन range मा बढी परेको छ भन्ने देखाउँछ। 
+        </div>
+    </div>
+
+    <% Object.entries(subjectAnalysisFinalStructure).forEach(([academicYear, yearData]) =>{
+      Object.entries(yearData).forEach(([terminal, terminalData])=>{
+    %>
+
+        <% Object.entries(terminalData).forEach(([subject, records])=>{%>
+          <div class="section-header">
+             Academic Year: <%= academicYear %> | Terminal: <%= terminal %> | Subject: <%= subject %>
+          </div>
+          
+          <div class="table-container">
+          <table cellspacing="0" border="1">
+            <thead>
+              <tr>
+                <th>Class-Section</th>
+                <th>Total</th>
+                <th>Pass</th>
+                <th>Fail</th>
+                <th>Pass %</th>
+                <th>Fail %</th>
+                <th>Avg Marks</th>
+                <th>Highest</th>
+                <th>Lowest</th>
+                <th>Median</th>
+                <th style="width:25%">Mark Range Distribution</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% records.forEach((record) => { %>
+                <tr>
+                  <td style="font-weight:600"><%= record._id.studentClass %>-<%= record._id.section %></td>
+                  <td><%= record.totalStudents %></td>
+                  <td style="color:var(--success)"><%= record.pass %></td>
+                  <td style="color:var(--danger)"><%= record.fail %></td>
+                  <td><%= ((record.pass / record.totalStudents) * 100).toFixed(2) %></td>
+                  <td><%= ((record.fail / record.totalStudents) * 100).toFixed(2) %></td>
+                  <td><%= record.avgTheory.toFixed(2) %></td>
+                  <td><%= record.highestMarkstheory %></td>
+                  <td><%= record.lowestMarkstheory %></td>
+                  <td><%= record.medianMarkstheory %></td>
+                  <td style="text-align:left; font-size:10px; line-height:1.4;">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:2px;">
+                       <span>0-20%: <b><%=record.range1theory %></b></span>
+                       <span>21-40%: <b><%=record.range2theory %></b></span>
+                       <span>41-60%: <b><%= record.range3theory %></b></span>
+                       <span>61-80%: <b><%=record.range4theory %></b></span>
+                       <span>81-100%: <b><%=record.range5theory %></b></span>
+                    </div>
+                   </td>
+                </tr>
+               
+              <% }) %>
+            </tbody>
+          </table>
+          </div>
+
+          <% 
+             const maxFailRec = records.reduce((max, rec) => rec.fail > max.fail ? rec : max, records[0]);
+             const maxPassRec = records.reduce((acc,rec)=> acc.pass>rec.pass?acc:rec,records[0]);
+             const highestAvgRec = records.reduce((max, rec) => rec.avgTheory > max.avgTheory ? rec : max, records[0]);
+          %>
+
+          <div class="summary-grid">
+              <div class="stat-card" style="border-left: 4px solid var(--danger);">
+                  <div class="stat-label">Max Fail Class</div>
+                  <div class="stat-value"><%= maxFailRec._id.studentClass %>-<%= maxFailRec._id.section %></div>
+                  <div class="stat-detail">Fail Count: <%= maxFailRec.fail %></div>
+              </div>
+              
+              <div class="stat-card" style="border-left: 4px solid var(--success);">
+                  <div class="stat-label">Max Pass Class</div>
+                  <div class="stat-value"><%= maxPassRec._id.studentClass %>-<%= maxPassRec._id.section %></div>
+                  <div class="stat-detail">Pass Count: <%= maxPassRec.pass %></div>
+              </div>
+              
+              <div class="stat-card" style="border-left: 4px solid var(--primary);">
+                  <div class="stat-label">Highest Average Class</div>
+                  <div class="stat-value"><%= highestAvgRec._id.studentClass %>-<%= highestAvgRec._id.section %></div>
+                  <div class="stat-detail">Avg Marks: <%= highestAvgRec.avgTheory.toFixed(2) %></div>
+              </div>
+          </div>
+          
+          <hr style="margin: 2rem 0; border:0; border-top:1px dashed #ccc;">
+
+          <%})%>
+        <%})%>
+    <%})%>
+  </div>
+
+  <div class="page">
+  <div class="report-header">
+    <div>
+        <h1 class="report-title">Overall School Analysis</h1>
+        <p class="report-subtitle">Aggregated Performance Metrics</p>
+    </div>
+  </div>
+    
+    <% Object.entries(subjectAnalysisFinalStructure).forEach(([academicYear, yearData]) =>{
+      Object.entries(yearData).forEach(([terminal, terminalData])=>{
+    %>
+
+        <% Object.entries(terminalData).forEach(([subject, records])=>{%>
+          <div class="section-header">
+             Academic Year: <%= academicYear %> | Terminal: <%= terminal %> | Subject: <%= subject %>
+          </div>
+          
+          <div class="table-container">
+          <table cellspacing="0" border="1">
+            <thead>
+              <tr>
+                <th>Class-Section</th>
+                <th>Total</th>
+                <th>Pass</th>
+                <th>Fail</th>
+                <th>Pass %</th>
+                <th>Fail %</th>
+                <th>Avg Marks</th>
+                <th>Highest</th>
+                <th>Lowest</th>
+                <th>Median</th>
+                <th style="width:25%">Mark Range Distribution</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% records.forEach((record) => { %>
+                <tr>
+                  <td style="font-weight:600"><%= record._id.studentClass %>-<%= record._id.section %></td>
+                  <td><%= record.totalStudents %></td>
+                  <td style="color:var(--success)"><%= record.pass %></td>
+                  <td style="color:var(--danger)"><%= record.fail %></td>
+                  <td><%= ((record.pass / record.totalStudents) * 100).toFixed(2) %></td>
+                  <td><%= ((record.fail / record.totalStudents) * 100).toFixed(2) %></td>
+                  <td><%= record.avgTheory.toFixed(2) %></td>
+                  <td><%= record.highestMarkstheory %></td>
+                  <td><%= record.lowestMarkstheory %></td>
+                  <td><%= record.medianMarkstheory %></td>
+                  <td style="text-align:left; font-size:10px; line-height:1.4;">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:2px;">
+                       <span>0-20%: <b><%=record.range1theory %></b></span>
+                       <span>21-40%: <b><%=record.range2theory %></b></span>
+                       <span>41-60%: <b><%= record.range3theory %></b></span>
+                       <span>61-80%: <b><%=record.range4theory %></b></span>
+                       <span>81-100%: <b><%=record.range5theory %></b></span>
+                    </div>
+                   </td>
+                </tr>
+               
+              <% }) %>
+            </tbody>
+          </table>
+          </div>
+
+          <% 
+             const maxFailRec = records.reduce((max, rec) => rec.fail > max.fail ? rec : max, records[0]);
+             const maxPassRec = records.reduce((acc,rec)=> acc.pass>rec.pass?acc:rec,records[0]);
+             const highestAvgRec = records.reduce((max, rec) => rec.avgTheory > max.avgTheory ? rec : max, records[0]);
+          %>
+
+          <div class="summary-grid">
+              <div class="stat-card" style="border-left: 4px solid var(--danger);">
+                  <div class="stat-label">Max Fail Class</div>
+                  <div class="stat-value"><%= maxFailRec._id.studentClass %>-<%= maxFailRec._id.section %></div>
+                  <div class="stat-detail">Fail Count: <%= maxFailRec.fail %></div>
+              </div>
+              
+              <div class="stat-card" style="border-left: 4px solid var(--success);">
+                  <div class="stat-label">Max Pass Class</div>
+                  <div class="stat-value"><%= maxPassRec._id.studentClass %>-<%= maxPassRec._id.section %></div>
+                  <div class="stat-detail">Pass Count: <%= maxPassRec.pass %></div>
+              </div>
+              
+              <div class="stat-card" style="border-left: 4px solid var(--primary);">
+                  <div class="stat-label">Highest Average Class</div>
+                  <div class="stat-value"><%= highestAvgRec._id.studentClass %>-<%= highestAvgRec._id.section %></div>
+                  <div class="stat-detail">Avg Marks: <%= highestAvgRec.avgTheory.toFixed(2) %></div>
+              </div>
+          </div>
+          
+          <hr style="margin: 2rem 0; border:0; border-top:1px dashed #ccc;">
+
+          <%})%>
+        <%})%>
+    <%})%>
+  </div> <br>
+  <div class="page">
+  <div class="">
+    <div>
+      <center>  <h1 class="report-title">Comparison Report <br>Academic Year:<%= academicYear %> <br></h1></center> <hr>
+      
+        
+  </div> 
+  </div></div><br>
+
+
+   <div class="page">
+  <div class="report-header">
+    <div>
+        <h1 class="report-title">Comparison Report</h1>
+        <p class="report-subtitle">Aggregated Performance Metrics</p>
+    </div>
+  </div>
+    <center>Subject Wise Comparision Accross Terminal</center>
+   
+
+   <% Object.entries(terminalComparisonFinalStructure).forEach(([academicYear, yearData]) =>{
+      Object.entries(yearData).forEach(([subject, subjectData])=>{
+    %>
+
+        <% Object.entries(subjectData).forEach(([classSection, records])=>{%>
+          <div class="section-header">
+             Academic Year: <%= academicYear %> | Subject: <%= subject %> | Class-Section: <%= classSection %>
+          </div>
+         
+        
+         <table cellspacing="0" border="1">
+         
+            <tr>
+             <% Object.entries(records).forEach(([terminal, record])=>{ %>
+                <th colspan="4" ><%= terminal %></th>
+              <%})%>
+            </tr>
+            <tr>
+              <% Object.entries(records).forEach(([terminal, record])=>{ %>
+               
+              <th>Total Student</th>
+              <th>Pass%</th>
+              <th>Fail%</th>
+              <th>Avg</th>
+              <%})%>
+            </tr>
+            <tr>
+              <% Object.entries(records).forEach(([terminal, record])=>{ %>
+               
+              <td><%= record[0].totalStudents %></td>
+              <td><%= ((record[0].passtheory / record[0].totalStudents) * 100).toFixed(2) %></td>
+              <td><%= ((record[0].failtheory / record[0].totalStudents) * 100).toFixed(2) %></td>
+              <td><%= record[0].avgMarks.toFixed(2) %></td>
+              
+              <%})%>
+            </tr>
+         </table>
+         <div>
+  <canvas id="chart_<%= academicYear %>_<%= subject %>_<%= classSection.replace(/\s/g,'') %>"></canvas>
+</div>
+<script>
+  {
+    const labels = <%- JSON.stringify(Object.keys(records)) %>;
+    const pass = <%- JSON.stringify(Object.values(records).map(r => (r[0].passtheory / r[0].totalStudents * 100))) %>;
+    const fail = <%- JSON.stringify(Object.values(records).map(r => (r[0].failtheory / r[0].totalStudents * 100))) %>;
+    const avg = <%- JSON.stringify(Object.values(records).map(r => r[0].avgMarks)) %>;
+
+    const ctx = document.getElementById('chart_<%= academicYear %>_<%= subject %>_<%= classSection.replace(/\s/g,'') %>').getContext('2d');
+
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Pass%',
+          data: pass,
+          borderWidth: 1
+        },
+        {
+          label: 'Fail%',
+          data: fail,
+          borderWidth: 1
+        },
+        {
+          label: 'Avg Marks',
+          data: avg,
+          borderWidth: 1
+        }
+      ]
+      },
+      options: {
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  }
+</script>
+          
+          <hr style="margin: 2rem 0; border:0; border-top:1px dashed #ccc;">
+        <%})%>
+    <%})%>
+    <%})%>
+
+
+  </div>
+  <div class="page">
+  <div class="report-header">
+    <div>
+        <h1 class="report-title">Comparison Report</h1>
+        <p class="report-subtitle">Aggregated Performance Metrics</p>
+    </div>
+  </div>
+    <center>Subject Wise Comparision Accross Year</center>
+   
+
+   <% 
+      const subjectYearlyData = {};
+      Object.entries(terminalComparisonFinalStructure).forEach(([academicYear, yearData]) => {
+        Object.entries(yearData).forEach(([subject, subjectData]) => {
+          Object.entries(subjectData).forEach(([classSection, records]) => {
+            if (!subjectYearlyData[subject]) subjectYearlyData[subject] = {};
+            if (!subjectYearlyData[subject][classSection]) subjectYearlyData[subject][classSection] = {};
+            
+            let yearTotalStudents = 0;
+            let yearPassTheory = 0;
+            let yearFailTheory = 0;
+            let weightedAvg = 0;
+            
+            Object.values(records).forEach(record => {
+                 const r = record[0];
+                 const total = r.totalStudents;
+                 yearTotalStudents += total;
+                 yearPassTheory += r.passtheory;
+                 yearFailTheory += r.failtheory;
+                 weightedAvg += r.avgMarks * total;
+            });
+            
+            const overallAvg = yearTotalStudents > 0 ? weightedAvg / yearTotalStudents : 0;
+            
+            subjectYearlyData[subject][classSection][academicYear] = {
+                totalStudents: yearTotalStudents,
+                pass: yearPassTheory,
+                fail: yearFailTheory,
+                avg: overallAvg,
+                passPercent: yearTotalStudents > 0 ? (yearPassTheory / yearTotalStudents * 100) : 0,
+                failPercent: yearTotalStudents > 0 ? (yearFailTheory / yearTotalStudents * 100) : 0
+            };
+          });
+        });
+      });
+   %>
+
+   <% Object.entries(subjectYearlyData).forEach(([subject, classData]) => { %>
+      <% Object.entries(classData).forEach(([classSection, yearRecords]) => { 
+           const years = Object.keys(yearRecords).sort();
+      %>
+          <div class="section-header">
+             Subject: <%= subject %> | Class-Section: <%= classSection %> | Cross-Year Analysis
+          </div>
+         
+         <div class="table-container">
+         <table cellspacing="0" border="1">
+            <tr>
+             <% years.forEach(year => { %>
+                <th colspan="4"><%= year %></th>
+              <% }) %>
+            </tr>
+            <tr>
+              <% years.forEach(year => { %>
+              <th>Total</th>
+              <th>Pass%</th>
+              <th>Fail%</th>
+              <th>Avg</th>
+              <% }) %>
+            </tr>
+            <tr>
+              <% years.forEach(year => { 
+                   const record = yearRecords[year];
+              %>
+              <td><%= record.totalStudents %></td>
+              <td><%= record.passPercent.toFixed(2) %></td>
+              <td><%= record.failPercent.toFixed(2) %></td>
+              <td><%= record.avg.toFixed(2) %></td>
+              <% }) %>
+            </tr>
+         </table>
+         </div>
+         
+         <div>
+            <canvas id="chart_year_<%= subject.replace(/[^a-zA-Z0-9]/g,'') %>_<%= classSection.replace(/[^a-zA-Z0-9]/g,'') %>"></canvas>
+         </div>
+         
+         <script>
+          {
+            const labels = <%- JSON.stringify(years) %>;
+            const pass = <%- JSON.stringify(years.map(y => yearRecords[y].passPercent)) %>;
+            const fail = <%- JSON.stringify(years.map(y => yearRecords[y].failPercent)) %>;
+            const avg = <%- JSON.stringify(years.map(y => yearRecords[y].avg)) %>;
+
+            const ctx = document.getElementById('chart_year_<%= subject.replace(/[^a-zA-Z0-9]/g,'') %>_<%= classSection.replace(/[^a-zA-Z0-9]/g,'') %>').getContext('2d');
+
+            new Chart(ctx, {
+              type: 'bar',
+              data: {
+                labels: labels,
+                datasets: [{
+                  label: 'Pass%',
+                  data: pass,
+                  borderColor: '#10b981',
+                  backgroundColor: '#10b981',
+                  borderWidth: 2
+                },
+                {
+                  label: 'Fail%',
+                  data: fail,
+                  borderColor: '#ef4444',
+                  backgroundColor: '#ef4444',
+                  borderWidth: 2
+                },
+                {
+                  label: 'Avg Marks',
+                  data: avg,
+                  borderColor: '#2563eb',
+                  backgroundColor: '#2563eb',
+                  borderWidth: 2
+                }
+              ]
+              },
+              options: {
+                responsive: true,
+                scales: {
+                  y: {
+                    beginAtZero: true
+                  }
+                }
+              }
+            });
+          }
+         </script>
+          
+          <hr style="margin: 2rem 0; border:0; border-top:1px dashed #ccc;">
+      <% }) %>
+   <% }) %>
+
+
+  </div>
+  
+  <br>
+
+<div class="page">
+ <h1><Center>Student Wise Comparision Report</Center></h1><hr>
+</div>
+<div class="page">
+  <center><h1>Subject Wise Fail Student Name</h1> <br>
+  <h4><i> This report is useful for HOD and Subject Teacher</h4></i></center> <br>
+
+  
+  <% Object.entries(persubjectFailStudentNameStructure).forEach(([academicYear, terminalData]) => { %>
+      <% Object.entries(terminalData).forEach(([terminal, subjectData]) => { %>
+          <% Object.entries(subjectData).forEach(([subject, students]) => { %>
+                  <center><%= subject %></center>
+                  <table cellspacing="0" border="1" style="width:100%; margin-bottom:20px;">
+                    <tr>
+                      <th>Student Name</th>
+                      <th>Class-Section</th>
+                      <th>Marks Obtained</th>
+                      <th>Terminal</th>
+                    </tr>
+                    <% students.forEach((student) => { %>
+                      <tr>
+                        <td><%= student.name %></td>
+                        <td><%= student.studentClass %>-<%= student.section %></td>
+                        <td><%= student.theorymarks %></td>
+                        <td><%= terminal %></td>
+                      </tr>
+                    <% }) %>
+                  </table>
+              <% }) %>
+          <% }) %>
+      <% }) %>
+
+
+</div> <br>
+<div class="page">
+  <center><h1>Class-Section Wise Fail Student Name per Fail Count</h1> <br>
+  <h4><i> This report is useful Class teacher to identify slow learner Student with number of subject fails </h4></i></center> <br>
+
+ <% Object.entries(failpersectionlookup).forEach(([classSection, failData]) => { %>
+      <div class="section-header">
+         Class-Section: <%= classSection %>
+      </div>
+       <% 
+   
+    const maxRows = Math.max(...failData.map(d => d.name.length));
+  %>
+      <table cellspacing="0" border="1" style="width:100%; margin-bottom:20px;">
+        <tr>
+       <% failData.forEach((data)=>{ %>
+            <th><%=data._id.failCount %>-subject Fail : (<%=data.totalFailCount %>)</th>
+        <%})%>
+        </tr>
+        
+       <% for (let i = 0; i < maxRows; i++) { %>
+         <tr>
+           <% failData.forEach((data) => { %>
+            
+             <td>
+               <strong> <%= data.name[i] ? data.name[i].name+":" : '' %> </strong> <br>
+               <% data.name[i]? data.name[i].failedSubjects.forEach((sub)=>{ %>
+                  <%= sub.subject %> (<%=sub.theorymarks%> Marks)  ,
+                <%}):'' %>
+             </td>
+           <% }) %>
+         </tr>
+        <% } %>
+     
+            
+       
+      </table>
+   <% }) %>
+
+
+
+</div><br>
+<div class="page">
+  <center><h1>Subject Wise Terminal Failure Combinations</h1></center>
+  <br>
+
+  <% 
+    const groupedBySubject = {};
+    const termOrder = { 'FIRST': 1, 'SECOND': 2, 'THIRD': 3, 'FINAL': 4 };
+    
+    if (typeof combinationsofFailStudentAccrossTerminals !== 'undefined' && combinationsofFailStudentAccrossTerminals) {
+      combinationsofFailStudentAccrossTerminals.forEach(item => {
+          const subject = item._id.subject;
+          // Sort terminals
+          const terminals = item.terminalsFailed ? item.terminalsFailed.sort((a, b) => (termOrder[a] || 99) - (termOrder[b] || 99)) : [];
+          
+          if (terminals.length === 0) return; 
+
+          const combinationKey = terminals.join(' & ');
+          const count = terminals.length;
+          const name = item._id.name;
+
+          if (!groupedBySubject[subject]) {
+              groupedBySubject[subject] = {};
+          }
+          if (!groupedBySubject[subject][count]) {
+              groupedBySubject[subject][count] = {};
+          }
+          if (!groupedBySubject[subject][count][combinationKey]) {
+              groupedBySubject[subject][count][combinationKey] = [];
+          }
+          groupedBySubject[subject][count][combinationKey].push(name);
+      });
+    }
+  %>
+
+  <% Object.keys(groupedBySubject).sort().forEach(subject => { %>
+    <div class="subject-block" style="margin-bottom: 3rem; page-break-inside: avoid;">
+      <h2 style="text-align: center; background: #e2e8f0; padding: 0.5rem; margin-bottom: 1rem; border-radius: 4px;"><%= subject %></h2>
+      
+      <% [1, 2, 3, 4].forEach(count => { %>
+        <% if (groupedBySubject[subject][count]) { %>
+          <div class="combination-row" style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; margin-bottom: 1rem;">
+            <% Object.entries(groupedBySubject[subject][count]).forEach(([combo, names]) => { %>
+              <div class="combination-card" style="border: 1px solid #ccc; padding: 1rem; min-width: 250px; flex: 1; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <h3 style="font-size: 1rem; border-bottom: 2px solid #2563eb; padding-bottom: 0.5rem; margin-bottom: 0.5rem; text-align: center; color: #1e293b;">
+                  <%= combo %>
+                </h3>
+                <ul style="list-style-type: none; padding: 0; margin: 0;">
+                  <% names.sort().forEach(name => { %>
+                    <li style="padding: 0.25rem 0; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; text-align: center;"><%= name %></li>
+                  <% }) %>
+                </ul>
+                <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #64748b; text-align: center; font-weight: bold;">
+                  Total: <%= names.length %>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+      <% }) %>
+    </div>
+  <% }) %>
+
+ </div>
+ </div> <!-- End Main Content -->
+</div> <!-- End Dashboard Container -->
+</body>
+</html>

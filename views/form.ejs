@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/form.css">
+    <link rel="stylesheet" href="/nav.css">
+    <link rel="stylesheet" href="/form-fixes.css">
+    <link rel="stylesheet" href="/question-styles.css">
+    <link rel="stylesheet" href="/form-header.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Enhanced styles for marks options */
+        .marks-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 5px;
+        }
+        
+        .marks-options-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 5px;
+        }
+        
+        .mark-option {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 48px;
+            height: 48px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 0 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 0;
+        }
+        
+        .mark-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+        }
+        
+        .mark-option .mark-value {
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .mark-option:hover {
+            background-color: #f0f7ff;
+            border-color: #a4cafd;
+        }
+        
+        .mark-option input[type="radio"]:checked + .mark-value {
+            color: #fff;
+        }
+        
+        .mark-option input[type="radio"]:checked ~ .mark-value {
+            color: #fff;
+        }
+        
+        .mark-option input[type="radio"]:checked {
+            background-color: #0d6efd;
+        }
+        
+        .mark-option input[type="radio"]:checked + span {
+            color: #fff;
+        }
+        
+        .mark-option input[type="radio"]:focus + span {
+            outline: 2px solid rgba(13, 110, 253, 0.25);
+            outline-offset: 2px;
+        }
+        
+        /* Style for selected options */
+        .mark-option input[type="radio"]:checked ~ .mark-value {
+            color: #fff;
+        }
+        
+        .mark-option input[type="radio"]:checked {
+            background-color: #0d6efd;
+        }
+        
+        .mark-option input[type="radio"]:checked + .mark-value {
+            color: #fff;
+        }
+        
+        /* Style for the entire mark-option when checked */
+        .mark-option:has(input[type="radio"]:checked) {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+            color: white;
+        }
+        
+        .sub-part-header {
+            padding-bottom: 4px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .question-heading {
+            color: #0d6efd;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        /* Fix ansradio layout for sub-questions */
+        .ansradio {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            width: 100% !important;
+            margin: 0 0 15px 0 !important;
+            height: auto !important;
+        }
+
+        /* Improve option container layout */
+        .option-container {
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+        
+        @media (max-width: 768px) {
+            .mark-option {
+                min-width: 36px;
+                height: 36px;
+                font-size: 13px;
+            }
+        }
+        
+        /* Progress bar styles */
+        .progress-indicator {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+        }
+        
+        .progress {
+            border-radius: 4px;
+            overflow: hidden;
+            height: 10px;
+        }
+        
+        .question-progress {
+            transition: width 0.3s ease;
+        }
+        
+        /* Student List Styles */
+        .student-list-scroll {
+            overflow-x: auto;
+            overflow-y: hidden;
+            display: flex;
+            flex-direction: column;
+            flex-wrap: wrap;
+            height: 240px; /* Height for approx 4 rows of buttons */
+            align-content: flex-start;
+            gap: 10px;
+            padding: 15px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            margin-bottom: 20px;
+            white-space: nowrap;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Custom scrollbar for student list */
+        .student-list-scroll::-webkit-scrollbar {
+            height: 6px;
+        }
+        
+        .student-list-scroll::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        
+        .student-list-scroll::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+        
+        .student-list-scroll::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        
+        .student-btn {
+            padding: 10px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 50px;
+            background-color: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            font-weight: 500;
+            color: #475569;
+            white-space: nowrap;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            flex-shrink: 0;
+        }
+        
+        .student-btn:hover {
+            background-color: #f1f5f9;
+            border-color: #cbd5e1;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .student-btn.active {
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.3);
+        }
+
+         @media (max-width: 768px) {
+            #formDiv{
+                width: 80%;
+            }
+              .mark-option {
+                min-width: 60px;
+                height: 36px;
+                font-size: 13px;
+            }
+            .mb5{
+                width: 80%;
+            }
+         }
+    </style>
+</head>
+<body>
+    <%- include('./partials/nav',{currentPage:'home'}) %> <br>
+
+  
+    <%- include('partials/sidenav', { 
+        subjects: subjects, 
+        studentClassdata: studentClassdata,
+        terminals: terminals 
+    }) %>
+      <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="info-card">
+                    <div class="info-card-icon">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <div class="info-card-content">
+                        <h3 class="info-card-title">Subject</h3>
+                        <div class="info-card-value"><%= subjectname %></div>
+                        <div class="mt-2">Class <%= studentClass %> (<%= section %>)</div>
+                        <div class="mt-1"><%= terminal %> Term</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="info-card info-card-entries">
+                    <div class="info-card-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="info-card-content">
+                        <h3 class="info-card-title">Total Student Entries</h3>
+                        <div class="info-card-value"><%= totalEntries %></div>
+                        <div class="entereddata" style="max-height: 170px; overflow-y: auto;">
+                            scroll Down to see all entries <i class="fa-solid fa-arrows-up-down fa-bounce" style="color: #74C0FC;"></i>
+                            <table border="1" cellspacing="0" class="table table-striped table-bordered " style="width: 20%; text-align: center;" scroll="yes">
+                                <tr>
+                                    <th>Roll</th>
+                                    <th>Name</th>
+                <th>Total Marks</th>
+                <th>Action</th>
+</tr>
+<% totalcountmarks.sort((a, b) => Number(a.roll) - Number(b.roll)); %>
+<% totalcountmarks.forEach((marks, index) => { %>
+    <tr>
+    <td><%=marks.roll %></td>
+    <td><%=marks.name %></td>
+    <td><%=marks.totalMarks %></td> 
+
+    <td>
+     <a href="/edit-student/<%= marks._id %>/<%= marks.subject %>/<%= marks.studentClass %>/<%= marks.section %>/<%=terminal %>?controller=forms" class="action-btn edit-btn">
+                        <i class="fas fa-pencil-alt"></i>
+                      </a>
+                      <a href="/delete-student/<%= marks._id %>/<%= marks.subject %>/<%= marks.studentClass %>/<%= marks.section %>/<%=terminal %>?controller=forms" 
+                         onclick="return confirm('Are you sure you want to delete this student?');" 
+                         class="action-btn delete-btn">
+                        <i class="fas fa-trash-alt"></i>
+                      </a></td>
+        
+   <% }) %>
+   </tr>
+
+             </table> 
+
+                        </div>
+                        <div class="mt-2">Class <%= studentClass %> (<%= section %>)</div>
+                        <div class="mt-1"><%= terminal %> Term</div>
+                       
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    <div class="container">
+        <form action="/forms/<%=subjectname%>/<%=studentClass%>/<%=section%>/<%=terminal%>" method="POST" enctype="application/x-www-form-urlencoded">
+            <section class="mb-5">
+                <h2 class="section-title">Student Information</h2>
+                <center style="color: rgb(231, 135, 1);">Click on student name to autofill the form</center>
+                <div class="student-list-scroll">
+                    <% 
+                        // Create a Set of rolls that have marks for efficient lookup
+                        const submittedRolls = new Set(totalcountmarks.map(m => String(m.roll)));
+                    %>
+                    <% studentrecord.forEach(record => { 
+                        const isSubmitted = submittedRolls.has(String(record.roll));
+                    %>
+                        <button type="button" class="student-btn" 
+                                data-roll="<%=record.roll%>" 
+                                data-name="<%=record.name %>" 
+                                data-reg="<%=record.reg%>"
+                                style="<%= isSubmitted ? 'background-color: #e0f2fe; color: #0369a1; border-color: #0ea5e9;pointer-events: none;opacity: 0.4;box-shadow:2px 2px 5px rgba(0,0,0,0.1);display:none;' : ''  %>">
+                            <%=record.roll%> - <%=record.name %>
+                            <% if(isSubmitted) { %> <i class="fas fa-check-circle ms-1" style="color: #0ee9b6;"></i> <% } %>
+                        </button>
+                    <%})%>
+                </div>
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <input type="hidden" name="reg" id="reg">
+                        <label for="roll" class="form-label">Roll Number</label>
+                        <input type="number" name="roll" id="roll" placeholder="Enter roll number" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="name" class="form-label">Student Name</label>
+                        <input type="text" name="name" id="name" placeholder="Enter student name" class="form-control" required>
+                    </div>
+                   
+                            
+                        <input type="hidden" name="studentClass" id="studentClass" value="<%=studentClass%>" class="form-control" readonly required>
+                
+                          <input type="hidden" name="section" id="section" value="<%=section%>" class="form-control" readonly>
+                  
+                   
+                       
+                        <input type="hidden" name="subject" id="subject" value="<%= subjectname %>" class="form-control" readonly required>
+              
+                   
+                      
+                        <input type="hidden" name="terminal" id="terminal" value="<%= terminal %>" class="form-control" <%= terminal ? 'readonly' : '' %>>
+                
+                </div>
+                <h2 class="text-center">
+                    <input type="checkbox" name="absent" id="absent" class="form-check-input mt-1" style="opacity: 0.8;border: 2px solid #0ea5e9;"> Absent
+                </h2>
+            </section>
+            
+
+            <section id="formDiv">
+               
+                <% let subjectData = subjects.find(subject => subject.subject === subjectname && subject.forClass === studentClass); %>
+                <% let max = parseInt(subjectData.max); %>
+                <% for (let i = 1; i <= max; i++) { %>
+                    <div class="question-card mb-3 border rounded">
+                        <h2 class="question-header p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
+                            <span>Question <%= i %></span>
+                            <div class="progress-indicator">
+                                <div class="progress" style="width: 150px; height: 10px;">
+                                    <div class="progress-bar bg-success question-progress" id="progress-q<%= i %>" role="progressbar" 
+                                        style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                                <small class="text-muted" id="progress-text-q<%= i %>">0 / 0 marks</small>
+                            </div>
+                        </h2>
+                        <div class="question-content p-3">
+                            <% const subCount = subjectData[`q${i}_subcount`] || 0; %>
+                            <% for (let j = 0; j < subCount; j++) {
+                                const subLabel = String.fromCharCode(97 + j);
+                                const qKey = `q${i}${subLabel}`;
+                                const fullMark = subjectData[qKey] || 0;
+                                const hasSubparts = subjectData[`${qKey}_has_subparts`] === 'on' || subjectData[`${qKey}_has_subparts`] === true;
+                                const subSubCount = subjectData[`${qKey}_subparts_count`];
+                                const markPerSubSub = subjectData[`${qKey}_marks_per_subpart`] || 0;
+                            %>
+                            <div class="question-section mb-4">
+                                <h4 class="question-heading d-flex justify-content-between align-items-center">
+                                    <span><%= qKey.toUpperCase() %></span>
+                                    <% if (hasSubparts && subSubCount) { %>
+                                        <span class="badge bg-primary rounded-pill">
+                                            <%= subSubCount %> Subparts | Total FM: <%= (markPerSubSub * subSubCount) %>
+                                        </span>
+                                    <% } else { %>
+                                        <span class="badge bg-secondary rounded-pill">FM: <%= fullMark %></span>
+                                    <% } %>
+                                </h4>
+                                <div class="option-container optionsinfo">
+                                    <% if (hasSubparts && subSubCount) {
+                                        // Generate sub-parts based on count
+                                        for (let subIndex = 1; subIndex <= subSubCount; subIndex++) {
+                                            // Generate roman numeral for the sub-part
+                                            const romanNumerals = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 
+                                                                'xi', 'xii', 'xiii', 'xiv', 'xv', 'xvi', 'xvii', 'xviii', 'xix', 'xx'];
+                                            const subPartLabel = romanNumerals[subIndex-1] || subIndex;
+                                        %>
+                                            <label class="ansradio mb-3">
+                                                <div class="sub-part-header mb-2">
+                                                    <span class="clabel fw-bold"><%= qKey %>.<%= subPartLabel %> (FM: <%= markPerSubSub %>):</span>
+                                                </div>
+                                                <div class="marks-options">
+                                                    <% for (let m = 0; m <= parseFloat(markPerSubSub); m += 0.5) { %>
+                                                        <label class="mark-option">
+                                                            <% const fieldName = `${qKey}_${subPartLabel}`; %>
+                                                            <input type="radio" name="<%= fieldName %>" value="<%= m %>" onclick="sum()">
+                                                            <span class="mark-value"><%= m %></span>
+                                                        </label>
+                                                    <% } %>
+                                                </div>
+                                            </label>
+                                        <% } %>
+                                    <% } else { %>
+                                        <div class="marks-options-grid">
+                                            <% for (let m = 0; m <= parseFloat(fullMark); m += 0.5) { %>
+                                                <label class="mark-option">
+                                                    <input type="radio" name="<%= qKey %>" value="<%= m %>" onclick="sum()">
+                                                    <span class="mark-value"><%= m %></span>
+                                                </label>
+                                            <% } %>
+                                        </div>
+                                    <% } %>
+                                </div>
+                            </div>
+                            <% } %>
+                        </div>
+                    </div>
+                <% } %>
+            </section>
+
+            <div class="text-center">
+                <input type="number" name="totalMarks" id="totalmarks" class="form-control w-25 mx-auto" placeholder="Total Marks" step="0.01">
+                <button type="submit" id="submit" class="btn btn-primary mt-3" onclick="return handleFormSubmit()">
+                    <i class="fas fa-save me-2"></i> Save Assessment
+                </button>
+            </div>
+        </form>
+
+        <div class="mt-4 text-center">
+            <a href="/" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i> Back to Subjects
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Improved sum function with better precision handling
+        function sum() {
+            let total = 0;
+            document.querySelectorAll('input[type="radio"]:checked').forEach(el => {
+                // Parse as float and add to total, ensuring proper decimal handling
+                if (el.value) {
+                    total += parseFloat(el.value);
+                }
+            });
+            // Format to 2 decimal places for consistency
+            const formattedTotal = total.toFixed(2);
+            document.getElementById('totalmarks').value = formattedTotal;
+            
+            // Update the running total display as well
+            const runningTotalElement = document.getElementById('running-total');
+            if (runningTotalElement) {
+                runningTotalElement.textContent = formattedTotal;
+            }
+            
+            // Visual feedback by highlighting the selected options
+            document.querySelectorAll('input[type="radio"]:checked').forEach(radio => {
+                // Add a class to the parent label for styling
+                const parentLabel = radio.closest('.mark-option');
+                if (parentLabel) {
+                    parentLabel.classList.add('selected');
+                }
+            });
+        }
+
+        // Handle absent checkbox
+        document.getElementById('absent').addEventListener('change', function () {
+            const formDiv = document.getElementById('formDiv');
+            if (this.checked) {
+                // If student is absent, hide the form and set total to 0
+                formDiv.style.display = 'none';
+                document.getElementById('totalmarks').value = 0;
+                
+                // Uncheck all radio buttons
+                document.querySelectorAll('input[type="radio"]').forEach(radio => {
+                    radio.checked = false;
+                    radio.removeAttribute('required');
+                });
+                
+                // Remove selected styling
+                document.querySelectorAll('.mark-option.selected').forEach(option => {
+                    option.classList.remove('selected');
+                });
+            } else {
+                // If student is present, show the form
+                formDiv.style.display = 'block';
+                
+                // Add required attribute back
+                document.querySelectorAll('input[type="radio"]').forEach(radio => {
+                    radio.setAttribute('required', true);
+                });
+                
+                // Recalculate total
+                sum();
+            }
+        });
+        
+        // Function to update the progress bars for each question
+        function updateQuestionProgress() {
+            // Create a map to store the total possible marks for each question
+            const questionTotals = {};
+            const questionMarks = {};
+            
+            // Initialize the question totals and marks for each question
+            const maxQuestions = parseInt('<%= max %>', 10);
+            for (let i = 1; i <= maxQuestions; i++) {
+                questionTotals['q' + i] = 0;
+                questionMarks['q' + i] = 0;
+            }
+            
+            // Group radio buttons by name to find unique question parts
+            const radioGroups = {};
+            document.querySelectorAll('input[type="radio"]').forEach(radio => {
+                const name = radio.getAttribute('name');
+                if (!radioGroups[name]) {
+                    radioGroups[name] = [];
+                }
+                radioGroups[name].push(radio);
+            });
+            
+            // Calculate the total possible marks for each question
+            Object.entries(radioGroups).forEach(([name, radios]) => {
+                // Extract the question number (e.g., q1a -> 1, q1a_i -> 1)
+                const match = name.match(/^q(\d+)/);
+                if (match) {
+                    const questionNumber = match[1];
+                    const questionKey = 'q' + questionNumber;
+                    
+                    // Find the maximum value in this radio group
+                    let maxValue = 0;
+                    radios.forEach(radio => {
+                        maxValue = Math.max(maxValue, parseFloat(radio.value) || 0);
+                    });
+                    
+                    // Add to the question's total possible marks
+                    questionTotals[questionKey] += maxValue;
+                    
+                    // Check if any radio in this group is selected
+                    const selectedRadio = radios.find(r => r.checked);
+                    if (selectedRadio) {
+                        questionMarks[questionKey] += parseFloat(selectedRadio.value) || 0;
+                    }
+                }
+            });
+            
+            // Update the progress bars
+            for (const [question, total] of Object.entries(questionTotals)) {
+                const marks = questionMarks[question] || 0;
+                const progressBar = document.getElementById(`progress-${question}`);
+                const progressText = document.getElementById(`progress-text-${question}`);
+                
+                if (progressBar && progressText) {
+                    const percentage = total > 0 ? (marks / total) * 100 : 0;
+                    progressBar.style.width = percentage + '%';
+                    progressBar.setAttribute('aria-valuenow', percentage);
+                    progressText.textContent = `${marks.toFixed(1)} / ${total.toFixed(1)} marks`;
+                    
+                    // Update color based on completion
+                    if (percentage >= 100) {
+                        progressBar.classList.remove('bg-warning', 'bg-danger');
+                        progressBar.classList.add('bg-success');
+                    } else if (percentage >= 50) {
+                        progressBar.classList.remove('bg-success', 'bg-danger');
+                        progressBar.classList.add('bg-warning');
+                    } else {
+                        progressBar.classList.remove('bg-success', 'bg-warning');
+                        progressBar.classList.add('bg-danger');
+                    }
+                    
+                    // Log progress information for debugging
+                    console.log(`Question ${question}: ${marks.toFixed(1)}/${total.toFixed(1)} (${percentage.toFixed(1)}%)`);
+                }
+            }
+            
+            // Show an overall progress summary
+            const totalMarks = Object.values(questionMarks).reduce((sum, val) => sum + val, 0);
+            const totalPossible = Object.values(questionTotals).reduce((sum, val) => sum + val, 0);
+            const overallPercentage = totalPossible > 0 ? (totalMarks / totalPossible) * 100 : 0;
+            
+            console.log(`Overall progress: ${totalMarks.toFixed(1)}/${totalPossible.toFixed(1)} marks (${overallPercentage.toFixed(1)}%)`);
+            
+            // Return the progress data for potential use elsewhere
+            return {
+                questionTotals,
+                questionMarks,
+                totalMarks,
+                totalPossible,
+                overallPercentage
+            };
+        }
+        
+        // Update the sum function to also update progress
+        const originalSum = sum;
+        sum = function() {
+            originalSum();
+            updateQuestionProgress();
+        };
+
+        // Function to handle form submission and set default values
+        function handleFormSubmit() {
+            // Get all unique radio button groups (by name attribute)
+            const radioGroups = {};
+            document.querySelectorAll('input[type="radio"]').forEach(radio => {
+                const name = radio.getAttribute('name');
+                if (!radioGroups[name]) {
+                    radioGroups[name] = [];
+                }
+                radioGroups[name].push(radio);
+            });
+            
+            // Check each group and set to 0 if no selection is made
+            Object.entries(radioGroups).forEach(([name, radios]) => {
+                const hasSelection = radios.some(radio => radio.checked);
+                if (!hasSelection) {
+                    // Find the radio button with value "0" and select it
+                    const zeroRadio = radios.find(radio => radio.value === '0');
+                    if (zeroRadio) {
+                        zeroRadio.checked = true;
+                        console.log(`Auto-selected 0 for ${name}`);
+                    }
+                }
+            });
+            
+            // Recalculate the total with the new selections
+            sum();
+            
+            // Allow form submission to continue
+            return true;
+        }
+
+        // Initialize the form on load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if any radio buttons are already selected (e.g., form reload)
+            sum();
+            updateQuestionProgress();
+            
+            // Add change event listener to all radio buttons
+            document.querySelectorAll('input[type="radio"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    sum(); // This will also call updateQuestionProgress
+                });
+            });
+            
+            // Add click handler to make the entire mark-option label clickable
+            document.querySelectorAll('.mark-option').forEach(option => {
+                option.addEventListener('click', function(e) {
+                    // If the click wasn't directly on the radio button, trigger it
+                    const radio = this.querySelector('input[type="radio"]');
+                    if (e.target !== radio) {
+                        radio.checked = true;
+                        // Trigger the sum calculation and update progress bars
+                        sum();
+                    }
+                    
+                    // Remove selected class from all siblings
+                    const name = radio.getAttribute('name');
+                    document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+                        const parent = r.closest('.mark-option');
+                        if (parent && parent !== this) {
+                            parent.classList.remove('selected');
+                        }
+                    });
+                    
+                    // Add selected class to this option
+                    this.classList.add('selected');
+                });
+            });
+        });
+    </script>
+
+       <!-- script for autofill name -->
+    
+    <script>
+      // Form page loader handling
+      document.addEventListener('DOMContentLoaded', function() {
+        // Show loader when form is submitted
+        const forms = document.querySelectorAll('form');
+        forms.forEach(form => {
+          form.addEventListener('submit', function(e) {
+            if (window.pageLoader) {
+              window.pageLoader.show(
+                'Saving Form Data...',
+                'Processing your submission and storing results'
+              );
+            }
+          });
+        });
+        
+        // Show loader for analysis links
+        const analysisLinks = document.querySelectorAll('a[href*="analysis"]');
+        analysisLinks.forEach(link => {
+          link.addEventListener('click', function(e) {
+            if (window.pageLoader) {
+              window.pageLoader.show(
+                'Loading Analysis...',
+                'Preparing detailed examination analysis'
+              );
+            }
+          });
+        });
+      });
+    </script>
+
+    <script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      function setupStudentButtons() {
+        const buttons = document.querySelectorAll('.student-btn');
+        buttons.forEach(button => {
+          button.addEventListener('click', function() {
+            // Remove active class from all buttons
+            buttons.forEach(btn => btn.classList.remove('active'));
+            
+            // Add active class to clicked button
+            this.classList.add('active');
+            
+            // Fill form fields
+            document.getElementById('roll').value = this.getAttribute('data-roll');
+            document.getElementById('name').value = this.getAttribute('data-name');
+            document.getElementById('reg').value = this.getAttribute('data-reg');
+          });
+        });
+      }
+      
+      // Initialize when DOM is ready
+      document.addEventListener('DOMContentLoaded', setupStudentButtons);
+
+    </script>
+</body>
+</html>

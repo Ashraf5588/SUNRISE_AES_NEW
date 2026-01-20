@@ -1,0 +1,44 @@
+*{
+  margin: 0;
+  padding:0;
+  box-sizing: border-box;
+
+}
+.correct,.incorrect,.notattempt,.correctabove50,.correctbelow50 {
+  border: 3px solid #90caf9;
+  height: auto;
+  margin: 1rem 0;
+  padding: 1rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  background-color: #90caf9;
+  border-radius: 12px 0 12px 0;
+  text-align: center;
+  width: 18rem;
+}
+.correct{
+  background-color: rgb(22, 225, 22);
+  border: 3px solid #b3b3b3;
+}
+.incorrect{
+  background-color: red;
+  border: 3px solid #b3b3b3;
+}
+.notattempt{
+  background-color:darkblue;
+  border: 3px solid #b3b3b3;
+}
+.correctabove50{
+  background-color:rgb(144, 222, 150);
+  border: 3px solid #b3b3b3;
+}
+
+
+
+.terminalstatus
+{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-evenly;
+  margin-top: 10%;
+}

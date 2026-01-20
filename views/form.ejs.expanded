@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form</title>    <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/form.css">
+    <link rel="stylesheet" href="/nav.css">
+    <link rel="stylesheet" href="/form-fixes.css">
+    <link rel="stylesheet" href="/question-styles.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+   <%- include('./partials/nav',{currentPage:'home'}) %>
+        <div class="hero-section">
+            <h1 id="firstheading">Answer Evaluation <span id="firstspan">System</span></h1>
+            <span class="subheading">A professional system designed to analyze and evaluate student performance</span>
+        </div>    </div>
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="info-card">
+                    <div class="info-card-icon">
+                        <i class="fas fa-book"></i>
+                    </div>
+                    <div class="info-card-content">
+                        <h3 class="info-card-title">Subject</h3>
+                        <div class="info-card-value"><%= subjectname %></div>
+                        <div class="mt-2">Class <%= studentClass %> (<%= section %>)</div>
+                        <div class="mt-1"><%= terminal %> Term</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="info-card info-card-entries">
+                    <div class="info-card-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="info-card-content">
+                        <h3 class="info-card-title">Total Student Entries</h3>
+                        <div class="info-card-value"><%= totalEntries %></div>
+                        <div class="mt-2">Class <%= studentClass %> (<%= section %>)</div>
+                        <div class="mt-1"><%= terminal %> Term</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-container mt-4">    <form action="/forms/<%=subjectname%>/<%=studentClass%>/<%=section%>/<%=terminal%>" method="POST">
+        
+        <section class="mb-5">
+            <h2 class="section-title">Student Information</h2>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="name" class="form-label">Student Name</label>
+                    <input type="text" name="name" id="name" placeholder="Enter student name" class="form-control" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="roll" class="form-label">Roll Number</label>
+                    <input type="number" name="roll" id="roll" placeholder="Enter roll number" class="form-control" required>
+                </div>
+                <div class="col-md-3">
+                    <label for="studentClass" class="form-label">Class</label>
+                    <input type="text" name="studentClass" id="studentClass" value="<%=studentClass%>" class="form-control" readonly required>
+                </div>
+                <div class="col-md-3">
+                    <label for="section" class="form-label">Section</label>
+                    <input type="text" name="section" id="section" value="<%=section%>" class="form-control" readonly>
+                </div>
+                <div class="col-md-3">
+                    <label for="subject" class="form-label">Subject</label>
+                    <input type="text" name="subject" id="subject" value="<%= subjectname %>" class="form-control" readonly required>
+                </div>
+                <div class="col-md-3">
+                    <label for="terminal" class="form-label">Term</label>
+                    <input type="text" name="terminal" id="terminal" value="<%= terminal %>" class="form-control" required placeholder="Add Terminal Name" <%= terminal ? 'readonly' : '' %>>
+                </div>
+            </div>
+        </section>    <section>
+        <h2 class="section-title">Question Assessment</h2>
+          <% 
+        // Find the specific subject from the subjects array
+        let subjectData = subjects.find(subject => subject.subject === subjectname);
+        let max = parseInt(subjectData.max); // Get the max number of questions for the selected subject
+        %>
+          <div class="question-list">
+        <% for (let i = 1; i <= max; i++) { %>
+            <% let subQuestionCount = subjectData[i] || 0; %>
+            <% 
+            // For any question with 0 sub-questions, set to 1 sub-question
+            // This ensures they all have at least one option group
+            if (subQuestionCount === 0) {
+                subQuestionCount = 1;
+            }
+            %>
+            
+            <div class="question-card mb-3 border rounded">
+                <h2 class="question-header p-3 bg-light border-bottom">
+                    Question <%= i %>
+                </h2>
+                <div class="question-content p-3">
+                    <div class="accordion-body">
+                        <!-- Loop through the sub-questions -->
+                        <% for (let j = 0; j < subQuestionCount; j++) { %>
+                            <% 
+                            // For ANY question with 0 sub-questions, explicitly label as "a"
+                            const hasNoSubQuestions = subjectData[i] === 0;
+                            %>                            
+                            <div class="question-section">
+                                <h4 class="question-heading">
+                                    <% if (hasNoSubQuestions) { %>
+                                        Question <%= i %>a
+                                    <% } else { %>
+                                        Question <%= i %><%= String.fromCharCode(97 + j) %>
+                                    <% } %>                                </h4>                                <div class="option-container optionsinfo">
+                                    <% 
+                                    // Set labels and IDs correctly for ANY question without sub-questions
+                                    let subLabel = String.fromCharCode(97 + j);
+                                    if (hasNoSubQuestions) {
+                                        subLabel = 'a';
+                                    }
+                                    %>
+                                    
+                                    <label for="correct<%= i %><%= subLabel %>" class="ansradio" data-color="success">
+                                        <span class="clabel">
+                                            <i class="fas fa-check-circle mr-2"></i> Correct
+                                        </span>
+                                        <input type="radio" id="correct<%= i %><%= subLabel %>" value="correct" name="q<%= i %><%= subLabel %>">
+                                    </label>
+                                    
+                                    <label for="incorrect<%= i %><%= subLabel %>" class="ansradio" data-color="error">
+                                        <span class="clabel">
+                                            <i class="fas fa-times-circle mr-2"></i> Incorrect
+                                        </span>
+                                        <input type="radio" id="incorrect<%= i %><%= subLabel %>" value="incorrect" name="q<%= i %><%= subLabel %>">
+                                    </label>
+                                    
+                                    <label for="notattempt<%= i %><%= subLabel %>" class="ansradio" data-color="gray">
+                                        <span class="clabel">
+                                            <i class="fas fa-minus-circle mr-2"></i> Not Attempted
+                                        </span>
+                                        <input type="radio" id="notattempt<%= i %><%= subLabel %>" value="notattempt" name="q<%= i %><%= subLabel %>">
+                                    </label>
+                                    
+                                    <label for="cabv50<%= i %><%= subLabel %>" class="ansradio" data-color="green">
+                                        <span class="clabel">
+                                            <i class="fas fa-arrow-alt-circle-up mr-2"></i> Correct above 50%
+                                        </span>
+                                        <input type="radio" id="cabv50<%= i %><%= subLabel %>" value="correctabove50" name="q<%= i %><%= subLabel %>">
+                                    </label>
+                                    
+                                    <label for="cblw50<%= i %><%= subLabel %>" class="ansradio" data-color="warning">
+                                        <span class="clabel">
+                                            <i class="fas fa-arrow-alt-circle-down mr-2"></i> Correct below 50%
+                                        </span>
+                                        <input type="radio" id="cblw50<%= i %><%= subLabel %>" value="correctbelow50" name="q<%= i %><%= subLabel %>">
+                                    </label>
+                                </div>
+                            </div>                        <% } %>
+                    </div>
+                </div>
+            </div>
+        <% } %>
+        </div>
+    </section>    <div class="text-center">
+        <button type="submit" id="submit" class="submit-btn">
+            <i class="fas fa-save me-2"></i> Save Assessment
+        </button>
+    </div>
+    </form>
+    
+    <div class="mt-4 text-center">
+        <a href="/forms" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i> Back to Subjects
+        </a>
+    </div>      <script>
+    // Apply visual cues for completed sections
+    document.addEventListener('DOMContentLoaded', function() {
+        const questionCards = document.querySelectorAll('.question-card');
+        questionCards.forEach((card, index) => {
+            // Check if any radio in this section is checked
+            const anyChecked = Array.from(card.querySelectorAll('input[type="radio"]')).some(radio => radio.checked);
+            
+            // Apply visual cue for completed sections
+            if (anyChecked) {
+                card.querySelector('.question-header').classList.add('bg-success-subtle');
+                card.querySelector('.question-header').classList.add('text-success');
+            }
+        });
+    });    </script>
+    <script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/form.js"></script>
+</body>
+</html>

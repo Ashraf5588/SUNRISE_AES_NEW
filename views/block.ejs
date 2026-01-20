@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Access Restricted</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f0f8ff;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: #5a3921;
+    }
+    .container {
+      background-color: white;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      padding: 40px;
+      text-align: center;
+      max-width: 500px;
+      width: 90%;
+    }
+    .message {
+      margin-bottom: 30px;
+      font-size: 18px;
+      line-height: 1.6;
+    }
+    .teacher-name {
+      color: #4682b4;
+      font-weight: 600;
+    }
+    .icon {
+      font-size: 60px;
+      margin-bottom: 20px;
+      color: #4682b4;
+    }
+    .home-button {
+      display: inline-block;
+      background-color: #4682b4;
+      color: white;
+      text-decoration: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-weight: 500;
+      transition: background-color 0.3s ease;
+    }
+    .home-button:hover {
+      background-color: #3a6d99;
+    }
+    .header {
+      margin-bottom: 30px;
+      color: #5a3921;
+      font-size: 24px;
+      font-weight: bold;
+    }
+    .footer {
+      margin-top: 30px;
+      font-size: 14px;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">&#128274;</div>
+    <div class="header">Access Restricted</div>
+    <div class="message">
+      Dear <span class="teacher-name"><%= teacherName %></span>,<br>
+      Sorry, you are not allowed to access this page. This page is restricted to <%=role%>.Please contact the administrator if you believe this is an error.
+    </div>
+    <a href="/" class="home-button">Return to Home</a>
+    <div class="footer">
+      &copy; <%= new Date().getFullYear() %> Answer Analysis System
+    </div>
+  </div>
+</body>
+</html> 

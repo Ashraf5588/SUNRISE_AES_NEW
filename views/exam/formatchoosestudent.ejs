@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Choose Marksheet Format</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(135deg,#3456bd 0%,#0f1f2e 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+    
+    .container{max-width:1200px;width:100%}
+    
+    .header{text-align:center;margin-bottom:50px}
+    .title{font-size:42px;font-weight:800;letter-spacing:1px;margin-bottom:12px;background:linear-gradient(135deg,#ff8c42 0%,#ffa666 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-transform:uppercase}
+    .subtitle{font-size:18px;color:#cbd5e1;font-weight:400;letter-spacing:.5px}
+    
+    .format-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:28px}
+    
+    .format-card{background:#fff;border-radius:16px;padding:0;overflow:hidden;text-decoration:none;display:block;box-shadow:0 8px 24px rgba(0,0,0,.2);transition:all .3s;border:3px solid transparent;position:relative}
+    .format-card:hover{transform:translateY(-8px);box-shadow:0 12px 32px rgba(255,140,66,.4);border-color:#ff8c42}
+    .format-card::before{content:'';position:absolute;top:0;left:0;width:100%;height:5px;background:linear-gradient(90deg,#ff8c42 0%,#e67a2e 100%)}
+    
+    .card-image{width:100%;height:180px;background:linear-gradient(135deg,#f8f9fa 0%,#e9ecef 100%);display:flex;align-items:center;justify-content:center;border-bottom:2px solid #e1e8ed;position:relative;overflow:hidden}
+    .card-image img{max-width:75%;max-height:140px;object-fit:contain;transition:transform .3s}
+    .format-card:hover .card-image img{transform:scale(1.1)}
+    .card-image::after{content:'';position:absolute;bottom:0;left:0;width:100%;height:50%;background:linear-gradient(to top,rgba(255,255,255,.9),transparent)}
+    
+    .card-content{padding:24px}
+    .card-title{font-size:20px;font-weight:700;color:#1a3a52;margin-bottom:10px;letter-spacing:.3px;text-align:center}
+    .card-description{font-size:13px;color:#64748b;text-align:center;line-height:1.6;margin-bottom:18px}
+    
+    .card-footer{display:flex;align-items:center;justify-content:center;padding-top:16px;border-top:2px solid #f1f5f9}
+    .card-button{font-size:13px;font-weight:700;color:#ff8c42;text-transform:uppercase;letter-spacing:.8px;display:flex;align-items:center;gap:8px;transition:gap .3s}
+    .format-card:hover .card-button{gap:12px}
+    .card-button svg{width:18px;height:18px}
+    
+    @media(max-width:1024px){
+      .format-grid{grid-template-columns:repeat(2,1fr);gap:24px}
+    }
+    @media(max-width:768px){
+      .title{font-size:32px}
+      .subtitle{font-size:16px}
+      .format-grid{grid-template-columns:1fr;gap:24px}
+      .card-image{height:160px}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1 class="title">Choose Marksheet Format</h1>
+      <p class="subtitle">Select the appropriate format for generating student marksheets</p>
+    </div>
+    
+    <div class="format-grid">
+      <a href="/student/generatemarksheet?format=practicalonly&studentClass=<%= studentClass %>&section=<%= section %>&reg=<%= reg %>&terminal=<%= terminal %>&academicYear=<%= academicYear %>" class="format-card">
+        <div class="card-image">
+          <img src="/onlypractical.png" alt="Practical Only" onerror="this.style.display='none'">
+        </div>
+        <div class="card-content">
+          <h2 class="card-title">Practical Only</h2>
+          <p class="card-description">Generate marksheets for practical examinations only. Ideal for lab-based subjects and skill assessments.</p>
+          <div class="card-footer">
+            <span class="card-button">
+              Select Format
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </span>
+          </div>
+        </div>
+      </a>
+      
+      <a href="/student/generatemarksheet?format=theorypractical&studentClass=<%= studentClass %>&section=<%= section %>&reg=<%= reg %>&terminal=<%= terminal %>&academicYear=<%= academicYear %>" class="format-card">
+        <div class="card-image">
+          <img src="/theory.png" alt="Theory + Practical" onerror="this.style.display='none'">
+        </div>
+        <div class="card-content">
+          <h2 class="card-title">Theory + Practical</h2>
+          <p class="card-description">Combined marksheet showing both theory and practical marks. Perfect for subjects with both components.</p>
+          <div class="card-footer">
+            <span class="card-button">
+              Select Format
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </span>
+          </div>
+        </div>
+      </a>
+      
+      <a href="/student/generatemarksheet?format=internalexternal&studentClass=<%= studentClass %>&section=<%= section %>&reg=<%= reg %>&terminal=<%= terminal %>&academicYear=<%= academicYear %>" class="format-card">
+        <div class="card-image">
+          <img src="/onlypractical.png" alt="Internal + External" onerror="this.style.display='none'">
+        </div>
+        <div class="card-content">
+          <h2 class="card-title">Internal + External</h2>
+          <p class="card-description">Comprehensive marksheet displaying internal assessment and external examination marks separately.</p>
+          <div class="card-footer">
+            <span class="card-button">
+              Select Format
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </span>
+          </div>
+        </div>
+      </a>
+      
+      <a href="/student/generatemarksheet?format=theoryonly&studentClass=<%= studentClass %>&section=<%= section %>&reg=<%= reg %>&terminal=<%= terminal %>&academicYear=<%= academicYear %>" class="format-card">
+        <div class="card-image">
+          <img src="/onlypractical.png" alt="Theory Only" onerror="this.style.display='none'">
+        </div>
+        <div class="card-content">
+          <h2 class="card-title">Theory Only</h2>
+          <p class="card-description">Generate marksheets for theory examinations only. Suitable for written tests and theoretical subjects.</p>
+          <div class="card-footer">
+            <span class="card-button">
+              Select Format
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </span>
+          </div>
+        </div>
+      </a>
+    </div>
+  </div>
+</body>
+</html>

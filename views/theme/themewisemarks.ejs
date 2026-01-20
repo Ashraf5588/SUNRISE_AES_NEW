@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ThemeWise Marks</title>
+    <style>
+    body {
+      background: #f0f4fa;
+      margin: 0;
+      padding: 0;
+    }
+    .a4 {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 10mm auto;
+      background: white;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      border-radius: 8px;
+      padding: 18mm 12mm 15mm 12mm;
+      box-sizing: border-box;
+      position: relative;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 18px;
+      border-bottom: 2px solid #4a90e2;
+      padding-bottom: 10px;
+    }
+    .header img {
+      width: 60px;
+      height: 60px;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+    .header h2 {
+      display: inline-block;
+      vertical-align: middle;
+      font-size: 1.5rem;
+      color: #2c3e50;
+      margin: 0;
+    }
+    .header h3 {
+      color: #7f8c8d;
+      font-size: 1rem;
+      margin: 2px 0;
+      font-weight: normal;
+    }
+    .header h1 {
+      color: #4a90e2;
+      font-size: 1.3rem;
+      margin-top: 10px;
+      margin-bottom: 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.98rem;
+      background: #fff;
+    }
+    th, td {
+      border: 1px solid #222;
+      padding: 7px 4px;
+      text-align: center;
+      vertical-align: middle;
+      color: #222;
+    }
+    th {
+      background: #e3f1fb;
+      color: #222;
+      font-weight: 600;
+    }
+    tr:nth-child(even) td {
+      background: #f7fbff;
+    }
+    .print-btn {
+      background: #4a90e2;
+      color: white;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-bottom: 18px;
+      font-size: 14px;
+      transition: background 0.3s;
+      float: right;
+    }
+    .print-btn:hover {
+      background: #357abd;
+    }
+    @media print {
+      body, html {
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .a4 {
+        margin: 0 !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        width: 190mm !important;
+        min-height: 277mm !important;
+        padding: 10mm !important;
+        page-break-after: always;
+      }
+      .print-btn {
+        display: none !important;
+      }
+      @page {
+        size: A4;
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+   <div class="a4">
+    <button class="print-btn" onclick="window.print()">🖨️ Print Report</button>
+    
+    <div class="header">
+      <div>
+        <img src="/image.png" alt="School Logo">
+        <h2><%= marksheetSetting[0].schoolName %></h2>
+      </div>
+      <h3><%= marksheetSetting[0].address %></h3>
+      <h3><%= marksheetSetting[0].phone %> | <%= marksheetSetting[0].email %> | <%= marksheetSetting[0].website %></h3>
+      <h3><%= terminal %> Terminal - <%= marksheetSetting[0].academicYear %></h3>
+      <h1>Theme Wise Marks of Individual Student</h1>
+    </div>
+  
+   <% themewisemarks.forEach((data)=>{ %>
+   <b>Name: <%= data.name %></b> <br>
+   <div style="color: #7c8081;"> Class:
+    <%= data.studentClass %> | section <%= data.section %> </div>
+    <% data.subjects.forEach((subject) => { %>
+      <center style="color: #357abd;"><b><%= subject.name %></b></center>
+  <table cellspacing="0" border="1">
+    <tr>
+      <th>S.No</th>
+      <th>Theme Name</th>
+      <th>Total Learning Outcome</th>
+      <th>Total Obtained Marks after</th>
+      <th>Progress percentage</th>
+      <th>Remarks</th>
+      
+    </tr>
+    <% subject.themes.forEach((theme,i=1)=>{ %>
+      <tr>
+        <td><%= i+1 %> <% i=i+1 %></td>
+        <td><%= theme.themeName %></td>
+        <td><%= theme.learningOutcomes.length %></td>
+        <td><%= theme.overallTotalAfter %></td>
+        <td><%= (theme.overallTotalAfter / (4 * theme.learningOutcomes.length)) * 100 %> %</td>
+        
+      </tr>
+
+   <% }) %>
+   <tr>
+   <td colspan="2">Total</td>
+   <td><%= subject.themes.reduce((acc, theme) => acc + theme.learningOutcomes.length, 0) %></td>
+   <td><%= subject.themes.reduce((acc, theme) => acc + theme.overallTotalAfter, 0) %></td>
+   <td><%= (subject.themes.reduce((acc, theme) => acc + theme.overallTotalAfter, 0) / (4 * subject.themes.reduce((acc, theme) => acc + theme.learningOutcomes.length, 0))) * 100 %> %</td>
+   <td> 
+   <% 
+   var percentage = (subject.themes.reduce((acc, theme) => acc + theme.overallTotalAfter, 0) / (4 * subject.themes.reduce((acc, theme) => acc + theme.learningOutcomes.length, 0))) * 100;
+   if (percentage >= 90 && percentage <= 100) { %>
+      A+
+   <% } else if (percentage >= 80 && percentage < 89) { %>
+      A
+   <% } else if (percentage >= 70 && percentage < 79) { %>
+      B+
+   <% } else if (percentage >= 60 && percentage < 69) { %>
+      B
+   <% } else if (percentage >= 50 && percentage < 59) { %>
+      C+
+   <% } else if (percentage >= 40 && percentage < 49) { %>
+      C
+   <% } else if (percentage >= 20 && percentage < 39) { %>
+      D
+   <% } else if (percentage >= 0 && percentage < 19) { %>
+      E
+   <% } else { %>
+      Invalid Percentage
+   <% } %>
+   </td>
+   </tr>
+  </table>
+    <% }) %>
+  <% })%>
+   </div>
+</body>
+</html>

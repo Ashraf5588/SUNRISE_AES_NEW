@@ -1,0 +1,93 @@
+/* Bootstrap Table Customization */
+
+/* Override specific table elements to work with Bootstrap */
+.table-container {
+  margin-top: 30px;
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  background-color: white;
+}
+
+/* Ensure the table-responsive works properly */
+.table-responsive {
+  max-height: 600px;
+  overflow: auto;
+  border-radius: 8px;
+  scrollbar-width: thin;
+}
+
+/* Custom scrollbar styling */
+.table-responsive::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 139, 0.5);
+  border-radius: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+  background-color: #f1f1f1;
+}
+
+/* Style the table properly */
+.table {
+  width: 300%;
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+
+/* Make the header sticky */
+.table > thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* Custom header styling that matches existing darkblue theme */
+.table > thead.table-dark {
+  background-color: darkblue !important;
+  color: white;
+}
+
+/* Action column styling */
+.action-column {
+  position: sticky;
+  right: 0;
+  width: 7%;
+  background-color: #6b4423 !important;
+  z-index: 1;
+}
+
+thead .action-column {
+  background-color: darkblue !important;
+  z-index: 11;
+}
+
+/* Style for the edit button */
+.edit-btn {
+  background-color: #24a0ed;
+  border: none;
+}
+
+.edit-btn:hover {
+  background-color: #1c86c5;
+}
+
+/* Keep existing delete button styling */
+.deletebtn {
+  color: darkblue !important;
+  text-decoration: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .edit-btn, .deletebtn {
+    font-size: 0.8rem;
+  }
+  
+  .table {
+    font-size: 0.9rem;
+  }
+}
