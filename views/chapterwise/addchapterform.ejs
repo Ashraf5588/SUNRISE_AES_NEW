@@ -443,7 +443,7 @@
         <label for="subject">Subject</label>
         <select name="subject" id="subject">
           <option value="">Choose subject</option>
-          <% uniqueSubjects = new Set(subjects.map((subject)=>subject.subject)) %>
+          <% uniqueSubjects = new Set(subjects.map((subject)=>subject.newsubject)) %>
           <%uniqueSubjects.forEach((subject)=>{%>
             <option value="<%=subject%>"><%=subject%></option>
           <%})%>

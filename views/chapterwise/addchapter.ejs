@@ -187,7 +187,7 @@
         <label for="subject">Subject <span class="required">*</span></label>
         <select name="subject" id="subject">
           <option value="" selected disabled>Choose subject</option>
-          <% uniqueSubjects = new Set(subjects.map((subject)=>subject.subject)) %>
+          <% uniqueSubjects = new Set(subjects.map((subject)=>subject.newsubject)) %>
           <%uniqueSubjects.forEach((subject)=>{%>
             <option value="<%=subject%>"><%=subject%></option>
           <%})%>

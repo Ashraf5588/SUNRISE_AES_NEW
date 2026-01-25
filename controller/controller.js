@@ -8,7 +8,7 @@ const bodyParser = require("body-parser");
 const { rootDir } = require("../utils/path");
 const { studentSchema } = require("../model/schema");
 const { studentrecordschema } = require("../model/adminschema");
-const { classSchema, subjectSchema,terminalSchema } = require("../model/adminschema");
+const { classSchema, subjectSchema, terminalSchema,newsubjectSchema,marksheetsetupSchema } = require("../model/adminschema");
 const { name } = require("ejs");
 const subjectlist = mongoose.model("subjectlist", subjectSchema, "subjectlist");
 const studentClass = mongoose.model("studentClass", classSchema, "classlist");
@@ -19,14 +19,16 @@ app.set("view engine", "ejs");
 app.set("view", path.join(rootDir, "views"));
 const { addChapterSchema } = require("../model/addchapterschema");
 const addChapter = mongoose.model("addChapter", addChapterSchema, "addChapter");
+const newsubject = mongoose.model("newsubject", newsubjectSchema, "newsubject");
 
 // Helper function to fetch sidenav data
 const getSidenavData = async (req) => {
   try {
     const subjects = await subjectlist.find({}).lean();
+   
     const studentClassdata = await studentClass.find({}).lean();
     const terminals = await terminal.find({}).lean();
-    
+    const newsubjects = await newsubject.find({}).lean();
     let accessibleSubject = [];
     let accessibleClass = [];
     
@@ -46,9 +48,9 @@ const getSidenavData = async (req) => {
         accessibleClass = studentClassdata;
       } else {
         // Filter subjects based on user's allowed subjects
-        accessibleSubject = subjects.filter(subj =>
+        accessibleSubject = newsubjects.filter(subj =>
           user.allowedSubjects && user.allowedSubjects.some(allowed =>
-            allowed.subject === subj.subject
+            allowed.subject === subj.newsubject
           )
         );
         
