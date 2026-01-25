@@ -44,7 +44,7 @@ const getSidenavData = async (req) => {
       }
       
       if (user.role === "ADMIN") {
-        accessibleSubject = subjects;
+        accessibleSubject = newsubjects;
         accessibleClass = studentClassdata;
       } else {
         // Filter subjects based on user's allowed subjects
@@ -68,7 +68,7 @@ const getSidenavData = async (req) => {
     } else {
       // If no user is found, return all data (default admin view)
       console.log('No user found in request, returning all data');
-      accessibleSubject = subjects;
+      accessibleSubject = newsubjects;
       accessibleClass = studentClassdata;
     }
     
@@ -1315,7 +1315,7 @@ exports.addChapterSelect = async (req,res,next) =>
     try{
   
   const sidenavData = await getSidenavData(req);
-  console.log("sidenavData:", sidenavData.subjects);
+ 
   res.render('./chapterwise/addchapter',{...sidenavData,subjects:sidenavData.subjects,studentClassdata:sidenavData.studentClassdata});
   }catch(err)
   { 
