@@ -365,8 +365,10 @@
 
             <section id="formDiv">
                
-                <% let subjectData = subjects.find(subject => subject.subject === subjectname && subject.forClass === studentClass); %>
-                <% let max = parseInt(subjectData.max); %>
+                <% let subjectData = subjectList.find(subject => subject.subject == subjectname && String(subject.forClass) == String(studentClass) && String(subject.forTerminal) == String(terminal)); %>
+                <% if (!subjectData && subjectList.length > 0) subjectData = subjectList[0]; %>
+                <% let max = subjectData ? parseInt(subjectData.max) : 0; %>
+               
                 <% for (let i = 1; i <= max; i++) { %>
                     <div class="question-card mb-3 border rounded">
                         <h2 class="question-header p-3 bg-light border-bottom d-flex justify-content-between align-items-center">

@@ -153,16 +153,16 @@ const getSubjectModel = (subjectinput, studentClass, section, terminal) => {
 };
 
 // Helper function to safely get subject data and handle errors with case insensitivity
-const getSubjectData = async (subjectinput, forClass, res) => {
+const getSubjectData = async (subjectinput, forClass,section,terminal) => {
   try {
     // First try exact match
-    let currentSubject = await subjectlist.find({'subject': `${subjectinput}`, forClass: forClass})
+    let currentSubject = await subjectlist.find({'subject': `${subjectinput}`, forClass: forClass, forTerminal:terminal});
     
     // If no results, try case-insensitive search
     if (!currentSubject || currentSubject.length === 0) {
       // Try case-insensitive search using a regular expression
       currentSubject = await subjectlist.find({
-        'subject': { $regex: new RegExp(`^${subjectinput}$`, 'i') }, forClass: forClass
+        'subject': { $regex: new RegExp(`^${subjectinput}$`, 'i') }, forClass: forClass, forTerminal:terminal
       });
     }
     
@@ -171,23 +171,13 @@ const getSubjectData = async (subjectinput, forClass, res) => {
       const allSubjects = await subjectlist.find({}).lean();
       const subjectsList = allSubjects.map(s => s.subject).join(', ');
       
-      if (res) {
-        res.status(404).render('404', {
-          errorMessage: `Subject '${subjectinput}' not found in the database. Available subjects: ${subjectsList || 'None'}`,
-          currentPage: 'teacher'
-        });
-      }
+     
       return null;
     }
     return currentSubject[0];
   } catch (err) {
     console.error(`Error in getSubjectData: ${err.message}`);
-    if (res) {
-      res.status(500).render('404', {
-        errorMessage: `Server error while looking up subject '${subjectinput}': ${err.message}`,
-        currentPage: 'teacher'
-      });
-    }
+  
     return null;
   }
 };
@@ -417,15 +407,15 @@ exports.showForm = async (req, res, next) => {
   let { subjectinput,studentClass, section, terminal } = req.params;
   const user = req.user
   const studentrecord = await studentRecord.find({studentClass:studentClass,section:section}).lean();
-  console.log("studentrecord",studentrecord); 
+  
 
-const subjects = await subjectlist.find({ forClass: `${studentClass}`, subject: `${subjectinput}`,forTerminal:`${terminal}`}).lean();
-
+const subjectList = await subjectlist.find({ forClass: `${studentClass}`, subject: `${subjectinput}`,forTerminal:`${terminal}`}).lean();
+console.log("subjects",subjectList);
   const model = getSubjectModel(subjectinput, studentClass, section, terminal);
       const totalcountmarks = await model.find({ subject: `${subjectinput}`, section: `${section}`, terminal: `${terminal}`, studentClass: `${studentClass}` },
       { roll: 1, name: 1 ,totalMarks: 1,_id:1,studentClass:1,section:1,subject:1}).lean();
 
- global.availablesubject = subjects.map((sub) => sub.subject);
+ global.availablesubject = subjectList.map((sub) => sub.subject);
   if(!terminal || terminal === "''" || terminal=== '"')
   {
     terminal=''
@@ -473,7 +463,7 @@ const subjects = await subjectlist.find({ forClass: `${studentClass}`, subject: 
       section,
       studentClass,
       terminal,
-      subjects,
+      subjectList:subjectList,
       totalEntries,
       forClass: studentClass,
       totalcountmarks,
@@ -487,11 +477,12 @@ exports.saveForm = async (req, res, next) => {
   const { subjectinput } = req.params;
   const { studentClass, section, terminal } = req.params;
 
-  const subjects = await subjectlist.find({ forClass: `${studentClass}` ,subject:`${subjectinput}`}).lean();
+  const subjectList = await subjectlist.find({ forClass: `${studentClass}` ,subject:`${subjectinput}`}).lean();
 
-  console.log(subjects);
+
+  console.log(subjectList);
  
-  global.availablesubject = subjects.map((sub) => sub.subject);
+  global.availablesubject = subjectList.map((sub) => sub.subject);
   if (!availablesubject.includes(subjectinput)) {
     return res.render("404");
   } else {
@@ -618,7 +609,7 @@ exports.findData = async (req, res) => {
   
 
 
-    const subjectData = await getSubjectData(subjectinput,studentClass,section,terminal, res);
+    const subjectData = await getSubjectData(subjectinput,studentClass,section,terminal,);
 
 
 const keyValues = {};
@@ -1005,7 +996,7 @@ const {subjectinput,studentClass,section,terminal,status} = req.params;
 const model = getSubjectModel(subjectinput,studentClass,section,terminal);
 
   // Use the helper function to safely get subject data
-  const subjectData = await getSubjectData(subjectinput,studentClass,res);
+  const subjectData = await getSubjectData(subjectinput,studentClass,terminal, res);
 
   // If subject data is null, the helper function has already sent a response
   if (!subjectData) {
