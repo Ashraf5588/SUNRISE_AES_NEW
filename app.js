@@ -30,8 +30,8 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
       res.setHeader('Content-Type', 'application/pdf');
       
       // FORCE INLINE - Remove any potential download triggers
-      // DO NOT set Content-Disposition at all for maximum inline compatibility
-      // res.setHeader('Content-Disposition', 'inline'); // Commented out - some browsers interpret this as download
+      // explicit inline header to prevent download
+      res.setHeader('Content-Disposition', 'inline'); 
       
       // Essential headers for inline PDF viewing
       res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -126,7 +126,7 @@ app.get('/view-pdf/:filename', (req, res) => {
     
     // Serve PDF with STRICT INLINE headers - NO DOWNLOAD
     res.setHeader('Content-Type', 'application/pdf');
-    // CRITICAL: Do not set Content-Disposition at all for maximum inline compatibility
+    res.setHeader('Content-Disposition', 'inline');
     res.setHeader('Accept-Ranges', 'bytes');
     res.setHeader('Cache-Control', 'no-cache, must-revalidate');
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -306,25 +306,39 @@ app.get('/convert-docx/:filename', (req, res) => {
       return res.status(404).json({ error: 'DOCX file not found' });
     }
     
-    const docxConverter = require('docx-pdf');
-    
-    docxConverter(docxPath, pdfPath, function(err, result) {
-      if (err) {
-        console.error('Manual conversion error:', err);
-        res.status(500).json({ 
-          error: 'Conversion failed', 
-          details: err.message,
-          suggestion: 'LibreOffice might not be installed or accessible'
+    const libre = require('libreoffice-convert');
+    const fs = require('fs');
+
+    fs.readFile(docxPath, (readErr, docxBuf) => {
+        if(readErr) {
+             console.error('Manual conversion error (read):', readErr);
+             return res.status(500).json({ error: 'Read failed', details: readErr.message });
+        }
+        
+        libre.convert(docxBuf, '.pdf', undefined, (err, pdfBuf) => {
+          if (err) {
+            console.error('Manual conversion error:', err);
+            res.status(500).json({ 
+              error: 'Conversion failed', 
+              details: err.message,
+              suggestion: 'LibreOffice might not be installed or accessible'
+            });
+          } else {
+            fs.writeFile(pdfPath, pdfBuf, (writeErr) => {
+                if(writeErr) {
+                    console.error('Manual conversion error (write):', writeErr);
+                    return res.status(500).json({ error: 'Write failed', details: writeErr.message });
+                }
+                console.log('Manual conversion successful');
+                res.json({ 
+                    success: true, 
+                    message: 'Conversion completed',
+                    pdfExists: true,
+                    pdfSize: pdfBuf.length
+                });
+             });
+          }
         });
-      } else {
-        console.log('Manual conversion successful:', result);
-        res.json({ 
-          success: true, 
-          message: 'Conversion completed',
-          pdfExists: fs.existsSync(pdfPath),
-          pdfSize: fs.existsSync(pdfPath) ? fs.statSync(pdfPath).size : 0
-        });
-      }
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

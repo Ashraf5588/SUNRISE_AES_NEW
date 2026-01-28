@@ -882,7 +882,11 @@ allArr.push({
 try {
 
 console.log("📄 Loading question paper information...");
-const paper = await subjectlist.findOne({ subject: `${subjectinput}`, forClass: `${studentClass}` }, { questionPaperOfClass: 1,_id:0 });
+const paper = await subjectlist.findOne({ 
+    subject: `${subjectinput}`, 
+    forClass: `${studentClass}`, 
+    forTerminal: `${terminal}` 
+}, { questionPaperOfClass: 1,_id:0 });
 
 let file = 'default.pdf'; // Default fallback
 let fileStatus = 'default'; // 'default', 'found', 'missing'

@@ -2,7 +2,10 @@ const path = require("path");
 const express = require("express");
 const app = express();
 const jwt = require("jsonwebtoken");
-var docxConverter = require('docx-pdf');
+// Use libreoffice-convert instead of docx-pdf to avoid PhantomJS crash
+const libre = require('libreoffice-convert');
+const util = require('util');
+const convertAsync = util.promisify(libre.convert);
 const bs = require("bikram-sambat-js")
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
@@ -733,35 +736,59 @@ exports.addSubject = async (req, res, next) => {
             console.log(`✅ Input file exists, size: ${fs.statSync(inputPath).size} bytes`);
             console.log(`🔄 Converting DOCX to PDF: ${inputPath} -> ${outputPath}`);
             
-            docxConverter(inputPath, outputPath, function(err, result) {
-              if (err) {
-                console.error("❌ DOCX conversion error:", err);
-                reject(err);
-              } else {
-                console.log("✅ DOCX conversion successful:", result);
-                
-                // Verify the PDF was created
-                if (fs.existsSync(outputPath)) {
-                  const pdfSize = fs.statSync(outputPath).size;
-                  console.log(`✅ PDF created successfully, size: ${pdfSize} bytes`);
-                  
-                  // Delete the temporary DOCX file after successful conversion
-                  fs.unlink(inputPath, (unlinkErr) => {
-                    if (unlinkErr) {
-                      console.error(`⚠️ Error deleting temporary docx file: ${unlinkErr.message}`);
-                    } else {
-                      console.log(`🗑️ Temporary docx file deleted successfully: ${req.file.filename}`);
-                    }
-                  });
-                  
-                  resolve(result);
-                } else {
-                  const error = new Error("PDF file was not created despite successful conversion");
-                  console.error("❌ PDF verification failed:", error.message);
-                  reject(error);
+            // docx-pdf replacement: Use libreoffice-convert
+            // Force add LibreOffice to PATH to avoid restart requirement
+            const libreOfficePath = 'C:\\Program Files\\LibreOffice\\program';
+            if (process.platform === 'win32' && !process.env.PATH.includes(libreOfficePath)) {
+                process.env.PATH = `${libreOfficePath};${process.env.PATH}`;
+                console.log(`🔧 Added LibreOffice to PATH: ${libreOfficePath}`);
+            }
+
+            // DIRECT CALL TO SOFFICE - More reliable on Windows
+            const { exec } = require('child_process');
+            
+            // Construct command - ensure paths are quoted
+            // Using the full path to soffice we defined earlier
+            const sofficeCmd = `"${libreOfficePath}\\soffice.exe" --headless --convert-to pdf --outdir "${path.dirname(inputPath)}" "${inputPath}"`;
+            
+            console.log(`🚀 Executing conversion command: ${sofficeCmd}`);
+            
+            exec(sofficeCmd, (execErr, stdout, stderr) => {
+                if (execErr) {
+                    console.error("❌ DOCX conversion error (exec):", execErr);
+                    return reject(execErr);
                 }
-              }
+                
+                if (stderr) console.error("⚠️ Conversion stderr:", stderr);
+                if (stdout) console.log("ℹ️ Conversion stdout:", stdout);
+                
+                  console.log("✅ DOCX conversion operation completed");
+                  
+                  // Verify the PDF was created
+                  if (fs.existsSync(outputPath)) {
+                    const pdfSize = fs.statSync(outputPath).size;
+                    console.log(`✅ PDF created successfully, size: ${pdfSize} bytes`);
+                    
+                    // Delete the temporary DOCX file after successful conversion
+                    fs.unlink(inputPath, (unlinkErr) => {
+                      if (unlinkErr) {
+                        console.error(`⚠️ Error deleting temporary docx file: ${unlinkErr.message}`);
+                      } else {
+                        console.log(`🗑️ Temporary docx file deleted successfully: ${req.file.filename}`);
+                      }
+                    });
+                    
+                    resolve('Success');
+                  } else {
+                    const error = new Error("PDF file was not created despite successful exit");
+                    console.error("❌ PDF verification failed:", error.message);
+                    reject(error);
+                  }
             });
+            // Removed nested fs.readFile since we use exec on file path directly
+            /* 
+            fs.readFile(inputPath, (readErr, docxBuf) => { ... }) 
+            */
           });
           
           // Convert filename to PDF
@@ -2761,7 +2788,7 @@ exports.reportprint = async (req, res, next) => {
     // Get sidenav data
     const sidenavData = await getSidenavData(req);
    const reportofClass = [];
-   const subjectlistfromdb = await subject.find({forClass: studentClass}, { _id: 0, subject: 1, forClass: 1 });
+   const subjectlistfromdb = await subject.find({forClass: studentClass,forTerminal:terminal}, { _id: 0, subject: 1, forClass: 1,forTerminal:1 });
 
 
 
