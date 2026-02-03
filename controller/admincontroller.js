@@ -737,20 +737,23 @@ exports.addSubject = async (req, res, next) => {
             console.log(`🔄 Converting DOCX to PDF: ${inputPath} -> ${outputPath}`);
             
             // docx-pdf replacement: Use libreoffice-convert
-            // Force add LibreOffice to PATH to avoid restart requirement
-            const libreOfficePath = 'C:\\Program Files\\LibreOffice\\program';
-            if (process.platform === 'win32' && !process.env.PATH.includes(libreOfficePath)) {
-                process.env.PATH = `${libreOfficePath};${process.env.PATH}`;
-                console.log(`🔧 Added LibreOffice to PATH: ${libreOfficePath}`);
+            const { exec } = require('child_process');
+            let sofficeCmd;
+
+            if (process.platform === 'win32') {
+                const libreOfficePath = 'C:\\Program Files\\LibreOffice\\program';
+                // Force add LibreOffice to PATH to avoid restart requirement
+                if (!process.env.PATH.includes(libreOfficePath)) {
+                    process.env.PATH = `${libreOfficePath};${process.env.PATH}`;
+                    console.log(`🔧 Added LibreOffice to PATH: ${libreOfficePath}`);
+                }
+                sofficeCmd = `"${libreOfficePath}\\soffice.exe" --headless --convert-to pdf --outdir "${path.dirname(inputPath)}" "${inputPath}"`;
+            } else {
+                // Linux/Unix: Assume installed via package manager (apt/yum) and in global PATH
+                sofficeCmd = `soffice --headless --convert-to pdf --outdir "${path.dirname(inputPath)}" "${inputPath}"`;
             }
 
-            // DIRECT CALL TO SOFFICE - More reliable on Windows
-            const { exec } = require('child_process');
-            
-            // Construct command - ensure paths are quoted
-            // Using the full path to soffice we defined earlier
-            const sofficeCmd = `"${libreOfficePath}\\soffice.exe" --headless --convert-to pdf --outdir "${path.dirname(inputPath)}" "${inputPath}"`;
-            
+            // DIRECT CALL TO SOFFICE - More reliable than library wrappers
             console.log(`🚀 Executing conversion command: ${sofficeCmd}`);
             
             exec(sofficeCmd, (execErr, stdout, stderr) => {
@@ -2784,163 +2787,177 @@ exports.reportprint = async (req, res, next) => {
     console.log("Report print request:", { subjectinput, studentClass, section, terminal, academicYear });
     const year = new Date();
     const nepaliYear = academicYear || bs.ADToBS(`${year}`).slice(0, 4);
-    const subjects = await newsubject.find({})
+    
     // Get sidenav data
     const sidenavData = await getSidenavData(req);
-   const reportofClass = [];
-   const subjectlistfromdb = await subject.find({forClass: studentClass,forTerminal:terminal}, { _id: 0, subject: 1, forClass: 1,forTerminal:1 });
+    const reportofClass = [];
 
+    // Find all subjects for this class and terminal
+    const subjectlistFromDb = await subject.find({
+        forClass: studentClass,
+        forTerminal: terminal
+    }, { _id: 0, subject: 1, forClass: 1, forTerminal: 1 }).lean();
 
-
-const subjectlist = Array.from(
-  new Map(
-    subjectlistfromdb.map(item => [`${item.subject}-${item.forClass}`, item])
-  ).values()
-);
-
-console.log(subjectlist);
-
-    for (const individualsubject of subjectlist) {
-       let result = [];
-    // let obtained=[];
-    avg = [];
-    let total=[];
-         const model = getSubjectModel(individualsubject.subject, studentClass, section, terminal);
-
-
-
-    const totalstudent = await model.aggregate([
-      {
-        $match: {
-          $and: [{ section: `${section}` }, { terminal: `${terminal}` }, { studentClass: `${studentClass}` }],
-        },
-      },
-      { $count: "count" },
-    ]);
+    // Deduplicate subjects
+    const subjectMap = new Map();
+    subjectlistFromDb.forEach(item => {
+        subjectMap.set(`${item.subject}-${item.forClass}-${item.forTerminal}`, item);
+    });
+    const uniqueSubjects = Array.from(subjectMap.values());
     
-    const totalStudent =
-      totalstudent.length > 0 && totalstudent[0].count
-        ? totalstudent[0].count
-        : 0;
-        
+    console.log(`Found ${uniqueSubjects.length} subjects for Class ${studentClass} Terminal ${terminal}`);
 
+    for (const subItem of uniqueSubjects) {
+         // Use logic from findData
+         const subjectName = subItem.subject;
+         let result = [];
+         let total = [];
+         
+         // Use getSubjectData to get chapter info and marks structure
+         // Pass null for res to avoid auto-rendering error pages inside loop
+         const subjectDetails = await getSubjectData(subjectName, studentClass, terminal, null);
+         
+         if (!subjectDetails) {
+             console.log(`Skipping ${subjectName} - no detailed config found`);
+             continue;
+         }
+ 
+         const model = getSubjectModel(subjectName, studentClass, section, terminal);
+         
+         // 1. Get total students count
+         const totalStudentParams = await model.aggregate([
+             {
+                 $match: {
+                     $and: [{ section: `${section}` }, { terminal: `${terminal}` }, { studentClass: `${studentClass}` }],
+                 },
+             },
+             { $count: "count" },
+         ]);
+         
+         const totalStudent = totalStudentParams.length > 0 && totalStudentParams[0].count ? totalStudentParams[0].count : 0;
+         
+         // 2. Get obtained marks for all students to calculate totals
+         let subData = await model.find({ 
+             subject: `${subjectName}`, 
+             studentClass: `${studentClass}`, 
+             section: `${section}`, 
+             terminal: `${terminal}` 
+         }, { _id: 0, __v: 0 }).lean();
+         
+         if (subData && subData.length > 0) {
+             // Calculate total obtained marks for each question across all students
+              total = Object.keys(subData[0]).slice(7).map(qno=>
+             {
+             const t = subData.reduce((sum,obtainedmarks)=>{
+                 return sum + (obtainedmarks[qno] ?? 0);
+             },0)
+             return {qno,t};
+             }
+ 
+             );
+         }
+ 
+         // 3. Process keyValues (marks per question) and Chapters from subjectDetails
+         const keyValues = {};
+         const questionToChapter = {};
+         const roman = ['i','ii','iii','iv','v','vi','vii','viii','ix','x'];
+         
+         // Create chapter mapping
+         if (subjectDetails.chapter && Array.isArray(subjectDetails.chapter)) {
+             subjectDetails.chapter.forEach(chap => {
+                 if (chap.questions && Array.isArray(chap.questions)) {
+                     chap.questions.forEach(q => {
+                         questionToChapter[q] = chap.chapterName;
+                     });
+                 }
+             });
+         }
+         
+         // Create marks mapping
+         for (const key in subjectDetails) {
+             if (/^q\d+[a-z]$/.test(key)) {
+                 const hasSubparts = subjectDetails[`${key}_has_subparts`] === "on" || subjectDetails[`${key}_has_subparts`] === true;
+                 const subpartsCount = parseInt(subjectDetails[`${key}_subparts_count`] || 0);
+                 const marksPerSubpart = parseFloat(subjectDetails[`${key}_marks_per_subpart`] || 0);
+                 const marks = parseFloat(subjectDetails[key] || 0);
+ 
+                 if (hasSubparts && subpartsCount > 0 && !isNaN(marksPerSubpart) && marksPerSubpart > 0) {
+                     for (let i = 0; i < subpartsCount; i++) {
+                         const subKey = `${key}_${roman[i]}`;
+                         keyValues[subKey] = marksPerSubpart;
+                     }
+                 } else if (!hasSubparts && !isNaN(marks) && marks > 0) {
+                     keyValues[key] = marks;
+                 }
+                 // Skip any keys that don't have valid marks to avoid NaN errors
+             }
+         }
+ 
+         // 4. Generate stats for each question
+         for (const key in keyValues) {
+             const questionKey = key;
+             const fullMarks = keyValues[key];
+ 
+             if (isNaN(fullMarks) || fullMarks <= 0) continue;
+             
+             // Get total marks for this question
+             const questionTotal = total.find(t => t.qno === questionKey);
+             const totalMarksForQuestion = questionTotal ? questionTotal.t : 0;
+             
+             const averagePercentage = totalStudent > 0 ? (totalMarksForQuestion / (totalStudent * fullMarks)) * 100 : 0;
+             
+             const correctCount = await model.countDocuments({
+                 subject: `${subjectName}`, studentClass: `${studentClass}`, section: `${section}`, terminal: `${terminal}`,
+                 [questionKey]: fullMarks
+             });
+             
+             const incorrectCount = await model.countDocuments({
+                 subject: `${subjectName}`, studentClass: `${studentClass}`, section: `${section}`, terminal: `${terminal}`,
+                 [questionKey]: 0
+             });
+             
+             const fiftyCount = await model.countDocuments({
+                 subject: `${subjectName}`, studentClass: `${studentClass}`, section: `${section}`, terminal: `${terminal}`,
+                 [questionKey]: 0.5 * fullMarks
+             });
+             
+             const above50Count = await model.countDocuments({
+                 subject: `${subjectName}`, studentClass: `${studentClass}`, section: `${section}`, terminal: `${terminal}`,
+                 [questionKey]: { $gt: 0.5 * fullMarks, $lt: fullMarks }
+             });
+             
+             const below50Count = await model.countDocuments({
+                 subject: `${subjectName}`, studentClass: `${studentClass}`, section: `${section}`, terminal: `${terminal}`,
+                 [questionKey]: { $lt: 0.5 * fullMarks, $gt: 0 }
+             });
+             
+            
+             
+             result.push({
+                 questionNo: questionKey,
+                 chapterName: questionToChapter[questionKey] || 'Uncategorized',
+                 correct: correctCount,
+                 wrong: incorrectCount,
+                 correctabove50: above50Count,
+                 correctbelow50: below50Count,
+                 fifty: fiftyCount,
+                 averagePercentage: averagePercentage.toFixed(2),
+                 totalMarks: totalMarksForQuestion,
+                 fullMarks: fullMarks
+             });
+         }
+ 
+         // Sort result by wrong count (most wrong first)
+         result.sort((a, b) => b.wrong - a.wrong);
 
-       
-
-let sub = await model.find({ subject: `${individualsubject.subject}`, studentClass: `${studentClass}`, section: `${section}`, terminal: `${terminal}` }, { _id: 0, __v: 0 }).lean();
-if (sub && sub.length > 0) {
- total = Object.keys(sub[0]).slice(7).map(qno=>
-{
-  const t = sub.reduce((sum,obtainedmarks)=>{
-      return sum + (obtainedmarks[qno] ?? 0);
-  },0)
-  return {qno,t};
-}
-
-);
-}
-
-  const subjectData = await getSubjectData(individualsubject.subject, studentClass, res);
-
-    // Add validation to prevent the error
-    if (!subjectData) {
-      console.log(`No subject data found for ${individualsubject.subject}`);
-      continue; // Skip this subject and continue with the next one
+         reportofClass.push(
+         {
+         subject: subjectName,
+         totalStudents: totalStudent,
+         results: result,
+         }
+         );
     }
-
-    const keyValues = {};
-    const roman = ['i','ii','iii','iv','v','vi','vii','viii','ix','x'];
-
-    for (const key in subjectData) {
-      // Match keys like q1a, q2b, q3e, etc.
-      if (/^q\d+[a-z]$/.test(key)) {
-        const hasSubparts = subjectData[`${key}_has_subparts`] === "on";
-        const subpartsCount = parseInt(subjectData[`${key}_subparts_count`] || 0);
-        const marksPerSubpart = parseFloat(subjectData[`${key}_marks_per_subpart`] || 0);
-        const marks = parseFloat(subjectData[key] || 0);
-
-        // Validate that we have valid numbers before proceeding
-        if (hasSubparts && subpartsCount > 0 && !isNaN(marksPerSubpart) && marksPerSubpart > 0) {
-          for (let i = 0; i < subpartsCount; i++) {
-            const subKey = `${key}_${roman[i]}`;
-            keyValues[subKey] = marksPerSubpart;
-          }
-        } else if (!hasSubparts && !isNaN(marks) && marks > 0) {
-          keyValues[key] = marks;
-        }
-        // Skip any keys that don't have valid marks to avoid NaN errors
-      }
-    }
-
-// Build result array for DataTable with question-wise statistics
-for (const key in keyValues) {
-  const questionKey = key;
-  const fullMarks = keyValues[key];
-
-  // Skip if fullMarks is not a valid number
-  if (isNaN(fullMarks) || fullMarks <= 0) {
-    console.log(`Skipping question ${questionKey} due to invalid marks: ${fullMarks}`);
-    continue;
-  }
-    
-    // Get the total marks for this question
-    const questionTotal = total.find(t => t.qno === questionKey);
-    const totalMarksForQuestion = questionTotal ? questionTotal.t : 0;
-    
-    // Calculate average percentage
-    const averagePercentage = totalStudent > 0 ? (totalMarksForQuestion / (totalStudent * fullMarks)) * 100 : 0;
-    
-    // Count students in each category
-    const correctCount = await model.countDocuments({
-      subject: `${individualsubject.subject}`,studentClass: `${studentClass}`, section: `${section}`, terminal: `${terminal}`,
-      [questionKey]: fullMarks
-    });
-    
-    const incorrectCount = await model.countDocuments({
-      subject: `${individualsubject.subject}`,studentClass: `${studentClass}`, section: `${section}`, terminal: `${terminal}`,
-      [questionKey]: 0
-    });
-    
-    const fiftyCount = await model.countDocuments({
-      subject: `${individualsubject.subject}`,studentClass: `${studentClass}`, section: `${section}`, terminal: `${terminal}`,
-      [questionKey]: 0.5 * fullMarks
-    });
-    
-    const above50Count = await model.countDocuments({
-      subject: `${individualsubject.subject}`,studentClass: `${studentClass}`, section: `${section}`, terminal: `${terminal}`,
-      [questionKey]: { $gt: 0.5 * fullMarks, $lt: fullMarks }
-    });
-    
-    const below50Count = await model.countDocuments({
-      subject: `${individualsubject.subject}`,studentClass: `${studentClass}`, section: `${section}`, terminal: `${terminal}`,
-      [questionKey]: { $lt: 0.5 * fullMarks, $gt: 0 }
-    });
-    
-   
-    
-    result.push({
-      questionNo: questionKey,
-      correct: correctCount,
-      wrong: incorrectCount,
-     
-      correctabove50: above50Count,
-      correctbelow50: below50Count,
-      fifty: fiftyCount,
-      averagePercentage: averagePercentage.toFixed(2),
-      totalMarks: totalMarksForQuestion,
-      fullMarks: fullMarks
-    });
-  }
-reportofClass.push(
-{
-  subject: individualsubject.subject,
-  totalStudents: totalStudent,
-  results: result,
-}
-);
-}
-
-    
     
     return res.render("admin/finalreportprint", {
       currentPage: 'reportprint',
@@ -2948,7 +2965,6 @@ reportofClass.push(
       studentClass,
       section,
       terminal,
-     
       academicYear: nepaliYear,
       ...sidenavData
     });
@@ -2962,6 +2978,7 @@ reportofClass.push(
     res.status(500).send("Error generating report: " + err.message);
   }
 }
+
 exports.showmarksheetSetupForm = async (req, res) => {
   try {
     // Get sidenav data
