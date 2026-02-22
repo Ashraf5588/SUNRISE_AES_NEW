@@ -8,7 +8,9 @@ const bodyParser = require("body-parser");
 const { rootDir } = require("../utils/path");
 const { studentSchema } = require("../model/schema");
 const { studentrecordschema } = require("../model/adminschema");
-const { classSchema, subjectSchema, terminalSchema,newsubjectSchema,marksheetsetupSchema } = require("../model/adminschema");
+const { classSchema, subjectSchema, terminalSchema,newsubjectSchema} = require("../model/adminschema");
+const { marksheetsetupschemaForAdmin } = require("../model/marksheetschema");
+const marksheetSetup = mongoose.model("marksheetSetup", marksheetsetupschemaForAdmin, "marksheetSetup");
 const { name } = require("ejs");
 const subjectlist = mongoose.model("subjectlist", subjectSchema, "subjectlist");
 const studentClass = mongoose.model("studentClass", classSchema, "classlist");
@@ -20,7 +22,14 @@ app.set("view", path.join(rootDir, "views"));
 const { addChapterSchema } = require("../model/addchapterschema");
 const addChapter = mongoose.model("addChapter", addChapterSchema, "addChapter");
 const newsubject = mongoose.model("newsubject", newsubjectSchema, "newsubject");
-
+const {examSchema}= require("../model/examschema");
+const getSlipModel = () => {
+  // to Check if model already exists
+  if (mongoose.models[`exam_marks`]) {
+    return mongoose.models[`exam_marks`];
+  }
+  return mongoose.model(`exam_marks`, examSchema, `exam_marks`);
+};
 // Helper function to fetch sidenav data
 const getSidenavData = async (req) => {
   try {
@@ -410,7 +419,8 @@ exports.showForm = async (req, res, next) => {
   
 
 const subjectList = await subjectlist.find({ forClass: `${studentClass}`, subject: `${subjectinput}`,forTerminal:`${terminal}`}).lean();
-console.log("subjects",subjectList);
+
+
   const model = getSubjectModel(subjectinput, studentClass, section, terminal);
       const totalcountmarks = await model.find({ subject: `${subjectinput}`, section: `${section}`, terminal: `${terminal}`, studentClass: `${studentClass}` },
       { roll: 1, name: 1 ,totalMarks: 1,_id:1,studentClass:1,section:1,subject:1}).lean();
@@ -476,11 +486,14 @@ console.log("subjects",subjectList);
 exports.saveForm = async (req, res, next) => {
   const { subjectinput } = req.params;
   const { studentClass, section, terminal } = req.params;
-
+const marksheetdata = await marksheetSetup.find({}).lean()
+console.log("marksheetdata=",marksheetdata)
+const academicYear = marksheetdata.length > 0 ? marksheetdata[0].academicYear : 'Unknown';
+console.log("academic", academicYear);
   const subjectList = await subjectlist.find({ forClass: `${studentClass}` ,subject:`${subjectinput}`}).lean();
 
 
-  console.log(subjectList);
+  
  
   global.availablesubject = subjectList.map((sub) => sub.subject);
   if (!availablesubject.includes(subjectinput)) {
@@ -493,27 +506,18 @@ exports.saveForm = async (req, res, next) => {
       const formData = req.body;
       const processedData = {};
       
-      console.log("===== FORM SUBMISSION DEBUG =====");
-      console.log("Raw form data:", formData);
-      console.log("Raw form data keys:", Object.keys(formData));
+      
       
       // Check for issues with form encoding
-      if (Object.keys(formData).length > 0) {
-        console.log("First field:", Object.keys(formData)[0], "=", formData[Object.keys(formData)[0]]);
-      }
       
-      console.log("Looking for subpart fields with dots...");
+      
       
       // Check if we have any subpart fields with dot notation
       const dotFields = Object.keys(formData).filter(key => key.includes('.'));
-      console.log("Fields with dots:", dotFields);
+   
       
       // Inspect specific fields that should have dots
-      for (const key of Object.keys(formData)) {
-        if (key.match(/q\d+[a-z]/) && !key.includes('.')) {
-          console.log(`Found possible subpart without dots: ${key}`);
-        }
-      }
+    
       
       // Process each field, replacing dots with _dot_ for MongoDB compatibility
       Object.keys(formData).forEach(key => {
@@ -524,7 +528,7 @@ exports.saveForm = async (req, res, next) => {
           const value = !isNaN(parseFloat(formData[key])) ? 
             parseFloat(formData[key]) : formData[key];
           processedData[processedKey] = value;
-          console.log(`Processing field with dot: ${key} → ${processedKey} = ${value}`);
+          
         } else {
           // Keep other fields as is
           processedData[key] = formData[key];
@@ -532,8 +536,8 @@ exports.saveForm = async (req, res, next) => {
       });
       
       // Log the processed data
-      console.log("Processed data keys:", Object.keys(processedData));
-      console.log("Processed subpart fields:", Object.keys(processedData).filter(key => key.includes('_')));
+      
+   
       
       try {
         // Double check for any field name issues before saving
@@ -543,7 +547,7 @@ exports.saveForm = async (req, res, next) => {
           if (key.includes('_')) {
             // Ensure these are saved correctly in the database
             finalData[key] = processedData[key];
-            console.log(`Confirmed final field: ${key} = ${processedData[key]}`);
+            
           } else {
             finalData[key] = processedData[key];
           }
@@ -551,9 +555,16 @@ exports.saveForm = async (req, res, next) => {
         
         // Create record with processed data
         const savedData = await model.create(finalData);
-        console.log("Data saved successfully with ID:", savedData._id);
-        console.log("===== END DEBUG =====");
-        
+       
+   
+        const slipModel = getSlipModel();
+        await slipModel.findOneAndUpdate(
+          { reg: processedData.reg, subject: subjectinput, studentClass, section, terminal,academicYear:academicYear},
+          { theorymarks: processedData.totalMarks
+
+           },
+          { upsert: true, new: true }
+        );
         res.render("FormPostMessage", {
         subjectinput,
         studentClass,

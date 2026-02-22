@@ -163,7 +163,7 @@
           <td><input type="text" name="roll[<%=student.reg%>]" value="<%=student.roll%>" readonly ></td>
          <td><input type="text" name="name[<%=student.reg%>]" value="<%=student.name%>" readonly ></td>
           <td><img src="/student.png" alt="photo"></td>
-          <td><input type="number" id="theorymarks" name="theorymarks[<%=student.reg%>]" value="" data-reg="<%= student.reg %>" min="0" max="<%=subjectData[0].theory%>" data-max="<%=subjectData[0].theory%>" oninput="checkMax(this)"></td>
+          <td><input type="number" id="theorymarks" name="theorymarks[<%=student.reg%>]" value="<%= theoryData.find(t => t.reg === student.reg)?.totalMarks || '' %>" data-reg="<%= student.reg %>" min="0" max="<%=subjectData[0].theory%>" data-max="<%=subjectData[0].theory%>" oninput="checkMax(this)"></td>
            <td><input type="number" data-reg="<%= student.reg %>"  id="practicalmarks" name="practicalmarks[<%=student.reg%>]" value="" data-max="<%=subjectData[0].practical*0.72%>" oninput="checkMax(this)"></td>
           <td><input type="number" id="attendance" name="attendance[<%=student.reg%>]" value="" data-reg="<%= student.reg %>" oninput="autoSave(this)"></td>
          

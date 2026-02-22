@@ -32,6 +32,13 @@ const getSlipModel = () => {
   }
   return mongoose.model(`exam_marks`, examSchema, `exam_marks`);
 };
+const getSubjectModel = (subjectinput, studentClass, section, terminal) => {
+  // to Check if model already exists
+  if (mongoose.models[`${subjectinput}_${studentClass}_${section}_${terminal}`]) {
+    return mongoose.models[`${subjectinput}_${studentClass}_${section}_${terminal}`];
+  }
+  return mongoose.model(`${subjectinput}_${studentClass}_${section}_${terminal}`, studentSchema, `${subjectinput}_${studentClass}_${section}_${terminal}`);
+};
 
 exports.loadForm = async (req,res,next)=>
 {
@@ -87,9 +94,15 @@ exports.loadForm = async (req,res,next)=>
 exports.entryform = async (req,res,next)=>
 
 {
+
+
    const studentClassdata = await studentClassModel.find({}).lean();
    
   const {studentClass,section,subject,academicYear,terminal}= req.query;
+  const model = getSubjectModel(subject, studentClass, section, terminal);
+const theoryData = await model.find({}).lean();
+console.log("Theory Data:", theoryData);
+
   const studentData = await studentRecord.find({studentClass:studentClass,section:section})
      const marksheetSetups = await marksheetSetup.find({}).lean();
      console.log("studentData",studentData);
@@ -121,7 +134,7 @@ exports.entryform = async (req,res,next)=>
   if(studentClass>3)
   {
 
-  res.render("./exam/entryform",{studentData,studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups});
+  res.render("./exam/entryform",{studentData,studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,theoryData});
   }
   else if (studentClass<=3)
   {
