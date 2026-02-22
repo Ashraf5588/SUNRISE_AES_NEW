@@ -568,5 +568,14 @@ document.querySelectorAll('#practicalmarks').forEach((input) => {
     
   }
  </script>
+ <script>
+  window.onload = function() {
+  document.querySelectorAll('#theorymarks').forEach(input => {
+    if (input.value) {
+      autoSave(input);  // trigger autosave for backend populated values
+    }
+  });
+};
+ </script>
 </body>
 </html>
