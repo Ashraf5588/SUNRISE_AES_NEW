@@ -218,6 +218,14 @@
     .table-container {
         margin-bottom: 2rem;
         overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+    }
+
+    .table-container--wide {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
     table {
@@ -225,6 +233,55 @@
       border-collapse: collapse;
       font-size: 11px;
       border: 1px solid var(--border);
+      min-width: 820px;
+    }
+
+    .wide-subject-table {
+      min-width: 1700px;
+      font-size: 10px;
+    }
+
+    .wide-subject-table th,
+    .wide-subject-table td {
+      padding: 7px 6px;
+      white-space: nowrap;
+    }
+
+    .wide-subject-table th:first-child,
+    .wide-subject-table td:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      background: #fff;
+    }
+
+    .wide-subject-table thead th:first-child {
+      background: #f1f5f9;
+      z-index: 3;
+    }
+
+    .analysis-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0.5rem 0 1rem;
+    }
+
+    .meta-chip {
+      border: 1px solid var(--border);
+      background: #f8fafc;
+      color: var(--secondary);
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    .meta-chip--analysis {
+      background: rgba(37, 99, 235, 0.08);
+      color: var(--primary);
+      border-color: rgba(37, 99, 235, 0.28);
     }
     
     thead th {
@@ -410,6 +467,25 @@
       
     }
   </script>
+
+  <%
+    const toNum = (value, fallback = 0) => {
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? numeric : fallback;
+    };
+
+    const fixed2 = (value, fallback = '-') => {
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? numeric.toFixed(2) : fallback;
+    };
+
+    const pct = (numerator, denominator) => {
+      const den = toNum(denominator, 0);
+      if (!den) return '0.00';
+      const result = (toNum(numerator, 0) / den) * 100;
+      return fixed2(result, '0.00');
+    };
+  %>
   
   <div class="page">
     <div class="report-header">
@@ -437,8 +513,8 @@
   <!-- Group by class -->
   <% const byClass = Object.groupBy(data, i => i._id.studentClass); %>
 
-  <div class="table-container">
-  <table border="1" cellspacing="0" cellpadding="5">
+  <div class="table-container table-container--wide">
+  <table border="1" cellspacing="0" cellpadding="5" class="wide-subject-table">
     <thead>
         <tr>
         <th>Class</th>
@@ -476,7 +552,7 @@
                 <td><%= row.totalStudents %></td>
                 <td style="color:var(--success)"><%= row.pass %></td>
                 <td style="color:var(--danger)"><%= row.fail %></td>
-                <td><%= row.avgMarks.toFixed(2)  %></td>
+                <td><%= fixed2(row.avgMarks)  %></td>
             <% } else { %>
                 <td>-</td><td>-</td><td>-</td><td>-</td>
             <% } %>
@@ -518,6 +594,12 @@
           <div class="section-header">
              Academic Year: <%= academicYear %> | Terminal: <%= terminal %> | Class-Section: <%= classSection %>
           </div>
+          <div class="analysis-meta">
+            <span class="meta-chip meta-chip--analysis">Analysis Type: Section Wise</span>
+            <span class="meta-chip">Academic Year: <%= academicYear %></span>
+            <span class="meta-chip">Terminal: <%= terminal %></span>
+            <span class="meta-chip">Class: <%= classSection %></span>
+          </div>
           
           <div class="table-container">
           <table cellspacing="0" border="1">
@@ -542,9 +624,9 @@
                   <td><%= record.totalStudents %></td>
                   <td style="color:var(--success)"><%= record.pass %></td>
                   <td style="color:var(--danger)"><%= record.fail %></td>
-                  <td><%= ((record.pass / record.totalStudents) * 100).toFixed(2) %></td>
-                  <td><%= ((record.fail / record.totalStudents) * 100).toFixed(2) %></td>
-                  <td><%= record.avgMarks.toFixed(2) %></td>
+                  <td><%= pct(record.pass, record.totalStudents) %></td>
+                  <td><%= pct(record.fail, record.totalStudents) %></td>
+                  <td><%= fixed2(record.avgMarks) %></td>
                   <td><%= record.highestMarks %></td>
                   <td><%= record.lowestMarks %></td>
                   <td><%= record.medianMarks %></td>
@@ -577,7 +659,7 @@
               <div class="stat-card" style="border-left: 4px solid var(--primary);">
                   <div class="stat-label">Highest Average</div>
                   <div class="stat-value"><%= highestAvgRec._id.subject %></div>
-                  <div class="stat-detail">Avg Marks: <%= highestAvgRec.avgMarks.toFixed(2) %></div>
+                  <div class="stat-detail">Avg Marks: <%= fixed2(highestAvgRec.avgMarks) %></div>
               </div>
           </div>
 
@@ -624,6 +706,12 @@
           <div class="section-header">
              Academic Year: <%= academicYear %> | Terminal: <%= terminal %> | Subject: <%= subject %>
           </div>
+          <div class="analysis-meta">
+            <span class="meta-chip meta-chip--analysis">Analysis Type: Subject Wise</span>
+            <span class="meta-chip">Academic Year: <%= academicYear %></span>
+            <span class="meta-chip">Terminal: <%= terminal %></span>
+            <span class="meta-chip">Subject: <%= subject %></span>
+          </div>
           
           <div class="table-container">
           <table cellspacing="0" border="1">
@@ -649,9 +737,9 @@
                   <td><%= record.totalStudents %></td>
                   <td style="color:var(--success)"><%= record.pass %></td>
                   <td style="color:var(--danger)"><%= record.fail %></td>
-                  <td><%= ((record.pass / record.totalStudents) * 100).toFixed(2) %></td>
-                  <td><%= ((record.fail / record.totalStudents) * 100).toFixed(2) %></td>
-                  <td><%= record.avgTheory.toFixed(2) %></td>
+                  <td><%= pct(record.pass, record.totalStudents) %></td>
+                  <td><%= pct(record.fail, record.totalStudents) %></td>
+                  <td><%= fixed2(record.avgTheory) %></td>
                   <td><%= record.highestMarkstheory %></td>
                   <td><%= record.lowestMarkstheory %></td>
                   <td><%= record.medianMarkstheory %></td>
@@ -693,7 +781,7 @@
               <div class="stat-card" style="border-left: 4px solid var(--primary);">
                   <div class="stat-label">Highest Average Class</div>
                   <div class="stat-value"><%= highestAvgRec._id.studentClass %>-<%= highestAvgRec._id.section %></div>
-                  <div class="stat-detail">Avg Marks: <%= highestAvgRec.avgTheory.toFixed(2) %></div>
+                  <div class="stat-detail">Avg Marks: <%= fixed2(highestAvgRec.avgTheory) %></div>
               </div>
           </div>
           
@@ -720,6 +808,12 @@
           <div class="section-header">
              Academic Year: <%= academicYear %> | Terminal: <%= terminal %> | Subject: <%= subject %>
           </div>
+          <div class="analysis-meta">
+            <span class="meta-chip meta-chip--analysis">Analysis Type: Overall School</span>
+            <span class="meta-chip">Academic Year: <%= academicYear %></span>
+            <span class="meta-chip">Terminal: <%= terminal %></span>
+            <span class="meta-chip">Subject: <%= subject %></span>
+          </div>
           
           <div class="table-container">
           <table cellspacing="0" border="1">
@@ -745,9 +839,9 @@
                   <td><%= record.totalStudents %></td>
                   <td style="color:var(--success)"><%= record.pass %></td>
                   <td style="color:var(--danger)"><%= record.fail %></td>
-                  <td><%= ((record.pass / record.totalStudents) * 100).toFixed(2) %></td>
-                  <td><%= ((record.fail / record.totalStudents) * 100).toFixed(2) %></td>
-                  <td><%= record.avgTheory.toFixed(2) %></td>
+                  <td><%= pct(record.pass, record.totalStudents) %></td>
+                  <td><%= pct(record.fail, record.totalStudents) %></td>
+                  <td><%= fixed2(record.avgTheory) %></td>
                   <td><%= record.highestMarkstheory %></td>
                   <td><%= record.lowestMarkstheory %></td>
                   <td><%= record.medianMarkstheory %></td>
@@ -789,7 +883,7 @@
               <div class="stat-card" style="border-left: 4px solid var(--primary);">
                   <div class="stat-label">Highest Average Class</div>
                   <div class="stat-value"><%= highestAvgRec._id.studentClass %>-<%= highestAvgRec._id.section %></div>
-                  <div class="stat-detail">Avg Marks: <%= highestAvgRec.avgTheory.toFixed(2) %></div>
+                  <div class="stat-detail">Avg Marks: <%= fixed2(highestAvgRec.avgTheory) %></div>
               </div>
           </div>
           
@@ -827,6 +921,12 @@
           <div class="section-header">
              Academic Year: <%= academicYear %> | Subject: <%= subject %> | Class-Section: <%= classSection %>
           </div>
+          <div class="analysis-meta">
+            <span class="meta-chip meta-chip--analysis">Analysis Type: Terminal Comparison</span>
+            <span class="meta-chip">Subject: <%= subject %></span>
+            <span class="meta-chip">Class: <%= classSection %></span>
+            <span class="meta-chip">Academic Year: <%= academicYear %></span>
+          </div>
          
         
          <table cellspacing="0" border="1">
@@ -849,9 +949,9 @@
               <% Object.entries(records).forEach(([terminal, record])=>{ %>
                
               <td><%= record[0].totalStudents %></td>
-              <td><%= ((record[0].passtheory / record[0].totalStudents) * 100).toFixed(2) %></td>
-              <td><%= ((record[0].failtheory / record[0].totalStudents) * 100).toFixed(2) %></td>
-              <td><%= record[0].avgMarks.toFixed(2) %></td>
+              <td><%= pct(record[0].passtheory, record[0].totalStudents) %></td>
+              <td><%= pct(record[0].failtheory, record[0].totalStudents) %></td>
+              <td><%= fixed2(record[0].avgMarks) %></td>
               
               <%})%>
             </tr>
@@ -961,6 +1061,11 @@
           <div class="section-header">
              Subject: <%= subject %> | Class-Section: <%= classSection %> | Cross-Year Analysis
           </div>
+          <div class="analysis-meta">
+            <span class="meta-chip meta-chip--analysis">Analysis Type: Year Comparison</span>
+            <span class="meta-chip">Subject: <%= subject %></span>
+            <span class="meta-chip">Class: <%= classSection %></span>
+          </div>
          
          <div class="table-container">
          <table cellspacing="0" border="1">
@@ -982,9 +1087,9 @@
                    const record = yearRecords[year];
               %>
               <td><%= record.totalStudents %></td>
-              <td><%= record.passPercent.toFixed(2) %></td>
-              <td><%= record.failPercent.toFixed(2) %></td>
-              <td><%= record.avg.toFixed(2) %></td>
+              <td><%= fixed2(record.passPercent, '0.00') %></td>
+              <td><%= fixed2(record.failPercent, '0.00') %></td>
+              <td><%= fixed2(record.avg, '0.00') %></td>
               <% }) %>
             </tr>
          </table>
