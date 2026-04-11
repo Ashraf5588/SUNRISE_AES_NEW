@@ -1,0 +1,23 @@
+*{
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+nav {
+  width: 250px;
+  height: 100vh;
+  background-color: #089ae8;
+  color: white;
+
+}
+li {
+  list-style: none;
+}
+.dropdown {
+  position: relative;
+  background-color: brown;
+  display: none;
+}
+#enterdata:hover .dropdown {
+  display: block;
+}

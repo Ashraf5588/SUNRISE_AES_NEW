@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <title>Upload Old Data</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #001f3f; /* Dark Blue */
+      color: #ffffff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .container {
+      background-color: #003366; /* Lighter Dark Blue */
+      padding: 2.5rem;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+      text-align: center;
+      width: 90%;
+      max-width: 450px;
+      border-top: 6px solid #ff851b; /* Orange Accent */
+    }
+    h2 {
+      color: #ff851b;
+      margin-top: 0;
+      margin-bottom: 1.5rem;
+    }
+    a.download-link {
+      display: inline-block;
+      margin-bottom: 25px;
+      color: #ff851b;
+      text-decoration: none;
+      font-weight: 600;
+      border: 2px solid #ff851b;
+      padding: 10px 20px;
+      border-radius: 6px;
+      transition: all 0.3s ease;
+    }
+    a.download-link:hover {
+      background-color: #ff851b;
+      color: #001f3f;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      align-items: stretch;
+    }
+    label {
+      font-size: 1rem;
+      text-align: left;
+      color: #b3cde0;
+    }
+    input[type="file"] {
+      background-color: #002855;
+      color: #e6f1ff;
+      padding: 10px;
+      border: 1px solid #004080;
+      border-radius: 6px;
+      outline: none;
+    }
+    input[type="file"]:focus {
+      border-color: #ff851b;
+    }
+    button {
+      background-color: #ff851b;
+      color: #001f3f;
+      border: none;
+      padding: 12px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.1s ease;
+      margin-top: 10px;
+    }
+    button:hover {
+      background-color: #e67e22;
+    }
+    button:active {
+      transform: scale(0.98);
+    }
+    #message {
+      margin-top: 20px;
+      font-weight: bold;
+      color: #2ecc71;
+      min-height: 1.5em;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Upload Data</h2>
+    <a href="/marks_template.csv" class="download-link" download>Download Marks Template</a>
+    <form action="/uploadCSV" method="POST" enctype="multipart/form-data">
+      <label for="marksFile">Upload Old Marks File:</label>
+      <input type="file" name="marksFile" id="marksFile" accept=".csv" required>
+      <button type="submit">Upload</button>
+    </form>
+
+    <div>
+      <p id="message"></p>
+    </div>
+  </div>
+   <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success') === 'true') {
+      document.getElementById('message').innerText = 'File uploaded and data saved successfully!';
+    }
+   </script>
+</body>
+</html>

@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subject Management | Admin Panel</title>
+  
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    body
+    {
+      background-color: white !important;
+    }
+    :root {
+      --primary: #37b3f6;
+      --primary-hover: #1e88e5;
+      --secondary: #8b4513;
+      --secondary-hover: #724214;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --dark: #2c3e50;
+      --light-bg: #f0f8ff;
+      --white: #ffffff;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --border: #e5e7eb;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: white !important;
+      min-height: 100vh;
+      color: var(--dark);
+      line-height: 1.6;
+    }
+
+    .main-wrapper {
+      background: white;
+      min-height: 100vh;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+
+    /* Header Section */
+    .page-header {
+      background: var(--white);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .page-header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+    }
+
+    .page-header h1 {
+      font-size: 1.875rem;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .page-header h1 i {
+      color: var(--primary);
+      font-size: 1.5rem;
+    }
+
+    .page-header p {
+      color: var(--gray-600);
+      margin: 0;
+      font-size: 0.875rem;
+    }
+
+    /* Form Section */
+    .form-section {
+      background: var(--white);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    .form-section h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .form-section h2 i {
+      color: var(--primary);
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+      display: block;
+      font-weight: 500;
+      color: var(--gray-700);
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      font-size: 0.875rem;
+      background: var(--white);
+      color: var(--dark);
+      transition: all 0.3s ease;
+      font-family: inherit;
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .form-control:hover {
+      border-color: var(--primary);
+      box-shadow: 0 2px 4px rgba(55, 179, 246, 0.1);
+    }
+
+    /* Special styling for the centered select */
+    #sameas {
+      background: linear-gradient(to right, var(--light-bg), var(--white), var(--light-bg));
+      border-width: 2px;
+      font-weight: 500;
+      text-align: center;
+      text-align-last: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    #sameas:hover {
+      border-color: var(--secondary);
+      box-shadow: 0 2px 4px rgba(139, 69, 19, 0.1);
+    }
+
+    #sameas option {
+      text-align: center;
+      padding: 10px;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      background: var(--white);
+    }
+
+    .form-control::placeholder {
+      color: var(--gray-600);
+    }
+
+    /* Button Styles */
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn:before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s;
+    }
+
+    .btn:hover:before {
+      left: 100%;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+      color: var(--white);
+      box-shadow: var(--shadow-sm);
+      border: none;
+      position: relative;
+      overflow: hidden;
+      z-index: 1;
+    }
+    
+    .btn-primary::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s;
+      z-index: -1;
+    }
+    
+    .btn-primary:hover::after {
+      left: 100%;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      color: var(--white);
+    }
+
+    .btn-secondary {
+      background: var(--gray-100);
+      color: var(--gray-700);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--gray-200);
+      color: var(--gray-700);
+    }
+
+    /* Table Section */
+    .table-section {
+      background: var(--white);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    .table-section h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .table-section h2 i {
+      color: var(--primary);
+    }
+
+    .count-badge {
+      background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+      color: var(--white);
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      margin-left: 0.5rem;
+    }
+
+    .table-container {
+      overflow: hidden;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .table {
+      margin: 0;
+      width: 100%;
+    }
+
+    .table thead {
+      background: var(--gray-50);
+    }
+
+    .table th {
+      padding: 1rem;
+      font-weight: 600;
+      color: var(--gray-700);
+      border: none;
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+    }
+
+    .table td {
+      padding: 1rem;
+      border-top: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    .table tbody tr {
+      transition: background-color 0.2s ease;
+    }
+
+    .table tbody tr:hover {
+      background: var(--gray-50);
+    }
+
+    .subject-badge {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: var(--white);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      display: inline-block;
+    }
+
+    /* Action Buttons */
+    .action-btn {
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-decoration: none;
+      margin-right: 0.5rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      transition: all 0.2s ease;
+      border: 1px solid transparent;
+    }
+
+    .edit-btn {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+      border-color: rgba(16, 185, 129, 0.2);
+    }
+
+    .edit-btn:hover {
+      background: var(--success);
+      color: var(--white);
+      transform: translateY(-1px);
+    }
+
+    .delete-btn {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--danger);
+      border-color: rgba(239, 68, 68, 0.2);
+    }
+
+    .delete-btn:hover {
+      background: var(--danger);
+      color: var(--white);
+      transform: translateY(-1px);
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--gray-600);
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      color: var(--gray-300);
+      margin-bottom: 1rem;
+    }
+
+    .empty-state h5 {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--gray-700);
+    }
+
+    /* Back Section */
+    .back-section {
+      text-align: center;
+      margin-top: 2rem;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .container {
+        padding: 1rem 0.5rem;
+      }
+
+      .page-header,
+      .form-section,
+      .table-section {
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .page-header h1 {
+        font-size: 1.5rem;
+        flex-direction: column;
+        text-align: center;
+        gap: 0.5rem;
+      }
+
+      .form-section h2,
+      .table-section h2 {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.5rem;
+      }
+
+      .table-container {
+        overflow-x: auto;
+      }
+
+      .action-btn {
+        margin-bottom: 0.25rem;
+      }
+
+      .btn {
+        padding: 0.625rem 1.25rem;
+        font-size: 0.8rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .page-header,
+      .form-section,
+      .table-section {
+        padding: 1rem;
+      }
+    }
+
+    /* Animation */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .page-header,
+    .form-section,
+    .table-section {
+      animation: fadeInUp 0.5s ease;
+    }
+
+    .form-section {
+      animation-delay: 0.1s;
+    }
+
+    .table-section {
+      animation-delay: 0.2s;
+    }
+  </style>
+</head>
+<body>
+  <%- include('../partials/sidenav', { 
+      subjects: subjects || [], 
+      studentClassdata: studentClassdata || [],
+      terminals: terminals || [] 
+  }) %>
+  
+  <div class="main-wrapper">
+    <div class="container">
+      <!-- Page Header -->
+      <div class="page-header">
+        <h1>
+          <i class="fas fa-book"></i>
+          Subject Management
+        </h1>
+        <p>Create, edit, and manage subjects in your educational system</p>
+      </div> 
+
+      <!-- Add/Edit Subject Form -->
+      <div class="form-section">
+        <h2>
+          <i class="fas fa-<%= editing ? 'edit' : 'plus' %>"></i>
+          <%= editing ? 'Edit Subject' : 'Add New Subject' %>
+        </h2>
+
+        <form action="<%= editing ? `/admin/new/subject/${newsubjectData._id}` : '/admin/new/subject' %>" method="POST">
+          <div class="form-group">
+            <!-- Subject Name and For Class in one row -->
+            <div class="row mb-4">
+              <div class="col-md-6">
+                <label for="subject" class="form-label">Subject Name</label>
+                <input 
+                  type="text" 
+                  id="subject" 
+                  name="newsubject" 
+                  class="form-control" 
+                  value="<%= editing ? newsubjectData.newsubject : '' %>" 
+                  placeholder="Enter subject name (e.g., Mathematics, Science, History)"
+                  required
+                >
+              </div>
+              <div class="col-md-6">
+                <label for="forClass" class="form-label">For Class</label>
+              
+             
+                 
+                  <% uniqueClass = new Set(studentClassdata.map(item => item.studentClass)); %>
+                  <% uniqueClass.forEach(function(classData) { %>
+                    <input type="checkbox" name="forClass[]" id="forClass_<%= classData %>" value="<%= classData %>">
+                    
+                      <%= classData %>
+                
+                  <% }) %>
+                </select>
+              </div>
+            </div>
+
+           
+
+            <!-- Marks Section -->
+            <div class="row mb-4">
+              <div class="col-md-6">
+                <label for="theory" class="form-label">Theory Marks</label>
+                <input 
+                  type="number" 
+                  class="form-control" 
+                  placeholder="Enter theory marks" 
+                  name="theory" 
+                  value="<%=editing?newsubjectData.theory:''%>" 
+                  required 
+                  id="theory"
+                  min="0"
+                >
+              </div>
+              <div class="col-md-6">
+                <label for="practical" class="form-label">Practical Marks</label>
+                <input 
+                  type="number" 
+                  class="form-control" 
+                  placeholder="Enter practical marks" 
+                  name="practical" 
+                  value="<%=editing?newsubjectData.practical:''%>" 
+                  required 
+                  id="practical"
+                  min="0"
+                >
+              </div>
+            </div>
+
+            <!-- Total and Passing Marks -->
+            <div class="row">
+              <div class="col-md-6">
+                <label for="total" class="form-label">Total Marks</label>
+                <input 
+                  type="number" 
+                  class="form-control" 
+                  placeholder="Total marks" 
+                  name="total" 
+                  value="<%=editing?newsubjectData.total:''%>" 
+                  required 
+                  id="total"
+                  readonly
+                >
+              </div>
+              <div class="col-md-6">
+                <label for="passingMarks" class="form-label">Minimum Pass Marks</label>
+                <input type="hidden" id="selectedClassesHolder" name="selectedClasses">
+                <input 
+                  type="number" 
+                  class="form-control" 
+                  placeholder="Enter passing marks" 
+                  name="passingMarks" 
+                  value="<%=editing?newsubjectData.passingMarks:''%>" 
+                  required 
+                  id="passingMarks"
+                  min="0">
+                  <div class="col-md-7">
+                <label for="theoryCreditHour" class="form-label">Credit Hour</label>
+                <input 
+                  type="number" 
+                  class="form-control" 
+                  placeholder="Theory credit hour" 
+                  name="theoryCreditHour" 
+                  value="<%=editing?newsubjectData.theoryCreditHour:''%>" 
+                  required 
+                  id="theoryCreditHour"
+                  min="0" step="0.01">
+                  <input 
+                  type="number" 
+                  class="form-control" 
+                  placeholder="Practical credit hour" 
+                  name="practicalCreditHour" 
+                  value="<%=editing?newsubjectData.practicalCreditHour:''%>" 
+                  required 
+                  id="practicalCreditHour"
+                  min="0" step="0.01">
+<br> 
+          </div><br> 
+          <script>
+document.getElementById("subject").addEventListener("input", function() {
+              this.value = this.value.toUpperCase();
+              if (subject) {
+                console.log(`Subject entered: ${subject}`);
+              } else {
+                console.log("Subject field is empty.");
+              }
+            });
+
+            document.querySelector("form").addEventListener("input", function() {
+              
+              const theory = parseFloat(document.querySelector("#theory").value);
+              const practical = parseFloat(document.querySelector("#practical").value);
+              const total = theory + practical;
+              document.querySelector("#total").value = total;
+          
+            });
+          </script>
+
+
+
+
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-<%= editing ? 'save' : 'plus' %>"></i>
+            <%= editing ? 'Update Subject' : 'Add Subject' %>
+          </button>
+          
+          <% if (editing) { %>
+            <a href="/admin/new/subject" class="btn btn-secondary">
+              <i class="fas fa-times"></i>
+              Cancel
+            </a>
+          <% } %>
+        </form> 
+      
+      </div><br> <br>
+       <center><a href="/admin/subject" class="btn" style="background-color: var(--secondary); color: white;">
+        <i class="fas fa-arrow-right"></i> Go to Set Question Format
+        </a></center>
+
+      <!-- Subjects List -->
+      <div class="table-section">
+        <h2>
+          <i class="fas fa-list"></i>
+          All Subjects
+          <span class="count-badge"><%= newsubjectList.length %></span>
+        </h2>
+
+        <% if (newsubjectList.length > 0) { %>
+          <div class="table-container">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>S.No.</th>
+                  <th>Subject Name</th>
+                  <th>For Class</th>
+                  <th>Theory Marks</th>
+                  <th>Practical Marks</th>
+                  
+                  <th>Total Marks</th>
+                  <th>Passing Marks</th>
+                   <th>TH Credit Hour</th>
+                   <th>PR Credit Hour</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% newsubjectList.forEach((subject, index) => { %>
+                  <tr>
+                    <td><strong><%= index + 1 %></strong></td>
+                    <td>
+                      <%= subject.newsubject %>
+                    </td>
+                    <td>
+                      <%= subject.forClass %>
+                    </td>
+                    <td>
+                      <%= subject.theory %>
+                    </td>
+                    <td>
+                      <%= subject.practical %>
+                    </td>
+                    <td>
+                      <%= subject.total %>
+                    </td>
+                        <td>
+                          <%= subject.passingMarks %>
+                        </td>
+                    <td>
+                      <%= subject.theoryCreditHour %>
+                    </td>
+                    <td>
+                      <%= subject.practicalCreditHour %>
+                    </td>
+                    <td>
+                      <a href="/admin/new/subject/<%= subject._id %>/edit?editing=true" 
+                         class="action-btn edit-btn"
+                         title="Edit Subject">
+                        <i class="fas fa-edit"></i>
+                        Edit
+                      </a>
+                      
+                      <a href="/delete/new/subject/<%= subject._id %>" 
+                         class="action-btn delete-btn"
+                         onclick="return confirm('Are you sure you want to delete \'<%= subject.newsubject %>\'? This action cannot be undone.')"
+                         title="Delete Subject">
+                        <i class="fas fa-trash-alt"></i>
+                        Delete
+                      </a>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } else { %>
+          <div class="empty-state">
+            <i class="fas fa-book-open"></i>
+            <h5>No Subjects Found</h5>
+            <p>Start by adding your first subject above to get started.</p>
+          </div>
+        <% } %>
+      </div>
+
+      <!-- Back to Admin Panel -->
+      <div class="back-section">
+        <a href="/admin/term/FIRST" class="btn btn-secondary">
+          <i class="fas fa-arrow-left"></i>
+          Back to Admin Panel
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <script>
+    // Form validation with enhanced UX
+    document.querySelector('form').addEventListener('submit', function(e) {
+       const selectedClasses = [...document.querySelectorAll("input[name='forClass[]']:checked")].map(c => c.value);
+
+          if (selectedClasses.length === 0) {
+        alert("Select at least one class");
+        e.preventDefault();
+        return;
+    }
+    document.querySelector("#selectedClassesHolder").value = JSON.stringify(selectedClasses);
+      const input = document.querySelector('#subject');
+      const value = input.value.trim();
+      
+      if (value.length < 2) {
+        e.preventDefault();
+        input.style.borderColor = '#ef4444';
+        input.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.1)';
+        input.focus();
+        
+        // Show error message
+        let errorMsg = input.parentElement.querySelector('.error-message');
+        if (!errorMsg) {
+          errorMsg = document.createElement('div');
+          errorMsg.className = 'error-message';
+          errorMsg.style.color = '#ef4444';
+          errorMsg.style.fontSize = '0.75rem';
+          errorMsg.style.marginTop = '0.25rem';
+          errorMsg.textContent = 'Subject name must be at least 2 characters long';
+          input.parentElement.appendChild(errorMsg);
+        }
+        
+        setTimeout(() => {
+          input.style.borderColor = '';
+          input.style.boxShadow = '';
+          if (errorMsg) errorMsg.remove();
+        }, 3000);
+        
+        return false;
+      }
+    });
+
+    // Real-time input validation
+    document.querySelector('#subject').addEventListener('input', function(e) {
+      const errorMsg = this.parentElement.querySelector('.error-message');
+      if (errorMsg) errorMsg.remove();
+      
+      this.style.borderColor = '';
+      this.style.boxShadow = '';
+    });
+
+    // Success message handling
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success')) {
+      const successAlert = document.createElement('div');
+      successAlert.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+        animation: slideInRight 0.3s ease;
+        max-width: 300px;
+      `;
+      
+      successAlert.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <i class="fas fa-check-circle"></i>
+          <span>Subject ${urlParams.get('success') === 'added' ? 'added' : 'updated'} successfully!</span>
+          <button onclick="this.parentElement.parentElement.remove()" 
+                  style="background: none; border: none; color: white; margin-left: auto; cursor: pointer;">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      `;
+      
+      document.body.appendChild(successAlert);
+      
+      setTimeout(() => {
+        if (successAlert.parentElement) {
+          successAlert.style.animation = 'slideOutRight 0.3s ease';
+          setTimeout(() => successAlert.remove(), 300);
+        }
+      }, 4000);
+    }
+
+    // Add CSS animations
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideInRight {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      @keyframes slideOutRight {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Remove button animations
+    document.querySelectorAll('.action-btn').forEach(btn => {
+      btn.style.transition = 'background-color 0.2s ease';
+    });
+
+    // Remove table row animations
+    document.querySelectorAll('.table tbody tr').forEach(row => {
+      row.style.transition = 'none';
+    });
+  </script>
+</body>
+</html>

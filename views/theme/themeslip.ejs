@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Themes Slip</title>
+  <style>
+    body {
+      background: #f0f4fa;
+      margin: 0;
+      padding: 0;
+    }
+    .a4 {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 10mm auto;
+      background: white;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      border-radius: 8px;
+      padding: 18mm 12mm 15mm 12mm;
+      box-sizing: border-box;
+      position: relative;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 18px;
+      border-bottom: 2px solid #4a90e2;
+      padding-bottom: 10px;
+    }
+    .header img {
+      width: 60px;
+      height: 60px;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+    .header h2 {
+      display: inline-block;
+      vertical-align: middle;
+      font-size: 1.5rem;
+      color: #2c3e50;
+      margin: 0;
+    }
+    .header h3 {
+      color: #7f8c8d;
+      font-size: 1rem;
+      margin: 2px 0;
+      font-weight: normal;
+    }
+    .header h1 {
+      color: #4a90e2;
+      font-size: 1.3rem;
+      margin-top: 10px;
+      margin-bottom: 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.98rem;
+      background: #fff;
+    }
+    th, td {
+      border: 1px solid #222;
+      padding: 7px 4px;
+      text-align: center;
+      vertical-align: middle;
+      color: #222;
+    }
+    th {
+      background: #e3f1fb;
+      color: #222;
+      font-weight: 600;
+    }
+    tr:nth-child(even) td {
+      background: #f7fbff;
+    }
+    .print-btn {
+      background: #4a90e2;
+      color: white;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-bottom: 18px;
+      font-size: 14px;
+      transition: background 0.3s;
+      float: right;
+    }
+    .print-btn:hover {
+      background: #357abd;
+    }
+    @media print {
+      body, html {
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      .a4 {
+        margin: 0 !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        width: 190mm !important;
+        min-height: 277mm !important;
+        padding: 10mm !important;
+        page-break-after: always;
+      }
+      .print-btn {
+        display: none !important;
+      }
+      @page {
+        size: A4;
+        margin: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="a4">
+    <button class="print-btn" onclick="window.print()">🖨️ Print Report</button>
+    
+    <div class="header">
+      <div>
+        <img src="/image.png" alt="School Logo">
+        <h2><%= marksheetSetting[0].schoolName %></h2>
+      </div>
+      <h3><%= marksheetSetting[0].address %></h3>
+      <h3><%= marksheetSetting[0].phone %> | <%= marksheetSetting[0].email %> | <%= marksheetSetting[0].website %></h3>
+      <h3><%= terminal %> Terminal - <%= marksheetSetting[0].academicYear %></h3>
+      <h1>Theme Slip | Class <%=studentClass%>-<%=section%></h1>
+    </div>
+  
+
+  <table>
+    <thead>
+      <tr>
+        <th rowspan="2">Roll</th>
+        <th rowspan="2">Name</th>
+        <% if (themeslip.length > 0) { %>
+          <% themeslip[0].subjects.forEach((subject) => { %>
+            <th colspan="2"><%= subject.name %></th>
+          <% }) %>
+        <% } %>
+      </tr>
+      <tr>
+     
+       
+        <% if (themeslip.length > 0) { %>
+          <% themeslip[0].subjects.forEach(() => { %>
+            <th>Percentage</th>
+            <th>Grade</th>
+          <% }) %>
+        <% } %>
+      </tr>
+    </thead>
+    <tbody>
+      <% themeslip.forEach((student) => { %>
+        <tr>
+          <td><%= student.roll %></td>
+          <td><%= student.name %></td>
+          <% student.subjects.forEach((subject) => { 
+              const totalLearningOutcomes = subject.themes.reduce((acc, theme) => acc + theme.learningOutcomes.length, 0);
+              const totalObtainedAfter = subject.themes.reduce((acc, theme) => acc + theme.overallTotalAfter, 0);
+              const percentage = totalLearningOutcomes > 0 ? (totalObtainedAfter / (4 * totalLearningOutcomes)) * 100 : 0;
+              
+              let grade = "Invalid";
+              if (percentage >= 90 && percentage <= 100) grade = "A+";
+              else if (percentage >= 80 && percentage < 90) grade = "A";
+              else if (percentage >= 70 && percentage < 80) grade = "B+";
+              else if (percentage >= 60 && percentage < 70) grade = "B";
+              else if (percentage >= 50 && percentage < 60) grade = "C+";
+              else if (percentage >= 40 && percentage < 50) grade = "C";
+              else if (percentage >= 20 && percentage < 40) grade = "D";
+              else if (percentage >= 0 && percentage < 20) grade = "E";
+          %>
+            <td><%= percentage.toFixed(2) %>%</td>
+            <td><%= grade %></td>
+          <% }) %>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  </div>
+</body>
+</html>

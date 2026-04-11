@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css"/>
+  <title>Lesson Plan Form</title>
+  <style>
+    :root {
+      --page-width: 1180px;
+      --border: #d8e0ea;
+      --text: #16202b;
+      --muted: #5f6b7a;
+      --header: #f4f7fb;
+      --bg: linear-gradient(180deg, #eef3f8 0%, #f7f9fc 100%);
+      --accent: #31568a;
+      --accent-soft: #e8f0fb;
+      --shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px 16px 40px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.45;
+    }
+
+    .page {
+      width: min(100%, var(--page-width));
+      margin: 0 auto;
+      background: #fff;
+      border: 1px solid #dde3ea;
+      box-shadow: var(--shadow);
+      padding: 28px;
+      border-radius: 16px;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-gutter: stable;
+    }
+
+    .table-wrap table {
+      min-width: 1000px;
+    }
+
+    .page-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .page-title {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: -0.02em;
+    }
+
+    .page-note {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .autosave-badge {
+      align-self: center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .section-title {
+      margin: 30px 0 14px;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .section-subtitle {
+      margin: -8px 0 14px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font: inherit;
+      color: inherit;
+      background: #fff;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #8ea4c0;
+      box-shadow: 0 0 0 3px rgba(49, 86, 138, 0.14);
+    }
+
+    input[readonly], textarea[readonly] {
+      background: #f8fafc;
+      color: #334155;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      background: #fff;
+      margin-top: 8px;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 8px;
+      vertical-align: top;
+      word-break: break-word;
+      font-size: 14px;
+    }
+
+    th {
+      background: var(--header);
+      text-align: left;
+      font-weight: 700;
+    }
+
+    td input,
+    td select,
+    td textarea {
+      border-radius: 8px;
+      width: 100%;
+      min-height: 40px;
+    }
+
+    td textarea {
+      min-height: 123px;
+      resize: vertical;
+    }
+
+    .material-list,
+    .repeat-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .checkbox-picker {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .checkbox-trigger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 40px;
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      cursor: pointer;
+      font: inherit;
+      color: inherit;
+      text-align: left;
+    }
+
+    .checkbox-trigger[aria-expanded="true"] {
+      border-color: #8ea4c0;
+      box-shadow: 0 0 0 3px rgba(49, 86, 138, 0.14);
+    }
+
+    .checkbox-panel {
+      display: none;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      max-height: 220px;
+      overflow: auto;
+      padding: 8px;
+      box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
+    }
+
+    .checkbox-panel[data-open="true"] {
+      display: grid;
+      gap: 6px;
+    }
+
+    .checkbox-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .checkbox-option:hover {
+      background: #f8fafc;
+    }
+
+    .checkbox-option input {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      flex: 0 0 auto;
+    }
+
+    .checkbox-summary {
+      min-height: 34px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .multi-select-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .multi-select {
+      min-height: 140px;
+      padding: 8px;
+    }
+
+    .selected-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 34px;
+    }
+
+    .selected-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid #bfd0e4;
+      background: #eef4fb;
+      color: #1d4e89;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .add-material-btn,
+    .add-repeat-btn {
+      margin-top: 8px;
+      align-self: flex-start;
+    }
+
+    .sn-col { width: 52px; }
+    .unit-col { width: 170px; }
+    .content-col { width: 240px; }
+    .period-col { width: 120px; }
+    .material-col { width: 220px; }
+    .month-col { width: 150px; }
+
+    .date-pair {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 10px;
+    }
+
+    .date-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .spacer {
+      height: 24px;
+    }
+
+    .actions {
+      margin-top: 16px;
+    }
+
+    .actions button {
+      margin-right: 10px;
+      margin-bottom: 8px;
+    }
+
+    button {
+      border: 1px solid #9fb0c5;
+      background: #f8fafc;
+      color: #0f172a;
+      padding: 9px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      font: inherit;
+      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+
+    button:hover {
+      background: #eef4fb;
+      border-color: #7f94b2;
+      transform: translateY(-1px);
+    }
+
+    .unit-block {
+      margin-top: 18px;
+      padding: 16px;
+      border: 1px solid #e6edf5;
+      border-radius: 14px;
+      background: #fbfcfe;
+    }
+
+    .unit-block h3 {
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+
+    .save-state {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .save-state[data-state="saving"] {
+      color: #7c4d00;
+    }
+
+    .save-state[data-state="saved"] {
+      color: #0f766e;
+    }
+
+    .save-state[data-state="error"] {
+      color: #b91c1c;
+    }
+
+    @media (max-width: 980px) {
+      .page {
+        padding: 18px;
+        border-radius: 14px;
+      }
+
+      .meta-grid {
+        grid-template-columns: 1fr;
+      }
+
+      th, td {
+        font-size: 13px;
+      }
+    }
+
+    @media (max-width: 720px) {
+      body {
+        padding: 12px 10px 24px;
+      }
+
+      .page {
+        padding: 14px;
+        border-radius: 12px;
+      }
+
+      .page-header {
+        flex-direction: column;
+      }
+
+      .page-title {
+        font-size: 23px;
+      }
+
+      .autosave-badge {
+        align-self: flex-start;
+      }
+
+      .section-title {
+        margin-top: 24px;
+        font-size: 17px;
+      }
+
+      .section-subtitle {
+        line-height: 1.5;
+      }
+
+      .unit-block {
+        padding: 12px;
+        border-radius: 12px;
+      }
+
+      .unit-block h3 {
+        font-size: 15px;
+      }
+
+      .checkbox-trigger {
+        padding: 10px;
+      }
+
+      .checkbox-option {
+        align-items: flex-start;
+      }
+
+      .checkbox-option span {
+        line-height: 1.35;
+      }
+
+      .selected-tags {
+        gap: 6px;
+      }
+
+      .selected-tag {
+        padding: 5px 8px;
+        font-size: 11px;
+      }
+
+      .date-pair {
+        grid-template-columns: 1fr;
+      }
+
+      .actions {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+      }
+
+      .actions button {
+        margin-right: 0;
+        margin-bottom: 0;
+        width: 100%;
+      }
+
+      .save-state {
+        width: 100%;
+      }
+
+      .checkbox-panel {
+        max-height: 180px;
+      }
+
+      .material-list,
+      .repeat-list,
+      .checkbox-picker,
+      .multi-select-group {
+        gap: 6px;
+      }
+
+      .add-material-btn,
+      .add-repeat-btn {
+        width: 100%;
+      }
+
+      .spacer {
+        height: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+   <%- include('../partials/sidenav', { 
+       
+    }) %>
+  <div class="page">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">Lesson Plan Form</h1>
+        <p class="page-note">Saved lesson plans load back into the form. Changes autosave after a short pause.</p>
+      </div>
+      <div class="autosave-badge">Autosave enabled</div>
+    </div>
+
+    <% const annualRows = Array.isArray(annualLessonUnits) ? annualLessonUnits : []; %>
+    <% const unitPlanRows = Array.isArray(unitPlanUnits) ? unitPlanUnits : []; %>
+    <% const dailyRows = Array.isArray(dailyPlanUnits) ? dailyPlanUnits : []; %>
+
+    <form action="/annuallessonform" method="post" data-lesson-plan-form data-autosave-url="/annuallessonform">
+      <input type="text" name="teacherName" id="" value="<%= sidenavData && sidenavData.user ? sidenavData.user.teacherName : '' %>" hidden>
+      <div class="meta-grid">
+        <div class="field">
+          <label for="annual-class">Class</label>
+          <input type="text" id="annual-class" name="forClass" value="<%= selectedForClass %>" readonly>
+        </div>
+
+        <div class="field">
+          <label for="annual-subject">Subject</label>
+          <input type="text" id="annual-subject" name="subject" value="<%= selectedSubject %>" readonly>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="sn-col">S.N</th>
+              <th class="unit-col">Unit</th>
+              <th class="content-col">Content</th>
+              <th class="period-col">Required Period</th>
+              <th class="material-col">Instructional Material</th>
+              <th class="month-col">Month</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% (curriculum.units || []).forEach((unit, index) => { %>
+              <% const annualRow = annualRows[index] || {}; %>
+              <% const annualMaterials = Array.isArray(annualRow.instructionalMaterial) && annualRow.instructionalMaterial.length ? annualRow.instructionalMaterial : ['']; %>
+              <tr data-unit-index="<%= index %>">
+                <td><%= index + 1 %></td>
+                <td>
+                  <input type="hidden" name="units[<%= index %>][unitId]" value="<%= unit._id %>">
+                  <textarea name="units[<%= index %>][unitName]" placeholder="Unit name"><%= annualRow.unitName || unit.unitName || '' %></textarea>
+                </td>
+                <td><textarea name="units[<%= index %>][content]" placeholder="Content"><%= annualRow.content || (Array.isArray(unit.content) ? unit.content.join('\n') : (unit.content || '')) %></textarea></td>
+                <td><input type="number" name="units[<%= index %>][period]" value="<%= annualRow.period || unit.period || '' %>" min="0"></td>
+                <td>
+                  <div class="material-list" data-material-list>
+                    <% annualMaterials.forEach((material, materialIndex) => { %>
+                      <textarea
+                        name="units[<%= index %>][instructionalMaterial][<%= materialIndex %>]"
+                        class="instructional-material-input"
+                        placeholder="Enter instructional material"><%= material %></textarea>
+                    <% }) %>
+                  </div>
+                  <button type="button" class="add-material-btn" data-add-material>Add More</button>
+                </td>
+                <td>
+                  <select name="units[<%= index %>][month]">
+                    <option value="" <%= annualRow.month ? '' : 'selected' %> disabled>Select Month</option>
+                    <% ['Baisakh','Jestha','Ashad','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra'].forEach((month) => { %>
+                      <option value="<%= month %>" <%= annualRow.month === month ? 'selected' : '' %>><%= month %></option>
+                    <% }) %>
+                  </select>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="actions">
+        <button type="submit">Submit</button>
+        <span class="save-state" data-state="idle">Annual plan autosaves as you type.</span>
+      </div>
+    </form>
+
+    <div class="spacer"></div>
+
+    <div class="section-title">Unit Lesson Plan</div>
+    <div class="section-subtitle">This section stores the detailed unit notes for each curriculum unit.</div>
+    <form action="/unitplan" method="post" data-lesson-plan-form data-autosave-url="/unitplan">
+      <input type="hidden" name="forClass" value="<%= selectedForClass %>">
+      <input type="text" name="teacherName" id="" value="<%= sidenavData && sidenavData.user ? sidenavData.user.teacherName : '' %>" hidden>
+      <input type="hidden" name="subject" value="<%= selectedSubject %>">
+
+      <% (curriculum.units || []).forEach((unit, index) => { %>
+        <% const unitRow = unitPlanRows[index] || {}; %>
+        <% const methodRows = Array.isArray(unitRow.instructionalMethod) && unitRow.instructionalMethod.length ? unitRow.instructionalMethod : ['']; %>
+        <% const evaluationRows = Array.isArray(unitRow.evaluationProcess) && unitRow.evaluationProcess.length ? unitRow.evaluationProcess : ['']; %>
+        <% const remarkRows = Array.isArray(unitRow.remarks) && unitRow.remarks.length ? unitRow.remarks : ['']; %>
+        <section class="unit-block" data-unit-block data-unit-index="<%= index %>">
+          <h3>Unit <%= index + 1 %>: <%= unitRow.unitName || unit.unitName || '' %></h3>
+          <input type="hidden" name="units[<%= index %>][unitId]" value="<%= unit._id %>">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Unit</th>
+                  <th>Content</th>
+                  <th>Required Period</th>
+                  <th>Objectives</th>
+                  <th>Instructional Material</th>
+                  <th>Instructional Method</th>
+                  <th>Evaluation Process</th>
+                  <th>Remarks</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><textarea name="units[<%= index %>][unitName]" placeholder="Unit name"><%= unitRow.unitName || unit.unitName || '' %></textarea></td>
+                  <td><textarea name="units[<%= index %>][content]" placeholder="Content"><%= unitRow.content || (Array.isArray(unit.content) ? unit.content.join('\n') : (unit.content || '')) %></textarea></td>
+                  <td><input type="number" name="units[<%= index %>][period]" value="<%= unitRow.period || unit.period || '' %>" min="0"></td>
+                  <td><textarea name="units[<%= index %>][objectives]" placeholder="Objectives"><%= unitRow.objectives || (Array.isArray(unit.objectives) ? unit.objectives.join('\n') : (unit.objectives || '')) %></textarea></td>
+                  <td><textarea name="units[<%= index %>][instructionalMaterial]" placeholder="Instructional material"><%= unitRow.instructionalMaterial || (Array.isArray(unit.instructionalMaterial) ? unit.instructionalMaterial.join('\n') : (unit.instructionalMaterial || '')) %></textarea></td>
+                  <td>
+                    <div class="repeat-list" data-repeat-list="instructionalMethod" data-unit-index="<%= index %>">
+                      <% methodRows.forEach((item, repeatIndex) => { %>
+                        <textarea name="units[<%= index %>][instructionalMethod][<%= repeatIndex %>]" placeholder="Enter instructional method"><%= item %></textarea>
+                      <% }) %>
+                    </div>
+                    <button type="button" class="add-repeat-btn" data-add-repeat="instructionalMethod">Add More</button>
+                  </td>
+                  <td>
+                    <div class="repeat-list" data-repeat-list="evaluationProcess" data-unit-index="<%= index %>">
+                      <% evaluationRows.forEach((item, repeatIndex) => { %>
+                        <textarea name="units[<%= index %>][evaluationProcess][<%= repeatIndex %>]" placeholder="Enter evaluation process"><%= item %></textarea>
+                      <% }) %>
+                    </div>
+                    <button type="button" class="add-repeat-btn" data-add-repeat="evaluationProcess">Add More</button>
+                  </td>
+                  <td>
+                    <div class="repeat-list" data-repeat-list="remarks" data-unit-index="<%= index %>">
+                      <% remarkRows.forEach((item, repeatIndex) => { %>
+                        <textarea name="units[<%= index %>][remarks][<%= repeatIndex %>]" placeholder="Enter remarks"><%= item %></textarea>
+                      <% }) %>
+                    </div>
+                    <button type="button" class="add-repeat-btn" data-add-repeat="remarks">Add More</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      <% }) %>
+
+      <div class="actions">
+        <button type="submit">Submit Unit Plan</button>
+        <span class="save-state" data-state="idle">Unit plan autosaves after a short pause.</span>
+      </div>
+    </form>
+
+    <div class="spacer"></div>
+
+    <div class="section-title">Daily Lesson Plan</div>
+    <div class="section-subtitle">Each lesson row is saved independently, so you can leave and return without losing draft work.</div>
+    <form action="/dailylessonplan" method="post" data-lesson-plan-form data-autosave-url="/dailylessonplan">
+      
+      <input type="text" name="teacherName" id="" value="<%= sidenavData && sidenavData.user ? sidenavData.user.teacherName : '' %>" hidden>
+      <input type="hidden" name="forClass" value="<%= selectedForClass %>">
+      <input type="hidden" name="subject" value="<%= selectedSubject %>">
+
+      <% (curriculum.units || []).forEach((unit, index) => { %>
+        <% const dailyRow = dailyRows[index] || { dailyLessons: [] }; %>
+        <% const dailyLessons = Array.isArray(dailyRow.dailyLessons) ? dailyRow.dailyLessons : []; %>
+        <% const objectiveOptions = Array.isArray(unit.objectives) ? unit.objectives : []; %>
+        <% const materialOptions = Array.isArray(unit.instructionalMaterial) ? unit.instructionalMaterial : []; %>
+        <section class="unit-block" data-unit-block data-unit-index="<%= index %>">
+          <h3>Unit <%= index + 1 %>: <%= dailyRow.unitName || unit.unitName || '' %></h3>
+          <input type="hidden" name="units[<%= index %>][unitId]" value="<%= unit._id %>">
+          <input type="hidden" name="units[<%= index %>][unitName]" value="<%= dailyRow.unitName || unit.unitName || '' %>">
+          <input type="hidden" name="units[<%= index %>][period]" value="<%= dailyRow.period || unit.period || '' %>">
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Period</th>
+                  <th>Objective</th>
+                  <th>Instructional Material</th>
+                  <th>Activities</th>
+                  <th>Assessment</th>
+                  <th>Assignment/PW.Info of Next class</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% dailyLessons.forEach((lesson, lessonIndex) => { %>
+                  <tr>
+                    <td>
+                      <div class="date-pair" data-date-pair>
+                        <label class="date-field">
+                          <span>Nepali Date</span>
+                          <input
+                            type="text"
+                            name="units[<%= index %>][dailyLessons][<%= lessonIndex %>][nepaliDate]"
+                            value="<%= lesson.nepaliDate || '' %>"
+                            class="nepali-datepicker"
+                            data-nepali-date-input
+                            placeholder="Select Nepali date">
+                        </label>
+                        <label class="date-field">
+                          
+                          <input
+                            type="date"
+                            name="units[<%= index %>][dailyLessons][<%= lessonIndex %>][date]"
+                            value="<%= lesson.date || '' %>"
+                            class="english-date-input"
+                            data-english-date-input hidden>
+                        </label>
+                      </div>
+                    </td>
+
+
+                    <td><%= lessonIndex + 1 %></td>
+                    <td>
+                        <% const selectedObjectives = Array.isArray(lesson.objective) ? lesson.objective : (lesson.objective ? [lesson.objective] : []); %>
+                        <div class="checkbox-picker" data-checkbox-picker data-display-id="selected-objectives-<%= index %>-<%= lessonIndex %>">
+                          <button type="button" class="checkbox-trigger" data-checkbox-trigger aria-expanded="false">
+                            <span>Select objectives</span>
+                            <span>▾</span>
+                          </button>
+                          <div class="checkbox-panel" data-checkbox-panel>
+                            <% objectiveOptions.forEach((obj, optionIndex) => { const optionValue = String(obj || '').trim(); if (!optionValue) { return; } %>
+                              <label class="checkbox-option">
+                                <input
+                                  type="checkbox"
+                                  name="units[<%= index %>][dailyLessons][<%= lessonIndex %>][objective]"
+                                  value="<%= optionValue %>"
+                                  <%= selectedObjectives.includes(optionValue) ? 'checked' : '' %>
+                                  data-checkbox-option>
+                                <span><%= optionValue %></span>
+                              </label>
+                            <% }) %>
+                          </div>
+                          <div class="checkbox-summary selected-tags" id="selected-objectives-<%= index %>-<%= lessonIndex %>">
+                            <% selectedObjectives.forEach((item) => { %>
+                              <span class="selected-tag"><%= item %></span>
+                            <% }) %>
+                          </div>
+                        </div>
+                    </td>
+                    <td>
+                        <% const selectedMaterials = Array.isArray(lesson.instructionalMaterial) ? lesson.instructionalMaterial : (lesson.instructionalMaterial ? [lesson.instructionalMaterial] : []); %>
+                        <div class="checkbox-picker" data-checkbox-picker data-display-id="selected-materials-<%= index %>-<%= lessonIndex %>">
+                          <button type="button" class="checkbox-trigger" data-checkbox-trigger aria-expanded="false">
+                            <span>Select instructional materials</span>
+                            <span>▾</span>
+                          </button>
+                          <div class="checkbox-panel" data-checkbox-panel>
+                            <% materialOptions.forEach((material) => { const optionValue = String(material || '').trim(); if (!optionValue) { return; } %>
+                              <label class="checkbox-option">
+                                <input
+                                  type="checkbox"
+                                  name="units[<%= index %>][dailyLessons][<%= lessonIndex %>][instructionalMaterial]"
+                                  value="<%= optionValue %>"
+                                  <%= selectedMaterials.includes(optionValue) ? 'checked' : '' %>
+                                  data-checkbox-option>
+                                <span><%= optionValue %></span>
+                              </label>
+                            <% }) %>
+                          </div>
+                          <div class="checkbox-summary selected-tags" id="selected-materials-<%= index %>-<%= lessonIndex %>">
+                            <% selectedMaterials.forEach((item) => { %>
+                              <span class="selected-tag"><%= item %></span>
+                            <% }) %>
+                          </div>
+                        </div>
+                    </td>
+                    <td>
+                      <div>Engage(5min): <textarea name="units[<%= index %>][dailyLessons][<%= lessonIndex %>][engage]"><%= lesson.engage || '' %></textarea></div>
+                      <div>Explore(10min): <textarea name="units[<%= index %>][dailyLessons][<%= lessonIndex %>][explore]"><%= lesson.explore || '' %></textarea></div>
+                      <div>Explain(15min): <textarea name="units[<%= index %>][dailyLessons][<%= lessonIndex %>][explain]"><%= lesson.explain || '' %></textarea></div>
+                      <div>Elaborate(10min): <textarea name="units[<%= index %>][dailyLessons][<%= lessonIndex %>][elaborate]"><%= lesson.elaborate || '' %></textarea></div>
+                      <div>Evaluate(5min): <textarea name="units[<%= index %>][dailyLessons][<%= lessonIndex %>][evaluate]"><%= lesson.evaluate || '' %></textarea></div>
+                    </td>
+                    <td><textarea name="units[<%= index %>][dailyLessons][<%= lessonIndex %>][assessment]"><%= lesson.assessment || '' %></textarea></td>
+                    <td><textarea name="units[<%= index %>][dailyLessons][<%= lessonIndex %>][assignment]"><%= lesson.assignment || '' %></textarea></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      <% }) %>
+
+      <div class="actions">
+        <button type="submit">Submit Daily Lesson Plan</button>
+        <span class="save-state" data-state="idle">Daily plan autosaves after a short pause.</span>
+      </div>
+    </form>
+  </div>
+
+  <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
+  <script>
+    (() => {
+      const AUTOSAVE_DELAY = 900;
+      const saveTimers = new WeakMap();
+      const saveControllers = new WeakMap();
+
+      const convertBsToAd = (value) => {
+        if (!value) {
+          return '';
+        }
+
+        const normalized = String(value).trim();
+
+        if (!normalized || typeof NepaliFunctions === 'undefined') {
+          return '';
+        }
+
+        try {
+          return NepaliFunctions.BS2AD(normalized);
+        } catch (error) {
+          return '';
+        }
+      };
+
+      const convertAdToBs = (value) => {
+        if (!value) {
+          return '';
+        }
+
+        const normalized = String(value).trim();
+
+        if (!normalized || typeof NepaliFunctions === 'undefined') {
+          return '';
+        }
+
+        try {
+          return NepaliFunctions.AD2BS(normalized);
+        } catch (error) {
+          return '';
+        }
+      };
+
+      const getDateInputs = (pair) => ({
+        nepaliInput: pair.querySelector('[data-nepali-date-input]'),
+        englishInput: pair.querySelector('[data-english-date-input]')
+      });
+
+      const syncDatePair = (pair, source) => {
+        if (!pair) {
+          return;
+        }
+
+        if (pair.dataset.syncing === 'true') {
+          return;
+        }
+
+        const { nepaliInput, englishInput } = getDateInputs(pair);
+
+        if (!nepaliInput || !englishInput) {
+          return;
+        }
+
+        pair.dataset.syncing = 'true';
+
+        if (source === 'nepali') {
+          englishInput.value = convertBsToAd(nepaliInput.value);
+        } else if (source === 'english') {
+          nepaliInput.value = convertAdToBs(englishInput.value);
+        } else if (nepaliInput.value && !englishInput.value) {
+          englishInput.value = convertBsToAd(nepaliInput.value);
+        } else if (englishInput.value && !nepaliInput.value) {
+          nepaliInput.value = convertAdToBs(englishInput.value);
+        }
+
+        pair.dataset.syncing = 'false';
+      };
+
+      const bindDatePair = (pair) => {
+        const { nepaliInput, englishInput } = getDateInputs(pair);
+
+        if (!nepaliInput || !englishInput) {
+          return;
+        }
+
+        if (typeof nepaliInput.nepaliDatePicker !== 'function') {
+          return;
+        }
+
+        nepaliInput.nepaliDatePicker({
+          onSelect: () => {
+            syncDatePair(pair, 'nepali');
+            const form = pair.closest('form');
+            if (form) {
+              scheduleSave(form);
+            }
+          }
+        });
+
+        nepaliInput.addEventListener('change', () => {
+          syncDatePair(pair, 'nepali');
+          const form = pair.closest('form');
+          if (form) {
+            scheduleSave(form);
+          }
+        });
+
+        englishInput.addEventListener('change', () => {
+          syncDatePair(pair, 'english');
+          const form = pair.closest('form');
+          if (form) {
+            scheduleSave(form);
+          }
+        });
+
+        syncDatePair(pair, 'initial');
+      };
+
+      const updateCheckboxDisplay = (picker) => {
+        const displayId = picker.dataset.displayId;
+        const display = displayId ? document.getElementById(displayId) : null;
+
+        if (!display) {
+          return;
+        }
+
+        display.innerHTML = '';
+
+        const selectedValues = [...picker.querySelectorAll('[data-checkbox-option]:checked')]
+          .map((input) => input.value)
+          .filter(Boolean);
+
+        if (!selectedValues.length) {
+          const empty = document.createElement('span');
+          empty.className = 'page-note';
+          empty.textContent = 'No options selected.';
+          display.appendChild(empty);
+          return;
+        }
+
+        selectedValues.forEach((value) => {
+          const tag = document.createElement('span');
+          tag.className = 'selected-tag';
+          tag.textContent = value;
+          display.appendChild(tag);
+        });
+      };
+
+      const serializeForm = (form) => {
+        const params = new URLSearchParams();
+        const formData = new FormData(form);
+
+        for (const [key, value] of formData.entries()) {
+          params.append(key, value);
+        }
+
+        params.set('autosave', 'true');
+        return params.toString();
+      };
+
+      const setSaveState = (form, state, text) => {
+        const indicator = form.querySelector('.save-state');
+        if (!indicator) {
+          return;
+        }
+
+        indicator.dataset.state = state;
+        indicator.textContent = text;
+      };
+
+      const saveForm = async (form) => {
+        const saveUrl = form.dataset.autosaveUrl || form.action;
+        const previousController = saveControllers.get(form);
+
+        if (previousController) {
+          previousController.abort();
+        }
+
+        const controller = new AbortController();
+        saveControllers.set(form, controller);
+        setSaveState(form, 'saving', 'Saving changes...');
+
+        try {
+          const response = await fetch(saveUrl, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+              'Accept': 'application/json'
+            },
+            body: serializeForm(form),
+            signal: controller.signal
+          });
+
+          if (!response.ok) {
+            throw new Error(`Save failed with status ${response.status}`);
+          }
+
+          setSaveState(form, 'saved', 'Saved');
+        } catch (error) {
+          if (error.name === 'AbortError') {
+            return;
+          }
+
+          console.error('Autosave error:', error);
+          setSaveState(form, 'error', 'Autosave failed');
+        }
+      };
+
+      const scheduleSave = (form, delay = AUTOSAVE_DELAY) => {
+        if (saveTimers.has(form)) {
+          clearTimeout(saveTimers.get(form));
+        }
+
+        const timer = setTimeout(() => {
+          saveTimers.delete(form);
+          saveForm(form);
+        }, delay);
+
+        saveTimers.set(form, timer);
+      };
+
+      document.querySelectorAll('[data-checkbox-picker]').forEach((picker) => {
+        const trigger = picker.querySelector('[data-checkbox-trigger]');
+        const panel = picker.querySelector('[data-checkbox-panel]');
+
+        if (!trigger || !panel) {
+          return;
+        }
+
+        trigger.addEventListener('click', () => {
+          const isOpen = panel.dataset.open === 'true';
+          panel.dataset.open = isOpen ? 'false' : 'true';
+          trigger.setAttribute('aria-expanded', String(!isOpen));
+        });
+
+        picker.querySelectorAll('[data-checkbox-option]').forEach((checkbox) => {
+          checkbox.addEventListener('change', () => {
+            updateCheckboxDisplay(picker);
+            const form = picker.closest('form');
+            if (form) {
+              scheduleSave(form);
+            }
+          });
+        });
+
+        updateCheckboxDisplay(picker);
+      });
+
+      document.querySelectorAll('[data-date-pair]').forEach((pair) => {
+        bindDatePair(pair);
+      });
+
+      document.addEventListener('click', (event) => {
+        document.querySelectorAll('[data-checkbox-picker]').forEach((picker) => {
+          if (!picker.contains(event.target)) {
+            const trigger = picker.querySelector('[data-checkbox-trigger]');
+            const panel = picker.querySelector('[data-checkbox-panel]');
+            if (panel) {
+              panel.dataset.open = 'false';
+            }
+            if (trigger) {
+              trigger.setAttribute('aria-expanded', 'false');
+            }
+          }
+        });
+      });
+
+      document.querySelectorAll('[data-lesson-plan-form]').forEach((form) => {
+        form.addEventListener('input', (event) => {
+          if (event.target.matches('input, textarea, select')) {
+            scheduleSave(form);
+          }
+        });
+
+        form.addEventListener('change', (event) => {
+          if (event.target.matches('input, textarea, select')) {
+            scheduleSave(form, AUTOSAVE_DELAY);
+          }
+        });
+      });
+
+      document.querySelectorAll('[data-add-material]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const row = button.closest('tr[data-unit-index]');
+          const list = row.querySelector('[data-material-list]');
+          const unitIndex = row.dataset.unitIndex;
+          const nextIndex = list.querySelectorAll('textarea').length;
+
+          const textarea = document.createElement('textarea');
+          textarea.name = `units[${unitIndex}][instructionalMaterial][${nextIndex}]`;
+          textarea.className = 'instructional-material-input';
+          textarea.placeholder = 'Enter instructional material';
+
+          list.appendChild(textarea);
+          textarea.focus();
+          scheduleSave(button.closest('form'));
+        });
+      });
+
+      document.querySelectorAll('[data-add-repeat]').forEach((button) => {
+        button.addEventListener('click', () => {
+          const fieldName = button.dataset.addRepeat;
+          const cell = button.closest('td');
+          const list = cell.querySelector(`[data-repeat-list="${fieldName}"]`);
+          const unitIndex = list.dataset.unitIndex;
+          const nextIndex = list.querySelectorAll('textarea, input').length;
+
+          const textarea = document.createElement('textarea');
+          textarea.name = `units[${unitIndex}][${fieldName}][${nextIndex}]`;
+          textarea.placeholder = `Enter ${fieldName}`;
+
+          list.appendChild(textarea);
+          textarea.focus();
+          scheduleSave(button.closest('form'));
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

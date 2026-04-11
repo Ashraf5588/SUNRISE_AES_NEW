@@ -1,0 +1,44 @@
+/* Custom styles for DataTables buttons */
+.dt-button,
+.buttons-copy,
+.buttons-csv,
+.buttons-excel,
+.buttons-pdf,
+.buttons-print,
+.btn-outline-primary {
+    background-color: #f8f9fa !important; /* Light gray background */
+    color: #333 !important; /* Dark text color */
+    border: 1px solid #ced4da !important; /* Light gray border */
+    box-shadow: none !important;
+}
+
+.dt-button:hover,
+.buttons-copy:hover,
+.buttons-csv:hover,
+.buttons-excel:hover,
+.buttons-pdf:hover,
+.buttons-print:hover,
+.btn-outline-primary:hover {
+    background-color: #e9ecef !important; /* Slightly darker gray on hover */
+    color: #000 !important; /* Black text on hover */
+    border-color: #adb5bd !important; /* Darker border on hover */
+}
+
+/* Style for the button container */
+.dt-buttons {
+    margin-top: 10px !important;
+    margin-bottom: 10px !important;
+}
+
+/* Override any Bootstrap primary color styles */
+.btn-outline-primary {
+    color: #333 !important;
+    background-color: #f8f9fa !important;
+    border-color: #ced4da !important;
+}
+
+.btn-outline-primary:hover {
+    color: #000 !important;
+    background-color: #e9ecef !important;
+    border-color: #adb5bd !important;
+}

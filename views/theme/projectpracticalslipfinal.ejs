@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Practical Project Record</title>
+   <style>
+    /* Reset and base styles */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(135deg, #87CEEB 0%, #E0F6FF 40%, #B0E0E6 100%);
+      color: #333;
+      line-height: 1.4;
+    }
+
+    /* A4 Container for screen */
+    .a4 {
+      width: 210mm;
+      min-height: 297mm;
+      padding: 15mm;
+      margin: 10mm auto;
+      background: white;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      border: 1px solid #ddd;
+      position: relative;
+    }
+
+    /* Print button - hide on print */
+    .print-btn {
+      background: #4a90e2;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-bottom: 20px;
+      font-size: 14px;
+      transition: background 0.3s;
+    }
+
+    .print-btn:hover {
+      background: #357abd;
+    }
+
+    /* Header styling */
+    .header {
+      text-align: center;
+      margin-bottom: 12px;
+      border-bottom: 2px solid #4a90e2;
+      padding-bottom: 8px;
+      line-height: 1.2;
+    }
+
+    .header img {
+      width: 50px;
+      height: 50px;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+
+    .header h2 {
+      color: #2c3e50;
+      font-size: 18px;
+      margin-bottom: 2px;
+      display: inline-block;
+      vertical-align: middle;
+      line-height: 1.1;
+    }
+
+    .header h3 {
+      color: #7f8c8d;
+      font-size: 12px;
+      margin: 1px 0;
+      font-weight: normal;
+      line-height: 1.1;
+    }
+
+    .header h1 {
+      color: #4a90e2;
+      font-size: 20px;
+      margin-top: 8px;
+      line-height: 1.1;
+    }
+
+    /* Table styling */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      font-size: 11px;
+    }
+
+    th, td {
+      border: 1px solid black;
+      padding: 6px 4px;
+      text-align: center;
+      vertical-align: middle;
+      color: black;
+    }
+
+    th {
+      background-color: #87CEEB; /* Light sky blue */
+      color: black;
+      font-weight: bold;
+      font-size: 10px;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f8f9fa;
+    }
+
+    /* Responsive text sizing for table */
+    .student-name {
+      font-size: 10px;
+      text-align: left;
+      padding-left: 6px;
+    }
+
+    /* Print-specific styles */
+    @page {
+      size: A4;
+      margin: 10mm;
+      /* Remove default browser headers and footers */
+      @top-left { content: ""; }
+      @top-center { content: ""; }
+      @top-right { content: ""; }
+      @bottom-left { content: ""; }
+      @bottom-center { content: ""; }
+      @bottom-right { content: ""; }
+    }
+
+    @media print {
+      /* Remove browser's default headers and footers */
+      @page {
+        margin: 10mm;
+      }
+
+      /* Hide everything except the printable content */
+      body * {
+        visibility: hidden;
+      }
+
+      .a4, .a4 * {
+        visibility: visible;
+      }
+
+      .a4 {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 190mm !important; /* A4 width minus margins */
+        min-height: 277mm !important; /* A4 height minus margins */
+        padding: 10mm !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        background: white !important;
+        page-break-after: always;
+      }
+
+      /* Hide print and save buttons on print */
+      .print-btn,
+      button[type="submit"],
+      input[type="submit"] {
+        display: none !important;
+        visibility: hidden !important;
+      }
+
+      /* Optimize table for print */
+      table {
+        font-size: 9px !important;
+        width: 100% !important;
+      }
+
+      th, td {
+        padding: 3px 2px !important;
+        font-size: 8px !important;
+        border: 1px solid black !important;
+        color: black !important;
+      }
+
+      th {
+        background-color: #87CEEB !important; /* Light sky blue */
+        color: black !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      .header h2 {
+        font-size: 14px !important;
+        line-height: 1.1 !important;
+        margin-bottom: 1px !important;
+      }
+
+      .header h3 {
+        font-size: 10px !important;
+        line-height: 1.1 !important;
+        margin: 1px 0 !important;
+      }
+
+      .header h1 {
+        font-size: 16px !important;
+        line-height: 1.1 !important;
+        margin-top: 5px !important;
+      }
+
+      .header img {
+        width: 35px !important;
+        height: 35px !important;
+        margin-right: 8px !important;
+      }
+
+      /* Ensure no page breaks within table rows */
+      tr {
+        page-break-inside: avoid;
+      }
+
+      /* Force page break before large tables if needed */
+      .page-break-before {
+        page-break-before: always;
+      }
+
+      /* Ensure content fits on page */
+      .header {
+        margin-bottom: 8px !important;
+        padding-bottom: 5px !important;
+        line-height: 1.1 !important;
+      }
+    }
+
+    /* Screen-only styles */
+    @media screen {
+      body {
+        padding: 20px 0;
+      }
+      
+      .a4 {
+        border-radius: 5px;
+      }
+    }
+
+    /* Additional print optimizations */
+    @media print {
+      /* Remove all possible browser headers/footers */
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+      }
+
+      /* Hide all form controls and buttons */
+      button,
+      input[type="submit"],
+      input[type="button"],
+      .print-btn,
+      form button,
+      form input[type="submit"] {
+        display: none !important;
+        visibility: hidden !important;
+      }
+
+      /* Ensure table borders are black and visible */
+      table, th, td {
+        border: 1px solid black !important;
+        border-collapse: collapse !important;
+      }
+
+      /* Force background colors to print */
+      th {
+        background-color: #87CEEB !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color: black !important;
+      }
+    }
+
+    /* Form styling */
+    form {
+      width: 100%;
+    }
+
+    /* Grade styling */
+    .grade {
+      font-weight: bold;
+      color: #27ae60;
+    }
+
+    /* Total marks styling */
+    .total-marks {
+      font-weight: bold;
+      background-color: #ecf0f1 !important;
+    }
+  
+  </style>
+</head>
+<body>
+       <%- include('../partials/mainnav') %>
+  <div class="a4">
+    <button class="print-btn" onclick="window.print()">🖨️ Print Report</button>
+    
+    <div class="header">
+      <div>
+        <img src="/image.png" alt="School Logo">
+        <h2><%= marksheetSetting[0].schoolName %></h2>
+      </div>
+      <h3><%= marksheetSetting[0].address %></h3>
+      <h3><%= marksheetSetting[0].phone %> | <%= marksheetSetting[0].email %> | <%= marksheetSetting[0].website %></h3>
+      <h3><%= terminal %> Terminal - <%= marksheetSetting[0].academicYear %></h3>
+      <h1>Science Practical & Project Slip</h1>
+    </div>
+  <form action="/practicalslipsave?studentClass=<%= studentClass %>&section=<%= section %>&subject=<%= subject %>&terminal=<%= terminal %>&academicYear=<%= marksheetSetting[0].academicYear %>" method="POST">
+  
+      <% totalTerminal = marksheetSetting[0].totalTerminals; %>
+   <% totalTerminal || 3 %>
+    <table border="1" cellspacing="0" cellpadding="5">
+      <tr>
+          <th>Roll</th>
+       <th>Name</th>
+       <th>Class</th>
+       <th>Section</th>
+       <th>Attendance & Participation (<%=studentClass>8 ? 3 : 4 %>)</th>
+       <th>Project Work & Practical Work (<%=studentClass>8 ? 16 : 36 %>)</th>
+       <th>Terminal Exam Marks (<%=studentClass>8 ? 6 : 10 %>)</th>
+       <th>Total</th>
+       <th>Grade</th>
+      </tr>
+ 
+        <% sciencepracticaldata.forEach((student, index) => { %>
+           <tr>
+      <td><%=student._id.roll %></td>
+      <td><%=student._id.name %></td>
+     
+       
+        <td><%=student._id.studentClass %></td>
+         <td><%=student._id.section %></td>
+          <td><%=((student.attendanceTotalmarks+student.participationTotalmarks)/totalTerminal).toFixed(2) %></td>
+
+         <% let totalUnit = 0 %>
+      <% lessonData.forEach((lesson) => { %>
+        <% lesson.totalLessons.forEach((unit, uIndex) => { %>
+          <% totalUnit += unit.units.length; %>
+
+        <% }) %>
+      <% }) %>
+      
+    
+   
+<!-- combined terminal started from here -->
+
+          <%let totalPracticalFinal=0;%>
+          <%let totalProjectFinal=0 %>
+        <% let  totalPracticalProjectMarks%>
+    <% student.terminals.forEach(terminal => { %>
+  
+    
+<% terminal.unit.forEach(unitdata=>{%>
+         <% unitdata.practicals.forEach(practicaldata=>{%>
+             <p>
+               <%if(studentClass>8){%>
+              <% ((practicaldata.practicalMarks / 10) * 10)/unitdata.practicals.length %>
+              <%}else{%>
+               <% ((practicaldata.practicalMarks / 10) * 20)/unitdata.practicals.length %>
+               <%}%>
+              
+              </p>
+
+             <% totalPracticalFinal += 
+             (((practicaldata.practicalMarks / 10) * (studentClass>8 ? 10 : 20))/unitdata.practicals.length) %>
+           
+
+
+          <%})%>
+         
+          <% unitdata.projectWorks.forEach(projectdata=>{%>
+            <p><% ((projectdata.projectMarks / (studentClass>8 ? 6 : 8)) * (studentClass>8 ? 6 : 16))/unitdata.projectWorks.length %></p>
+
+            <% totalProjectFinal += (((projectdata.projectMarks / (studentClass>8 ? 6 : 8)) * (studentClass>8 ? 6 : 16))/unitdata.projectWorks.length) %>
+      <%})%>
+      <%})%>
+      <% totalPracticalProjectMarks = (totalPracticalFinal/totalUnit)+(totalProjectFinal/totalUnit) %>
+      
+      
+      <%})%>
+
+<td><%=totalPracticalProjectMarks.toFixed(2)%></td>
+ <% 
+      firstSecondMarks = 0;
+      
+      if (student.terminals && student.terminals.length > 0) {
+        student.terminals.forEach(t => {
+          if (t.terminalName === "FIRST" || t.terminalName === "SECOND" || t.terminalName === "THIRD" || t.terminalName === "MID") {
+            firstSecondMarks += t.terminalMarks || 0;
+            
+          }
+        });
+      }
+    %>
+<td><%=( firstSecondMarks.toFixed(2)/(totalTerminal-1)).toFixed(2) %></td>
+<td><%=(((student.attendanceTotalmarks+student.participationTotalmarks)/totalTerminal)+
+  totalPracticalProjectMarks+
+  ( firstSecondMarks/(totalTerminal-1)) ).toFixed(2)
+   %></td>
+
+   <%OverallFinalPracticalMarks = ((( ((student.attendanceTotalmarks+student.participationTotalmarks)/totalTerminal)+
+   totalPracticalProjectMarks +
+   ( firstSecondMarks/(totalTerminal-1)) ).toFixed(2))/(studentClass>8 ? 25 : 50))*100 %>
+<td>
+<% if (OverallFinalPracticalMarks >= 90 && OverallFinalPracticalMarks <= 100) { %>
+  A+
+<% } else if (OverallFinalPracticalMarks >= 80 && OverallFinalPracticalMarks < 90) { %>
+  A
+<% } else if (OverallFinalPracticalMarks >= 70 && OverallFinalPracticalMarks < 80) { %>
+  B+
+<% } else if (OverallFinalPracticalMarks >= 60 && OverallFinalPracticalMarks < 70) { %>
+  B
+<% } else if (OverallFinalPracticalMarks >= 50 && OverallFinalPracticalMarks < 60) { %>
+  C+
+<% } else if (OverallFinalPracticalMarks >= 40 && OverallFinalPracticalMarks < 50) { %>
+  C
+<% } else if (OverallFinalPracticalMarks >= 30 && OverallFinalPracticalMarks < 40) { %>
+  D
+<% } else { %>
+  NG
+<% } %>
+
+
+</td>
+<input type="hidden" name="slip[<%= index %>][roll]" value="<%= student._id.roll %>">
+<input type="hidden" name="slip[<%= index %>][name]" value="<%= student._id.name %>">
+<input type="hidden" name="slip[<%= index %>][studentClass]" value="<%= student._id.studentClass %>">
+<input type="hidden" name="slip[<%= index %>][section]" value="<%= student._id.section %>">
+<input type="hidden" name="slip[<%= index %>][attendanceParticipation]" value="<%= ((student.attendanceTotalmarks+student.participationTotalmarks)/totalTerminal).toFixed(2) %>">
+<input type="hidden" name="slip[<%= index %>][practicalProject]" value="<%= totalPracticalProjectMarks.toFixed(2) %>">
+<input type="hidden" name="slip[<%= index %>][terminal]" value="<%= (firstSecondMarks/(totalTerminal-1)).toFixed(2) %>">
+<input type="hidden" name="slip[<%= index %>][total]" value="<%= (((student.attendanceTotalmarks+student.participationTotalmarks)/totalTerminal)+totalPracticalProjectMarks+(firstSecondMarks/(totalTerminal-1))).toFixed(2) %>">
+<input type="hidden" name="slip[<%= index %>][grade]" value="<% if (OverallFinalPracticalMarks >= 90) { %>A+<% } else if (OverallFinalPracticalMarks >= 80) { %>A<% } else if (OverallFinalPracticalMarks >= 70) { %>B+<% } else if (OverallFinalPracticalMarks >= 60) { %>B<% } else if (OverallFinalPracticalMarks >= 50) { %>C+<% } else if (OverallFinalPracticalMarks >= 40) { %>C<% } else if (OverallFinalPracticalMarks >= 30) { %>D<% } else { %>NG<% } %>">
+
+  <% }) %>
+        </tr>
+    </table>
+    <input type="submit" value="Save Slip">
+     </form>
+      </div>
+    <br><br>
+
+</body>
+</html>

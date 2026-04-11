@@ -1,0 +1,457 @@
+<style>
+    :root {
+      --nav-bg: #1e293b; /* Professional dark slate */
+      --nav-item-bg: transparent;
+      --nav-item-hover: rgba(255, 255, 255, 0.1);
+      --nav-active: #3b82f6;
+      --text-color: #e2e8f0;
+      --sidebar-width-collapsed: 80px;
+      --sidebar-width-expanded: 320px;
+    }
+
+    /* Side Nav Container */
+    #side-nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: var(--sidebar-width-collapsed);
+        background: var(--nav-bg);
+        transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 9999;
+        box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid rgba(255,255,255,0.05);
+    }
+
+    #side-nav.expanded {
+        width: var(--sidebar-width-expanded);
+    }
+
+    /* Push body content */
+    @media (min-width: 769px) {
+        body {
+            margin-left: var(--sidebar-width-collapsed);
+            transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        body.nav-expanded {
+            margin-left: var(--sidebar-width-expanded);
+        }
+    }
+
+    /* Toggle Button */
+    .nav-toggle-btn {
+        background: transparent;
+        border: none;
+        color: var(--text-color);
+        font-size: 1.2rem;
+        cursor: pointer;
+        height: 60px;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        transition: background 0.2s;
+        flex-shrink: 0;
+    }
+    
+    .nav-toggle-btn:hover {
+        background: rgba(255,255,255,0.05);
+    }
+
+    #side-nav.expanded .nav-toggle-btn {
+        justify-content: flex-end;
+        padding-right: 20px;
+    }
+
+    /* Nav List */
+    .nav-list {
+        list-style: none;
+        padding: 15px 10px;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        flex: 1;
+        
+        /* Scrollbar styling */
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255,255,255,0.2) transparent;
+    }
+    
+    .nav-list::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .nav-list::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    
+    .nav-list::-webkit-scrollbar-thumb {
+        background-color: rgba(255,255,255,0.2);
+        border-radius: 20px;
+    }
+
+    /* Nav Item */
+    .nav-link {
+        position: relative;
+        display: flex;
+        align-items: center;
+        text-decoration: none;
+        color: var(--text-color);
+        background: var(--nav-item-bg);
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        padding: 12px;
+        min-height: 50px;
+    }
+
+    .nav-link:hover {
+        background: var(--nav-item-hover);
+        color: white;
+        transform: translateX(5px);
+    }
+    
+    #side-nav:not(.expanded) .nav-link:hover {
+        transform: none;
+        background: var(--nav-item-hover);
+    }
+
+    /* Content Container */
+    .nav-content {
+        display: flex;
+        align-items: center;
+        width: 100%;
+    }
+    
+    #side-nav:not(.expanded) .nav-content {
+        justify-content: center;
+    }
+
+    .nav-icon {
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+    
+    .nav-icon img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+
+    .nav-text {
+        margin-left: 15px;
+        font-weight: 500;
+        font-size: 0.9rem;
+        white-space: normal;
+        line-height: 1.4;
+        display: none;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    #side-nav.expanded .nav-text {
+        display: block;
+        opacity: 1;
+    }
+    
+    /* Load Button Style */
+    .load-button {
+        width: 100%;
+        padding: 12px;
+        background: var(--nav-active);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        transition: all 0.2s;
+        margin-top: 10px;
+    }
+    
+    .load-button:hover {
+        background: #2563eb;
+        transform: translateY(-2px);
+    }
+    
+    #side-nav:not(.expanded) .load-button {
+        padding: 12px 0;
+        font-size: 0; /* Hide text */
+    }
+    
+    #side-nav:not(.expanded) .load-button::before {
+        content: '🚀';
+        font-size: 1.2rem;
+    }
+
+    /* Tooltip for collapsed state */
+    .nav-link::after {
+        content: attr(data-title);
+        position: absolute;
+        left: 100%;
+        top: 50%;
+        transform: translateY(-50%);
+        background: #333;
+        color: white;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        white-space: nowrap;
+        z-index: 10000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s;
+        margin-left: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        visibility: hidden;
+    }
+
+    #side-nav:not(.expanded) .nav-link:hover::after {
+        opacity: 1;
+        visibility: visible;
+    }
+    
+    /* Mobile adjustments */
+    @media (max-width: 768px) {
+        #side-nav {
+            transform: translateX(-100%);
+            width: 280px;
+            left: 0;
+        }
+        
+        #side-nav.expanded {
+            transform: translateX(0);
+            width: 280px;
+        }
+        
+        #side-nav .nav-text {
+            display: block;
+            opacity: 1;
+        }
+        
+        #side-nav .nav-content {
+            justify-content: flex-start;
+        }
+        
+        body {
+            margin-left: 0 !important;
+        }
+        
+        .mobile-nav-toggle {
+            display: block;
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 9998;
+            background: var(--nav-bg);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+    }
+    
+    @media (min-width: 769px) {
+        .mobile-nav-toggle {
+            display: none;
+        }
+    }
+</style>
+
+<!-- Mobile Toggle Button -->
+<button class="mobile-nav-toggle" onclick="toggleNav()">☰</button>
+
+<div id="side-nav">
+    <button class="nav-toggle-btn" onclick="toggleNav()">
+        <span class="icon">☰</span>
+    </button>
+    
+    <ul class="nav-list">
+        <!-- View Record -->
+          <li>
+            <a href="/" class="nav-link" data-title="Add Practical">
+                <div class="nav-content">
+                    <div class="nav-icon"><img src="/home.png" alt="practical"></div>
+                    <span class="nav-text">Home</span>
+                </div>
+            </a>
+        </li>
+          <li>
+            <a href="/evaluationform?studentClass=<%= studentClass %>&section=<%= section %>&subject=<%= subject%>&terminal=<%=terminal%>" class="nav-link" data-title="Add Practical">
+                <div class="nav-content">
+                    <div class="nav-icon"><img src="/dashboard.png" alt="practical"></div>
+                    <span class="nav-text">Practical Dashboard</span>
+                </div>
+            </a>
+        </li>
+        <li>
+            <a href="/internalreport?studentClass=<%= studentClass %>&section=<%= section %>&subject=<%= subject %>&terminal=<%= terminal %>" class="nav-link" data-title="View Record Unit Wise">
+                <div class="nav-content">
+                    <div class="nav-icon"><img src="/lesson.png" alt="lesson"></div>
+                    <span class="nav-text">View Record Unit wise</span>
+                </div>
+            </a>
+        </li>
+
+        <!-- Indicator Wise (Math) -->
+        <% if (subject==="MATHEMATICS"){ %>
+        <li>
+            <a href="/indicatorwisereport?studentClass=<%= studentClass %>&section=<%= section %>&subject=<%= subject %>&terminal=<%= terminal %>" class="nav-link" data-title="Indicator Wise Report">
+                <div class="nav-content">
+                    <div class="nav-icon"><img src="/indicator.png" alt="indicator"></div>
+                    <span class="nav-text">Indicator Wise Report</span>
+                </div>
+            </a>
+        </li>
+        <%}%>
+
+        <!-- Create Rubriks -->
+        <li>
+            <a href="/themefillupform?studentClass=<%= studentClass %>&section=<%= section %>&subject=<%= subject%>&terminal=<%=terminal%>" class="nav-link" data-title="Create Rubriks">
+                <div class="nav-content">
+                    <div class="nav-icon"><img src="/criteria.png" alt="criteria"></div>
+                    <span class="nav-text">
+             <%if (subject==="SCIENCE") { %>
+             Create Practical Rubriks <br><b>(10 marks)</b>
+              <% }else if(subject==="MATHEMATICS"){%>
+                Create कार्य सञ्चालन र कार्यसम्पादन Rubriks (20 marks)
+              <%}else if(subject==="SOCIAL"){%>
+                Create Practical/ProjectWork Rubriks
+              <%}else if(subject==="HEALTH"){%>
+               
+
+               Create प्रयोगात्मक कार्य (शारीरिक र सिर्जनात्मक कला) को मूल्याङ्कन (रुब्रिक्स)
+              <%} else if(subject==="NEPALI"){%>
+                Create सुनाइ र बोलाइको आन्तरिक मूल्याङ्कनका आधार (20 marks)
+              <%}else if(subject==="ENGLISH"){%>
+                Create Listeing and Speaking Rubriks (20 marks)
+              <%}else{ %>
+                Create Practical Rubriks(20 marks)
+              <%}%>
+                    </span>
+                </div>
+            </a>
+        </li>
+
+        <!-- Project Work Rubriks -->
+        <li>
+            <a href="/projectrubrikscreate?studentClass=<%= studentClass %>&section=<%= section %>&subject=<%= subject%>&terminal=<%=terminal%>" class="nav-link" data-title="Project Rubriks">
+                <div class="nav-content">
+                    <div class="nav-icon">⚙️</div>
+                    <span class="nav-text">
+                     <% if(subject==="SCIENCE") { %>
+             Create ProjectWork Rubriks <br><b>(8 marks)</b>
+              <% }else if(subject==="MATHEMATICS"){%>
+                Create प्रस्तुतीकरण र अभिलेखीकरण Rubriks  (12 marks)
+              <%}else if(subject==="SOCIAL"){%>
+                Create Practical/ProjectWork Rubriks
+              <%}else if(subject==="HEALTH"){%>
+                    Create परियोजना कार्य (स्वास्थ्य) को मूल्याङ्कन (रुब्रिक्स) 
+                <%}else if(subject==="NEPALI"){%>
+                  Create पढाई र लेखाइको मूल्याङ्कनमुल्यान्ग्कन आधार  Rubriks (16 marks)
+              <%}else if(subject==="ENGLISH"){%>
+                  Create Reading & Writing Rubriks (16 marks)
+              <%}else{ %>
+                Create ProjectWork Rubriks(16 marks)
+
+              <%}%>
+                    </span>
+                </div>
+            </a>
+        </li>
+
+        <!-- Add Practical -->
+        <li>
+            <a href="/practicalform?studentClass=<%= studentClass %>&section=<%= section %>&subject=<%= subject%>&terminal=<%=terminal%>" class="nav-link" data-title="Add Practical">
+                <div class="nav-content">
+                    <div class="nav-icon"><img src="/practical.png" alt="practical"></div>
+                    <span class="nav-text">Add Practical</span>
+                </div>
+            </a>
+        </li>
+
+        <!-- Practical Slip -->
+        <li>
+            <a href="/practicalslip?studentClass=<%= studentClass %>&section=<%= section %>&subject=<%= subject %>&terminal=<%= terminal %>" class="nav-link" data-title="Practical Slip">
+                <div class="nav-content">
+                    <div class="nav-icon">📋</div>
+                    <span class="nav-text">Practical Slip</span>
+                </div>
+            </a>
+        </li>
+
+        <!-- Attendance -->
+        <li>
+            <a href="/attendance?studentClass=<%= studentClass %>&section=<%= section %>&subject=<%= subject %>&terminal=<%= terminal %>" class="nav-link" data-title="Add Attendance">
+                <div class="nav-content">
+                    <div class="nav-icon"><img src="/attendance.png" alt="attendance"></div>
+                    <span class="nav-text">Add Attendance</span>
+                </div>
+            </a>
+        </li>
+        <li>
+            <button type="button" class="load-button" onclick="themeform()">
+        🚀 Load Form
+      </button>
+        </li>
+    </ul>
+</div>
+
+<script>
+    function toggleNav() {
+        const nav = document.getElementById('side-nav');
+        const body = document.body;
+        nav.classList.toggle('expanded');
+        body.classList.toggle('nav-expanded');
+    }
+        function themeform() {
+     
+      
+
+
+   
+      const urlParams = new URLSearchParams(window.location.search);
+const subject = urlParams.get('subject')
+const studentClass = urlParams.get('studentClass')
+const section = urlParams.get('section')
+const terminal = urlParams.get('terminal')
+      // Validation
+      if (!studentClass || !section) {
+        showAlert('Please select a class and section');
+        
+        return;
+      }
+
+      if (!subject) {
+        showAlert('Please select a subject');
+        
+        return;
+      }
+
+      // Show loading state
+      const button = event.target;
+      const originalText = button.innerHTML;
+      button.innerHTML = '🔄 Loading...';
+      button.classList.add('loading');
+      
+
+      // Navigate to practical detail form
+      const url = `/practicaldetailform?subject=${encodeURIComponent(subject)}&studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&terminal=${encodeURIComponent(terminal)}`;
+      window.location.href = url;
+    }
+</script>

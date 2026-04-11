@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Form</title>
+</head>
+<body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Enter Obtained Marks</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    .question-block {
+      border: 1px solid #ccc;
+      padding: 10px 15px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+    }
+    .question-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .subpart {
+      margin-left: 20px;
+      margin-bottom: 5px;
+    }
+    .sub-subpart {
+      margin-left: 40px;
+    }
+    label {
+      display: inline-block;
+      min-width: 120px;
+    }
+    input[type="number"] {
+      width: 60px;
+    }
+  </style>
+</head>
+<body>
+  <h1>SCIENCE - Class 5</h1>
+  <form id="marksForm"></form>
+
+  <script>
+    const data = {
+      subject: 'SCIENCE',
+      forClass: '5',
+      max: '5',
+      q1_subcount: 10,
+      q1_marks_per_sub: 1,
+      q1a: 1, q1a_subparts_count: null, q1a_marks_per_subpart: null,
+      q1b: 1, q1b_subparts_count: '', q1b_marks_per_subpart: '',
+      q1c: 1, q1c_subparts_count: '', q1c_marks_per_subpart: '',
+      q1d: 1, q1d_subparts_count: '', q1d_marks_per_subpart: '',
+      q1e: 1, q1e_subparts_count: '', q1e_marks_per_subpart: '',
+      q1f: 1, q1f_subparts_count: '', q1f_marks_per_subpart: '',
+      q1g: 1, q1g_subparts_count: '', q1g_marks_per_subpart: '',
+      q1h: 1, q1h_subparts_count: '', q1h_marks_per_subpart: '',
+      q1i: 1, q1i_subparts_count: '', q1i_marks_per_subpart: '',
+      q1j: 1, q1j_subparts_count: '', q1j_marks_per_subpart: '',
+      q2_subcount: 4, q2_marks_per_sub: 1,
+      q2a: 1, q2b: 1, q2c: 1, q2d: 1,
+      q3_subcount: 5, q3_marks_per_sub: 1,
+      q3a_has_subparts: 'on', q3a_subparts_count: 5, q3a_marks_per_subpart: 1,
+      q3a: { i: 1, ii: 1, iii: 1, iv: 1, v: 1 },
+      q3b: 1, q3c: 1, q3d: 1, q3e: 1,
+      q4_subcount: 1, q4_marks_per_sub: 1, q4a: 1,
+      q5_subcount: 1, q5_marks_per_sub: 1, q5a: 1
+    };
+
+    const form = document.getElementById("marksForm");
+
+    function renderQuestions() {
+      for (let q = 1; q <= parseInt(data.max); q++) {
+        const subcount = data[`q${q}_subcount`];
+        if (!subcount) continue;
+
+        const block = document.createElement("div");
+        block.className = "question-block";
+        block.innerHTML = `<div class="question-title">Question ${q}</div>`;
+
+        for (let i = 0; i < subcount; i++) {
+          const label = String.fromCharCode(97 + i); // a, b, c...
+          const key = `q${q}${label}`;
+          if (data[key] === undefined) continue;
+
+          const fullMark = data[`q${q}_marks_per_sub`] || 0;
+          const subDiv = document.createElement("div");
+          subDiv.className = "subpart";
+
+          if (data[`${key}_has_subparts`] === 'on' && data[key] && typeof data[key] === 'object') {
+            subDiv.innerHTML = `<strong>${key}</strong> (Subparts):`;
+
+            for (const part in data[key]) {
+              const subSubDiv = document.createElement("div");
+              subSubDiv.className = "sub-subpart";
+              subSubDiv.innerHTML = `
+                <label>${key}.${part} (Full: ${data[`${key}_marks_per_subpart`] || 0}):</label>
+                <input type="number" name="${key}_${part}_obtained" min="0">
+              `;
+              subDiv.appendChild(subSubDiv);
+            }
+          } else {
+            subDiv.innerHTML = `
+              <label>${key} (Full: ${fullMark}):</label>
+              <input type="number" name="${key}_obtained" min="0">
+            `;
+          }
+
+          block.appendChild(subDiv);
+        }
+
+        form.appendChild(block);
+      }
+
+      form.innerHTML += `<button type="submit">Submit</button>`;
+    }
+
+    renderQuestions();
+  </script>
+</body>
+</html>
+
+</body>
+</html>

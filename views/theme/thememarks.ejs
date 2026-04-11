@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Theme Marks Report</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f5f5f5;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+    }
+    
+    .subject-section {
+      background-color: white;
+      margin-bottom: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    
+    .subject-header {
+      background-color: #3978cf;
+      color: white;
+      padding: 15px 20px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    
+    .theme-container {
+      padding: 20px;
+    }
+    
+    .theme-section {
+      margin-bottom: 25px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+    
+    .theme-header {
+      background-color: #2196F3;
+      color: white;
+      padding: 10px 15px;
+      font-weight: bold;
+      font-size: 16px;
+    }
+    
+    .table-container {
+      overflow-x: auto;
+      overflow-y: auto;
+      max-height: 70vh;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      position: relative;
+    }
+    
+    .table-container::-webkit-scrollbar {
+      width: 12px;
+      height: 12px;
+    }
+    
+    .table-container::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 6px;
+    }
+    
+    .table-container::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 6px;
+    }
+    
+    .table-container::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+    
+    .marks-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0;
+      min-width: 600px;
+    }
+    
+    .marks-table th {
+      background-color: #f8f9fa;
+      font-weight: bold;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    
+    .marks-table th.student-info {
+      position: sticky;
+      left: 0;
+      z-index: 20;
+      background-color: #e3f2fd;
+    }
+    
+    .marks-table td.student-info {
+      position: sticky;
+      left: 0;
+      z-index: 15;
+      background-color: #e3f2fd;
+    }
+    
+    .marks-table th.student-info:nth-child(1) { 
+      left: 0; 
+      width: 60px;
+      min-width: 60px;
+    }
+    .marks-table th.student-info:nth-child(2) { 
+      left: 60px; 
+      width: 150px;
+      min-width: 150px;
+    }
+    
+    .marks-table td.student-info:nth-child(1) { 
+      left: 0; 
+      width: 60px;
+      min-width: 60px;
+    }
+    .marks-table td.student-info:nth-child(2) { 
+      left: 60px; 
+      width: 150px;
+      min-width: 150px;
+    }
+    
+    .marks-table th,
+    .marks-table td {
+      border: 1px solid #ddd;
+      padding: 6px 4px;
+      text-align: center;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    
+    .marks-table th.student-info,
+    .marks-table td.student-info {
+      padding: 6px 8px;
+      text-align: left;
+    }
+    
+    .student-info {
+      background-color: #e3f2fd;
+      font-weight: bold;
+    }
+    
+    .before-intervention {
+      background-color: #fff3e0;
+    }
+    
+    .after-intervention {
+      background-color: #e8f5e8;
+    }
+    
+    .total-row {
+      background-color: #f0f0f0;
+      font-weight: bold;
+    }
+    
+    .grade-excellent { color: #4CAF50; font-weight: bold; }
+    .grade-good { color: #2196F3; font-weight: bold; }
+    .grade-average { color: #FF9800; font-weight: bold; }
+    .grade-needs-improvement { color: #f44336; font-weight: bold; }
+    
+    .no-data {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+      font-style: italic;
+    }
+    
+    /* Responsive table for mobile */
+    @media (max-width: 700px) {
+      .table-container {
+        max-width: 100vw;
+        overflow-x: auto;
+        padding-bottom: 8px;
+      }
+      .marks-table {
+        min-width: 500px;
+        font-size: 11px;
+      }
+      .marks-table th.student-info:nth-child(1),
+      .marks-table td.student-info:nth-child(1) {
+        width: 40px;
+        min-width: 40px;
+        font-size: 11px;
+      }
+      .marks-table th.student-info:nth-child(2),
+      .marks-table td.student-info:nth-child(2) {
+        width: 90px;
+        min-width: 90px;
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 90px;
+      }
+      .marks-table th,
+      .marks-table td {
+        padding: 4px 2px;
+        font-size: 11px;
+      }
+    }
+    @media (max-width: 480px) {
+      .marks-table {
+        min-width: 350px;
+        font-size: 10px;
+      }
+      .marks-table th.student-info:nth-child(2),
+      .marks-table td.student-info:nth-child(2) {
+        width: 60px;
+        min-width: 60px;
+        max-width: 60px;
+        font-size: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Theme Evaluation Marks Report</h1>
+    
+ 
+    <% if (themeData && themeData.length > 0) { %>
+      <% 
+        // Group data by subject
+        const subjectGroups = {};
+        themeData.forEach(student => {
+          student.subjects.forEach(subject => {
+            if (!subjectGroups[subject.name]) {
+              subjectGroups[subject.name] = [];
+            }
+            subjectGroups[subject.name].push({
+              student: {
+                name: student.name,
+                roll: student.roll,
+                class: student.studentClass,
+                section: student.section
+              },
+              themes: subject.themes
+            });
+          });
+        });
+      %>
+      
+      <% Object.keys(subjectGroups).forEach(subjectName => { %>
+        <div class="subject-section">
+          <div class="subject-header">
+            Subject: <%= subjectName %>
+          </div>
+          
+          <div class="theme-container">
+            <% 
+              // Group by themes within this subject
+              const themeGroups = {};
+              subjectGroups[subjectName].forEach(studentData => {
+                studentData.themes.forEach(theme => {
+                  if (!themeGroups[theme.themeName]) {
+                    themeGroups[theme.themeName] = [];
+                  }
+                  themeGroups[theme.themeName].push({
+                    student: studentData.student,
+                    theme: theme
+                  });
+                });
+              });
+            %>
+            
+            <% Object.keys(themeGroups).forEach(themeName => { %>
+              <div class="theme-section">
+                <div class="theme-header">
+                  Theme: <%= themeName %>
+                </div>
+                
+                <% if (themeGroups[themeName].length > 0) { %>
+                  <% 
+                    // Get all learning outcomes from the first student's theme to build headers
+                    const sampleTheme = themeGroups[themeName][0].theme;
+                    const learningOutcomes = sampleTheme.learningOutcomes || [];
+                    
+                    // Get class and section info for display
+                    const classInfo = themeGroups[themeName][0].student.class;
+                    const sectionInfo = themeGroups[themeName][0].student.section;
+                  %>
+                  
+                  <!-- Display Class and Section Info -->
+                  <div style="text-align: center; margin: 15px 0; padding: 10px; background-color: #f8f9fa; border-radius: 5px; font-weight: bold; color: #333;">
+                    Class: <%= classInfo %> | Section: <%= sectionInfo %>
+                  </div>
+                  
+                  <div class="table-container">
+                    <table class="marks-table">
+                      <thead>
+                        <tr>
+                          <th rowspan="3" class="student-info">Roll</th>
+                          <th rowspan="3" class="student-info">Name</th>
+                          
+                          <% learningOutcomes.forEach(outcome => { %>
+                            <% const indicatorCount = outcome.indicators ? outcome.indicators.length : 0; %>
+                            <th colspan="<%= indicatorCount * 2 %>"><%= outcome.name %></th>
+                          <% }); %>
+                          
+                        
+                        </tr>
+                      
+                      <tr>
+                        <% learningOutcomes.forEach(outcome => { %>
+                          <% if (outcome.indicators) { %>
+                            <% outcome.indicators.forEach(indicator => { %>
+                              <th colspan="2"><%= indicator.name %></th>
+                            <% }); %>
+                          <% } %>
+                        <% }); %>
+                      </tr>
+                      
+                      <tr>
+                        <% learningOutcomes.forEach(outcome => { %>
+                          <% if (outcome.indicators) { %>
+                            <% outcome.indicators.forEach(indicator => { %>
+                              <th class="before-intervention">Before</th>
+                              <th class="after-intervention">After</th>
+                            <% }); %>
+                          <% } %>
+                        <% }); %>
+                      </tr>
+                    </thead>
+                    
+                    <tbody>
+                      <% themeGroups[themeName].forEach(studentTheme => { %>
+                        <tr>
+                          <td class="student-info"><%= studentTheme.student.roll %></td>
+                          <td class="student-info"><%= studentTheme.student.name %></td>
+                          
+                          <% 
+                            let overallBefore = 0;
+                            let overallAfter = 0;
+                            let maxPossibleMarks = 0;
+                            const loTotals = []; // Store LO totals for display later
+                          %>
+                          
+                          <% learningOutcomes.forEach((templateOutcome, outcomeIndex) => { %>
+                            <% 
+                              // Find matching learning outcome in student's data
+                              const studentOutcome = studentTheme.theme.learningOutcomes.find(lo => lo.name === templateOutcome.name) || {};
+                              let loTotalBefore = 0;
+                              let loTotalAfter = 0;
+                            %>
+                            
+                            <% if (templateOutcome.indicators) { %>
+                              <% templateOutcome.indicators.forEach((templateIndicator, indicatorIndex) => { %>
+                                <% 
+                                  // Find matching indicator in student's data
+                                  const studentIndicator = studentOutcome.indicators ? 
+                                    studentOutcome.indicators.find(ind => ind.name === templateIndicator.name) : null;
+                                  
+                                  const beforeMarks = studentIndicator ? (studentIndicator.marksBeforeIntervention || 0) : 0;
+                                  const afterMarks = studentIndicator ? (studentIndicator.marksAfterIntervention || 0) : 0;
+                                  const maxMarks = studentIndicator ? (studentIndicator.maxMarks || 0) : 0;
+                                  
+                                  loTotalBefore += beforeMarks;
+                                  loTotalAfter += afterMarks;
+                                  maxPossibleMarks += maxMarks;
+                                %>
+                                <td class="before-intervention"><%= beforeMarks %></td>
+                                <td class="after-intervention"><%= afterMarks %></td>
+                              <% }); %>
+                            <% } %>
+                            
+                            <% 
+                              overallBefore += loTotalBefore;
+                              overallAfter += loTotalAfter;
+                              loTotals.push({ before: loTotalBefore, after: loTotalAfter });
+                            %>
+                          <% }); %>
+                          
+                          
+                        </tr>
+                      <% }); %>
+                    </tbody>
+                  </table>
+                </div>
+                <% } else { %>
+                  <div class="no-data">No data available for this theme</div>
+                <% } %>
+              </div>
+            <% }); %>
+          </div>
+        </div>
+      <% }); %>
+    <% } else { %>
+      <div class="no-data">
+        <h2>No theme evaluation data available</h2>
+        <p>No students have completed theme evaluations yet.</p>
+      </div>
+    <% } %>
+  </div>
+</body>
+</html>

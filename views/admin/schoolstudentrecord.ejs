@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Student Records - Admin Panel</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #87CEEB;
+            --secondary-color: #A0522D;
+            --accent-color: #4682B4;
+            --background-color: #f8f9fa;
+            --card-background: #ffffff;
+            --text-primary: #2c3e50;
+            --text-secondary: #6c757d;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --border-color: #e9ecef;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --shadow-hover: 0 8px 15px rgba(0, 0, 0, 0.15);
+            --border-radius: 12px;
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: var(--card-background);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-2px);
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--secondary-color);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .upload-area {
+            border: 2px dashed var(--primary-color);
+            border-radius: var(--border-radius);
+            padding: 3rem 2rem;
+            text-align: center;
+            background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+            transition: var(--transition);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area:hover {
+            border-color: var(--accent-color);
+            background: linear-gradient(145deg, #e9ecef, #f8f9fa);
+        }
+
+        .upload-area.dragover {
+            border-color: var(--success-color);
+            background: linear-gradient(145deg, #d4edda, #c3e6cb);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            transition: var(--transition);
+        }
+
+        .upload-area:hover .upload-icon {
+            color: var(--accent-color);
+            transform: scale(1.1);
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .upload-subtext {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .file-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-info {
+            display: none;
+            background: linear-gradient(145deg, var(--success-color), #28a745);
+            color: white;
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            margin-top: 1rem;
+            animation: slideIn 0.3s ease;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .requirements {
+            background: linear-gradient(145deg, #fff3cd, #ffeaa7);
+            border: 1px solid var(--warning-color);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .requirements h3 {
+            color: var(--secondary-color);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .requirements ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .requirements li {
+            margin-bottom: 0.5rem;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .requirements li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--success-color);
+            font-weight: bold;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 180px;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(145deg, var(--primary-color), var(--accent-color));
+            color: white;
+            box-shadow: var(--shadow);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(145deg, var(--accent-color), var(--primary-color));
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: linear-gradient(145deg, var(--danger-color), #c82333);
+            color: white;
+            box-shadow: var(--shadow);
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(145deg, #c82333, var(--danger-color));
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: var(--border-radius);
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: var(--transition);
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: linear-gradient(145deg, var(--success-color), #28a745);
+        }
+
+        .notification.error {
+            background: linear-gradient(145deg, var(--danger-color), #c82333);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .card {
+                padding: 1.5rem;
+            }
+
+            .upload-area {
+                padding: 2rem 1rem;
+            }
+
+            .upload-icon {
+                font-size: 3rem;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                min-width: 100%;
+            }
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .danger-zone {
+            border: 2px solid var(--danger-color);
+            background: linear-gradient(145deg, #f8d7da, #f5c6cb);
+        }
+
+        .danger-zone .card-title {
+            color: var(--danger-color);
+        }
+
+        /* Student Form Styles */
+        .student-form {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .form-group label i {
+            margin-right: 0.5rem;
+            color: var(--accent-color);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            transition: var(--transition);
+            background-color: var(--background-color);
+            color: var(--text-primary);
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(135, 206, 235, 0.2);
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.7;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+
+            .form-group {
+                margin-bottom: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <%- include('../partials/sidenav', { 
+        subjects: subjects || [], 
+        studentClassdata: studentClassdata || [],
+        terminals: terminals || [] 
+    }) %>
+    
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-school"></i> School Student Records</h1>
+            <p>Upload and manage student record data</p>
+        </div>
+
+        <!-- Student Record Form -->
+        <div class="card">
+            <h2 class="card-title">
+                <i class="fas fa-user-plus"></i>
+                <%= editing ? 'Edit Student Record' : 'Add New Student' %>
+            </h2>
+            <form action="/studentrecord/add" method="POST" class="student-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="reg"><i class="fas fa-id-card"></i> Registration Number</label>
+                        <input type="text" name="reg" id="reg" placeholder="Enter registration number" value="<%=editing?studentrecordData.reg:''%>" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="roll"><i class="fas fa-list-ol"></i> Roll Number</label>
+                        <input type="text" name="roll" id="roll" placeholder="Enter roll number" value="<%=editing?studentrecordData.roll:''%>" required>
+                    </div>
+                </div>
+
+                <div class="form-group full-width">
+                    <label for="name"><i class="fas fa-user"></i> Student Name</label>
+                    <input type="text" name="name" id="name" placeholder="Enter student name" value="<%=editing?studentrecordData.name:''%>" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="studentClass"><i class="fas fa-graduation-cap"></i> Class</label>
+                        <input type="text" name="studentClass" id="studentClass" placeholder="Enter class" value="<%=editing?studentrecordData.studentClass:''%>" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="section"><i class="fas fa-users"></i> Section</label>
+                        <input type="text" name="section" id="section" placeholder="Enter section" value="<%=editing?studentrecordData.section:''%>" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="section"><i class="fas fa-users"></i> gender</label>
+                        <input type="text" name="gender" id="section" placeholder="Enter section" value="<%=editing?studentrecordData.gender:''%>" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas <%= editing ? 'fa-save' : 'fa-plus-circle' %>"></i>
+                        <%= editing ? 'Update Student Record' : 'Add Student Record' %>
+                    </button>
+                </div>
+            </form>
+        </div>
+        <!-- File Upload Section -->
+        <div class="card">
+            <h2 class="card-title">
+                <i class="fas fa-upload"></i>
+                Upload Student Records
+            </h2>
+
+            <div class="requirements">
+                <h3><i class="fas fa-info-circle"></i> File Requirements</h3>
+                <ul>
+                    <li>File format: CSV (.csv)</li>
+                    <li>Maximum file size: 10MB</li>
+                    <li>Include proper column headers</li>
+                    <li>Ensure data is properly formatted</li>
+                    <li>Remove any empty rows before upload</li>
+                </ul>
+            </div>
+
+            <form id="uploadForm" action="/studentrecord" method="POST" enctype="multipart/form-data">
+                <div class="upload-area" id="uploadArea">
+                    <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                    <div class="upload-text">Click to upload or drag and drop</div>
+                    <div class="upload-subtext">CSV files only</div>
+                    <input type="file" name="studentRecords" id="studentRecords" accept=".csv" required class="file-input">
+                </div>
+                
+                <div class="file-info" id="fileInfo">
+                    <i class="fas fa-file-csv"></i>
+                    <span id="fileName"></span>
+                    <span id="fileSize"></span>
+                </div>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Uploading and processing file...</p>
+                </div>
+
+                <div class="button-group" style="margin-top: 2rem;">
+                    <button type="submit" class="btn btn-primary" id="uploadBtn" disabled>
+                        <i class="fas fa-upload"></i>
+                        Upload Records
+                    </button>
+                </div>
+            </form>
+        </div>
+        <center>Add new Student or Edit </center>
+
+
+        <table cellspacing="0" class="table table-striped" style="background-color: white;" id="studentrecordTable">
+    <thead>
+        <tr>
+            <th>Reg.No</th>
+            <th>Roll Number</th>
+            <th>Name</th>
+            <th>Class</th>
+            <th>Section</th>
+            <th>gender</th>
+            <th>Action</th>
+
+        </tr>
+    </thead>
+    <tbody>
+        <% studentRecord.forEach(record => { %>
+            <tr>
+                <td><%=record.reg%></td>
+                <td><%= record.roll %></td>
+                <td><%= record.name %></td>
+                <td><%= record.studentClass %></td>
+                <td><%= record.section %></td>
+                <td><%= record.gender %></td>
+                <td>
+                    <a href="/studentrecord/edit/<%= record._id %>?editing=true" class="btn btn-secondary">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                </td>
+                <td>
+                    <form action="/studentrecord/delete/<%= record._id %>" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to delete this record?');">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </form>
+                </td>
+
+            </tr>
+        <% }) %>
+    </tbody>
+</table>
+<script>
+document.getElementById('studentrecordTable').addEventListener('dblclick', function(event) {
+    if (event.target.tagName === 'TD') {
+        const cell = event.target;
+        const row = cell.parentElement;
+        const originalText = cell.innerText.trim();
+
+        // Create an input element with the current text as its value
+        const input = document.createElement('input');
+        input.value = originalText;
+        input.style.width = '100%';  // Make the input fill the cell
+        input.style.border = 'none';
+        input.style.padding = '5px';
+        input.style.fontSize = '1rem';
+        cell.innerHTML = '';  // Clear current cell content
+        cell.appendChild(input);
+
+        // Focus on the input field
+        input.focus();
+
+        // When the user leaves the input (blur event), save the new value
+        input.addEventListener('blur', function() {
+            const newValue = input.value.trim();
+
+            if (newValue !== originalText) {
+                // Update the cell with the new value
+                cell.innerHTML = newValue;
+
+                // Here, you would send an AJAX request to update the record in the database
+                const rowData = {
+                    regNo: row.cells[0].innerText.trim(),
+                    rollNumber: row.cells[1].innerText.trim(),
+                    name: row.cells[2].innerText.trim(),
+                    studentClass: row.cells[3].innerText.trim(),
+                    section: row.cells[4].innerText.trim()
+                };
+
+                // Send updated data to the backend via AJAX (Example using Fetch API)
+                fetch('/update-student-record', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        regNo: rowData.regNo,
+                        column: getColumnIndex(cell),
+                        newValue: newValue
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Record updated successfully');
+                    } else {
+                        alert('Error updating record');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error updating record');
+                });
+            } else {
+                // If no change, revert to original text
+                cell.innerHTML = originalText;
+            }
+        });
+
+        // Optional: Allow pressing 'Enter' to save the value
+        input.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                input.blur();  // Trigger blur event to save the value
+            }
+        });
+    }
+});
+
+// Helper function to determine which column was edited
+function getColumnIndex(cell) {
+    const columnHeaders = ['Reg.No', 'Roll Number', 'Name', 'Class', 'Section'];
+    const index = Array.from(cell.parentElement.parentElement.rows[0].cells).indexOf(cell);
+    return columnHeaders[index];
+}
+</script>
+
+        <!-- Danger Zone -->
+        <div class="card danger-zone">
+            <h2 class="card-title">
+                <i class="fas fa-exclamation-triangle"></i>
+                Danger Zone
+            </h2>
+            <p style="margin-bottom: 1.5rem; color: var(--danger-color); font-weight: 600;">
+                <strong>Warning:</strong> This action will permanently delete all records from the first terminal. This cannot be undone.
+            </p>
+            
+            <div class="button-group">
+                <button type="button" class="btn btn-danger" onclick="confirmDelete()">
+                    <i class="fas fa-trash-alt"></i>
+                    Delete Analysis Records of Academic Year -  <%= nepaliYear.slice(0,4) %>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification"></div>
+
+    <script>
+        // File upload handling
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('studentRecords');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const uploadForm = document.getElementById('uploadForm');
+        const loading = document.getElementById('loading');
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                handleFileSelect();
+            }
+        });
+
+        // File input change
+        fileInput.addEventListener('change', handleFileSelect);
+
+        function handleFileSelect() {
+            const file = fileInput.files[0];
+            if (file) {
+                // Validate file type
+                if (!file.name.endsWith('.csv')) {
+                    showNotification('Please select a CSV file only', 'error');
+                    fileInput.value = '';
+                    return;
+                }
+
+                // Validate file size (10MB limit)
+                if (file.size > 10 * 1024 * 1024) {
+                    showNotification('File size must be less than 10MB', 'error');
+                    fileInput.value = '';
+                    return;
+                }
+
+                // Show file info
+                fileName.textContent = file.name;
+                fileSize.textContent = `(${formatFileSize(file.size)})`;
+                fileInfo.classList.add('show');
+                uploadBtn.disabled = false;
+                
+                showNotification('File selected successfully', 'success');
+            } else {
+                fileInfo.classList.remove('show');
+                uploadBtn.disabled = true;
+            }
+        }
+
+        // Form submission
+        uploadForm.addEventListener('submit', (e) => {
+            if (!fileInput.files[0]) {
+                e.preventDefault();
+                showNotification('Please select a file first', 'error');
+                return;
+            }
+            
+            // Show loading
+            loading.style.display = 'block';
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+        });
+
+        // Utility functions
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.classList.add('show');
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 4000);
+        }
+
+        function confirmDelete() {
+            if (confirm('Are you absolutely sure you want to delete ALL records from the first terminal? This action cannot be undone.')) {
+                if (confirm('This will permanently remove all student data from the first terminal. Continue?')) {
+                    // Here you would typically make an AJAX request to delete the records
+                    // For now, we'll just show a message
+                    showNotification('Delete functionality needs to be implemented', 'error');
+                }
+            }
+        }
+
+        // Show success message if redirected after upload
+        window.addEventListener('load', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('success') === 'true') {
+                showNotification('Student records uploaded successfully!', 'success');
+            } else if (urlParams.get('error') === 'true') {
+                showNotification('Error uploading file. Please try again.', 'error');
+            }
+        });
+    </script>
+</body>
+</html>

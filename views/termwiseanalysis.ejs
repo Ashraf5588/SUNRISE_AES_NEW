@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Report</title>
+  <link rel="stylesheet" href="/report.css">
+  <link rel="stylesheet" href="/nav.css">
+</head>
+<body>
+  <%- include('partials/nav',{currentPage:'teacher'}) %>
+  
+  <%- include('partials/sidenav', { 
+      subjects: subjects, 
+      studentClassdata: studentClassdata,
+      terminals: terminals 
+  }) %>
+  
+  <center><h1>Report</h1></center> <br>
+
+  <div class="reportcontainer">
+ 
+
+  <div class="data">
+    <h3>First & Second Terminal Data</h3> <br>
+     <center> <div class="tablecontainer">
+
+      <table border="1" cellspacing="0" cellpadding="0">
+          <tr>
+              <th>Question No</th>
+              <th><%=status%></th>
+              <th>Action</th>
+              
+          </tr>
+<% term.forEach((result)=>
+{ %>
+      <tr>
+          <td><%= result.questionNo %></td>
+
+          <td><%= result.data12 %></td>
+          <td><a href="<%=status%>/<%= result.questionNo %>/namedata12"><button>See Student</button></a></td>
+        
+          
+      </tr>
+      <%})%>
+  </table></div></center>
+
+  </div>
+  
+
+
+  <div class="data">
+    <h3>First & Third Terminal Data</h3> <br>
+ <center> <div class="tablecontainer">
+
+      <table border="1" cellspacing="0" cellpadding="0">
+          <tr>
+              <th>Question No</th>
+             
+              <th><%=status%></th>
+              <th>Action</th>
+              
+          </tr>
+<% term.forEach((result)=>
+{ %>
+      <tr>
+          <td><%= result.questionNo %></td>
+
+          <td><%= result.data13 %></td>
+          <td><a href="<%=status%>/<%= result.questionNo %>/namedata13"><button>See Student</button></a></td>
+        
+          
+      </tr>
+      <%})%>
+  </table></div></center>
+
+  </div>
+
+
+
+  <div class="data">
+    <h3>Second & Third Terminal Data</h3> <br>
+   <center><div class="tablecontainer">
+
+      <table border="1" cellspacing="0" cellpadding="0">
+          <tr>
+              <th>Question No</th>
+             
+              <th><%=status%></th>
+              <th>Action</th>
+              
+          </tr>
+<% term.forEach((result)=>
+{ %>
+      <tr>
+          <td><%= result.questionNo %></td>
+
+          <td><%= result.data23 %></td>
+          <td><a href="<%=status%>/<%= result.questionNo %>/namedata23"><button>See Student</button></a></td>
+        
+          
+      </tr>
+      <%})%>
+  </table></div></center>
+
+  </div>
+
+
+
+
+  <div class="data">
+    <h3>First, Second, Third Terminal Data</h3> <br>
+    <center><div class="tablecontainer">
+
+      <table border="1" cellspacing="0" cellpadding="0">
+          <tr>
+              <th>Question No</th>
+             
+              <th><%=status%></th>
+              <th>Action</th>
+              
+          </tr>
+<% term.forEach((result)=>
+{ %>
+      <tr>
+          <td><%= result.questionNo %></td>
+
+          <td><%= result.data123 %></td>
+          <td><a href="<%=status%>/<%= result.questionNo %>/namedata123"><button>See Student</button></a></td>
+        
+        
+          
+      </tr>
+      <%})%>
+  </table></div></center>
+
+  </div>
+  
+
+</div>
+</body>
+</html>

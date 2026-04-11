@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= newsItem.headline %> - UEBS News</title>
+  
+  <!-- Open Graph / Facebook Meta Tags -->
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="<%= newsItem.headline %>">
+  <meta property="og:description" content="<%= cleanContent %>">
+  <meta property="og:url" content="<%= baseUrl %>/newsdescription?newsId=<%= newsItem._id %>">
+  <meta property="og:site_name" content="UEBS News Portal">
+  <meta property="og:locale" content="en_US">
+  <meta property="article:published_time" content="<%= newsItem.date %>">
+  
+  <% if (newsItem.image1Url) { %>
+  <meta property="og:image" content="<%= baseUrl %><%= newsItem.image1Url %>">
+  <meta property="og:image:secure_url" content="<%= baseUrl %><%= newsItem.image1Url %>">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="<%= newsItem.headline %>">
+  <% } else { %>
+  <!-- Default image if no thumbnail is available -->
+  <meta property="og:image" content="<%= baseUrl %>/public/school.jpg">
+  <meta property="og:image:secure_url" content="<%= baseUrl %>/public/school.jpg">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="UEBS News - <%= newsItem.headline %>">
+  <% } %>
+  
+  <!-- Twitter Card Meta Tags -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@UEBSSchool">
+  <meta name="twitter:title" content="<%= newsItem.headline %>">
+  <meta name="twitter:description" content="<%= cleanContent %>">
+  <% if (newsItem.image1Url) { %>
+  <meta name="twitter:image" content="<%= baseUrl %><%= newsItem.image1Url %>">
+  <% } else { %>
+  <meta name="twitter:image" content="<%= baseUrl %>/public/school.jpg">
+  <% } %>
+  <meta name="twitter:image:alt" content="<%= newsItem.headline %>">
+  
+  <!-- Facebook App ID - Remove or replace with actual app ID when available -->
+  <!-- <meta property="fb:app_id" content="your_facebook_app_id"> -->
+  
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #e6f3ff 0%, #b3d9ff 100%);
+      min-height: 100vh;
+      padding: 20px;
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .news-article {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 40px;
+      box-shadow: 0 12px 40px rgba(0, 123, 255, 0.15);
+      border: 1px solid rgba(135, 206, 250, 0.3);
+    }
+
+    .breadcrumb {
+      color: #5a7ba7;
+      margin-bottom: 20px;
+      font-size: 0.95rem;
+    }
+
+    .breadcrumb a {
+      color: #4a8bc2;
+      text-decoration: none;
+    }
+
+    .breadcrumb a:hover {
+      text-decoration: underline;
+    }
+
+    .news-header {
+      margin-bottom: 30px;
+    }
+
+    .news-title {
+      color: #2c5aa0;
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 15px;
+      line-height: 1.2;
+    }
+
+    .news-meta {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      color: #5a7ba7;
+      font-size: 1rem;
+      margin-bottom: 20px;
+    }
+
+    .news-meta i {
+      color: #87ceeb;
+    }
+
+    .news-image {
+      width: 100%;
+      max-height: 400px;
+      object-fit: cover;
+      border-radius: 15px;
+      margin-bottom: 30px;
+      box-shadow: 0 8px 25px rgba(0, 123, 255, 0.2);
+    }
+
+    .news-content {
+      color: #2c5aa0;
+      font-size: 1.1rem;
+      line-height: 1.8;
+      margin-bottom: 30px;
+    }
+
+    .news-content h1,
+    .news-content h2,
+    .news-content h3 {
+      margin: 25px 0 15px 0;
+      color: #2c5aa0;
+    }
+
+    .news-content p {
+      margin-bottom: 15px;
+    }
+
+    .news-content ul,
+    .news-content ol {
+      margin: 15px 0;
+      padding-left: 30px;
+    }
+
+    .news-content li {
+      margin-bottom: 8px;
+    }
+
+    .news-content strong {
+      font-weight: 600;
+    }
+
+    .secondary-image {
+      width: 100%;
+      max-height: 300px;
+      object-fit: cover;
+      border-radius: 12px;
+      margin: 20px 0;
+      box-shadow: 0 6px 20px rgba(0, 123, 255, 0.15);
+    }
+
+    .share-section {
+      background: linear-gradient(135deg, #f8fbff 0%, #e6f3ff 100%);
+      padding: 25px;
+      border-radius: 15px;
+      border: 1px solid rgba(135, 206, 250, 0.3);
+      margin-top: 30px;
+    }
+
+    .share-title {
+      color: #2c5aa0;
+      font-size: 1.3rem;
+      font-weight: 600;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .share-buttons {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .share-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      color: white;
+    }
+
+    .share-btn.facebook {
+      background: linear-gradient(135deg, #4267B2 0%, #365899 100%);
+    }
+
+    .share-btn.twitter {
+      background: linear-gradient(135deg, #1DA1F2 0%, #0d8bd9 100%);
+    }
+
+    .share-btn.whatsapp {
+      background: linear-gradient(135deg, #25D366 0%, #1eb854 100%);
+    }
+
+    .share-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    .back-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #5a9fd4 0%, #4a8bc2 100%);
+      color: white;
+      text-decoration: none;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      margin-bottom: 20px;
+    }
+
+    .back-button:hover {
+      background: linear-gradient(135deg, #4a8bc2 0%, #3a7ba2 100%);
+      transform: translateY(-2px);
+      color: white;
+      text-decoration: none;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 10px;
+      }
+      
+      .news-article {
+        padding: 25px;
+      }
+      
+      .news-title {
+        font-size: 2rem;
+      }
+      
+      .news-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      
+      .share-buttons {
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="breadcrumb">
+      <a href="/">Home</a> / <a href="/news">News</a> / <span><%= newsItem.headline %></span>
+    </div>
+
+    <a href="https://uebschool.edu.np/news.html" class="back-button">
+      <i class="fas fa-arrow-left"></i>
+      Back to News
+    </a>
+
+    <article class="news-article">
+      <header class="news-header">
+        <h1 class="news-title"><%= newsItem.headline %></h1>
+        <div class="news-meta">
+          <span>
+            <i class="fas fa-calendar-alt"></i>
+            <%= new Date(newsItem.date).toLocaleDateString('en-US', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            }) %>
+          </span>
+          <span>
+            <i class="fas fa-clock"></i>
+            <%= new Date(newsItem.date).toLocaleTimeString('en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            }) %>
+          </span>
+        </div>
+      </header>
+
+      <% if (newsItem.image1Url) { %>
+        <img src="<%= newsItem.image1Url %>" alt="<%= newsItem.headline %>" class="news-image">
+      <% } %>
+
+      <div class="news-content">
+        <%- newsItem.content %>
+      </div>
+
+      <% if (newsItem.image2Url) { %>
+        <img src="<%= newsItem.image2Url %>" alt="Secondary image" class="secondary-image">
+      <% } %>
+
+      <div class="share-section">
+        <h3 class="share-title">
+          <i class="fas fa-share-alt"></i>
+          Share this article
+        </h3>
+        <div class="share-buttons">
+          <a href="#" class="share-btn facebook" onclick="shareToFacebook()" title="Share on Facebook">
+            <i class="fab fa-facebook-f"></i>
+            Facebook
+          </a>
+          <a href="#" class="share-btn twitter" onclick="shareToTwitter()" title="Share on Twitter">
+            <i class="fab fa-twitter"></i>
+            Twitter
+          </a>
+          <a href="#" class="share-btn whatsapp" onclick="shareToWhatsApp()" title="Share on WhatsApp">
+            <i class="fab fa-whatsapp"></i>
+            WhatsApp
+          </a>
+        </div>
+      </div>
+    </article>
+  </div>
+
+  <script>
+    const newsData = <%- JSON.stringify({
+      url: baseUrl + '/newsdescription?newsId=' + newsItem._id,
+      title: newsItem.headline,
+      description: cleanContent
+    }) %>;
+
+    function shareToFacebook() {
+      const shareParams = new URLSearchParams({
+        u: newsData.url,
+        quote: newsData.title + '\n\n' + newsData.description
+      });
+      
+      const facebookShareUrl = 'https://www.facebook.com/sharer/sharer.php?' + shareParams.toString();
+      
+      window.open(
+        facebookShareUrl,
+        'facebook-share-dialog',
+        'width=626,height=436,resizable=yes,scrollbars=yes'
+      );
+    }
+
+    function shareToTwitter() {
+      const twitterText = newsData.title + '\n\n' + newsData.description;
+      const shareParams = new URLSearchParams({
+        url: newsData.url,
+        text: twitterText
+      });
+      
+      const twitterShareUrl = 'https://twitter.com/intent/tweet?' + shareParams.toString();
+      
+      window.open(
+        twitterShareUrl,
+        'twitter-share-dialog',
+        'width=626,height=436,resizable=yes,scrollbars=yes'
+      );
+    }
+
+    function shareToWhatsApp() {
+      const whatsappText = newsData.title + '\n\n' + newsData.description + '\n\nRead more: ' + newsData.url;
+      const shareParams = new URLSearchParams({
+        text: whatsappText
+      });
+      
+      const whatsappShareUrl = 'https://wa.me/?' + shareParams.toString();
+      
+      window.open(whatsappShareUrl, '_blank');
+    }
+  </script>
+</body>
+</html>

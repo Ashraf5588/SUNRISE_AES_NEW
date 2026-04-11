@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Choose Subject & Terminal</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background:  #00275B ;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .form-container {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 2rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      max-width: 600px;
+      width: 100%;
+    }
+
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 2rem;
+      font-size: 1.8rem;
+      font-weight: 600;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    label {
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      color: #2c3e50;
+      font-size: 0.9rem;
+    }
+
+    select {
+      padding: 0.8rem;
+      border: 2px solid #e1e8ed;
+      border-radius: 8px;
+      font-size: 1rem;
+      color: #2c3e50;
+      background-color: white;
+      transition: all 0.3s ease;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+      background-position: right 0.8rem center;
+      background-repeat: no-repeat;
+      background-size: 1rem;
+      padding-right: 2.5rem;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: #4A90E2;
+      box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 1rem;
+      background: #f68712;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
+    }
+
+    .submit-btn:active {
+      transform: translateY(0);
+    }
+
+    .submit-btn.loading {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    /* Mobile responsive */
+    @media (max-width: 640px) {
+      .form-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+      
+      .form-container {
+        margin: 1rem;
+        padding: 1.5rem;
+      }
+      
+      h1 {
+        font-size: 1.5rem;
+      }
+    }
+
+    /* Loading spinner */
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      border-top-color: transparent;
+      animation: spin 1s ease-in-out infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <h1>Choose Subject & Terminal</h1>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label for="subject">Subject</label>
+        <select name="subject" id="subject">
+          <option value="" disabled selected>Select Subject</option>
+          <% uniqueSubjects = new Set(newsubjectList.map(item => item.newsubject)); %>
+          <% uniqueSubjects.forEach(function(subject) { %>
+            <option value="<%= subject %>" <%= editing && subjectedit.subject === subject ? 'selected' : '' %>>
+              <%= subject %>
+            </option>
+          <% }); %>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="terminal">Terminal</label>
+        <select name="terminal" id="terminal">
+          <option value="" disabled selected>Select Terminal</option>
+          <% setup.forEach(function(terminal) { %>
+            <% terminal.terminals.forEach(function(subTerminal) { %>
+              <option value="<%= subTerminal.name %>" <%= editing && subjectedit.terminal === subTerminal.name ? 'selected' : '' %>>
+                <%= subTerminal.name %>
+              </option>
+            <% }); %>
+          <% }); %>
+        </select>
+      </div>
+    </div>
+
+    <button class="submit-btn" onclick="Load()">
+      Enter Evaluation
+    </button>
+  </div>
+
+  <script>
+    function Load() {
+      const terminal = document.getElementById('terminal').value;
+      const subject = document.getElementById('subject').value;
+      const button = document.querySelector('.submit-btn');
+
+      if (!terminal || !subject) {
+        alert('Please select both subject and terminal');
+        return;
+      }
+
+      // Show loading state
+      const originalText = button.innerHTML;
+      button.innerHTML = '<span class="loading-spinner"></span>Loading...';
+      button.classList.add('loading');
+      button.disabled = true;
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const studentClass = urlParams.get("studentClass");
+      const section = urlParams.get("section");
+
+      if (!studentClass || !section) {
+        alert('Missing class or section information');
+        button.innerHTML = originalText;
+        button.classList.remove('loading');
+        button.disabled = false;
+        return;
+      }
+
+      window.location.href = `evaluationform?subject=${encodeURIComponent(subject)}&terminal=${encodeURIComponent(terminal)}&studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}`;
+    }
+  </script>
+</body>
+</html>

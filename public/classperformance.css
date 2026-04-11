@@ -1,0 +1,366 @@
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+
+.spansubject
+{
+    font-size: 18px;
+ 
+    width: 100%;
+    
+}
+.subject span
+{
+    font-size: 18px;
+   
+   
+    
+}
+.subject
+{
+    display: block;
+    background-color:#3307F8 !important;
+    line-height: 60%;
+    padding-left: 8%;
+    height: 20.5rem;
+}
+#rightans,#wrongans,#notattempt,#totalstudent,#correctabove50,#correctbelow50
+{
+    border: none;
+    border-radius: 5px;
+    padding-left: 2%;
+    margin-left: 5%;
+    background-color:#ebbb46;
+    color: white;
+    height: 1.5rem;
+    width: 7rem;
+    margin: 0.3%;
+   
+}
+#totalstudent
+{
+    width: 7rem;
+    margin-left:2%;
+}
+#notattempt
+{
+    margin-left:80% ;
+}
+#correctbelow50
+{
+    margin-left: 15%;
+    margin-top:1%
+
+}
+#correctabove50
+{
+    margin-left: 13%;
+    
+}
+#rightans:hover
+{
+    
+    cursor: pointer;
+    transform: scale(1.06);
+    transition: all 0.3s ease-in-out;
+}
+#wrongans:hover
+{
+    
+    cursor: pointer;
+    transform: scale(1.06);
+    transition: all 0.3s ease-in-out;
+}
+#notattempt:hover
+{
+    
+    cursor: pointer;
+    transform: scale(1.06);
+    transition: all 0.3s ease-in-out;
+}
+.analysiscontainer
+{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  
+}
+.subcol
+{
+    margin: 0.5%;
+}
+.subname
+{
+    background-color:orange;
+    color: white;
+    width: 28rem;
+    height: 10rem; 
+    padding-top:1.2%;
+    font-size: 30px;
+    border-radius: 12px;
+}
+.max,.total,.wrong
+{
+    color: red;
+    font-weight: 700;
+    padding-left: 5%;
+}
+.total{
+    color: rgb(2, 89, 123);
+}
+.compare
+{
+    background-color: #ebbb46;
+    border-radius: 5px;
+    margin-top: 0.5%;
+    padding: 1%;
+}
+.comparecontainer
+{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    gap: 2%;
+}
+.compare:hover
+{
+    background-color: #3307F8;
+    transition: all 0.3s ease-in-out;
+    font-size: 15px;
+}
+.search
+{
+    background-color: #ebbb46;
+    color: white;
+    font-size: 15px;
+    display: flex;
+   height: 3rem;
+    width: 15rem;
+    border-radius: 0 12px 0 12px;
+    justify-content: center;
+    line-height: 3;
+ 
+}
+.tablecontainer
+{
+    max-width: 800px;
+    max-height: 20rem;
+    overflow-x: auto;
+    overflow-y: auto;
+    
+}
+table{
+    min-width: 600px;
+    
+}
+th
+{
+    background-color: #3307F8;
+    color: white;
+}
+
+#search
+{
+    width: 100%;
+}
+.search:hover
+{
+    background-color: #3307F8;
+    transition: all 0.3s ease-in-out;
+}
+#searchroll
+{
+    width: 70%;
+    height: 2rem;
+    border-radius: 12px;
+    margin-top: 1%;
+}
+#submit
+{
+    width: 25%;
+    height: 2rem;
+  
+
+}
+
+@media(max-width:500px)
+{
+    .tablecontainer
+    {
+        width: 400px;
+        max-width: 400px;
+        overflow-x: auto;
+        overflow-y: auto;
+    }
+    table
+    {
+        width: 400px;
+        min-width: 400px;
+    }
+    .subname
+    {
+        width: 80%;
+        font-size: 25px !important;
+    }
+    #rightans,#wrongans,#notattempt,#totalstudent
+    {
+        width: 28%;
+        font-size: 12px;
+        /* margin-right: 10%; */
+    }
+    .subcol
+    {
+        width: 80%;
+    }
+    #math
+    {
+        width: 100%;
+        height: 25rem;
+    }
+    
+}
+/* Media Query for devices with width 480px or below */
+@media screen and (max-width: 499.9px) {
+    body {
+        font-size: 14px;
+        line-height: 1.4;
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden;
+    }
+
+    .loader {
+        width: 100%;
+        height: auto;
+    }
+
+    .loader lord-icon {
+        width: 100px;
+        height: 100px;
+    }
+
+    #firstheading {
+        font-size: 20px;
+        text-align: center;
+        margin: 10px 0;
+    }
+
+    .subheading {
+        font-size: 16px;
+        margin: 5px 0;
+    }
+
+    .subname {
+        font-size: 14px;
+        padding: 10px;
+        text-align: center;
+        word-wrap: break-word;
+        height: 15rem;
+    }
+
+    .subcol {
+        width: 100%;
+        margin: 10px 0;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .subject {
+        font-size: 14px;
+        text-align: left;
+    }
+
+    .spansubject {
+        font-size: 20px;
+        color: #ebbb46;;
+        font-weight: bold;
+        text-align: center;
+        margin-left: -30%;
+        margin-bottom: 2%;
+       
+
+
+    }
+
+    button {
+        font-size: 12px;
+        padding: 5px 10px;
+        margin: 5px 0;
+    }
+
+    #totalstudent, #wrongans, #rightans, #notattempt,#correctabove50,#correctbelow50 {
+        width: 20rem;
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+        margin-left: -1%;
+    }
+    #totalstudent
+    {
+        width: 17rem;
+        margin-left: 2%;
+    }
+
+    hr {
+        margin: 10px 0;
+    }
+
+    .analysiscontainer {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .max, .total, .wrong {
+        font-size: 14px;
+        margin: 5px 0;
+        display: block;
+    }
+
+    a {
+        text-decoration: none;
+        color: #3307F8;
+    }
+
+    a i {
+        margin-left: 5px;
+    }
+    #notattempt
+    {
+        margin-left: 0%;
+    }
+    .subject span
+    {
+        padding-top: 5%;
+    }
+    .ansinfo
+    {
+        margin-top: 8%;
+    }
+    .spansubject
+    {
+        margin-right: 10%;
+    }
+}
+@media(max-width:375px)
+{
+
+    .tablecontainer {
+        overflow-x: auto;
+    }
+    
+    table {
+      min-width: 200px; /* Ensure a wider table for small screens */
+    }
+    #totalstudent, #wrongans, #rightans, #notattempt, #correctabove50, #correctbelow50{
+        width: 14rem;
+    }
+    #totalstudent
+    {
+        width: 16rem;
+    }
+}

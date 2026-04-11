@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --border: #d8e0ea;
+      --text: #17212b;
+      --muted: #5f6b7a;
+      --accent: #31568a;
+      --accent-soft: #e8f0fb;
+      --shadow: 0 14px 36px rgba(15, 23, 42, 0.08);
+      --nav: #172b4d;
+      --nav-soft: #1f3660;
+      --nav-text: #f8fafc;
+      --event-accent: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.45;
+    }
+
+    .layout {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr) 320px;
+      gap: 20px;
+      padding: 20px;
+    }
+
+    .sidebar {
+      background: var(--nav);
+      color: var(--nav-text);
+      border-radius: 18px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .sidebar h3 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0.02em;
+    }
+
+    .sidebar a {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      text-decoration: none;
+      color: var(--nav-text);
+      background: rgba(255, 255, 255, 0.08);
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    .sidebar a:hover {
+      background: rgba(255, 255, 255, 0.16);
+      transform: translateY(-1px);
+    }
+
+    .sidebar .subtext {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.7);
+      margin-top: -6px;
+    }
+
+    .dashboard {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+
+    p {
+      margin: 0 0 18px;
+      color: var(--muted);
+    }
+
+    h2 {
+      margin: 26px 0 12px;
+      font-size: 18px;
+    }
+
+    .events-panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .events-panel h3 {
+      margin: 0;
+      font-size: 18px;
+      color: var(--accent);
+    }
+
+    .events-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .events-group-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+    }
+
+    .event-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      background: #fff;
+      display: grid;
+      gap: 6px;
+    }
+
+    .event-title {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .event-meta {
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .event-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(245, 158, 11, 0.12);
+      color: #b45309;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .event-empty {
+      font-size: 13px;
+      color: var(--muted);
+      padding: 10px 0 0;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    table {
+      width: 100%;
+      min-width: 760px;
+      border-collapse: collapse;
+      background: #fff;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 10px 12px;
+      text-align: left;
+      vertical-align: top;
+      word-break: break-word;
+    }
+
+    th {
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #fafcff;
+    }
+
+    .summary-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 0;
+    }
+
+    .summary-tag {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 5px 9px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .empty-state {
+      padding: 14px;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      color: var(--muted);
+      background: #fbfcfe;
+    }
+
+    .rubrik-section {
+      margin-top: 12px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .rubrik-block {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fff;
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .rubrik-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .rubrik-meta {
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .rubrik-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .rubrik-table th,
+    .rubrik-table td {
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    .rubrik-table th {
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .rubrik-score {
+      font-weight: 700;
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    @media (max-width: 720px) {
+      .layout {
+        grid-template-columns: 1fr;
+        padding: 12px;
+      }
+
+      .sidebar {
+        border-radius: 14px;
+      }
+
+      .dashboard {
+        padding: 16px;
+        border-radius: 14px;
+      }
+
+      h1 {
+        font-size: 22px;
+      }
+
+      h2 {
+        font-size: 16px;
+      }
+
+      th, td {
+        padding: 9px 10px;
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <% const allEvents = Array.isArray(events) ? events : []; %>
+  <% const now = new Date(); %>
+  <% const startOfWeek = new Date(now); startOfWeek.setDate(now.getDate() - now.getDay()); startOfWeek.setHours(0,0,0,0); %>
+  <% const endOfWeek = new Date(startOfWeek); endOfWeek.setDate(startOfWeek.getDate() + 6); endOfWeek.setHours(23,59,59,999); %>
+  <% const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1); %>
+  <% const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999); %>
+  <% const startOfYear = new Date(now.getFullYear(), 0, 1); %>
+  <% const endOfYear = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999); %>
+  <% const weekEvents = allEvents.filter((event) => { const date = new Date(event.date); return date >= startOfWeek && date <= endOfWeek; }); %>
+  <% const monthEvents = allEvents.filter((event) => { const date = new Date(event.date); return date >= startOfMonth && date <= endOfMonth; }); %>
+  <% const yearEvents = allEvents.filter((event) => { const date = new Date(event.date); return date >= startOfYear && date <= endOfYear; }); %>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <h3>Principal Menu</h3>
+      <div class="subtext">Quick access</div>
+      <a href="/">Home</a>
+      <a href="/studentportfolio">Student Portfolio</a>
+      <a href="/analytics">Exam Analytics</a>
+      <a href="/admin/term/FIRST">Entry Details</a>
+    </aside>
+
+    <main class="dashboard">
+      <h1>Principal Dashboard</h1>
+      <p>Welcome to the Principal Dashboard. Here you can manage and oversee all lesson plans.</p>
+
+    <% const groupByTeacherClass = (rows) => {
+         const grouped = [];
+         const map = new Map();
+
+         (rows || []).forEach((row) => {
+           const teacherName = row && row.teacherName ? String(row.teacherName) : 'Unknown';
+           const className = row && row.class ? String(row.class) : 'Unknown';
+           const groupKey = `${teacherName}__${className}`;
+
+           if (!map.has(groupKey)) {
+             const group = { teacherName, className, rows: [] };
+             map.set(groupKey, group);
+             grouped.push(group);
+           }
+
+           map.get(groupKey).rows.push(row);
+         });
+
+         return grouped;
+       }; %>
+
+    <% const groupedAnnualPlans = groupByTeacherClass(yearlyPlansEntry || []); %>
+    <% const groupedUnitPlans = groupByTeacherClass(unitDataTeacher || []); %>
+    <% const groupedDailyPlans = groupByTeacherClass(dailyPlanData || []); %>
+    <% let annualSn = 1; %>
+    <% let unitSn = 1; %>
+    <% let dailySn = 1; %>
+
+    <h2>Annual Lesson Plans</h2>
+    <div class="table-wrap">
+      <table cellspacing="0" border="1">
+        <thead>
+          <tr>
+            <th>SN</th>
+            <th>Teacher Name</th>
+            <th>Class</th>
+            <th>Subject</th>
+            <th>Month Remaining</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% groupedAnnualPlans.forEach((group) => { %>
+            <% group.rows.forEach((entry, rowIndex) => { %>
+              <tr>
+                <% if (rowIndex === 0) { %>
+                  <td rowspan="<%= group.rows.length %>"><%= annualSn++ %></td>
+                  <td rowspan="<%= group.rows.length %>"><%= group.teacherName %></td>
+                  <td rowspan="<%= group.rows.length %>"><%= group.className %></td>
+                <% } %>
+                <td><%= entry.subject %></td>
+                <td>(<%= entry.missingMonths.length %> month) <%= entry.missingMonths.join(', ') %></td>
+              </tr>
+            <% }) %>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Unit Progress</h2>
+    <% if (unitDataTeacher && unitDataTeacher.length) { %>
+      <div class="table-wrap">
+        <table cellspacing="0" border="1">
+          <thead>
+            <tr>
+              <th>SN</th>
+              <th>Teacher Name</th>
+              <th>Class</th>
+              <th>Subject</th>
+              <th>Units Entered</th>
+              <th>Units Left</th>
+              <th>Name of Units Left</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% groupedUnitPlans.forEach((group) => { %>
+              <% group.rows.forEach((entry, rowIndex) => { %>
+                <tr>
+                  <% if (rowIndex === 0) { %>
+                    <td rowspan="<%= group.rows.length %>"><%= unitSn++ %></td>
+                    <td rowspan="<%= group.rows.length %>"><%= group.teacherName %></td>
+                    <td rowspan="<%= group.rows.length %>"><%= group.className %></td>
+                  <% } %>
+                  <td><%= entry.subject %></td>
+                  <td><%= entry.completedCount %></td>
+                  <td><%= entry.remainingCount %></td>
+                  <td>
+                    <% if (entry.remainingUnits && entry.remainingUnits.length) { %>
+                      <div class="summary-list">
+                        <% entry.remainingUnits.forEach((unit) => { %>
+                          <span class="summary-tag"><%= unit.unitName || 'Unnamed Unit' %></span>
+                        <% }) %>
+                      </div>
+                    <% } else { %>
+                      <span class="summary-tag">No units left</span>
+                    <% } %>
+                  </td>
+                </tr>
+              <% }) %>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } else { %>
+      <div class="empty-state">No unit progress records found.</div>
+    <% } %>
+
+    <h2>Daily Plan Record</h2>
+    <% if (dailyPlanData && dailyPlanData.length) { %>
+      <div class="table-wrap">
+        <table cellspacing="0" border="1">
+          <thead>
+            <tr>
+              <th>SN</th>
+              <th>Teacher Name</th>
+              <th>Class</th>
+              <th>Subject</th>
+              <th>Days Till Now</th>
+              <th>Completed Days</th>
+              <th>Missed Days</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% groupedDailyPlans.forEach((group) => { %>
+              <% group.rows.forEach((entry, rowIndex) => { %>
+                <tr>
+                  <% if (rowIndex === 0) { %>
+                    <td rowspan="<%= group.rows.length %>"><%= dailySn++ %></td>
+                    <td rowspan="<%= group.rows.length %>"><%= group.teacherName %></td>
+                    <td rowspan="<%= group.rows.length %>"><%= group.className %></td>
+                  <% } %>
+                  <td><%= entry.subject %></td>
+                  <td><%= entry.totalDaysTillNow %></td>
+                  <td><%= entry.completedDays %></td>
+                  <td><%= entry.missedDays %></td>
+                </tr>
+              <% }) %>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } else { %>
+      <div class="empty-state">No daily plan records found.</div>
+    <% } %>
+
+    <h2>Rubriks</h2>
+    <% if (themeRubriks && themeRubriks.length) { %>
+      <% const sortedRubriks = [...themeRubriks].sort((a, b) => {
+           const classA = a && a.studentClass ? String(a.studentClass) : 'Unknown';
+           const classB = b && b.studentClass ? String(b.studentClass) : 'Unknown';
+           const numA = Number(classA);
+           const numB = Number(classB);
+           const bothNumeric = Number.isFinite(numA) && Number.isFinite(numB);
+           const classCompare = bothNumeric ? numA - numB : classA.localeCompare(classB);
+           if (classCompare !== 0) {
+             return classCompare;
+           }
+
+           const subjectA = a && a.subject ? String(a.subject) : '';
+           const subjectB = b && b.subject ? String(b.subject) : '';
+           const subjectCompare = subjectA.localeCompare(subjectB);
+           if (subjectCompare !== 0) {
+             return subjectCompare;
+           }
+
+           const orderA = Number.isFinite(a && a.rubrikSourceOrder) ? a.rubrikSourceOrder : 0;
+           const orderB = Number.isFinite(b && b.rubrikSourceOrder) ? b.rubrikSourceOrder : 0;
+           return orderA - orderB;
+         }); %>
+      <div class="rubrik-section">
+        <% sortedRubriks.forEach((rubrik) => { %>
+          <div class="rubrik-block">
+            <div class="rubrik-header">
+              <span><%= rubrik.subject || 'Subject' %></span>
+              <span>Class <%= rubrik.studentClass || '-' %></span>
+            </div>
+            <div class="rubrik-meta">
+              <span>Credit: <%= rubrik.credit || 0 %></span>
+              <span>Rubriks</span>
+            </div>
+            <div class="table-wrap">
+              <table class="rubrik-table">
+                <thead>
+                  <tr>
+                    <th>SN</th>
+                    <th>आधार</th>
+                    <th>पक्ष</th>
+                    <th>सूचक</th>
+                    <th>प्राप्तांक</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% let sn = 1; %>
+                  <% (rubrik.themes || []).forEach((theme) => { %>
+                    <% (theme.learningOutcome || []).forEach((outcome) => { %>
+                      <% const indicators = Array.isArray(outcome.indicators) ? outcome.indicators : []; %>
+                      <% if (indicators.length) { %>
+                        <% indicators.forEach((indicator, indicatorIndex) => { %>
+                          <tr>
+                            <% if (indicatorIndex === 0) { %>
+                              <td rowspan="<%= indicators.length %>"><%= sn++ %></td>
+                              <td rowspan="<%= indicators.length %>"><%= theme.themeName || '-' %></td>
+                              <td rowspan="<%= indicators.length %>"><%= outcome.learningOutcomeName || '-' %></td>
+                            <% } %>
+                            <td><%= indicator.indicatorName || '-' %></td>
+                            <td class="rubrik-score"><%= indicator.indicatorsMarks || 0 %></td>
+                          </tr>
+                        <% }) %>
+                      <% } else { %>
+                        <tr>
+                          <td><%= sn++ %></td>
+                          <td><%= theme.themeName || '-' %></td>
+                          <td><%= outcome.learningOutcomeName || '-' %></td>
+                          <td>-</td>
+                          <td class="rubrik-score">0</td>
+                        </tr>
+                      <% } %>
+                    <% }) %>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <div class="empty-state">No rubriks available.</div>
+    <% } %>
+
+    <h2>Science Practicals</h2>
+    <% if (sciencePracticals && sciencePracticals.length) { %>
+      <% const practicalRows = sciencePracticals.flatMap((doc) => {
+           const units = Array.isArray(doc.units) && doc.units.length ? doc.units : [{ unitName: '-', practicals: [], projectworks: [] }];
+           return units.map((unit) => ({
+             studentClass: doc.studentClass || '-',
+             section: doc.section || '-',
+             subject: doc.subject || '-',
+             terminal: doc.terminal || '-',
+             unitName: unit.unitName || '-',
+             practicals: Array.isArray(unit.practicals) ? unit.practicals : [],
+             projectworks: Array.isArray(unit.projectworks) ? unit.projectworks : []
+           }));
+         }).sort((a, b) => {
+           const classA = String(a.studentClass || '');
+           const classB = String(b.studentClass || '');
+           const numA = Number(classA);
+           const numB = Number(classB);
+           const bothNumeric = Number.isFinite(numA) && Number.isFinite(numB);
+           const classCompare = bothNumeric ? numA - numB : classA.localeCompare(classB);
+           if (classCompare !== 0) {
+             return classCompare;
+           }
+           const subjectCompare = String(a.subject || '').localeCompare(String(b.subject || ''));
+           if (subjectCompare !== 0) {
+             return subjectCompare;
+           }
+           return String(a.unitName || '').localeCompare(String(b.unitName || ''));
+         }); %>
+      <div class="table-wrap">
+        <table cellspacing="0" border="1">
+          <thead>
+            <tr>
+              <th>SN</th>
+              <th>Class</th>
+              <th>Section</th>
+              <th>Subject</th>
+              <th>Terminal</th>
+              <th>Unit</th>
+              <th>Practicals</th>
+              <th>Project Works</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% practicalRows.forEach((row, index) => { %>
+              <tr>
+                <td><%= index + 1 %></td>
+                <td><%= row.studentClass %></td>
+                <td><%= row.section %></td>
+                <td><%= row.subject %></td>
+                <td><%= row.terminal %></td>
+                <td><%= row.unitName %></td>
+                <td>
+                  <% if (row.practicals.length) { %>
+                    <div class="summary-list">
+                      <% row.practicals.forEach((item) => { %>
+                        <span class="summary-tag"><%= item %></span>
+                      <% }) %>
+                    </div>
+                  <% } else { %>
+                    <span class="summary-tag">-</span>
+                  <% } %>
+                </td>
+                <td>
+                  <% if (row.projectworks.length) { %>
+                    <div class="summary-list">
+                      <% row.projectworks.forEach((item) => { %>
+                        <span class="summary-tag"><%= item %></span>
+                      <% }) %>
+                    </div>
+                  <% } else { %>
+                    <span class="summary-tag">-</span>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } else { %>
+      <div class="empty-state">No science practicals available.</div>
+    <% } %>
+    </main>
+
+    <aside class="events-panel">
+      <h3>Upcoming Events</h3>
+
+      <div class="events-group">
+        <div class="events-group-title">This Week</div>
+        <% if (weekEvents.length) { %>
+          <% weekEvents.forEach((event) => { %>
+            <div class="event-card">
+              <div class="event-title"><%= event.title %></div>
+              <div class="event-meta">
+                <span><%= new Date(event.date).toLocaleDateString() %></span>
+                <span><%= event.time %></span>
+                <span><%= event.forClass %></span>
+              </div>
+              <div class="event-meta">
+                <span class="event-tag"><%= event.subject || 'General' %></span>
+                <span><%= event.location || 'School' %></span>
+              </div>
+            </div>
+          <% }) %>
+        <% } else { %>
+          <div class="event-empty">No events this week.</div>
+        <% } %>
+      </div>
+
+      <div class="events-group">
+        <div class="events-group-title">This Month</div>
+        <% if (monthEvents.length) { %>
+          <% monthEvents.forEach((event) => { %>
+            <div class="event-card">
+              <div class="event-title"><%= event.title %></div>
+              <div class="event-meta">
+                <span><%= new Date(event.date).toLocaleDateString() %></span>
+                <span><%= event.time %></span>
+                <span><%= event.forClass %></span>
+              </div>
+              <div class="event-meta">
+                <span class="event-tag"><%= event.subject || 'General' %></span>
+                <span><%= event.location || 'School' %></span>
+              </div>
+            </div>
+          <% }) %>
+        <% } else { %>
+          <div class="event-empty">No events this month.</div>
+        <% } %>
+      </div>
+
+      <div class="events-group">
+        <div class="events-group-title">This Year</div>
+        <% if (yearEvents.length) { %>
+          <% yearEvents.forEach((event) => { %>
+            <div class="event-card">
+              <div class="event-title"><%= event.title %></div>
+              <div class="event-meta">
+                <span><%= new Date(event.date).toLocaleDateString() %></span>
+                <span><%= event.time %></span>
+                <span><%= event.forClass %></span>
+              </div>
+              <div class="event-meta">
+                <span class="event-tag"><%= event.subject || 'General' %></span>
+                <span><%= event.location || 'School' %></span>
+              </div>
+            </div>
+          <% }) %>
+        <% } else { %>
+          <div class="event-empty">No events this year.</div>
+        <% } %>
+      </div>
+    </aside>
+  </div>
+
+<div class="projectwork">
+  
+</div>
+</body>
+</html>

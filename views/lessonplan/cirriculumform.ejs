@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Curriculum Form</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #eef4ff;
+      --card: rgba(255, 255, 255, 0.92);
+      --card-strong: #ffffff;
+      --text: #10233d;
+      --muted: #5f7187;
+      --border: rgba(16, 35, 61, 0.12);
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --accent: #0f766e;
+      --accent-dark: #0f5f59;
+      --danger: #dc2626;
+      --shadow: 0 24px 60px rgba(16, 35, 61, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 28%),
+        radial-gradient(circle at top right, rgba(15, 118, 110, 0.12), transparent 30%),
+        linear-gradient(180deg, #f7faff 0%, var(--bg) 100%);
+      min-height: 100vh;
+    }
+
+    .page-shell {
+      width: min(1320px, calc(100% - 28px));
+      margin: 20px auto 40px;
+    }
+
+    .hero {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      padding: 24px 26px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 100%);
+      color: #fff;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      inset: auto -60px -70px auto;
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      filter: blur(2px);
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.6rem, 2.8vw, 2.4rem);
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 780px;
+      color: rgba(255, 255, 255, 0.86);
+      line-height: 1.6;
+    }
+
+    .toggle-bar {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+      min-width: 190px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .mode-chip {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      font-size: 0.86rem;
+      font-weight: 600;
+    }
+
+    .mode-toggle {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 18px;
+      background: #fff;
+      color: #0f172a;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 16px 30px rgba(15, 23, 42, 0.18);
+    }
+
+    .content-grid {
+      margin-top: 22px;
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .panel,
+    .editor-card {
+      background: var(--card);
+      backdrop-filter: blur(18px);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-header,
+    .editor-header {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 0.98) 100%);
+    }
+
+    .panel-header h2,
+    .editor-header h2 {
+      margin: 0 0 6px;
+      font-size: 1.08rem;
+    }
+
+    .panel-header p,
+    .editor-header p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 0.94rem;
+    }
+
+    .panel-body,
+    .editor-body {
+      padding: 20px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    label {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    select,
+    input,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--card-strong);
+      color: var(--text);
+      padding: 12px 14px;
+      font: inherit;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    }
+
+    textarea {
+      min-height: 54px;
+      resize: vertical;
+    }
+
+    select:focus,
+    input:focus,
+    textarea:focus {
+      outline: none;
+      border-color: rgba(37, 99, 235, 0.75);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    }
+
+    .helper {
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.5;
+    }
+
+    .editor-toolbar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border-radius: 999px;
+      background: rgba(37, 99, 235, 0.08);
+      color: var(--primary-dark);
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 16px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: #fff;
+      box-shadow: 0 16px 28px rgba(37, 99, 235, 0.18);
+    }
+
+    .btn-secondary {
+      background: #fff;
+      color: var(--primary-dark);
+      border: 1px solid rgba(37, 99, 235, 0.2);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+      color: #fff;
+      box-shadow: 0 16px 28px rgba(15, 118, 110, 0.18);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: #fff;
+    }
+
+    .units-wrap {
+      display: grid;
+      gap: 18px;
+    }
+
+    .unit-card {
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid rgba(16, 35, 61, 0.1);
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: 0 10px 30px rgba(16, 35, 61, 0.06);
+    }
+
+    .unit-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .unit-head h3 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .full-span {
+      grid-column: 1 / -1;
+    }
+
+    .array-block {
+      margin-top: 14px;
+      border: 1px solid rgba(16, 35, 61, 0.08);
+      border-radius: 18px;
+      padding: 14px;
+      background: rgba(248, 250, 252, 0.9);
+    }
+
+    .array-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .array-head h4 {
+      margin: 0;
+      font-size: 0.96rem;
+    }
+
+    .array-rows {
+      display: grid;
+      gap: 10px;
+    }
+
+    .array-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .array-row textarea,
+    .array-row input {
+      margin: 0;
+    }
+
+    .notice {
+      padding: 18px;
+      border-radius: 18px;
+      background: rgba(37, 99, 235, 0.06);
+      border: 1px dashed rgba(37, 99, 235, 0.26);
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .empty-state {
+      padding: 22px;
+      border-radius: 18px;
+      border: 1px dashed rgba(16, 35, 61, 0.16);
+      text-align: center;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.74);
+    }
+
+    @media (max-width: 1100px) {
+      .content-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .toggle-bar {
+        align-items: flex-start;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .page-shell {
+        width: min(100% - 18px, 1320px);
+        margin: 12px auto 22px;
+      }
+
+      .hero,
+      .panel-body,
+      .editor-body,
+      .panel-header,
+      .editor-header {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      .hero {
+        flex-direction: column;
+      }
+
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+
+      .array-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <%
+    const classOptions = [...new Set((sidenavData.studentClassdata || []).map((cls) => cls.studentClass).filter(Boolean))];
+    const subjectOptions = [...new Set((sidenavData.subjects || []).map((subj) => subj.newsubject).filter(Boolean))];
+    const selectedForClassValue = typeof selectedForClass !== 'undefined' ? selectedForClass : '';
+    const selectedSubjectValue = typeof selectedSubject !== 'undefined' ? selectedSubject : '';
+    const curriculumBootstrap = {
+      selectedForClass: selectedForClassValue || '',
+      selectedSubject: selectedSubjectValue || '',
+      curriculum: typeof existingCirriculum !== 'undefined' && existingCirriculum ? existingCirriculum : null
+    };
+  %>
+
+  <div class="page-shell">
+    <section class="hero">
+      <div>
+        <h1>Curriculum Builder</h1>
+        <p>Pick a class and subject, then build as many units as you need. Every array field can grow with an Add More button, and the draft saves automatically as you work.</p>
+      </div>
+      <div class="toggle-bar">
+        <div class="mode-chip" id="mode-chip">English mode</div>
+        <button type="button" class="mode-toggle" id="language-toggle">Switch to Nepali</button>
+      </div>
+    </section>
+
+    <div class="content-grid">
+      <aside class="panel">
+        <div class="panel-header">
+          <h2>Class and Subject</h2>
+          <p>Select the curriculum scope first. The unit editor will populate underneath.</p>
+        </div>
+        <div class="panel-body">
+          <form id="curriculum-form" autocomplete="off">
+            <div class="field">
+              <label for="forClass">Select Class</label>
+              <select name="forClass" id="forClass" required>
+                <option value="">Select Class</option>
+                <% classOptions.forEach((cls) => { %>
+                  <option value="<%= cls %>" <%= String(curriculumBootstrap.selectedForClass) === String(cls) ? 'selected' : '' %>><%= cls %></option>
+                <% }); %>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="subject">Select Subject</label>
+              <select name="subject" id="subject" required>
+                <option value="">Select Subject</option>
+                <% subjectOptions.forEach((subj) => { %>
+                  <option value="<%= subj %>" <%= String(curriculumBootstrap.selectedSubject) === String(subj) ? 'selected' : '' %>><%= subj %></option>
+                <% }); %>
+              </select>
+            </div>
+
+            <p class="helper">When Nepali mode is on, typed text is converted through the existing Preeti keyboard mapping and saved as Nepali Unicode.</p>
+
+            <div class="actions" style="margin-top: 18px;">
+              <button type="button" class="btn btn-secondary" id="add-unit-btn">Add Unit</button>
+            </div>
+          </form>
+        </div>
+      </aside>
+
+      <section class="editor-card">
+        <div class="editor-header">
+          <h2>Unit Editor</h2>
+          <p>Build repeating unit sections with arrays for content, instructional material, objectives, instructional method, and evaluation process.</p>
+        </div>
+        <div class="editor-body">
+          <div class="editor-toolbar">
+            <div class="status-pill" id="save-status">Ready</div>
+            <div class="actions">
+              <button type="button" class="btn btn-success" id="refresh-btn">Reload from DB</button>
+            </div>
+          </div>
+
+          <div id="editor-notice" class="notice" style="display: none;"></div>
+          <div id="units-wrap" class="units-wrap"></div>
+          <div id="empty-state" class="empty-state" style="display: none;">
+            Select a class and subject to load an existing curriculum or start a new draft.
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    window.__CURRICULUM_BOOTSTRAP__ = <%- JSON.stringify(curriculumBootstrap) %>;
+  </script>
+  <script src="/js/preeti.js"></script>
+  <script src="/js/cirriculum-form.js"></script>
+</body>
+</html>

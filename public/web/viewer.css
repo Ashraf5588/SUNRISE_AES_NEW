@@ -1,0 +1,136 @@
+/* Copyright 2014 Mozilla Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+:root {
+  --viewer-container-height: 100%;
+  --main-color: #1976d2;
+  --button-hover-color: #e8e8e8;
+  --focus-outline: 2px solid var(--main-color);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --main-color: #1976d2;
+    --button-hover-color: #4a4a4a;
+  }
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  background: #f8f9fa;
+  overscroll-behavior: none; /* Prevents pull-to-refresh in WebView */
+}
+
+/* Android WebView specific optimizations */
+.android-webview body {
+  /* Apply hardware acceleration for smoother rendering */
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.android-webview .toolbar {
+  padding-top: 30px; /* Extra space for Android status bar */
+}
+
+.pdfViewer {
+  height: 100%;
+}
+
+#viewerContainer {
+  position: absolute;
+  overflow: auto;
+  width: 100%;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.toolbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 48px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+}
+
+#loadingBar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: #f8f9fa;
+}
+
+#loadingBar .progress {
+  height: 100%;
+  background-color: var(--main-color);
+  width: 0;
+  transition: width 200ms;
+}
+
+#loadingBar.indeterminate .progress {
+  width: 30%;
+  animation: progressIndeterminate 2s linear infinite;
+}
+
+@keyframes progressIndeterminate {
+  0% { left: -30%; }
+  100% { left: 100%; }
+}
+
+.canvasWrapper {
+  position: relative;
+}
+
+.page {
+  margin: 16px auto;
+  position: relative;
+  background-color: white;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.pageCanvas {
+  display: block;
+}
+
+#errorWrapper {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  text-align: center;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.8);
+  color: #333;
+}

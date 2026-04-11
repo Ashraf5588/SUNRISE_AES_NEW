@@ -1,0 +1,162 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Data | Question <%= qno %></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- DataTables CSS -->
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css">
+  <link rel="stylesheet" type="text/css" href="/datatable-buttons.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.bootstrap5.min.css">
+    <!-- jQuery and DataTables JS -->
+    <script type="text/javascript" language="javascript" src="https://code.jquery.com/jquery-3.7.0.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.bootstrap5.min.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/responsive/2.4.1/js/responsive.bootstrap5.min.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+    
+    <link rel="stylesheet" href="/nav.css">
+    <link rel="stylesheet" href="/studentdata.css">
+    <link rel="stylesheet" href="/style.css">
+    
+    <style>
+        :root {
+            --primary: #0ea5e9;  /* skyblue */
+            --primary-dark: #0284c7;  /* darker skyblue */
+            --secondary: #8b5a2b;  /* brown */
+            --secondary-dark: #6b4423;  /* darker brown */
+            --light: #f8fafc;
+            --dark: #1e293b;
+            --accent: #a16207;  /* amber brown for accent */
+            --gray: #64748b;
+        }
+
+        /* No data styling */
+        .no-data-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 300px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            margin: 2rem 0;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .no-data-icon {
+            font-size: 5rem;
+            color: #8b5a2b;
+            margin-bottom: 1.5rem;
+        }
+
+        .no-data-title {
+            font-size: 2rem;
+            color: #333;
+            margin-bottom: 0.75rem;
+        }
+
+        .no-data-message {
+            font-size: 1.1rem;
+            color: #666;
+            margin-bottom: 1.75rem;
+            max-width: 500px;
+        }
+
+        .back-home-btn {
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border-radius: 6px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            margin-top: 1rem;
+        }
+
+        .back-home-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <%- include("./partials/nav",{currentPage:"teacher"}) %>
+  
+  <%- include('partials/sidenav', { 
+      subjects: subjects, 
+      studentClassdata: studentClassdata,
+      terminals: terminals 
+  }) %>
+  
+  <center><h1 id="firstheading" style="font-weight: 900;">Student <span id="firstspan">Detail</span></h1></center></header>
+   <center>  <h1><center>Question Number:(<%= qno %>)</center></h1></center>
+   <span style="font-size: 35px; display: flex;justify-content: flex-end;padding: 0 10% 0 0;cursor:pointer;">
+    <i class="fa-solid fa-print" style="color: #000000;" onclick="print()"></i></span>
+
+<center>
+    <% if (StudentData && StudentData.length > 0) { %>
+        <table border="1" cellspacing="0px" id="studentTable">
+            <tr id="row1">
+                <th>Name&ensp;&ensp;<i class="fa-solid fa-user-tie" style="color: #000000;"></i></th>
+                <th>Roll&ensp;&ensp;<i class="fa-solid fa-registered" style="color: #000000;"></i></th>
+                <th>Class&ensp;&ensp;<i class="fa-solid fa-school" style="color: #000000;"></i></th>
+                <th>Section</th>
+                <th>Subject&ensp;&ensp;<i class="fa-solid fa-book" style="color: #000000;"></i></th>
+                <th>Status&ensp;&ensp;<i class="fa-regular fa-circle-xmark" style="color: #000000;"></i>&ensp;&ensp;<i class="fa-solid fa-circle-check" style="color: #000000;"></i></th>
+                <th>Terminal &ensp;&ensp;<i class="fa-solid fa-pen-to-square" style="color: #000000;"></i></th>
+            </tr>
+            <% StudentData.forEach((student) => { %>
+                <tr>
+                    <td><%= student.name %></td>
+                    <td><%= student.roll %></td>
+                    <td><%= student.studentClass %></td>
+                    <td><%= student.section %></td>
+                    <td><%= student.subject %></td>
+                    <td><%= student[qno] %></td>
+                    <td><%= student.terminal %></td>
+                </tr>
+            <% }); %>
+        </table>
+    <% } else { %>
+        <div class="no-data-container">
+            <div class="no-data-icon">
+                <i class="fas fa-file-excel"></i>
+            </div>
+            <h2 class="no-data-title">No Student Data Available</h2>
+            <p class="no-data-message">
+                There are currently no student records matching your query for Question <%= qno %> with status "<%= status %>" 
+                in <%= subjectinput %> Class <%= studentClass %>-<%= section %> for <%= terminal %> Terminal.
+            </p>
+            <div class="mt-4">
+                <a href="/findData/<%= subjectinput.toLowerCase() %>/<%= studentClass %>/<%= section %>/<%= terminal %>" class="back-home-btn">
+                    <i class="fas fa-chart-bar me-2"></i> Back to Analysis
+                </a>
+            </div>
+        </div>
+    <% } %>
+</center>
+
+<script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
+</body>
+</html>

@@ -1,0 +1,2346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subject Management | AES Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/adminpannel.css">
+  <link rel="stylesheet" href="/nav.css">
+  <link rel="stylesheet" href="/subject-list.css">
+  <link rel="stylesheet" href="/bootstrap-table.css">
+  
+  <style>
+    /* Card styling */
+    .card {
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    .card-header {
+      font-weight: bold;
+      background-color: #f8f9fa;
+      border-bottom: 1px solid #e9ecef;
+    }
+    
+    /* Sub-parts styling */
+    .sub-parts-container {
+      transition: all 0.3s ease;
+      position: relative;
+    }
+    .generated-subparts {
+      position: relative;
+    }
+    .subparts-wrapper {
+      border-radius: 5px;
+      scrollbar-width: thin;
+      scrollbar-color: #0d6efd #f8f9fa;
+    }
+    .subparts-wrapper::-webkit-scrollbar {
+      width: 6px;
+    }
+    .subparts-wrapper::-webkit-scrollbar-track {
+      background: #f8f9fa;
+      border-radius: 5px;
+    }
+    .subparts-wrapper::-webkit-scrollbar-thumb {
+      background-color: #0d6efd;
+      border-radius: 5px;
+    }
+    
+    /* Question container styling */
+    .question-container {
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px dashed #dee2e6;
+    }
+    .question-container:last-child {
+      border-bottom: none;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 767px) {
+      .card {
+        margin-bottom: 15px;
+      }
+      .question-heading {
+        font-size: 1.2rem;
+      }
+      /* Tighten up spacing on mobile */
+      .g-3 {
+        --bs-gutter-x: 0.75rem;
+        --bs-gutter-y: 0.75rem;
+      }
+      /* Make cards full width on small screens */
+      .row-cols-sm-2 > * {
+        flex: 0 0 100%;
+        max-width: 100%;
+      }
+    }
+    
+    @media (max-width: 575px) {
+      /* Smaller text on very small screens */
+      .card-body {
+        padding: 0.75rem;
+      }
+      .form-control, .input-group-text {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+      }
+      /* Stack sub-parts on very small screens */
+      .subparts-wrapper {
+        max-height: 200px !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <%- include('../partials/nav',{currentPage:'admin'}) %>
+  
+  <%- include('../partials/sidenav', { 
+      subjects: subjects, 
+      studentClassdata: studentClassdata,
+      terminals: terminals 
+  }) %>
+
+
+  <div class="subject-container">
+  <h1 class="subject-title">Welcome to <span>Subject Management,</span></h1>
+    <!-- Creating form dynamically popup input fields --><script>
+  const editing = "<%= editing ? 'true' : 'false' %>";
+  const subjectedit = <%- editing ? JSON.stringify(subjectedit || {}) : '{}' %>;
+  const availableChapters = <%- (typeof chapterData !== 'undefined' && chapterData.length > 0 && chapterData[0].chapters) ? JSON.stringify(chapterData[0].chapters) : '[]' %>;
+// Replace the DOMContentLoaded event listener with this corrected version:
+// Cache-busting comment: v2.0 - Fixed generateInput error
+
+document.addEventListener("DOMContentLoaded", () => {
+  console.log("DOM loaded. Edit mode:", editing);
+  console.log("Subject edit data:", subjectedit);
+  
+  // Add form validation on submit
+  const form = document.querySelector('.subject-form');
+  if (form) {
+    form.addEventListener('submit', validateForm);
+  }
+  
+  // Add event listener for max questions field
+  const maxField = document.getElementById("max");
+  if (maxField) {
+    maxField.addEventListener('input', function() {
+      console.log("Max field changed:", this.value);
+      const value = parseInt(this.value);
+      if (value > 0) {
+        generateDynamicForm(value);
+      } else {
+        document.getElementById('subQuestionContainer').innerHTML = '<div style="color: red; margin-top: 10px;">Please enter a valid maximum question number</div>';
+      }
+    });
+    
+    // IMPORTANT: Auto-generate form if in edit mode
+    if (editing === 'true' && subjectedit && subjectedit.max) {
+      console.log("Auto-generating form for", subjectedit.max, "questions in edit mode");
+      // Make sure the max field shows the current value
+      maxField.value = subjectedit.max;
+      // Generate the dynamic form with existing data
+      generateDynamicForm(parseInt(subjectedit.max));
+    }
+  }
+});
+    // Form validation function
+  // Function to generate sub-questions with their own sub-parts option
+  function generateSubQuestions(questionNum, count, marksEach) {
+    const container = document.getElementById(`subQuestions_${questionNum}_container`);
+    container.innerHTML = '';
+    
+    if (isNaN(count) || count <= 0) {
+      container.innerHTML = '<div class="alert alert-danger">Please enter a valid count</div>';
+      return;
+    }
+    
+    // Create adaptive grid for sub-questions based on count
+    const grid = document.createElement('div');
+    let gridClass = 'row g-3';
+    
+    if (count <= 2) {
+      gridClass += ' row-cols-1';  // Single column for 1-2 items
+    } else if (count <= 4) {
+      gridClass += ' row-cols-1 row-cols-md-2';  // 1 column on mobile, 2 on medium
+    } else {
+      gridClass += ' row-cols-1 row-cols-sm-2 row-cols-lg-3';  // 1 on mobile, 2-3 on larger screens
+    }
+    
+    grid.className = gridClass;
+    
+    for (let i = 1; i <= count; i++) {
+      const letter = String.fromCharCode(96 + i); // a, b, c, etc.
+      
+      // Create card for each sub-question
+      const col = document.createElement('div');
+      col.className = 'col';
+      const chapterIndex = `${questionNum}${letter}`;
+      
+      const card = document.createElement('div');
+      card.className = 'card h-100';
+      
+      const cardHeader = document.createElement('div');
+      cardHeader.className = 'card-header bg-light';
+      cardHeader.innerHTML = `<strong>Q${questionNum}${letter}</strong>`;
+
+      const chapterSelect = createChapterSelect({
+        name: `q${questionNum}${letter}_chapter`,
+        chapters: availableChapters,
+        className: 'form-select mt-2',
+        value: (typeof editing !== 'undefined' && editing === 'true' && typeof subjectedit !== 'undefined' && subjectedit[`q${questionNum}${letter}_chapter`]) ? subjectedit[`q${questionNum}${letter}_chapter`] : (document.getElementById(`q${questionNum}_chapter`) ? document.getElementById(`q${questionNum}_chapter`).value : ''),
+        id: `q${questionNum}${letter}_chapter`
+
+      });
+      
+      
+      cardHeader.appendChild(chapterSelect);
+      
+      const cardBody = document.createElement('div');
+      cardBody.className = 'card-body';
+      
+      // Main marks input group
+      const marksGroup = document.createElement('div');
+      marksGroup.className = 'mb-3';
+      
+      const marksLabel = document.createElement('label');
+      marksLabel.className = 'form-label';
+      marksLabel.textContent = `Marks:`;
+      
+      const marksInput = document.createElement('input');
+      marksInput.type = 'number';
+      marksInput.className = 'form-control';
+      marksInput.name = `q${questionNum}${letter}`; // Changed to format q1a, q1b, etc.
+      marksInput.value = marksEach;
+      marksInput.required = true;
+      marksInput.min = '0';
+      marksInput.step = '0.5';
+      
+      marksGroup.appendChild(marksLabel);
+      marksGroup.appendChild(marksInput);
+      
+      // Has sub-parts checkbox
+      const checkGroup = document.createElement('div');
+      checkGroup.className = 'form-check mb-3';
+      
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'form-check-input';
+      checkbox.id = `hasSubParts_${questionNum}_${letter}`;
+      checkbox.name = `q${questionNum}${letter}_has_subparts`; // Changed to format q1a_has_subparts
+      
+      const checkLabel = document.createElement('label');
+      checkLabel.className = 'form-check-label';
+      checkLabel.htmlFor = `hasSubParts_${questionNum}_${letter}`;
+      checkLabel.textContent = 'Has sub-parts';
+      
+      checkGroup.appendChild(checkbox);
+      checkGroup.appendChild(checkLabel);
+      
+      // Create sub-parts container (initially hidden) - improved for responsiveness
+      const subPartsContainer = document.createElement('div');
+      subPartsContainer.className = 'sub-parts-container mt-3 p-3 rounded';
+      subPartsContainer.id = `subparts_${questionNum}${letter}_container`;
+      subPartsContainer.style.display = 'none';
+      subPartsContainer.style.borderLeft = '3px solid #0d6efd';
+      subPartsContainer.style.backgroundColor = 'rgba(13, 110, 253, 0.05)';
+      
+      // Title for the sub-parts section
+      const subPartsTitle = document.createElement('div');
+      subPartsTitle.className = 'fw-bold mb-3 text-primary';
+      subPartsTitle.textContent = `Sub-parts for Q${questionNum}${letter}`;
+      subPartsContainer.appendChild(subPartsTitle);
+      
+      // Create a row for inputs to be responsive
+      const inputRow = document.createElement('div');
+      inputRow.className = 'row g-3 mb-3';
+      
+      // Sub-parts count input - in left column
+      const subPartsCountCol = document.createElement('div');
+      subPartsCountCol.className = 'col-12 col-md-6';
+      
+      const subPartsCountGroup = document.createElement('div');
+      subPartsCountGroup.className = 'form-group';
+      
+      const subPartsCountLabel = document.createElement('label');
+      subPartsCountLabel.className = 'form-label';
+      subPartsCountLabel.htmlFor = `subparts_count_${questionNum}_${letter}`;
+      subPartsCountLabel.textContent = 'Number of sub-parts:';
+      
+      const subPartsCountInput = document.createElement('input');
+      subPartsCountInput.type = 'number';
+      subPartsCountInput.className = 'form-control';
+      subPartsCountInput.id = `subparts_count_${questionNum}_${letter}`;
+      subPartsCountInput.name = `q${questionNum}${letter}_subparts_count`; // Changed to format q1a_subparts_count
+      subPartsCountInput.min = '1';
+      subPartsCountInput.placeholder = 'Enter count';
+      
+      subPartsCountGroup.appendChild(subPartsCountLabel);
+      subPartsCountGroup.appendChild(subPartsCountInput);
+      subPartsCountCol.appendChild(subPartsCountGroup);
+      
+      // Marks per sub-part - in right column
+      const subPartsMarksCol = document.createElement('div');
+      subPartsMarksCol.className = 'col-12 col-md-6';
+      
+      const subPartsMarksGroup = document.createElement('div');
+      subPartsMarksGroup.className = 'form-group';
+      
+      const subPartsMarksLabel = document.createElement('label');
+      subPartsMarksLabel.className = 'form-label';
+      subPartsMarksLabel.htmlFor = `marks_per_subpart_${questionNum}_${letter}`;
+      subPartsMarksLabel.textContent = 'Marks per sub-part:';
+      
+      const subPartsMarksInput = document.createElement('input');
+      subPartsMarksInput.type = 'number';
+      subPartsMarksInput.className = 'form-control';
+      subPartsMarksInput.id = `marks_per_subpart_${questionNum}_${letter}`;
+      subPartsMarksInput.name = `q${questionNum}${letter}_marks_per_subpart`; // Changed to format q1a_marks_per_subpart
+      subPartsMarksInput.min = '0';
+      subPartsMarksInput.step = '0.5';
+      subPartsMarksInput.placeholder = 'Enter marks';
+      
+      subPartsMarksGroup.appendChild(subPartsMarksLabel);
+      subPartsMarksGroup.appendChild(subPartsMarksInput);
+      subPartsMarksCol.appendChild(subPartsMarksGroup);
+      
+      // Add columns to the row
+      inputRow.appendChild(subPartsCountCol);
+      inputRow.appendChild(subPartsMarksCol);
+      
+      // Container for generated sub-parts
+      const generatedSubPartsContainer = document.createElement('div');
+      generatedSubPartsContainer.id = `generated_subparts_${questionNum}${letter}`;
+      generatedSubPartsContainer.className = 'generated-subparts mt-3';
+      
+      // Assemble the container
+      subPartsContainer.appendChild(inputRow);
+      subPartsContainer.appendChild(generatedSubPartsContainer);
+      
+      // Toggle sub-parts visibility
+      checkbox.addEventListener('change', function() {
+        subPartsContainer.style.display = this.checked ? 'block' : 'none';
+        marksInput.disabled = this.checked;
+        
+        if (!this.checked) {
+          marksInput.value = marksEach;
+          subPartsCountInput.value = '';
+          subPartsMarksInput.value = '';
+          generatedSubPartsContainer.innerHTML = '';
+        }
+      });
+      
+      // Generate sub-parts when count changes
+      subPartsCountInput.addEventListener('change', function() {
+        const count = parseInt(this.value);
+        const marksPerSubPart = subPartsMarksInput.value || 0;
+        generateSubParts(questionNum, letter, count, marksPerSubPart);
+      });
+      
+      // Update sub-parts when marks change
+      subPartsMarksInput.addEventListener('change', function() {
+        const count = parseInt(subPartsCountInput.value);
+        if (count > 0) {
+          generateSubParts(questionNum, letter, count, this.value);
+        }
+      });
+      
+      // Assemble the card
+      cardBody.appendChild(marksGroup);
+      cardBody.appendChild(checkGroup);
+      cardBody.appendChild(subPartsContainer);
+      
+      card.appendChild(cardHeader);
+      card.appendChild(cardBody);
+      col.appendChild(card);
+      grid.appendChild(col);
+    }
+    
+    container.appendChild(grid);
+  }
+  
+  // Function to generate sub-parts for a sub-question
+  function generateSubParts(questionNum, letter, count, marksEach) {
+    // Helper function to convert numbers to Roman numerals
+    const toRoman = (num) => {
+      const romanNumerals = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii', 'xiii', 'xiv', 'xv', 'xvi', 'xvii', 'xviii', 'xix', 'xx'];
+      return romanNumerals[num - 1] || num; // Fallback to number if beyond 20
+    };
+    
+    const container = document.getElementById(`generated_subparts_${questionNum}${letter}`);
+    container.innerHTML = '';
+    
+    if (isNaN(count) || count <= 0) {
+      container.innerHTML = '<div class="alert alert-danger mt-2">Please enter a valid count</div>';
+      return;
+    }
+    
+    // Create a summary
+    const summary = document.createElement('div');
+    summary.className = 'subparts-summary mb-3 p-2 bg-light rounded shadow-sm';
+    
+    if (marksEach && !isNaN(parseFloat(marksEach))) {
+      const totalMarks = count * parseFloat(marksEach);
+      summary.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center">
+          <div><strong>Summary:</strong> ${count} sub-parts (i-${toRoman(count)})</div>
+          <div class="text-primary">${marksEach} marks × ${count} = <strong>${totalMarks}</strong> total marks</div>
+        </div>`;
+    } else {
+      summary.innerHTML = `<div class="text-center"><strong>Summary:</strong> ${count} sub-parts (i-${toRoman(count)})</div>`;
+    }
+    
+    container.appendChild(summary);
+    
+    // Create grid for sub-parts with responsive layout
+    const grid = document.createElement('div');
+    grid.className = 'row g-2';
+    
+    // Determine the appropriate column classes based on count for optimal layout on all devices
+    let columnClass;
+    if (count <= 3) {
+      columnClass = 'col-6 col-md-4';  // 2 per row on mobile, 3 per row on larger screens
+    } else if (count <= 6) {
+      columnClass = 'col-4 col-sm-3 col-md-2';  // 3 per row on mobile, 4-6 per row on larger screens
+    } else if (count <= 12) {
+      columnClass = 'col-3 col-sm-2';  // 4 per row on mobile, 6 per row on larger screens
+    } else {
+      columnClass = 'col-2';  // 6 per row on all screens for many items
+    }
+    
+    // Create a subparts wrapper with a scrollable container for many items
+    const subpartsWrapper = document.createElement('div');
+    subpartsWrapper.className = 'subparts-wrapper py-2';
+    if (count > 12) {
+      subpartsWrapper.style.maxHeight = '250px';
+      subpartsWrapper.style.overflowY = 'auto';
+      subpartsWrapper.style.paddingRight = '5px'; // Space for scrollbar
+    }
+    
+    for (let i = 1; i <= count; i++) {
+      const subPartDiv = document.createElement('div');
+      subPartDiv.className = columnClass + ' mb-2';
+      
+      // Create a card-like container for each sub-part
+      const subPartCard = document.createElement('div');
+      subPartCard.className = 'border rounded h-100 p-2 shadow-sm';
+      subPartCard.style.backgroundColor = '#ffffff';
+      
+      // Part number label using Roman numerals (i, ii, iii, etc.)
+      const partLabel = document.createElement('div');
+      partLabel.className = 'text-center small mb-2 fw-bold roman-numeral';
+      partLabel.style.color = '#0d6efd';
+      partLabel.textContent = toRoman(i);
+      
+      const inputGroup = document.createElement('div');
+      inputGroup.className = 'input-group input-group-sm';
+      inputGroup.style.boxShadow = '0 1px 3px rgba(0, 0, 0, 0.1)';
+      
+      const prefix = document.createElement('span');
+      prefix.className = 'input-group-text';
+      // Create a structure that separates the roman numeral with different styling
+      prefix.innerHTML = `Q${questionNum}${letter}.<span class="roman-numeral">${toRoman(i)}</span>`;
+      
+      const marksInput = document.createElement('input');
+      marksInput.type = 'number';
+      marksInput.className = 'form-control text-center';
+      marksInput.name = `q${questionNum}${letter}.${toRoman(i)}`; // Changed to format q1a.i, q1b.ii, etc.
+      marksInput.placeholder = 'Marks';
+      marksInput.value = marksEach || '';
+      marksInput.min = '0';
+      marksInput.step = '0.5';
+      marksInput.required = true;
+      
+      // Assemble the input group
+      inputGroup.appendChild(prefix);
+      inputGroup.appendChild(marksInput);
+      
+      // Add a label above the input group for clarity
+      const marksLabel = document.createElement('div');
+      marksLabel.className = 'text-center small mb-1';
+      marksLabel.textContent = 'Marks:';
+      
+      // Assemble the card
+      subPartCard.appendChild(partLabel);
+      subPartCard.appendChild(marksLabel);
+      subPartCard.appendChild(inputGroup);
+      
+      // Add the card to the grid item
+      subPartDiv.appendChild(subPartCard);
+      
+      // Add the grid item to the grid
+      grid.appendChild(subPartDiv);
+    }
+    
+    // Add grid to the scrollable wrapper if needed, otherwise directly to container
+    if (count > 12) {
+      subpartsWrapper.appendChild(grid);
+      container.appendChild(subpartsWrapper);
+    } else {
+      container.appendChild(grid);
+    }
+    
+    // Add a note for large numbers of sub-parts
+    if (count > 20) {
+      const note = document.createElement('div');
+      note.className = 'small text-muted mt-2 fst-italic';
+      note.textContent = 'Scroll to see all sub-parts';
+      container.appendChild(note);
+    }
+  }
+
+  function validateForm(event) {
+    const subjectField = document.getElementById('subject');
+    const maxField = document.getElementById('max');
+
+    // Basic validation
+    if (!subjectField.value.trim()) {
+      alert('Please enter a subject name');
+      event.preventDefault();
+      return false;
+    }
+
+    if (!maxField.value || parseInt(maxField.value) <= 0) {
+      alert('Please enter a valid number of maximum questions');
+      event.preventDefault();
+      return false;
+    }
+
+    // Check if all sub-question counts are valid
+    const max = parseInt(maxField.value);
+    for (let i = 1; i <= max; i++) {
+      const subQInput = document.getElementById(`subQuestion${i}`);
+      if (!subQInput || !subQInput.value || parseInt(subQInput.value) <= 0) {
+        alert(`Please enter a valid number of sub-questions for question ${i}`);
+        event.preventDefault();
+        return false;
+      }
+
+      // Check marks per sub-question
+      const markInput = document.getElementById(`markPerSubQ${i}`);
+      if (!markInput || !markInput.value || parseFloat(markInput.value) < 0) {
+        alert(`Please enter a valid mark value for question ${i}`);
+        markInput.focus();
+        event.preventDefault();
+        return false;
+      }
+      
+      // Get sub-question count
+      const subQCount = parseInt(subQInput.value);
+      
+      // Check each sub-question
+      for (let j = 1; j <= subQCount; j++) {
+        const letter = String.fromCharCode(96 + j); // a, b, c, etc.
+        const checkbox = document.getElementById(`hasSubParts_${i}_${letter}`);
+        
+        if (checkbox && checkbox.checked) {
+          // If this sub-question has sub-parts, validate them
+          const subPartsCountInput = document.querySelector(`input[name="q${i}${letter}_subparts_count"]`);
+          const subPartsMarksInput = document.querySelector(`input[name="q${i}${letter}_marks_per_subpart"]`);
+          
+          if (!subPartsCountInput || !subPartsCountInput.value || parseInt(subPartsCountInput.value) <= 0) {
+            alert(`Please enter a valid number of sub-parts for question ${i}${letter}`);
+            subPartsCountInput.focus();
+            event.preventDefault();
+            return false;
+          }
+          
+          if (!subPartsMarksInput || !subPartsMarksInput.value || parseFloat(subPartsMarksInput.value) < 0) {
+            alert(`Please enter valid marks per sub-part for question ${i}${letter}`);
+            subPartsMarksInput.focus();
+            event.preventDefault();
+            return false;
+          }
+        } else {
+          // If no sub-parts, validate the marks for the sub-question
+          const marksInput = document.querySelector(`input[name="q${i}${letter}"]`);
+          if (!marksInput || !marksInput.value || parseFloat(marksInput.value) < 0) {
+            alert(`Please enter valid marks for question ${i}${letter}`);
+            marksInput.focus();
+            event.preventDefault();
+            return false;
+          }
+        }
+      }
+    }
+
+    // If we're in edit mode but no file is selected, make sure we have the current file
+    if (editing === 'true') {
+      const fileInput = document.getElementById('questionPaper');
+      if (fileInput.files.length === 0) {
+        const currentFileInput = document.querySelector('input[name="currentQuestionPaper"]');
+        if (!currentFileInput || !currentFileInput.value) {
+          // If we don't have a current file and no new file is selected, alert the user
+          if (!confirm('No question paper selected. Continue without a question paper?')) {
+            event.preventDefault();
+            return false;
+          }
+        }
+      }
+    }
+
+    return true;
+  }
+ // In the generateDynamicForm function, update the section that handles edit mode data:
+// Update the generateDynamicForm function to properly handle edit mode:
+function createChapterSelect({ 
+  name = "", 
+  className = "form-select mb-3", 
+  chapters = [], 
+  defaultText = "Select Chapter",
+  value = "",
+  id = "",
+  required = true
+} = {}) {
+
+  const select = document.createElement("select");
+  select.name = name;
+  select.className = className;
+  select.id = id;
+  select.required = required;
+ 
+  const defaultOption = document.createElement("option");
+  defaultOption.value = "";
+  defaultOption.textContent = defaultText;
+  defaultOption.disabled = true;
+  defaultOption.selected = true;
+  select.appendChild(defaultOption);
+
+  chapters.forEach(chapter => {
+    const option = document.createElement("option");
+    option.value = typeof chapter === "string" ? chapter : chapter.id;
+    option.textContent = typeof chapter === "string" ? chapter : chapter.name;
+    select.appendChild(option);
+  });
+  if(value)
+  {
+
+  
+ select.value = value;
+  }
+
+  return select; // 🔥 reusable
+}
+function generateDynamicForm(number) {
+    const subContainer = document.getElementById("subQuestionContainer");
+    subContainer.innerHTML = "";
+
+    if (isNaN(number) || number <= 0) {
+      subContainer.innerHTML = '<div style="color: red; margin-top: 10px;">Please enter a valid maximum question number</div>';
+      return;
+    }
+
+    console.log("Generating input fields for", number, "questions");
+    console.log("Edit mode:", editing);
+    if (editing === 'true') {
+      console.log("Subject edit data:", subjectedit);
+    }
+
+    for (let i = 1; i <= number; i++) {
+      // Create question container for better organization
+      const questionContainer = document.createElement("div");
+      questionContainer.className = "question-container";
+      questionContainer.id = `question_${i}_container`;
+
+      // Question number heading for better clarity
+      const qHeading = document.createElement("h4");
+      qHeading.textContent = `Question ${i}`;
+      qHeading.className = "question-heading";
+      qHeading.style.marginTop = "20px";
+      qHeading.style.marginBottom = "10px";
+      qHeading.style.color = "#0d6efd";
+      qHeading.style.borderBottom = "1px solid #dee2e6";
+      qHeading.style.paddingBottom = "5px";
+      questionContainer.appendChild(qHeading);
+      //select chapter
+     const chapterSelect = createChapterSelect({
+  name: `q${i}_chapter`,
+  chapters: availableChapters,
+  id: `q${i}_chapter`,
+  value: (typeof editing !== 'undefined' && editing === 'true' && typeof subjectedit !== 'undefined' && subjectedit[`q${i}_chapter`]) ? subjectedit[`q${i}_chapter`] : ""
+});
+
+
+questionContainer.appendChild(chapterSelect);
+
+      // Create a responsive row for the main inputs using Bootstrap grid
+      const inputRow = document.createElement("div");
+      inputRow.className = "row g-3 mb-3";
+
+
+      // First column - sub-question count
+      const countColumn = document.createElement("div");
+      countColumn.className = "col-12 col-sm-6";
+
+      const countFormGroup = document.createElement("div");
+      countFormGroup.className = "form-group";
+
+      const countLabel = document.createElement("label");
+      countLabel.textContent = `Total Sub-Questions in Q${i}:`;
+      countLabel.className = "form-label";
+      countLabel.setAttribute("for", `subQuestion${i}`);
+      countFormGroup.appendChild(countLabel);
+
+      const input = document.createElement("input");
+      input.type = "number";
+      input.name = `q${i}_subcount`;
+      input.id = `subQuestion${i}`;
+      input.required = true;
+      input.placeholder = `Number of sub-questions`;
+      input.className = "form-control sub-input";
+      input.min = "1";
+      input.dataset.questionNumber = i;
+      
+      countFormGroup.appendChild(input);
+      countColumn.appendChild(countFormGroup);
+
+      // Second column - mark per sub-question
+      const markColumn = document.createElement("div");
+      markColumn.className = "col-12 col-sm-6";
+
+      const markFormGroup = document.createElement("div");
+      markFormGroup.className = "form-group";
+
+      const markLabel = document.createElement("label");
+      markLabel.textContent = `Marks per sub-question:`;
+      markLabel.className = "form-label";
+      markLabel.setAttribute("for", `markPerSubQ${i}`);
+      markFormGroup.appendChild(markLabel);
+
+      const markInput = document.createElement("input");
+      markInput.type = "number";
+      markInput.name = `q${i}_marks_per_sub`;
+      markInput.id = `markPerSubQ${i}`;
+      markInput.placeholder = "Marks per sub-question";
+      markInput.className = "form-control mark-per-sub-input";
+      markInput.min = "0";
+      markInput.step = "0.5";
+      
+      markFormGroup.appendChild(markInput);
+      markColumn.appendChild(markFormGroup);
+
+      // Add columns to the row
+      inputRow.appendChild(countColumn);
+      inputRow.appendChild(markColumn);
+      questionContainer.appendChild(inputRow);
+      
+      // Container for sub-questions display
+      const subQuestionsContainer = document.createElement("div");
+      subQuestionsContainer.id = `subQuestions_${i}_container`;
+      subQuestionsContainer.className = "sub-questions-container mt-3";
+      questionContainer.appendChild(subQuestionsContainer);
+      
+      // Add event listeners to generate sub-questions
+      input.addEventListener('input', function() {
+        generateSubQuestions(i, this.value, markInput.value);
+      });
+      
+      markInput.addEventListener('input', function() {
+        if (input.value > 0) {
+          generateSubQuestions(i, input.value, this.value);
+        }
+      });
+
+      // SET EXISTING VALUES IN EDIT MODE - AFTER CREATING THE ELEMENTS
+      if (editing === 'true' && typeof subjectedit !== 'undefined') {
+        console.log(`Checking edit data for Q${i}:`);
+        console.log(`q${i}_subcount:`, subjectedit[`q${i}_subcount`]);
+        console.log(`q${i}_marks_per_sub:`, subjectedit[`q${i}_marks_per_sub`]);
+        
+        // Set sub-question count if it exists
+        if (subjectedit[`q${i}_subcount`]) {
+          input.value = subjectedit[`q${i}_subcount`];
+          console.log(`Set subQuestion${i} to:`, subjectedit[`q${i}_subcount`]);
+        }
+        
+        // Set marks per sub-question if it exists
+        if (subjectedit[`q${i}_marks_per_sub`]) {
+          markInput.value = subjectedit[`q${i}_marks_per_sub`];
+          console.log(`Set markPerSubQ${i} to:`, subjectedit[`q${i}_marks_per_sub`]);
+        }
+        
+        // Generate sub-questions if both values exist
+        if (input.value && markInput.value) {
+          console.log(`Generating sub-questions for Q${i} with count: ${input.value}, marks: ${markInput.value}`);
+          // Use setTimeout to ensure the elements are fully rendered
+          setTimeout(() => {
+            generateSubQuestions(i, input.value, markInput.value);
+            // Populate additional sub-question data after generation
+            populateSubQuestionEditData(i, input.value);
+          }, 100);
+        }
+      }
+
+      subContainer.appendChild(questionContainer);
+    }
+}
+
+// Add this new function to populate edit data for sub-questions
+function populateSubQuestionEditData(questionNum, subCount) {
+  if (editing !== 'true' || !subjectedit) return;
+  
+  console.log(`Populating sub-question edit data for Q${questionNum}`);
+  
+  for (let j = 1; j <= subCount; j++) {
+    const letter = String.fromCharCode(96 + j); // a, b, c, etc.
+    const subQuestionKey = `q${questionNum}${letter}`;
+    
+    // Set the main marks for the sub-question
+    setTimeout(() => {
+      const marksInput = document.querySelector(`input[name="${subQuestionKey}"]`);
+      if (marksInput && subjectedit[subQuestionKey]) {
+        marksInput.value = subjectedit[subQuestionKey];
+        console.log(`Set ${subQuestionKey} marks to:`, subjectedit[subQuestionKey]);
+      }
+      
+      // Check if this sub-question has sub-parts
+      const hasSubPartsKey = `${subQuestionKey}_has_subparts`;
+      const subPartsCountKey = `${subQuestionKey}_subparts_count`;
+      const subPartsMarksKey = `${subQuestionKey}_marks_per_subpart`;
+      
+      if (subjectedit[hasSubPartsKey]) {
+        console.log(`Found sub-parts for ${subQuestionKey}`);
+        
+        // Check the "has sub-parts" checkbox
+        const checkbox = document.getElementById(`hasSubParts_${questionNum}_${letter}`);
+        if (checkbox) {
+          checkbox.checked = true;
+          checkbox.dispatchEvent(new Event('change'));
+          
+          // Set sub-parts count and marks
+          setTimeout(() => {
+            const subPartsCountInput = document.querySelector(`input[name="${subPartsCountKey}"]`);
+            const subPartsMarksInput = document.querySelector(`input[name="${subPartsMarksKey}"]`);
+            
+            if (subPartsCountInput && subjectedit[subPartsCountKey]) {
+              subPartsCountInput.value = subjectedit[subPartsCountKey];
+              console.log(`Set ${subPartsCountKey} to:`, subjectedit[subPartsCountKey]);
+            }
+            
+            if (subPartsMarksInput && subjectedit[subPartsMarksKey]) {
+              subPartsMarksInput.value = subjectedit[subPartsMarksKey];
+              console.log(`Set ${subPartsMarksKey} to:`, subjectedit[subPartsMarksKey]);
+              
+              // Generate sub-parts
+              if (subPartsCountInput && subPartsCountInput.value) {
+                subPartsCountInput.dispatchEvent(new Event('change'));
+                
+                // Populate individual sub-part marks
+                setTimeout(() => {
+                  populateSubPartEditMarks(questionNum, letter, parseInt(subPartsCountInput.value));
+                }, 200);
+              }
+            }
+          }, 150);
+        }
+      }
+    }, 150);
+  }
+}
+
+// Add this function to populate individual sub-part marks
+function populateSubPartEditMarks(questionNum, letter, subPartsCount) {
+  if (editing !== 'true' || !subjectedit) return;
+  
+  console.log(`Populating sub-part marks for Q${questionNum}${letter}`);
+  
+  const toRoman = (num) => {
+    const romanNumerals = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii', 'xiii', 'xiv', 'xv', 'xvi', 'xvii', 'xviii', 'xix', 'xx'];
+    return romanNumerals[num - 1] || num;
+  };
+  
+  for (let k = 1; k <= subPartsCount; k++) {
+    const romanNumeral = toRoman(k);
+    const subPartKey = `q${questionNum}${letter}_${romanNumeral}`;
+    
+    setTimeout(() => {
+      const subPartInput = document.querySelector(`input[name="q${questionNum}${letter}.${romanNumeral}"]`);
+      
+      if (subPartInput && subjectedit[subPartKey]) {
+        subPartInput.value = subjectedit[subPartKey];
+        console.log(`Set ${subPartKey} marks to:`, subjectedit[subPartKey]);
+      }
+    }, 100);
+  }
+}
+</script>
+
+<form action="<%= editing ? `/admin/subjectadd/${subId}` : '/admin/subjectadd' %>" method="post" class="subject-form" enctype="multipart/form-data">
+  <div class="ios-select-container">
+    <div class="ios-select-group">
+      <label for="subject">Subject Format</label>
+      <select name="subject" id="subject" class="ios-select" required>
+        <option value="" disabled selected>--Select a subject--</option>
+        <% uniqueSubjects = new Set(newsubjectList.map(item => item.newsubject)); %>
+        <% uniqueSubjects.forEach(function(subject) { %>
+          <option value="<%= subject %>" <%= editing && subjectedit.subject === subject ? 'selected' : '' %>>
+            <%= subject %>
+          </option>
+        <% }); %>
+      </select>
+      <span class="select-arrow">⌄</span>
+    </div>
+
+    <div class="ios-select-group">
+      <label for="studentclass">Class</label>
+      <select name="forClass" id="studentclass" class="ios-select" required>
+        <option value="" selected disabled>Choose For Class</option>
+        <%
+          const uniqueClass = new Set(studentClassdata.map(item => item.studentClass));
+        %>
+        <% for (const uniqsub of uniqueClass) { %>
+          
+          <option value="<%= uniqsub %>" <%= editing && subjectedit.forClass === uniqsub ? 'selected' : '' %>>
+            <%= uniqsub %>
+          </option>
+        <% } %>
+      </select>
+      <span class="select-arrow">⌄</span>
+    </div>
+ 
+ <div class="ios-select-group">
+      <label for="forTerminal">Terminal</label>
+      <select name="forTerminal" required id="forTerminal" class="ios-select">
+        <option value="" selected disabled>Choose Terminal</option>
+       
+       <% terminals.forEach(function(terminal) { %>
+          <option value="<%= terminal.terminal %>" <%= editing && subjectedit.forTerminal === terminal.terminal ? 'selected' : '' %>>
+            <%= terminal.terminal %>
+          </option>
+        <% }) %>
+      </select>
+      <span class="select-arrow">⌄</span>
+    </div>
+     </div>
+  
+
+<div class="ios-select-container">
+    <div class="ios-select-group">
+      <label for="questionPaper">Question Paper</label>
+      <div class="file-input-wrapper">
+        <input type="file" name="questionPaperOfClass" id="questionPaper" class="form-control"
+             accept=".pdf, .doc, .docx, .txt"
+             title="Upload Question Paper">
+        <% if (editing && subjectedit.questionPaperOfClass) { %>
+          <div class="mt-2">
+            <div class="alert alert-info py-2 mb-0">
+              <i class="fas fa-info-circle me-2"></i>
+              <strong>Current:</strong> <%= subjectedit.questionPaperOfClass %>
+              <% if (subjectedit.questionPaperOfClass !== 'default.pdf') { %>
+                <a href="/file-viewer/<%= subjectedit.questionPaperOfClass %>" target="_blank" class="btn btn-sm btn-outline-primary ms-2">
+                  <i class="fas fa-eye"></i> View
+                </a>
+              <% } %>
+            </div>
+            <input type="hidden" name="currentQuestionPaper" value="<%= subjectedit.questionPaperOfClass %>">
+          </div>
+        <% } else { %>
+          <small class="text-muted d-block mt-1">Supported: PDF, DOC, DOCX, TXT</small>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="ios-select-group">
+      <label>Copy Format From Class</label>
+      <div class="d-flex gap-3 align-items-start">
+        <select name="sameas" id="sameas" class="ios-select">
+          <option value="" disabled selected>--Copy format of another class--</option>
+          <% for (const uniqsub of uniqueClass) { %>
+            <option value="<%= uniqsub %>"><%= uniqsub %></option>
+          <% } %>
+        </select>
+        <span class="select-arrow">⌄</span>
+      </div>
+    </div>
+    <div class="ios-select-group">
+      <label>Copy Format From Another Terminal</label>
+      <div class="d-flex gap-3 align-items-start">
+        <select id="copyFromTerminalSelect" class="ios-select">
+          <option value="" disabled selected>--Select Terminal--</option>
+          <% terminals.forEach(function(terminal) { %>
+            <option value="<%= terminal.terminal %>">
+              <%= terminal.terminal %>
+            </option>
+          <% }) %>
+        </select>
+        <button type="button" class="btn btn-primary" onclick="copyFromTerminal()">Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label for="max">Maximum Questions</label>
+    <input type="number" id="max" name="max" required
+           value="<%= editing ? subjectedit.max : '' %>" 
+           placeholder="Enter Maximum Question Number"
+           class="form-control ios-input" min="1">
+  </div>
+
+  <style>
+    .file-input-wrapper {
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(210, 210, 215, 0.8);
+      border-radius: 12px;
+      padding: 12px;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .file-input-wrapper:hover {
+      border-color: rgba(0, 102, 204, 0.5);
+      background: rgba(255, 255, 255, 0.95);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .file-input-wrapper input[type="file"] {
+      border: none;
+      padding: 0;
+      margin-bottom: 0;
+    }
+
+    .ios-input {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 16px;
+      color: #1d1d1f;
+      background-color: rgba(255, 255, 255, 0.9);
+      border: 1px solid #d2d2d7;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+    }
+
+    .ios-input:hover {
+      border-color: #0066cc;
+      background-color: rgba(255, 255, 255, 1);
+    }
+
+    .ios-input:focus {
+      outline: none;
+      border-color: #0066cc;
+      box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.1);
+    }
+
+    .alert {
+      margin: 0;
+      border-radius: 8px;
+    }
+
+    .gap-3 {
+      gap: 1rem;
+    }
+    
+    /* Question form styling - Improved for responsiveness */
+    .question-container {
+      background-color: #ffffff;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+      border: 1px solid #e9ecef;
+      transition: all 0.3s ease;
+    }
+    
+    .question-container:hover {
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      transform: translateY(-2px);
+    }
+    
+    .question-heading {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #0d6efd;
+      border-bottom: 1px solid #dee2e6;
+      padding-bottom: 8px;
+      margin-bottom: 15px;
+    }
+    
+    /* Responsive card layout */
+    .card {
+      transition: all 0.2s ease;
+      border: 1px solid #e9ecef;
+      overflow: hidden;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .card:hover {
+      border-color: #0d6efd;
+      box-shadow: 0 4px 6px rgba(13, 110, 253, 0.1);
+      transform: translateY(-2px);
+    }
+    
+    .card-header {
+      background-color: #f8f9fa;
+      border-bottom: 1px solid #e9ecef;
+      font-weight: 600;
+    }
+    
+    .card-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .sub-questions-container {
+      margin-top: 15px;
+    }
+    
+    /* Improved sub-parts container */
+    .sub-parts-container {
+      background-color: #f8f9fa;
+      border-radius: 4px;
+      padding: 10px;
+      margin-top: 10px;
+      border-left: 3px solid #0d6efd;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      width: 100%;
+    }
+    
+    .subparts-summary {
+      background-color: rgba(13, 110, 253, 0.1);
+      border-left: 3px solid #0d6efd;
+      padding: 8px;
+      border-radius: 4px;
+      margin-bottom: 10px;
+      font-size: 0.9rem;
+    }
+    
+    .form-check-input:checked ~ .form-check-label {
+      color: #0d6efd;
+      font-weight: 500;
+    }
+    
+    /* Animated transitions */
+    .sub-parts-container {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.5s ease-out, opacity 0.5s ease, padding 0.3s ease;
+      opacity: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+    
+    .sub-parts-container[style*="display: block"] {
+      max-height: 800px; /* Increased for more content */
+      opacity: 1;
+      padding: 15px;
+    }
+    
+    /* Improved grid layout for sub-questions */
+    .row-cols-1.row-cols-md-2.row-cols-lg-3.g-3 {
+      margin-left: -8px;
+      margin-right: -8px;
+      width: 100%;
+    }
+    
+    .row-cols-1.row-cols-md-2.row-cols-lg-3.g-3 > .col {
+      padding: 8px;
+      margin-bottom: 8px;
+    }
+    
+    /* Style for the sub-parts inputs */
+    .input-group-text {
+      background-color: #0d6efd;
+      color: white;
+      font-weight: 600;
+      border-color: #0d6efd;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    /* Roman numeral styling */
+    .roman-numeral {
+      font-style: italic;
+      font-weight: 700;
+      margin-left: 2px;
+      font-family: 'Times New Roman', serif;
+    }
+    
+    /* Responsive inputs */
+    .input-group {
+      width: 100%;
+    }
+    
+    .input-group .form-control {
+      width: 100%;
+      min-width: 60px;
+    }
+    
+    /* Better animations */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .card {
+      animation: fadeIn 0.3s ease-out forwards;
+    }
+    
+    /* Mobile-specific adjustments */
+    @media (max-width: 576px) {
+      .question-container {
+        padding: 10px;
+      }
+      
+      .row-cols-1.row-cols-md-2.row-cols-lg-3.g-3 > .col {
+        padding: 4px;
+      }
+      
+      .card {
+        margin-bottom: 8px;
+      }
+      
+      .card-header {
+        padding: 8px;
+      }
+      
+      .card-body {
+        padding: 10px;
+      }
+      
+      .subparts-summary {
+        font-size: 0.8rem;
+        padding: 6px;
+      }
+      
+      .input-group-text {
+        font-size: 0.8rem;
+        padding: 4px 8px;
+      }
+    }
+  </style>
+
+  <div id="subQuestionContainer"></div>
+
+  <button type="submit" id="subjectadd" class="addbutton">
+    <i class="fa-solid fa-<%= editing ? 'pen' : 'plus' %>"></i>
+    <%= editing ? "Update Subject" : "Save Format" %>
+  </button>
+</form>
+<center><a href="/"><button class="btn" style="background-color: green;color: white;"   ><i class="fa-solid fa-arrow-left" style="color: #ffffff;"></i>&ensp;Go to Data Entry</button></a></center>
+
+<script>
+// Function to fetch and autofill data from another class
+async function autofillFromClass(classNameParam, terminalParam) {
+  try {
+    // Make sure we have a valid class name
+    const className = classNameParam;
+    console.log("autofillFromClass called with className:", className, "terminal:", terminalParam);
+
+    if (!className) {
+      alert('Please select a valid class');
+      return;
+    }
+
+    const subjectName = document.getElementById('subject').value;
+
+    if (!subjectName) {
+      alert('Please enter a subject name first');
+      return;
+    }
+
+    // Determine which terminal to query
+    // If terminalParam is passed, use it (Cross-Terminal Copy)
+    // Else use the current form's terminal (Cross-Class Copy, assuming same terminal context or default)
+    let terminalToQuery = terminalParam;
+    if (!terminalToQuery) {
+        terminalToQuery = document.querySelector('select[name="forTerminal"]').value;
+    }
+
+    console.log("Fetching data for Class:", className, "Subject:", subjectName, "Terminal:", terminalToQuery);
+
+    // Construct the URL with the parameters
+    const url = `/admin/get_subject_data?className=${encodeURIComponent(className)}&subjectName=${encodeURIComponent(subjectName)}&forTerminal=${encodeURIComponent(terminalToQuery)}`;
+    console.log("Fetch URL:", url);
+
+    // Fetch subject data from the server
+    const res = await fetch(url);
+
+    if (!res.ok) {
+      if (res.status === 404) {
+          // Attempt to be more specific with error message
+          const errData = await res.json().catch(e => ({}));
+          const msg = errData.message || `No data found for ${subjectName} in Class ${className} for Terminal ${terminalToQuery || "Any"}`;
+          alert(msg);
+          return;
+      }
+      console.error("Fetch error:", res.status, res.statusText);
+      throw new Error(`HTTP error! status: ${res.status}`);
+    }
+
+    const data = await res.json();
+    console.log("Received data:", data);
+
+    if (!data) {
+      alert(`No data found for ${subjectName} in Class ${className}`);
+      return;
+    }
+
+    // Since we handle 404 separately, getting here means we have data.
+    // The previous check (!data || !data.max) might be too strict if data exists but max is 0 or string "0"?
+    // But let's keep it robust. If data.max is missing, form generation will fail anyway.
+
+    const confirmMsg = `Found format for ${data.subject} \nClass: ${data.forClass} \nTerminal: ${data.forTerminal} \n\nOverwrite current form?`;
+
+    if (confirm(confirmMsg)) {
+         // Update the max questions field
+        let maxInput = document.querySelector('#max');
+        maxInput.value = parseInt(data.max);
+
+        // Generate the dynamic form with the new max value
+        generateDynamicForm(parseInt(data.max));
+        
+        // Wait for form generation, then populate with the received data
+        setTimeout(() => {
+        // Populate each question's data
+        for (let i = 1; i <= data.max; i++) {
+            const subCountKey = `q${i}_subcount`;
+            const marksPerSubKey = `q${i}_marks_per_sub`;
+            const chapterKey = `q${i}_chapter`;
+
+            // Set Main Chapter if available
+            if (data[chapterKey]) {
+            const chapSelect = document.getElementById(chapterKey);
+            if (chapSelect) {
+                chapSelect.value = data[chapterKey];
+            }
+            }
+            
+            if (data[subCountKey] && data[marksPerSubKey]) {
+            // Set sub-question count
+            const subQInput = document.getElementById(`subQuestion${i}`);
+            if (subQInput) {
+                subQInput.value = data[subCountKey];
+            }
+            
+            // Set marks per sub-question
+            const markInput = document.getElementById(`markPerSubQ${i}`);
+            if (markInput) {
+                markInput.value = data[marksPerSubKey];
+            }
+            
+            // Generate sub-questions for this question
+            generateSubQuestions(i, data[subCountKey], data[marksPerSubKey]);
+            
+            // Populate individual sub-question marks and sub-parts
+            setTimeout(() => {
+                populateSubQuestionData(i, data, data[subCountKey]);
+            }, 200);
+            }
+        }
+        }, 100);
+
+        console.log("Autofill complete");
+    }
+
+  } catch (err) {
+    console.error("Error occurred during autofill:", err);
+    alert(`Error getting data: ${err.message}`);
+  }
+}
+
+function copyFromTerminal() {
+    const selectedTerminal = document.getElementById('copyFromTerminalSelect').value;
+    const currentClass = document.getElementById('studentclass').value;
+    
+    if (!currentClass) {
+        alert("Please select a Class first.");
+        return;
+    }
+    if (!selectedTerminal) {
+        alert("Please select a Terminal to copy from.");
+        return;
+    }
+    
+    // Copy for: Current Class, from Selected Terminal
+    autofillFromClass(currentClass, selectedTerminal);
+}
+
+// Function to check if subject already exists
+async function checkSubjectExistence() {
+  // Only check if we are NOT in editing mode
+  if (editing === 'true') return;
+
+  const subjectName = document.getElementById('subject').value;
+  const className = document.querySelector('select[name="forClass"]').value;
+  const terminalVal = document.querySelector('select[name="forTerminal"]').value;
+
+  console.log("Checking existence for:", { subjectName, className, terminalVal });
+
+  if (subjectName && className && terminalVal) {
+     try {
+       const url = `/admin/get_subject_data?className=${encodeURIComponent(className)}&subjectName=${encodeURIComponent(subjectName)}&forTerminal=${encodeURIComponent(terminalVal)}`;
+       const res = await fetch(url);
+       
+       if (res.ok) {
+          // If we get a 200 OK, it means the subject exists
+          const data = await res.json();
+          // Double check we got actual data
+          if (data && data._id) {
+             alert(`Subject '${subjectName}' for Class '${className}' in '${terminalVal}' already exists!\n\nYou cannot create a duplicate. Redirecting to Subject List.`);
+             window.location.href = '/admin/subject';
+          }
+       }
+     } catch (err) {
+       console.error("Error checking subject existence:", err);
+     }
+  }
+}
+
+// Attach listeners to trigger existence check
+document.addEventListener("DOMContentLoaded", () => {
+    const subjectSelect = document.getElementById('subject');
+    const classSelect = document.querySelector('select[name="forClass"]');
+    const terminalSelect = document.querySelector('select[name="forTerminal"]');
+
+    if (subjectSelect) subjectSelect.addEventListener('change', checkSubjectExistence);
+    if (classSelect) classSelect.addEventListener('change', checkSubjectExistence);
+    if (terminalSelect) terminalSelect.addEventListener('change', checkSubjectExistence);
+});
+
+// Helper function to populate individual sub-question data
+function populateSubQuestionData(questionNum, data, subCount) {
+  for (let j = 1; j <= subCount; j++) {
+    const letter = String.fromCharCode(96 + j); // a, b, c, etc.
+    const subQuestionKey = `q${questionNum}${letter}`;
+    
+    // Set Chapter for sub-question if available
+    const subQChapterKey = `q${questionNum}${letter}_chapter`;
+    if (data[subQChapterKey]) {
+        const subChapSelect = document.getElementById(subQChapterKey);
+        if (subChapSelect) {
+             subChapSelect.value = data[subQChapterKey];
+        }
+    }
+
+    // Set the main marks for the sub-question
+    const marksInput = document.querySelector(`input[name="${subQuestionKey}"]`);
+    if (marksInput && data[subQuestionKey]) {
+      marksInput.value = data[subQuestionKey];
+    }
+    
+    // Check if this sub-question has sub-parts
+    const hasSubPartsKey = `${subQuestionKey}_has_subparts`;
+    const subPartsCountKey = `${subQuestionKey}_subparts_count`;
+    const subPartsMarksKey = `${subQuestionKey}_marks_per_subpart`;
+    
+    if (data[hasSubPartsKey]) {
+      // Check the "has sub-parts" checkbox
+      const checkbox = document.getElementById(`hasSubParts_${questionNum}_${letter}`);
+      if (checkbox) {
+        checkbox.checked = true;
+        checkbox.dispatchEvent(new Event('change'));
+        
+        // Set sub-parts count and marks
+        setTimeout(() => {
+          const subPartsCountInput = document.querySelector(`input[name="${subPartsCountKey}"]`);
+          const subPartsMarksInput = document.querySelector(`input[name="${subPartsMarksKey}"]`);
+          
+          if (subPartsCountInput && data[subPartsCountKey]) {
+            subPartsCountInput.value = data[subPartsCountKey];
+          }
+          
+          if (subPartsMarksInput && data[subPartsMarksKey]) {
+            subPartsMarksInput.value = data[subPartsMarksKey];
+            
+            // Generate sub-parts
+            if (subPartsCountInput && subPartsCountInput.value) {
+              subPartsCountInput.dispatchEvent(new Event('change'));
+              
+              // Populate individual sub-part marks
+              setTimeout(() => {
+                populateSubPartMarks(questionNum, letter, parseInt(subPartsCountInput.value), data);
+              }, 200);
+            }
+          }
+        }, 150);
+      }
+    }
+  }
+}
+
+// Helper function to populate sub-part marks
+function populateSubPartMarks(questionNum, letter, subPartsCount, data) {
+  const toRoman = (num) => {
+    const romanNumerals = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x', 'xi', 'xii', 'xiii', 'xiv', 'xv', 'xvi', 'xvii', 'xviii', 'xix', 'xx'];
+    return romanNumerals[num - 1] || num;
+  };
+  
+  for (let k = 1; k <= subPartsCount; k++) {
+    const romanNumeral = toRoman(k);
+    const subPartKey = `q${questionNum}${letter}_${romanNumeral}`;
+    
+    const subPartInput = document.querySelector(`input[name="q${questionNum}${letter}.${romanNumeral}"]`);
+    if (subPartInput && data[subPartKey]) {
+      subPartInput.value = data[subPartKey];
+    }
+  }
+}
+
+// Add event listener to the "Same as" dropdown
+// This will trigger the autofill function when a class is selected
+document.getElementById('sameas').addEventListener('change', function() {
+  const selectedClass = this.value; // Get the string value directly
+  console.log("Selected class from dropdown:", selectedClass);
+
+  if (selectedClass && selectedClass !== '') {
+    // Call the autofill function with the selected class value
+    autofillFromClass(selectedClass);
+  } else {
+    console.warn("No class selected");
+  }
+});
+
+// Add file selection feedback for editing mode
+if (editing === true) {
+  const fileInput = document.getElementById('questionPaper');
+  const currentFileAlert = document.querySelector('.alert-info');
+
+  fileInput.addEventListener('change', function() {
+    if (this.files.length > 0) {
+      const fileName = this.files[0].name;
+
+      // Update the alert to show new file selection
+      if (currentFileAlert) {
+        currentFileAlert.innerHTML = `
+          <i class="fas fa-upload me-2"></i>
+          <strong>New file selected:</strong> ${fileName}
+          <br>
+          <small class="text-muted">This will replace the current question paper when you save.</small>
+        `;
+        currentFileAlert.className = 'alert alert-warning py-2';
+      }
+    } else {
+      // Reset to original state if no file selected
+      if (currentFileAlert && typeof subjectedit !== 'undefined' && subjectedit.questionPaperOfClass) {
+        currentFileAlert.innerHTML = `
+          <i class="fas fa-info-circle me-2"></i>
+          <strong>Current file:</strong> ${subjectedit.questionPaperOfClass}
+          ${subjectedit.questionPaperOfClass !== 'default.pdf' ? `<a href="/file-viewer/${subjectedit.questionPaperOfClass}" target="_blank" class="btn btn-sm btn-outline-primary ms-2"><i class="fas fa-eye"></i> View File</a>` : ''}
+          <br>
+          <small class="text-muted">Select a new file above to replace the current question paper, or leave empty to keep the existing file.</small>
+        `;
+        currentFileAlert.className = 'alert alert-info py-2';
+      }
+    }
+  });
+}
+
+  </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<style>
+  /* Enhanced Table Styles */
+  .table-responsive {
+    overflow-x: auto;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    position: relative;
+  }
+
+  .table-responsive::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  .table-responsive::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+
+  .table-responsive::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+  }
+
+  .table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #666;
+  }
+
+  /* Ensure the table wrapper maintains position context */
+  .table-container {
+    position: relative;
+    margin-bottom: 2rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .table {
+    margin: 0;
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .table thead {
+    background: #f8f9fa;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+
+  .table th {
+    padding: 1rem;
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    white-space: nowrap;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .table td {
+    padding: 1rem;
+    border: 1px solid #dee2e6;
+    vertical-align: middle;
+    min-width: 150px; /* Minimum width for all cells */
+    max-width: 300px; /* Maximum width for all cells */
+    white-space: normal;
+    word-wrap: break-word;
+  }
+
+  /* Specific column widths */
+  .table td:first-child,
+  .table th:first-child {
+    width: 100px;
+    min-width: 100px;
+  }
+
+  .table td:nth-child(2),
+  .table th:nth-child(2),
+  .table td:nth-child(3),
+  .table th:nth-child(3) {
+    width: 150px;
+    min-width: 150px;
+  }
+
+  .table td:last-child,
+  .table th:last-child {
+    width: 120px;
+    min-width: 120px;
+  }
+
+  /* Question number columns */
+  .table td:not(:first-child):not(:nth-child(2)):not(:nth-child(3)):not(:last-child),
+  .table th:not(:first-child):not(:nth-child(2)):not(:nth-child(3)):not(:last-child) {
+    min-width: 200px;
+  }
+
+  /* Style for sub-question content */
+  .table td > div {
+    margin-bottom: 4px;
+  }
+
+  .table td > div:last-child {
+    margin-bottom: 0;
+  }
+
+  .table td > div > b {
+    color: #0d6efd;
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+  }
+
+  /* Hover effect on rows */
+  .table tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.04);
+  }
+
+  /* Action column styles */
+  .action-column {
+    white-space: nowrap;
+    text-align: center;
+    position: sticky;
+    right: 0;
+    z-index: 2;
+    background: #f0f7ff; /* Light sky blue background */
+  }
+
+  /* Style for action column header */
+  thead .action-column {
+        background-color: var(--accent-orange-dim);/* Darker background for header */
+    color: white;
+  }
+
+  /* Style for action buttons container in cells */
+  .action-column.td-action {
+    background: #f0f7ff; /* Light sky blue for cells */
+    box-shadow: -4px 0 6px -2px rgba(0, 0, 0, 0.1);
+    border-left: 2px solid #dee2e6;
+  }
+
+  /* Action buttons styling */
+  .action-column .btn-primary.edit-btn {
+    background: #37b3f6;
+    border: none;
+    transition: all 0.3s ease;
+  }
+
+  .action-column .btn-primary.edit-btn:hover {
+    background: #1e88e5;
+    transform: translateY(-1px);
+  }
+
+  .action-column .delete {
+    padding: 6px 12px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    transition: all 0.3s ease;
+  }
+
+  .action-column .delete:hover {
+  background-color: var(--accent-orange-dim);;
+    transform: translateY(-1px);
+  }
+
+  /* iOS Style Select Inputs */
+  .ios-select-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    margin-bottom: 25px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 16px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .ios-select-group {
+    position: relative;
+    margin-bottom: 0;
+  }
+
+  .ios-select-group label {
+    display: block;
+    font-size: 14px;
+    color: #86868b;
+    margin-bottom: 8px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  }
+
+  .ios-select {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 16px;
+    color: #1d1d1f;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(210, 210, 215, 0.8);
+    border-radius: 12px;
+    appearance: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+
+  .ios-select:hover {
+    border-color: rgba(0, 102, 204, 0.5);
+    background: rgba(255, 255, 255, 0.95);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .ios-select:focus {
+    outline: none;
+    border-color: #0066cc;
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.2),
+                0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  .select-arrow {
+    position: absolute;
+    right: 16px;
+    top: 40px;
+    color: #86868b;
+    pointer-events: none;
+    font-size: 18px;
+    transition: all 0.2s ease;
+  }
+
+  .ios-select:hover + .select-arrow {
+    color: #0066cc;
+    transform: translateY(-1px);
+  }
+
+  .ios-select:focus + .select-arrow {
+    color: #0066cc;
+  }
+
+  /* iOS-style select options (works in some modern browsers) */
+  .ios-select option {
+    background: rgba(255, 255, 255, 0.9);
+    color: #1d1d1f;
+    padding: 12px;
+    font-size: 16px;
+    text-shadow: none;
+    border: none;
+  }
+
+  .ios-select option:checked {
+    background: linear-gradient(0deg, #0066cc 0%, #0066cc 100%);
+    color: white;
+  }
+
+  /* Style enhancements for the new format inputs */
+  .question-heading {
+    font-size: 1.2rem;
+    padding: 8px 0;
+    margin-bottom: 15px;
+    color: #0d6efd;
+  }
+
+  .question-container {
+    background-color: #ffffff;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    border: 1px solid #e9ecef;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+  }
+
+  .sub-input,
+  .mark-per-sub-input,
+  .format-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    transition: border-color 0.15s ease-in-out;
+  }
+
+  .sub-input:focus,
+  .mark-per-sub-input:focus,
+  .format-input:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    outline: none;
+  }
+
+  .format-input {
+    background-color: #f0f7ff;
+    border-color: #a4cafd;
+  }
+
+  .marks-summary {
+    background-color: #e3f2fd;
+    padding: 8px 12px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    font-size: 0.9rem;
+    border-left: 4px solid #0d6efd;
+  }
+
+  .fm-input-container {
+    margin-bottom: 10px;
+    padding: 8px;
+    border-radius: 5px;
+    background-color: #ffffff;
+    border: 1px solid #e9ecef;
+  }
+
+  .fm-label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+
+  .fm-input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+  }
+
+  .fm-inputs-wrapper {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+    margin-bottom: 15px;
+  }
+
+  .apply-all-container {
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 5px;
+    border-top: 1px solid #e9ecef;
+  }
+
+  .fm-heading {
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #495057;
+  }
+</style>
+
+<style>
+/* Modern Responsive Table Design */
+:root {
+  --primary-bg: #f1f5f9;
+  --surface-white: #ffffff;
+  --text-main: #0f172a; 
+  --text-muted: #64748b;
+  --border-light: #e2e8f0;
+  --accent-orange: #f97316;
+  --accent-orange-dim: #fff7ed;
+  --danger-red: #ef4444;
+  --brand-blue: #0f172a;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+  --radius-md: 12px;
+}
+
+.modern-subject-container {
+   margin-top: 3rem;
+   padding-bottom: 3rem;
+   animation: fadeUp 0.6s ease-out;
+}
+
+.section-header {
+   display: flex;
+   justify-content: space-between;
+   align-items: center;
+   margin-bottom: 1.5rem;
+}
+
+.subject-title-modern {
+   font-family: 'Inter', sans-serif;
+   font-size: 1.75rem;
+   font-weight: 800;
+   color: var(--brand-blue);
+   margin: 0;
+   position: relative;
+   display: inline-block;
+}
+
+.subject-title-modern span {
+   color: var(--accent-orange);
+}
+
+.subject-title-modern::after {
+   content: '';
+   position: absolute;
+   bottom: -8px;
+   left: 0;
+   width: 40px;
+   height: 4px;
+   background: var(--accent-orange);
+   border-radius: 2px;
+}
+
+/* Card Table Wrapper */
+.modern-table-card {
+   background: var(--surface-white);
+   border-radius: var(--radius-md);
+   box-shadow: var(--shadow-sm);
+   border: 1px solid var(--border-light);
+   /* Removed overflow hidden to let table responsive handle it */
+}
+
+/* Override Bootstrap table-responsive to only apply on small screens or force hidden on large */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 992px) {
+    .table-responsive {
+        overflow: visible; /* Disable scroll on laptops/desktops */
+    }
+}
+
+.modern-table {
+   width: 100% !important;
+   border-collapse: collapse;
+   font-family: 'Inter', sans-serif;
+   table-layout: fixed; /* Tries to fit strictly within 100% */
+}
+
+/* Optimize Column Widths */
+.modern-table th:nth-child(1) { width: 15%; min-width: 140px; } /* Question Paper */
+.modern-table th:nth-child(2) { width: 25%; min-width: 200px; } /* Subject Name */
+.modern-table th:nth-child(3) { width: 10%; min-width: 80px; } /* Class */
+/* Questions & Action will auto-size but respect min-width below */
+
+.chapter-select {
+    min-width: 160px;
+    border-color: var(--border-light);
+    cursor: pointer;
+}
+
+.modern-table thead {
+    /* No background here, applied to th for sticky context */
+}
+
+.modern-table th {
+   position: sticky;
+   top: 0;
+   z-index: 20;
+   background-color: var(--accent-orange-dim); /* Ensure background covers content behind it */
+   padding: 1rem 0.75rem;
+   text-align: left;
+   font-weight: 600;
+   color: var(--brand-blue);
+   font-size: 0.85rem;
+   text-transform: uppercase;
+   letter-spacing: 0.05em;
+   border-bottom: 2px solid #fdba74; 
+   white-space: normal; 
+   word-break: break-word;
+   box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* subtle shadow for depth when scrolling */
+}
+
+.modern-table td {
+   padding: 0.75rem;
+   border-bottom: 1px solid var(--border-light);
+   color: var(--text-muted);
+   vertical-align: middle;
+   font-size: 0.95rem;
+   white-space: normal; 
+   word-break: break-word;
+}
+
+.modern-table tbody tr {
+   transition: background-color 0.2s;
+}
+
+.modern-table tbody tr:hover {
+   background-color: #f8fafc;
+}
+
+.modern-table tbody tr:last-child td {
+   border-bottom: none;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.modern-table td:last-child {
+    text-align: center;
+}
+
+.btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.btn-view {
+    color: #3b82f6;
+    background: #eff6ff;
+}
+.btn-view:hover {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.btn-edit {
+    color: var(--accent-orange);
+    background: var(--accent-orange-dim);
+}
+.btn-edit:hover {
+    background: #ffedd5;
+    color: #ea580c;
+}
+
+.btn-delete {
+    color: var(--danger-red);
+    background: #fef2f2;
+}
+.btn-delete:hover {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+/* File Badge */
+.file-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background-color: #f1f5f9;
+    color: #64748b;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+.file-badge.has-file {
+    background-color: #e0f2fe;
+    color: #0284c7;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-muted);
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+  .modern-table-wrapper {
+     overflow-x: auto;
+  }
+}
+
+/* Ensure no external sticky classes interfere */
+th.action-column, td.action-column {
+    position: static !important;
+}
+</style>
+
+<div class="modern-subject-container">
+    <div class="section-header">
+      <h2 class="subject-title-modern">Subject <span>List</span></h2>
+    </div>
+
+  <div class="modern-table-card">
+    <div class="table-responsive">
+    <table class="modern-table">
+      <%
+      // Define the order you want
+      const orderedKeys = ['subject', 'forClass','forTerminal'];
+      
+      // Dynamically find all numeric keys (Questions) from the data
+      const numericKeys = new Set();
+      if(typeof subjectsformat !== 'undefined' && subjectsformat) {
+          subjectsformat.forEach(sub => {
+              Object.keys(sub).forEach(k => {
+                  if(!isNaN(parseInt(k))) {
+                      numericKeys.add(parseInt(k));
+                  }
+              });
+          });
+      }
+      
+      // Sort numeric keys 1, 2, 3...
+      const sortedNumericKeys = Array.from(numericKeys).sort((a,b) => a - b).map(String);
+      
+      // Combine: Subject, Class, 1, 2, 3...
+      const allKeys = [...orderedKeys, ...sortedNumericKeys];
+      %>
+
+      <thead>
+        <tr>
+          <th>Question Paper</th>
+          <% allKeys.forEach((key) => { %>
+            <% if (!isNaN(parseInt(key))) { %>
+              <th>Q.No. <%= key %></th>
+            <% } else { %>
+              <th><%= key.charAt(0).toUpperCase() + key.slice(1) %></th>
+            <% } %>
+          <% }); %>
+          
+          <th>Action</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        <% 
+          // Sort by subject (alphabetically), then by forClass (numerically)
+          const sortedSubjects = subjectsformat.slice().sort((a, b) => {
+            if (a.subject < b.subject) return -1;
+            if (a.subject > b.subject) return 1;
+            return (parseInt(a.forClass) || 0) - (parseInt(b.forClass) || 0);
+          });
+          
+          if(sortedSubjects.length > 0) {
+              sortedSubjects.forEach((sub) => { %>
+              <tr>
+                  <td>
+                  <% if (sub.questionPaperOfClass && sub.questionPaperOfClass !== 'default.pdf') { %>
+                    <a href="/file-viewer/<%= sub.questionPaperOfClass %>" target="_blank" class="file-badge has-file" style="text-decoration:none;">
+                      <i class="fas fa-file-pdf"></i> View Paper
+                    </a>
+                  <% } else { %>
+                    <span class="file-badge">No file</span>
+                  <% } %>
+                </td>
+
+                <% allKeys.forEach((key) => { %>
+                  <% if (!isNaN(parseInt(key))) { %>
+                    <!-- Question Column with Dropdown -->
+                    <td>
+                        <% if (sub.availableChapters && sub.availableChapters.length > 0) { %>
+                           <select class="form-select form-select-sm chapter-select">
+                               <option value="">-- Mark/Chapter --</option>
+                               <!-- Show current value as an option if not in chapters list, to preserve data like '5' marks -->
+                               <% if(sub[key] && !sub.availableChapters.includes(sub[key])) { %>
+                                   <option value="<%= sub[key] %>" selected><%= sub[key] %></option>
+                               <% } %>
+                               
+                               <% sub.availableChapters.forEach(chapter => { %>
+                                   <option <%= sub[key] == chapter ? 'selected' : '' %> ><%= chapter %></option>
+                               <% }) %>
+                           </select>
+                        <% } else { %>
+                           <span style="font-weight: 500; color: var(--text-main);">
+                               <%= (typeof sub[key] !== 'undefined' && sub[key] !== null && sub[key] !== '') ? sub[key] : '' %>
+                           </span>
+                        <% } %>
+                    </td>
+                  <% } else { %>
+                    <td>
+                        <span style="font-weight: 500; color: var(--text-main);">
+                            <%= (typeof sub[key] !== 'undefined' && sub[key] !== null && sub[key] !== '') ? sub[key] : '' %>
+                        </span>
+                    </td>
+                  <% } %>
+                <% }); %>
+              
+                <td>
+                  <div class="action-buttons">
+                      <a href="/admin/editsub/<%= sub._id %>?editing=true&subjectname=<%= encodeURIComponent(sub.subject) %>&forClass=<%= encodeURIComponent(sub.forClass) %>&forTerminal=<%= encodeURIComponent(sub.forTerminal) %>" class="btn-icon btn-edit" title="Edit">
+                        <i class="fas fa-pen"></i>
+                      </a>
+                    
+                      <a
+                        href="/delete/subject/<%= sub._id %>/<%= sub.subject %>"
+                        onclick="return confirm('Are you sure you want to delete <%= sub.subject %> subject?')"
+                        class="btn-icon btn-delete" title="Delete">
+                        <i class="fas fa-trash-alt"></i>
+                      </a>
+                  </div>
+                </td>
+
+              </tr>
+            <% }); 
+          } else { %>
+            <tr>
+              <td colspan="<%= allKeys.length + 2 %>">
+                 <div class="empty-state">No subjects found. Add a subject to get started.</div>
+              </td>
+            </tr>
+          <% } %>
+      </tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<hr><hr><br>
+
+
+<script>
+  const subjectInput = document.getElementById('subject');
+  const classInput = document.getElementById('studentclass');
+  const terminalInput = document.getElementById('forTerminal');
+
+  async function checkSubjectExists() {
+    const subject = subjectInput.value.trim();
+    const studentClass = classInput.value;
+    const forTerminal = terminalInput.value;
+
+    if (subject && studentClass && forTerminal) {
+      try {
+        const res = await fetch(`/checksubjectexist?subjectinput=${encodeURIComponent(subject)}&forClass=${encodeURIComponent(studentClass)}&forTerminal=${encodeURIComponent(forTerminal)}`);
+        const data = await res.json();
+        console.log("Subject existence check data:", data);
+
+        if (data.exists) {
+          alert(`Subject ${subject} for class ${studentClass} already exists!`);
+          window.location.href = '/admin/subject';
+        }
+      } catch (err) {
+        console.error('Error checking subject:', err);
+      }
+    }
+  }
+
+  subjectInput.addEventListener('change', checkSubjectExists);
+  classInput.addEventListener('change', checkSubjectExists);
+</script>
+
+
+<script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/bootstrap-table.js"></script>
+
+
+<script>
+  function handleSelection() {
+ const subject = document.getElementById('subject').value;
+ const studentclass = document.getElementById('studentclass').value;
+ const forTerminal = document.getElementById('forTerminal').value;
+ console.log("Selections changed:", {subject, studentclass, forTerminal});
+ if(subject && studentclass && forTerminal){
+  window.location.href = `/admin/subject?subjectname=${encodeURIComponent(subject)}&forClass=${encodeURIComponent(studentclass)}&forTerminal=${encodeURIComponent(forTerminal)}`; 
+
+ }
+
+ }
+
+ document.getElementById('subject').addEventListener('change', handleSelection);
+ document.getElementById('studentclass').addEventListener('change', handleSelection);
+  document.getElementById('forTerminal').addEventListener('change', handleSelection);
+ const urlParams = new URLSearchParams(window.location.search);
+ const subject = urlParams.get('subjectname') || '';
+  const studentclass = urlParams.get('forClass') || '';
+  const forTerminal = urlParams.get('forTerminal') || '';
+
+   document.getElementById('subject').value = subject;
+  document.getElementById('studentclass').value = studentclass;
+  document.getElementById('forTerminal').value = urlParams.get('forTerminal') || '';
+</script>
+</body>

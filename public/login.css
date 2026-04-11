@@ -1,0 +1,96 @@
+*{
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+ 
+}
+body
+{
+ background-image: url('school.jpg');
+ background-size: cover;
+ height: 100vh;
+ background-blend-mode: darken;
+ background-repeat: no-repeat;
+ 
+}
+input
+{
+  outline: none;
+}
+input:focus
+{
+  background-color: rgb(1, 9, 65);
+  box-shadow: 0 0 5px rgba(11, 52, 255, 0.5);;
+}
+#submit
+{
+  background-color: darkblue;
+  color: white;
+}
+
+form
+{
+  margin-top: 10%;
+  background-color: rgba(174, 174, 179, 0.21);
+  width: 35%;
+  padding: 4%;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+
+}
+#username,#password,#submit{
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  background-color: white;
+  ;
+}
+img
+{
+  width: 30%;
+  background-color: transparent;
+
+}
+#submit
+{
+  background-color: darkblue;
+  font-size: 18px
+}
+
+@media(max-width:480px)
+{
+
+
+form
+{
+  margin-top: 25%;
+  background-color: rgba(174, 174, 179, 0.21);
+  width: 85%;
+  padding: 4%;
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+
+}
+#username,#password,#submit{
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  background-color: white;
+  ;
+}
+img
+{
+  width: 30%;
+  background-color: transparent;
+
+}
+#submit
+{
+  background-color: darkblue;
+  font-size: 18px
+}
+}

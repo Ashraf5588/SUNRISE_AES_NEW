@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terminal Management | Admin Panel</title>
+  
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Navigation CSS -->
+  <link rel="stylesheet" href="/nav.css">
+  
+  <style>
+    :root {
+      --primary: #0ea5e9;
+      --primary-dark: #0284c7;
+      --secondary: #64748b;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --dark: #1e293b;
+      --light: #f8fafc;
+      --gray: #6b7280;
+      --border: #e2e8f0;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: white;
+      min-height: 100vh;
+      color: var(--dark);
+    }
+
+    .admin-container {
+      padding: 2rem 0;
+      min-height: 100vh;
+    }
+
+    .admin-header {
+      background: white;
+      border-radius: 15px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      border-left: 5px solid var(--primary);
+    }
+
+    .admin-header h1 {
+      color: var(--dark);
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .admin-header .subtitle {
+      color: var(--gray);
+      font-weight: 400;
+      margin: 0;
+    }
+
+    .form-card {
+      background: white;
+      border-radius: 15px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      border-top: 4px solid var(--primary);
+    }
+
+    .form-card h3 {
+      color: var(--dark);
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+
+    .form-control {
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      background: var(--light);
+    }
+
+    .form-control:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+      background: white;
+    }
+
+    .btn {
+      border-radius: 10px;
+      padding: 0.75rem 1.5rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      transition: all 0.3s ease;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(14, 165, 233, 0.3);
+    }
+
+    .table-card {
+      background: white;
+      border-radius: 15px;
+      padding: 2rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .table-card h3 {
+      color: var(--dark);
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .table {
+      margin-bottom: 0;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    .table thead th {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: none;
+      padding: 1rem;
+    }
+
+    .table tbody td {
+      padding: 1rem;
+      vertical-align: middle;
+      border-color: var(--border);
+    }
+
+    .table tbody tr:hover {
+      background-color: var(--light);
+      transform: scale(1.01);
+      transition: all 0.2s ease;
+    }
+
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.875rem;
+      transition: all 0.3s ease;
+      border: none;
+      cursor: pointer;
+      margin-right: 0.5rem;
+    }
+
+    .edit-btn {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .edit-btn:hover {
+      background: var(--success);
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .delete-btn {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--error);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .delete-btn:hover {
+      background: var(--error);
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+
+    .terminal-badge {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 25px;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--gray);
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    /* Mobile Responsive Styles */
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .admin-container {
+        padding: 1rem;
+      }
+
+      .admin-header, .form-card, .table-card {
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .admin-header h1 {
+        font-size: 1.5rem;
+      }
+
+      .table-responsive {
+        border-radius: 10px;
+      }
+
+      .action-btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+      }
+
+      /* Remove zoom controls for mobile */
+    }
+
+    @media (max-width: 576px) {
+      .admin-header h1 {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.5rem;
+      }
+
+      .form-card h3, .table-card h3 {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <%- include('../partials/nav',{currentPage:'admin'}) %>
+  
+  <%- include('../partials/sidenav', { 
+      subjects: subjects || [], 
+      studentClassdata: studentClassdata || [],
+      terminals: terminals || [] 
+  }) %>
+  
+  <div class="admin-container">
+    <div class="container">
+      <!-- Header -->
+      <div class="admin-header">
+        <h1>
+          <i class="fas fa-terminal"></i>
+          Terminal Management
+        </h1>
+        <p class="subtitle">Manage examination terminals and periods</p>
+      </div>
+
+      <!-- Add/Edit Terminal Form -->
+      <div class="form-card">
+        <h3>
+          <i class="fas fa-<%= editing ? 'edit' : 'plus' %>"></i>
+          <%= editing ? 'Edit Terminal' : 'Add New Terminal' %>
+        </h3>
+        
+        <form action="<%= editing ? `/admin/terminal/${terminalData._id}` : '/admin/terminal' %>" method="POST">
+          <div class="form-group">
+            <label for="name" class="form-label">
+              <i class="fas fa-tag me-2"></i>Terminal Name
+            </label>
+            <input 
+              type="text" 
+              id="name" 
+              name="terminal" 
+              class="form-control" 
+              value="<%= editing ? terminalData.terminal : '' %>" 
+              placeholder="Enter terminal name (e.g., First Terminal, Midterm, Final)"
+              required
+            >
+          </div>
+          
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-<%= editing ? 'save' : 'plus' %>"></i>
+            <%= editing ? 'Update Terminal' : 'Add Terminal' %>
+          </button>
+          
+          <% if (editing) { %>
+            <a href="/admin/terminal" class="btn btn-secondary ms-2">
+              <i class="fas fa-times"></i>
+              Cancel
+            </a>
+          <% } %>
+        </form>
+      </div>
+
+      <!-- Terminals List -->
+      <div class="table-card">
+        <h3>
+          <i class="fas fa-list"></i>
+          All Terminals
+          <span class="badge bg-primary ms-2"><%= terminalList.length %></span>
+        </h3>
+        
+        <% if (terminalList.length > 0) { %>
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th><i class="fas fa-hashtag me-2"></i>S.No.</th>
+                  <th><i class="fas fa-terminal me-2"></i>Terminal Name</th>
+                  <th><i class="fas fa-cogs me-2"></i>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% terminalList.forEach((term, index) => { %>
+                  <tr>
+                    <td><strong><%= index + 1 %></strong></td>
+                    <td>
+                      <span class=""><%= term.terminal %></span>
+                    </td>
+                    <td>
+                      <a href="/admin/terminal/<%= term._id %>/edit-terminal?editing=true" 
+                         class="action-btn edit-btn"
+                         title="Edit Terminal">
+                        <i class="fas fa-edit"></i>
+                        Edit
+                      </a>
+                      
+                      <a href="/delete/terminal/<%= term._id %>" 
+                         class="action-btn delete-btn"
+                         onclick="return confirm('Are you sure you want to delete \'<%= term.terminal %>\' terminal? This action cannot be undone.')"
+                         title="Delete Terminal">
+                        <i class="fas fa-trash-alt"></i>
+                        Delete
+                      </a>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } else { %>
+          <div class="empty-state">
+            <i class="fas fa-inbox"></i>
+            <h5>No Terminals Found</h5>
+            <p>Start by adding your first terminal above.</p>
+          </div>
+        <% } %>
+      </div>
+
+      <!-- Back to Admin Panel -->
+      <div class="text-center mt-4">
+        <a href="/admin/term/first" class="btn btn-secondary">
+          <i class="fas fa-arrow-left"></i>
+          Back to Admin Panel
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Custom JavaScript -->
+  <script>
+    // Add smooth animations
+    document.addEventListener('DOMContentLoaded', function() {
+      // Animate cards on load
+      const cards = document.querySelectorAll('.admin-header, .form-card, .table-card');
+      cards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        setTimeout(() => {
+          card.style.transition = 'all 0.6s ease';
+          card.style.opacity = '1';
+          card.style.transform = 'translateY(0)';
+        }, index * 150);
+      });
+
+      // Form validation feedback
+      const form = document.querySelector('form');
+      const input = document.querySelector('#name');
+      
+      form.addEventListener('submit', function(e) {
+        if (input.value.trim().length < 2) {
+          e.preventDefault();
+          input.style.borderColor = 'var(--error)';
+          input.focus();
+          
+          // Show error message
+          let errorMsg = input.parentNode.querySelector('.error-message');
+          if (!errorMsg) {
+            errorMsg = document.createElement('small');
+            errorMsg.className = 'error-message text-danger mt-1 d-block';
+            errorMsg.textContent = 'Terminal name must be at least 2 characters long.';
+            input.parentNode.appendChild(errorMsg);
+          }
+          
+          setTimeout(() => {
+            input.style.borderColor = '';
+            if (errorMsg) errorMsg.remove();
+          }, 3000);
+        }
+      });
+
+      // Success message for form submissions
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('success')) {
+        const successAlert = document.createElement('div');
+        successAlert.className = 'alert alert-success alert-dismissible fade show';
+        successAlert.innerHTML = `
+          <i class="fas fa-check-circle me-2"></i>
+          Terminal ${urlParams.get('success') === 'added' ? 'added' : 'updated'} successfully!
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.querySelector('.container').insertBefore(successAlert, document.querySelector('.form-card'));
+      }
+
+      // Initialize any other functionality here
+  </script>
+</body>
+</html>

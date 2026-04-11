@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Success - Form Submitted</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet">
+  <!-- Add Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0ea5e9;  /* skyblue */
+      --primary-dark: #0284c7;  /* darker skyblue */
+      --secondary: #8b5a2b;  /* brown */
+      --secondary-dark: #6b4423;  /* darker brown */
+      --light: #f8fafc;
+      --dark: #1e293b;
+      --accent: #a16207;  /* amber brown for accent */
+      --success: #22c55e;
+    }
+    
+    body {
+      font-family: 'Lexend', sans-serif;
+      color: var(--dark);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, rgba(14, 165, 233, 0.05) 0%, rgba(139, 90, 43, 0.05) 100%);
+      padding: 2rem;
+    }
+    
+    .success-container {
+      background-color: white;
+      border-radius: 16px;
+      padding: 3rem 2rem;
+      text-align: center;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      max-width: 90%;
+      width: 600px;
+      position: relative;
+      overflow: hidden;
+      animation: fadeIn 0.6s ease-out;
+    }
+    
+    .success-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 6px;
+      background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+    }
+    
+    .success-icon {
+      margin-bottom: 1.5rem;
+    }
+    
+    h1 {
+      font-size: 2.25rem;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 1rem;
+    }
+    
+    .success-message {
+      font-size: 1.25rem;
+      color: var(--gray);
+      margin-bottom: 2rem;
+    }
+    
+    .check-circle {
+      width: 120px;
+      height: 120px;
+      background-color: rgba(34, 197, 94, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 2rem;
+    }
+    
+    .check-circle svg {
+      width: 60px;
+      height: 60px;
+      color: var(--success);
+    }
+    
+    .redirect-text {
+      font-size: 0.875rem;
+      color: var(--gray);
+      margin-top: 2rem;
+    }
+    
+    .progress-bar {
+      height: 4px;
+      width: 100%;
+      background-color: #e5e7eb;
+      border-radius: 2px;
+      margin-top: 1rem;
+      overflow: hidden;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+      border-radius: 2px;
+      animation: progress 1s linear;
+    }
+    
+    @keyframes progress {
+      from { width: 0; }
+      to { width: 100%; }
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="success-container">
+    <div class="check-circle">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+      </svg>
+    </div>
+    
+    <h1>Success!</h1>
+    <div class="success-message">Thank you! Your form has been submitted successfully.</div>
+    
+    <script src="https://cdn.lordicon.com/lordicon.js"></script>
+    <lord-icon
+        src="https://cdn.lordicon.com/lomfljuq.json"
+        trigger="in"
+        colors="primary:#0ea5e9,secondary:#8b5a2b"
+        style="width:180px;height:180px">
+    </lord-icon>
+    
+    <div class="redirect-text">Redirecting you back in a moment...</div>
+    <div class="progress-bar">
+      <div class="progress-fill"></div>
+    </div>
+  </div>
+
+
+
+<script>
+  const current = window.location.pathname;
+ 
+  
+  if(current==="/admin/subject" || current==="/admin/class")
+{
+
+
+    setTimeout(() => {
+      window.location.href = '/admin';
+    }, 800); 
+  }
+  else
+{
+  setTimeout(() => {
+      window.location.href = '/forms/<%=subjectinput%>/<%=studentClass%>/<%=section%>/<%=terminal%>';
+    }, 800); 
+}
+</script>  
+
+</body>
+</html>
