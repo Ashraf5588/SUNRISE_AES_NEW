@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Health Management - Medicine Distribution</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/health-record.css">
+</head>
+<body class="hm-body">
+  <button class="hm-menu-toggle" type="button" aria-controls="hmSidebar" aria-expanded="false">Menu</button>
+  <div class="hm-backdrop" id="hmBackdrop" hidden></div>
+  <div class="hm-shell">
+    <aside class="hm-sidenav" id="hmSidebar" aria-label="Nurse tools navigation">
+      <div class="hm-sidenav-header">
+        <div>
+          <p class="hm-sidenav-kicker">Nurse Tools</p>
+          <h2>Health Module</h2>
+        </div>
+        <button class="hm-sidenav-close" type="button" aria-label="Close menu">×</button>
+      </div>
+      <nav class="hm-sidenav-nav">
+        <a href="/healthrecord" class="hm-nav-link">Dashboard</a>
+        <a href="/healthrecord/bmi" class="hm-nav-link">Add height, weight and MUAQ</a>
+        <a href="/healthrecord/bp/add" class="hm-nav-link">Add blood pressure</a>
+        <a href="/healthrecord/medicine" class="hm-nav-link">Add medicine name</a>
+        <a href="/healthrecord/medicine/distributed" class="hm-nav-link">Add medicine distributed record</a>
+        <a href="/healthrecord/padrecord" class="hm-nav-link">Add pad record</a>
+        <a href="/healthrecord/analytics" class="hm-nav-link">Generate analytics</a>
+      </nav>
+    </aside>
+
+    <div class="hm-main-wrap">
+      <div class="hm-bg"></div>
+      <div class="hm-page">
+        <header class="hm-hero">
+          <div>
+            <p class="hm-kicker">School Health</p>
+            <h1>Medicine Distribution</h1>
+            <p class="hm-sub">Choose a class, section, gender filter, and medicine to mark which students have taken it.</p>
+          </div>
+          <div class="hm-badge">
+            <span>Clinic</span>
+            <strong>Distribution Log</strong>
+          </div>
+        </header>
+
+        <section class="hm-card hm-form">
+          <div class="hm-card-header">
+            <h2>Distribution Filters</h2>
+            <span class="hm-muted">Pick class, section and medicine</span>
+          </div>
+
+          <div class="hm-distribution-filters">
+            <label class="hm-field">
+              <span>Class</span>
+              <select id="distributionClassSelect"></select>
+            </label>
+
+            <label class="hm-field">
+              <span>Section</span>
+              <select id="distributionSectionSelect"></select>
+            </label>
+
+            <label class="hm-field">
+              <span>Gender</span>
+              <select id="distributionGenderSelect">
+                <option value="all" selected>All</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
+            </label>
+
+            <label class="hm-field">
+              <span>Medicine</span>
+              <select id="distributionMedicineSelect"></select>
+            </label>
+          </div>
+
+          <div class="hm-actions hm-medicine-actions">
+            <button type="button" class="hm-button" id="loadDistributionBtn">Load Students</button>
+            <button type="button" class="hm-button hm-button-secondary" id="saveDistributionBtn">Save Distribution</button>
+          </div>
+
+          <p id="distributionStatus" class="hm-status" aria-live="polite"></p>
+        </section>
+
+        <section class="hm-card hm-summary hm-distribution-summary">
+          <div class="hm-card-header hm-records-header">
+            <h2>Distribution Summary</h2>
+            <span class="hm-muted" id="distributionSummaryMeta">No medicine loaded yet.</span>
+          </div>
+          <div class="hm-summary-grid">
+            <div><strong>Total Students</strong><span id="distributionTotalStudents">0</span></div>
+            <div><strong>Taken</strong><span id="distributionTakenCount">0</span></div>
+            <div><strong>Names</strong><span id="distributionTakenNames">-</span></div>
+          </div>
+        </section>
+
+        <section class="hm-card hm-records hm-distribution-table-card">
+          <div class="hm-card-header hm-records-header">
+            <h2>Student Medicine Table</h2>
+            <span class="hm-muted">Tick if the student received the selected medicine</span>
+          </div>
+
+          <div class="hm-table-wrap">
+            <table class="hm-table" id="distributionTable">
+              <thead>
+                <tr>
+                  <th>Roll</th>
+                  <th>Name</th>
+                  <th>Gender</th>
+                  <th>Taken</th>
+                </tr>
+              </thead>
+              <tbody id="distributionTableBody">
+                <tr><td colspan="4" class="hm-empty">Select class, section, and medicine to load students.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script src="/nurse-medicine-distributed.js"></script>
+</body>
+</html>

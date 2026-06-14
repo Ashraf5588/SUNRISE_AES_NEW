@@ -1,0 +1,223 @@
+@import url('https://fonts.googleapis.com/css2?family=Agbalumo&family=Alexandria:wght@100..900&family=Lexend:wght@100..900&family=Manrope:wght@200..800&display=swap');
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+   
+    
+}
+@font-face {
+    font-family: 'Alexandria Regular';
+    font-style: normal;
+    font-weight:300;
+    src: local('Alexandria Regular'), url('Alexandria[wght].woff') format('woff');
+    }
+    body{
+      font-family: Alexandria Regular;
+    }
+
+table{
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+  font-size: 25px;
+  table-layout: fixed;
+ 
+}
+tbody
+{
+  overflow-x: auto;
+  overflow-y: auto;
+  
+}
+th{
+  background-color: darkblue;
+  height: 3rem;
+  border-left: 0;
+  border-right: 0;
+  font-weight: 1000;
+  color: white;
+}
+
+tr
+{
+  border:2px solid rgb(202, 200, 200);
+  
+  height: 2rem;
+  font-weight: 500;
+}
+.addbutton,#subjectedit,#classedit
+{
+  width: 15%;
+  height: 2rem;
+  border-radius: 5px;
+  margin-bottom: 5%;
+  background-color: darkblue;
+  border: 1px solid gainsboro;
+  font-size: 20px;
+  text-align: center;
+  color: white;
+}
+.addbutton:hover 
+{
+  background-color:rgb(1, 116, 198);
+  transition:all 0.3s ease-in-out;
+  font-size: 18px;
+  color: white;
+}
+.addbutton:hover .fa-plus
+{
+ 
+  color: white;
+}
+input
+{
+  width: 40%;
+  height: 2.5rem;
+  margin-top: 1%;
+  border-radius: 7px;
+  background-color: rgb(243, 243, 250);
+  border: 1px solid rgb(203, 203, 219);
+  font-size: 20px;
+  margin-left: 1%;
+
+  
+  
+}
+input:focus
+{
+  border: 2px solid skyblue;
+  outline: none;
+  box-shadow: 2px 2px 2px 1px gray;
+}
+input::placeholder
+{
+  padding-left: 5%;
+  color: darkblue;
+  opacity: 0.5;
+  font-size: 15px;
+}
+#class
+{
+  margin-left: 3%;
+}
+label
+{
+  font-size: 25px;
+}
+.fa-plus
+{
+  color: black;
+}
+#subjectedit,#classedit{
+
+margin: 4%;
+background-color: #24a0ed;
+color: white;
+cursor: pointer;
+border: none;
+width: 4rem;
+
+}
+td
+{width: 2rem;}
+.fa-trash
+{
+  font-size: 25px;
+  cursor: pointer;
+  margin-left: 3%;
+
+}
+.deletebtn
+{
+  color: darkblue !important;
+}
+#thname,#thaction
+{
+  width: 1%;
+}
+.addclasscontainer
+{
+  display: flex;
+  justify-content: space-around;
+  margin-top: 5%;
+  flex-wrap: wrap;
+  
+}
+.addclass
+{
+  background-color: rgba(17, 132, 255, 0.7);
+  backdrop-filter: blur(10px);
+  width: 15rem;
+  line-height: 1.5;
+  text-align: center;
+  height: 8rem;
+  border-radius: 7px;
+  font-size: 25px;
+  
+}
+.fa-chalkboard-user,.fa-book-open
+{
+  font-size: 40px;
+  margin-top: 3%;
+}
+.head{
+  display: none;
+}
+.show
+{
+  display:block
+}
+.showentry
+{
+  background-color:coral;
+  width: 17rem;
+  height: 3rem;
+  text-align: center;
+  padding-top: 1%;
+  color: white;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+@media(max-width: 480px)
+{
+  table{
+    width: 80%;
+    font-size: 15px;
+  }
+  input
+  {
+    width: 80%;
+  }
+  #class
+  {
+    margin-left: 0;
+  }
+  #subjectedit,#classedit
+  {
+    width: 40%;
+  }
+  .addbutton
+  {
+    width: 40%;
+    
+  }
+  .fa-trash
+  {
+    font-size: 20px;
+  }
+  .deletebtn
+  {
+    color: darkblue !important;
+    font-size: 15px;
+
+  }
+  #subjectedit,#classedit
+  {
+    width: 30%;
+    font-size: 15px;
+    margin-right: 5%;
+
+  }
+}

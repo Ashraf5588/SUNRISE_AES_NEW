@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Practical Project Record</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 30px;
+    }
+    .student-header {
+      background: linear-gradient(135deg, #3498db, #2980b9);
+      color: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+    .student-info {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 12px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+      vertical-align: middle;
+    }
+    th {
+      background: #f8f9fa;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+    .main-header {
+      background: #3498db;
+      color: white;
+    }
+    .theme-header {
+      background: #e3f2fd;
+      font-size: 11px;
+    }
+    .practical-name {
+      text-align: left;
+      background: #f1f8ff;
+      font-weight: 500;
+    }
+    .project-name {
+      text-align: left;
+      background: #fff8e1;
+      font-weight: 500;
+    }
+    .marks-cell {
+      font-weight: bold;
+      color: #2c3e50;
+    }
+    .total-cell {
+      background: #e8f5e8;
+      font-weight: bold;
+    }
+    .table-wrapper {
+      overflow-x: auto;
+      margin: 20px 0;
+    }
+    @media (max-width: 768px) {
+      .student-info {
+        flex-direction: column;
+      }
+      table {
+        font-size: 10px;
+      }
+      th, td {
+        padding: 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+       <%- include('../partials/mainnav') %>
+  <div class="container">
+    <h1>📊 Indicator Wise Marks Report</h1>
+
+    <% indicatorwiseReport.forEach((student, studentIndex) => { %>
+      <div class="student-header">
+        <div class="student-info">
+          <span><strong>Name:</strong> <%= student.name %></span>
+          <span><strong>Roll:</strong> <%= student.roll %></span>
+          <span><strong>Class:</strong> <%= student.studentClass %></span>
+          <span><strong>Section:</strong> <%= student.section %></span>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th rowspan="2" class="main-header">SN</th>
+              <th rowspan="2" class="main-header">Practical/Project Name</th>
+              <th colspan="<%= practicalFormatData.reduce((sum, doc) => sum + doc.themes.length, 0) + projectFormatData.reduce((sum, doc) => sum + doc.themes.length, 0) %>" class="main-header">आधारगत प्राप्ताङ्क (Indicator Wise Marks)</th>
+              <th rowspan="2" class="main-header">Total Obtained</th>
+            </tr>
+            <tr>
+              <!-- Practical Themes -->
+              <% practicalFormatData.forEach(function(doc) { %>
+                <% doc.themes.forEach(function(theme) { %>
+                  <th class="theme-header"><%= theme.themeName %></th>
+                <% }) %>
+              <% }) %>
+              <!-- Project Themes -->
+              <% projectFormatData.forEach(function(doc) { %>
+                <% doc.themes.forEach(function(theme) { %>
+                  <th class="theme-header"><%= theme.themeName %></th>
+                <% }) %>
+              <% }) %>
+            </tr>
+          </thead>
+          <tbody>
+            <% 
+            let serialNumber = 1;
+            
+            // Consolidate activities by name
+            const consolidatedActivities = new Map();
+            
+            // Process all units to consolidate activities
+            student.unit.forEach(function(unit) {
+              // Process practicals
+              unit.practicals.forEach(function(practical) {
+                const activityName = practical.practicalName || 'Practical Activity';
+                if (!consolidatedActivities.has(activityName)) {
+                  consolidatedActivities.set(activityName, {
+                    name: activityName,
+                    practicalData: null,
+                    projectData: null
+                  });
+                }
+                consolidatedActivities.get(activityName).practicalData = practical;
+              });
+              
+              // Process projects
+              unit.projectWorks.forEach(function(project) {
+                const activityName = project.projectName || 'Project Work';
+                if (!consolidatedActivities.has(activityName)) {
+                  consolidatedActivities.set(activityName, {
+                    name: activityName,
+                    practicalData: null,
+                    projectData: null
+                  });
+                }
+                consolidatedActivities.get(activityName).projectData = project;
+              });
+            });
+            
+            // Display consolidated activities
+            consolidatedActivities.forEach(function(activity, activityName) {
+            %>
+            <tr>
+              <td><%= serialNumber++ %></td>
+              <td class="activity-name">
+                <% if (activity.practicalData && activity.projectData) { %>
+                  🔬📋 <%= activityName %>
+                <% } else if (activity.practicalData) { %>
+                  🔬 <%= activityName %>
+                <% } else { %>
+                  📋 <%= activityName %>
+                <% } %>
+              </td>
+              
+              <!-- Practical Theme Marks -->
+              <% practicalFormatData.forEach(function(doc) { %>
+                <% doc.themes.forEach(function(theme) { %>
+                  <% 
+                  let marks = '-';
+                  if (activity.practicalData && activity.practicalData.criteria && activity.practicalData.criteria.length > 0) {
+                    const criterion = activity.practicalData.criteria.find(c => 
+                      c.practicalAdhar === theme.themeName || 
+                      c.practicalIndicator === theme.themeName
+                    );
+                    marks = criterion ? criterion.practicalIndicatorMarks || '0' : '0';
+                  }
+                  %>
+                  <td class="marks-cell"><%= marks %></td>
+                <% }) %>
+              <% }) %>
+              
+              <!-- Project Theme Marks -->
+              <% projectFormatData.forEach(function(doc) { %>
+                <% doc.themes.forEach(function(theme) { %>
+                  <% 
+                  let marks = '-';
+                  if (activity.projectData && activity.projectData.criteria && activity.projectData.criteria.length > 0) {
+                    const criterion = activity.projectData.criteria.find(c => 
+                      c.projectAdhar === theme.themeName || 
+                      c.projectIndicator === theme.themeName
+                    );
+                    marks = criterion ? criterion.projectIndicatorMarks || '0' : '0';
+                  }
+                  %>
+                  <td class="marks-cell"><%= marks %></td>
+                <% }) %>
+              <% }) %>
+              
+              <td class="total-cell">
+                <%= (activity.practicalData ? (activity.practicalData.practicalMarks || 0) : 0) + 
+                    (activity.projectData ? (activity.projectData.projectMarks || 0) : 0) %>
+              </td>
+            </tr>
+            <% 
+            });
+            %>
+          </tbody>
+        </table>
+      </div>
+
+    <% }) %>
+
+  </div>
+</body>
+</html>
+</body>
+</html>
+

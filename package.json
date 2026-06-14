@@ -1,0 +1,23 @@
+{
+  "dependencies": {
+    "@azure/storage-blob": "^12.31.0",
+    "bcrypt": "^6.0.0",
+    "bikram-sambat-js": "^1.0.2",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "csv-parser": "^3.2.0",
+    "csvtojson": "^2.0.10",
+    "dotenv": "^16.6.1",
+    "ejs": "^3.1.10",
+    "express": "^4.21.2",
+    "firebase-admin": "^13.7.0",
+    "jsonwebtoken": "^9.0.2",
+    "libreoffice-convert": "^1.7.0",
+    "mongoose": "^8.9.2",
+    "multer": "^2.0.1",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^8.0.4",
+    "sharp": "^0.34.5",
+    "web-push": "^3.6.7"
+  }
+}

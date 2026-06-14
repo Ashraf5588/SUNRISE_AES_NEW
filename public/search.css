@@ -1,0 +1,32 @@
+*{
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+ 
+}
+body{
+  background-color: #eeedeb;
+}
+table
+{
+  width: 60%;
+  border-collapse: collapse;
+  margin-top: 2%;
+  text-align: center;
+
+}
+th
+{
+  background-color: darkblue;
+  color: white;
+  height: 2rem;
+  font-size: 33px;
+}
+td
+{
+  font-size: 30px;
+  color: darkblue;
+}
+tbody{
+  background-color: white;
+}

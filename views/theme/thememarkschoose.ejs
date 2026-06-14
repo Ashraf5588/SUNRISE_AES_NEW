@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+   <select id="classSelector" class="form-select form-select-lg mb-4">
+            <option value="" selected disabled>-- Select a class and section --</option>
+            <% 
+              // Sort studentClassdata by class number
+              const sortedClassData = [...studentClassdata].sort((a, b) => {
+                // Convert class to number for proper numeric sorting
+                const classA = parseInt(a.studentClass);
+                const classB = parseInt(b.studentClass);
+                
+                // First sort by class number
+                if (classA !== classB) {
+                  return classA - classB;
+                }
+                
+                // If same class, sort by section
+                return a.section.localeCompare(b.section);
+              });
+              
+              // Group by class for optgroup
+              const classGroups = {};
+              sortedClassData.forEach(item => {
+                const classNum = item.studentClass;
+                if (!classGroups[classNum]) {
+                  classGroups[classNum] = [];
+                }
+                classGroups[classNum].push(item);
+              });
+              
+              // Get sorted class numbers
+              const sortedClassNumbers = Object.keys(classGroups).sort((a, b) => parseInt(a) - parseInt(b));
+              
+              // Loop through each class group
+              sortedClassNumbers.forEach(classNum => {
+                const sections = classGroups[classNum];
+            %>
+              <optgroup label="Class <%= classNum %> 📚">
+              <% sections.forEach(studentclass => { %>
+                <option 
+                  value="<%=studentclass.section.trim()%>"
+                  data-class="<%=studentclass.studentClass%>"
+                  data-section="<%=studentclass.section%>">
+                  <%= studentclass.section %>
+                </option>
+              <% }); %>
+              </optgroup>
+            <% }); %>
+          </select>
+ <select name="subject" id="subject" class="ios-select">
+        <option value="" disabled selected>--Select a subject--</option>
+        <% uniqueSubjects = new Set(newsubjectList.map(item => item.newsubject)); %>
+        <% uniqueSubjects.forEach(function(subject) { %>
+          <option value="<%= subject %>" <%= editing && subjectedit.subject === subject ? 'selected' : '' %>>
+            <%= subject %>
+          </option>
+        <% }); %>
+      </select>
+
+  <button onclick="themeform()">Show Marks</button>
+<br>
+
+
+  <script>
+    function themeform() {
+      const studentClass = document.querySelector('#classSelector option:checked').dataset.class;
+      const section = document.querySelector('#classSelector option:checked').dataset.section;
+      const subject = document.getElementById('subject').value;
+
+      if (studentClass && section && subject) {
+        window.location.href = `/thememarksofstudent?subject=${subject}&studentClass=${studentClass}&section=${encodeURIComponent(section)}`;
+      } else {
+        alert("Please select both class and subject");
+      }
+    }
+  </script>
+</body>
+
+</html>

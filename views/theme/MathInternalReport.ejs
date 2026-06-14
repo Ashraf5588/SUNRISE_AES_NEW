@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Practical Project Record</title>
+  <style>
+    /* Screen Styles */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Times New Roman', serif;
+      background: #f5f5f5;
+      padding: 20px;
+      color: #000;
+    }
+
+    .no-print {
+      background: linear-gradient(135deg, #ff8c42 0%, #eaa00d 100%);
+      color: #2c3e50;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .print-btn {
+      background: linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      font-size: 16px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 10px;
+      transition: all 0.3s ease;
+    }
+
+    .print-btn:hover {
+      background: linear-gradient(135deg, #29b6f6 0%, #0288d1 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(41, 182, 246, 0.3);
+    }
+
+    .a4-container {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
+      background: white;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      padding: 15mm;
+      border-radius: 8px;
+    }
+
+    .report-header {
+      text-align: center;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #000;
+      padding-bottom: 10px;
+    }
+
+    .report-title {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .student-info {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      border-left: 4px solid #87ceeb;
+    }
+
+    .student-name {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #2c3e50;
+    }
+
+    .student-details {
+      font-size: 14px;
+      color: #555;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      font-size: 11px;
+    }
+
+    th, td {
+      border: 1px solid #000;
+      padding: 6px 4px;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f0f0f0;
+      font-weight: bold;
+      font-size: 10px;
+    }
+
+    .total-row {
+      background: #e8f4f8;
+      font-weight: bold;
+    }
+
+    .page-break {
+      page-break-after: always;
+    }
+
+    /* Print Styles */
+    @media print {
+      @page {
+        size: A4;
+        margin: 15mm;
+      }
+
+      body {
+        background: white;
+        padding: 0;
+        font-size: 12px;
+      }
+
+      .no-print {
+        display: none !important;
+      }
+
+      .a4-container {
+        width: 100%;
+        min-height: auto;
+        margin: 0;
+        padding: 0;
+        box-shadow: none;
+        border-radius: 0;
+        background: white;
+      }
+
+      .report-header {
+        margin-bottom: 15px;
+      }
+
+      .report-title {
+        font-size: 20px;
+        margin-bottom: 8px;
+      }
+
+      .student-info {
+        background: white;
+        border: 1px solid #000;
+        border-left: 3px solid #000;
+        margin-bottom: 15px;
+        padding: 10px;
+      }
+
+      .student-name {
+        font-size: 16px;
+        margin-bottom: 5px;
+      }
+
+      .student-details {
+        font-size: 12px;
+      }
+
+      table {
+        font-size: 10px;
+        margin-bottom: 15px;
+      }
+
+      th, td {
+        padding: 4px 3px;
+      }
+
+      th {
+        background: #f0f0f0 !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+      }
+
+      .total-row {
+        background: #e8f4f8 !important;
+        -webkit-print-color-adjust: exact;
+        color-adjust: exact;
+      }
+
+      /* Ensure page breaks between students */
+      .student-section:not(:last-child) {
+        page-break-after: always;
+      }
+    }
+  </style>
+</head>
+<body>
+       <%- include('../partials/mainnav') %>
+  <div class="no-print">
+    <h2>📄 Mathematics Internal Report</h2>
+    <p>Click the print button to generate A4 format report</p>
+    <button class="print-btn" onclick="window.print()">🖨️ Print Report</button>
+  </div>
+
+  <div class="a4-container">
+    <div class="report-header">
+      <div class="report-title">Mathematics Internal Assessment Report</div>
+      <div style="font-size: 14px; margin-top: 5px;">Academic Session: <%= marksheetSetting[0]?.academicYear || 'Current Year' %></div>
+    </div>
+
+    <% sciencepracticaldata.forEach((student, index) => { %>
+      <div class="student-section">
+        <div class="student-info">
+          <div class="student-name">Student: <%= student.name %></div>
+          <div class="student-details">
+            Roll No: <%= student.roll %> | 
+            Class: <%= student.studentClass %> | 
+            Section: <%= student.section %> | 
+            Subject: Mathematics
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th rowspan="2">SN</th>
+              <th rowspan="2">Unit</th>
+              <th colspan="3">Project/Practical कार्य संचालन तथा कार्य सम्पादन</th>
+              <th colspan="3">प्रस्तुतीकरण तथा अभिलेखीकारण</th>
+            </tr>
+            <tr>
+              <th>Total Practical/Project Work done</th>
+              <th colspan="2">Marks Obtained</th>
+              
+              <th colspan="3">Marks Obtained</th>
+            </tr>
+          </thead>
+          <tbody>
+
+      <% let totalGivenAllPractical = 0; %>
+      <% let totalGivenAllProject = 0; %>
+      <% let totalObtainedAllPractical = 0; %>
+      <% let totalObtainedAllProject = 0; %>
+      <% let totalDoneAllPractical = 0; %>
+      <% let totalDoneAllProject = 0; %>
+
+
+      <% lessonData.forEach((lesson) => { %>
+        <% lesson.units.forEach((unit, uIndex) => { 
+          // Find corresponding unit in student data safely
+          const studentUnit = student.unit?.find(u => u.unitName === unit.unitName) || { practicals: [], projectWorks: [] };
+
+          // Practical counts & marks
+          const totalPracticalGiven = unit.practicals?.length || 0;
+          const totalPracticalDone = studentUnit.practicals?.length || 0;
+          const obtainedPracticalMarks = studentUnit.practicals?.reduce((sum, p) => sum + (p.practicalMarks || 0), 0);
+
+          // Project counts & marks
+          const totalProjectGiven = unit.projectworks?.length || 0;
+          const totalProjectDone = studentUnit.projectWorks?.length || 0;
+          const obtainedProjectMarks = studentUnit.projectWorks?.reduce((sum, p) => sum + (p.projectMarks || 0), 0);
+        %>
+        %>
+<% totalGivenAllPractical += totalPracticalGiven; %>
+<% totalGivenAllProject += totalProjectGiven; %>
+<% totalObtainedAllPractical += obtainedPracticalMarks; %>
+<% totalObtainedAllProject += obtainedProjectMarks; %>
+<% totalDoneAllPractical += totalPracticalDone; %>
+<% totalDoneAllProject += totalProjectDone; %>
+
+        <tr>
+          <td><%= uIndex + 1 %></td>
+          <td><%= unit.unitName %></td>
+          <td><%= totalPracticalDone %></td>
+          
+          <td colspan="2"><%= (((obtainedPracticalMarks)/20)*20).toFixed(2) %></td>
+        
+          <td colspan="3"><%= (((obtainedProjectMarks)/12)*16).toFixed(2) %></td>
+    
+        </tr>
+     
+        <% }) %>
+      <% }) %>
+          
+          <tr class="total-row">
+            <td></td>
+            <td><strong>Total</strong></td>
+         
+           <td></td>
+            <td colspan="2"><strong><%= (((totalObtainedAllPractical)/20)*20).toFixed(2) %></strong></td>
+            <td colspan="3"><strong><%= (((totalObtainedAllProject)/12)*16).toFixed(2) %></strong></td>
+          </tr>
+          
+          <tr style="background: #ffcea5;">
+            <td></td>
+            <td><strong>Average</strong></td>
+         <td></td>
+            <td colspan="2"><strong><%= ((((totalObtainedAllPractical)/20)*20) / lessonData[0].units.length).toFixed(2) %></strong></td>
+          
+            <td colspan="3"><strong ><%= (((totalObtainedAllProject)/12)*16 / lessonData[0].units.length).toFixed(2) %></strong></td>
+          </tr>
+          
+          </tbody>
+        </table>
+        
+        <% if (index < sciencepracticaldata.length - 1) { %>
+          <div class="page-break"></div>
+        <% } %>
+      </div>
+    <% }) %>
+  </div>
+</body>
+</html>
+

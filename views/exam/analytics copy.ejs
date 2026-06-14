@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Comprehensive Analytics Report</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#e5e7eb;padding:20px 0}
+    
+    .action-buttons{max-width:900px;margin:0 auto 15px;display:flex;gap:10px;justify-content:center;background:#fff;padding:15px;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+    .action-buttons button{padding:10px 24px;border:0;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;text-transform:uppercase;letter-spacing:.5px}
+    .btn-print{background:linear-gradient(135deg,#1a3a52 0%,#2c5f8d 100%);color:#fff;box-shadow:0 3px 12px rgba(26,58,82,.3)}
+    .btn-print:hover{transform:translateY(-1px);box-shadow:0 5px 16px rgba(26,58,82,.4)}
+    
+    .page{width:210mm;min-height:297mm;margin:0 auto 20mm;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.15);padding:12mm;page-break-after:always}
+    .page:last-child{page-break-after:auto}
+    
+    .report-header{text-align:center;border-bottom:4px solid #ff8c42;padding-bottom:12px;margin-bottom:20px}
+    .report-title{font-size:26px;font-weight:800;color:#1a3a52;margin-bottom:6px;letter-spacing:.5px}
+    .report-subtitle{font-size:13px;color:#64748b;font-weight:600}
+    
+    .section-title{font-size:16px;font-weight:800;color:#fff;margin:20px 0 12px;padding:8px 12px;background:linear-gradient(135deg,#ff8c42 0%,#e67a2e 100%);border-radius:6px;text-transform:uppercase;letter-spacing:.8px}
+    
+    .table-wrapper{margin-bottom:20px;page-break-inside:avoid}
+    table{width:100%;border-collapse:collapse;font-size:10px}
+    thead{background:linear-gradient(135deg,#1a3a52 0%,#2c5f8d 100%)}
+    th{padding:8px 6px;text-align:center;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.3px;border:1px solid #2c5f8d}
+    td{padding:7px 6px;text-align:center;border:1px solid #e1e8ed;font-weight:600;color:#1a3a52}
+    tbody tr:nth-child(even){background:#f8f9fa}
+    tbody tr:hover{background:#fff9f5}
+    
+    .pass{color:#10b981;font-weight:700}
+    .fail{color:#ef4444;font-weight:700}
+    .highlight{background:#fff3cd;font-weight:700}
+    
+    .trend-up{color:#10b981}
+    .trend-down{color:#ef4444}
+    .trend-neutral{color:#94a3b8}
+    
+    .comparison-box{background:#f8f9fa;border-left:4px solid #ff8c42;padding:10px;margin:10px 0;border-radius:4px;font-size:11px}
+    .comparison-title{font-weight:700;color:#1a3a52;margin-bottom:5px}
+    
+    @media print{
+      body{background:#fff;padding:0}
+      .action-buttons{display:none!important}
+      .page{box-shadow:none;margin:0;padding:12mm}
+    }
+    @page{size:A4 landscape;margin:0}
+  </style>
+</head>
+<body>
+  <div class="action-buttons no-print">
+    <button class="btn-print" onclick="window.print()">Print Report</button>
+  </div>
+  
+  <div class="page">
+    <div class="report-header">
+      <h1 class="report-title">Comprehensive Analytics Report</h1>
+      <p class="report-subtitle">Academic Year: <%= academicYear %></p>
+    </div>
+    
+    <!-- 1. Class-wise Subject Performance -->
+    <% if(classSubjectAnalysis && classSubjectAnalysis.length > 0) { %>
+      <h2 class="section-title">📊 Class-wise Subject Performance (Classes × Subjects)</h2>
+      <% 
+        const byTerminal = {};
+        classSubjectAnalysis.forEach(item => {
+          const term = item._id.terminal;
+          if(!byTerminal[term]) byTerminal[term] = {};
+          const cls = item._id.studentClass;
+          const subj = item._id.subject;
+          if(!byTerminal[term][cls]) byTerminal[term][cls] = {};
+          byTerminal[term][cls][subj] = item;
+        });
+        
+        const allClasses = [...new Set(classSubjectAnalysis.map(d => d._id.studentClass))].sort((a,b) => parseInt(a) - parseInt(b));
+        const allSubjects = [...new Set(classSubjectAnalysis.map(d => d._id.subject))].sort();
+        
+        Object.keys(byTerminal).forEach(terminal => {
+      %>
+        <div class="table-wrapper">
+          <h3 style="font-size:12px;color:#1a3a52;margin-bottom:8px">Terminal: <%= terminal %></h3>
+          <table>
+            <thead>
+              <tr>
+                <th rowspan="2">Class</th>
+                <% allSubjects.forEach(subj => { %>
+                  <th colspan="4"><%= subj %></th>
+                <% }); %>
+              </tr>
+              <tr>
+                <% allSubjects.forEach(subj => { %>
+                  <th>Pass</th>
+                  <th>Fail</th>
+                  <th>Pass%</th>
+                  <th>Total</th>
+                <% }); %>
+              </tr>
+            </thead>
+            <tbody>
+              <% allClasses.forEach(cls => { %>
+                <tr>
+                  <td style="font-weight:800;background:#f0f9ff"><%= cls %></td>
+                  <% allSubjects.forEach(subj => { 
+                    const data = byTerminal[terminal][cls] ? byTerminal[terminal][cls][subj] : null;
+                    if(data) {
+                      const passPercent = ((data.pass / data.totalStudents) * 100).toFixed(1);
+                  %>
+                    <td class="pass"><%= data.pass %></td>
+                    <td class="fail"><%= data.fail %></td>
+                    <td style="font-weight:700"><%= passPercent %>%</td>
+                    <td><%= data.totalStudents %></td>
+                  <% } else { %>
+                    <td colspan="4" style="color:#94a3b8">-</td>
+                  <% } %>
+                  <% }); %>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% }); %>
+    <% } %>
+  </div>
+  
+  <!-- 2. Section-wise Performance -->
+  <% if(sectionAnalysis && sectionAnalysis.length > 0) { %>
+    <div class="page">
+      <h2 class="section-title">📚 Section-wise Performance Analysis</h2>
+      <% 
+        const sectionByTerminal = {};
+        sectionAnalysis.forEach(item => {
+          const term = item._id.terminal;
+          const key = `${item._id.studentClass}-${item._id.section}`;
+          if(!sectionByTerminal[term]) sectionByTerminal[term] = {};
+          if(!sectionByTerminal[term][key]) sectionByTerminal[term][key] = {};
+          sectionByTerminal[term][key][item._id.subject] = item;
+        });
+        
+        const allSections = [...new Set(sectionAnalysis.map(d => `${d._id.studentClass}-${d._id.section}`))].sort();
+        const sectSubjects = [...new Set(sectionAnalysis.map(d => d._id.subject))].sort();
+        
+        Object.keys(sectionByTerminal).forEach(terminal => {
+      %>
+        <div class="table-wrapper">
+          <h3 style="font-size:12px;color:#1a3a52;margin-bottom:8px">Terminal: <%= terminal %></h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Section</th>
+                <% sectSubjects.forEach(subj => { %>
+                  <th colspan="3"><%= subj %></th>
+                <% }); %>
+              </tr>
+              <tr>
+                <th></th>
+                <% sectSubjects.forEach(subj => { %>
+                  <th>Pass%</th>
+                  <th>Avg</th>
+                  <th>Total</th>
+                <% }); %>
+              </tr>
+            </thead>
+            <tbody>
+              <% allSections.forEach(section => { %>
+                <tr>
+                  <td style="font-weight:800;background:#f0f9ff"><%= section %></td>
+                  <% sectSubjects.forEach(subj => { 
+                    const data = sectionByTerminal[terminal][section] ? sectionByTerminal[terminal][section][subj] : null;
+                    if(data) {
+                      const passPercent = ((data.pass / data.totalStudents) * 100).toFixed(1);
+                  %>
+                    <td style="font-weight:700"><%= passPercent %>%</td>
+                    <td><%= data.avgMarks.toFixed(2) %></td>
+                    <td><%= data.totalStudents %></td>
+                  <% } else { %>
+                    <td colspan="3" style="color:#94a3b8">-</td>
+                  <% } %>
+                  <% }); %>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% }); %>
+    <% } %>
+  </div>
+  
+  <!-- 3. Subject Average Across School -->
+  <% if(subjectAverage && subjectAverage.length > 0) { %>
+    <div class="page">
+      <h2 class="section-title">📈 Subject-wise Average Performance (Whole School)</h2>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Subject</th>
+              <th>Terminal</th>
+              <th>Total Students</th>
+              <th>Avg Theory</th>
+              <th>Avg Practical</th>
+              <th>Avg Total</th>
+              <th>Pass Count</th>
+              <th>Fail Count</th>
+              <th>Pass %</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% subjectAverage.forEach(data => { 
+              const passPercent = ((data.pass / data.totalStudents) * 100).toFixed(1);
+            %>
+              <tr>
+                <td style="font-weight:800"><%= data._id.subject %></td>
+                <td><%= data._id.terminal %></td>
+                <td><%= data.totalStudents %></td>
+                <td><%= data.avgTheory.toFixed(2) %></td>
+                <td><%= data.avgPractical.toFixed(2) %></td>
+                <td style="font-weight:700"><%= data.avgTotal.toFixed(2) %></td>
+                <td class="pass"><%= data.pass %></td>
+                <td class="fail"><%= data.fail %></td>
+                <td style="font-weight:700"><%= passPercent %>%</td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- 4. School Overview -->
+      <% if(schoolOverview && schoolOverview.length > 0) { %>
+        <h2 class="section-title">🏫 Whole School Overview</h2>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Terminal</th>
+                <th>Total Records</th>
+                <th>Total Pass</th>
+                <th>Total Fail</th>
+                <th>Pass %</th>
+                <th>Fail %</th>
+                <th>Avg Marks</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% schoolOverview.forEach(data => { 
+                const passPercent = ((data.totalPass / data.totalStudents) * 100).toFixed(1);
+                const failPercent = ((data.totalFail / data.totalStudents) * 100).toFixed(1);
+              %>
+                <tr>
+                  <td style="font-weight:800"><%= data._id.terminal %></td>
+                  <td><%= data.totalStudents %></td>
+                  <td class="pass"><%= data.totalPass %></td>
+                  <td class="fail"><%= data.totalFail %></td>
+                  <td class="pass" style="font-weight:700"><%= passPercent %>%</td>
+                  <td class="fail" style="font-weight:700"><%= failPercent %>%</td>
+                  <td style="font-weight:700"><%= data.avgMarks.toFixed(2) %></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
+  
+  <!-- 5. Terminal Comparison -->
+  <% if(terminalComparison && terminalComparison.length > 0) { %>
+    <div class="page">
+      <h2 class="section-title">🔄 Terminal-wise Comparison</h2>
+      <% 
+        const compBySubject = {};
+        terminalComparison.forEach(item => {
+          const subj = item._id.subject;
+          if(!compBySubject[subj]) compBySubject[subj] = [];
+          compBySubject[subj].push(item);
+        });
+        
+        Object.keys(compBySubject).forEach(subject => {
+          const terminals = compBySubject[subject];
+          terminals.sort((a,b) => a._id.terminal.localeCompare(b._id.terminal));
+      %>
+        <div class="table-wrapper">
+          <h3 style="font-size:12px;color:#1a3a52;margin-bottom:8px">Subject: <%= subject %></h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Terminal</th>
+                <th>Total Students</th>
+                <th>Pass</th>
+                <th>Fail</th>
+                <th>Pass %</th>
+                <th>Avg Marks</th>
+                <th>Trend</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% terminals.forEach((data, idx) => { 
+                const passPercent = ((data.pass / data.totalStudents) * 100).toFixed(1);
+                let trend = '';
+                let trendClass = 'trend-neutral';
+                if(idx > 0) {
+                  const prevAvg = terminals[idx-1].avgMarks;
+                  if(data.avgMarks > prevAvg) {
+                    trend = '↑ +' + (data.avgMarks - prevAvg).toFixed(2);
+                    trendClass = 'trend-up';
+                  } else if(data.avgMarks < prevAvg) {
+                    trend = '↓ ' + (data.avgMarks - prevAvg).toFixed(2);
+                    trendClass = 'trend-down';
+                  } else {
+                    trend = '→ Same';
+                  }
+                }
+              %>
+                <tr>
+                  <td style="font-weight:800"><%= data._id.terminal %></td>
+                  <td><%= data.totalStudents %></td>
+                  <td class="pass"><%= data.pass %></td>
+                  <td class="fail"><%= data.fail %></td>
+                  <td style="font-weight:700"><%= passPercent %>%</td>
+                  <td style="font-weight:700"><%= data.avgMarks.toFixed(2) %></td>
+                  <td class="<%= trendClass %>" style="font-weight:700"><%= trend || '-' %></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+          
+          <% if(terminals.length >= 2) { %>
+            <div class="comparison-box">
+              <div class="comparison-title">Analysis:</div>
+              <% 
+                const first = terminals[0];
+                const last = terminals[terminals.length - 1];
+                const avgChange = last.avgMarks - first.avgMarks;
+                const failChange = last.fail - first.fail;
+              %>
+              From <%= first._id.terminal %> to <%= last._id.terminal %>: 
+              Average marks <%= avgChange > 0 ? 'increased' : 'decreased' %> by <%= Math.abs(avgChange).toFixed(2) %> | 
+              Failures <%= failChange > 0 ? 'increased' : 'decreased' %> by <%= Math.abs(failChange) %> students
+            </div>
+          <% } %>
+        </div>
+      <% }); %>
+    </div>
+  <% } %>
+  
+  <!-- 6. Year-wise Trend -->
+  <% if(yearTrend && yearTrend.length > 1) { %>
+    <div class="page">
+      <h2 class="section-title">📅 Year-wise Performance Trend</h2>
+      <% 
+        const trendBySubject = {};
+        yearTrend.forEach(item => {
+          const subj = item._id.subject;
+          if(!trendBySubject[subj]) trendBySubject[subj] = [];
+          trendBySubject[subj].push(item);
+        });
+        
+        Object.keys(trendBySubject).forEach(subject => {
+          const years = trendBySubject[subject];
+          years.sort((a,b) => {
+            if(a._id.academicYear !== b._id.academicYear) {
+              return a._id.academicYear.localeCompare(b._id.academicYear);
+            }
+            return a._id.terminal.localeCompare(b._id.terminal);
+          });
+      %>
+        <div class="table-wrapper">
+          <h3 style="font-size:12px;color:#1a3a52;margin-bottom:8px">Subject: <%= subject %></h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Year</th>
+                <th>Terminal</th>
+                <th>Pass %</th>
+                <th>Fail Count</th>
+                <th>Avg Marks</th>
+                <th>Trend</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% years.forEach((data, idx) => { 
+                const passPercent = ((data.pass / data.totalStudents) * 100).toFixed(1);
+                let trend = '';
+                let trendClass = 'trend-neutral';
+                if(idx > 0) {
+                  const prevFail = years[idx-1].fail;
+                  if(data.fail > prevFail) {
+                    trend = '⚠ Failures +' + (data.fail - prevFail);
+                    trendClass = 'trend-down';
+                  } else if(data.fail < prevFail) {
+                    trend = '✓ Failures -' + (prevFail - data.fail);
+                    trendClass = 'trend-up';
+                  } else {
+                    trend = '→ Stable';
+                  }
+                }
+              %>
+                <tr>
+                  <td style="font-weight:800"><%= data._id.academicYear %></td>
+                  <td><%= data._id.terminal %></td>
+                  <td style="font-weight:700"><%= passPercent %>%</td>
+                  <td class="<%= data.fail > 10 ? 'fail' : '' %>"><%= data.fail %></td>
+                  <td><%= data.avgMarks.toFixed(2) %></td>
+                  <td class="<%= trendClass %>" style="font-weight:700"><%= trend || '-' %></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+      <% }); %>
+    </div>
+  <% } %>
+</body>
+</html>

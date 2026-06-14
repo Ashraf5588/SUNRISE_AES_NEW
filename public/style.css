@@ -1,0 +1,162 @@
+@import url('https://fonts.googleapis.com/css2?family=Agbalumo&family=Alexandria:wght@100..900&family=Lexend:wght@100..900&family=Manrope:wght@200..800&display=swap');
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+   
+    
+}
+@font-face {
+    font-family: 'Alexandria Regular';
+    font-style: normal;
+    font-weight:300;
+    src: local('Alexandria Regular'), url('Alexandria[wght].woff') format('woff');
+    }
+body{
+    background-color: rgb(239, 236, 236);
+    font-family: 'Alexandria Regular';
+    font-style: normal;
+    font-weight: normal;
+}
+
+a{
+    text-decoration: none;
+   
+    display:inline-block
+    
+}
+#firstheading
+{
+    margin-top: 4%;
+    font-size: 64px;
+}
+#firstspan
+{
+   color: darkblue;
+}
+.subheading
+{
+    color: rgb(123, 123, 123);
+}
+.subject
+{
+background-color: red;
+border-radius: 8px;
+width: 25rem;
+height: 8rem;
+color: white;
+font-size: 40px;
+line-height: -2px;
+display: flex;
+gap: 12%;
+column-gap: 5%;
+}
+.spansubject
+{
+    padding: 8% 0 0 0;
+    
+}
+.subjectcontainer
+{
+    margin: 8% 0 0 0;
+    display: flex;
+    column-gap: 5rem;
+flex-wrap: wrap;
+    flex-direction: column;
+}
+.subcol1,.subcol2
+{
+    display: flex;
+    gap:5%;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    
+   text-align: center;
+    margin: 3% 0 0 0;
+}
+.logo
+{
+    border-radius: 7px;
+    margin: 23px 0 0 31px;
+    height: 5rem;
+    background-color: white;
+    width: 5rem;
+}
+#math
+{
+    background-color: #f198b4;
+    font-size: 22px;
+}
+#science
+{
+    background-color: #84eadb;
+}
+.fa-calculator,.fa-flask,.fa-computer,.fa-people-arrows,.fa-chart-simple,.fa-briefcase-medical,.fa-clipboard
+{
+    color: #f198b4;
+    font-size: 50px;
+    padding: 18% 0 0 0;
+}
+#computer
+{
+   background-color:  #999df0;
+}
+#social
+{
+    background-color: #67ea93;
+}
+#optmath
+{
+   background-color:  #66b2ec;
+}
+#Health
+{
+    background-color: #ebbb46;
+}
+
+
+.subject:hover{
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+.report
+{
+    background-color: #ebbb46;
+    color: white;
+    margin-top: 5%;
+}
+
+
+
+@media(max-width:500px)
+{
+    .subject
+    {
+        width: 18rem;
+        font-size: 25px;
+    }
+    #firstheading
+    {
+        font-size: 35px;
+    }
+    .subheading
+    {
+        font-size: 12px;
+    }
+}
+@media(max-width:416px)
+{
+    .subject
+    {
+        width: 17rem;
+        font-size: 25px;
+    }
+    #firstheading
+    {
+        font-size: 25px;
+    }
+    .subheading
+    {
+        font-size: 10px;
+    }
+}

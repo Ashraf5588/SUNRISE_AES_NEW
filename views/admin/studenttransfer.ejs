@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Transfer</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #1954a6;
+            --primary-dark: #0e2c5c;
+            --accent: #f0841f;
+            --bg: #f5f7fb;
+            --card: #ffffff;
+            --text: #1f2937;
+            --muted: #64748b;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --border: rgba(148, 163, 184, 0.2);
+            --shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(25, 84, 166, 0.12), transparent 28%),
+                radial-gradient(circle at top right, rgba(240, 132, 31, 0.12), transparent 24%),
+                linear-gradient(180deg, #f7f9fc 0%, #eef3f9 100%);
+            color: var(--text);
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            color: white;
+            border-radius: 24px;
+            padding: 1.75rem;
+            box-shadow: var(--shadow);
+            margin-bottom: 1.25rem;
+        }
+
+        .header h1 {
+            margin: 0 0 0.35rem;
+            font-size: 2rem;
+        }
+
+        .header p {
+            margin: 0;
+            opacity: 0.92;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 1.25rem;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 22px;
+            box-shadow: var(--shadow);
+            padding: 1.25rem;
+        }
+
+        .card h2 {
+            margin: 0 0 1rem;
+            font-size: 1.15rem;
+            color: var(--primary-dark);
+        }
+
+        .hint {
+            color: var(--muted);
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+        }
+
+        .chip-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+            margin-bottom: 1rem;
+        }
+
+        .chip {
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--text);
+            padding: 0.7rem 0.95rem;
+            border-radius: 999px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: all 0.2s ease;
+        }
+
+        .chip.active {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border-color: transparent;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 0.45rem;
+            font-weight: 700;
+        }
+
+        .field select,
+        .field input {
+            width: 100%;
+            padding: 0.8rem 0.9rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            font-size: 1rem;
+            background: #fff;
+        }
+
+        .student-panel {
+            margin-top: 1rem;
+            border-top: 1px dashed var(--border);
+            padding-top: 1rem;
+        }
+
+        .student-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .student-count {
+            color: var(--muted);
+            font-weight: 600;
+        }
+
+        .student-list {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+            max-height: 460px;
+            overflow: auto;
+            padding-right: 0.25rem;
+        }
+
+        .student-item {
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 0.85rem;
+            background: #fafcff;
+            position: relative;
+        }
+
+        .student-item.selected {
+            border-color: rgba(25, 84, 166, 0.4);
+            background: #f3f8ff;
+        }
+
+        .student-item label {
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-start;
+            cursor: pointer;
+        }
+
+        .student-item input {
+            margin-top: 0.2rem;
+        }
+
+        .student-name {
+            font-weight: 700;
+            display: block;
+        }
+
+        .student-meta {
+            display: block;
+            color: var(--muted);
+            font-size: 0.9rem;
+            margin-top: 0.15rem;
+        }
+
+        .selection-badge {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            min-width: 1.65rem;
+            height: 1.65rem;
+            padding: 0 0.45rem;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: #fff;
+            font-weight: 800;
+            font-size: 0.82rem;
+            opacity: 0;
+            transform: scale(0.95);
+            transition: opacity 0.15s ease, transform 0.15s ease;
+        }
+
+        .student-item.selected .selection-badge {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-top: 1.1rem;
+        }
+
+        .btn {
+            border: none;
+            border-radius: 14px;
+            padding: 0.9rem 1.1rem;
+            font-weight: 800;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #e2e8f0;
+            color: var(--text);
+        }
+
+        .summary {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .summary-box {
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 1rem;
+            background: #fff;
+        }
+
+        .summary-box strong {
+            display: block;
+            margin-bottom: 0.35rem;
+        }
+
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            overflow: hidden;
+            border-radius: 14px;
+            border: 1px solid var(--border);
+            background: #fff;
+        }
+
+        .preview-table th,
+        .preview-table td {
+            padding: 0.7rem 0.8rem;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+            font-size: 0.92rem;
+        }
+
+        .preview-table th {
+            background: #f8fbff;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--muted);
+        }
+
+        .preview-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .preview-note {
+            margin-top: 0.75rem;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            z-index: 50;
+        }
+
+        .modal-backdrop.is-open { display: flex; }
+
+        .modal-card {
+            background: #fff;
+            width: min(920px, 100%);
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 16px 20px;
+            background: #f8fafc;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-weight: 700;
+            color: var(--primary-dark);
+            font-size: 1rem;
+        }
+
+        .modal-body {
+            padding: 20px;
+            display: grid;
+            gap: 14px;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            max-height: 70vh;
+            overflow: auto;
+        }
+
+        .modal-footer {
+            padding: 14px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .modal-field label { font-size: 0.75rem; color: #64748b; }
+        .modal-field input,
+        .modal-field select,
+        .modal-field textarea {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.85rem;
+        }
+
+        .modal-field textarea { min-height: 70px; resize: vertical; }
+
+        .radio-inline-group {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+
+        .radio-inline-group label {
+            font-weight: 500;
+            color: #64748b;
+            margin: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .toggle-control {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toggle-input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .toggle-track {
+            --toggle-width: 72px;
+            width: var(--toggle-width);
+            height: 32px;
+            border-radius: 999px;
+            background: #cbd5e1;
+            border: 1px solid #94a3b8;
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            padding: 0 8px 0 32px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #475569;
+            transition: all 0.2s ease;
+            justify-content: flex-end;
+            user-select: none;
+        }
+
+        .toggle-track::before {
+            content: attr(data-off);
+            line-height: 1;
+            letter-spacing: 0.3px;
+        }
+
+        .toggle-track::after {
+            content: '';
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            transition: transform 0.2s ease;
+        }
+
+        .toggle-input:checked + .toggle-track {
+            background: #16a34a;
+            border-color: #15803d;
+            color: #fff;
+            padding: 0 32px 0 8px;
+            justify-content: flex-start;
+        }
+
+        .toggle-input:checked + .toggle-track::before {
+            content: attr(data-on);
+        }
+
+        .toggle-input:checked + .toggle-track::after {
+            transform: translateX(calc(var(--toggle-width) - 32px));
+        }
+
+        .toggle-input[data-danger='true']:checked + .toggle-track {
+            background: #dc2626;
+            border-color: #b91c1c;
+        }
+
+        .toggle-input[data-positive='true'] + .toggle-track {
+            --toggle-width: 124px;
+            width: var(--toggle-width);
+        }
+
+        .toggle-input[data-positive='true']:checked + .toggle-track {
+            background: #16a34a;
+            border-color: #15803d;
+        }
+
+        .toggle-input[data-positive='true']:not(:checked) + .toggle-track {
+            background: #dc2626;
+            border-color: #b91c1c;
+            color: #fff;
+        }
+
+        .notification {
+            position: fixed;
+            top: 18px;
+            right: 18px;
+            z-index: 1000;
+            color: #fff;
+            font-weight: 700;
+            padding: 0.9rem 1.1rem;
+            border-radius: 14px;
+            box-shadow: var(--shadow);
+            transform: translateX(120%);
+            transition: transform 0.25s ease;
+            max-width: 360px;
+        }
+
+        .notification.show { transform: translateX(0); }
+        .notification.success { background: linear-gradient(135deg, #16a34a, #15803d); }
+        .notification.error { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+
+        .empty-state {
+            border: 1px dashed var(--border);
+            border-radius: 18px;
+            padding: 1.25rem;
+            text-align: center;
+            color: var(--muted);
+            background: #fbfdff;
+        }
+
+        @media (max-width: 960px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 720px) {
+            .container { padding: 1rem; }
+            .header { padding: 1.25rem; }
+            .header h1 { font-size: 1.5rem; }
+            .form-grid, .student-list { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <%- include('../partials/sidenav', {
+        subjects: subjects || [],
+        studentClassdata: studentClassdata || [],
+        terminals: terminals || []
+    }) %>
+
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-user-pen"></i> Student Transfer</h1>
+            <p>Select a previous class-section, check the students you want to promote, then move them to the new class-section for the next academic session.</p>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2><i class="fas fa-users"></i> Select Students</h2>
+                <div class="hint">Start by choosing the previous class. All students from every section will appear automatically.</div>
+
+                <div class="chip-row" id="classButtons">
+                    <% (availableClasses || []).forEach((className) => { %>
+                        <button type="button" class="chip" data-class="<%= className %>"><%= className %></button>
+                    <% }) %>
+                </div>
+
+                <form id="transferForm" action="/student-transfer" method="POST">
+                    <input type="hidden" name="sourceClass" id="sourceClass" />
+                    <input type="hidden" name="selectionOrder" id="selectionOrder" />
+                    <div id="selectedHidden"></div>
+                    <div class="form-grid">
+                        <div class="field">
+                            <label for="targetClass">New Class</label>
+                            <select id="targetClass" name="targetClass" required>
+                                <option value="">Select new class</option>
+                                <% (availableClasses || []).forEach((className) => { %>
+                                    <option value="<%= className %>"><%= className %></option>
+                                <% }) %>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="targetSection">New Section</label>
+                            <select id="targetSection" name="targetSection" required>
+                                <option value="">Select new class first</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label for="studentSearch">Search</label>
+                            <input type="text" id="studentSearch" placeholder="Search by name or reg number">
+                        </div>
+                    </div>
+
+                    <div class="student-panel">
+                        <div class="student-toolbar">
+                            <label style="display:flex;align-items:center;gap:0.5rem;font-weight:700;cursor:pointer;">
+                                <input type="checkbox" id="selectAllStudents" disabled>
+                                Select all shown students
+                            </label>
+                            <div class="student-count" id="studentCount">No class selected</div>
+                        </div>
+                        <div class="student-list" id="studentList">
+                            <div class="empty-state">Choose a class and section to load students.</div>
+                        </div>
+                    </div>
+
+                    <div class="actions">
+                        <button type="button" class="btn btn-secondary" id="addStudentBtn">
+                            <i class="fas fa-user-plus"></i>
+                            Add New Student
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="transferBtn" disabled>
+                            <i class="fas fa-right-left"></i>
+                            Update Selected Students
+                        </button>
+                        <a href="/studentrecord" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i>
+                            Back to Student Records
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2><i class="fas fa-clipboard-list"></i> Transfer Summary</h2>
+                <div class="summary">
+                    <div class="summary-box">
+                        <strong>How it works</strong>
+                        Pick the old class from the buttons, then check the students who should move to the next year.
+                    </div>
+                    <div class="summary-box">
+                        <strong>Update target</strong>
+                        Choose the new class and section for the next academic session before submitting.
+                    </div>
+                    <div class="summary-box">
+                        <strong>Result</strong>
+                        The selected students are updated in the <em>studentrecord</em> collection with the new class and section values.
+                    </div>
+                    <div class="summary-box">
+                        <strong>Roll preview</strong>
+                        <div id="rollPreviewEmpty">Choose students to preview the new numbering and adjust rolls if needed.</div>
+                        <div id="rollPreviewWrap" style="display:none; margin-top: 0.75rem;">
+                            <table class="preview-table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Student</th>
+                                        <th>Old Roll</th>
+                                        <th>New Roll</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rollPreviewBody"></tbody>
+                            </table>
+                            <div class="preview-note">Rolls are prefilled in checked order, but you can edit them before saving.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <div id="infoModal" class="modal-backdrop" aria-hidden="true">
+        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="infoModalTitle">
+            <div class="modal-header">
+                <div class="modal-title" id="infoModalTitle">Student Information</div>
+                <button type="button" class="btn btn-secondary" id="closeInfoModal">Close</button>
+            </div>
+            <form id="infoForm">
+                <div class="modal-body">
+                    <div class="modal-field">
+                        <label for="info_reg">Reg No</label>
+                        <input id="info_reg" name="reg" type="text" required />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_name">Name</label>
+                        <input id="info_name" name="name" type="text" required />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_roll">Roll</label>
+                        <input id="info_roll" name="roll" type="number" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_class">Class</label>
+                        <input id="info_class" name="studentClass" type="text" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_section">Section</label>
+                        <input id="info_section" name="section" type="text" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_gender">Gender</label>
+                        <input id="info_gender" name="gender" type="text" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_age">Age</label>
+                        <input id="info_age" name="age" type="text" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_dob">Date of Birth</label>
+                        <input id="info_dob" name="dob" type="date" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_class_started">Class Started At</label>
+                        <input id="info_class_started" name="classStartedAt" type="date" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_mother_tongue">Mother Tongue</label>
+                        <input id="info_mother_tongue" name="mothersToungue" type="text" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_previous_school">Previous School</label>
+                        <input id="info_previous_school" name="previousSchool" type="text" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_father_name">Father Name</label>
+                        <input id="info_father_name" name="fatherName" type="text" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_father_occupation">Father Occupation</label>
+                        <input id="info_father_occupation" name="fatheroccupation" type="text" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_father_contact">Father Contact</label>
+                        <input id="info_father_contact" name="fatherContact" type="text" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_father_qualification">Father Qualification</label>
+                        <input id="info_father_qualification" name="fatherqualification" type="text" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_mother_name">Mother Name</label>
+                        <input id="info_mother_name" name="motherName" type="text" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_mother_occupation">Mother Occupation</label>
+                        <input id="info_mother_occupation" name="motheroccupation" type="text" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_mother_contact">Mother Contact</label>
+                        <input id="info_mother_contact" name="motherContact" type="text" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_mother_qualification">Mother Qualification</label>
+                        <input id="info_mother_qualification" name="motherqualification" type="text" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_guardian_name">Other Guardian Name</label>
+                        <input id="info_guardian_name" name="otherguardianName" type="text" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_guardian_occupation">Other Guardian Occupation</label>
+                        <input id="info_guardian_occupation" name="otherguardianOccupation" type="text" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_guardian_contact">Other Guardian Contact</label>
+                        <input id="info_guardian_contact" name="otherguardianContact" type="text" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_yearly_income">Yearly Income</label>
+                        <input id="info_yearly_income" name="yearlyIncome" type="text" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_blood_group">Blood Group</label>
+                        <input id="info_blood_group" name="bloodGroup" type="text" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_height">Height</label>
+                        <input id="info_height" name="height" type="text" placeholder="e.g. 145 cm" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_weight">Weight</label>
+                        <input id="info_weight" name="weight" type="text" placeholder="e.g. 38 kg" />
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_medical">Any Medical Condition (comma separated)</label>
+                        <textarea id="info_medical" name="anyMedicalCondition"></textarea>
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_behaviour">Other Behavioural Condition</label>
+                        <textarea id="info_behaviour" name="otherbehaviouralCondition"></textarea>
+                    </div>
+                    <div class="modal-field">
+                        <label>Eye Problem</label>
+                        <div class="toggle-control">
+                            <label>
+                                <input type="checkbox" id="toggle_eyeproblem" class="toggle-input" data-danger="true" />
+                                <span class="toggle-track" data-on="YES" data-off="NO"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-field">
+                        <label>Ear Problem</label>
+                        <div class="toggle-control">
+                            <label>
+                                <input type="checkbox" id="toggle_earproblem" class="toggle-input" data-danger="true" />
+                                <span class="toggle-track" data-on="YES" data-off="NO"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-field">
+                        <label>Hair Problem</label>
+                        <div class="toggle-control">
+                            <label>
+                                <input type="checkbox" id="toggle_hairproblem" class="toggle-input" data-danger="true" />
+                                <span class="toggle-track" data-on="YES" data-off="NO"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-field">
+                        <label>Lives with Father/Mother</label>
+                        <div class="toggle-control">
+                            <label>
+                                <input type="checkbox" id="toggle_livewithparents" class="toggle-input" checked />
+                                <span class="toggle-track" data-on="YES" data-off="NO"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-field">
+                        <label>Parent View Towards School</label>
+                        <div class="toggle-control">
+                            <label>
+                                <input type="checkbox" id="toggle_parentview" class="toggle-input" data-positive="true" checked />
+                                <span class="toggle-track" data-on="POSITIVE" data-off="NEGATIVE"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-field">
+                        <label>Parent Visit Frequency</label>
+                        <div class="radio-inline-group">
+                            <label><input type="radio" name="parentVisitFrequency" value="frequent" /> Frequent</label>
+                            <label><input type="radio" name="parentVisitFrequency" value="occasional" checked /> Occasional</label>
+                            <label><input type="radio" name="parentVisitFrequency" value="rare" /> Rare</label>
+                            <label><input type="radio" name="parentVisitFrequency" value="not-visiting" /> Not Visiting</label>
+                        </div>
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_mobile">Contact Number</label>
+                        <input id="info_mobile" name="numberofmobile" type="text" />
+                    </div>
+                    <div class="modal-field">
+                        <label>TV at Home</label>
+                        <div class="toggle-control">
+                            <label>
+                                <input type="checkbox" id="toggle_tvathome" class="toggle-input" checked />
+                                <span class="toggle-track" data-on="YES" data-off="NO"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-field">
+                        <label>Internet at Home</label>
+                        <div class="toggle-control">
+                            <label>
+                                <input type="checkbox" id="toggle_internetathome" class="toggle-input" checked />
+                                <span class="toggle-track" data-on="YES" data-off="NO"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-field">
+                        <label for="info_fee_paid">Fee Paid Duration</label>
+                        <input id="info_fee_paid" name="feepaidduration" type="text" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancelInfoModal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const studentRecords = <%- JSON.stringify(studentRecords || []) %>;
+        const availableClassSections = <%- JSON.stringify(availableClassSections || []) %>;
+        const classButtons = document.querySelectorAll('.chip[data-class]');
+        const sourceClassInput = document.getElementById('sourceClass');
+        const targetClassSelect = document.getElementById('targetClass');
+        const targetSectionSelect = document.getElementById('targetSection');
+        const studentList = document.getElementById('studentList');
+        const studentCount = document.getElementById('studentCount');
+        const transferBtn = document.getElementById('transferBtn');
+        const transferForm = document.getElementById('transferForm');
+        const selectAllStudents = document.getElementById('selectAllStudents');
+        const studentSearch = document.getElementById('studentSearch');
+        const selectionOrderInput = document.getElementById('selectionOrder');
+        const selectedHidden = document.getElementById('selectedHidden');
+        const rollPreviewEmpty = document.getElementById('rollPreviewEmpty');
+        const rollPreviewWrap = document.getElementById('rollPreviewWrap');
+        const rollPreviewBody = document.getElementById('rollPreviewBody');
+
+        const state = {
+            sourceClass: '',
+            targetClass: '',
+            targetSection: '',
+            selectionOrder: []
+        };
+
+        function normalize(value) {
+            return String(value || '').trim().toLowerCase();
+        }
+
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type} show`;
+            setTimeout(() => notification.classList.remove('show'), 3500);
+        }
+
+        function formatDateInput(value) {
+            if (!value) return '';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return '';
+            return date.toISOString().slice(0, 10);
+        }
+
+        function setField(id, value) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.value = value || '';
+        }
+
+        function setRadio(name, value, fallbackValue) {
+            const radios = document.querySelectorAll(`input[name="${name}"]`);
+            if (!radios.length) return;
+            const normalizedValue = String(value || '').toLowerCase();
+            let matched = false;
+            radios.forEach((radio) => {
+                const radioValue = String(radio.value || '').toLowerCase();
+                const shouldCheck = normalizedValue && normalizedValue === radioValue;
+                radio.checked = shouldCheck;
+                if (shouldCheck) matched = true;
+            });
+
+            if (!matched && fallbackValue !== undefined) {
+                const fallbackNormalized = String(fallbackValue).toLowerCase();
+                radios.forEach((radio) => {
+                    const radioValue = String(radio.value || '').toLowerCase();
+                    radio.checked = radioValue === fallbackNormalized;
+                });
+            }
+        }
+
+        function toBoolean(value, fallback) {
+            if (value === true || value === false) return value;
+            const normalizedValue = String(value || '').toLowerCase().trim();
+            if (normalizedValue === 'true' || normalizedValue === 'yes' || normalizedValue === '1') return true;
+            if (normalizedValue === 'false' || normalizedValue === 'no' || normalizedValue === '0') return false;
+            return fallback;
+        }
+
+        function setToggle(id, value, fallbackChecked) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const next = toBoolean(value, fallbackChecked);
+            el.checked = !!next;
+        }
+
+        function openInfoModalForNew() {
+            setField('info_reg', '');
+            setField('info_name', '');
+            setField('info_roll', '');
+            setField('info_class', state.sourceClass || '');
+            setField('info_section', '');
+            setField('info_gender', '');
+            setField('info_age', '');
+            setField('info_dob', '');
+            setField('info_class_started', '');
+            setField('info_mother_tongue', '');
+            setField('info_previous_school', '');
+            setField('info_father_name', '');
+            setField('info_father_occupation', '');
+            setField('info_father_contact', '');
+            setField('info_father_qualification', '');
+            setField('info_mother_name', '');
+            setField('info_mother_occupation', '');
+            setField('info_mother_contact', '');
+            setField('info_mother_qualification', '');
+            setField('info_guardian_name', '');
+            setField('info_guardian_occupation', '');
+            setField('info_guardian_contact', '');
+            setField('info_yearly_income', '');
+            setField('info_blood_group', '');
+            setField('info_height', '');
+            setField('info_weight', '');
+            setField('info_medical', '');
+            setField('info_behaviour', '');
+            setToggle('toggle_eyeproblem', false, false);
+            setToggle('toggle_earproblem', false, false);
+            setToggle('toggle_hairproblem', false, false);
+            setToggle('toggle_livewithparents', true, true);
+            setToggle('toggle_parentview', true, true);
+            setRadio('parentVisitFrequency', 'occasional', 'occasional');
+            setField('info_mobile', '');
+            setToggle('toggle_tvathome', true, true);
+            setToggle('toggle_internetathome', true, true);
+            setField('info_fee_paid', '');
+
+            const modal = document.getElementById('infoModal');
+            modal.classList.add('is-open');
+            modal.setAttribute('aria-hidden', 'false');
+        }
+
+        function closeInfoModal() {
+            const modal = document.getElementById('infoModal');
+            modal.classList.remove('is-open');
+            modal.setAttribute('aria-hidden', 'true');
+        }
+
+        function getSectionsForClass(className) {
+            const sections = availableClassSections
+                .filter((item) => normalize(item.studentClass) === normalize(className))
+                .map((item) => String(item.section || '').trim().toUpperCase())
+                .filter(Boolean);
+
+            return [...new Set(sections)];
+        }
+
+        function renderSectionOptions(selectElement, className, placeholder) {
+            const sections = getSectionsForClass(className);
+            selectElement.innerHTML = '';
+            const firstOption = document.createElement('option');
+            firstOption.value = '';
+            firstOption.textContent = placeholder;
+            selectElement.appendChild(firstOption);
+
+            sections.forEach((section) => {
+                const option = document.createElement('option');
+                option.value = section;
+                option.textContent = section;
+                selectElement.appendChild(option);
+            });
+
+            selectElement.disabled = sections.length === 0;
+        }
+
+        function getFilteredStudents() {
+            return studentRecords.filter((student) => {
+                return normalize(student.studentClass) === normalize(state.sourceClass);
+            });
+        }
+
+        function getVisibleCheckboxes() {
+            return Array.from(studentList.querySelectorAll('input[type="checkbox"][name="studentIds"]'));
+        }
+
+        function syncSelectionOrderInput() {
+            selectionOrderInput.value = JSON.stringify(state.selectionOrder);
+            syncHiddenSelections();
+        }
+
+        function syncHiddenSelections() {
+            if (!selectedHidden) {
+                return;
+            }
+            const visibleIds = new Set(getVisibleCheckboxes().map((checkbox) => String(checkbox.value)));
+            selectedHidden.innerHTML = '';
+            state.selectionOrder.forEach((studentId) => {
+                const normalizedId = String(studentId);
+                if (visibleIds.has(normalizedId)) {
+                    return;
+                }
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'studentIds';
+                input.value = normalizedId;
+                selectedHidden.appendChild(input);
+            });
+        }
+
+        function renumberSelectedCards() {
+            const orderMap = new Map(state.selectionOrder.map((id, index) => [String(id), index + 1]));
+
+            studentList.querySelectorAll('.student-item').forEach((item) => {
+                const checkbox = item.querySelector('input[type="checkbox"][name="studentIds"]');
+                const badge = item.querySelector('.selection-badge');
+                const orderNumber = checkbox && checkbox.checked ? orderMap.get(String(checkbox.value)) : null;
+
+                item.classList.toggle('selected', Boolean(orderNumber));
+                badge.textContent = orderNumber ? String(orderNumber) : '';
+            });
+        }
+
+        function updateSelectionState(studentId, checked) {
+            const normalizedId = String(studentId);
+
+            if (checked) {
+                if (!state.selectionOrder.includes(normalizedId)) {
+                    state.selectionOrder.push(normalizedId);
+                }
+            } else {
+                state.selectionOrder = state.selectionOrder.filter((id) => id !== normalizedId);
+            }
+
+            syncSelectionOrderInput();
+            renumberSelectedCards();
+            renderRollPreview();
+        }
+
+        function getVisibleStudents() {
+            const filteredStudents = getFilteredStudents();
+            const query = normalize(studentSearch.value);
+
+            return filteredStudents.filter((student) => {
+                if (!query) return true;
+                return normalize(student.name).includes(query) || normalize(student.reg).includes(query);
+            });
+        }
+
+        function getSelectedVisibleStudents() {
+            const selectedIds = new Set(getVisibleCheckboxes().filter((checkbox) => checkbox.checked).map((checkbox) => checkbox.value));
+            const allById = new Map(studentRecords.map((student) => [String(student._id), student]));
+
+            return state.selectionOrder
+                .map((studentId) => allById.get(String(studentId)))
+                .filter(Boolean)
+                .filter((student) => selectedIds.has(String(student._id)));
+        }
+
+        function renderRollPreview() {
+            const selectedStudents = getSelectedVisibleStudents();
+            if (!state.sourceClass || selectedStudents.length === 0) {
+                rollPreviewEmpty.style.display = 'block';
+                rollPreviewWrap.style.display = 'none';
+                if (!state.sourceClass) {
+                    rollPreviewEmpty.textContent = 'Choose a source class first.';
+                } else if (selectedStudents.length === 0) {
+                    rollPreviewEmpty.textContent = 'Select students to preview the new roll sequence.';
+                }
+                return;
+            }
+
+            const previewRows = selectedStudents.map((student, index) => {
+                const rollValue = index + 1;
+                return `
+                    <tr>
+                        <td>${index + 1}</td>
+                        <td>${student.name || ''}${student.reg ? ` <span style="color: var(--muted);">(${student.reg})</span>` : ''}</td>
+                        <td>${student.roll ?? ''}</td>
+                        <td>
+                            <input
+                                type="number"
+                                name="rollMap[${String(student._id)}]"
+                                value="${rollValue}"
+                                min="1"
+                                style="width: 80px; padding: 0.35rem 0.45rem; border-radius: 8px; border: 1px solid var(--border);"
+                                form="transferForm"
+                                required
+                            />
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            rollPreviewBody.innerHTML = previewRows;
+            rollPreviewEmpty.style.display = 'none';
+            rollPreviewWrap.style.display = 'block';
+        }
+
+        function renderStudents() {
+            const visibleStudents = getVisibleStudents();
+
+            studentCount.textContent = state.sourceClass
+                ? `${visibleStudents.length} student(s) shown from ${state.sourceClass}`
+                : 'No class selected';
+
+            selectAllStudents.checked = false;
+            selectAllStudents.disabled = visibleStudents.length === 0;
+
+            if (!state.sourceClass) {
+                studentList.innerHTML = '<div class="empty-state">Choose a class to load students.</div>';
+                transferBtn.disabled = true;
+                return;
+            }
+
+            if (visibleStudents.length === 0) {
+                studentList.innerHTML = '<div class="empty-state">No students found for the selected class.</div>';
+                transferBtn.disabled = true;
+                return;
+            }
+
+            studentList.innerHTML = visibleStudents.map((student) => {
+                const label = [student.name, student.reg ? `Reg: ${student.reg}` : '', student.roll ? `Roll: ${student.roll}` : '']
+                    .filter(Boolean)
+                    .join(' | ');
+
+                return `
+                    <div class="student-item" data-student-id="${String(student._id)}">
+                        <span class="selection-badge"></span>
+                        <label>
+                            <input type="checkbox" name="studentIds" value="${String(student._id)}" ${state.selectionOrder.includes(String(student._id)) ? 'checked' : ''}>
+                            <span>
+                                <span class="student-name">${label}</span>
+                                <span class="student-meta">${String(student.studentClass || '')} ${String(student.section || '')}</span>
+                            </span>
+                        </label>
+                    </div>
+                `;
+            }).join('');
+
+            renumberSelectedCards();
+            transferBtn.disabled = false;
+            renderRollPreview();
+            syncHiddenSelections();
+        }
+
+        classButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                classButtons.forEach((item) => item.classList.remove('active'));
+                button.classList.add('active');
+
+                state.sourceClass = button.dataset.class || '';
+                sourceClassInput.value = state.sourceClass;
+                renderStudents();
+            });
+        });
+
+        targetClassSelect.addEventListener('change', () => {
+            state.targetClass = targetClassSelect.value;
+            renderSectionOptions(targetSectionSelect, state.targetClass, 'Select new section');
+        });
+
+        targetSectionSelect.addEventListener('change', () => {
+            state.targetSection = targetSectionSelect.value;
+        });
+
+        selectAllStudents.addEventListener('change', () => {
+            const visibleCheckboxes = getVisibleCheckboxes();
+            visibleCheckboxes.forEach((checkbox) => {
+                checkbox.checked = selectAllStudents.checked;
+            });
+            if (selectAllStudents.checked) {
+                visibleCheckboxes.forEach((checkbox) => {
+                    if (!state.selectionOrder.includes(checkbox.value)) {
+                        state.selectionOrder.push(checkbox.value);
+                    }
+                });
+            } else {
+                state.selectionOrder = state.selectionOrder.filter((studentId) => !visibleCheckboxes.some((checkbox) => checkbox.value === studentId));
+            }
+            syncSelectionOrderInput();
+            renumberSelectedCards();
+            renderRollPreview();
+        });
+
+        studentSearch.addEventListener('input', renderStudents);
+
+        const addStudentBtn = document.getElementById('addStudentBtn');
+        const infoForm = document.getElementById('infoForm');
+        const closeInfoModalBtn = document.getElementById('closeInfoModal');
+        const cancelInfoModalBtn = document.getElementById('cancelInfoModal');
+
+        if (addStudentBtn) {
+            addStudentBtn.addEventListener('click', openInfoModalForNew);
+        }
+
+        if (closeInfoModalBtn) {
+            closeInfoModalBtn.addEventListener('click', closeInfoModal);
+        }
+
+        if (cancelInfoModalBtn) {
+            cancelInfoModalBtn.addEventListener('click', closeInfoModal);
+        }
+
+        if (infoForm) {
+            infoForm.addEventListener('submit', (event) => {
+                event.preventDefault();
+                const formData = new FormData(infoForm);
+                const payload = {};
+                formData.forEach((value, key) => {
+                    payload[key] = value;
+                });
+
+                payload.eyeproblem = document.getElementById('toggle_eyeproblem').checked;
+                payload.earproblem = document.getElementById('toggle_earproblem').checked;
+                payload.hairproblem = document.getElementById('toggle_hairproblem').checked;
+                const liveWithParents = document.getElementById('toggle_livewithparents').checked;
+                payload.liveWithFather = liveWithParents;
+                payload.liveWithMother = liveWithParents;
+                const parentViewPositive = document.getElementById('toggle_parentview').checked;
+                payload.parentViewTowardsSchool = parentViewPositive ? 'positive' : 'negative';
+                payload.tvatHome = document.getElementById('toggle_tvathome').checked ? 'Yes' : 'No';
+                payload.internetAtHome = document.getElementById('toggle_internetathome').checked ? 'Yes' : 'No';
+
+                fetch('/studentportfolio/record', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.success) {
+                        showNotification('Student information saved.', 'success');
+                        closeInfoModal();
+                        window.location.reload();
+                    } else {
+                        showNotification(data.message || 'Failed to save student information.', 'error');
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error saving student information:', error);
+                    showNotification('Error saving student information.', 'error');
+                });
+            });
+        }
+
+        studentList.addEventListener('change', (event) => {
+            if (event.target && event.target.name === 'studentIds') {
+                updateSelectionState(event.target.value, event.target.checked);
+                const visibleCheckboxes = getVisibleCheckboxes();
+                selectAllStudents.checked = visibleCheckboxes.length > 0 && visibleCheckboxes.every((checkbox) => checkbox.checked);
+            }
+        });
+
+        transferForm.addEventListener('submit', (event) => {
+            const checkedStudents = state.selectionOrder;
+            syncSelectionOrderInput();
+
+            if (!state.sourceClass) {
+                event.preventDefault();
+                showNotification('Select the previous class first.', 'error');
+                return;
+            }
+
+            if (!state.targetClass || !state.targetSection) {
+                event.preventDefault();
+                showNotification('Select the new class and section first.', 'error');
+                return;
+            }
+
+            if (checkedStudents.length === 0) {
+                event.preventDefault();
+                showNotification('Select at least one student to update.', 'error');
+                return;
+            }
+        });
+
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('success') === 'true') {
+            const count = urlParams.get('count') || '0';
+            showNotification(`Updated ${count} student(s) successfully.`, 'success');
+        }
+        if (urlParams.get('error')) {
+            showNotification('Unable to update the selected students.', 'error');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Events</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css"/>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --surface: #ffffff;
+      --surface-soft: #f8fbff;
+      --text: #16324f;
+      --muted: #5f7187;
+      --border: #dbe6f2;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --danger: #dc2626;
+      --danger-dark: #b91c1c;
+      --success: #059669;
+      --shadow: 0 18px 50px rgba(19, 41, 61, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Lexend', sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 30%),
+        radial-gradient(circle at top right, rgba(5, 150, 105, 0.12), transparent 32%),
+        linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+      color: var(--text);
+    }
+
+    .page-shell {
+      width: min(1200px, calc(100% - 32px));
+      margin: 32px auto 56px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 100%);
+      color: #fff;
+      border-radius: 24px;
+      padding: 28px 30px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      inset: auto -40px -60px auto;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.08);
+      filter: blur(2px);
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.6rem, 2.6vw, 2.4rem);
+    }
+
+    .hero p {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.84);
+      max-width: 760px;
+      line-height: 1.6;
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 24px;
+      margin-top: 24px;
+      align-items: start;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid rgba(219, 230, 242, 0.9);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 20px 22px;
+      background: linear-gradient(180deg, var(--surface-soft) 0%, #fff 100%);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card-header h2 {
+      margin: 0 0 6px;
+      font-size: 1.1rem;
+    }
+
+    .card-header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.93rem;
+    }
+
+    .card-body {
+      padding: 22px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .helper {
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+
+    .helper.error {
+      color: var(--danger);
+    }
+
+    .checkbox-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 10px;
+    }
+
+    .checkbox-panel {
+      display: none;
+      margin-top: 10px;
+      padding: 12px;
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      background: #fff;
+    }
+
+    .checkbox-panel.is-open {
+      display: block;
+    }
+
+    .select-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: #fff;
+      color: var(--text);
+      font-weight: 600;
+      cursor: pointer;
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    .select-toggle:hover {
+      box-shadow: 0 10px 18px rgba(15, 23, 42, 0.08);
+      transform: translateY(-1px);
+    }
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+    }
+
+    .check-item input {
+      width: 16px;
+      height: 16px;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fff;
+      color: var(--text);
+      padding: 12px 14px;
+      font: inherit;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: rgba(37, 99, 235, 0.75);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    }
+
+    input[readonly] {
+      background: #f8fafc;
+      color: #475569;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 16px;
+      font: inherit;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: #fff;
+      box-shadow: 0 14px 24px rgba(37, 99, 235, 0.2);
+    }
+
+    .btn-outline {
+      background: #fff;
+      color: var(--primary-dark);
+      border: 1px solid rgba(37, 99, 235, 0.22);
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, var(--danger) 0%, var(--danger-dark) 100%);
+      color: #fff;
+      box-shadow: 0 14px 24px rgba(220, 38, 38, 0.18);
+    }
+
+    .event-list {
+      display: grid;
+      gap: 16px;
+    }
+
+    .event-card {
+      background: linear-gradient(180deg, #fff 0%, #f9fbff 100%);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 18px;
+    }
+
+    .event-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .event-title {
+      margin: 0 0 6px;
+      font-size: 1.02rem;
+      line-height: 1.4;
+    }
+
+    .event-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: #eef4ff;
+      color: #1e3a8a;
+      font-size: 0.83rem;
+      font-weight: 600;
+    }
+
+    .pill.alt {
+      background: #ecfdf5;
+      color: #065f46;
+    }
+
+    .event-description {
+      margin: 0 0 14px;
+      color: var(--muted);
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
+
+    .event-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .empty-state {
+      padding: 22px;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed var(--border);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.7);
+    }
+
+    .toast {
+      position: fixed;
+      right: 22px;
+      top: 22px;
+      background: #0f172a;
+      color: #fff;
+      padding: 12px 16px;
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      opacity: 0;
+      transform: translateY(-10px);
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      z-index: 9999;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    @media (max-width: 960px) {
+      .content-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .page-shell {
+        width: min(100% - 20px, 1200px);
+        margin: 16px auto 28px;
+      }
+
+      .hero,
+      .card-body,
+      .card-header {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .event-top {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <%
+    const currentEditEvent = typeof editEvent !== 'undefined' ? editEvent : null;
+    const selectedClasses = currentEditEvent
+      ? (Array.isArray(currentEditEvent.forClass)
+        ? currentEditEvent.forClass
+        : currentEditEvent.forClass
+          ? [currentEditEvent.forClass]
+          : [])
+      : [];
+    const selectedClassNames = [...new Set(
+      selectedClasses
+        .map((value) => String(value || '').split('-')[0].trim())
+        .filter(Boolean)
+    )];
+    const classSortOrder = ['nursery', 'lkg', 'ukg', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+    const wordToNumber = {
+      one: '1',
+      two: '2',
+      three: '3',
+      four: '4',
+      five: '5',
+      six: '6',
+      seven: '7',
+      eight: '8',
+      nine: '9',
+      ten: '10'
+    };
+    const normalizeClassName = (value) => String(value || '').trim();
+    const getClassRank = (value) => {
+      const raw = normalizeClassName(value).toLowerCase();
+      const key = wordToNumber[raw] || raw;
+      const index = classSortOrder.indexOf(key);
+      if (index !== -1) {
+        return index;
+      }
+      const numeric = Number.parseInt(key, 10);
+      if (!Number.isNaN(numeric)) {
+        return classSortOrder.length + numeric;
+      }
+      return classSortOrder.length + 100;
+    };
+    const uniqueClassNames = [...new Set(
+      (sidenavData.studentClassdata || [])
+        .map((cls) => normalizeClassName(cls.studentClass))
+        .filter(Boolean)
+    )].sort((a, b) => getClassRank(a) - getClassRank(b) || a.localeCompare(b));
+    const selectedTeacher = currentEditEvent ? (currentEditEvent.teacherName || teacherName || '') : (teacherName || '');
+    const selectedTitle = currentEditEvent ? (currentEditEvent.title || '') : '';
+    const selectedLocation = currentEditEvent ? (currentEditEvent.location || '') : '';
+    const selectedMaterial = currentEditEvent ? (currentEditEvent.material || '') : '';
+    const selectedDescription = currentEditEvent ? (currentEditEvent.description || '') : '';
+    const selectedTime = currentEditEvent
+      ? (() => {
+          const time = String(currentEditEvent.time || '').trim();
+          if (!time) return '';
+          if (time.includes(':')) return time;
+          return time;
+        })()
+      : '';
+    const selectedDate = currentEditEvent && currentEditEvent.date
+      ? (() => {
+          const date = new Date(currentEditEvent.date);
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+          const day = String(date.getDate()).padStart(2, '0');
+          return `${year}-${month}-${day}`;
+        })()
+      : '';
+    const selectedNepaliDate = currentEditEvent && currentEditEvent.nepaliDate
+      ? String(currentEditEvent.nepaliDate || '').trim()
+      : '';
+  %>
+
+  <div class="page-shell">
+    <div class="hero">
+      <h1>Event Manager</h1>
+      <p>Create events, review all saved items below, and update or remove any entry from the same screen.</p>
+    </div>
+
+    <div class="content-grid">
+      <section class="card">
+        <div class="card-header">
+          <h2><%= currentEditEvent ? 'Edit Event' : 'Create Event' %></h2>
+          <p><%= currentEditEvent ? 'Update the selected event and save the changes.' : 'Fill out the form to add a new event.' %></p>
+        </div>
+        <div class="card-body">
+          <form action="/createevent" method="POST">
+            <input type="hidden" name="id" value="<%= currentEditEvent ? currentEditEvent._id : '' %>">
+            <div class="form-grid">
+              <div class="field">
+                <label for="teacherName">Teacher</label>
+                <input type="text" id="teacherName" name="teacherName" placeholder="Teacher Name" required value="<%= selectedTeacher %>">
+              </div>
+
+              <div class="field">
+                <label for="forClass">Class</label>
+                <button class="select-toggle" type="button" id="classToggle" aria-expanded="false">
+                  Select Classes
+                </button>
+                <div class="checkbox-panel" id="classPanel">
+                  <div class="checkbox-grid" id="forClass">
+                    <% uniqueClassNames.forEach((className) => { %>
+                      <label class="check-item">
+                        <input type="checkbox" name="forClass" value="<%= className %>" <%= selectedClassNames.includes(className) ? 'checked' : '' %>>
+                        <span><%= className %></span>
+                      </label>
+                    <% }); %>
+                  </div>
+                </div>
+                <span class="helper">Tap the button to choose multiple classes.</span>
+                <span class="helper" id="classError"></span>
+              </div>
+
+              <div class="field">
+                <label for="time">Event Time</label>
+                <input type="time" id="time" name="time" required value="<%= selectedTime %>">
+              </div>
+
+              <div class="field full">
+                <label for="eventName">Event Title</label>
+                <input type="text" id="eventName" name="title" required value="<%= selectedTitle %>" placeholder="Enter event title">
+              </div>
+
+              <div class="field">
+                <label for="location">Location</label>
+                <input type="text" id="location" name="location" value="<%= selectedLocation %>" placeholder="Enter location">
+              </div>
+
+              <div class="field">
+                <label for="material">Material Required</label>
+                <input type="text" id="material" name="material" required value="<%= selectedMaterial %>" placeholder="Enter materials">
+              </div>
+ <div class="field">
+                <label for="nepaliDate">Nepali Date</label>
+                <input type="text" id="nepaliDate" name="nepaliDate" placeholder="Select Nepali Date" value="<%= selectedNepaliDate %>">
+              </div>
+              <div class="field">
+                <label for="eventDate">Event Date</label>
+                <input type="date" id="eventDate" name="date" required value="<%= selectedDate %>">
+              </div>
+
+             
+
+              <div class="field full">
+                <label for="eventDescription">Event Description</label>
+                <textarea id="eventDescription" name="description" rows="4" placeholder="Write a short description"><%= selectedDescription %></textarea>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary"><%= currentEditEvent ? 'Update Event' : 'Create Event' %></button>
+              <% if (currentEditEvent) { %>
+                <a href="/createevent" class="btn btn-outline">Cancel Edit</a>
+              <% } %>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2>Saved Events</h2>
+          <p>Each card shows the stored event details with quick edit and delete actions.</p>
+        </div>
+        <div class="card-body">
+          <% if (events && events.length) { %>
+            <div class="event-list">
+              <% events.forEach((event) => { %>
+                <div class="event-card">
+                  <div class="event-top">
+                    <div>
+                      <h3 class="event-title"><%= event.title %></h3>
+                      <div class="event-meta">
+                        <span class="pill"><%= event.date ? new Date(event.date).toLocaleDateString('en-GB') : 'No date' %></span>
+                        <% if (event.nepaliDate) { %>
+                          <span class="pill alt">(<%= event.nepaliDate %>)</span>
+                        <% } %>
+                        <span class="pill alt"><%= event.time ? String(event.time).replace(/\s?(AM|PM)$/i, ' $1') : '' %></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="event-meta">
+                    <% if (event.forClass) { %>
+                      <% const classList = Array.isArray(event.forClass) ? event.forClass : [event.forClass]; %>
+                      <% const classNames = [...new Set(classList.map((value) => String(value || '').split('-')[0].trim()).filter(Boolean))]; %>
+                      <% const sortedClassNames = classNames.sort((a, b) => getClassRank(a) - getClassRank(b) || a.localeCompare(b)); %>
+                      <span class="pill alt">Class: <%= sortedClassNames.join(', ') %></span>
+                    <% } %>
+                    <% if (event.teacherName) { %>
+                      <span class="pill">Teacher: <%= event.teacherName %></span>
+                    <% } %>
+                    <% if (event.location) { %>
+                      <span class="pill alt">Location: <%= event.location %></span>
+                    <% } %>
+                    <% if (event.material) { %>
+                      <span class="pill">Material: <%= event.material %></span>
+                    <% } %>
+                  </div>
+
+                  <p class="event-description"><%= event.description %></p>
+
+                  <div class="event-actions">
+                    <a href="/createevent?id=<%= event._id %>" class="btn btn-outline">Edit</a>
+                    <a href="/delete-event/<%= event._id %>" class="btn btn-danger" onclick="return confirm('Delete this event?');">Delete</a>
+                  </div>
+                </div>
+              <% }); %>
+            </div>
+          <% } else { %>
+            <div class="empty-state">
+              No events have been created yet.
+            </div>
+          <% } %>
+        </div>
+      </section>
+    </div>
+  </div>
+  <div class="toast" id="saveToast" role="status" aria-live="polite" aria-atomic="true">
+    <span>Saved successfully.</span>
+  </div>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
+  <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
+  <script src="/js/fcm-client.js"></script>
+  <script>
+    (() => {
+      const nepaliInput = document.getElementById('nepaliDate');
+      const englishInput = document.getElementById('eventDate');
+
+      if (!nepaliInput || !englishInput) {
+        return;
+      }
+
+      const convertBsToAd = (value) => {
+        if (!value || typeof NepaliFunctions === 'undefined') {
+          return '';
+        }
+        try {
+          return NepaliFunctions.BS2AD(String(value).trim());
+        } catch (error) {
+          return '';
+        }
+      };
+
+      const convertAdToBs = (value) => {
+        if (!value || typeof NepaliFunctions === 'undefined') {
+          return '';
+        }
+        try {
+          return NepaliFunctions.AD2BS(String(value).trim());
+        } catch (error) {
+          return '';
+        }
+      };
+
+      const syncFromNepali = () => {
+        const englishValue = convertBsToAd(nepaliInput.value);
+        if (englishValue) {
+          englishInput.value = englishValue;
+        }
+      };
+
+      const syncFromEnglish = () => {
+        const nepaliValue = convertAdToBs(englishInput.value);
+        if (nepaliValue) {
+          nepaliInput.value = nepaliValue;
+        }
+      };
+
+      if (typeof nepaliInput.nepaliDatePicker === 'function') {
+        nepaliInput.nepaliDatePicker({
+          onSelect: syncFromNepali
+        });
+      }
+
+      nepaliInput.addEventListener('change', syncFromNepali);
+      englishInput.addEventListener('change', syncFromEnglish);
+
+      if (englishInput.value && !nepaliInput.value) {
+        syncFromEnglish();
+      } else if (nepaliInput.value && !englishInput.value) {
+        syncFromNepali();
+      }
+    })();
+
+    (() => {
+      const form = document.querySelector('form[action="/createevent"]');
+      const classError = document.getElementById('classError');
+      const classToggle = document.getElementById('classToggle');
+      const classPanel = document.getElementById('classPanel');
+      if (!form) {
+        return;
+      }
+
+      if (classToggle && classPanel) {
+        classToggle.addEventListener('click', () => {
+          const isOpen = classPanel.classList.toggle('is-open');
+          classToggle.setAttribute('aria-expanded', String(isOpen));
+        });
+      }
+
+      form.addEventListener('submit', (event) => {
+        const selected = form.querySelectorAll('input[name="forClass"]:checked');
+        if (selected.length === 0) {
+          event.preventDefault();
+          if (classError) {
+            classError.textContent = 'Select at least one class.';
+            classError.classList.add('error');
+          }
+          if (classPanel && !classPanel.classList.contains('is-open')) {
+            classPanel.classList.add('is-open');
+            if (classToggle) {
+              classToggle.setAttribute('aria-expanded', 'true');
+            }
+          }
+        } else if (classError) {
+          classError.textContent = '';
+          classError.classList.remove('error');
+        }
+      });
+    })();
+
+    (() => {
+      const toast = document.getElementById('saveToast');
+      const params = new URLSearchParams(window.location.search);
+      if (!toast || params.get('saved') !== '1') {
+        return;
+      }
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2800);
+    })();
+
+    initFcmNotifications();
+  </script>
+</body>
+</html>

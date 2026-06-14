@@ -1,0 +1,109 @@
+*{
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+nav
+{
+  display: flex;
+  justify-content: space-between;
+}
+nav img{
+  width: 3.5rem !important;
+  margin-left: 2.5%;
+  flex-shrink: 0;
+
+  
+}
+.schoolname
+{
+  padding: 0 0 0 15%;
+  font-size: 20px;
+  font-weight: 850;
+  margin-top: -8.5%;
+
+}
+nav ul{
+  display: flex;
+  text-decoration: none;
+  gap: 4rem;
+  
+  height: 4rem;
+  line-height: 1.9;
+  padding-right: 10%;
+  
+  
+
+  justify-content: end;
+}
+
+a
+{
+text-decoration: none;
+color: white;
+}
+ul li 
+{
+  font-size: 20px;
+  list-style: none;
+  
+ 
+
+
+  padding-left: 3%;
+  margin-top: 0.6%;
+}
+ul li:hover{
+  color: orange;
+}
+.active 
+{
+  color: orange;
+  border-bottom: 3px solid orange;
+}
+.fa-person-chalkboard
+{
+font-size: 20px;
+}
+.choose
+{
+  background-color:coral;
+  width: 95%;
+  font-size: 20px;
+  height: 4rem;
+  margin-top: 2%;
+  text-align: center;
+  border-radius: 10px;
+  color: white;
+  line-height: 3;
+}
+#teachersubject{
+  margin-top: 1%;
+}
+.reportcontainer img
+{
+width: 80%;
+}
+@media(max-width:500px)
+{
+  ul li 
+  {
+    font-size: 17px;
+    line-height: 3;
+  }
+  .schoolname
+  {
+    display: none;
+  }
+  nav ul
+  {
+    gap: 1rem;
+  }
+  nav img
+  {
+    width: 3.5rem;
+  }
+  .choose{
+    font-size: 16.5px;
+  }
+}

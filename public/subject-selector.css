@@ -1,0 +1,159 @@
+/* Subject Selector Styles */
+.subject-selector-container {
+    background-color: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    border: 1px solid #eaeaea;
+    transition: all 0.3s ease;
+}
+
+.subject-selector-container:hover {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+}
+
+#subjectSelector {
+    font-size: 1.1rem;
+    padding: 0.75rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+#subjectSelector:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+}
+
+#enterDataBtn, #viewReportBtn {
+    transition: all 0.3s ease;
+    font-weight: 600;
+}
+
+#enterDataBtn:hover, #viewReportBtn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+}
+
+/* Option styling */
+#subjectSelector option {
+    padding: 10px;
+}
+
+/* Add animation to the selector container */
+.subject-selector-container {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Make the form label more prominent */
+.form-label.fw-bold {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 1.2rem;
+    color: var(--secondary);
+}
+
+/* Responsive styling for mobile devices */
+@media (max-width: 768px) {
+    .subject-selector-container {
+        padding: 1.5rem 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    #subjectSelector {
+        font-size: 1rem;
+        padding: 0.6rem;
+    }
+    
+    .form-label.fw-bold {
+        font-size: 1.1rem;
+        margin-bottom: 8px;
+    }
+    
+    #enterDataBtn, #viewReportBtn {
+        font-size: 0.95rem;
+        padding: 0.6rem 1rem;
+    }
+    
+    /* Add an icon for mobile visibility */
+    .subject-selector-container::before {
+        content: '';
+        display: block;
+        width: 60px;
+        height: 60px;
+        margin: 0 auto 1rem;
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%230ea5e9" width="24px" height="24px"><path d="M0 0h24v24H0z" fill="none"/><path d="M21 5c-1.11-.35-2.33-.5-3.5-.5-1.95 0-4.05.4-5.5 1.5-1.45-1.1-3.55-1.5-5.5-1.5S2.45 4.9 1 6v14.65c0 .25.25.5.5.5.1 0 .15-.05.25-.05C3.1 20.45 5.05 20 6.5 20c1.95 0 4.05.4 5.5 1.5 1.35-.85 3.8-1.5 5.5-1.5 1.65 0 3.35.3 4.75 1.05.1.05.15.05.25.05.25 0 .5-.25.5-.5V6c-.6-.45-1.25-.75-2-1zm0 13.5c-1.1-.35-2.3-.5-3.5-.5-1.7 0-4.15.65-5.5 1.5V8c1.35-.85 3.8-1.5 5.5-1.5 1.2 0 2.4.15 3.5.5v11.5z"/></svg>');
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: contain;
+    }
+
+    /* Improve button spacing on mobile */
+    .d-grid.gap-2.mt-3 {
+        gap: 0.75rem !important;
+        margin-top: 1.5rem !important;
+    }
+}
+
+/* Extra small devices (phones, 576px and down) */
+@media (max-width: 576px) {
+    .subject-selector-container {
+        padding: 1.25rem 0.75rem;
+    }
+    
+    #subjectSelector {
+        font-size: 0.95rem;
+        padding: 0.5rem;
+    }
+    
+    .subject-selector-container::before {
+        width: 50px;
+        height: 50px;
+        margin-bottom: 0.75rem;
+    }
+}
+
+/* Subject icon in selector */
+.subject-icon-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+}
+
+.subject-icon-select {
+    width: 80px;
+    height: 80px;
+    background-color: var(--light);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    border: 2px solid var(--primary);
+}
+
+.subject-icon-select i {
+    font-size: 2.5rem;
+    color: var(--secondary);
+}
+
+.subject-selector-container:hover .subject-icon-select {
+    transform: scale(1.05);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.subject-selector-container:hover .subject-icon-select i {
+    color: var(--primary);
+}

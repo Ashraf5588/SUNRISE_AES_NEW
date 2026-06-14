@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teacher Login | AES</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+  <style>
+    :root {
+      --primary: #0ea5e9;  /* skyblue */
+      --primary-dark: #0284c7;  /* darker skyblue */
+      --secondary: #8b5a2b;  /* brown */
+      --secondary-dark: #6b4423;  /* darker brown */
+      --accent: #a16207;  /* amber brown for accent */
+      --light: #f8fafc;
+      --dark: #1e293b;
+      --gray: #64748b;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Lexend', sans-serif;
+      background-image: url('/school.jpg');
+      background-size: cover;
+      height: 100vh;
+      background-blend-mode: darken;
+      background-repeat: no-repeat;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .login-container {
+      background-color: rgba(255, 255, 255, 0.9);
+      width: 400px;
+      padding: 2.5rem;
+      border-radius: 16px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(10px);
+      position: relative;
+      overflow: hidden;
+      animation: fadeIn 0.6s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .login-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 6px;
+      background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .login-header img {
+      width: 100px;
+      height: auto;
+      margin-bottom: 1rem;
+    }
+
+    .login-header h1 {
+      color: var(--primary-dark);
+      font-size: 1.75rem;
+      font-weight: 700;
+    }
+
+    .login-form .input-group {
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+
+    .login-form .input-group i {
+      position: absolute;
+      left: 15px;
+      top: 15px;
+      color: var(--gray);
+    }
+
+    .login-form input {
+      width: 100%;
+      padding: 12px 15px 12px 45px;
+      border: 1px solid rgba(100, 116, 139, 0.3);
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      background-color: white;
+      font-family: 'Lexend', sans-serif;
+    }
+
+    .login-form input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+      outline: none;
+    }
+
+    .login-form input::placeholder {
+      color: var(--gray);
+      opacity: 0.7;
+    }
+
+    .login-form button {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .login-form button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+    }
+
+    @media (max-width: 480px) {
+      .login-container {
+        width: 90%;
+        padding: 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-header">
+      <img src="/image.png" alt="AES Logo">
+      <h1>Teacher Login</h1>
+    </div>
+    
+    <form class="login-form" action="/teacher/logins" method="POST">
+      <div class="input-group">
+        <i class="fas fa-user"></i>
+        <input type="text" placeholder="Teacher username" name="username" id="username" required/>
+      </div>
+      <div class="input-group">
+        <i class="fas fa-lock"></i>
+        <input type="password" placeholder="Password" name="password" id="password" required/>
+      </div>
+      <button type="submit" id="submit">Sign In</button>
+    </form>
+  </div>
+</body>
+</html>

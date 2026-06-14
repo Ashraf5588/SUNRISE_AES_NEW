@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Health Management - Analytics</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/health-record.css">
+</head>
+<body class="hm-body">
+  <button class="hm-menu-toggle" type="button" aria-controls="hmSidebar" aria-expanded="false">Menu</button>
+  <div class="hm-backdrop" id="hmBackdrop" hidden></div>
+  <div class="hm-shell">
+    <aside class="hm-sidenav" id="hmSidebar" aria-label="Nurse tools navigation">
+      <div class="hm-sidenav-header">
+        <div>
+          <p class="hm-sidenav-kicker">Nurse Tools</p>
+          <h2>Health Module</h2>
+        </div>
+        <button class="hm-sidenav-close" type="button" aria-label="Close menu">×</button>
+      </div>
+      <nav class="hm-sidenav-nav">
+        <a href="/healthrecord" class="hm-nav-link">Dashboard</a>
+        <a href="/healthrecord/bmi" class="hm-nav-link">Add height, weight and MUAQ</a>
+        <a href="/healthrecord/bp/add" class="hm-nav-link">Add blood pressure</a>
+        <a href="/healthrecord/medicine" class="hm-nav-link">Add medicine name</a>
+        <a href="/healthrecord/medicine/distributed" class="hm-nav-link">Add medicine distributed record</a>
+        <a href="/healthrecord/padrecord" class="hm-nav-link">Add pad record</a>
+        <a href="/healthrecord/analytics" class="hm-nav-link">Generate analytics</a>
+      </nav>
+    </aside>
+
+    <div class="hm-main-wrap">
+      <div class="hm-bg"></div>
+      <div class="hm-page hm-analytics-page">
+        <header class="hm-hero">
+          <div>
+            <p class="hm-kicker">School Health</p>
+            <h1>Health Analytics</h1>
+            <p class="hm-sub">Open BMI grouping and review students by nutritional category in four colored panels.</p>
+          </div>
+          <div class="hm-badge">
+            <span>Clinic</span>
+            <strong><%= totalWithBmi %> Students with BMI</strong>
+          </div>
+        </header>
+
+        <section class="hm-card hm-analytics-launcher">
+          <div>
+            <h2>BMI Grouping</h2>
+            <p class="hm-muted">Click to reveal the four-way BMI analysis view.</p>
+          </div>
+          <button type="button" class="hm-button" id="toggleBmiGroupingBtn">Open BMI Grouping</button>
+        </section>
+
+        <section class="hm-bmi-grouping-panel" id="bmiGroupingPanel" hidden>
+          <% bmiGroups.forEach(function(group, index) { %>
+            <article class="hm-card hm-bmi-group-card hm-bmi-<%= group.color %>">
+              <div class="hm-card-header hm-bmi-group-header">
+                <div>
+                  <p class="hm-bmi-group-kicker">BMI Type</p>
+                  <h2><%= group.label %></h2>
+                </div>
+                <span class="hm-bmi-count"><%= group.count %></span>
+              </div>
+
+              <div class="hm-bmi-student-list">
+                <% if (group.students.length) { %>
+                  <% group.students.forEach(function(student) { %>
+                    <div class="hm-bmi-student-row">
+                      <div class="hm-bmi-student-name"><%= student.name %></div>
+                      <div class="hm-bmi-student-meta">Class <%= student.studentClass %> | Section <%= student.section %> | BMI <%= student.bmi %></div>
+                    </div>
+                  <% }); %>
+                <% } else { %>
+                  <div class="hm-empty hm-bmi-empty">No students in this group.</div>
+                <% } %>
+              </div>
+            </article>
+          <% }); %>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script src="/nurse-healthanalytics.js"></script>
+</body>
+</html>

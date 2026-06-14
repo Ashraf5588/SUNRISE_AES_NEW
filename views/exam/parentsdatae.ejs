@@ -1,0 +1,438 @@
+
+<style>
+  .parents-analysis-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  .form-section {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .form-section h2 {
+    color: #333;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 10px;
+  }
+
+  .input-group-wrapper {
+    margin-bottom: 20px;
+  }
+
+  .input-group-wrapper label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+  }
+
+  .input-group-wrapper input {
+    width: 100%;
+    max-width: 200px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+
+  .groups-container {
+    margin-top: 30px;
+  }
+
+  .group-div {
+    background: #f8f9fa;
+    border: 2px solid #dee2e6;
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .group-div h3 {
+    color: #495057;
+    margin-bottom: 15px;
+    font-size: 16px;
+  }
+
+  .classes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+  }
+
+  .checkbox-wrapper {
+    display: flex;
+    align-items: center;
+  }
+
+  .checkbox-wrapper input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+    cursor: pointer;
+  }
+
+  .checkbox-wrapper label {
+    margin: 0;
+    cursor: pointer;
+    font-weight: 400;
+  }
+
+  .button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 30px;
+  }
+
+  .button-group button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+
+  .btn-primary {
+    background: #007bff;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #0056b3;
+  }
+
+  .btn-secondary {
+    background: #6c757d;
+    color: white;
+  }
+
+  .btn-secondary:hover {
+    background: #545b62;
+  }
+
+  .results-section {
+    margin-top: 40px;
+  }
+
+  .results-section h2 {
+    color: #333;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #28a745;
+    padding-bottom: 10px;
+  }
+
+  .combination-result {
+    background: white;
+    border-left: 4px solid #007bff;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .combination-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 15px;
+  }
+
+  .combination-header h3 {
+    color: #007bff;
+    margin: 0;
+    font-size: 16px;
+  }
+
+  .count-badge {
+    background: #007bff;
+    color: white;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .results-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+  }
+
+  .results-table thead {
+    background: #f8f9fa;
+  }
+
+  .results-table th {
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 2px solid #dee2e6;
+  }
+
+  .results-table td {
+    padding: 12px;
+    border-bottom: 1px solid #dee2e6;
+  }
+
+  .results-table tbody tr:hover {
+    background: #f8f9fa;
+  }
+
+  .loading {
+    display: none;
+    text-align: center;
+    padding: 30px;
+    color: #666;
+  }
+
+  .spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #007bff;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 10px;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .error-message {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    display: none;
+  }
+
+  .success-message {
+    background: #d4edda;
+    color: #155724;
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    display: none;
+  }
+</style>
+
+<div class="parents-analysis-container">
+  <h1>Parent Data Analysis</h1>
+  <p>Create groups of classes and analyze which parents have children across multiple groups.</p>
+
+  <div class="error-message" id="errorMessage"></div>
+  <div class="success-message" id="successMessage"></div>
+
+  <div class="form-section">
+    <h2>Step 1: Create Class Groups</h2>
+    
+    <div class="input-group-wrapper">
+      <label for="groupCount">How many groups do you want to create?</label>
+      <input type="number" id="groupCount" min="2" max="10" placeholder="Enter number (2-10)" value="3">
+    </div>
+
+    <div class="groups-container" id="groupsContainer"></div>
+
+    <div class="button-group">
+      <button class="btn-primary" onclick="generateGroups()">Create Groups</button>
+      <button class="btn-secondary" onclick="analyzeData()">Analyze Data</button>
+    </div>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Analyzing parent data...</p>
+  </div>
+
+  <div class="results-section" id="resultsSection" style="display: none;">
+    <h2>Analysis Results</h2>
+    <div id="resultsContainer"></div>
+  </div>
+</div>
+
+<script>
+let allClasses = <%- JSON.stringify(studentClassdata) %>;
+
+function generateGroups() {
+  const groupCount = parseInt(document.getElementById('groupCount').value);
+  
+  if (isNaN(groupCount) || groupCount < 2 || groupCount > 10) {
+    showError('Please enter a valid number between 2 and 10');
+    return;
+  }
+
+  const container = document.getElementById('groupsContainer');
+  container.innerHTML = '';
+
+  for (let i = 0; i < groupCount; i++) {
+    const groupDiv = document.createElement('div');
+    groupDiv.className = 'group-div';
+    groupDiv.innerHTML = `
+      <h3>Group ${i + 1}</h3>
+      <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Select classes for this group:</p>
+      <div class="classes-grid" id="group-${i}">
+        ${allClasses.map((cls, idx) => `
+          <div class="checkbox-wrapper">
+            <input type="checkbox" id="class-${i}-${idx}" data-group="${i}" data-class="${cls.studentClass}">
+            <label for="class-${i}-${idx}">${cls.studentClass} - ${cls.section}</label>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    container.appendChild(groupDiv);
+  }
+
+  showSuccess('Groups created! Select classes for each group and click Analyze Data.');
+}
+
+function analyzeData() {
+  const groupCount = parseInt(document.getElementById('groupCount').value);
+  const groups = [];
+  let hasError = false;
+
+  for (let i = 0; i < groupCount; i++) {
+    const selectedClasses = Array.from(document.querySelectorAll(`input[data-group="${i}"]:checked`))
+      .map(checkbox => checkbox.dataset.class);
+    
+    if (selectedClasses.length === 0) {
+      showError(`Group ${i + 1} has no classes selected. Please select at least one class per group.`);
+      hasError = true;
+      break;
+    }
+    
+    groups.push(selectedClasses);
+  }
+
+  if (hasError) return;
+
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('resultsSection').style.display = 'none';
+
+  fetch('/parentsdata/analyze', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ groups: groups })
+  })
+  .then(response => response.json())
+  .then(data => {
+    document.getElementById('loading').style.display = 'none';
+    
+    if (data.error) {
+      showError(data.error);
+    } else {
+      displayResults(data, groups);
+    }
+  })
+  .catch(error => {
+    document.getElementById('loading').style.display = 'none';
+    showError('Error analyzing data: ' + error.message);
+    console.error('Error:', error);
+  });
+}
+
+function displayResults(data, groups) {
+  const resultsContainer = document.getElementById('resultsContainer');
+  resultsContainer.innerHTML = '';
+
+  if (!data.results || data.results.length === 0) {
+    resultsContainer.innerHTML = '<p style="color: #666; padding: 20px;">No parents found with children in multiple groups.</p>';
+    document.getElementById('resultsSection').style.display = 'block';
+    return;
+  }
+
+  data.results.forEach((combination, idx) => {
+    const resultDiv = document.createElement('div');
+    resultDiv.className = 'combination-result';
+    
+    const tableRows = combination.parents.map(parent => `
+      <tr>
+        <td>${parent.parentName}</td>
+        <td>${parent.address}</td>
+        <td>
+          <table style="width: 100%; border-collapse: collapse; background: white;">
+            <thead style="background: #e9ecef;">
+              <tr>
+                <th style="padding: 8px; text-align: left; font-size: 12px;">Child Name</th>
+                <th style="padding: 8px; text-align: left; font-size: 12px;">Class</th>
+                <th style="padding: 8px; text-align: left; font-size: 12px;">Section</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${parent.children.map(child => `
+                <tr style="background: #f8f9fa;">
+                  <td style="padding: 8px; font-size: 12px;">${child.name}</td>
+                  <td style="padding: 8px; font-size: 12px;">${child.class}</td>
+                  <td style="padding: 8px; font-size: 12px;">${child.section}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </td>
+      </tr>
+    `).join('');
+
+    resultDiv.innerHTML = `
+      <div class="combination-header">
+        <h3>${combination.groupLabels}</h3>
+        <span class="count-badge">Total: ${combination.count}</span>
+      </div>
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>Parent Name</th>
+            <th>Address</th>
+            <th>Children Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${tableRows}
+        </tbody>
+      </table>
+    `;
+    
+    resultsContainer.appendChild(resultDiv);
+  });
+
+  document.getElementById('resultsSection').style.display = 'block';
+  showSuccess(`Found ${data.results.length} group combination(s) with parents having children in multiple groups.`);
+}
+
+function showError(message) {
+  const errorDiv = document.getElementById('errorMessage');
+  errorDiv.textContent = message;
+  errorDiv.style.display = 'block';
+  setTimeout(() => {
+    errorDiv.style.display = 'none';
+  }, 5000);
+}
+
+function showSuccess(message) {
+  const successDiv = document.getElementById('successMessage');
+  successDiv.textContent = message;
+  successDiv.style.display = 'block';
+  setTimeout(() => {
+    successDiv.style.display = 'none';
+  }, 5000);
+}
+
+// Initialize on page load
+window.addEventListener('DOMContentLoaded', () => {
+  generateGroups();
+});
+</script>
+
+

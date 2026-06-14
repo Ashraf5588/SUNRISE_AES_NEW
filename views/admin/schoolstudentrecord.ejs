@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Student Records - Admin Panel</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #87CEEB;
+            --secondary-color: #A0522D;
+            --accent-color: #4682B4;
+            --background-color: #f8f9fa;
+            --card-background: #ffffff;
+            --text-primary: #2c3e50;
+            --text-secondary: #6c757d;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --border-color: #e9ecef;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --shadow-hover: 0 8px 15px rgba(0, 0, 0, 0.15);
+            --border-radius: 12px;
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .card {
+            background: var(--card-background);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            transition: var(--transition);
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-2px);
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--secondary-color);
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .upload-area {
+            border: 2px dashed var(--primary-color);
+            border-radius: var(--border-radius);
+            padding: 3rem 2rem;
+            text-align: center;
+            background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+            transition: var(--transition);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-area:hover {
+            border-color: var(--accent-color);
+            background: linear-gradient(145deg, #e9ecef, #f8f9fa);
+        }
+
+        .upload-area.dragover {
+            border-color: var(--success-color);
+            background: linear-gradient(145deg, #d4edda, #c3e6cb);
+        }
+
+        .upload-icon {
+            font-size: 4rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+            transition: var(--transition);
+        }
+
+        .upload-area:hover .upload-icon {
+            color: var(--accent-color);
+            transform: scale(1.1);
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .upload-subtext {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .file-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-info {
+            display: none;
+            background: linear-gradient(145deg, var(--success-color), #28a745);
+            color: white;
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            margin-top: 1rem;
+            animation: slideIn 0.3s ease;
+        }
+
+        .file-info.show {
+            display: block;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .requirements {
+            background: linear-gradient(145deg, #fff3cd, #ffeaa7);
+            border: 1px solid var(--warning-color);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .requirements h3 {
+            color: var(--secondary-color);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .requirements ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .requirements li {
+            margin-bottom: 0.5rem;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .requirements li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--success-color);
+            font-weight: bold;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 180px;
+            justify-content: center;
+        }
+
+        .btn-primary {
+            background: linear-gradient(145deg, var(--primary-color), var(--accent-color));
+            color: white;
+            box-shadow: var(--shadow);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(145deg, var(--accent-color), var(--primary-color));
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: linear-gradient(145deg, var(--danger-color), #c82333);
+            color: white;
+            box-shadow: var(--shadow);
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(145deg, #c82333, var(--danger-color));
+            box-shadow: var(--shadow-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 1rem 1.5rem;
+            border-radius: var(--border-radius);
+            color: white;
+            font-weight: 600;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: var(--transition);
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: linear-gradient(145deg, var(--success-color), #28a745);
+        }
+
+        .notification.error {
+            background: linear-gradient(145deg, var(--danger-color), #c82333);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .card {
+                padding: 1.5rem;
+            }
+
+            .upload-area {
+                padding: 2rem 1rem;
+            }
+
+            .upload-icon {
+                font-size: 3rem;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                min-width: 100%;
+            }
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .danger-zone {
+            border: 2px solid var(--danger-color);
+            background: linear-gradient(145deg, #f8d7da, #f5c6cb);
+        }
+
+        .danger-zone .card-title {
+            color: var(--danger-color);
+        }
+
+        .delete-preview {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1100;
+        }
+
+        .delete-preview.is-open {
+            display: flex;
+        }
+
+        .delete-preview-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .delete-preview-card {
+            position: relative;
+            width: min(680px, 92vw);
+            background: var(--card-background);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-hover);
+            padding: 1.5rem;
+            z-index: 1;
+        }
+
+        .delete-preview-card h3 {
+            margin-bottom: 0.75rem;
+            color: var(--danger-color);
+        }
+
+        .delete-preview-meta {
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+        }
+
+        .delete-preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1.25rem;
+        }
+
+        .delete-preview-table th,
+        .delete-preview-table td {
+            text-align: left;
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.95rem;
+        }
+
+        .delete-preview-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        /* Student Form Styles */
+        .student-form {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .export-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .field-checkboxes {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            background: #f8fafc;
+        }
+
+        .field-checkbox {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        .field-checkbox input {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent-color);
+        }
+
+        .export-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 1rem;
+        }
+
+        .export-note {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .form-group label i {
+            margin-right: 0.5rem;
+            color: var(--accent-color);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            transition: var(--transition);
+            background-color: var(--background-color);
+            color: var(--text-primary);
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(135, 206, 235, 0.2);
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.7;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+
+            .form-group {
+                margin-bottom: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <%- include('../partials/sidenav', { 
+        subjects: subjects || [], 
+        studentClassdata: studentClassdata || [],
+        terminals: terminals || [] 
+    }) %>
+    
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-school"></i> School Student Records</h1>
+            <p>Upload and manage student record data</p>
+        </div>
+
+        <!-- Student Record Form -->
+        <div class="card">
+            <h2 class="card-title">
+                <i class="fas fa-user-plus"></i>
+                <%= editing ? 'Edit Student Record' : 'Add New Student' %>
+            </h2>
+            <form action="/studentrecord/add" method="POST" class="student-form">
+                <% if (editing && studentId) { %>
+                    <input type="hidden" name="studentId" value="<%= studentId %>">
+                <% } %>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="reg"><i class="fas fa-id-card"></i> Registration Number</label>
+                        <input type="text" name="reg" id="reg" placeholder="Enter registration number" value="<%=editing?studentrecordData.reg:''%>" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="roll"><i class="fas fa-list-ol"></i> Roll Number</label>
+                        <input type="text" name="roll" id="roll" placeholder="Enter roll number" value="<%=editing?studentrecordData.roll:''%>" required>
+                    </div>
+                </div>
+
+                <div class="form-group full-width">
+                    <label for="name"><i class="fas fa-user"></i> Student Name</label>
+                    <input type="text" name="name" id="name" placeholder="Enter student name" value="<%=editing?studentrecordData.name:''%>" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="studentClass"><i class="fas fa-graduation-cap"></i> Class</label>
+                        <input type="text" name="studentClass" id="studentClass" placeholder="Enter class" value="<%=editing?studentrecordData.studentClass:''%>" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="section"><i class="fas fa-users"></i> Section</label>
+                        <input type="text" name="section" id="section" placeholder="Enter section" value="<%=editing?studentrecordData.section:''%>" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="section"><i class="fas fa-users"></i> gender</label>
+                        <input type="text" name="gender" id="section" placeholder="Enter section" value="<%=editing?studentrecordData.gender:''%>" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas <%= editing ? 'fa-save' : 'fa-plus-circle' %>"></i>
+                        <%= editing ? 'Update Student Record' : 'Add Student Record' %>
+                    </button>
+                </div>
+            </form>
+        </div>
+        <!-- File Upload Section -->
+        <div class="card">
+            <h2 class="card-title">
+                <i class="fas fa-upload"></i>
+                Upload Student Records
+            </h2>
+
+            <div class="requirements">
+                <h3><i class="fas fa-info-circle"></i> File Requirements</h3>
+                <ul>
+                    <li>File format: CSV (.csv)</li>
+                    <li>Maximum file size: 10MB</li>
+                    <li>Include proper column headers</li>
+                    <li>Ensure data is properly formatted</li>
+                    <li>Remove any empty rows before upload</li>
+                </ul>
+            </div>
+
+            <form id="uploadForm" action="/studentrecord" method="POST" enctype="multipart/form-data">
+                <div class="upload-area" id="uploadArea">
+                    <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                    <div class="upload-text">Click to upload or drag and drop</div>
+                    <div class="upload-subtext">CSV files only</div>
+                    <input type="file" name="studentRecords" id="studentRecords" accept=".csv" required class="file-input">
+                </div>
+                
+                <div class="file-info" id="fileInfo">
+                    <i class="fas fa-file-csv"></i>
+                    <span id="fileName"></span>
+                    <span id="fileSize"></span>
+                </div>
+
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Uploading and processing file...</p>
+                </div>
+
+                <div class="button-group" style="margin-top: 2rem;">
+                    <button type="submit" class="btn btn-primary" id="uploadBtn" disabled>
+                        <i class="fas fa-upload"></i>
+                        Upload Records
+                    </button>
+                    <a href="/studentrecord/template" class="btn btn-primary" style="text-decoration:none;">
+                        <i class="fas fa-file-download"></i>
+                        Download CSV Template
+                    </a>
+                </div>
+            </form>
+        </div>
+        <center>Add new Student or Edit </center>
+
+        <div class="card" style="margin-top: 1.5rem;">
+            <h2 class="card-title"><i class="fas fa-users"></i> Bulk Actions</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="bulkClass"><i class="fas fa-graduation-cap"></i> New Class</label>
+                    <input type="text" id="bulkClass" placeholder="Enter class" />
+                </div>
+                <div class="form-group">
+                    <label for="bulkSection"><i class="fas fa-users"></i> New Section</label>
+                    <input type="text" id="bulkSection" placeholder="Enter section" />
+                </div>
+            </div>
+            <div class="button-group">
+                <button type="button" class="btn btn-primary" id="bulkUpdateBtn" disabled>
+                    <i class="fas fa-pen"></i> Update Selected
+                </button>
+                <button type="button" class="btn btn-danger" id="bulkDeleteBtn" disabled>
+                    <i class="fas fa-trash"></i> Delete Selected
+                </button>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top: 1.5rem;">
+            <h2 class="card-title"><i class="fas fa-file-excel"></i> Export Students (Excel)</h2>
+            <p class="export-note">Select class/section and fields to export. Download as CSV (opens in Excel).</p>
+            <div class="export-grid">
+                <div class="form-group">
+                    <label for="exportClass"><i class="fas fa-graduation-cap"></i> Class</label>
+                    <select id="exportClass" class="form-control">
+                        <option value="" selected>All Classes</option>
+                        <% const exportClassOptions = [...new Set(studentRecord.map(r => r.studentClass).filter(Boolean))]; %>
+                        <% exportClassOptions.forEach((cls) => { %>
+                            <option value="<%= cls %>"><%= cls %></option>
+                        <% }) %>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="exportSection"><i class="fas fa-users"></i> Section</label>
+                    <select id="exportSection" class="form-control">
+                        <option value="" selected>All Sections</option>
+                        <% const exportSectionOptions = [...new Set(studentRecord.map(r => r.section).filter(Boolean))]; %>
+                        <% exportSectionOptions.forEach((sec) => { %>
+                            <option value="<%= sec %>"><%= sec %></option>
+                        <% }) %>
+                    </select>
+                </div>
+            </div>
+
+            <div class="field-checkboxes" id="exportFieldList">
+                <label class="field-checkbox"><input type="checkbox" value="reg" checked> Reg No</label>
+                <label class="field-checkbox"><input type="checkbox" value="name" checked> Student Name</label>
+                <label class="field-checkbox"><input type="checkbox" value="roll" checked> Roll No</label>
+                <label class="field-checkbox"><input type="checkbox" value="gender"> Gender</label>
+                <label class="field-checkbox"><input type="checkbox" value="studentClass" checked> Class</label>
+                <label class="field-checkbox"><input type="checkbox" value="section" checked> Section</label>
+                <label class="field-checkbox"><input type="checkbox" value="dobNepali"> DOB Nepali</label>
+                <label class="field-checkbox"><input type="checkbox" value="numberofmobile"> Contact No</label>
+                <label class="field-checkbox"><input type="checkbox" value="fatherName"> Father Name</label>
+                <label class="field-checkbox"><input type="checkbox" value="motherName"> Mother Name</label>
+                <label class="field-checkbox"><input type="checkbox" value="busStop"> Bus Stop</label>
+                <label class="field-checkbox"><input type="checkbox" value="fatherMobile"> Father Mobile</label>
+                <label class="field-checkbox"><input type="checkbox" value="motherMobile"> Mother Mobile</label>
+            </div>
+
+            <div class="export-actions">
+                <button type="button" class="btn btn-secondary" id="exportSelectAll">Select All Fields</button>
+                <button type="button" class="btn btn-secondary" id="exportClearAll">Clear Fields</button>
+                <button type="button" class="btn btn-primary" id="exportCsvBtn">
+                    <i class="fas fa-file-export"></i> Export CSV
+                </button>
+            </div>
+        </div>
+
+        <table cellspacing="0" class="table table-striped" style="background-color: white;" id="studentrecordTable">
+    <thead>
+        <tr>
+            <th><input type="checkbox" id="selectAllRecords" /></th>
+            <th>SN</th>
+            <th>Reg No</th>
+            <th>Name of Student</th>
+            <th>Gender</th>
+            <th>Class</th>
+            <th>Section</th>
+            <th>Roll No</th>
+            <th>DOB Nepali</th>
+            <th>Contact No</th>
+            <th>Father's Name</th>
+            <th>Mother's Name</th>
+            <th>Bus Stop</th>
+            <th>Father's Mobile</th>
+            <th>Mother's Mobile</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        <% studentRecord.forEach((record, index) => { %>
+            <tr data-id="<%= record._id %>">
+                <td><input type="checkbox" class="record-select" value="<%= record._id %>" /></td>
+                <td><%= index + 1 %></td>
+                <td data-field="reg"><%= record.reg %></td>
+                <td data-field="name"><%= record.name %></td>
+                <td data-field="gender"><%= record.gender %></td>
+                <td data-field="studentClass"><%= record.studentClass %></td>
+                <td data-field="section"><%= record.section %></td>
+                <td data-field="roll"><%= record.roll %></td>
+                <td data-field="dobNepali"><%= record.dobNepali %></td>
+                <td data-field="numberofmobile"><%= record.numberofmobile %></td>
+                <td data-field="fatherName"><%= record.fatherName %></td>
+                <td data-field="motherName"><%= record.motherName %></td>
+                <td data-field="busStop"><%= record.busStop %></td>
+                <td data-field="fatherMobile"><%= record.fatherMobile %></td>
+                <td data-field="motherMobile"><%= record.motherMobile %></td>
+                <td>
+                    <a href="/studentrecord/edit/<%= record._id %>?editing=true" class="btn btn-secondary">
+                        <i class="fas fa-edit"></i> Edit
+                    </a>
+                    <form action="/studentrecord/delete/<%= record._id %>" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-danger delete-record-btn" data-id="<%= record._id %>">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </form>
+                </td>
+
+            </tr>
+        <% }) %>
+    </tbody>
+</table>
+<script>
+const bulkUpdateBtn = document.getElementById('bulkUpdateBtn');
+const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+const selectAllRecords = document.getElementById('selectAllRecords');
+const bulkClassInput = document.getElementById('bulkClass');
+const bulkSectionInput = document.getElementById('bulkSection');
+
+function getDeletePreviewElements() {
+    return {
+        deletePreview: document.getElementById('deletePreview'),
+        deletePreviewBody: document.getElementById('deletePreviewBody'),
+        deletePreviewCount: document.getElementById('deletePreviewCount'),
+        deleteConfirmBtn: document.getElementById('deleteConfirmBtn'),
+        deleteCancelBtn: document.getElementById('deleteCancelBtn')
+    };
+}
+
+function getSelectedIds() {
+    return Array.from(document.querySelectorAll('.record-select:checked'))
+        .map((input) => input.value);
+}
+
+function updateBulkButtons() {
+    const selectedIds = getSelectedIds();
+    const hasSelection = selectedIds.length > 0;
+    if (bulkUpdateBtn) bulkUpdateBtn.disabled = !hasSelection;
+    if (bulkDeleteBtn) bulkDeleteBtn.disabled = !hasSelection;
+    if (selectAllRecords) {
+        const allCheckboxes = document.querySelectorAll('.record-select');
+        selectAllRecords.checked = allCheckboxes.length > 0 && selectedIds.length === allCheckboxes.length;
+    }
+}
+
+function getRowPreviewData(id) {
+    const row = document.querySelector(`tr[data-id="${id}"]`);
+    if (!row) {
+        return { id, name: '-', studentClass: '-', section: '-' };
+    }
+
+    const name = row.querySelector('[data-field="name"]')?.textContent?.trim() || '-';
+    const studentClass = row.querySelector('[data-field="studentClass"]')?.textContent?.trim() || '-';
+    const section = row.querySelector('[data-field="section"]')?.textContent?.trim() || '-';
+
+    return { id, name, studentClass, section };
+}
+
+function openDeletePreview(ids) {
+    const { deletePreview, deletePreviewBody, deletePreviewCount } = getDeletePreviewElements();
+    if (!deletePreview || !deletePreviewBody || !deletePreviewCount) {
+        return;
+    }
+
+    const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
+    if (!uniqueIds.length) {
+        alert('Select at least one student.');
+        return;
+    }
+
+    const previewRows = uniqueIds.map(getRowPreviewData);
+    deletePreviewBody.innerHTML = previewRows.map((row) => `
+        <tr>
+            <td>${row.name}</td>
+            <td>${row.studentClass}</td>
+            <td>${row.section}</td>
+        </tr>
+    `).join('');
+
+    deletePreviewCount.textContent = String(uniqueIds.length);
+    deletePreview.dataset.ids = uniqueIds.join(',');
+    deletePreview.classList.add('is-open');
+    deletePreview.setAttribute('aria-hidden', 'false');
+}
+
+function closeDeletePreview() {
+    const { deletePreview, deletePreviewBody } = getDeletePreviewElements();
+    if (!deletePreview || !deletePreviewBody) {
+        return;
+    }
+
+    deletePreview.classList.remove('is-open');
+    deletePreview.setAttribute('aria-hidden', 'true');
+    deletePreviewBody.innerHTML = '';
+    deletePreview.dataset.ids = '';
+}
+
+async function runBulkDelete(ids) {
+    try {
+        const response = await fetch('/studentrecord/bulk-delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ ids })
+        });
+        const data = await response.json();
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert(data.message || 'Bulk delete failed');
+        }
+    } catch (error) {
+        console.error(error);
+        alert('Bulk delete failed');
+    }
+}
+
+document.getElementById('studentrecordTable').addEventListener('dblclick', function(event) {
+    if (event.target.tagName === 'TD' && event.target.dataset.field) {
+        const cell = event.target;
+        const row = cell.parentElement;
+        const originalText = cell.textContent.trim();
+        const field = cell.dataset.field;
+        const recordId = row.dataset.id;
+
+        const input = document.createElement('input');
+        input.value = originalText;
+        input.style.width = '100%';
+        input.style.border = 'none';
+        input.style.padding = '5px';
+        input.style.fontSize = '1rem';
+        cell.textContent = '';
+        cell.appendChild(input);
+
+        input.focus();
+
+        input.addEventListener('blur', function() {
+            const newValue = input.value.trim();
+
+            if (newValue !== originalText) {
+                cell.textContent = newValue;
+
+                fetch('/studentrecord/update-field', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({
+                        id: recordId,
+                        field,
+                        value: newValue
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.success) {
+                        alert('Error updating record');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error updating record');
+                });
+            } else {
+                cell.textContent = originalText;
+            }
+        });
+
+        input.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                input.blur();
+            }
+        });
+    }
+});
+
+document.getElementById('studentrecordTable').addEventListener('click', (event) => {
+    const deleteButton = event.target.closest('.delete-record-btn');
+    if (!deleteButton) {
+        return;
+    }
+
+    event.preventDefault();
+
+    const rowId = deleteButton.dataset.id;
+    const selectedIds = getSelectedIds();
+    const ids = selectedIds.length ? selectedIds : [rowId];
+
+    openDeletePreview(ids);
+});
+
+document.getElementById('studentrecordTable').addEventListener('click', (event) => {
+    const deleteButton = event.target.closest('.delete-record-btn');
+    if (!deleteButton) {
+        return;
+    }
+
+    event.preventDefault();
+
+    const rowId = deleteButton.dataset.id;
+    const selectedIds = getSelectedIds();
+    const ids = selectedIds.length ? selectedIds : [rowId];
+
+    openDeletePreview(ids);
+});
+
+document.querySelectorAll('.record-select').forEach((checkbox) => {
+    checkbox.addEventListener('change', updateBulkButtons);
+});
+
+if (selectAllRecords) {
+    selectAllRecords.addEventListener('change', () => {
+        const checked = selectAllRecords.checked;
+        document.querySelectorAll('.record-select').forEach((checkbox) => {
+            checkbox.checked = checked;
+        });
+        updateBulkButtons();
+    });
+}
+
+if (bulkUpdateBtn) {
+    bulkUpdateBtn.addEventListener('click', async () => {
+        const ids = getSelectedIds();
+        const studentClass = bulkClassInput ? bulkClassInput.value.trim() : '';
+        const section = bulkSectionInput ? bulkSectionInput.value.trim() : '';
+
+        if (!ids.length) {
+            alert('Select at least one student.');
+            return;
+        }
+        if (!studentClass || !section) {
+            alert('Enter new class and section.');
+            return;
+        }
+
+        try {
+            const response = await fetch('/studentrecord/bulk-update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({ ids, studentClass, section })
+            });
+            const data = await response.json();
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert(data.message || 'Bulk update failed');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('Bulk update failed');
+        }
+    });
+}
+
+if (bulkDeleteBtn) {
+    bulkDeleteBtn.addEventListener('click', () => {
+        openDeletePreview(getSelectedIds());
+    });
+}
+
+document.addEventListener('click', (event) => {
+    if (event.target.closest('#deleteCancelBtn')) {
+        event.preventDefault();
+        closeDeletePreview();
+        return;
+    }
+
+    if (event.target.closest('#deleteConfirmBtn')) {
+        event.preventDefault();
+        const { deletePreview } = getDeletePreviewElements();
+        const ids = String(deletePreview && deletePreview.dataset.ids ? deletePreview.dataset.ids : '')
+            .split(',')
+            .map((value) => value.trim())
+            .filter(Boolean);
+        closeDeletePreview();
+        if (ids.length) {
+            runBulkDelete(ids);
+        }
+    }
+});
+
+updateBulkButtons();
+</script>
+
+        <!-- Danger Zone -->
+        <div class="card danger-zone">
+            <h2 class="card-title">
+                <i class="fas fa-exclamation-triangle"></i>
+                Danger Zone
+            </h2>
+            <p style="margin-bottom: 1.5rem; color: var(--danger-color); font-weight: 600;">
+                <strong>Warning:</strong> This action will permanently delete all records from the first terminal. This cannot be undone.
+            </p>
+            
+            <div class="button-group">
+                <button type="button" class="btn btn-danger" onclick="confirmDelete()">
+                    <i class="fas fa-trash-alt"></i>
+                    Delete Analysis Records of Academic Year -  <%= nepaliYear.slice(0,4) %>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification"></div>
+
+    <div class="delete-preview" id="deletePreview" aria-hidden="true">
+        <div class="delete-preview-backdrop"></div>
+        <div class="delete-preview-card" role="dialog" aria-modal="true">
+            <h3>Confirm Delete</h3>
+            <div class="delete-preview-meta">You are about to delete <strong><span id="deletePreviewCount">0</span></strong> students.</div>
+            <table class="delete-preview-table">
+                <thead>
+                    <tr>
+                        <th>Student Name</th>
+                        <th>Class</th>
+                        <th>Section</th>
+                    </tr>
+                </thead>
+                <tbody id="deletePreviewBody"></tbody>
+            </table>
+            <div class="delete-preview-actions">
+                <button type="button" class="btn" id="deleteCancelBtn">Cancel</button>
+                <button type="button" class="btn btn-danger" id="deleteConfirmBtn">Delete Students</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // File upload handling
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('studentRecords');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const uploadForm = document.getElementById('uploadForm');
+        const loading = document.getElementById('loading');
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                fileInput.files = files;
+                handleFileSelect();
+            }
+        });
+
+        // File input change
+        fileInput.addEventListener('change', handleFileSelect);
+
+        function handleFileSelect() {
+            const file = fileInput.files[0];
+            if (file) {
+                // Validate file type
+                if (!file.name.endsWith('.csv')) {
+                    showNotification('Please select a CSV file only', 'error');
+                    fileInput.value = '';
+                    return;
+                }
+
+                // Validate file size (10MB limit)
+                if (file.size > 10 * 1024 * 1024) {
+                    showNotification('File size must be less than 10MB', 'error');
+                    fileInput.value = '';
+                    return;
+                }
+
+                // Show file info
+                fileName.textContent = file.name;
+                fileSize.textContent = `(${formatFileSize(file.size)})`;
+                fileInfo.classList.add('show');
+                uploadBtn.disabled = false;
+                
+                showNotification('File selected successfully', 'success');
+            } else {
+                fileInfo.classList.remove('show');
+                uploadBtn.disabled = true;
+            }
+        }
+
+        // Form submission
+        uploadForm.addEventListener('submit', (e) => {
+            if (!fileInput.files[0]) {
+                e.preventDefault();
+                showNotification('Please select a file first', 'error');
+                return;
+            }
+            
+            // Show loading
+            loading.style.display = 'block';
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+        });
+
+        // Utility functions
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function showNotification(message, type) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.classList.add('show');
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 4000);
+        }
+
+        function confirmDelete() {
+            if (confirm('Are you absolutely sure you want to delete ALL records from the first terminal? This action cannot be undone.')) {
+                if (confirm('This will permanently remove all student data from the first terminal. Continue?')) {
+                    // Here you would typically make an AJAX request to delete the records
+                    // For now, we'll just show a message
+                    showNotification('Delete functionality needs to be implemented', 'error');
+                }
+            }
+        }
+
+        // Show success message if redirected after upload
+        window.addEventListener('load', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('success') === 'true') {
+                showNotification('Student records uploaded successfully!', 'success');
+            } else if (urlParams.get('error') === 'true') {
+                showNotification('Error uploading file. Please try again.', 'error');
+            }
+        });
+    </script>
+
+    <script>
+        const exportClassSelect = document.getElementById('exportClass');
+        const exportSectionSelect = document.getElementById('exportSection');
+        const exportFieldList = document.getElementById('exportFieldList');
+        const exportSelectAll = document.getElementById('exportSelectAll');
+        const exportClearAll = document.getElementById('exportClearAll');
+        const exportCsvBtn = document.getElementById('exportCsvBtn');
+
+        const fieldLabels = {
+            reg: 'Reg No',
+            name: 'Student Name',
+            roll: 'Roll No',
+            gender: 'Gender',
+            studentClass: 'Class',
+            section: 'Section',
+            dobNepali: 'DOB Nepali',
+            numberofmobile: 'Contact No',
+            fatherName: "Father's Name",
+            motherName: "Mother's Name",
+            busStop: 'Bus Stop',
+            fatherMobile: "Father's Mobile",
+            motherMobile: "Mother's Mobile"
+        };
+
+        const escapeCsv = (value) => {
+            const text = String(value ?? '');
+            if (/[",\n]/.test(text)) {
+                return '"' + text.replace(/"/g, '""') + '"';
+            }
+            return text;
+        };
+
+        const getSelectedFields = () => {
+            return Array.from(exportFieldList.querySelectorAll('input[type="checkbox"]:checked'))
+                .map((input) => input.value)
+                .filter(Boolean);
+        };
+
+        const getFilteredRows = () => {
+            const classValue = exportClassSelect ? exportClassSelect.value.trim() : '';
+            const sectionValue = exportSectionSelect ? exportSectionSelect.value.trim() : '';
+            const rows = Array.from(document.querySelectorAll('#studentrecordTable tbody tr'));
+
+            return rows.filter((row) => {
+                const classCell = row.querySelector('[data-field="studentClass"]');
+                const sectionCell = row.querySelector('[data-field="section"]');
+                const rowClass = classCell ? classCell.textContent.trim() : '';
+                const rowSection = sectionCell ? sectionCell.textContent.trim() : '';
+                const matchesClass = !classValue || rowClass === classValue;
+                const matchesSection = !sectionValue || rowSection === sectionValue;
+                return matchesClass && matchesSection;
+            });
+        };
+
+        const buildCsv = () => {
+            const fields = getSelectedFields();
+            if (!fields.length) {
+                alert('Select at least one field to export.');
+                return null;
+            }
+
+            const rows = getFilteredRows();
+            if (!rows.length) {
+                alert('No records found for the selected class/section.');
+                return null;
+            }
+
+            const header = fields.map((field) => escapeCsv(fieldLabels[field] || field)).join(',');
+            const body = rows.map((row) => {
+                return fields.map((field) => {
+                    const cell = row.querySelector(`[data-field="${field}"]`);
+                    return escapeCsv(cell ? cell.textContent.trim() : '');
+                }).join(',');
+            });
+
+            return [header, ...body].join('\n');
+        };
+
+        const downloadCsv = () => {
+            const csv = buildCsv();
+            if (!csv) return;
+
+            const classValue = exportClassSelect ? exportClassSelect.value.trim() : '';
+            const sectionValue = exportSectionSelect ? exportSectionSelect.value.trim() : '';
+            const labelParts = ['students'];
+            if (classValue) labelParts.push(`class-${classValue}`);
+            if (sectionValue) labelParts.push(`section-${sectionValue}`);
+            const filename = `${labelParts.join('_')}.csv`;
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        };
+
+        if (exportSelectAll) {
+            exportSelectAll.addEventListener('click', () => {
+                exportFieldList.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+                    input.checked = true;
+                });
+            });
+        }
+
+        if (exportClearAll) {
+            exportClearAll.addEventListener('click', () => {
+                exportFieldList.querySelectorAll('input[type="checkbox"]').forEach((input) => {
+                    input.checked = false;
+                });
+            });
+        }
+
+        if (exportCsvBtn) {
+            exportCsvBtn.addEventListener('click', downloadCsv);
+        }
+    </script>
+</body>
+</html>

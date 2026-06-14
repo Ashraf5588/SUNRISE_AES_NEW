@@ -1,0 +1,2912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Portfolio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* CSS Variables & Reset */
+    :root {
+      --primary: #042c83;
+      --secondary: #f8ab4d;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --bg: #f3f4f6;
+      --card-bg: #ffffff;
+      --text: #334155;
+      --border: #e2e8f0;
+    }
+   body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+    * { box-sizing: border-box; }
+
+    /* Form Styles */
+    .filter-container { 
+        background: var(--card-bg); 
+        padding: 20px; 
+        border-radius: 12px; 
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
+        margin-bottom: 30px; 
+        max-width: 1200px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+   .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+   .header h1 { margin: 0 0 5px 0; color: var(--secondary); font-size: 1.5rem; }
+   .header p { margin: 0 0 20px 0; color: #64748b; font-size: 0.9rem; }
+   .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+   .export-btn { background: #0f766e; }
+    
+    .form-row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 15px; }
+    .form-group { flex: 1; min-width: 200px; }
+   .student-search { position: relative; }
+   .student-suggestions { position: absolute; left: 0; right: 0; top: 100%; margin-top: 6px; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 24px rgba(15,23,42,.12); max-height: 240px; overflow: auto; z-index: 20; display: none; }
+   .student-suggestion-item { padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #eef2f7; }
+   .student-suggestion-item:last-child { border-bottom: 0; }
+   .student-suggestion-item:hover { background: #f8fafc; }
+   .student-suggestion-name { display: block; font-weight: 700; color: var(--secondary); font-size: 0.85rem; }
+   .student-suggestion-meta { display: block; font-size: 0.78rem; color: #64748b; margin-top: 2px; }
+    label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 0.85rem; color: var(--secondary); }
+    select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-family: inherit; }
+    button { background: var(--secondary); color: white; border: none; padding: 10px 25px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: opacity 0.2s; }
+    button:hover { opacity: 0.9; }
+
+   .filter-tools {
+      background: var(--card-bg);
+      padding: 16px;
+      border-radius: 12px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      max-width: 1200px;
+      margin: 0 auto 30px;
+      display: grid;
+      gap: 12px;
+   }
+
+   .filter-tools-row {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+   }
+
+   .filter-tools input,
+   .filter-tools select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 0.85rem;
+   }
+
+   .filter-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+   }
+
+   .filter-multi {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      overflow: hidden;
+   }
+
+   .filter-multi summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 10px;
+      font-size: 0.85rem;
+      color: #475569;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+   }
+
+   .filter-multi summary::-webkit-details-marker {
+      display: none;
+   }
+
+   .filter-multi[open] summary {
+      border-bottom: 1px solid var(--border);
+      background: #f8fafc;
+   }
+
+   .filter-multi-content {
+      display: grid;
+      gap: 10px;
+      padding: 10px;
+      max-height: 230px;
+      overflow-y: auto;
+   }
+
+   .filter-multi-group {
+      display: grid;
+      gap: 6px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 8px;
+      background: #f8fafc;
+   }
+
+   .filter-multi-title {
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: #64748b;
+      font-weight: 700;
+   }
+
+   .filter-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.82rem;
+      color: #475569;
+      margin: 0;
+   }
+
+   .filter-count {
+      font-size: 0.85rem;
+      color: #64748b;
+      font-weight: 600;
+   }
+
+    /* Portfolio Card */
+    .student-card {
+        background: var(--card-bg);
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        margin-bottom: 40px;
+        display: flex;
+        flex-direction: column;
+        max-width: 1200px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    /* Header Profile Section (CV Style) */
+    .profile-header {
+        background: var(--secondary);
+        color: white;
+        padding: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        position: relative;
+    }
+
+    .profile-left {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+
+    .profile-img {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: #ffffff;
+        border: 4px solid rgba(255,255,255,0.2);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        background-color: #fff;
+        flex-shrink: 0;
+    }
+    
+    .profile-img img { width: 100%; height: 100%; object-fit: cover; }
+
+    .profile-info h2 { margin: 0 0 5px 0; font-size: 1.8rem; font-weight: 700; }
+    .profile-info p { margin: 0; color: #cbd5e1; font-size: 0.95rem; }
+
+    .profile-right {
+        text-align: right;
+    }
+
+      .print-btn {
+         background: #0f766e;
+         color: #fff;
+         border: none;
+         padding: 10px 20px;
+         border-radius: 6px;
+         cursor: pointer;
+         font-weight: 700;
+         margin-right: 10px;
+      }
+
+      .print-btn:hover {
+         opacity: 0.9;
+      }
+
+    .zone-badge {
+        padding: 8px 20px;
+        border-radius: 30px;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.9rem;
+        letter-spacing: 0.5px;
+        display: inline-block;
+    }
+    .zone-green { background: var(--success); color: white; box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
+    .zone-red { background: var(--danger); color: white; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
+    .zone-orange { background: var(--warning); color: white; }
+
+    /* Main Content */
+    .portfolio-content {
+        padding: 30px;
+        background: #fff;
+    }
+
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--secondary);
+        margin-bottom: 20px;
+        border-bottom: 2px solid var(--bg);
+        padding-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* Charts Section */
+    .charts-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+        margin-bottom: 40px;
+    }
+    
+    @media (min-width: 768px) {
+        .charts-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    .chart-box {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 15px;
+        height: 350px;
+        position: relative;
+    }
+
+   .chart-scroll {
+      overflow-x: auto;
+      padding-bottom: 6px;
+   }
+
+   .chart-scroll::-webkit-scrollbar {
+      height: 6px;
+   }
+
+   .chart-scroll::-webkit-scrollbar-thumb {
+      background: rgba(4, 44, 131, 0.35);
+      border-radius: 999px;
+   }
+
+   .chart-scroll::-webkit-scrollbar-track {
+      background: rgba(4, 44, 131, 0.12);
+      border-radius: 999px;
+   }
+    
+    .chart-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #64748b;
+        margin-bottom: 10px;
+        text-align: center;
+    }
+
+    /* Tables Grid */
+    .subjects-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+    }
+
+    .subject-card {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+        transition: transform 0.2s;
+    }
+    
+    .subject-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .subject-header {
+        background: #f8fafc;
+        padding: 10px 15px;
+        font-weight: 600;
+        color: var(--secondary);
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { padding: 10px 12px; text-align: center; border-bottom: 1px solid var(--border); }
+    th { background: #f1f5f9; color: #64748b; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    tr:last-child td { border-bottom: none; }
+    
+    .mark-cell { font-weight: 500; }
+    .mark-fail { color: var(--danger); font-weight: 700; }
+    .mark-pass { color: var(--success); }
+
+   .complaint-panel {
+      background: #fff7ed;
+      border: 1px solid rgba(248, 171, 77, 0.4);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 20px;
+      max-height: 260px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+   }
+
+   .complaint-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+   }
+
+   .complaint-title {
+      font-weight: 700;
+      color: var(--secondary);
+      font-size: 1rem;
+   }
+
+   .complaint-count {
+      background: var(--secondary);
+      color: #fff;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+   }
+
+   .complaint-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 10px;
+      overflow-y: auto;
+      padding-right: 6px;
+   }
+
+   .complaint-list::-webkit-scrollbar {
+      width: 6px;
+   }
+
+   .complaint-list::-webkit-scrollbar-thumb {
+      background: rgba(248, 171, 77, 0.6);
+      border-radius: 999px;
+   }
+
+   .complaint-list::-webkit-scrollbar-track {
+      background: rgba(248, 171, 77, 0.15);
+      border-radius: 999px;
+   }
+
+   .complaint-item {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: grid;
+      gap: 4px;
+   }
+
+   .complaint-meta {
+      font-size: 0.78rem;
+      color: #64748b;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+   }
+
+   .complaint-reason {
+      font-size: 0.9rem;
+      color: var(--text);
+      font-weight: 600;
+   }
+
+   .complaint-images {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+   }
+
+   .complaint-images img {
+      width: 72px;
+      height: 72px;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+      cursor: pointer;
+   }
+
+   .complaint-images::-webkit-scrollbar {
+      height: 6px;
+   }
+
+   .complaint-images::-webkit-scrollbar-thumb {
+      background: rgba(248, 171, 77, 0.5);
+      border-radius: 999px;
+   }
+
+   .complaint-images::-webkit-scrollbar-track {
+      background: rgba(248, 171, 77, 0.15);
+      border-radius: 999px;
+   }
+
+   .complaint-empty {
+      font-size: 0.9rem;
+      color: #64748b;
+   }
+
+   .health-panel {
+      background: #ecfeff;
+      border: 1px solid rgba(6, 182, 212, 0.35);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 20px;
+      max-height: 280px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+   }
+
+   .calllog-panel {
+      background: #f8fafc;
+      border: 1px solid rgba(148, 163, 184, 0.45);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+   }
+
+   .calllog-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+   }
+
+   .calllog-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+   }
+
+   .calllog-actions .calllog-btn {
+      background: #0f766e;
+   }
+
+   .calllog-title {
+      font-weight: 700;
+      color: var(--secondary);
+      font-size: 1rem;
+   }
+
+   .calllog-count {
+      background: #334155;
+      color: #fff;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+   }
+
+   .calllog-table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: auto;
+      background: #fff;
+   }
+
+   .calllog-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 520px;
+      font-size: 0.85rem;
+   }
+
+   .calllog-table th {
+      background: #f1f5f9;
+      color: #475569;
+      font-weight: 700;
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      font-size: 0.7rem;
+   }
+
+   .calllog-table td {
+      padding: 10px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+   }
+
+   .calllog-empty {
+      padding: 12px;
+      color: #64748b;
+      font-size: 0.9rem;
+   }
+
+   .call-form-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+   }
+
+   .call-form-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+   }
+
+   .call-now-btn {
+      background: #0f766e;
+      text-decoration: none;
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+   }
+
+   .call-status {
+      font-size: 0.8rem;
+      color: #64748b;
+      font-weight: 600;
+   }
+
+   .absent-panel {
+      background: #fef2f2;
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 20px;
+      display: grid;
+      gap: 12px;
+   }
+
+   .absent-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+   }
+
+   .absent-title {
+      font-weight: 700;
+      color: #b91c1c;
+      font-size: 1rem;
+   }
+
+   .absent-total {
+      background: #b91c1c;
+      color: #fff;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+   }
+
+   .absent-months {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+   }
+
+   .absent-month-item {
+      background: #fff;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 0.85rem;
+      color: #7f1d1d;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+   }
+
+   .absent-reasons {
+      border: 1px dashed rgba(239, 68, 68, 0.35);
+      border-radius: 10px;
+      background: #fff;
+      padding: 10px 12px;
+      display: grid;
+      gap: 8px;
+      max-height: 220px;
+      overflow: auto;
+   }
+
+   .absent-reason-item {
+      display: grid;
+      gap: 4px;
+      font-size: 0.85rem;
+   }
+
+   .absent-reason-date {
+      color: #7f1d1d;
+      font-weight: 700;
+      font-size: 0.78rem;
+   }
+
+   .absent-empty {
+      color: #7f1d1d;
+      font-size: 0.9rem;
+   }
+
+   @media print {
+      @page { size: A4 landscape; margin: 12mm; }
+      body { background: #fff; padding: 0; }
+      .no-print { display: none !important; }
+      .student-card { box-shadow: none; border: 1px solid #e2e8f0; margin-bottom: 24px; }
+      .profile-header { color: #111827; background: #f8fafc; }
+      .zone-badge { box-shadow: none; }
+   }
+
+   .health-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 10px;
+      overflow-y: auto;
+      padding-right: 6px;
+   }
+
+   .health-item {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: grid;
+      gap: 6px;
+   }
+
+   .health-meta {
+      font-size: 0.78rem;
+      color: #64748b;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+   }
+
+   .health-line {
+      font-size: 0.9rem;
+      color: var(--text);
+   }
+
+   .details-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+   }
+
+   .details-group {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      background: #fff;
+      display: grid;
+      gap: 8px;
+   }
+
+   .details-title {
+      font-weight: 700;
+      color: var(--secondary);
+      font-size: 0.9rem;
+      border-bottom: 1px dashed var(--border);
+      padding-bottom: 6px;
+      margin-bottom: 4px;
+   }
+
+   .detail-item {
+      font-size: 0.85rem;
+      color: var(--text);
+   }
+
+   .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 50;
+   }
+
+   .modal-backdrop.is-open { display: flex; }
+
+   .modal-card {
+      background: #fff;
+      width: min(920px, 100%);
+      border-radius: 16px;
+      box-shadow: 0 20px 40px rgba(15, 23, 42, 0.2);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+   }
+
+   .modal-header {
+      padding: 16px 20px;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+   }
+
+   .modal-title {
+      font-weight: 700;
+      color: var(--secondary);
+      font-size: 1rem;
+   }
+
+   .modal-body {
+      padding: 20px;
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      max-height: 70vh;
+      overflow: auto;
+   }
+
+   .modal-footer {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+   }
+
+   .btn-secondary {
+      background: #94a3b8;
+   }
+
+   .modal-field label { font-size: 0.75rem; color: #64748b; }
+   .modal-field input,
+   .modal-field select,
+   .modal-field textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.85rem;
+   }
+
+   .modal-field textarea { min-height: 70px; resize: vertical; }
+
+   .radio-inline-group {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 4px;
+   }
+
+   .radio-inline-group label {
+      font-weight: 500;
+      color: #64748b;
+      margin: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+   }
+
+   .toggle-control {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+   }
+
+   .toggle-input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+   }
+
+   .toggle-track {
+      --toggle-width: 72px;
+      width: var(--toggle-width);
+      height: 32px;
+      border-radius: 999px;
+      background: #cbd5e1;
+      border: 1px solid #94a3b8;
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 8px 0 32px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #475569;
+      transition: all 0.2s ease;
+      justify-content: flex-end;
+      user-select: none;
+   }
+
+   .toggle-track::before {
+      content: attr(data-off);
+      line-height: 1;
+      letter-spacing: 0.3px;
+   }
+
+   .toggle-track::after {
+      content: '';
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.25);
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      transition: transform 0.2s ease;
+   }
+
+   .toggle-input:checked + .toggle-track {
+      background: #16a34a;
+      border-color: #15803d;
+      color: #fff;
+      padding: 0 32px 0 8px;
+      justify-content: flex-start;
+   }
+
+   .toggle-input:checked + .toggle-track::before {
+      content: attr(data-on);
+   }
+
+   .toggle-input:checked + .toggle-track::after {
+      transform: translateX(calc(var(--toggle-width) - 32px));
+   }
+
+   .toggle-input[data-danger='true']:checked + .toggle-track {
+      background: #dc2626;
+      border-color: #b91c1c;
+   }
+
+   .toggle-input[data-positive='true'] + .toggle-track {
+      --toggle-width: 124px;
+      width: var(--toggle-width);
+   }
+
+   .toggle-input[data-positive='true']:checked + .toggle-track {
+      background: #16a34a;
+      border-color: #15803d;
+   }
+
+   .toggle-input[data-positive='true']:not(:checked) + .toggle-track {
+      background: #dc2626;
+      border-color: #b91c1c;
+      color: #fff;
+   }
+
+   .upload-box {
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: 12px;
+      background: #f8fafc;
+   }
+
+   .upload-controls {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+   }
+
+   .upload-controls button {
+      background: #0f766e;
+      padding: 8px 12px;
+      font-size: 0.82rem;
+      border-radius: 8px;
+   }
+
+   .upload-controls button.capture-btn {
+      background: #0ea5e9;
+   }
+
+   .visually-hidden {
+      position: absolute !important;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+   }
+
+   .upload-status {
+      font-size: 0.8rem;
+      color: #64748b;
+      font-weight: 600;
+      margin-top: 6px;
+      min-height: 18px;
+   }
+
+   .upload-preview {
+      margin-top: 10px;
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+   }
+
+   .upload-preview-item {
+      position: relative;
+      flex-shrink: 0;
+   }
+
+   .upload-preview-item img {
+      width: 72px;
+      height: 72px;
+      border-radius: 8px;
+      object-fit: cover;
+      border: 1px solid var(--border);
+   }
+
+   .upload-remove-btn {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      width: 22px;
+      height: 22px;
+      border: 2px solid #fff;
+      border-radius: 999px;
+      background: #ef4444;
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0;
+   }
+
+   @media (max-width: 900px) {
+      body { padding: 16px; }
+      .filter-container { padding: 16px; }
+      .profile-header { padding: 20px; gap: 16px; }
+      .portfolio-content { padding: 20px; }
+      .subject-grid { gap: 16px; }
+      .subjects-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+      .prediction-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+   }
+
+   @media (max-width: 720px) {
+      body { padding: 12px; }
+      .filter-container { padding: 14px; border-radius: 10px; }
+      .form-row { flex-direction: column; gap: 12px; }
+      .form-group { min-width: 0; }
+      .profile-header { flex-direction: column; align-items: flex-start; }
+      .profile-left { width: 100%; flex-direction: column; align-items: flex-start; }
+      .profile-img { width: 86px; height: 86px; font-size: 2.5rem; }
+      .profile-info h2 { font-size: 1.4rem; }
+      .profile-info p { font-size: 0.85rem; }
+      .profile-right { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 10px; }
+      .zone-badge { width: fit-content; }
+      .portfolio-content { padding: 16px; }
+      .charts-grid { grid-template-columns: 1fr; }
+      .chart-box { height: 260px; min-width: 520px; }
+      .subjects-grid { grid-template-columns: 1fr; }
+      table { font-size: 0.82rem; }
+      th, td { padding: 8px 6px; }
+      .complaint-panel { max-height: none; }
+      .modal-card { border-radius: 12px; }
+      .modal-header, .modal-body, .modal-footer { padding: 14px; }
+      .modal-footer { flex-direction: column; }
+      .modal-footer button { width: 100%; }
+   }
+
+   @media (max-width: 480px) {
+      body { padding: 10px; }
+      .filter-container { margin-bottom: 20px; }
+      .header h1 { font-size: 1.3rem; }
+      .section-title { font-size: 1.05rem; }
+      button { width: 100%; }
+      .chart-box { height: 220px; min-width: 480px; }
+   }
+
+  </style>
+</head>
+<body>
+  
+   <div class="filter-container no-print">
+    <div class="header">
+      <div>
+         <h1>Student Portfolio</h1>
+         <p>Select criteria to view individual student performance</p>
+      </div>
+      <div class="header-actions">
+         <button type="button" class="export-btn" onclick="openExportModal()">Export to Excel</button>
+      </div>
+    </div>
+    <div class="form-row">
+         <div class="form-group student-search">
+            <label for="studentSearch">Student Name</label>
+            <input id="studentSearch" type="text" placeholder="Type 2 letters to search" />
+            <div id="studentSuggestions" class="student-suggestions"></div>
+         </div>
+      <div class="form-group">
+        <label for="classSection">Class & Section</label>
+        <select name="classSection" id="classSection">
+          <option value="" selected disabled>Choose class & section</option>
+          <% studentClassdata.forEach((data)=>{%>
+            <option value="<%=data.studentClass%>-<%=data.section%>"><%=data.studentClass%>-<%=data.section%></option>
+          <%})%>
+        </select>
+      </div>
+      
+      <div class="form-group">
+        <label for="academicYear">Academic Year</label>
+            <select name="academicYear" id="academicYear">
+               <option value="" selected disabled>Choose Academic Year</option>
+               <% const baseYear = (marksheetSetups && marksheetSetups[0] && Number(marksheetSetups[0].academicYear)) || new Date().getFullYear(); %>
+                  <% for (let i = 0; i < 5; i++) { %>
+                     <option value="<%= baseYear - i %>"><%= baseYear - i %></option>
+                  <% } %>
+            </select>
+      </div>
+    </div>
+    <div style="text-align: right;">
+      <button onclick="loadform()">Load Portfolio</button>
+    </div>
+  </div>
+
+   <div class="filter-tools no-print">
+      <div class="filter-tools-row">
+         <input id="filterSearch" type="text" placeholder="Search name, reg, roll, family..." />
+         <input id="filterFamily" type="text" placeholder="Family keyword (parent/guardian/occupation)" />
+         <select id="filterBlood">
+            <option value="any" selected>Blood Group: Any</option>
+            <option value="A+">A+</option>
+            <option value="A-">A-</option>
+            <option value="B+">B+</option>
+            <option value="B-">B-</option>
+            <option value="O+">O+</option>
+            <option value="O-">O-</option>
+            <option value="AB+">AB+</option>
+            <option value="AB-">AB-</option>
+         </select>
+         <details class="filter-multi" id="medicalMultiFilter">
+            <summary>Medical Condition Filters</summary>
+            <div class="filter-multi-content">
+               <label class="filter-checkbox"><input type="checkbox" class="filter-medical-check" value="eye" /> Eye problem</label>
+               <label class="filter-checkbox"><input type="checkbox" class="filter-medical-check" value="ear" /> Ear problem</label>
+               <label class="filter-checkbox"><input type="checkbox" class="filter-medical-check" value="hair" /> Hair problem</label>
+               <label class="filter-checkbox"><input type="checkbox" class="filter-medical-check" value="behaviour" /> Behavioural condition</label>
+            </div>
+         </details>
+         <details class="filter-multi" id="parentHomeMultiFilter">
+            <summary>Parent & Home Filters</summary>
+            <div class="filter-multi-content">
+               <div class="filter-multi-group">
+                  <div class="filter-multi-title">Parent Visit</div>
+                  <label class="filter-checkbox"><input type="checkbox" class="filter-parent-visit" value="frequent" /> Frequent</label>
+                  <label class="filter-checkbox"><input type="checkbox" class="filter-parent-visit" value="occasional" /> Occasional</label>
+                  <label class="filter-checkbox"><input type="checkbox" class="filter-parent-visit" value="rare" /> Rare</label>
+                  <label class="filter-checkbox"><input type="checkbox" class="filter-parent-visit" value="not-visiting" /> Not visiting</label>
+               </div>
+               <div class="filter-multi-group">
+                  <div class="filter-multi-title">Parents View</div>
+                  <label class="filter-checkbox"><input type="checkbox" class="filter-parent-view" value="positive" /> Positive</label>
+                  <label class="filter-checkbox"><input type="checkbox" class="filter-parent-view" value="negative" /> Negative</label>
+               </div>
+               <div class="filter-multi-group">
+                  <div class="filter-multi-title">TV At Home</div>
+                  <label class="filter-checkbox"><input type="checkbox" class="filter-tv" value="yes" /> Yes</label>
+                  <label class="filter-checkbox"><input type="checkbox" class="filter-tv" value="no" /> No</label>
+               </div>
+               <div class="filter-multi-group">
+                  <div class="filter-multi-title">Internet At Home</div>
+                  <label class="filter-checkbox"><input type="checkbox" class="filter-internet" value="yes" /> Yes</label>
+                  <label class="filter-checkbox"><input type="checkbox" class="filter-internet" value="no" /> No</label>
+               </div>
+            </div>
+         </details>
+      </div>
+      <div class="filter-actions">
+         <span id="filterCount" class="filter-count"></span>
+         <button type="button" class="btn-secondary" onclick="resetPortfolioFilters()">Clear Filters</button>
+      </div>
+   </div>
+
+   <script>
+      const studentSearchInput = document.getElementById('studentSearch');
+      const studentSuggestions = document.getElementById('studentSuggestions');
+      const defaultAcademicYear = <%= (marksheetSetups && marksheetSetups[0] && Number(marksheetSetups[0].academicYear)) || new Date().getFullYear() %>;
+
+      const debounce = (fn, delay) => {
+         let timer;
+         return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn(...args), delay);
+         };
+      };
+
+      const showStudentSuggestions = (items) => {
+         if (!studentSuggestions) {
+            return;
+         }
+         if (!items.length) {
+            studentSuggestions.innerHTML = '<div class="student-suggestion-item"><span class="student-suggestion-meta">No matches found</span></div>';
+            studentSuggestions.style.display = 'block';
+            return;
+         }
+
+         studentSuggestions.innerHTML = items.map((student) => {
+            const meta = `Class ${student.studentClass || '-'} | Roll ${student.roll || '-'} | Section ${student.section || '-'}`;
+            const guardian = `Father: ${student.fatherName || '-'} | Address: ${student.address || '-'}`;
+            return `
+               <div class="student-suggestion-item" data-student='${encodeURIComponent(JSON.stringify(student))}'>
+                  <span class="student-suggestion-name">${student.name || '-'}</span>
+                  <span class="student-suggestion-meta">${meta}</span>
+                  <span class="student-suggestion-meta">${guardian}</span>
+               </div>
+            `;
+         }).join('');
+
+         studentSuggestions.style.display = 'block';
+      };
+
+      const clearStudentSuggestions = () => {
+         if (!studentSuggestions) {
+            return;
+         }
+         studentSuggestions.innerHTML = '';
+         studentSuggestions.style.display = 'none';
+      };
+
+      const fetchStudents = async () => {
+         if (!studentSearchInput) {
+            return;
+         }
+         const value = studentSearchInput.value.trim();
+         if (value.length < 2) {
+            clearStudentSuggestions();
+            return;
+         }
+
+         try {
+            const response = await fetch(`/healthrecord/students?q=${encodeURIComponent(value)}`);
+            if (!response.ok) {
+               throw new Error('Failed to load students');
+            }
+            const data = await response.json();
+            showStudentSuggestions(Array.isArray(data) ? data : []);
+         } catch (error) {
+            clearStudentSuggestions();
+         }
+      };
+
+      function loadform()
+      {
+            const classSection = document.getElementById('classSection').value
+            if(!classSection) return alert("Please select Class & Section");
+        
+            const studentClass = classSection.split("-")[0];
+            const section = classSection.split("-")[1];
+            const academicYear = document.getElementById('academicYear').value;
+     
+            window.location.href=(`/studentportfolio?studentClass=${studentClass}&section=${section}&academicYear=${academicYear}`)
+      }
+
+      if (studentSearchInput) {
+         studentSearchInput.addEventListener('input', debounce(fetchStudents, 200));
+      }
+
+      if (studentSuggestions) {
+         studentSuggestions.addEventListener('click', (event) => {
+            const item = event.target.closest('.student-suggestion-item');
+            if (!item || !item.dataset.student) {
+               return;
+            }
+            const student = JSON.parse(decodeURIComponent(item.dataset.student));
+            if (!student || !student.studentClass || !student.section) {
+               return;
+            }
+            const yearValue = document.getElementById('academicYear').value || String(defaultAcademicYear);
+            window.location.href = `/studentportfolio?studentClass=${encodeURIComponent(student.studentClass)}&section=${encodeURIComponent(student.section)}&academicYear=${encodeURIComponent(yearValue)}&reg=${encodeURIComponent(student.reg || '')}`;
+         });
+      }
+
+      document.addEventListener('click', (event) => {
+         if (!event.target.closest('.student-search')) {
+            clearStudentSuggestions();
+         }
+      });
+   </script>
+
+  <% const safeStudentData = studentWisedatastructured || {}; %>
+  <% const hasStudentData = Object.keys(safeStudentData).length > 0; %>
+  <% if (hasStudentData) { %>
+    <% Object.entries(safeStudentData).forEach(([reg, student]) => { %>
+       <!-- Logic to determine Zone -->
+       <% 
+          let totalSubjects = 0;
+          let failedSubjects = 0;
+          let allTerminals = new Set();
+          let subjectPerformance = {}; // subject -> { term: marks }
+          let subjectYearlyPerformance = {}; // subject -> { year: marks }
+          let allYears = new Set();
+          const records = student.records || {};
+          const hasRecords = Object.keys(records).length > 0;
+
+          // Process data for charts and zone
+          Object.entries(records).forEach(([year, record]) => {
+             allYears.add(year);
+             Object.entries(record).forEach(([subject, termdata]) => {
+                if(!subjectPerformance[subject]) subjectPerformance[subject] = {};
+                if(!subjectYearlyPerformance[subject]) subjectYearlyPerformance[subject] = {};
+                
+                let yearTotal = 0;
+                let yearCount = 0;
+
+                Object.entries(termdata).forEach(([terminal, data]) => {
+                    allTerminals.add(terminal);
+                    subjectPerformance[subject][terminal] = data.theory;
+                    
+                    // Assuming < passMark is fail for visual indication
+                    if(data.theory < data.passMarks) failedSubjects++; 
+                    totalSubjects++;
+                    
+                    yearTotal += data.theory;
+                    yearCount++;
+                });
+                
+                if(yearCount > 0) {
+                    subjectYearlyPerformance[subject][year] = (yearTotal / yearCount).toFixed(2);
+                }
+             });
+          });
+
+          let zoneClass = 'zone-green';
+          let zoneText = 'Green Zone';
+          if (failedSubjects > 0) {
+             zoneClass = 'zone-red';
+             zoneText = 'Red Zone';
+          }
+       %>
+       
+
+        <% const roster = rosterByReg && rosterByReg[reg] ? rosterByReg[reg] : {}; %>
+        <% const portfolio = portfolioByReg ? portfolioByReg[reg] : null; %>
+        <% const complaints = portfolio && Array.isArray(portfolio.complaints) ? portfolio.complaints : []; %>
+      <% const healthRecords = healthRecordsByReg && Array.isArray(healthRecordsByReg[reg]) ? healthRecordsByReg[reg] : []; %>
+      <% const callLogs = callLogsByReg && Array.isArray(callLogsByReg[reg]) ? callLogsByReg[reg] : []; %>
+      <% const absentSummary = absentSummaryByReg && absentSummaryByReg[reg] ? absentSummaryByReg[reg] : { totalAbsent: 0, monthCounts: {}, reasons: [] }; %>
+
+        <div class="student-card"
+           data-name="<%= roster.name || student.name || '' %>"
+           data-reg="<%= reg || '' %>"
+           data-roll="<%= roster.roll || student.roll || '' %>"
+           data-class="<%= roster.studentClass || student.studentClass || '' %>"
+           data-section="<%= roster.section || student.section || '' %>"
+           data-blood="<%= roster.bloodGroup || '' %>"
+           data-medical="<%= Array.isArray(roster.anyMedicalCondition) ? roster.anyMedicalCondition.join(', ') : (roster.anyMedicalCondition || '') %>"
+           data-behaviour="<%= roster.otherbehaviouralCondition || '' %>"
+           data-father="<%= roster.fatherName || '' %>"
+           data-mother="<%= roster.motherName || '' %>"
+           data-guardian="<%= roster.otherguardianName || '' %>"
+           data-father-occ="<%= roster.fatheroccupation || '' %>"
+           data-mother-occ="<%= roster.motheroccupation || '' %>"
+           data-guardian-occ="<%= roster.otherguardianOccupation || '' %>"
+           data-income="<%= roster.yearlyIncome || '' %>"
+           data-eye="<%= roster.eyeproblem ? 'yes' : 'no' %>"
+           data-ear="<%= roster.earproblem ? 'yes' : 'no' %>"
+           data-hair="<%= roster.hairproblem ? 'yes' : 'no' %>"
+           data-parent-view="<%= (roster.parentViewTowardsSchool || '').toLowerCase() %>"
+           data-parent-visit="<%= (roster.parentVisitFrequency || '').toLowerCase() %>"
+           data-tv="<%= roster.tvatHome || '' %>"
+           data-internet="<%= roster.internetAtHome || '' %>">
+          <header class="profile-header">
+             <div class="profile-left">
+                 <div class="profile-img">
+                    <!-- Placeholder for student image -->
+                    <span>🧑🏻‍🎓</span>
+                 </div>
+                 <div class="profile-info">
+                     <h2 class="student-name"><%= student.name %></h2>
+                     <p>Reg No: <%= reg %> | Class: <%= student.studentClass %> | Section: <%= student.section %></p>
+                 </div>
+             </div>
+                   <div class="profile-right">
+                      <button type="button" class="print-btn no-print" onclick="window.print()">Print Portfolio</button>
+                      <button type="button" class="no-print" onclick="addComplaint('<%= reg %>')" style="background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Add Complaint</button>
+                      <button type="button" class="no-print" onclick="openCallLogModal('<%= reg %>')" style="background-color: #0f766e; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Add Call Record</button>
+                         <button type="button" class="no-print" onclick="addInformation('<%= reg %>')" style="background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Add Information</button>
+                         <div class="zone-badge <%= zoneClass %>">
+                              <%= zoneText %>
+                         </div>
+                   </div>
+          </header>
+
+          <main class="portfolio-content">
+                   <div class="section-title">
+                      <span>🧾</span> Student Details
+                   </div>
+                   <div class="details-grid">
+                      <div class="details-group">
+                         <div class="details-title">Student Info</div>
+                         <div class="detail-item"><strong>Name:</strong> <%= roster.name || student.name || '-' %></div>
+                         <div class="detail-item"><strong>Reg No:</strong> <%= reg || '-' %></div>
+                         <div class="detail-item"><strong>Roll:</strong> <%= roster.roll || student.roll || '-' %></div>
+                         <div class="detail-item"><strong>Class:</strong> <%= roster.studentClass || student.studentClass || '-' %></div>
+                         <div class="detail-item"><strong>Section:</strong> <%= roster.section || student.section || '-' %></div>
+                         <div class="detail-item"><strong>Gender:</strong> <%= roster.gender || '-' %></div>
+                         <div class="detail-item"><strong>Age:</strong> <%= roster.age || '-' %></div>
+                         <div class="detail-item"><strong>Date of Birth:</strong> <%= roster.dob ? new Date(roster.dob).toLocaleDateString() : '-' %></div>
+                         <div class="detail-item"><strong>Class Started:</strong> <%= roster.classStartedAt ? new Date(roster.classStartedAt).toLocaleDateString() : '-' %></div>
+                         <div class="detail-item"><strong>Mother Tongue:</strong> <%= roster.mothersToungue || '-' %></div>
+                         <div class="detail-item"><strong>Previous School:</strong> <%= roster.previousSchool || '-' %></div>
+                      </div>
+                      <div class="details-group no-print">
+                         <div class="details-title">Family Background</div>
+                         <div class="detail-item"><strong>Father Name:</strong> <%= roster.fatherName || '-' %></div>
+                         <div class="detail-item"><strong>Father Occupation:</strong> <%= roster.fatheroccupation || '-' %></div>
+                         <div class="detail-item"><strong>Father Contact:</strong> <%= roster.fatherContact || '-' %></div>
+                         <div class="detail-item"><strong>Father Qualification:</strong> <%= roster.fatherqualification || '-' %></div>
+                         <div class="detail-item"><strong>Mother Name:</strong> <%= roster.motherName || '-' %></div>
+                         <div class="detail-item"><strong>Mother Occupation:</strong> <%= roster.motheroccupation || '-' %></div>
+                         <div class="detail-item"><strong>Mother Contact:</strong> <%= roster.motherContact || '-' %></div>
+                         <div class="detail-item"><strong>Mother Qualification:</strong> <%= roster.motherqualification || '-' %></div>
+                         <div class="detail-item"><strong>Other Guardian:</strong> <%= roster.otherguardianName || '-' %></div>
+                         <div class="detail-item"><strong>Guardian Occupation:</strong> <%= roster.otherguardianOccupation || '-' %></div>
+                         <div class="detail-item"><strong>Guardian Contact:</strong> <%= roster.otherguardianContact || '-' %></div>
+                         <div class="detail-item"><strong>Yearly Income:</strong> <%= roster.yearlyIncome || '-' %></div>
+                      </div>
+                      <div class="details-group">
+                         <div class="details-title">Health</div>
+                         <div class="detail-item"><strong>Blood Group:</strong> <%= roster.bloodGroup || '-' %></div>
+                         <div class="detail-item"><strong>Medical Condition:</strong> <%= Array.isArray(roster.anyMedicalCondition) ? roster.anyMedicalCondition.join(', ') : (roster.anyMedicalCondition || '-') %></div>
+                         <div class="detail-item"><strong>Behavioral Condition:</strong> <%= roster.otherbehaviouralCondition || '-' %></div>
+                         <div class="detail-item"><strong>Eye Problem:</strong> <%= roster.eyeproblem ? 'Yes' : 'No' %></div>
+                         <div class="detail-item"><strong>Ear Problem:</strong> <%= roster.earproblem ? 'Yes' : 'No' %></div>
+                         <div class="detail-item"><strong>Hair Problem:</strong> <%= roster.hairproblem ? 'Yes' : 'No' %></div>
+                         <div class="detail-item"><strong>Height:</strong> <%= roster.height || '-' %></div>
+                         <div class="detail-item"><strong>Weight:</strong> <%= roster.weight || '-' %></div>
+                      </div>
+                      <div class="details-group">
+                         <div class="details-title">Contact Info</div>
+                         <div class="detail-item"><strong>Contact Number:</strong> <%= roster.numberofmobile || '-' %></div>
+                      </div>
+                      <div class="details-group no-print">
+                         <div class="details-title">Home & Fees</div>
+                         <div class="detail-item"><strong>Lives with Father/Mother:</strong> <%= (roster.liveWithFather === false || roster.liveWithMother === false) ? 'No' : 'Yes' %></div>
+                         <div class="detail-item"><strong>Parent View Towards School:</strong> <%= roster.parentViewTowardsSchool || 'Positive' %></div>
+                         <div class="detail-item"><strong>Parent Visit Frequency:</strong> <%= roster.parentVisitFrequency || '-' %></div>
+                         <div class="detail-item"><strong>TV at Home:</strong> <%= roster.tvatHome || '-' %></div>
+                         <div class="detail-item"><strong>Internet at Home:</strong> <%= roster.internetAtHome || '-' %></div>
+                         <div class="detail-item"><strong>Fee Paid Duration:</strong> <%= roster.feepaidduration || '-' %></div>
+                      </div>
+                   </div>
+
+                   <div class="complaint-panel">
+                        <div class="complaint-header">
+                            <div class="complaint-title">Complaints</div>
+                            <div class="complaint-count"><%= complaints.length %></div>
+                        </div>
+                        <% if (complaints.length) { %>
+                           <ul class="complaint-list">
+                              <% complaints.forEach((item) => { %>
+                                 <li class="complaint-item">
+                                    <div class="complaint-meta">
+                                       <span>By: <%= item.by || 'Unknown' %></span>
+                                       <span>Date: <%= item.date ? new Date(item.date).toLocaleDateString() : 'N/A' %></span>
+                                    </div>
+                                    <div class="complaint-reason"><%= item.reason || '-' %></div>
+                                    <% if (Array.isArray(item.imageUrls) && item.imageUrls.length) { %>
+                                      <div class="complaint-images">
+                                        <% item.imageUrls.forEach((img, index) => { %>
+                                          <img src="<%= img %>" alt="Complaint image <%= index + 1 %>" onclick="window.open('<%= img %>', '_blank')" />
+                                        <% }) %>
+                                      </div>
+                                    <% } %>
+                                 </li>
+                              <% }) %>
+                           </ul>
+                        <% } else { %>
+                           <div class="complaint-empty">No complaints recorded yet.</div>
+                        <% } %>
+                   </div>
+
+                   <div class="health-panel">
+                        <div class="complaint-header">
+                            <div class="complaint-title">Health Visits</div>
+                            <div class="complaint-count"><%= healthRecords.length %></div>
+                        </div>
+                        <% if (healthRecords.length) { %>
+                           <ul class="health-list">
+                              <% healthRecords.forEach((item) => { %>
+                                 <li class="health-item">
+                                    <div class="health-meta">
+                                       <span>Visit: <%= item.createdAt ? new Date(item.createdAt).toLocaleString() : 'N/A' %></span>
+                                    </div>
+                                    <div class="health-line"><strong>Diagnosis:</strong> <%= item.diagnosis || '-' %></div>
+                                    <div class="health-line"><strong>Treatment / Medicine:</strong> <%= item.treatment || '-' %></div>
+                                    <div class="health-line"><strong>Remarks:</strong> <%= item.remarks || '-' %></div>
+                                 </li>
+                              <% }) %>
+                           </ul>
+                        <% } else { %>
+                           <div class="complaint-empty">No health visits recorded yet.</div>
+                        <% } %>
+                   </div>
+
+                   <div class="absent-panel">
+                      <div class="absent-header">
+                         <div class="absent-title">Absent Details</div>
+                         <div class="absent-total"><%= absentSummary.totalAbsent %> total</div>
+                      </div>
+                      <% const monthEntries = Object.entries(absentSummary.monthCounts || {}); %>
+                      <% if (monthEntries.length) { %>
+                        <div class="absent-months">
+                           <% monthEntries.forEach(([monthName, count]) => { %>
+                              <div class="absent-month-item">
+                                 <span><%= monthName || 'Unknown' %></span>
+                                 <strong><%= count %></strong>
+                              </div>
+                           <% }) %>
+                        </div>
+                      <% } else { %>
+                        <div class="absent-empty">No absence records yet.</div>
+                      <% } %>
+
+                      <% if (absentSummary.reasons && absentSummary.reasons.length) { %>
+                        <div class="absent-reasons">
+                           <% absentSummary.reasons.forEach((item) => { %>
+                              <div class="absent-reason-item">
+                                 <div class="absent-reason-date"><%= item.date || '-' %></div>
+                                 <div><%= item.reason || '-' %></div>
+                              </div>
+                           <% }) %>
+                        </div>
+                      <% } %>
+                   </div>
+
+                   <div class="calllog-panel">
+                      <div class="calllog-header">
+                         <div class="calllog-title">Parent Call Logs</div>
+                        <div class="calllog-actions">
+                           <button type="button" class="calllog-btn no-print" onclick="openCallLogModal('<%= reg %>')">Add Call Record</button>
+                           <div class="calllog-count"><%= callLogs.length %> call<%= callLogs.length === 1 ? '' : 's' %></div>
+                        </div>
+                      </div>
+                      <% if (callLogs.length) { %>
+                        <div class="calllog-table-wrap">
+                           <table class="calllog-table">
+                              <thead>
+                                 <tr>
+                                    <th>Call Date</th>
+                                    <th>Called By</th>
+                                    <th>Call Reason</th>
+                                    <th>Parent Response</th>
+                                 </tr>
+                              </thead>
+                              <tbody>
+                                 <% callLogs.forEach((log) => { %>
+                                    <tr>
+                                       <td>
+                                          <% if (log.callLoggedAt) { %>
+                                             <%= new Date(log.callLoggedAt).toLocaleString() %>
+                                          <% } else { %>
+                                             <%= [log.academicYear, log.month, log.day].filter(Boolean).join(' ') || '-' %>
+                                          <% } %>
+                                       </td>
+                                       <td><%= log.callBy || '-' %></td>
+                                       <td><%= log.callReason || '-' %></td>
+                                       <td><%= log.parentResponse || '-' %></td>
+                                    </tr>
+                                 <% }) %>
+                              </tbody>
+                           </table>
+                        </div>
+                      <% } else { %>
+                        <div class="calllog-empty">No call logs recorded yet.</div>
+                      <% } %>
+                   </div>
+             
+             <% if (hasRecords) { %>
+                <div class="charts-grid">
+                   <div class="chart-scroll">
+                     <div class="chart-box">
+                        <div class="chart-title">Performance Across Terminals (Current Year)</div>
+                        <canvas id="chart_term_<%= reg %>"></canvas>
+                     </div>
+                   </div>
+                   <div class="chart-scroll">
+                     <div class="chart-box">
+                        <div class="chart-title">Subject Performance Across Years</div>
+                        <canvas id="chart_year_<%= reg %>"></canvas>
+                     </div>
+                   </div>
+                </div>
+             <% } else { %>
+                <div class="section-title">
+                   <span>📊</span> Academic Progress Report
+                </div>
+                <div style="color: #64748b; font-weight: 600;">Marks not entered yet.</div>
+             <% } %>
+
+             <% if (hasRecords) { %>
+                <div class="section-title">
+                   <span>📊</span> Academic Progress Report
+                </div>
+                
+                <div class="subjects-grid">
+                   <% Object.entries(records).forEach(([year, record]) => { %>
+                      <% Object.entries(record).forEach(([subject, termdata]) => { %>
+                         <div class="subject-card">
+                            <div class="subject-header">
+                               <span><%= subject %></span>
+                               <span style="font-size:0.8em; opacity:0.7; background:rgba(0,0,0,0.05); padding:2px 6px; border-radius:4px;"><%= year %></span>
+                            </div>
+                            <table cellspacing="0">
+                               <thead>
+                                  <tr>
+                                     <% 
+                                       // Sort terminals: First, Second, Third, Final (Case Insensitive)
+                                       const termOrder = ['first', 'second', 'third', 'final'];
+                                       const sortedTerms = Object.keys(termdata).sort((a, b) => {
+                                           const lowerA = a.toLowerCase();
+                                           const lowerB = b.toLowerCase();
+                                           const indexA = termOrder.findIndex(t => lowerA.includes(t));
+                                           const indexB = termOrder.findIndex(t => lowerB.includes(t));
+                                           
+                                           const valA = indexA === -1 ? 999 : indexA;
+                                           const valB = indexB === -1 ? 999 : indexB;
+                                           
+                                           return valA - valB;
+                                       });
+                                     %>
+                                     <% sortedTerms.forEach(term => { %>
+                                        <th><%= term %></th>
+                                     <% }) %>
+                                  </tr>
+                               </thead>
+                               <tbody>
+                                  <tr>
+                                     <% sortedTerms.forEach(term => { 
+                                          const data = termdata[term];
+                                     %>
+                                        <td class="mark-cell <%= data.theory < 35 ? 'mark-fail' : 'mark-pass' %>">
+                                           <%= data.theory %>
+                                        </td>
+                                     <% }) %>
+                                  </tr>
+                               </tbody>
+                            </table>
+                         </div>
+                      <% }) %>
+                   <% }) %>
+                </div>
+             <% } %>
+
+             <% if (hasRecords) { %>
+                <div class="section-title" style="margin-top: 40px;">
+                   <span>🔮</span> Prediction Marks
+                </div>
+
+                <div class="prediction-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px;">
+                   <% Object.entries(records).forEach(([year, record]) => { %>
+                      <% Object.entries(record).forEach(([subject, termdata]) => { 
+                        // Logic to extract marks
+                        const findMark = (tName) => {
+                            const key = Object.keys(termdata).find(k => k.toLowerCase().includes(tName.toLowerCase()));
+                            return key ? parseFloat(termdata[key].theory) : null;
+                        };
+
+                        // Get full marks from any available terminal data
+                        const anyTermKey = Object.keys(termdata)[0];
+                        const fullMarks = anyTermKey ? (parseFloat(termdata[anyTermKey].theoryfullmarks) || 50) : 50;
+
+                        const first = findMark('first');
+                        const second = findMark('second');
+                        const third = findMark('third');
+                        
+                        let prediction = null;
+                        let predictionLabel = '';
+
+                        // Linear Regression Helper
+                        const predictNext = (values) => {
+                            const n = values.length;
+                            if (n < 2) return null;
+                            
+                            let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+                            for (let i = 0; i < n; i++) {
+                                const x = i + 1;
+                                const y = values[i];
+                                sumX += x;
+                                sumY += y;
+                                sumXY += x * y;
+                                sumXX += x * x;
+                            }
+                            
+                            const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+                            const intercept = (sumY - slope * sumX) / n;
+                            
+                            return slope * (n + 1) + intercept;
+                        };
+
+                        // Prediction Logic
+                        if (first !== null && second !== null && third !== null) {
+                            // Predict Final based on First, Second, Third
+                            prediction = predictNext([first, second, third]);
+                            predictionLabel = 'Final Term';
+                        } else if (first !== null && second !== null) {
+                            // Predict Third based on First, Second
+                            prediction = predictNext([first, second]);
+                            predictionLabel = 'Third Term';
+                        }
+
+                        if (prediction !== null) {
+                            // Cap prediction at fullMarks and floor at 0
+                            prediction = Math.min(fullMarks, Math.max(0, prediction));
+                   %>
+                      <div class="prediction-card" style="background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--secondary);">
+                         <div style="font-weight: 600; color: var(--text);">
+                            <%= subject %>
+                            <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 400;"><%= year %></div>
+                         </div>
+                         <div style="text-align: right;">
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);"><%= Math.round(prediction) %></div>
+                            <div style="font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;"><%= predictionLabel %></div>
+                         </div>
+                      </div>
+                      <% } %>
+                      <% }) %>
+                   <% }) %>
+                </div>
+             <% } %>
+
+          </main>
+       </div>
+
+       <!-- Scripts for Charts -->
+       <% if (hasRecords) { %>
+          <script>
+             {
+                // Sort terminals for chart
+                const termOrder = ['first', 'second', 'third', 'final'];
+                const terminals = <%- JSON.stringify(Array.from(allTerminals)) %>.sort((a, b) => {
+                   const lowerA = a.toLowerCase();
+                   const lowerB = b.toLowerCase();
+                   const indexA = termOrder.findIndex(t => lowerA.includes(t));
+                   const indexB = termOrder.findIndex(t => lowerB.includes(t));
+                   
+                   const valA = indexA === -1 ? 999 : indexA;
+                   const valB = indexB === -1 ? 999 : indexB;
+                   
+                   return valA - valB;
+                });
+                
+                const subjectData = <%- JSON.stringify(subjectPerformance) %>;
+                
+                // Prepare datasets for Terminal Chart
+                const datasets = Object.entries(subjectData).map(([subject, terms], index) => {
+                   const data = terminals.map(t => terms[t] || 0);
+                   const colors = ['#2563eb', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+                   return {
+                      label: subject,
+                      data: data,
+                      borderColor: colors[index % colors.length],
+                      backgroundColor: colors[index % colors.length],
+                      tension: 0.3,
+                      fill: false,
+                      pointRadius: 4
+                   };
+                });
+
+                const ctxTerm = document.getElementById('chart_term_<%= reg %>').getContext('2d');
+                new Chart(ctxTerm, {
+                   type: 'line',
+                   data: {
+                      labels: terminals,
+                      datasets: datasets
+                   },
+                   options: {
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                         legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+                      },
+                      scales: { y: { beginAtZero: true } }
+                   }
+                });
+
+                // Year Chart - Subject wise
+                const years = <%- JSON.stringify(Array.from(allYears).sort()) %>;
+                const subjectYearlyData = <%- JSON.stringify(subjectYearlyPerformance) %>;
+                
+                const yearDatasets = Object.entries(subjectYearlyData).map(([subject, yearData], index) => {
+                   const data = years.map(y => yearData[y] || 0);
+                   const colors = ['#2563eb', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+                   return {
+                      label: subject,
+                      data: data,
+                      borderColor: colors[index % colors.length],
+                      backgroundColor: colors[index % colors.length],
+                      tension: 0.3,
+                      fill: false,
+                      pointRadius: 4
+                   };
+                });
+                
+                const ctxYear = document.getElementById('chart_year_<%= reg %>').getContext('2d');
+                new Chart(ctxYear, {
+                   type: 'line',
+                   data: {
+                      labels: years,
+                      datasets: yearDatasets
+                   },
+                   options: {
+                      responsive: true,
+                      maintainAspectRatio: false,
+                      plugins: {
+                         legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+                      },
+                      scales: { y: { beginAtZero: true } }
+                   }
+                });
+             }
+          </script>
+       <% } %>
+
+      <% }) %>
+   <% } %>
+
+<div id="exportModal" class="modal-backdrop" aria-hidden="true">
+   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="exportModalTitle">
+      <div class="modal-header">
+         <div class="modal-title" id="exportModalTitle">Export Portfolio Data</div>
+         <button type="button" class="btn-secondary" onclick="closeExportModal()">Close</button>
+      </div>
+      <div class="modal-body" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="sn" checked /> SN</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="name" checked /> Name</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="reg" checked /> Reg No</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="roll" checked /> Roll</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="class" checked /> Class</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="section" checked /> Section</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="gender" /> Gender</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="age" /> Age</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="dob" /> Date of Birth</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="classStarted" /> Class Started</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="motherTongue" /> Mother Tongue</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="previousSchool" /> Previous School</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="contact" /> Contact Number</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="fatherName" /> Father Name</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="fatherOccupation" /> Father Occupation</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="fatherContact" /> Father Contact</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="fatherQualification" /> Father Qualification</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="motherName" /> Mother Name</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="motherOccupation" /> Mother Occupation</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="motherContact" /> Mother Contact</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="motherQualification" /> Mother Qualification</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="guardianName" /> Other Guardian</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="guardianOccupation" /> Guardian Occupation</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="guardianContact" /> Guardian Contact</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="yearlyIncome" /> Yearly Income</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="bloodGroup" /> Blood Group</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="medicalCondition" /> Medical Condition</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="behavioralCondition" /> Behavioral Condition</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="eyeProblem" /> Eye Problem</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="earProblem" /> Ear Problem</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="hairProblem" /> Hair Problem</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="height" /> Height</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="weight" /> Weight</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="livesWithParents" /> Lives with Father/Mother</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="parentView" /> Parent View Towards School</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="parentVisit" /> Parent Visit Frequency</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="tvAtHome" /> TV at Home</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="internetAtHome" /> Internet at Home</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="feePaidDuration" /> Fee Paid Duration</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="complaints" /> Complaints</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="healthVisits" /> Health Visits</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="callLogs" /> Call Logs</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="absent" /> Absent Record</label>
+      </div>
+      <div class="modal-footer">
+         <button type="button" class="btn-secondary" onclick="toggleExportFields(false)">Clear All</button>
+         <button type="button" class="btn-secondary" onclick="toggleExportFields(true)">Select All</button>
+         <button type="button" onclick="downloadPortfolioExport()">Download Excel</button>
+      </div>
+   </div>
+</div>
+
+<div id="infoModal" class="modal-backdrop" aria-hidden="true">
+   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="infoModalTitle">
+      <div class="modal-header">
+         <div class="modal-title" id="infoModalTitle">Student Information</div>
+         <button type="button" class="btn-secondary" onclick="closeInfoModal()">Close</button>
+      </div>
+      <form id="infoForm">
+         <div class="modal-body">
+            <div class="modal-field">
+               <label for="info_reg">Reg No</label>
+               <input id="info_reg" name="reg" type="text" readonly />
+            </div>
+            <div class="modal-field">
+               <label for="info_name">Name</label>
+               <input id="info_name" name="name" type="text" />
+            </div>
+            <div class="modal-field">
+               <label for="info_roll">Roll</label>
+               <input id="info_roll" name="roll" type="number" />
+            </div>
+            <div class="modal-field">
+               <label for="info_class">Class</label>
+               <input id="info_class" name="studentClass" type="text" />
+            </div>
+            <div class="modal-field">
+               <label for="info_section">Section</label>
+               <input id="info_section" name="section" type="text" />
+            </div>
+            <div class="modal-field">
+               <label for="info_gender">Gender</label>
+               <input id="info_gender" name="gender" type="text" />
+            </div>
+            <div class="modal-field">
+               <label for="info_age">Age</label>
+               <input id="info_age" name="age" type="text" />
+            </div>
+            <div class="modal-field">
+               <label for="info_dob">Date of Birth</label>
+               <input id="info_dob" name="dob" type="date" />
+            </div>
+            <div class="modal-field">
+               <label for="info_class_started">Class Started At</label>
+               <input id="info_class_started" name="classStartedAt" type="date" />
+            </div>
+            <div class="modal-field">
+               <label for="info_mother_tongue">Mother Tongue</label>
+               <input id="info_mother_tongue" name="mothersToungue" type="text" />
+            </div>
+            <div class="modal-field">
+               <label for="info_previous_school">Previous School</label>
+               <input id="info_previous_school" name="previousSchool" type="text" />
+            </div>
+            <div class="modal-field">
+               <label for="info_father_name">Father Name</label>
+               <input id="info_father_name" name="fatherName" type="text" />
+            </div>
+            <div class="modal-field">
+               <label for="info_father_occupation">Father Occupation</label>
+               <input id="info_father_occupation" name="fatheroccupation" type="text" />
+            </div>
+            <div class="modal-field">
+               <label for="info_father_contact">Father Contact</label>
+               <input id="info_father_contact" name="fatherContact" type="text" />
+            </div>
+            <div class="modal-field">
+               <label for="info_father_qualification">Father Qualification</label>
+               <input id="info_father_qualification" name="fatherqualification" type="text" />
+            </div>
+            <div class="modal-field">
+               <label for="info_mother_name">Mother Name</label>
+               <input id="info_mother_name" name="motherName" type="text" />
+            </div>
+            <div class="modal-field">
+               <label for="info_mother_occupation">Mother Occupation</label>
+               <input id="info_mother_occupation" name="motheroccupation" type="text" />
+            </div>
+            <div class="modal-field">
+               <label for="info_mother_contact">Mother Contact</label>
+               <input id="info_mother_contact" name="motherContact" type="text" />
+            </div>
+            <div class="modal-field">
+               <label for="info_mother_qualification">Mother Qualification</label>
+               <input id="info_mother_qualification" name="motherqualification" type="text" />
+            </div>
+            <div class="modal-field">
+               <label for="info_guardian_name">Other Guardian Name</label>
+               <input id="info_guardian_name" name="otherguardianName" type="text" />
+            </div>
+            <div class="modal-field">
+               <label for="info_guardian_occupation">Other Guardian Occupation</label>
+               <input id="info_guardian_occupation" name="otherguardianOccupation" type="text" />
+            </div>
+            <div class="modal-field">
+               <label for="info_guardian_contact">Other Guardian Contact</label>
+               <input id="info_guardian_contact" name="otherguardianContact" type="text" />
+            </div>
+            <div class="modal-field">
+               <label for="info_yearly_income">Yearly Income</label>
+               <input id="info_yearly_income" name="yearlyIncome" type="text" />
+            </div>
+            <div class="modal-field">
+               <label for="info_blood_group">Blood Group</label>
+               <input id="info_blood_group" name="bloodGroup" type="text" />
+            </div>
+            <div class="modal-field">
+               <label for="info_height">Height</label>
+               <input id="info_height" name="height" type="text" placeholder="e.g. 145 cm" />
+            </div>
+            <div class="modal-field">
+               <label for="info_weight">Weight</label>
+               <input id="info_weight" name="weight" type="text" placeholder="e.g. 38 kg" />
+            </div>
+            <div class="modal-field">
+               <label for="info_medical">Any Medical Condition (comma separated)</label>
+               <textarea id="info_medical" name="anyMedicalCondition"></textarea>
+            </div>
+            <div class="modal-field">
+               <label for="info_behaviour">Other Behavioural Condition</label>
+               <textarea id="info_behaviour" name="otherbehaviouralCondition"></textarea>
+            </div>
+            <div class="modal-field">
+               <label>Eye Problem</label>
+               <div class="toggle-control">
+                  <label>
+                     <input type="checkbox" id="toggle_eyeproblem" class="toggle-input" data-danger="true" />
+                     <span class="toggle-track" data-on="YES" data-off="NO"></span>
+                  </label>
+               </div>
+            </div>
+            <div class="modal-field">
+               <label>Ear Problem</label>
+               <div class="toggle-control">
+                  <label>
+                     <input type="checkbox" id="toggle_earproblem" class="toggle-input" data-danger="true" />
+                     <span class="toggle-track" data-on="YES" data-off="NO"></span>
+                  </label>
+               </div>
+            </div>
+            <div class="modal-field">
+               <label>Hair Problem</label>
+               <div class="toggle-control">
+                  <label>
+                     <input type="checkbox" id="toggle_hairproblem" class="toggle-input" data-danger="true" />
+                     <span class="toggle-track" data-on="YES" data-off="NO"></span>
+                  </label>
+               </div>
+            </div>
+            <div class="modal-field">
+               <label>Lives with Father/Mother</label>
+               <div class="toggle-control">
+                  <label>
+                     <input type="checkbox" id="toggle_livewithparents" class="toggle-input" checked />
+                     <span class="toggle-track" data-on="YES" data-off="NO"></span>
+                  </label>
+               </div>
+            </div>
+            <div class="modal-field">
+               <label>Parent View Towards School</label>
+               <div class="toggle-control">
+                  <label>
+                     <input type="checkbox" id="toggle_parentview" class="toggle-input" data-positive="true" checked />
+                     <span class="toggle-track" data-on="POSITIVE" data-off="NEGATIVE"></span>
+                  </label>
+               </div>
+            </div>
+            <div class="modal-field">
+               <label>Parent Visit Frequency</label>
+               <div class="radio-inline-group">
+                  <label><input type="radio" name="parentVisitFrequency" value="frequent" /> Frequent</label>
+                  <label><input type="radio" name="parentVisitFrequency" value="occasional" checked /> Occasional</label>
+                  <label><input type="radio" name="parentVisitFrequency" value="rare" /> Rare</label>
+                  <label><input type="radio" name="parentVisitFrequency" value="not-visiting" /> Not Visiting</label>
+               </div>
+            </div>
+            <div class="modal-field">
+               <label for="info_mobile">Contact Number</label>
+               <input id="info_mobile" name="numberofmobile" type="text" />
+            </div>
+            <div class="modal-field">
+               <label>TV at Home</label>
+               <div class="toggle-control">
+                  <label>
+                     <input type="checkbox" id="toggle_tvathome" class="toggle-input" checked />
+                     <span class="toggle-track" data-on="YES" data-off="NO"></span>
+                  </label>
+               </div>
+            </div>
+            <div class="modal-field">
+               <label>Internet at Home</label>
+               <div class="toggle-control">
+                  <label>
+                     <input type="checkbox" id="toggle_internetathome" class="toggle-input" checked />
+                     <span class="toggle-track" data-on="YES" data-off="NO"></span>
+                  </label>
+               </div>
+            </div>
+            <div class="modal-field">
+               <label for="info_fee_paid">Fee Paid Duration</label>
+               <input id="info_fee_paid" name="feepaidduration" type="text" />
+            </div>
+         </div>
+         <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="closeInfoModal()">Cancel</button>
+            <button type="submit">Save</button>
+         </div>
+      </form>
+   </div>
+</div>
+
+<div id="complaintModal" class="modal-backdrop" aria-hidden="true">
+   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="complaintModalTitle">
+      <div class="modal-header">
+         <div class="modal-title" id="complaintModalTitle">Add Complaint</div>
+         <button type="button" class="btn-secondary" onclick="closeComplaintModal()">Close</button>
+      </div>
+      <form id="complaintForm">
+         <div class="modal-body" style="grid-template-columns: 1fr;">
+            <div class="modal-field">
+               <label for="complaint_reg">Reg No</label>
+               <input id="complaint_reg" name="reg" type="text" readonly />
+            </div>
+            <div class="modal-field">
+               <label for="complaint_reason">Complaint / Feedback</label>
+               <textarea id="complaint_reason" name="complaint" placeholder="Write complaint details..."></textarea>
+            </div>
+            <div class="modal-field">
+               <label>Complaint Images (Multiple)</label>
+               <div class="upload-box">
+                  <div class="upload-controls">
+                     <button type="button" id="complaint_pick_btn">Upload Images</button>
+                     <button type="button" id="complaint_capture_btn" class="capture-btn">Capture Image</button>
+                  </div>
+                  <input id="complaint_images_picker" class="visually-hidden" type="file" accept="image/*" multiple />
+                  <input id="complaint_images_capture" class="visually-hidden" type="file" accept="image/*" capture="environment" />
+                  <div id="complaint_upload_status" class="upload-status"></div>
+                  <div id="complaint_upload_preview" class="upload-preview"></div>
+               </div>
+            </div>
+         </div>
+         <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="closeComplaintModal()">Cancel</button>
+            <button type="submit">Save Complaint</button>
+         </div>
+      </form>
+   </div>
+</div>
+
+<div id="callLogModal" class="modal-backdrop" aria-hidden="true">
+   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="callLogModalTitle">
+      <div class="modal-header">
+         <div class="modal-title" id="callLogModalTitle">Add Call Record</div>
+         <button type="button" class="btn-secondary" onclick="closeCallLogModal()">Close</button>
+      </div>
+      <form id="callLogForm">
+         <div class="modal-body" style="grid-template-columns: 1fr;">
+            <div class="call-form-grid">
+               <div class="modal-field">
+                  <label for="callLogName">Student Name</label>
+                  <input id="callLogName" type="text" readonly />
+               </div>
+               <div class="modal-field">
+                  <label for="callLogClass">Class</label>
+                  <input id="callLogClass" type="text" readonly />
+               </div>
+               <div class="modal-field">
+                  <label for="callLogSection">Section</label>
+                  <input id="callLogSection" type="text" readonly />
+               </div>
+               <div class="modal-field">
+                  <label for="callLogReg">Reg No</label>
+                  <input id="callLogReg" type="text" readonly />
+               </div>
+               <div class="modal-field">
+                  <label for="callLogContact">Contact Number</label>
+                  <input id="callLogContact" type="text" readonly />
+               </div>
+            </div>
+            <div class="modal-field">
+               <label for="callLogReason">Reason for Call</label>
+               <textarea id="callLogReason" required></textarea>
+            </div>
+            <div class="modal-field">
+               <label for="callLogResponse">Parent Response</label>
+               <textarea id="callLogResponse" required></textarea>
+            </div>
+            <div class="call-form-actions">
+               <a id="callLogNow" class="call-now-btn" href="#" target="_self">Call Now</a>
+               <span id="callLogStatus" class="call-status"></span>
+            </div>
+         </div>
+         <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="closeCallLogModal()">Cancel</button>
+            <button type="submit">Save Call Log</button>
+         </div>
+      </form>
+   </div>
+</div>
+
+<script>
+   const rosterByReg = <%- JSON.stringify(rosterByReg || {}) %>;
+   const complaintsByReg = <%- JSON.stringify(typeof complaintsByReg !== 'undefined' ? complaintsByReg : {}) %>;
+   const healthRecordsByReg = <%- JSON.stringify(typeof healthRecordsByReg !== 'undefined' ? healthRecordsByReg : {}) %>;
+   const callLogsByReg = <%- JSON.stringify(typeof callLogsByReg !== 'undefined' ? callLogsByReg : {}) %>;
+   const absentSummaryByReg = <%- JSON.stringify(typeof absentSummaryByReg !== 'undefined' ? absentSummaryByReg : {}) %>;
+   const studentCards = Array.from(document.querySelectorAll('.student-card'));
+   const filterSearch = document.getElementById('filterSearch');
+   const filterFamily = document.getElementById('filterFamily');
+   const filterMedicalChecks = Array.from(document.querySelectorAll('.filter-medical-check'));
+   const filterParentVisitChecks = Array.from(document.querySelectorAll('.filter-parent-visit'));
+   const filterParentViewChecks = Array.from(document.querySelectorAll('.filter-parent-view'));
+   const filterTvChecks = Array.from(document.querySelectorAll('.filter-tv'));
+   const filterInternetChecks = Array.from(document.querySelectorAll('.filter-internet'));
+   const filterBlood = document.getElementById('filterBlood');
+   const filterCount = document.getElementById('filterCount');
+   const complaintForm = document.getElementById('complaintForm');
+   const complaintImageInput = document.getElementById('complaint_images_picker');
+   const complaintCaptureInput = document.getElementById('complaint_images_capture');
+   const complaintPickButton = document.getElementById('complaint_pick_btn');
+   const complaintCaptureButton = document.getElementById('complaint_capture_btn');
+   const complaintUploadStatus = document.getElementById('complaint_upload_status');
+   const complaintUploadPreview = document.getElementById('complaint_upload_preview');
+   const callLogForm = document.getElementById('callLogForm');
+   const callLogStatus = document.getElementById('callLogStatus');
+   const callLogNow = document.getElementById('callLogNow');
+   let complaintImageUrls = [];
+
+   function normalize(value) {
+      return String(value || '').toLowerCase().trim();
+   }
+
+   function isEmptyValue(value) {
+      const normalized = normalize(value);
+      return !normalized || normalized === '-' || normalized === 'n/a' || normalized === 'na' || normalized === 'none';
+   }
+
+   function matchesYesNo(value, filterValue) {
+      if (filterValue === 'any') return true;
+      const empty = isEmptyValue(value);
+      if (filterValue === 'yes') return !empty;
+      if (filterValue === 'no') return empty;
+      return true;
+   }
+
+   function isYesValue(value) {
+      const normalized = normalize(value);
+      return normalized === 'yes' || normalized === 'true' || normalized === '1';
+   }
+
+   function getCheckedValues(elements) {
+      return elements.filter((el) => el.checked).map((el) => normalize(el.value));
+   }
+
+   function applyPortfolioFilters() {
+      if (!studentCards.length) return;
+      const searchValue = normalize(filterSearch && filterSearch.value);
+      const familyValue = normalize(filterFamily && filterFamily.value);
+      const bloodValue = normalize(filterBlood && filterBlood.value);
+      const selectedMedical = getCheckedValues(filterMedicalChecks);
+      const selectedParentVisit = getCheckedValues(filterParentVisitChecks);
+      const selectedParentView = getCheckedValues(filterParentViewChecks);
+      const selectedTv = getCheckedValues(filterTvChecks);
+      const selectedInternet = getCheckedValues(filterInternetChecks);
+
+      let visibleCount = 0;
+
+      studentCards.forEach((card) => {
+         const data = card.dataset;
+         const searchBlob = [
+            data.name,
+            data.reg,
+            data.roll,
+            data.father,
+            data.mother,
+            data.guardian
+         ].map(normalize).join(' ');
+
+         const familyBlob = [
+            data.father,
+            data.mother,
+            data.guardian,
+            data.fatherOcc,
+            data.motherOcc,
+            data.guardianOcc,
+            data.income
+         ].map(normalize).join(' ');
+
+         const matchesSearch = !searchValue || searchBlob.includes(searchValue);
+         const matchesFamily = !familyValue || familyBlob.includes(familyValue);
+         const matchesBlood = !bloodValue || bloodValue === 'any' || normalize(data.blood) === bloodValue;
+
+         const hasBehaviour = !isEmptyValue(data.behaviour);
+         const medicalChecks = {
+            eye: isYesValue(data.eye),
+            ear: isYesValue(data.ear),
+            hair: isYesValue(data.hair),
+            behaviour: hasBehaviour
+         };
+
+         const matchesMedical = selectedMedical.every((key) => medicalChecks[key]);
+         const matchesParentVisit = !selectedParentVisit.length || selectedParentVisit.includes(normalize(data.parentVisit));
+         const matchesParentView = !selectedParentView.length || selectedParentView.includes(normalize(data.parentView));
+         const tvNormalized = isYesValue(data.tv) ? 'yes' : 'no';
+         const internetNormalized = isYesValue(data.internet) ? 'yes' : 'no';
+         const matchesTv = !selectedTv.length || selectedTv.includes(tvNormalized);
+         const matchesInternet = !selectedInternet.length || selectedInternet.includes(internetNormalized);
+
+         const visible = matchesSearch
+            && matchesFamily
+            && matchesMedical
+            && matchesBlood
+            && matchesParentVisit
+            && matchesParentView
+            && matchesTv
+            && matchesInternet;
+         card.style.display = visible ? '' : 'none';
+         if (visible) visibleCount += 1;
+      });
+
+      if (filterCount) {
+         filterCount.textContent = `${visibleCount} student${visibleCount === 1 ? '' : 's'} shown`;
+      }
+   }
+
+   function resetPortfolioFilters() {
+      if (filterSearch) filterSearch.value = '';
+      if (filterFamily) filterFamily.value = '';
+      filterMedicalChecks.forEach((el) => { el.checked = false; });
+      filterParentVisitChecks.forEach((el) => { el.checked = false; });
+      filterParentViewChecks.forEach((el) => { el.checked = false; });
+      filterTvChecks.forEach((el) => { el.checked = false; });
+      filterInternetChecks.forEach((el) => { el.checked = false; });
+      if (filterBlood) filterBlood.value = 'any';
+      applyPortfolioFilters();
+   }
+
+   if (filterSearch) filterSearch.addEventListener('input', applyPortfolioFilters);
+   if (filterFamily) filterFamily.addEventListener('input', applyPortfolioFilters);
+   filterMedicalChecks.forEach((el) => el.addEventListener('change', applyPortfolioFilters));
+   filterParentVisitChecks.forEach((el) => el.addEventListener('change', applyPortfolioFilters));
+   filterParentViewChecks.forEach((el) => el.addEventListener('change', applyPortfolioFilters));
+   filterTvChecks.forEach((el) => el.addEventListener('change', applyPortfolioFilters));
+   filterInternetChecks.forEach((el) => el.addEventListener('change', applyPortfolioFilters));
+   if (filterBlood) filterBlood.addEventListener('change', applyPortfolioFilters);
+   applyPortfolioFilters();
+
+   function formatDateInput(value) {
+      if (!value) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      return date.toISOString().slice(0, 10);
+   }
+
+   function setField(id, value) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.value = value || '';
+   }
+
+   function setRadio(name, value, fallbackValue) {
+      const radios = document.querySelectorAll(`input[name="${name}"]`);
+      if (!radios.length) return;
+      const normalized = String(value || '').toLowerCase();
+      let matched = false;
+      radios.forEach((radio) => {
+         const radioValue = String(radio.value || '').toLowerCase();
+         const shouldCheck = normalized && normalized === radioValue;
+         radio.checked = shouldCheck;
+         if (shouldCheck) matched = true;
+      });
+
+      if (!matched && fallbackValue !== undefined) {
+         const fallbackNormalized = String(fallbackValue).toLowerCase();
+         radios.forEach((radio) => {
+            const radioValue = String(radio.value || '').toLowerCase();
+            radio.checked = radioValue === fallbackNormalized;
+         });
+      }
+   }
+
+   function toBoolean(value, fallback) {
+      if (value === true || value === false) return value;
+      const normalized = String(value || '').toLowerCase().trim();
+      if (normalized === 'true' || normalized === 'yes' || normalized === '1') return true;
+      if (normalized === 'false' || normalized === 'no' || normalized === '0') return false;
+      return fallback;
+   }
+
+   function setToggle(id, value, fallbackChecked) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const next = toBoolean(value, fallbackChecked);
+      el.checked = !!next;
+   }
+
+   function openInfoModal(reg) {
+      const data = rosterByReg[reg] || {};
+      setField('info_reg', reg);
+      setField('info_name', data.name);
+      setField('info_roll', data.roll);
+      setField('info_class', data.studentClass);
+      setField('info_section', data.section);
+      setField('info_gender', data.gender);
+      setField('info_age', data.age);
+      setField('info_dob', formatDateInput(data.dob));
+      setField('info_class_started', formatDateInput(data.classStartedAt));
+      setField('info_mother_tongue', data.mothersToungue);
+      setField('info_previous_school', data.previousSchool);
+      setField('info_father_name', data.fatherName);
+      setField('info_father_occupation', data.fatheroccupation);
+      setField('info_father_contact', data.fatherContact);
+      setField('info_father_qualification', data.fatherqualification);
+      setField('info_mother_name', data.motherName);
+      setField('info_mother_occupation', data.motheroccupation);
+      setField('info_mother_contact', data.motherContact);
+      setField('info_mother_qualification', data.motherqualification);
+      setField('info_guardian_name', data.otherguardianName);
+      setField('info_guardian_occupation', data.otherguardianOccupation);
+      setField('info_guardian_contact', data.otherguardianContact);
+      setField('info_yearly_income', data.yearlyIncome);
+      setField('info_blood_group', data.bloodGroup);
+      setField('info_height', data.height);
+      setField('info_weight', data.weight);
+      setField('info_medical', Array.isArray(data.anyMedicalCondition) ? data.anyMedicalCondition.join(', ') : data.anyMedicalCondition);
+      setField('info_behaviour', data.otherbehaviouralCondition);
+      setToggle('toggle_eyeproblem', data.eyeproblem, false);
+      setToggle('toggle_earproblem', data.earproblem, false);
+      setToggle('toggle_hairproblem', data.hairproblem, false);
+      const liveWithParents = !(toBoolean(data.liveWithFather, true) === false || toBoolean(data.liveWithMother, true) === false);
+      setToggle('toggle_livewithparents', liveWithParents, true);
+      setToggle('toggle_parentview', String(data.parentViewTowardsSchool || 'positive').toLowerCase() !== 'negative', true);
+      setRadio('parentVisitFrequency', data.parentVisitFrequency, 'occasional');
+      setField('info_mobile', data.numberofmobile);
+      setToggle('toggle_tvathome', data.tvatHome, true);
+      setToggle('toggle_internetathome', data.internetAtHome, true);
+      setField('info_fee_paid', data.feepaidduration);
+      document.getElementById('infoModal').classList.add('is-open');
+      document.getElementById('infoModal').setAttribute('aria-hidden', 'false');
+   }
+
+   function closeInfoModal() {
+      const modal = document.getElementById('infoModal');
+      modal.classList.remove('is-open');
+      modal.setAttribute('aria-hidden', 'true');
+   }
+
+   function addInformation(reg) {
+      openInfoModal(reg);
+   }
+
+   function setComplaintUploadStatus(message, color) {
+      if (!complaintUploadStatus) return;
+      complaintUploadStatus.textContent = message || '';
+      complaintUploadStatus.style.color = color || '#64748b';
+   }
+
+   function renderComplaintPreview() {
+      if (!complaintUploadPreview) return;
+      complaintUploadPreview.innerHTML = '';
+
+      complaintImageUrls.forEach((url) => {
+         const wrapper = document.createElement('div');
+         wrapper.className = 'upload-preview-item';
+
+         const img = document.createElement('img');
+         img.src = url;
+         img.alt = 'Complaint image';
+
+         const removeBtn = document.createElement('button');
+         removeBtn.type = 'button';
+         removeBtn.className = 'upload-remove-btn';
+         removeBtn.innerHTML = 'x';
+         removeBtn.addEventListener('click', () => {
+            complaintImageUrls = complaintImageUrls.filter((item) => item !== url);
+            renderComplaintPreview();
+         });
+
+         wrapper.appendChild(img);
+         wrapper.appendChild(removeBtn);
+         complaintUploadPreview.appendChild(wrapper);
+      });
+   }
+
+   async function uploadComplaintImages(files) {
+      if (!files || !files.length) return;
+      const formData = new FormData();
+      Array.from(files).forEach((file) => formData.append('image', file));
+
+      setComplaintUploadStatus(`Uploading ${files.length} image(s)...`, '#0369a1');
+
+      try {
+         const response = await fetch('/upload-project-image', {
+            method: 'POST',
+            body: formData
+         });
+         const result = await response.json();
+
+         if (!response.ok || !result.success) {
+            throw new Error(result.message || 'Image upload failed');
+         }
+
+         const urls = Array.isArray(result.filePaths)
+            ? result.filePaths
+            : (result.filePath ? [result.filePath] : []);
+
+         complaintImageUrls = complaintImageUrls.concat(urls);
+         renderComplaintPreview();
+         setComplaintUploadStatus('Images uploaded.', '#16a34a');
+      } catch (error) {
+         console.error('Complaint image upload error:', error);
+         setComplaintUploadStatus('Image upload failed.', '#dc2626');
+      }
+   }
+
+   function openComplaintModal(reg) {
+      setField('complaint_reg', reg);
+      setField('complaint_reason', '');
+      complaintImageUrls = [];
+      renderComplaintPreview();
+      setComplaintUploadStatus('');
+
+      const modal = document.getElementById('complaintModal');
+      modal.classList.add('is-open');
+      modal.setAttribute('aria-hidden', 'false');
+   }
+
+   function closeComplaintModal() {
+      const modal = document.getElementById('complaintModal');
+      modal.classList.remove('is-open');
+      modal.setAttribute('aria-hidden', 'true');
+   }
+
+   document.getElementById('infoForm').addEventListener('submit', function (event) {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      const payload = {};
+      formData.forEach((value, key) => {
+         payload[key] = value;
+      });
+
+      const eyeProblem = document.getElementById('toggle_eyeproblem').checked;
+      const earProblem = document.getElementById('toggle_earproblem').checked;
+      const hairProblem = document.getElementById('toggle_hairproblem').checked;
+      const liveWithParents = document.getElementById('toggle_livewithparents').checked;
+      const parentViewPositive = document.getElementById('toggle_parentview').checked;
+      const tvAtHome = document.getElementById('toggle_tvathome').checked;
+      const internetAtHome = document.getElementById('toggle_internetathome').checked;
+
+      payload.eyeproblem = eyeProblem;
+      payload.earproblem = earProblem;
+      payload.hairproblem = hairProblem;
+      payload.liveWithFather = liveWithParents;
+      payload.liveWithMother = liveWithParents;
+      payload.parentViewTowardsSchool = parentViewPositive ? 'positive' : 'negative';
+      payload.tvatHome = tvAtHome ? 'Yes' : 'No';
+      payload.internetAtHome = internetAtHome ? 'Yes' : 'No';
+
+      fetch('/studentportfolio/record', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify(payload)
+      })
+      .then((response) => response.json())
+      .then((data) => {
+         if (data.success) {
+            alert('Student information saved.');
+            closeInfoModal();
+            window.location.reload();
+         } else {
+            alert(data.message || 'Failed to save student information.');
+         }
+      })
+      .catch((error) => {
+         console.error('Error:', error);
+         alert('An error occurred while saving the information.');
+      });
+   });
+
+   function addComplaint(reg) {
+      openComplaintModal(reg);
+   }
+
+   function openCallLogModal(reg) {
+      const data = rosterByReg[reg] || {};
+      setField('callLogReg', reg);
+      setField('callLogName', data.name);
+      setField('callLogClass', data.studentClass);
+      setField('callLogSection', data.section);
+      setField('callLogContact', data.numberofmobile || data.fatherContact || data.motherContact || data.otherguardianContact || '');
+      const contactValue = document.getElementById('callLogContact').value;
+      if (callLogNow) {
+         callLogNow.href = contactValue ? `tel:${contactValue}` : '#';
+      }
+      if (callLogStatus) {
+         callLogStatus.textContent = '';
+         callLogStatus.style.color = '#64748b';
+      }
+      document.getElementById('callLogReason').value = '';
+      document.getElementById('callLogResponse').value = '';
+
+      const modal = document.getElementById('callLogModal');
+      modal.classList.add('is-open');
+      modal.setAttribute('aria-hidden', 'false');
+   }
+
+   function closeCallLogModal() {
+      const modal = document.getElementById('callLogModal');
+      modal.classList.remove('is-open');
+      modal.setAttribute('aria-hidden', 'true');
+   }
+
+   if (complaintImageInput) {
+      complaintImageInput.addEventListener('change', async function (event) {
+         await uploadComplaintImages(event.target.files);
+         event.target.value = '';
+      });
+   }
+
+   if (complaintCaptureInput) {
+      complaintCaptureInput.addEventListener('change', async function (event) {
+         await uploadComplaintImages(event.target.files);
+         event.target.value = '';
+      });
+   }
+
+   if (complaintPickButton && complaintImageInput) {
+      complaintPickButton.addEventListener('click', function () {
+         complaintImageInput.click();
+      });
+   }
+
+   if (complaintCaptureButton && complaintCaptureInput) {
+      complaintCaptureButton.addEventListener('click', function () {
+         complaintCaptureInput.click();
+      });
+   }
+
+   if (complaintForm) {
+      complaintForm.addEventListener('submit', function (event) {
+         event.preventDefault();
+         const reg = (document.getElementById('complaint_reg').value || '').trim();
+         const complaint = (document.getElementById('complaint_reason').value || '').trim();
+
+         if (!reg || !complaint) {
+            alert('Reg and complaint are required.');
+            return;
+         }
+
+         fetch('/addComplaint', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reg, complaint, images: complaintImageUrls })
+         })
+         .then(response => response.json())
+         .then((data) => {
+            if (data.success) {
+               alert('Complaint added successfully!');
+               closeComplaintModal();
+               window.location.reload();
+            } else {
+               alert(data.message || 'Failed to add complaint. Please try again.');
+            }
+         })
+         .catch((error) => {
+            console.error('Error:', error);
+            alert('An error occurred while adding the complaint.');
+         });
+      });
+   }
+
+   if (callLogForm) {
+      callLogForm.addEventListener('submit', async function (event) {
+         event.preventDefault();
+         if (!callLogStatus) return;
+
+         const reg = (document.getElementById('callLogReg').value || '').trim();
+         const studentClass = (document.getElementById('callLogClass').value || '').trim();
+         const section = (document.getElementById('callLogSection').value || '').trim();
+         const callReason = (document.getElementById('callLogReason').value || '').trim();
+         const parentResponse = (document.getElementById('callLogResponse').value || '').trim();
+         const academicYear = document.getElementById('academicYear')?.value || String(defaultAcademicYear);
+         const today = new Date();
+         const monthName = today.toLocaleString('en-US', { month: 'long' });
+         const day = String(today.getDate());
+
+         if (!reg || !studentClass || !section || !academicYear) {
+            callLogStatus.textContent = 'Missing student data.';
+            callLogStatus.style.color = '#dc2626';
+            return;
+         }
+         if (!callReason || !parentResponse) {
+            callLogStatus.textContent = 'Reason and response are required.';
+            callLogStatus.style.color = '#dc2626';
+            return;
+         }
+
+         callLogStatus.textContent = 'Saving call log...';
+         callLogStatus.style.color = '#0369a1';
+
+         try {
+            const response = await fetch('/studentportfolio/call-log', {
+               method: 'POST',
+               headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({
+                  reg,
+                  studentClass,
+                  section,
+                  academicYear,
+                  month: monthName,
+                  day,
+                  callReason,
+                  parentResponse
+               })
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+               throw new Error(data.message || 'Failed to save call log');
+            }
+
+            callLogStatus.textContent = 'Call log saved.';
+            callLogStatus.style.color = '#16a34a';
+            closeCallLogModal();
+            window.location.reload();
+         } catch (error) {
+            callLogStatus.textContent = error.message || 'Unable to save call log.';
+            callLogStatus.style.color = '#dc2626';
+         }
+      });
+   }
+
+   function openExportModal() {
+      const modal = document.getElementById('exportModal');
+      if (!modal) return;
+      modal.classList.add('is-open');
+      modal.setAttribute('aria-hidden', 'false');
+   }
+
+   function closeExportModal() {
+      const modal = document.getElementById('exportModal');
+      if (!modal) return;
+      modal.classList.remove('is-open');
+      modal.setAttribute('aria-hidden', 'true');
+   }
+
+   function toggleExportFields(checked) {
+      document.querySelectorAll('.export-field').forEach((el) => {
+         el.checked = checked;
+      });
+   }
+
+   function escapeCsv(value) {
+      const text = String(value ?? '').replace(/\r?\n/g, '\n');
+      if (/["]|,|\n/.test(text)) {
+         return `"${text.replace(/"/g, '""')}"`;
+      }
+      return text;
+   }
+
+   function formatDateTime(value) {
+      if (!value) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      return date.toLocaleString();
+   }
+
+   function formatDateOnly(value) {
+      if (!value) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      return date.toLocaleDateString();
+   }
+
+   function formatComplaints(items) {
+      if (!Array.isArray(items) || !items.length) return '';
+      return items.map((item, index) => {
+         const reason = item.reason || item.complaint || '-';
+         const date = formatDateOnly(item.date);
+         const by = item.by || '';
+         const meta = [date && `Date: ${date}`, by && `By: ${by}`].filter(Boolean).join(' | ');
+         return `${index + 1}. ${reason}${meta ? ` (${meta})` : ''}`;
+      }).join('\n');
+   }
+
+   function formatHealthVisits(items) {
+      if (!Array.isArray(items) || !items.length) return '';
+      return items.map((item, index) => {
+         const date = formatDateTime(item.createdAt);
+         const diagnosis = item.diagnosis || '-';
+         const treatment = item.treatment || '-';
+         return `${index + 1}. ${date || 'N/A'} | ${diagnosis} | ${treatment}`;
+      }).join('\n');
+   }
+
+   function formatCallLogs(items) {
+      if (!Array.isArray(items) || !items.length) return '';
+      return items.map((item, index) => {
+         const date = item.callLoggedAt ? formatDateTime(item.callLoggedAt) : [item.academicYear, item.month, item.day].filter(Boolean).join(' ');
+         const reason = item.callReason || '-';
+         const response = item.parentResponse || '-';
+         return `${index + 1}. ${date || 'N/A'} | ${reason} | ${response}`;
+      }).join('\n');
+   }
+
+   function formatAbsent(summary) {
+      if (!summary || typeof summary !== 'object') return '';
+      const total = summary.totalAbsent || 0;
+      const monthCounts = summary.monthCounts || {};
+      const months = Object.entries(monthCounts).map(([month, count]) => `${month}: ${count}`).join(', ');
+      const reasons = Array.isArray(summary.reasons)
+         ? summary.reasons.map((item, index) => `${index + 1}. ${(item.date || '')} ${item.reason || ''}`.trim()).join('\n')
+         : '';
+      const lines = [`Total: ${total}`];
+      if (months) lines.push(`Months: ${months}`);
+      if (reasons) lines.push(`Reasons:\n${reasons}`);
+      return lines.join('\n');
+   }
+
+   function getVisibleRegs() {
+      if (!studentCards.length) return [];
+      return studentCards
+         .filter((card) => card.style.display !== 'none')
+         .map((card) => card.dataset.reg)
+         .filter(Boolean);
+   }
+
+   function buildExportRows(fields) {
+      const regs = getVisibleRegs();
+      const rows = [];
+
+      regs.forEach((reg, index) => {
+         const roster = rosterByReg[reg] || {};
+         const livesWithParents = !(toBoolean(roster.liveWithFather, true) === false || toBoolean(roster.liveWithMother, true) === false);
+         const data = {
+            sn: index + 1,
+            name: roster.name || '',
+            reg,
+            roll: roster.roll || '',
+            class: roster.studentClass || '',
+            section: roster.section || '',
+            gender: roster.gender || '',
+            age: roster.age || '',
+            dob: roster.dob ? formatDateOnly(roster.dob) : '',
+            classStarted: roster.classStartedAt ? formatDateOnly(roster.classStartedAt) : '',
+            motherTongue: roster.mothersToungue || '',
+            previousSchool: roster.previousSchool || '',
+            contact: roster.numberofmobile || '',
+            fatherName: roster.fatherName || '',
+            fatherOccupation: roster.fatheroccupation || '',
+            fatherContact: roster.fatherContact || '',
+            fatherQualification: roster.fatherqualification || '',
+            motherName: roster.motherName || '',
+            motherOccupation: roster.motheroccupation || '',
+            motherContact: roster.motherContact || '',
+            motherQualification: roster.motherqualification || '',
+            guardianName: roster.otherguardianName || '',
+            guardianOccupation: roster.otherguardianOccupation || '',
+            guardianContact: roster.otherguardianContact || '',
+            yearlyIncome: roster.yearlyIncome || '',
+            bloodGroup: roster.bloodGroup || '',
+            medicalCondition: Array.isArray(roster.anyMedicalCondition) ? roster.anyMedicalCondition.join(', ') : (roster.anyMedicalCondition || ''),
+            behavioralCondition: roster.otherbehaviouralCondition || '',
+            eyeProblem: roster.eyeproblem ? 'Yes' : 'No',
+            earProblem: roster.earproblem ? 'Yes' : 'No',
+            hairProblem: roster.hairproblem ? 'Yes' : 'No',
+            height: roster.height || '',
+            weight: roster.weight || '',
+            livesWithParents: livesWithParents ? 'Yes' : 'No',
+            parentView: roster.parentViewTowardsSchool || '',
+            parentVisit: roster.parentVisitFrequency || '',
+            tvAtHome: roster.tvatHome || '',
+            internetAtHome: roster.internetAtHome || '',
+            feePaidDuration: roster.feepaidduration || '',
+            complaints: formatComplaints(complaintsByReg[reg] || []),
+            healthVisits: formatHealthVisits(healthRecordsByReg[reg] || []),
+            callLogs: formatCallLogs(callLogsByReg[reg] || []),
+            absent: formatAbsent(absentSummaryByReg[reg])
+         };
+
+         rows.push(fields.map((field) => data[field] ?? ''));
+      });
+
+      return rows;
+   }
+
+   function downloadPortfolioExport() {
+      const selectedFields = Array.from(document.querySelectorAll('.export-field'))
+         .filter((el) => el.checked)
+         .map((el) => el.value);
+
+      if (!selectedFields.length) {
+         alert('Select at least one field to export.');
+         return;
+      }
+
+      const headerLabels = {
+         sn: 'SN',
+         name: 'Name',
+         reg: 'Reg No',
+         roll: 'Roll',
+         class: 'Class',
+         section: 'Section',
+         gender: 'Gender',
+         age: 'Age',
+         dob: 'Date of Birth',
+         classStarted: 'Class Started',
+         motherTongue: 'Mother Tongue',
+         previousSchool: 'Previous School',
+         contact: 'Contact Number',
+         fatherName: 'Father Name',
+         fatherOccupation: 'Father Occupation',
+         fatherContact: 'Father Contact',
+         fatherQualification: 'Father Qualification',
+         motherName: 'Mother Name',
+         motherOccupation: 'Mother Occupation',
+         motherContact: 'Mother Contact',
+         motherQualification: 'Mother Qualification',
+         guardianName: 'Guardian Name',
+         guardianOccupation: 'Guardian Occupation',
+         guardianContact: 'Guardian Contact',
+         yearlyIncome: 'Yearly Income',
+         bloodGroup: 'Blood Group',
+         medicalCondition: 'Medical Condition',
+         behavioralCondition: 'Behavioral Condition',
+         eyeProblem: 'Eye Problem',
+         earProblem: 'Ear Problem',
+         hairProblem: 'Hair Problem',
+         height: 'Height',
+         weight: 'Weight',
+         livesWithParents: 'Lives with Father/Mother',
+         parentView: 'Parent View Towards School',
+         parentVisit: 'Parent Visit Frequency',
+         tvAtHome: 'TV at Home',
+         internetAtHome: 'Internet at Home',
+         feePaidDuration: 'Fee Paid Duration',
+         complaints: 'Complaints',
+         healthVisits: 'Health Visits',
+         callLogs: 'Call Logs',
+         absent: 'Absent Record'
+      };
+
+      const rows = buildExportRows(selectedFields);
+      const header = selectedFields.map((field) => escapeCsv(headerLabels[field] || field)).join(',');
+      const body = rows.map((row) => row.map(escapeCsv).join(',')).join('\n');
+      const csv = [header, body].filter(Boolean).join('\n');
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `student_portfolio_export_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      closeExportModal();
+   }
+</script>
+</body>
+</html>

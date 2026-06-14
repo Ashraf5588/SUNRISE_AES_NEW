@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exam Admit Card</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Roboto:wght@400;500;700&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #e5e7eb; font-family: 'Roboto', sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    /* UI Elements (No Print) */
+    .form-selector-panel { background: #fff; padding: 20px; margin: 20px auto; max-width: 900px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .form-selector-container { display: flex; flex-direction: column; gap: 15px; }
+    .form-selector-title { text-align: center; font-weight: 700; color: #1a3a52; font-size: 18px; margin-bottom: 10px; text-transform: uppercase; }
+    .form-selector-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+    .search-box { grid-column: 1 / -1; }
+    .search-box input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+    select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+    button { padding: 12px 20px; background: #1a3a52; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; text-transform: uppercase; transition: 0.3s; }
+    button:hover { background: #2c5f8d; }
+    .action-buttons { max-width: 900px; margin: 0 auto 20px; display: flex; justify-content: center; gap: 10px; }
+    .btn-print { background: #ff8c42; }
+    .btn-print:hover { background: #e67a2e; }
+    .btn-pdf { background: #dc2626; }
+    .btn-pdf:hover { background: #b91c1c; }
+
+    /* Print Page Layout */
+    .page {
+        width: 210mm;
+        height: 296mm; /* A4 Height */
+        background: #fff;
+        margin: 0 auto 20px;
+        padding: 5mm;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        page-break-after: always;
+    }
+    .page:last-child { page-break-after: auto; }
+
+    /* Admit Card Design */
+    .admit-card {
+        width: 100%;
+        height: calc(53% - 12mm); /* Adjusted for print safety */
+        border: 2px solid #1a3a52;
+        border-top: 6px solid #ff8c42; /* Professional accent */
+        padding: 15px 20px;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        background: #fff;
+    }
+
+    /* Header */
+    .card-header {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        border-bottom: 2px solid #f0f0f0;
+        padding-bottom: 10px;
+        margin-bottom: 12px;
+    }
+    .logo-box { width: 75px; height: 75px; display: flex; align-items: center; justify-content: center; }
+    .logo-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .school-details { flex: 1; text-align: center; }
+    .school-name { font-family: 'Cinzel', serif; font-size: 24px; font-weight: 900; color: #1a3a52; line-height: 1.2; margin-bottom: 4px; text-transform: uppercase; }
+    .school-address { font-size: 12px; color: #555; font-weight: 500; }
+    .admit-badge { background: #1a3a52; color: #fff; padding: 6px 15px; font-size: 14px; font-weight: 700; text-transform: uppercase; border-radius: 4px; white-space: nowrap; letter-spacing: 0.5px; }
+
+    /* Body Content */
+    .card-body { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+    
+    /* Top Section: Info + Photos */
+    .info-section { display: flex; gap: 15px; }
+    .student-details { flex: 1; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+    .detail-row { display: flex; gap: 35px; flex-wrap: wrap; }
+    .detail-item { display: flex; gap: 6px; align-items: baseline; }
+    .detail-label { font-size: 14px; font-weight: 700; color: #4a5568; white-space: nowrap; }
+    .detail-value { font-size: 15px; font-weight: 600; color: #000; border-bottom: 1px dotted #ccc; padding-bottom: 1px; }
+    
+    .media-box { display: flex; gap: 10px; }
+    .qr-frame { width: 85px; height: 85px; border: 1px solid #ccc; padding: 3px; display: flex; align-items: center; justify-content: center; background: #fff; }
+    .qr-frame img { width: 100%; height: 100%; }
+
+    /* Routine Table */
+    .routine-container { flex: 1; margin-top: 5px; overflow: hidden; }
+    .routine-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .routine-table th { background: #1a3a52; color: #fff; padding: 6px 10px; text-align: left; font-weight: 700; border: 1px solid #1a3a52; text-transform: uppercase; font-size: 12px; }
+    .routine-table td { border: 1px solid #e5e7eb; padding: 5px 10px; color: #1f2937; font-weight: 600; }
+    .routine-table tr:nth-child(even) { background: #f9fafb; }
+
+    /* Footer */
+    .card-footer { margin-top: auto; display: flex; justify-content: space-between; padding-top: 25px; }
+    .sign-box { text-align: center; }
+    .sign-line { width: 150px; border-top: 1px solid #1a3a52; margin-bottom: 5px; }
+    .sign-label { font-size: 13px; font-weight: 700; color: #1a3a52; text-transform: uppercase; }
+
+    /* Print Media Query */
+    @page { size: A4; margin: 0; }
+    @media print {
+        .no-print { display: none !important; }
+        html, body { height: 100%; margin: 0 !important; padding: 0 !important; overflow: visible; }
+        
+        .page { 
+            width: 210mm;
+            height: auto; /* Let content define height */
+            min-height: 290mm; /* Ensure it occupies the page */
+            margin: 0 auto; 
+            padding: 5mm; 
+            box-shadow: none; 
+            page-break-after: always; 
+            display: block !important; 
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        .page:last-child { page-break-after: auto; }
+        
+        .admit-card { 
+            width: 100%;
+            height: 135mm !important; /* Reduced slightly to 135mm to prevent overflow blank pages */
+            margin-bottom: 5mm !important;
+            page-break-inside: avoid; 
+            border: 2px solid #1a3a52 !important; 
+            border-top: 6px solid #ff8c42 !important; 
+        }
+        
+        .admit-card:last-child { margin-bottom: 0 !important; }
+        
+        /* Force Flex Layouts for Print */
+        .card-header, .info-section, .media-box, .card-footer { display: flex !important; flex-direction: row !important; }
+        .student-details { display: flex !important; flex-direction: column !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="form-selector-panel no-print">
+    <div class="form-selector-container">
+      <div class="form-selector-title">Choose Class, Section and Terminal</div>
+      <div class="form-selector-grid">
+      
+        <select name="classSection" id="classSection">
+          <option value="" selected disabled>Choose Class</option>
+          <% uniqueClasses = new Set(studentClassdata.map(data => data.studentClass)); %>
+          <% uniqueClasses.forEach((cls) => { %>
+            <option value="<%=cls%>"><%=cls%></option>
+          <% }) %>
+        </select>
+
+        <select name="terminals" id="terminal">
+          <option value="" selected disabled>Choose Terminal</option>
+          <% marksheetSetups[0].terminals.forEach((terminal)=>{%>
+            <option value="<%=terminal.name%>"><%=terminal.name%></option>
+          <% }) %>
+        </select>
+
+        <select name="academicYear" id="academicYear">
+          <option value="" selected disabled>Choose Academic Year</option>
+          <% currentYear = Number(marksheetSetups[0].academicYear) %>;
+          <% for (let i = 0; i < 5; i++) { %>
+            <option value="<%= currentYear - i %>"><%= currentYear - i %></option>
+          <% } %>
+        </select>
+      </div>
+      <button onclick="loadform()">Generate Admit Cards</button>
+    </div>
+  </div>
+
+<% if(studentRecords && studentRecords.length > 0) { %>
+  <div class="action-buttons no-print">
+    <button class="btn-print" onclick="window.print()">Print All</button>
+    <button class="btn-pdf" onclick="downloadPDF()">Download PDF</button>
+      <input type="search" name="" id="searchbox" placeholder="Search by Name or Roll" onkeyup="searchCards()" style="padding:8px; border:1px solid #ccc; border-radius:4px; font-size:14px; width:200px;">
+  </div>
+  
+  <% const schoolData = marksheetSetups[0] || {}; %>
+  <% 
+    let cardsPerPage = 2;
+    let pageCount = Math.ceil(studentRecords.length / cardsPerPage);
+  %>
+  
+  <div id="original-content">
+  <% for(let pageIdx = 0; pageIdx < pageCount; pageIdx++) { %>
+    <div class="page" data-page="<%= pageIdx + 1 %>">
+      <% 
+        let startIdx = pageIdx * cardsPerPage;
+        let endIdx = Math.min(startIdx + cardsPerPage, studentRecords.length);
+        let pageStudents = studentRecords.slice(startIdx, endIdx);
+      %>
+      
+      <% pageStudents.forEach((student) => { %>
+        <div class="admit-card" data-page="<%=pageIdx+1%>" data-name="<%= student.name.toLowerCase() %>">
+          <!-- Header -->
+          <div class="card-header">
+            <div class="logo-box">
+              <img src="<%= schoolData.logo || '/image.png' %>" alt="Logo" onerror="this.style.display='none'">
+            </div>
+            <div class="school-details">
+              <div class="school-name"><%= schoolData.schoolName || 'School Name' %></div>
+              <div class="school-address">
+                <%= schoolData.address || 'Address' %> | Phone: <%= schoolData.phone || 'N/A' %>
+              </div>
+            </div>
+            <div class="admit-badge">Admit Card</div>
+          </div>
+          
+          <!-- Body -->
+          <div class="card-body">
+            <div class="info-section">
+              <div class="student-details">
+                <div class="detail-row">
+                  <div class="detail-item">
+                    <span class="detail-label">Name:</span>
+                    <span class="detail-value" data-name="<%= student.name %>"><%= student.name %></span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Roll:</span>
+                    <span class="detail-value"><%= student.roll %></span>
+                  </div>
+                </div>
+                
+                <div class="detail-row">
+                  <div class="detail-item">
+                    <span class="detail-label">Class:</span>
+                    <span class="detail-value"><%= student.studentClass %></span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Sec:</span>
+                    <span class="detail-value"><%= student.section %></span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Term:</span>
+                    <span class="detail-value"><%= terminal %></span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="media-box">
+                <% 
+                  const qrText = `${student.name}|${student.roll}|${student.studentClass}-${student.section}|${terminal}`;
+                  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=85x85&data=${encodeURIComponent(qrText)}&color=1a3a52&bgcolor=ffffff`;
+                %>
+                <div class="qr-frame">
+                  <img src="<%= qrUrl %>" alt="QR">
+                </div>
+              </div>
+            </div>
+            
+            <div class="routine-container">
+              <table class="routine-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Subject</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% 
+                    const routineMap = new Map();
+                    if(examRoutines && examRoutines.length > 0) {
+                        examRoutines.forEach(r => {
+                            if (!routineMap.has(r.nepalidate)) routineMap.set(r.nepalidate, []);
+                            routineMap.get(r.nepalidate).push(r.subject);
+                        });
+                    }
+                  %>
+                  <% routineMap.forEach((subjects, date) => { %>
+                    <% subjects.forEach((subject, idx) => { %>
+                        <tr>
+                        <% if (idx === 0) { %>
+                            <td rowspan="<%= subjects.length %>" style="vertical-align: middle; background: #fff;"><%= date %></td>
+                        <% } %>
+                        <td><%= subject %></td>
+                        </tr>
+                    <% }) %>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          <!-- Footer -->
+          <div class="card-footer">
+            <div class="sign-box">
+              <div class="sign-line"></div>
+              <div class="sign-label">Exam Coordinator</div>
+            </div>
+            <div class="sign-box">
+              <div class="sign-line"></div>
+              <div class="sign-label">Principal</div>
+            </div>
+          </div>
+        </div>
+      <% }); %>
+    </div>
+  <% } %>
+  </div>
+  <div id="search-results" style="display:none;"></div>
+<% } %>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
+  <script>
+    function searchCards() {
+        const input = document.getElementById('searchbox');
+        const filter = input.value.toLowerCase();
+        const originalContent = document.getElementById('original-content');
+        const searchResults = document.getElementById('search-results');
+        
+        if (!filter) {
+            originalContent.style.display = 'block';
+            searchResults.style.display = 'none';
+            searchResults.innerHTML = '';
+            return;
+        }
+        
+        originalContent.style.display = 'none';
+        searchResults.style.display = 'block';
+        searchResults.innerHTML = '';
+        
+        const allCards = Array.from(originalContent.querySelectorAll('.admit-card'));
+        const matchingCards = allCards.filter(card => {
+            const name = card.getAttribute('data-name');
+            return name.includes(filter);
+        });
+        
+        if (matchingCards.length === 0) {
+            searchResults.innerHTML = '<div style="text-align:center; padding:20px; font-weight:bold;">No students found</div>';
+            return;
+        }
+        
+        // Group matching cards into pages of 2
+        for (let i = 0; i < matchingCards.length; i += 2) {
+            const pageDiv = document.createElement('div');
+            pageDiv.className = 'page';
+            
+            const card1 = matchingCards[i].cloneNode(true);
+            pageDiv.appendChild(card1);
+            
+            if (i + 1 < matchingCards.length) {
+                const card2 = matchingCards[i + 1].cloneNode(true);
+                pageDiv.appendChild(card2);
+            }
+            
+            searchResults.appendChild(pageDiv);
+        }
+    }
+
+    function downloadPDF() {
+      const filename = 'Admit_Cards.pdf';
+      const pages = document.querySelectorAll('.page');
+      document.querySelectorAll('.no-print').forEach(el => el.style.display = 'none');
+      
+      const opt = {
+        margin: 0,
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      
+      const element = document.createElement('div');
+      pages.forEach(page => { element.appendChild(page.cloneNode(true)); });
+      
+      html2pdf().set(opt).from(element).save().then(() => {
+        document.querySelectorAll('.no-print').forEach(el => el.style.display = '');
+      });
+    }
+
+    function loadform() {
+        const classSection = document.getElementById('classSection').value;
+        if(!classSection) return alert("Please select a class");
+        const studentClass = classSection.split("-")[0];
+        const section = classSection.split("-")[1];
+        const academicYear = document.getElementById('academicYear').value;
+        const terminal = document.getElementById('terminal').value;
+        window.location.href = `/admitcard?studentClass=${studentClass}&section=${section}&terminal=${terminal}&academicYear=${academicYear}`;
+    }
+  </script>
+</body>
+</html>

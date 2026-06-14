@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Full Marks Management | AES</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0ea5e9;  /* skyblue */
+      --primary-dark: #0284c7;  /* darker skyblue */
+      --secondary: #8b5a2b;  /* brown */
+      --secondary-dark: #6b4423;  /* darker brown */
+      --accent: #a16207;  /* amber brown for accent */
+      --light: #f8fafc;
+      --dark: #1e293b;
+      --gray: #64748b;
+      --success: #22c55e;
+      --error: #ef4444;
+      --warning: #f59e0b;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Lexend', sans-serif;
+      background: linear-gradient(135deg, var(--light) 0%, #e2e8f0 100%);
+      color: var(--dark);
+      min-height: 100vh;
+    }
+
+    .main-container {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .content-area {
+      flex: 1;
+      margin-left: 0;
+      transition: margin-left 0.3s ease;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .content-area.sidebar-open {
+      margin-left: 300px;
+    }
+
+    .header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      padding: 1.5rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 900;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .menu-toggle {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0.5rem;
+      border-radius: 8px;
+      transition: background-color 0.2s;
+    }
+
+    .menu-toggle:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .header h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .breadcrumb {
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.8);
+      margin-top: 0.25rem;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2rem;
+      border: 1px solid rgba(14, 165, 233, 0.1);
+      overflow: hidden;
+    }
+
+    .card-header {
+      background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%);
+      color: white;
+      padding: 1.5rem;
+      border: none;
+    }
+
+    .card-header h2 {
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .card-body {
+      padding: 2rem;
+    }
+
+    .form-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .subject-selector {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .form-control, .form-select {
+      padding: 0.875rem 1rem;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: all 0.2s ease;
+      background: white;
+    }
+
+    .form-control:focus, .form-select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      border: none;
+      padding: 0.875rem 2rem;
+      border-radius: 8px;
+      color: white;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 20px -5px rgba(14, 165, 233, 0.3);
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%);
+      border: none;
+      color: white;
+      padding: 0.875rem 2rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 20px -5px rgba(139, 90, 43, 0.3);
+    }
+
+    .table-responsive {
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .marks-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0;
+      background: white;
+    }
+
+    .marks-table th {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: white;
+      padding: 1rem;
+      text-align: center;
+      font-weight: 600;
+      border: none;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .marks-table td {
+      padding: 1rem;
+      text-align: center;
+      border-bottom: 1px solid #e2e8f0;
+      color: var(--gray);
+    }
+
+    .marks-table tbody tr:nth-child(odd) {
+      background-color: rgba(14, 165, 233, 0.02);
+    }
+
+    .marks-table tbody tr:hover {
+      background-color: rgba(14, 165, 233, 0.08);
+    }
+
+    .marks-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .marks-input {
+      display: flex;
+      flex-direction: column;
+      background: rgba(14, 165, 233, 0.05);
+      padding: 1rem;
+      border-radius: 8px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .marks-input label {
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .input-group input {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+      flex-wrap: wrap;
+    }
+
+    .alert {
+      border-radius: 8px;
+      border: none;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .alert-info {
+      background: rgba(14, 165, 233, 0.1);
+      color: var(--primary-dark);
+      border-left: 4px solid var(--primary);
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .content-area.sidebar-open {
+        margin-left: 0;
+      }
+
+      .header {
+        padding: 1rem;
+      }
+
+      .header h1 {
+        font-size: 1.5rem;
+      }
+
+      .main-content {
+        padding: 1rem;
+      }
+
+      .card-body {
+        padding: 1.5rem;
+      }
+
+      .form-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .subject-selector {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .marks-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+
+      .marks-table th,
+      .marks-table td {
+        padding: 0.75rem 0.5rem;
+        font-size: 0.875rem;
+      }
+
+      .btn-group {
+        flex-direction: column;
+      }
+
+      .btn-primary, .btn-secondary {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+      }
+
+      .card-body {
+        padding: 1rem;
+      }
+
+      .marks-input {
+        padding: 0.75rem;
+      }
+
+      .input-group {
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+
+      .marks-table {
+        font-size: 0.8rem;
+      }
+
+      .marks-table th,
+      .marks-table td {
+        padding: 0.5rem 0.25rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="main-container">
+    <!-- Include Sidenav -->
+    <%- include('../partials/sidenav', { 
+      subjects: subjects || [],
+      studentClassdata: studentClassdata || [],
+      terminals: terminals || []
+    }) %>
+
+    <div class="content-area" id="content-area">
+      <!-- Header -->
+      <div class="header">
+        <div class="header-content">
+          <div class="header-left">
+            <button class="menu-toggle" onclick="toggleSidebar()">
+              <i class="fas fa-bars"></i>
+            </button>
+            <div>
+              <h1>Full Marks Management</h1>
+              <div class="breadcrumb">Admin Dashboard / Full Marks Management</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="main-content">
+        <!-- Welcome Card -->
+        <div class="card">
+          <div class="card-header">
+            <h2>
+              <i class="fas fa-percentage"></i>
+              Full Marks Management System
+            </h2>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle"></i>
+              Configure the maximum marks for each question in your subjects. This helps standardize grading across different exams.
+            </div>
+
+            <!-- Status Messages -->
+            <% if (locals.status) { %>
+              <div class="alert alert-success">
+                <i class="fas fa-check-circle"></i>
+                <% if (status === 'success') { %>
+                  Full marks updated successfully!
+                <% } else if (status === 'created') { %>
+                  New subject with full marks created successfully!
+                <% } %>
+              </div>
+            <% } %>
+
+            <!-- Subject Selection -->
+            <div class="form-header">
+              <div class="subject-selector">
+                <form action="/admin/fm" method="GET" id="subjectForm">
+                  <label for="subject-select" class="form-label">Select Subject:</label>
+                  <select name="subject" id="subject-select" class="form-select" onchange="this.form.submit()">
+                    <option value="">-- Select Subject --</option>
+                    <% if (locals.subjects && subjects.length > 0) { %>
+                      <% subjects.forEach(subj => { %>
+                        <option value="<%= subj.subject %>" <%= (locals.selectedSubject && selectedSubject === subj.subject) ? 'selected' : '' %>>
+                          <%= subj.subject %>
+                        </option>
+                      <% }) %>
+                    <% } %>
+                  </select>
+                </form>
+              </div>
+            </div>
+
+            <!-- Marks Configuration Form -->
+            <form action="/admin/fm" method="POST">
+              <% if (locals.selectedSubject && selectedSubject) { %>
+                <input type="hidden" name="subject" value="<%= selectedSubject %>">
+                <h3 style="color: var(--primary); margin-bottom: 1.5rem;">
+                  <i class="fas fa-edit"></i> 
+                  Configure Marks for: <%= selectedSubject %>
+                </h3>
+              <% } else { %>
+                <div class="form-group" style="margin-bottom: 2rem;">
+                  <label for="subject" class="form-label">Subject Name:</label>
+                  <input type="text" name="subject" id="subject" required placeholder="Enter subject name" class="form-control">
+                </div>
+              <% } %>
+
+              <h4 style="color: var(--secondary); margin-bottom: 1.5rem;">
+                <i class="fas fa-list-ol"></i>
+                Set Full Marks for Each Question
+              </h4>
+
+              <!-- Responsive Marks Table -->
+              <div class="table-responsive">
+                <table class="marks-table">
+                  <thead>
+                    <tr>
+                      <th>Question #</th>
+                      <th>Full Marks</th>
+                      <th>Question #</th>
+                      <th>Full Marks</th>
+                      <th>Question #</th>
+                      <th>Full Marks</th>
+                      <th>Question #</th>
+                      <th>Full Marks</th>
+                      <th>Question #</th>
+                      <th>Full Marks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% for(let i = 1; i <= 5; i++) { %>
+                      <tr>
+                        <% for(let j = 0; j < 5; j++) { %>
+                          <% const questionNum = i + (j * 5); %>
+                          <td><strong>Q<%= questionNum %></strong></td>
+                          <td>
+                            <input 
+                              type="number" 
+                              name="<%= questionNum %>" 
+                              value="<%= (locals.fm && fm[questionNum]) ? fm[questionNum] : '' %>" 
+                              placeholder="Marks" 
+                              min="0" 
+                              max="100"
+                              step="0.5"
+                              class="form-control"
+                              style="min-width: 80px;"
+                            >
+                          </td>
+                        <% } %>
+                      </tr>
+                    <% } %>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Alternative Mobile-Friendly Layout -->
+              <div class="marks-row d-md-none">
+                <% for(let i = 1; i <= 25; i++) { %>
+                  <div class="marks-input">
+                    <label for="q<%= i %>">Question <%= i %>:</label>
+                    <div class="input-group">
+                      <input 
+                        type="number" 
+                        name="<%= i %>" 
+                        id="q<%= i %>"
+                        value="<%= (locals.fm && fm[i]) ? fm[i] : '' %>" 
+                        placeholder="Max marks" 
+                        min="0" 
+                        max="100"
+                        step="0.5"
+                        class="form-control"
+                      >
+                      <span class="input-group-text">pts</span>
+                    </div>
+                  </div>
+                <% } %>
+              </div>
+
+              <div class="btn-group">
+                <button type="submit" class="btn-primary">
+                  <i class="fas fa-save"></i>
+                  Save Full Marks
+                </button>
+                <button type="reset" class="btn-secondary">
+                  <i class="fas fa-undo"></i>
+                  Reset Form
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <!-- Sidebar Toggle Script -->
+  <script>
+    function toggleSidebar() {
+      const sidebar = document.querySelector('.sidebar');
+      const contentArea = document.getElementById('content-area');
+      
+      sidebar.classList.toggle('active');
+      
+      if (window.innerWidth > 768) {
+        contentArea.classList.toggle('sidebar-open');
+      }
+    }
+
+    // Close sidebar on mobile when clicking outside
+    document.addEventListener('click', function(event) {
+      const sidebar = document.querySelector('.sidebar');
+      const menuToggle = document.querySelector('.menu-toggle');
+      
+      if (window.innerWidth <= 768 && 
+          !sidebar.contains(event.target) && 
+          !menuToggle.contains(event.target) && 
+          sidebar.classList.contains('active')) {
+        sidebar.classList.remove('active');
+      }
+    });
+
+    // Handle window resize
+    window.addEventListener('resize', function() {
+      const sidebar = document.querySelector('.sidebar');
+      const contentArea = document.getElementById('content-area');
+      
+      if (window.innerWidth <= 768) {
+        contentArea.classList.remove('sidebar-open');
+      } else if (sidebar.classList.contains('active')) {
+        contentArea.classList.add('sidebar-open');
+      }
+    });
+
+    // Form validation
+    document.querySelector('form[method="POST"]').addEventListener('submit', function(e) {
+      const subjectField = document.getElementById('subject');
+      if (subjectField && !subjectField.value.trim()) {
+        e.preventDefault();
+        alert('Please enter a subject name');
+        return false;
+      }
+
+      // Check if at least one mark is entered
+      const inputs = this.querySelectorAll('input[type="number"]');
+      let hasValue = false;
+      inputs.forEach(input => {
+        if (input.value && input.value.trim() !== '') {
+          hasValue = true;
+        }
+      });
+
+      if (!hasValue) {
+        e.preventDefault();
+        alert('Please enter at least one question mark');
+        return false;
+      }
+    });
+
+    // Auto-save functionality (optional)
+    let autoSaveTimeout;
+    const formInputs = document.querySelectorAll('input[type="number"]');
+    
+    formInputs.forEach(input => {
+      input.addEventListener('input', function() {
+        clearTimeout(autoSaveTimeout);
+        autoSaveTimeout = setTimeout(() => {
+          // Could implement auto-save here if needed
+          console.log('Auto-save triggered for', this.name, '=', this.value);
+        }, 2000);
+      });
+    });
+  </script>
+</body>
+</html>

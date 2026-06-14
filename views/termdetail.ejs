@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terminal Detail | <%= typeof questionNo !== 'undefined' ? questionNo : qno %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet">
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">  <!-- DataTables CSS -->
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css">
+  <link rel="stylesheet" type="text/css" href="/datatable-buttons.css">
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.bootstrap5.min.css">
+  <link rel="stylesheet" href="/nav.css">
+  
+  <style>
+    :root {
+        --primary: #0ea5e9;  /* skyblue */
+        --primary-dark: #0284c7;  /* darker skyblue */
+        --secondary: #8b5a2b;  /* brown */
+        --secondary-dark: #6b4423;  /* darker brown */
+        --accent: #a16207;  /* amber brown for accent */
+        --light: #f8fafc;
+        --dark: #1e293b;
+        --gray: #64748b;
+        --success: #22c55e;
+        --error: #ef4444;
+        --warning: #f59e0b;
+    }
+    
+    body {
+        background-color: #f8fafc;
+        font-family: 'Lexend', sans-serif;
+        color: var(--dark);
+        padding-bottom: 3rem;
+    }
+    
+    header {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 80%);
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        border-bottom-left-radius: 20px;
+        border-bottom-right-radius: 20px;
+        color: white;
+        padding-bottom: 1rem;
+    }
+    
+    .hero-section {
+        padding: 2rem 1rem;
+        text-align: center;
+    }
+    
+    #firstheading {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-top: 0;
+        color: white;
+    }
+    
+    #firstspan {
+        color: var(--accent);
+        font-weight: 800;
+    }
+    
+    .subheading {
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 1.2rem;
+        display: block;
+        margin-bottom: 1rem;
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    
+    table.dataTable {
+        width: 100% !important;
+        margin-bottom: 1rem;
+        color: var(--dark);
+    }
+    
+    table.dataTable thead th {
+        background-color: var(--primary);
+        color: white;
+        border: none;
+    }
+    
+    table.dataTable tbody tr:nth-of-type(odd) {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+    
+    .status-badge {
+        padding: 0.35rem 0.65rem;
+        border-radius: 30px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .badge-correct {
+        background-color: var(--success);
+        color: white;
+    }
+    
+    .badge-incorrect {
+        background-color: var(--error);
+        color: white;
+    }
+    
+    .badge-notattempt {
+        background-color: var(--gray);
+        color: white;
+    }
+    
+    .badge-above50 {
+        background-color: var(--primary);
+        color: white;
+    }
+    
+    .badge-below50 {
+        background-color: var(--warning);
+        color: white;
+    }
+    
+    .print-btn {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        padding: 0.75rem;
+        border-radius: 50%;
+        background-color: var(--primary);
+        color: white;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        cursor: pointer;
+        z-index: 1000;
+        width: 3rem;
+        height: 3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+    }
+    
+    .print-btn:hover {
+        background-color: var(--primary-dark);
+        transform: translateY(-3px);
+        box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+    }
+    
+    @media print {
+        .print-btn, header, .actions-column {
+            display: none !important;
+        }
+        
+        body {
+            background-color: white;
+        }
+        
+        .container {
+            max-width: 100%;
+            width: 100%;
+            padding: 0;
+            margin: 0;
+        }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <%- include('partials/nav',{currentPage:'teacher'}) %>
+    <div class="hero-section">
+        <h1 id="firstheading">Student <span id="firstspan">Details</span></h1>
+        <span class="subheading">Students with <%= status %> answers for Question <%= typeof questionNo !== 'undefined' ? questionNo : qno %></span>
+    </div>
+  </header>
+  
+  <%- include('partials/sidenav', { 
+      subjects: subjects, 
+      studentClassdata: studentClassdata,
+      terminals: terminals 
+  }) %>
+  
+  <div class="container">
+    <nav aria-label="breadcrumb" class="mb-4">
+      <ol class="breadcrumb bg-white p-3 shadow-sm rounded">
+        <li class="breadcrumb-item"><a href="/forms" class="text-decoration-none">Home</a></li>
+        <li class="breadcrumb-item"><a href="/termwisereport" class="text-decoration-none">Term Reports</a></li>
+        <li class="breadcrumb-item"><a href="/termwisereport/<%= status %>" class="text-decoration-none"><%= status.charAt(0).toUpperCase() + status.slice(1) %> Answers</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Question <%= typeof questionNo !== 'undefined' ? questionNo : qno %></li>
+      </ol>
+    </nav>
+    
+    <div class="card mb-4">
+      <div class="card-header py-3" style="background-color: var(--primary); color: white;">
+        <div class="d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">
+            <i class="fas fa-users me-2"></i> Students with <%= status.charAt(0).toUpperCase() + status.slice(1) %> Answers
+          </h5>
+          <span class="status-badge badge-<%=status.includes('correct') ? (status.includes('above') ? 'above50' : status.includes('below') ? 'below50' : 'correct') : status.includes('incorrect') ? 'incorrect' : 'notattempt' %>">
+            <i class="fas <%= status.includes('correct') ? (status.includes('above') ? 'fa-arrow-up' : status.includes('below') ? 'fa-arrow-down' : 'fa-check') : status.includes('incorrect') ? 'fa-times' : 'fa-minus' %>"></i>
+            Question <%= typeof questionNo !== 'undefined' ? questionNo : qno %>
+          </span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table id="studentTable" class="table table-striped table-hover">
+  <tr>
+    <th>Name</th>
+    <th>Class</th>
+    <th>Section</th>
+    <th>Subject</th>
+    <th>Terminal</th>
+    <th>Q.No</th>
+    <th>Status</th>
+  </tr>
+ 
+  
+
+
+<% if(terminal ==='namedata12'){%>
+  <% term.forEach((data) => { %>
+    <% data.namedata12.forEach((student) => { %>
+      <tr>
+     <td> <%= student.name %></td>
+     <td><%= studentClass %></td>
+     <td><%= section %></td>
+     <td><%= subjectinput %></td>
+    <td>First & Second</td>
+   
+     <td><%= qno %></td> <br>
+     <td><%= status %></td>
+     </tr>
+    <% }) %>
+  <% }) %>
+<%}else if(terminal ==='namedata13'){%>
+  <% term.forEach((data) => { %>
+    <% data.namedata13.forEach((student) => { %>
+      <tr>
+     <td> <%= student.name %></td>
+     <td><%= studentClass %></td>
+     <td><%= section %></td>
+     <td><%= subjectinput %></td>
+    <td>First & Third</td>
+   
+     <td><%= qno %></td> <br>
+     <td><%= status %></td>
+    </tr>
+    <% }) %>
+  <% }) %>
+<%}else if(terminal ==='namedata23'){%>
+  <% term.forEach((data) => { %>
+    <% data.namedata23.forEach((student) => { %>
+      <tr>
+     <td> <%= student.name %></td>
+    
+    <% }) %> 
+    <td><%= studentClass %></td>
+    <td><%= section %></td>
+    <td><%= subjectinput %></td>
+   <td>Second & Third</td>
+  
+    <td><%= qno %></td> <br>
+    <td><%= status %></td>
+  </tr>
+  <% }) %>
+<%}else if(terminal ==='namedata123'){%>
+  <% term.forEach((data) => { %>
+    <% data.namedata123.forEach((student) => { %>
+      <tr>
+        <td> <%= student.name %></td>
+       
+       <% }) %> 
+       <td><%= studentClass %></td>
+       <td><%= section %></td>
+       <td><%= subjectinput %></td>
+      <td>Second & Third</td>
+     
+       <td><%= qno %></td> <br>
+       <td><%= status %></td>
+     </tr>
+      
+   
+  <% }) %>
+  <%}%>
+
+
+</table></center>
+</div>
+</body>
+</html>

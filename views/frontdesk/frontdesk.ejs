@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Frontdesk Absent Students</title>
+	<style>
+		*{margin:0;padding:0;box-sizing:border-box}
+		:root{--primary:#0b6bcb;--primary-dark:#084f98;--secondary:#1f2937;--bg:#f3f6fb;--card:#fff;--border:#d8e1ea;--text:#243444;--muted:#6b7280;--danger:#b91c1c;--row:#f8fbff}
+		body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(160deg,#e7eef7 0%,#f5f9ff 100%);min-height:100vh;padding:18px;color:var(--text)}
+		.container{max-width:1200px;margin:0 auto}
+		.header{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:0 2px 8px rgba(18,52,86,.08)}
+		.title{font-size:22px;font-weight:800;color:var(--secondary);letter-spacing:.3px}
+		.meta{margin-top:6px;font-size:14px;color:var(--muted)}
+		.meta strong{color:var(--secondary)}
+		.filter-bar{margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;align-items:end}
+		.filter-item label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px}
+		.filter-item select,.response-input{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text);font-size:13px}
+		.search-btn{padding:9px 12px;border:0;border-radius:8px;background:linear-gradient(180deg,var(--primary),var(--primary-dark));color:#fff;font-weight:700;cursor:pointer}
+		.search-btn:hover{filter:brightness(1.05)}
+		.response-input.saving{border-color:#93c5fd;background:#eff6ff}
+		.response-input.saved{border-color:#86efac;background:#f0fdf4}
+		.response-input.error{border-color:#fca5a5;background:#fef2f2}
+		.table-wrap{margin-top:14px;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:auto;box-shadow:0 2px 8px rgba(18,52,86,.08)}
+		.informed-row{opacity:.6}
+		.informed-tag{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#e7f6ec;color:#166534;border:1px solid #86efac;font-size:11px;font-weight:700}
+		.informed-tag.no{background:#fee2e2;color:#991b1b;border-color:#fecaca}
+		table{width:100%;border-collapse:collapse;min-width:840px}
+		thead th{position:sticky;top:0;background:linear-gradient(180deg,var(--primary) 0%,var(--primary-dark) 100%);color:#fff;font-size:13px;font-weight:700;padding:12px 10px;border-right:1px solid rgba(255,255,255,.2);text-align:left;white-space:nowrap}
+		tbody td{font-size:14px;padding:10px;border-top:1px solid var(--border)}
+		tbody tr:nth-child(even){background:var(--row)}
+		tbody tr:hover{background:#eef5ff}
+		.num{width:56px;text-align:center}
+		.class-col,.section-col{width:90px}
+		.days-col{width:130px;text-align:center}
+		.last-called-col{min-width:200px}
+		.contact-link{display:inline-block;padding:6px 10px;border-radius:999px;background:#e7f1ff;color:#0a4f94;text-decoration:none;font-weight:600;border:1px solid #bdd8ff}
+		.contact-link:hover{background:#d6e9ff}
+		.empty{padding:26px;text-align:center;color:var(--muted);font-weight:600}
+		.no-contact{color:var(--danger);font-weight:600}
+		.call-card{margin-top:18px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:0 2px 8px rgba(18,52,86,.08)}
+		.call-title{font-size:18px;font-weight:800;color:var(--secondary);letter-spacing:.2px}
+		.call-sub{margin-top:4px;color:var(--muted);font-size:13px}
+		.call-grid{margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+		.call-field label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
+		.call-field input,.call-field textarea{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text);font-size:13px}
+		.call-field textarea{min-height:90px;resize:vertical}
+		.call-field input[readonly]{background:#f8fafc;color:#475569}
+		.call-actions{margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+		.call-save{padding:10px 16px;border:0;border-radius:8px;background:linear-gradient(180deg,var(--primary),var(--primary-dark));color:#fff;font-weight:700;cursor:pointer}
+		.call-save:hover{filter:brightness(1.05)}
+		.call-status{font-size:12px;color:var(--muted)}
+		.call-search{position:relative}
+		.call-suggestions{position:absolute;left:0;right:0;top:100%;margin-top:6px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 24px rgba(15,23,42,.12);max-height:240px;overflow:auto;z-index:20;display:none}
+		.call-suggestion-item{padding:10px 12px;cursor:pointer;border-bottom:1px solid #eef2f7}
+		.call-suggestion-item:last-child{border-bottom:0}
+		.call-suggestion-item:hover{background:#f8fafc}
+		.call-suggestion-name{display:block;font-weight:700;color:var(--secondary);font-size:13px}
+		.call-suggestion-meta{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+		.call-suggestion-action{margin-top:6px;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid #c7ddff;background:#e7f1ff;color:#0a4f94;font-size:11px;font-weight:700}
+		.call-summary{margin-top:12px;padding:12px;border:1px dashed var(--border);border-radius:10px;background:#f8fbff;font-size:13px;color:var(--text)}
+		.call-log-card{margin-top:18px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:0 2px 8px rgba(18,52,86,.08)}
+		.call-log-header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+		.call-log-title{font-size:18px;font-weight:800;color:var(--secondary);letter-spacing:.2px}
+		.call-log-filter{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;align-items:end;margin-top:12px}
+		.call-log-filter label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px}
+		.call-log-filter select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text);font-size:13px}
+		.call-log-btn{padding:9px 12px;border:0;border-radius:8px;background:linear-gradient(180deg,var(--primary),var(--primary-dark));color:#fff;font-weight:700;cursor:pointer}
+		.call-log-table-wrap{margin-top:14px;border:1px solid var(--border);border-radius:12px;overflow:auto;background:#fff}
+		.call-log-table{width:100%;border-collapse:collapse;min-width:860px}
+		.call-log-table th{position:sticky;top:0;background:linear-gradient(180deg,var(--primary) 0%,var(--primary-dark) 100%);color:#fff;font-size:13px;font-weight:700;padding:12px 10px;border-right:1px solid rgba(255,255,255,.2);text-align:left;white-space:nowrap}
+		.call-log-table td{font-size:14px;padding:10px;border-top:1px solid var(--border)}
+		.call-log-table tr:nth-child(even){background:var(--row)}
+		.call-log-empty{padding:20px;text-align:center;color:var(--muted);font-weight:600}
+		@media (max-width: 768px){
+			body{padding:10px}
+			.title{font-size:18px}
+			.meta{font-size:12px}
+			table{min-width:760px}
+			.call-card{padding:16px}
+			.call-log-card{padding:16px}
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<div class="header">
+			<div class="title">Today Absent Students</div>
+			<div class="meta">
+				Date (BS): <strong><%= todayBs %></strong>
+				| Academic Year: <strong><%= academicYear %></strong>
+				| Month: <strong><%= currentMonthName %></strong>
+				| Day: <strong><%= todayDay %></strong>
+			</div>
+			<form class="filter-bar" method="GET" action="/frontdesk">
+				<div class="filter-item">
+					<label for="academicYear">Academic Year</label>
+					<select name="academicYear" id="academicYear">
+						<% (academicYearOptions || []).forEach((year) => { %>
+							<option value="<%= year %>" <%= String(year) === String(academicYear) ? 'selected' : '' %>><%= year %></option>
+						<% }) %>
+					</select>
+				</div>
+				<div class="filter-item">
+					<label for="month">Month</label>
+					<select name="month" id="month">
+						<% (monthOptions || []).forEach((month) => { %>
+							<option value="<%= month %>" <%= String(month) === String(currentMonthName) ? 'selected' : '' %>><%= month %></option>
+						<% }) %>
+					</select>
+				</div>
+				<div class="filter-item">
+					<label for="day">Day</label>
+					<select name="day" id="day">
+						<% (dayOptions || []).forEach((day) => { %>
+							<option value="<%= day %>" <%= Number(day) === Number(todayDay) ? 'selected' : '' %>><%= day %></option>
+						<% }) %>
+					</select>
+				</div>
+				<div class="filter-item">
+					<button type="submit" class="search-btn">Find Record</button>
+				</div>
+			</form>
+		</div>
+
+		<div class="table-wrap">
+			<table>
+				<thead>
+					<tr>
+						<th class="num">SN</th>
+						<th>Absent Name</th>
+						<th>Contact</th>
+						<th class="class-col">Class</th>
+						<th class="section-col">Section</th>
+						<th>Informed to Teacher</th>
+						<th>Call</th>
+						<th class="days-col">Continuous Absent</th>
+						<th class="last-called-col">Last Called</th>
+						<th>Parent Response</th>
+					</tr>
+				</thead>
+				<tbody>
+					<% if (absentStudents && absentStudents.length > 0) { %>
+						<% absentStudents.forEach((student) => { %>
+							<% const informedReason = String(student.reason || '').trim(); %>
+							<% const isInformed = Boolean(informedReason); %>
+							<tr class="<%= isInformed ? 'informed-row' : '' %>">
+								<td class="num"><%= student.sn %></td>
+								<td><%= student.name || '-' %></td>
+								<td>
+									<% if (student.contact) { %>
+										<%= student.contact %>
+									<% } else { %>
+										<span class="no-contact">No Contact</span>
+									<% } %>
+								</td>
+								<td class="class-col"><%= student.studentClass || '-' %></td>
+								<td class="section-col"><%= student.section || '-' %></td>
+								<td>
+									<span class="informed-tag <%= isInformed ? '' : 'no' %>">
+										<%= isInformed ? 'Yes' : 'No' %>
+									</span>
+									<% if (isInformed) { %>
+										<div class="meta" style="margin-top:6px"><%= informedReason %></div>
+									<% } %>
+								</td>
+								<td>
+									<% if (student.dialNumber) { %>
+										<a class="contact-link" href="tel:<%= student.dialNumber %>">Call Now</a>
+									<% } else { %>
+										<span class="no-contact">Unavailable</span>
+									<% } %>
+								</td>
+								<td class="days-col"><%= Number(student.continuousAbsentDays || 0) %></td>
+								<td class="last-called-col"><%= student.lastCalledText || '-' %></td>
+								<td>
+									<input
+										type="text"
+										class="response-input"
+										placeholder="Type parent response"
+										value="<%= student.reason || '' %>"
+										data-reg="<%= student.reg %>"
+										data-studentclass="<%= student.studentClass %>"
+										data-section="<%= student.section %>"
+										data-academicyear="<%= academicYear %>"
+										data-month="<%= currentMonthName %>"
+										data-day="<%= todayDay %>"
+									>
+								</td>
+							</tr>
+						<% }) %>
+					<% } else { %>
+						<tr>
+							<td colspan="9" class="empty">No absent students found for selected date.</td>
+						</tr>
+					<% } %>
+				</tbody>
+			</table>
+		</div>
+
+		<section class="call-card">
+			<div class="call-title">Log Parent Call</div>
+			<p class="call-sub">Search a student to auto-fill details, then save the call reason and parent response.</p>
+			<form id="frontdeskCallForm" autocomplete="off">
+				<div class="call-grid">
+					<div class="call-field call-search">
+						<label for="callStudentSearch">Student Name</label>
+						<input id="callStudentSearch" type="text" placeholder="Type 2-3 letters" required>
+						<div id="callStudentSuggestions" class="call-suggestions"></div>
+					</div>
+					<div class="call-field">
+						<label for="callContact">Contact Number</label>
+						<input id="callContact" type="text" readonly>
+					</div>
+					<div class="call-field">
+						<label for="callClass">Class</label>
+						<input id="callClass" type="text" readonly>
+					</div>
+					<div class="call-field">
+						<label for="callSection">Section</label>
+						<input id="callSection" type="text" readonly>
+					</div>
+					<div class="call-field">
+						<label for="callRoll">Roll</label>
+						<input id="callRoll" type="text" readonly>
+					</div>
+					<div class="call-field">
+						<label for="callReg">Registration</label>
+						<input id="callReg" type="text" readonly>
+					</div>
+					<div class="call-field">
+						<label for="callFather">Father Name</label>
+						<input id="callFather" type="text" readonly>
+					</div>
+					<div class="call-field">
+						<label for="callAddress">Address</label>
+						<input id="callAddress" type="text" readonly>
+					</div>
+					<div class="call-field">
+						<label for="callReason">Reason for Call</label>
+						<textarea id="callReason" placeholder="Explain why you called" required></textarea>
+					</div>
+					<div class="call-field">
+						<label for="callResponse">Parent Response</label>
+						<textarea id="callResponse" placeholder="Parent response" required></textarea>
+					</div>
+				</div>
+				<div id="callStudentSummary" class="call-summary">No student selected yet.</div>
+				<div class="call-actions">
+					<button type="submit" class="call-save">Save Call Log</button>
+					<span id="callFormStatus" class="call-status"></span>
+				</div>
+				<input type="hidden" id="callAcademicYear" value="<%= academicYear %>">
+				<input type="hidden" id="callMonth" value="<%= currentMonthName %>">
+				<input type="hidden" id="callDay" value="<%= todayDay %>">
+			</form>
+		</section>
+
+		<section class="call-log-card">
+			<div class="call-log-header">
+				<div>
+					<div class="call-log-title">Call Logs</div>
+					<p class="call-sub">View call logs for a specific date.</p>
+				</div>
+			</div>
+			<div class="call-log-filter">
+				<div>
+					<label for="callLogYear">Academic Year</label>
+					<select id="callLogYear">
+						<% (academicYearOptions || []).forEach((year) => { %>
+							<option value="<%= year %>" <%= String(year) === String(academicYear) ? 'selected' : '' %>><%= year %></option>
+						<% }) %>
+					</select>
+				</div>
+				<div>
+					<label for="callLogMonth">Month</label>
+					<select id="callLogMonth">
+						<% (monthOptions || []).forEach((month) => { %>
+							<option value="<%= month %>" <%= String(month) === String(currentMonthName) ? 'selected' : '' %>><%= month %></option>
+						<% }) %>
+					</select>
+				</div>
+				<div>
+					<label for="callLogDay">Day</label>
+					<select id="callLogDay">
+						<% (dayOptions || []).forEach((day) => { %>
+							<option value="<%= day %>" <%= Number(day) === Number(todayDay) ? 'selected' : '' %>><%= day %></option>
+						<% }) %>
+					</select>
+				</div>
+				<div>
+					<button type="button" id="callLogFilterBtn" class="call-log-btn">Load Logs</button>
+				</div>
+			</div>
+			<div class="call-log-table-wrap">
+				<table class="call-log-table">
+					<thead>
+						<tr>
+							<th class="num">SN</th>
+							<th>Student</th>
+							<th>Contact</th>
+							<th class="class-col">Class</th>
+							<th class="section-col">Section</th>
+							<th>Reason</th>
+							<th>Parent Response</th>
+							<th>Logged At</th>
+						</tr>
+					</thead>
+					<tbody id="callLogTableBody">
+						<tr>
+							<td colspan="8" class="call-log-empty">Loading call logs...</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</section>
+	</div>
+
+	<script>
+		const reasonTimers = new Map();
+		const callSearchInput = document.getElementById('callStudentSearch');
+		const callSuggestions = document.getElementById('callStudentSuggestions');
+		const callSummary = document.getElementById('callStudentSummary');
+		const callForm = document.getElementById('frontdeskCallForm');
+		const callStatus = document.getElementById('callFormStatus');
+		const callLogYear = document.getElementById('callLogYear');
+		const callLogMonth = document.getElementById('callLogMonth');
+		const callLogDay = document.getElementById('callLogDay');
+		const callLogFilterBtn = document.getElementById('callLogFilterBtn');
+		const callLogTableBody = document.getElementById('callLogTableBody');
+		const callFields = {
+			reg: document.getElementById('callReg'),
+			name: callSearchInput,
+			studentClass: document.getElementById('callClass'),
+			section: document.getElementById('callSection'),
+			roll: document.getElementById('callRoll'),
+			fatherName: document.getElementById('callFather'),
+			address: document.getElementById('callAddress'),
+			contact: document.getElementById('callContact'),
+			reason: document.getElementById('callReason'),
+			response: document.getElementById('callResponse')
+		};
+		const callDateFields = {
+			academicYear: document.getElementById('callAcademicYear'),
+			month: document.getElementById('callMonth'),
+			day: document.getElementById('callDay')
+		};
+
+		const debounce = (fn, delay) => {
+			let timer;
+			return (...args) => {
+				clearTimeout(timer);
+				timer = setTimeout(() => fn(...args), delay);
+			};
+		};
+
+		const escapeHtml = (value) => String(value || '')
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#39;');
+
+		const clearCallSuggestions = () => {
+			if (!callSuggestions) {
+				return;
+			}
+			callSuggestions.innerHTML = '';
+			callSuggestions.style.display = 'none';
+		};
+
+		const encodeStudent = (student) => encodeURIComponent(JSON.stringify(student || {}));
+		const decodeStudent = (value) => {
+			try {
+				return JSON.parse(decodeURIComponent(value || ''));
+			} catch (error) {
+				return null;
+			}
+		};
+
+		const renderCallSummary = (student) => {
+			if (!callSummary) {
+				return;
+			}
+			if (!student) {
+				callSummary.textContent = 'No student selected yet.';
+				return;
+			}
+			callSummary.innerHTML = `
+				<strong>${student.name || '-'}</strong> | Reg: ${student.reg || '-'} | Class: ${student.studentClass || '-'}-${student.section || '-'} | Roll: ${student.roll || '-'}<br>
+				Father: ${student.fatherName || '-'} | Address: ${student.address || '-'} | Contact: ${student.contact || '-'}
+			`;
+		};
+
+		const setCallStudent = (student) => {
+			callFields.reg.value = student.reg || '';
+			callFields.name.value = student.name || '';
+			callFields.studentClass.value = student.studentClass || '';
+			callFields.section.value = student.section || '';
+			callFields.roll.value = student.roll || '';
+			callFields.fatherName.value = student.fatherName || '';
+			callFields.address.value = student.address || '';
+			callFields.contact.value = student.contact || '';
+			renderCallSummary(student);
+		};
+
+		const showCallSuggestions = (items) => {
+			if (!callSuggestions) {
+				return;
+			}
+			if (!items.length) {
+				callSuggestions.innerHTML = '<div class="call-suggestion-item"><span class="call-suggestion-meta">No matches found</span></div>';
+				callSuggestions.style.display = 'block';
+				return;
+			}
+			callSuggestions.innerHTML = items.map((student) => {
+				const meta = `Class ${student.studentClass || '-'} | Roll ${student.roll || '-'} | Section ${student.section || '-'}`;
+				const contact = student.contact ? `Contact: ${student.contact}` : 'Contact: -';
+				return `
+					<div class="call-suggestion-item" data-student="${encodeStudent(student)}">
+						<span class="call-suggestion-name">${student.name || '-'}</span>
+						<span class="call-suggestion-meta">${meta}</span>
+						<span class="call-suggestion-meta">${contact}</span>
+						<button type="button" class="call-suggestion-action">Select</button>
+					</div>
+				`;
+			}).join('');
+			callSuggestions.style.display = 'block';
+		};
+
+		let callSearchController = null;
+
+		const showCallLoading = () => {
+			if (!callSuggestions) {
+				return;
+			}
+			callSuggestions.innerHTML = '<div class="call-suggestion-item"><span class="call-suggestion-meta">Loading...</span></div>';
+			callSuggestions.style.display = 'block';
+		};
+
+		const fetchCallStudents = async () => {
+			if (!callSearchInput) {
+				return;
+			}
+			const value = callSearchInput.value.trim();
+			if (value.length < 2) {
+				clearCallSuggestions();
+				return;
+			}
+
+			if (callSearchController) {
+				callSearchController.abort();
+			}
+			callSearchController = new AbortController();
+			showCallLoading();
+
+			try {
+				const response = await fetch(`/frontdesk/students?q=${encodeURIComponent(value)}`, {
+					signal: callSearchController.signal
+				});
+				if (!response.ok) {
+					throw new Error('Failed to load students');
+				}
+				const data = await response.json();
+				showCallSuggestions(Array.isArray(data) ? data : []);
+			} catch (error) {
+				if (error && error.name === 'AbortError') {
+					return;
+				}
+				clearCallSuggestions();
+			}
+		};
+
+		const renderCallLogs = (items) => {
+			if (!callLogTableBody) {
+				return;
+			}
+			if (!Array.isArray(items) || items.length === 0) {
+				callLogTableBody.innerHTML = '<tr><td colspan="8" class="call-log-empty">No call logs found for this date.</td></tr>';
+				return;
+			}
+			callLogTableBody.innerHTML = items.map((log, index) => {
+				const contact = log.contact || '-';
+				const loggedAt = log.callLoggedAt ? escapeHtml(log.callLoggedAt) : '-';
+				return `
+					<tr>
+						<td class="num">${index + 1}</td>
+						<td>${escapeHtml(log.name || '-')}</td>
+						<td>${escapeHtml(contact)}</td>
+						<td class="class-col">${escapeHtml(log.studentClass || '-')}</td>
+						<td class="section-col">${escapeHtml(log.section || '-')}</td>
+						<td>${escapeHtml(log.callReason || '-')}</td>
+						<td>${escapeHtml(log.parentResponse || '-')}</td>
+						<td>${loggedAt}</td>
+					</tr>
+				`;
+			}).join('');
+		};
+
+		const loadCallLogs = async () => {
+			if (!callLogTableBody || !callLogYear || !callLogMonth || !callLogDay) {
+				return;
+			}
+			callLogTableBody.innerHTML = '<tr><td colspan="8" class="call-log-empty">Loading call logs...</td></tr>';
+			const params = new URLSearchParams({
+				academicYear: callLogYear.value,
+				month: callLogMonth.value,
+				day: callLogDay.value
+			});
+			try {
+				const response = await fetch(`/frontdesk/call-logs?${params.toString()}`);
+				if (!response.ok) {
+					throw new Error('Failed to load call logs');
+				}
+				const data = await response.json();
+				renderCallLogs(Array.isArray(data) ? data : []);
+			} catch (error) {
+				callLogTableBody.innerHTML = '<tr><td colspan="8" class="call-log-empty">Unable to load call logs.</td></tr>';
+			}
+		};
+
+		async function saveReason(inputEl) {
+			const payload = {
+				reg: inputEl.dataset.reg,
+				studentClass: inputEl.dataset.studentclass,
+				section: inputEl.dataset.section,
+				academicYear: inputEl.dataset.academicyear,
+				month: inputEl.dataset.month,
+				day: inputEl.dataset.day,
+				reason: inputEl.value
+			};
+
+			inputEl.classList.remove('saved', 'error');
+			inputEl.classList.add('saving');
+
+			try {
+				const response = await fetch('/frontdesk/reason', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify(payload)
+				});
+
+				if (!response.ok) {
+					throw new Error('Failed to save reason');
+				}
+
+				inputEl.classList.remove('saving', 'error');
+				inputEl.classList.add('saved');
+			} catch (error) {
+				console.error(error);
+				inputEl.classList.remove('saving', 'saved');
+				inputEl.classList.add('error');
+			}
+		}
+
+		document.querySelectorAll('.response-input').forEach((inputEl) => {
+			inputEl.addEventListener('input', () => {
+				if (reasonTimers.has(inputEl)) {
+					clearTimeout(reasonTimers.get(inputEl));
+				}
+
+				const timer = setTimeout(async () => {
+					await saveReason(inputEl);
+					reasonTimers.delete(inputEl);
+				}, 600);
+
+				reasonTimers.set(inputEl, timer);
+			});
+		});
+
+		if (callSearchInput) {
+			callSearchInput.addEventListener('input', debounce(fetchCallStudents, 200));
+		}
+
+		if (callSuggestions) {
+			callSuggestions.addEventListener('click', (event) => {
+				const target = event.target.closest('.call-suggestion-item');
+				if (!target) {
+					return;
+				}
+				const payload = target.getAttribute('data-student');
+				if (!payload) {
+					return;
+				}
+				const student = decodeStudent(payload);
+				if (student) {
+					setCallStudent(student);
+				}
+				clearCallSuggestions();
+			});
+		}
+
+		document.addEventListener('click', (event) => {
+			if (!event.target.closest('.call-search')) {
+				clearCallSuggestions();
+			}
+		});
+
+		if (callForm) {
+			callForm.addEventListener('submit', async (event) => {
+				event.preventDefault();
+
+				if (!callFields.reg.value || !callFields.studentClass.value || !callFields.section.value) {
+					callStatus.textContent = 'Select a student first.';
+					return;
+				}
+
+				callStatus.textContent = 'Saving...';
+				const payload = {
+					reg: callFields.reg.value,
+					studentClass: callFields.studentClass.value,
+					section: callFields.section.value,
+					academicYear: callDateFields.academicYear.value,
+					month: callDateFields.month.value,
+					day: callDateFields.day.value,
+					callReason: callFields.reason.value,
+					parentResponse: callFields.response.value
+				};
+
+				try {
+					const response = await fetch('/frontdesk/call-log', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify(payload)
+					});
+
+					if (!response.ok) {
+						throw new Error('Failed to save call log');
+					}
+
+					callStatus.textContent = 'Saved.';
+					loadCallLogs();
+				} catch (error) {
+					callStatus.textContent = 'Save failed. Try again.';
+				}
+			});
+		}
+
+		if (callLogFilterBtn) {
+			callLogFilterBtn.addEventListener('click', loadCallLogs);
+		}
+
+		loadCallLogs();
+	</script>
+</body>
+</html>

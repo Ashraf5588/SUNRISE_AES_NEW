@@ -1,0 +1,1533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title><%=studentClass%>-<%=section%></title>
+  <style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box
+}
+
+:root{
+    --primary:#ff8c42;
+    --primary-dark:#e67a2e;
+    --secondary:#1a3a52;
+    --secondary-light:#2c5f8d;
+    --bg:#f8f9fa;
+    --card:#fff;
+    --border:#e1e8ed;
+    --text:#2d3748;
+    --success:#48bb78;
+    --hover:#fff5eb;
+    --absent:#ef4444;
+    --absent-soft:#fee2e2
+}
+
+html,
+body{
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden;
+  overflow-y:auto;
+  scroll-behavior:smooth;
+  overscroll-behavior:auto
+}
+
+body{
+    -webkit-text-size-adjust:100%;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:linear-gradient(135deg,var(--secondary) 0%,var(--secondary-light) 100%);
+    min-height:100vh;
+    padding:15px;
+    color:var(--text);
+    position:relative
+}
+
+/* ================= SELECTOR PANEL ================= */
+
+.selector-panel{
+    background:var(--card);
+    border-radius:10px;
+    padding:20px;
+    margin:0 auto 20px;
+    box-shadow:0 2px 8px rgba(0,0,0,.1);
+    max-width:min(1400px,calc(100vw - 30px))
+}
+
+.selector-title{
+    font-size:18px;
+    font-weight:700;
+    color:var(--secondary);
+    margin-bottom:15px;
+    text-align:center;
+    text-transform:uppercase;
+    letter-spacing:.5px
+}
+
+.selector-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+    gap:12px;
+    margin-bottom:15px
+}
+
+.selector-panel select{
+    width:100%;
+    padding:10px 14px;
+    border:2px solid var(--border);
+    border-radius:6px;
+    font-size:14px;
+    color:var(--text);
+    background:#fff;
+    padding-right:35px;
+    transition:border .2s;
+    cursor:pointer;
+    appearance:none
+}
+
+.selector-panel select:hover{
+    border-color:var(--primary)
+}
+
+.selector-panel select:focus{
+    outline:0;
+    border-color:var(--primary);
+    box-shadow:0 0 0 3px rgba(255,140,66,.1)
+}
+
+.load-btn{
+    display:block;
+    width:100%;
+    max-width:280px;
+    margin:0 auto;
+    padding:12px 28px;
+    background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);
+    color:#fff;
+    border:0;
+    border-radius:6px;
+    font-size:15px;
+    font-weight:600;
+    cursor:pointer;
+    transition:transform .2s,box-shadow .2s;
+    box-shadow:0 3px 12px rgba(255,140,66,.3);
+    text-transform:uppercase;
+    letter-spacing:.5px
+}
+
+.load-btn:hover{
+    transform:translateY(-1px);
+    box-shadow:0 5px 16px rgba(255,140,66,.4)
+}
+
+.edit-toggle-btn{
+    display:block;
+    width:100%;
+    max-width:280px;
+    margin:10px auto 0;
+    padding:11px 24px;
+    background:#fff;
+    border:2px solid var(--secondary);
+    border-radius:6px;
+    font-size:14px;
+    font-weight:700;
+    color:var(--secondary);
+    cursor:pointer;
+    transition:all .2s;
+    text-transform:uppercase;
+    letter-spacing:.4px
+}
+
+  .house-toggle-btn{
+    display:block;
+    width:100%;
+    max-width:280px;
+    margin:10px auto 0;
+    padding:11px 24px;
+    background:#fff;
+    border:2px solid var(--primary-dark);
+    border-radius:6px;
+    font-size:14px;
+    font-weight:700;
+    color:var(--primary-dark);
+    cursor:pointer;
+    transition:all .2s;
+    text-transform:uppercase;
+    letter-spacing:.4px
+  }
+
+  .house-toggle-btn.active{
+    background:var(--primary-dark);
+    color:#fff
+  }
+
+.edit-toggle-btn.active{
+    background:var(--secondary);
+    color:#fff
+}
+
+.default-option{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    margin-top:10px;
+    color:var(--secondary);
+    font-size:13px;
+    font-weight:600
+}
+
+/* ================= ENTRY CONTAINER ================= */
+
+.entry-container{
+    background:var(--card);
+    border-radius:10px;
+    padding:20px;
+    box-shadow:0 2px 8px rgba(0,0,0,.1);
+    max-width:min(1400px,calc(100vw - 30px));
+    width:100%;
+    margin:0 auto;
+    overflow:hidden
+}
+
+.entry-title{
+    font-size:20px;
+    font-weight:700;
+    color:var(--secondary);
+    margin-bottom:15px;
+    text-align:center;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    padding-bottom:12px;
+    border-bottom:3px solid var(--primary)
+}
+
+/* ================= TABLE FIX ================= */
+
+.table-scroll{
+    width:100%;
+    max-width:100%;
+    height:clamp(300px,calc(100vh - 420px),70vh);
+    max-height:70vh;
+
+    overflow:auto;
+
+    border:1px solid var(--border);
+    border-radius:8px;
+
+    background:#fff;
+
+    position:relative;
+
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:auto;
+    contain:layout paint
+}
+
+table{
+    border-collapse:collapse;
+    border-spacing:0;
+
+    table-layout:fixed;
+
+    width:max-content;
+    min-width:100%;
+
+    margin-top:12px
+}
+
+table th{
+    background:linear-gradient(135deg,var(--secondary) 0%,var(--secondary-light) 100%);
+    color:#fff;
+    padding:12px 10px;
+    text-align:center;
+    font-weight:600;
+    font-size:13px;
+    border:1px solid var(--secondary-light);
+    position:sticky;
+    top:0;
+    z-index:10;
+    min-width:62px;
+    white-space:nowrap
+}
+
+table td{
+    padding:8px;
+    border:1px solid var(--border);
+    text-align:center;
+    background:#fff;
+    min-width:62px;
+    overflow:hidden
+}
+
+table tr:nth-child(even) td{
+    background:#fafbfc
+}
+
+table tr:hover td{
+    background:var(--hover)
+}
+
+/* ================= INPUTS ================= */
+
+table input[type="text"],
+table input[type="number"]{
+    width:100%;
+    min-width:70px;
+    padding:7px 8px;
+    border:1px solid var(--border);
+    border-radius:4px;
+    font-size:13px;
+    text-align:center
+}
+
+.roll-input,
+body.roll-editing .roll-input{
+  text-align:left
+}
+
+table input[type="text"]:read-only{
+    background:#f7fafc;
+    border-color:#e2e8f0;
+    color:#4a5568
+}
+
+table input[readonly]{
+    background:#edf2f7;
+    cursor:not-allowed
+}
+
+table img{
+    width:38px;
+    height:38px;
+    border-radius:50%;
+    object-fit:cover;
+    border:2px solid var(--border)
+}
+
+.house-select{
+  width:100%;
+  min-width:120px;
+  padding:7px 8px;
+  border:1px solid var(--border);
+  border-radius:4px;
+  font-size:13px;
+  background:#fff
+}
+
+/* ================= ATTENDANCE BOX ================= */
+
+.day-cell{
+    display:flex;
+    justify-content:center;
+    align-items:center
+}
+
+.attendance-check{
+    position:absolute;
+    opacity:0;
+    pointer-events:none
+}
+
+.day-box{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    width:42px;
+    height:42px;
+
+    border:1px solid var(--border);
+    border-radius:6px;
+
+    font-size:14px;
+    font-weight:700;
+
+    color:var(--secondary);
+    background:#fff;
+
+    cursor:pointer;
+
+    transition:
+        background .2s,
+        border-color .2s,
+        color .2s
+}
+
+.day-box:hover{
+    border-color:var(--primary)
+}
+
+.attendance-check:checked + .day-box{
+    background:var(--absent-soft);
+    border-color:var(--absent);
+    color:#991b1b
+}
+
+.attendance-check.saved-absent + .day-box{
+    box-shadow:0 0 0 2px rgba(239,68,68,.35) inset
+}
+
+.holiday{
+    background:#fee2e2 !important
+}
+
+.holiday .day-box{
+    border-color:#fca5a5;
+    color:#b91c1c;
+    cursor:not-allowed
+}
+
+.holiday-option{
+  color:#b91c1c
+}
+
+.inform-cell{
+  min-width:220px;
+  text-align:left
+}
+
+.inform-toggle{
+  display:inline-flex;
+  align-items:center;
+  gap:8px
+}
+
+.toggle{
+  position:relative;
+  width:46px;
+  height:24px
+}
+
+.toggle input{
+  opacity:0;
+  position:absolute;
+  width:1px;
+  height:1px;
+  left:0;
+  top:0
+}
+
+.toggle-slider{
+  position:absolute;
+  cursor:pointer;
+  top:0;
+  left:0;
+  right:0;
+  bottom:0;
+  background:#cbd5e1;
+  transition:background .2s;
+  border-radius:999px;
+  pointer-events:none
+}
+
+.toggle-slider:before{
+  position:absolute;
+  content:"";
+  height:18px;
+  width:18px;
+  left:3px;
+  top:3px;
+  background:#fff;
+  transition:transform .2s;
+  border-radius:50%
+}
+
+.toggle input:checked + .toggle-slider{
+  background:var(--success)
+}
+
+.toggle input:checked + .toggle-slider:before{
+  transform:translateX(22px)
+}
+
+.toggle input:disabled + .toggle-slider{
+  background:#e2e8f0;
+  cursor:not-allowed
+}
+
+.inform-reason{
+  display:none;
+  margin-top:6px;
+  width:100%;
+  min-height:38px;
+  padding:6px 8px;
+  border:1px solid var(--border);
+  border-radius:6px;
+  font-size:12px;
+  resize:vertical
+}
+
+.inform-reason.show{
+  display:block
+}
+
+/* ================= STICKY COLUMNS FIX ================= */
+
+.roll-col{
+  min-width:70px;
+  width:70px
+}
+
+.name-col{
+    min-width:180px;
+    width:180px
+}
+
+.sticky-col{
+    position:sticky;
+    left:0;
+    z-index:5;
+    background:#fff;
+    background-clip:padding-box
+}
+
+th.sticky-col{
+    z-index:20;
+    background:linear-gradient(135deg,var(--secondary) 0%,var(--secondary-light) 100%)
+}
+
+.name-sticky{
+  left:70px;
+    z-index:6
+}
+
+th.name-sticky{
+    z-index:21
+}
+
+.house-col{
+  min-width:140px;
+  width:140px
+}
+
+body.house-hidden .house-col{
+  display:none
+}
+
+/* ================= RESPONSE TABLE ================= */
+
+.response-container{
+    background:var(--card);
+    border-radius:10px;
+    padding:20px;
+    box-shadow:0 2px 8px rgba(0,0,0,.1);
+    max-width:min(1400px,calc(100vw - 30px));
+    margin:0 auto 20px;
+    overflow:hidden
+}
+
+.response-title{
+    font-size:18px;
+    font-weight:700;
+    color:var(--secondary);
+    margin-bottom:12px;
+    text-transform:uppercase
+}
+
+.response-scroll{
+    max-height:300px;
+    overflow:auto;
+    border:1px solid var(--border);
+    border-radius:8px
+}
+
+.response-table{
+    width:100%;
+  min-width:0;
+  border-collapse:collapse;
+  table-layout:fixed
+}
+
+.response-table th{
+    background:linear-gradient(135deg,var(--secondary) 0%,var(--secondary-light) 100%);
+    color:#fff;
+    padding:10px;
+    border:1px solid var(--secondary-light);
+    text-align:left;
+    font-size:13px
+}
+
+.response-table td{
+    padding:10px;
+    border:1px solid var(--border);
+    font-size:13px;
+    background:#fff
+}
+
+.response-table th,
+.response-table td{
+  word-break:break-word
+}
+
+/* ================= SUBMIT ================= */
+
+.submit-container{
+    text-align:center;
+    margin-top:20px;
+    padding-top:15px;
+    border-top:2px solid var(--border)
+}
+
+input[type="submit"]{
+    padding:12px 40px;
+    background:linear-gradient(135deg,var(--success) 0%,#38a169 100%);
+    color:#fff;
+    border:0;
+    border-radius:6px;
+    font-size:15px;
+    font-weight:600;
+    cursor:pointer
+}
+
+/* ================= MOBILE ================= */
+
+@media(max-width:1024px){
+
+    .entry-container{
+        padding:15px
+    }
+
+    .roll-col{
+      min-width:64px;
+      width:64px
+    }
+
+    .name-col{
+        min-width:150px;
+        width:150px
+    }
+
+    .name-sticky{
+      left:64px
+    }
+}
+
+@media(max-width:768px){
+
+    body{
+        padding:10px
+    }
+
+    .selector-panel,
+    .entry-container{
+        padding:15px;
+        border-radius:8px
+    }
+
+    .selector-grid{
+        grid-template-columns:1fr
+    }
+
+    table{
+      min-width:0;
+      width:100%
+    }
+
+    table th,
+    table td{
+        font-size:11px;
+        padding:5px 3px
+    }
+
+    .roll-col{
+      min-width:48px;
+      width:48px
+    }
+
+    .name-col{
+      min-width:140px;
+      width:140px
+    }
+
+    .name-sticky{
+      left:auto
+    }
+
+    .sticky-col{
+      position:static
+    }
+
+    .day-box{
+        width:38px;
+        height:38px;
+        font-size:12px
+    }
+
+    .inform-cell{
+      min-width:140px
+    }
+
+    .entry-container::after{
+        content:'← Scroll to view all →';
+        display:block;
+        text-align:center;
+        color:var(--primary);
+        font-size:11px;
+        margin-top:8px;
+        font-weight:600
+    }
+}
+
+@media(max-width:480px){
+
+    table{
+      min-width:0;
+      width:100%
+    }
+
+    .roll-col{
+      min-width:42px;
+      width:42px
+    }
+
+    .name-col{
+      min-width:120px;
+      width:120px
+    }
+
+    .name-sticky{
+      left:auto
+    }
+
+    .sticky-col{
+      position:static
+    }
+
+    .day-box{
+      width:32px;
+      height:32px;
+      font-size:10px
+    }
+
+    .inform-cell{
+      min-width:120px
+    }
+
+    table img{
+        width:32px;
+        height:32px
+    }
+}
+  </style>
+</head>
+<body>
+
+<div class="selector-panel">
+  <div class="selector-title">Choose Class, Section and academic Year for Attendance Entry</div>
+  <div class="selector-grid">
+ 
+    <select name="classSection" id="classSection">
+      
+      <option value="" disabled>Choose Class & Section</option>
+      <% studentClassdata.forEach((data)=>{%>
+        <option value="<%=data.studentClass%>-<%=data.section%>"><%=data.studentClass%>-<%=data.section%></option>
+      <%})%>
+    </select>
+  
+<select name="academicYear" id="academicYear">
+          <option value="" selected disabled>Choose Academic Year</option>
+          <% currentYear = Number(marksheetSetups[0].academicYear) %>;
+            <% for (let i = 0; i < 5; i++) { %>
+              <option value="<%= currentYear - i %>"><%= currentYear - i %></option>
+            <% } %>
+        </select>
+        <select name="month" id="month">
+          <option value="" selected disabled>Choose Month</option>
+          <% const months = [
+           'Baisakh', 'Jestha', 'Asar', 'Shrawan', 'Bhadra', 'Ashwin',
+            'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'
+          ]; %>
+          <% months.forEach((month, index) => { %>
+            <option value="<%= month %>"><%= month %></option>
+          <% }); %>
+        </select>
+        <% const selectMonthKey = month === 'Asar' ? 'Ashadh' : month; %>
+        <% const selectHolidayDays = (HolidayData && Array.isArray(HolidayData.month))
+          ? (HolidayData.month.find((m) => m.monthName === selectMonthKey)?.holidayDays || [])
+          : []; %>
+        <select name="day" id="day">
+          <option value="" selected disabled>Choose Day</option>
+          <% const dayOptions = Array.from({ length: 32 }, (_, i) => i + 1); %>
+          <% dayOptions.forEach((dayOption) => { %>
+            <option value="<%= dayOption %>" class="<%= selectHolidayDays.includes(dayOption) ? 'holiday-option' : '' %>"><%= dayOption %></option>
+          <% }); %>
+        </select>
+  </div>
+  <button class="load-btn" onclick="loadform()">Load Form</button>
+  <button class="edit-toggle-btn" id="toggleRollEdit" type="button">Edit Roll Numbers</button>
+  <button class="house-toggle-btn" id="toggleHouseColumn" type="button">Add House</button>
+  <button class="load-btn" id="markAllPresentBtn" type="button">Mark All Present</button>
+  <label class="default-option" for="setDefaultAttendance">
+    <input type="checkbox" id="setDefaultAttendance">
+    Set current class as default attendance view
+  </label>
+</div>
+
+
+<script>
+  const ATTENDANCE_DEFAULT_KEY = 'onlineAttendanceDefault';
+  const classSectionEl = document.getElementById('classSection');
+  const academicYearEl = document.getElementById('academicYear');
+  const monthEl = document.getElementById('month');
+  const setDefaultEl = document.getElementById('setDefaultAttendance');
+  const dayEl = document.getElementById('day');
+
+  const queryClass = "<%= studentClass || '' %>";
+  const querySection = "<%= section || '' %>";
+  const queryAcademicYear = "<%= academicYear || '' %>";
+  const queryMonth = "<%= month || '' %>";
+  const todayMonthName = "<%= todayMonthName || '' %>";
+  const todayDayValue = "<%= todayDay || '' %>";
+  const queryDay = "<%= day || '' %>";
+
+  const preferredClassSection = 'Eight-BAGMATI';
+
+  function getFirstValidOption(selectEl) {
+    const options = Array.from(selectEl.options || []);
+    const validOption = options.find((option) => option.value && !option.disabled);
+    return validOption ? validOption.value : '';
+  }
+
+  function buildDefaultSelection() {
+    const options = Array.from(classSectionEl.options || []);
+    const preferredExists = options.some((option) => option.value === preferredClassSection);
+    const classSection = preferredExists ? preferredClassSection : getFirstValidOption(classSectionEl);
+    const dayFallback = String(todayDayValue || '').trim();
+    const normalizedDay = dayFallback && !Number.isNaN(Number.parseInt(dayFallback, 10))
+      ? String(Number.parseInt(dayFallback, 10))
+      : getFirstValidOption(dayEl);
+
+    return {
+      classSection,
+      academicYear: getFirstValidOption(academicYearEl),
+      month: todayMonthName || getFirstValidOption(monthEl),
+      day: normalizedDay
+    };
+  }
+
+  if (queryClass && querySection) {
+    classSectionEl.value = `${queryClass}-${querySection}`;
+  }
+  if (queryAcademicYear) {
+    academicYearEl.value = queryAcademicYear;
+  }
+  if (queryMonth) {
+    monthEl.value = queryMonth;
+  } else if (todayMonthName) {
+    monthEl.value = todayMonthName;
+  }
+  if (queryDay) {
+    dayEl.value = queryDay;
+  } else if (todayDayValue) {
+    dayEl.value = String(Number.parseInt(todayDayValue, 10));
+  }
+
+  const hasRequiredQuery = queryClass && querySection && queryAcademicYear && queryMonth && queryDay;
+
+  if (!hasRequiredQuery) {
+    let savedDefaults = null;
+    try {
+      savedDefaults = JSON.parse(localStorage.getItem(ATTENDANCE_DEFAULT_KEY) || 'null');
+    } catch (error) {
+      savedDefaults = null;
+    }
+
+    const fallbackDefaults = buildDefaultSelection();
+    const classSectionValue = (savedDefaults && savedDefaults.classSection) || fallbackDefaults.classSection;
+    const academicYearValue = (savedDefaults && savedDefaults.academicYear) || fallbackDefaults.academicYear;
+    const monthValue = fallbackDefaults.month;
+    const dayValue = fallbackDefaults.day;
+
+    if (classSectionValue && academicYearValue && monthValue && dayValue) {
+      const parts = classSectionValue.split('-');
+      const studentClass = parts[0] || '';
+      const section = parts.slice(1).join('-') || '';
+
+      if (studentClass && section) {
+        window.location.replace(`/onlineattendance?studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYearValue)}&month=${encodeURIComponent(monthValue)}&day=${encodeURIComponent(dayValue)}`);
+      }
+    }
+  }
+
+  if (queryClass && querySection && queryAcademicYear && queryMonth && queryDay) {
+    setDefaultEl.checked = false;
+  }
+
+</script>
+
+  <script>
+    function loadform()
+    {
+       
+        const classSection = document.getElementById('classSection').value
+        const studentClass = classSection.split("-")[0];
+        const section = classSection.split("-").slice(1).join("-");
+        const academicYear = document.getElementById('academicYear').value;
+        const month = document.getElementById('month').value;
+        const day = document.getElementById('day').value;
+
+        if (!studentClass || !section || !academicYear || !month || !day) {
+          return;
+        }
+
+        if (document.getElementById('setDefaultAttendance').checked) {
+          localStorage.setItem('onlineAttendanceDefault', JSON.stringify({
+            classSection,
+            academicYear,
+            month,
+            day
+          }));
+        }
+     
+        window.location.href=(`/onlineattendance?studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}&month=${encodeURIComponent(month)}&day=${encodeURIComponent(day)}`);
+      
+    }
+  </script>
+  <!-- end here -->
+
+<div class="response-container">
+  <div class="response-title">Absent Student Information (Selected Class)</div>
+  <% if (absentHistory && absentHistory.length > 0) { %>
+    <div class="response-scroll">
+      <table class="response-table">
+        <thead>
+          <tr>
+            <th style="width:42%;">Student Name</th>
+            <th style="width:38%;">Response / Reason</th>
+            <th style="width:20%;">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% absentHistory.forEach((item, index) => { %>
+            <tr>
+              <td><%= item.studentName || '-' %></td>
+              <td><%= item.reason || 'No response' %></td>
+              <td><%= item.dateText || '-' %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } else { %>
+    <div class="response-empty">No absent student info found for this selected class and month.</div>
+  <% } %>
+</div>
+
+<div class="entry-container">
+  <div class="entry-title">Enter Attendance</div>
+  <center><div style="font-weight: 800;">Class <%= studentClass %> - <%= section %>-<%= academicYear %>-<%= month %></div></center>
+  <center><div style="margin-top:6px;color:#b91c1c;font-weight:700;">Checked day = Absent</div></center>
+  
+    <% const monthKey = month === 'Asar' ? 'Ashadh' : month; %>
+    <% const holidayDays = (HolidayData && Array.isArray(HolidayData.month))
+      ? (HolidayData.month.find((m) => m.monthName === monthKey)?.holidayDays || [])
+      : []; %>
+  <% const rawDayValue = day || todayDay || 1; %>
+  <% const parsedDay = Number.parseInt(rawDayValue, 10); %>
+  <% const selectedDay = Number.isFinite(parsedDay) ? Math.min(Math.max(parsedDay, 1), 32) : 1; %>
+  <% const dayList = [selectedDay]; %>
+  <form action="/saveonlineattendance?<%= `studentClass=${studentClass}&section=${section}&academicYear=${academicYear}` %>" method="POST">
+ 
+    <div class="table-scroll">
+    <table id="markstable">
+      <tr>
+
+        <th class="sticky-col roll-col">Roll</th>
+        <th class="sticky-col name-col name-sticky">Name</th>
+        <th class="house-col">House</th>
+        <th><%= month %> <%= selectedDay %></th>
+        <th>Inform Status</th>
+        
+      </tr>
+      <% const sortedStudentData = Array.isArray(studentData)
+        ? [...studentData].sort((a, b) => {
+            const rollA = Number.parseInt(a && a.roll, 10) || 0;
+            const rollB = Number.parseInt(b && b.roll, 10) || 0;
+            return rollA - rollB;
+          })
+        : []; %>
+      <% sortedStudentData.forEach((student,idx)=>{%>
+      
+        <tr>
+          <input type="hidden" name="gender[<%=student.reg%>]" value="<%=student.gender%>" readonly  >
+        <input type="hidden" name="reg[<%=student.reg%>]" value="<%=student.reg%>" readonly >
+          <td class="sticky-col roll-col"><input type="text" class="roll-input" name="roll[<%=student.reg%>]" value="<%=student.roll%>" data-reg="<%= student.reg %>" data-original="<%= student.roll %>" readonly ></td>
+         <td class="sticky-col name-col name-sticky"><input type="text" name="name[<%=student.reg%>]" value="<%=student.name%>" readonly ></td>
+          <td class="house-col">
+            <select class="house-select" data-reg="<%= student.reg %>" data-original="<%= student.house || '' %>">
+              <option value="" <%= !student.house ? 'selected' : '' %>>Select</option>
+              <option value="green" <%= student.house === 'green' ? 'selected' : '' %>>Green</option>
+              <option value="blue" <%= student.house === 'blue' ? 'selected' : '' %>>Blue</option>
+              <option value="yellow" <%= student.house === 'yellow' ? 'selected' : '' %>>Yellow</option>
+              <option value="red" <%= student.house === 'red' ? 'selected' : '' %>>Red</option>
+            </select>
+          </td>
+          <% dayList.forEach((day) => { %>
+            <% const isHoliday = holidayDays.includes(day); %>
+            <td class="<%= isHoliday ? 'holiday' : '' %>">
+              <div class="day-cell">
+                <input
+                  type="checkbox"
+                  class="attendance-check"
+                  data-reg="<%= student.reg %>"
+                  data-day="<%= day %>"
+                  data-month="<%= month %>"
+                  data-academicyear="<%= academicYear %>"
+                  data-holiday="<%= isHoliday ? 'true' : 'false' %>"
+                  <%= isHoliday ? 'disabled' : '' %>
+                  id="att-<%= student.reg %>-<%= day %>"
+                >
+                <label class="day-box" for="att-<%= student.reg %>-<%= day %>"><%= day %></label>
+              </div>
+            </td>
+          <% }) %>
+          <% dayList.forEach((day) => { %>
+            <% const isHoliday = holidayDays.includes(day); %>
+            <td class="inform-cell">
+              <div class="inform-toggle">
+                <label class="toggle">
+                  <input
+                    type="checkbox"
+                    class="inform-check"
+                    data-reg="<%= student.reg %>"
+                    data-day="<%= day %>"
+                    data-month="<%= month %>"
+                    data-academicyear="<%= academicYear %>"
+                    data-holiday="<%= isHoliday ? 'true' : 'false' %>"
+                    <%= isHoliday ? 'disabled' : '' %>
+                  >
+                  <span class="toggle-slider"></span>
+                </label>
+                <span class="inform-label">Not informed</span>
+              </div>
+              <textarea
+                class="inform-reason"
+                placeholder="Enter inform reason..."
+                data-reg="<%= student.reg %>"
+                data-day="<%= day %>"
+                data-month="<%= month %>"
+                data-academicyear="<%= academicYear %>"
+                data-holiday="<%= isHoliday ? 'true' : 'false' %>"
+                <%= isHoliday ? 'disabled' : '' %>
+              ></textarea>
+            </td>
+          <% }) %>
+          
+        </tr>
+
+      <%})%>
+    </table>
+    </div>
+
+   
+
+   
+    
+   
+   
+    
+     <input type="hidden" name="studentClass" id="studentClass" value="<%=studentClass %>">
+     <input type="hidden" name="section" id="section" value="<%=section %>">
+
+  </form>
+</div>
+
+<script>
+function normalizeMonth(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function isAbsentStatus(status) {
+  const normalized = String(status || '').trim().toLowerCase();
+  return normalized === 'absent' || normalized === 'a' || normalized === 'false';
+}
+
+function setSavedHighlight(checkbox, isSavedAbsent) {
+  if (!checkbox) {
+    return;
+  }
+  checkbox.classList.toggle('saved-absent', Boolean(isSavedAbsent));
+}
+
+function getInformElements(reg, day) {
+  const toggle = document.querySelector(`.inform-check[data-reg="${reg}"][data-day="${day}"]`);
+  const reason = document.querySelector(`.inform-reason[data-reg="${reg}"][data-day="${day}"]`);
+  const label = toggle ? toggle.closest('.inform-toggle')?.querySelector('.inform-label') : null;
+  return { toggle, reason, label };
+}
+
+function applyInformUiState({ toggle, reason, label }, isAbsent) {
+  if (!toggle || !reason) {
+    return;
+  }
+
+  const isHoliday = String(toggle.dataset.holiday || '') === 'true';
+  const shouldDisable = !isAbsent || isHoliday;
+  toggle.disabled = shouldDisable;
+  reason.disabled = shouldDisable;
+
+  if (!isAbsent) {
+    toggle.checked = false;
+    reason.value = '';
+  }
+
+  const isInformed = toggle.checked && !toggle.disabled;
+  reason.classList.toggle('show', isInformed);
+  if (label) {
+    label.textContent = isInformed ? 'Informed' : 'Not informed';
+  }
+}
+
+const MONTH_ALIAS_MAP = {
+  asar: ['asar', 'ashar', 'ashadh'],
+  ashar: ['asar', 'ashar', 'ashadh'],
+  ashadh: ['asar', 'ashar', 'ashadh'],
+  ashwin: ['ashwin', 'ashoj'],
+  ashoj: ['ashwin', 'ashoj']
+};
+
+function isSameMonthValue(selectedMonth, entryMonth) {
+  const selected = normalizeMonth(selectedMonth);
+  const entry = normalizeMonth(entryMonth);
+  if (!selected || !entry) {
+    return false;
+  }
+  if (selected === entry) {
+    return true;
+  }
+  const selectedAliases = MONTH_ALIAS_MAP[selected] || [selected];
+  return selectedAliases.includes(entry);
+}
+
+async function populateData(studentClass,section,academicYear,month)
+{
+  if (!studentClass || !section || !academicYear || !month) {
+    return;
+  }
+
+  try {
+    const attendanceData = await fetch(`/getOnlineAttendanceData?studentClass=${studentClass}&section=${section}&academicYear=${academicYear}`);
+    const attendanceResult = await attendanceData.json();
+
+    if (!Array.isArray(attendanceResult) || attendanceResult.length === 0) {
+      console.log("No attendance data found");
+      return;
+    }
+
+    const selectedMonth = normalizeMonth(month);
+
+    attendanceResult.forEach((item) => {
+      const reg = item.reg;
+      const entries = Array.isArray(item.attendance) ? item.attendance : [];
+
+      entries.forEach((entry) => {
+        const sameYear = String(entry.academicYear) === String(academicYear);
+        const sameMonth = isSameMonthValue(selectedMonth, entry.month);
+
+        if (!sameYear || !sameMonth) {
+          return;
+        }
+
+        const selector = `.attendance-check[data-reg="${reg}"][data-day="${String(entry.day)}"]`;
+        const checkbox = document.querySelector(selector);
+        if (!checkbox) {
+          return;
+        }
+
+        const absent = isAbsentStatus(entry.status);
+        checkbox.checked = absent;
+        setSavedHighlight(checkbox, absent);
+
+        const informElements = getInformElements(reg, String(entry.day));
+        const savedReason = String(entry.reason || '').trim();
+        if (informElements.toggle) {
+          informElements.toggle.checked = Boolean(savedReason);
+        }
+        if (informElements.reason) {
+          informElements.reason.value = savedReason;
+        }
+        applyInformUiState(informElements, absent);
+      });
+    });
+  } catch (error) {
+    console.error('Error loading online attendance data:', error);
+  }
+}
+
+
+
+
+
+
+ window.onload = function() {
+const urlParams = new URLSearchParams(window.location.search);
+
+// Fetch each parameter
+const studentClass = urlParams.get('studentClass');   // "7"
+const section = urlParams.get('section');             // "x"
+          // "THIRD-2082"
+const academicYear = urlParams.get('academicYear');   // "" (empty string in your example)
+const month = urlParams.get('month');
+    populateData(studentClass,section,academicYear,month) // pass the subject here
+  }
+
+
+  </script>
+
+<script>
+  const rollToggleButton = document.getElementById('toggleRollEdit');
+  const rollInputs = Array.from(document.querySelectorAll('.roll-input'));
+  const rollSaveTimers = new Map();
+  let rollEditEnabled = false;
+
+  function setRollEditMode(enabled) {
+    rollEditEnabled = Boolean(enabled);
+    document.body.classList.toggle('roll-editing', rollEditEnabled);
+    rollInputs.forEach((input) => {
+      input.readOnly = !rollEditEnabled;
+    });
+    if (!rollEditEnabled) {
+      rollInputs.forEach((input) => {
+        if (!String(input.value || '').trim()) {
+          input.value = input.dataset.original || '';
+        }
+      });
+    }
+    if (rollToggleButton) {
+      rollToggleButton.classList.toggle('active', rollEditEnabled);
+      rollToggleButton.textContent = rollEditEnabled ? 'Done Editing' : 'Edit Roll Numbers';
+    }
+  }
+
+  async function saveRollNumber(input) {
+    const reg = input.dataset.reg;
+    const original = input.dataset.original || '';
+    const nextRoll = String(input.value || '').trim();
+
+    if (!rollEditEnabled || !reg) {
+      return;
+    }
+
+    if (!nextRoll || nextRoll === original) {
+      return;
+    }
+
+    if (rollSaveTimers.has(input)) {
+      clearTimeout(rollSaveTimers.get(input));
+    }
+
+    const timer = setTimeout(async () => {
+      const param = new URLSearchParams(window.location.search);
+      const studentClass = param.get('studentClass');
+      const section = param.get('section');
+      const academicYear = param.get('academicYear');
+
+      try {
+        const response = await fetch('/updateStudentRoll', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            reg,
+            roll: nextRoll,
+            studentClass,
+            section,
+            academicYear
+          })
+        });
+
+        if (!response.ok) {
+          input.value = original;
+          return;
+        }
+
+        input.dataset.original = nextRoll;
+      } catch (error) {
+        input.value = original;
+        console.error('Failed to update roll number:', error);
+      } finally {
+        rollSaveTimers.delete(input);
+      }
+    }, 600);
+
+    rollSaveTimers.set(input, timer);
+  }
+
+  if (rollToggleButton) {
+    rollToggleButton.addEventListener('click', () => setRollEditMode(!rollEditEnabled));
+  }
+
+  rollInputs.forEach((input) => {
+    input.addEventListener('input', () => saveRollNumber(input));
+    input.addEventListener('blur', () => {
+      if (!String(input.value || '').trim()) {
+        input.value = input.dataset.original || '';
+      }
+    });
+    input.addEventListener('focus', () => {
+      if (!rollEditEnabled) {
+        return;
+      }
+      const valueLength = String(input.value || '').length;
+      input.setSelectionRange(valueLength, valueLength);
+    });
+  });
+
+  setRollEditMode(false);
+</script>
+
+<script>
+  const houseToggleButton = document.getElementById('toggleHouseColumn');
+  const houseSelects = Array.from(document.querySelectorAll('.house-select'));
+  const houseSaveTimers = new Map();
+  let houseVisible = false;
+
+  function setHouseVisible(visible) {
+    houseVisible = Boolean(visible);
+    document.body.classList.toggle('house-hidden', !houseVisible);
+    if (houseToggleButton) {
+      houseToggleButton.classList.toggle('active', houseVisible);
+      houseToggleButton.textContent = houseVisible ? 'Hide House' : 'Add House';
+    }
+  }
+
+  async function saveHouse(selectEl) {
+    if (houseSaveTimers.has(selectEl)) {
+      clearTimeout(houseSaveTimers.get(selectEl));
+    }
+
+    const timer = setTimeout(async () => {
+      const reg = selectEl.dataset.reg;
+      const nextHouse = String(selectEl.value || '').trim();
+      const original = selectEl.dataset.original || '';
+      const param = new URLSearchParams(window.location.search);
+      const studentClass = param.get('studentClass');
+      const section = param.get('section');
+
+      if (!reg) {
+        return;
+      }
+
+      try {
+        const response = await fetch('/updateStudentHouse', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            reg,
+            house: nextHouse,
+            studentClass,
+            section
+          })
+        });
+
+        if (!response.ok) {
+          selectEl.value = original;
+          return;
+        }
+
+        selectEl.dataset.original = nextHouse;
+      } catch (error) {
+        selectEl.value = original;
+        console.error('Failed to update house:', error);
+      } finally {
+        houseSaveTimers.delete(selectEl);
+      }
+    }, 600);
+
+    houseSaveTimers.set(selectEl, timer);
+  }
+
+  if (houseToggleButton) {
+    houseToggleButton.addEventListener('click', () => setHouseVisible(!houseVisible));
+  }
+
+  houseSelects.forEach((selectEl) => {
+    selectEl.addEventListener('change', () => saveHouse(selectEl));
+  });
+
+  setHouseVisible(false);
+</script>
+
+
+
+<!-- script for autosave the data -->
+ <script>
+  const saveTimers = new Map();
+    const informSaveTimers = new Map();
+
+  async function autoSaveCheckbox(el) {
+    if (saveTimers.has(el)) {
+      clearTimeout(saveTimers.get(el));
+    }
+
+    const timer = setTimeout(async() => {
+      const reg = el.dataset.reg;
+      const day = el.dataset.day;
+      const month = el.dataset.month;
+      const academicYear = el.dataset.academicyear;
+      const param = new URLSearchParams(window.location.search);
+      const studentClass = param.get('studentClass');
+      const section = param.get('section');
+      const name = document.querySelector(`input[name="name[${reg}]"]`).value;
+      const roll = document.querySelector(`input[name="roll[${reg}]"]`).value;
+      const gender = document.querySelector(`input[name="gender[${reg}]"]`).value;
+      const status = el.checked ? 'absent' : 'present';
+      const informElements = getInformElements(reg, day);
+
+      applyInformUiState(informElements, el.checked);
+      const isInformed = Boolean(informElements.toggle && informElements.toggle.checked);
+      const reason = String(informElements.reason && informElements.reason.value || '').trim();
+
+      try {
+        const response = await fetch(`/saveonlineattendance?studentClass=${studentClass}&section=${section}&academicYear=${academicYear}`,{
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            reg,
+            studentClass,
+            section,
+            academicYear,
+            month,
+            day,
+            status,
+            name,
+            roll,
+            gender,
+            reason,
+            informed: isInformed,
+          })
+        });
+
+        if (!response.ok) {
+          console.error('Failed to save attendance');
+        } else {
+          setSavedHighlight(el, el.checked);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+
+      saveTimers.delete(el);
+    }, 700);
+
+    saveTimers.set(el, timer);
+  }
+
+  document.querySelectorAll('.attendance-check').forEach((checkbox) => {
+    checkbox.addEventListener('change', () => autoSaveCheckbox(checkbox));
+  });
+
+  async function autoSaveInform(toggleEl) {
+    if (informSaveTimers.has(toggleEl)) {
+      clearTimeout(informSaveTimers.get(toggleEl));
+    }
+
+    const timer = setTimeout(async() => {
+      const reg = toggleEl.dataset.reg;
+      const day = toggleEl.dataset.day;
+      const month = toggleEl.dataset.month;
+      const academicYear = toggleEl.dataset.academicyear;
+      const param = new URLSearchParams(window.location.search);
+      const studentClass = param.get('studentClass');
+      const section = param.get('section');
+      const name = document.querySelector(`input[name="name[${reg}]"]`).value;
+      const roll = document.querySelector(`input[name="roll[${reg}]"]`).value;
+      const gender = document.querySelector(`input[name="gender[${reg}]"]`).value;
+      const attendanceCheckbox = document.querySelector(`.attendance-check[data-reg="${reg}"][data-day="${day}"]`);
+      const status = attendanceCheckbox && attendanceCheckbox.checked ? 'absent' : 'present';
+      const reasonEl = document.querySelector(`.inform-reason[data-reg="${reg}"][data-day="${day}"]`);
+      const reason = String(reasonEl && reasonEl.value || '').trim();
+
+      applyInformUiState(getInformElements(reg, day), status === 'absent');
+
+      try {
+        const response = await fetch(`/saveonlineattendance?studentClass=${studentClass}&section=${section}&academicYear=${academicYear}` ,{
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            reg,
+            studentClass,
+            section,
+            academicYear,
+            month,
+            day,
+            status,
+            name,
+            roll,
+            gender,
+            reason,
+            informed: toggleEl.checked
+          })
+        });
+
+        if (!response.ok) {
+          console.error('Failed to save inform status');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+
+      informSaveTimers.delete(toggleEl);
+    }, 600);
+
+    informSaveTimers.set(toggleEl, timer);
+  }
+
+  document.querySelectorAll('.inform-check').forEach((toggleEl) => {
+    toggleEl.addEventListener('change', () => {
+      const reg = toggleEl.dataset.reg;
+      const day = toggleEl.dataset.day;
+      const elements = getInformElements(reg, day);
+      applyInformUiState(elements, Boolean(document.querySelector(`.attendance-check[data-reg="${reg}"][data-day="${day}"]`)?.checked));
+      autoSaveInform(toggleEl);
+    });
+  });
+
+  document.querySelectorAll('.inform-reason').forEach((reasonEl) => {
+    reasonEl.addEventListener('input', () => {
+      const reg = reasonEl.dataset.reg;
+      const day = reasonEl.dataset.day;
+      const toggleEl = document.querySelector(`.inform-check[data-reg="${reg}"][data-day="${day}"]`);
+      if (toggleEl) {
+        autoSaveInform(toggleEl);
+      }
+    });
+  });
+
+  document.querySelectorAll('.attendance-check').forEach((checkbox) => {
+    const reg = checkbox.dataset.reg;
+    const day = checkbox.dataset.day;
+    applyInformUiState(getInformElements(reg, day), checkbox.checked);
+  });
+  const markAllPresentBtn = document.getElementById('markAllPresentBtn');
+  if (markAllPresentBtn) {
+    markAllPresentBtn.addEventListener('click', async () => {
+      if (!confirm('Mark all students present? This will save present status for all.')) return;
+      const checkboxes = Array.from(document.querySelectorAll('.attendance-check'));
+      checkboxes.forEach((cb) => {
+        cb.checked = false; // unchecked means present in this UI
+        setSavedHighlight(cb, false);
+        autoSaveCheckbox(cb);
+        const reg = cb.dataset.reg;
+        const day = cb.dataset.day;
+        applyInformUiState(getInformElements(reg, day), false);
+      });
+    });
+  }
+ </script>
+</body>
+</html>

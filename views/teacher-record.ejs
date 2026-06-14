@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teacher Record</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css"/>
+  <style>
+    :root {
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --accent-dark: #1d4ed8;
+      --paper: #ffffff;
+      --bg: #f3f4f6;
+      --border: #e2e8f0;
+      --shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Lexend', sans-serif;
+      background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+      color: var(--ink);
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .page {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      gap: 18px;
+    }
+
+    .header {
+      background: var(--paper);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .header h1 {
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .header span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .card {
+      background: var(--paper);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .field label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+    }
+
+    .field input,
+    .field textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    .field textarea { min-height: 90px; resize: vertical; }
+
+
+    .suggestions {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+      max-height: 220px;
+      overflow: auto;
+      display: none;
+      z-index: 10;
+    }
+
+    .suggestion-item {
+      padding: 10px 12px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .suggestion-item:hover {
+      background: #f1f5f9;
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .toggle-row label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .inline-inputs {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 10px;
+    }
+
+    .is-hidden {
+      display: none;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 8px;
+    }
+
+    .btn {
+      border: 0;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+      color: #fff;
+    }
+
+    .btn-outline {
+      background: #fff;
+      border: 1px solid var(--border);
+      color: var(--ink);
+    }
+
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: auto;
+    }
+
+    .table-wrap table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 780px;
+    }
+
+    .table-wrap th, .table-wrap td {
+      padding: 10px 12px;
+      font-size: 13px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    .table-wrap th {
+      background: #f8fafc;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.4px;
+      color: var(--muted);
+    }
+
+    .issue-list {
+      white-space: normal;
+      font-size: 12px;
+      color: var(--ink);
+    }
+
+    .language-toggle-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 26px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #ccc;
+      transition: .2s;
+      border-radius: 26px;
+    }
+    .slider:before {
+      position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .2s; border-radius: 50%;
+    }
+    input:checked + .slider { background-color: #2563eb; }
+    input:checked + .slider:before { transform: translateX(20px); }
+
+    .filter-bar {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      align-items: end;
+      margin-bottom: 12px;
+    }
+
+    .status {
+      font-size: 12px;
+      color: var(--muted);
+      min-height: 18px;
+    }
+
+    @media print {
+      body { background: #fff; padding: 0; }
+      .no-print { display: none !important; }
+      .card { box-shadow: none; }
+      .header { box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div>
+        <h1>Teacher Record</h1>
+        <span>Today (BS): <%= todayBs %></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="language-toggle-container no-print">
+          <span class="lang-label">English</span>
+          <label class="switch">
+            <input type="checkbox" id="nepaliToggle" onchange="toggleLanguage(this)">
+            <span class="slider"></span>
+          </label>
+          <span class="lang-label">Nepali (Preeti)</span>
+        </div>
+        <button class="btn btn-outline no-print" type="button" onclick="window.print()">Print Issues</button>
+      </div>
+    </div>
+
+    <div class="card no-print">
+      <form id="teacherRecordForm">
+        <input type="hidden" id="editingIssueId" name="editingIssueId" value="">
+        <div class="form-grid">
+          <div class="field" style="position: relative;">
+            <label for="teacherName">Teacher Name</label>
+            <input id="teacherName" name="teacherName" type="text" autocomplete="off" placeholder="Search teacher" required>
+            <div id="teacherSuggestions" class="suggestions"></div>
+          </div>
+          <div class="field">
+            <label for="dateBs">Date (BS)</label>
+            <input id="dateBs" name="dateBs" type="text" value="<%= todayBs %>" placeholder="YYYY-MM-DD" data-today="<%= todayBs %>">
+          </div>
+          <div class="field">
+            <label>Leave Type</label>
+            <div class="toggle-row">
+              <label><input type="checkbox" id="halfLeave"> Half Leave</label>
+              <label><input type="checkbox" id="fullLeave"> Full Leave</label>
+            </div>
+          </div>
+          <div class="field">
+            <label>Time Exceptions</label>
+            <div class="toggle-row">
+              <label><input type="checkbox" id="lateIn"> Late In</label>
+              <label><input type="checkbox" id="earlyOut"> Early Out</label>
+              <label><input type="checkbox" id="temporaryOut"> Temporary Out</label>
+            </div>
+          </div>
+        </div>
+        <div class="form-grid" style="margin-top: 12px;">
+          <div class="field is-hidden" id="lateInDetails">
+            <label for="lateInTime">Late In Details</label>
+            <div class="inline-inputs">
+              <input id="lateInTime" type="time" placeholder="Time">
+              <input id="lateInReason" type="text" placeholder="Reason for late in">
+            </div>
+          </div>
+          <div class="field is-hidden" id="earlyOutDetails">
+            <label for="earlyOutTime">Early Out Details</label>
+            <div class="inline-inputs">
+              <input id="earlyOutTime" type="time" placeholder="Time">
+              <input id="earlyOutReason" type="text" placeholder="Reason for early out">
+            </div>
+          </div>
+          <div class="field is-hidden" id="temporaryOutDetails">
+            <label for="outTime">Temporary Out Details</label>
+            <div class="inline-inputs">out time
+              <input id="outTime" type="time" placeholder="Out time"> come back time
+              <input id="comebackTime" type="time" placeholder="Comeback time">
+            </div>
+            <input id="outReason" type="text" placeholder="Reason for out" style="margin-top:8px;">
+          </div>
+        </div>
+        <div class="field" style="margin-top: 12px;">
+          <label for="issue">Issue / Note</label>
+          <textarea id="issue" ></textarea>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn btn-primary">Save Record</button>
+        </div>
+        <div id="formStatus" class="status"></div>
+      </form>
+    </div>
+
+    <div class="card">
+      <div class="filter-bar no-print">
+        <div class="field" style="position: relative;">
+          <label for="filterTeacher">Filter by Teacher</label>
+          <input id="filterTeacher" type="text" value="<%= teacherQuery %>" placeholder="Type teacher name">
+          <div id="filterSuggestions" class="suggestions"></div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" type="button" onclick="applyFilter()">Filter</button>
+          <button class="btn btn-outline" type="button" onclick="clearFilter()">Clear</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:60px">SN</th>
+              <th>Teacher Name</th>
+              <th style="width:110px">Half Leave</th>
+              <th style="width:110px">Full Leave</th>
+              <th style="width:110px">Late In</th>
+              <th style="width:110px">Early Out</th>
+              <th style="width:110px">Issue Count</th>
+              <th>Issue List</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (rows && rows.length) { %>
+              <% rows.forEach((row, index) => { %>
+                <tr>
+                  <td><%= index + 1 %></td>
+                  <td>
+                    <span><%= row.teacherName || '-' %></span>
+                    <button type="button" class="btn btn-outline edit-teacher-btn" data-teacher="<%= row.teacherName %>" style="margin-left:8px;">Edit</button>
+                  </td>
+                  <td><%= row.halfLeaveCount || 0 %></td>
+                  <td><%= row.fullLeaveCount || 0 %></td>
+                  <td><%= row.lateInCount || 0 %></td>
+                  <td><%= row.earlyOutCount || 0 %></td>
+                  <td><%= row.issueCount || 0 %></td>
+                  <td class="issue-list">
+                    <% if (row.issues && row.issues.length) { %>
+                      <% row.issues.forEach(function(item, idx) { %>
+                        <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;" data-issue-id="<%= item._id %>">
+                          <div style="flex:1">
+                            <strong><%= idx + 1 %>.</strong>
+                            <span><%= item.dateBs || '-' %> - </span>
+                            <span>
+                              <% const parts = []; %>
+                              <% if (item.fullLeave) { parts.push('Full Leave'); } else if (item.halfLeave) { parts.push('Half Leave'); } %>
+                              <% if (item.lateIn) { %>
+                                <% parts.push('Late In' + (item.lateInTime ? (' at ' + item.lateInTime) : '') + (item.lateInReason ? (' - ' + item.lateInReason) : '')) %>
+                              <% } %>
+                              <% if (item.earlyOut) { %>
+                                <% parts.push('Early Out' + (item.earlyOutTime ? (' at ' + item.earlyOutTime) : '') + (item.earlyOutReason ? (' - ' + item.earlyOutReason) : '')) %>
+                              <% } %>
+                              <% if (item.temporaryOut) { %>
+                                <% const ot = item.outTime ? fmtTime(item.outTime) : '';
+                                   const ct = item.comebackTime ? fmtTime(item.comebackTime) : '';
+                                   const timerange = ot ? (ot + (ct ? ('-' + ct) : '')) : '';
+                                   const label = item.outReason ? item.outReason : 'Temporary Out'; %>
+                                <% parts.push(label + (timerange ? (' (' + timerange + ')') : '')) %>
+                              <% } %>
+                              <% if (item.issue) { parts.push(item.issue); } %>
+                              <%= parts.length ? parts.join(' | ') : '-' %>
+                              <%= item.addedByName ? (' (' + item.addedByName + ')') : '' %>
+                            </span>
+                          </div>
+                          
+                        </div>
+                      <% }) %>
+                    <% } else { %>
+                      -
+                    <% } %>
+                  </td>
+                </tr>
+              <% }) %>
+            <% } else { %>
+              <tr>
+                <td colspan="8">No teacher records found.</td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:1000;">
+    <div style="background:#fff;border-radius:8px;max-width:900px;width:95%;max-height:80vh;overflow:auto;padding:16px;margin:40px auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h3 id="editModalTitle">Edit Teacher Records</h3>
+        <button id="closeEditModal" class="btn btn-outline">Close</button>
+      </div>
+      <div id="editModalBody"></div>
+    </div>
+  </div>
+
+  <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
+  <script>
+    // EJS-side helper to format HH:MM -> h:mmam/pm
+    <% function fmtTime(t){
+         if(!t) return '';
+         const s = String(t || '');
+         const parts = s.split(':');
+         if(parts.length < 2) return s;
+         let h = parseInt(parts[0],10)||0;
+         const m = parts[1].slice(0,2);
+         const period = h >= 12 ? 'pm' : 'am';
+         const hh = h % 12 === 0 ? 12 : h % 12;
+         return hh + ':' + m + period;
+       }
+    %>
+    const dateInput = document.getElementById('dateBs');
+    if (dateInput) {
+      if (!dateInput.value && dateInput.dataset.today) {
+        dateInput.value = dateInput.dataset.today;
+      }
+      if (typeof dateInput.nepaliDatePicker === 'function') {
+        dateInput.nepaliDatePicker();
+      } else if (typeof dateInput.NepaliDatePicker === 'function') {
+        dateInput.NepaliDatePicker();
+      }
+    }
+
+    const teacherInput = document.getElementById('teacherName');
+    const teacherSuggestions = document.getElementById('teacherSuggestions');
+    const filterTeacherInput = document.getElementById('filterTeacher');
+    const filterSuggestions = document.getElementById('filterSuggestions');
+    const formStatus = document.getElementById('formStatus');
+    const lateInToggle = document.getElementById('lateIn');
+    const earlyOutToggle = document.getElementById('earlyOut');
+    const lateInDetails = document.getElementById('lateInDetails');
+    const earlyOutDetails = document.getElementById('earlyOutDetails');
+    const lateInTimeInput = document.getElementById('lateInTime');
+    const lateInReasonInput = document.getElementById('lateInReason');
+    const earlyOutTimeInput = document.getElementById('earlyOutTime');
+    const earlyOutReasonInput = document.getElementById('earlyOutReason');
+    const temporaryOutToggle = document.getElementById('temporaryOut');
+    const temporaryOutDetails = document.getElementById('temporaryOutDetails');
+    const outTimeInput = document.getElementById('outTime');
+    const comebackTimeInput = document.getElementById('comebackTime');
+    const outReasonInput = document.getElementById('outReason');
+
+    const debounce = (fn, delay) => {
+      let timer;
+      return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), delay);
+      };
+    };
+
+    const showSuggestions = (element, items) => {
+      if (!element) return;
+      if (!items.length) {
+        element.innerHTML = '<div class="suggestion-item">No matches found</div>';
+        element.style.display = 'block';
+        return;
+      }
+      element.innerHTML = items.map((name) => `<div class="suggestion-item">${name}</div>`).join('');
+      element.style.display = 'block';
+    };
+
+    const clearSuggestions = (element) => {
+      if (!element) return;
+      element.innerHTML = '';
+      element.style.display = 'none';
+    };
+
+    const fetchTeachers = async (query, element) => {
+      if (!query) {
+        clearSuggestions(element);
+        return;
+      }
+      try {
+        const response = await fetch(`/teacher-record/teachers?q=${encodeURIComponent(query)}`);
+        const data = await response.json();
+        showSuggestions(element, Array.isArray(data) ? data : []);
+      } catch (error) {
+        clearSuggestions(element);
+      }
+    };
+
+    if (teacherInput) {
+      teacherInput.addEventListener('input', debounce((event) => {
+        fetchTeachers(event.target.value.trim(), teacherSuggestions);
+      }, 200));
+    }
+
+    if (filterTeacherInput) {
+      filterTeacherInput.addEventListener('input', debounce((event) => {
+        fetchTeachers(event.target.value.trim(), filterSuggestions);
+      }, 200));
+    }
+
+    if (teacherSuggestions) {
+      teacherSuggestions.addEventListener('click', (event) => {
+        const item = event.target.closest('.suggestion-item');
+        if (!item || !teacherInput) return;
+        teacherInput.value = item.textContent.trim();
+        clearSuggestions(teacherSuggestions);
+      });
+    }
+
+    if (filterSuggestions) {
+      filterSuggestions.addEventListener('click', (event) => {
+        const item = event.target.closest('.suggestion-item');
+        if (!item || !filterTeacherInput) return;
+        filterTeacherInput.value = item.textContent.trim();
+        clearSuggestions(filterSuggestions);
+      });
+    }
+
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest('#teacherName')) {
+        clearSuggestions(teacherSuggestions);
+      }
+      if (!event.target.closest('#filterTeacher')) {
+        clearSuggestions(filterSuggestions);
+      }
+    });
+
+    const updateTimeFields = () => {
+      if (lateInToggle && lateInDetails) {
+        lateInDetails.classList.toggle('is-hidden', !lateInToggle.checked);
+        if (!lateInToggle.checked) {
+          lateInTimeInput.value = '';
+          lateInReasonInput.value = '';
+        }
+      }
+      if (earlyOutToggle && earlyOutDetails) {
+        earlyOutDetails.classList.toggle('is-hidden', !earlyOutToggle.checked);
+        if (!earlyOutToggle.checked) {
+          earlyOutTimeInput.value = '';
+          earlyOutReasonInput.value = '';
+        }
+      }
+      if (temporaryOutToggle && temporaryOutDetails) {
+        temporaryOutDetails.classList.toggle('is-hidden', !temporaryOutToggle.checked);
+        if (!temporaryOutToggle.checked) {
+          if (outTimeInput) outTimeInput.value = '';
+          if (comebackTimeInput) comebackTimeInput.value = '';
+          if (outReasonInput) outReasonInput.value = '';
+        }
+      }
+    };
+
+    if (lateInToggle) {
+      lateInToggle.addEventListener('change', updateTimeFields);
+    }
+
+    if (earlyOutToggle) {
+      earlyOutToggle.addEventListener('change', updateTimeFields);
+    }
+
+    if (temporaryOutToggle) {
+      temporaryOutToggle.addEventListener('change', updateTimeFields);
+    }
+
+    updateTimeFields();
+
+    const form = document.getElementById('teacherRecordForm');
+    if (form) {
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const editingId = document.getElementById('editingIssueId').value.trim();
+        const teacherName = teacherInput.value.trim();
+        const issue = document.getElementById('issue').value.trim();
+        const dateBs = document.getElementById('dateBs').value.trim();
+        const halfLeave = document.getElementById('halfLeave').checked;
+        const fullLeave = document.getElementById('fullLeave').checked;
+        const lateIn = lateInToggle.checked;
+        const earlyOut = earlyOutToggle.checked;
+        const lateInTime = lateInTimeInput.value.trim();
+        const lateInReason = lateInReasonInput.value.trim();
+        const earlyOutTime = earlyOutTimeInput.value.trim();
+        const earlyOutReason = earlyOutReasonInput.value.trim();
+
+        const isValid24HourTime = (value) => /^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(value);
+
+        const formatTo12Hour = (value) => {
+          if (!isValid24HourTime(value)) return value;
+          const [hoursStr, minutes] = value.split(':');
+          const hoursNum = Number(hoursStr);
+          const period = hoursNum >= 12 ? 'PM' : 'AM';
+          const hours12 = hoursNum % 12 || 12;
+          return `${hours12}:${minutes}${period}`;
+        };
+
+        if (!teacherName || (!issue && !halfLeave && !fullLeave && !lateIn && !earlyOut && !(temporaryOutToggle && temporaryOutToggle.checked))) {
+          formStatus.textContent = 'Teacher name and either leave, time exception, temporary out, or issue are required.';
+          formStatus.style.color = '#dc2626';
+          return;
+        }
+
+        if (lateIn && (!lateInTime || !lateInReason)) {
+          formStatus.textContent = 'Late in time and reason are required.';
+          formStatus.style.color = '#dc2626';
+          return;
+        }
+
+        if (lateIn && !isValid24HourTime(lateInTime)) {
+          formStatus.textContent = 'Late in time must be in HH:MM format.';
+          formStatus.style.color = '#dc2626';
+          return;
+        }
+
+        if (earlyOut && (!earlyOutTime || !earlyOutReason)) {
+          formStatus.textContent = 'Early out time and reason are required.';
+          formStatus.style.color = '#dc2626';
+          return;
+        }
+
+        if (earlyOut && !isValid24HourTime(earlyOutTime)) {
+          formStatus.textContent = 'Early out time must be in HH:MM format.';
+          formStatus.style.color = '#dc2626';
+          return;
+        }
+
+        // Temporary out validation: require reason or outTime
+        if (temporaryOutToggle && temporaryOutToggle.checked) {
+          const ot = (outTimeInput || {}).value || '';
+          const or = (outReasonInput || {}).value || '';
+          if (!ot && !or) {
+            formStatus.textContent = 'Temporary out requires out time or reason.';
+            formStatus.style.color = '#dc2626';
+            return;
+          }
+        }
+
+        formStatus.textContent = 'Saving...';
+        formStatus.style.color = '#2563eb';
+
+        try {
+          const payload = {
+            teacherName,
+            issue,
+            dateBs,
+            halfLeave,
+            fullLeave,
+            lateIn,
+            lateInTime: lateIn ? formatTo12Hour(lateInTime) : '',
+            lateInReason,
+            earlyOut,
+            earlyOutTime: earlyOut ? formatTo12Hour(earlyOutTime) : '',
+            earlyOutReason,
+            temporaryOut: temporaryOutToggle && temporaryOutToggle.checked,
+            outTime: (document.getElementById('outTime') || {}).value || '',
+            comebackTime: (document.getElementById('comebackTime') || {}).value || '',
+            outReason: (document.getElementById('outReason') || {}).value || ''
+          };
+
+          let response, data;
+          if (editingId) {
+            response = await fetch(`/teacher-record/issue/${editingId}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.message || 'Failed to update record');
+
+            formStatus.textContent = 'Updated.';
+            formStatus.style.color = '#16a34a';
+            window.location.reload();
+          } else {
+            // client-side quick check: is there already an entry for this teacher and date in the table?
+            const existing = Array.from(document.querySelectorAll('.issue-list')).some(cell => {
+              return cell.textContent.includes(dateBs) && cell.closest('tr') && cell.closest('tr').children[1] && cell.closest('tr').children[1].textContent.trim() === teacherName;
+            });
+            if (existing) {
+              formStatus.textContent = 'Record for this date already exists.';
+              formStatus.style.color = '#dc2626';
+              return;
+            }
+
+            response = await fetch('/teacher-record', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+            data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.message || 'Failed to save record');
+
+            formStatus.textContent = 'Saved.';
+            formStatus.style.color = '#16a34a';
+            window.location.reload();
+          }
+        } catch (error) {
+          formStatus.textContent = error.message || 'Unable to save record.';
+          formStatus.style.color = '#dc2626';
+        }
+      });
+    }
+
+    // Teacher-level Edit button handling (open modal)
+    document.addEventListener('click', function(e) {
+      const btn = e.target.closest('.edit-teacher-btn');
+      if (!btn) return;
+      const teacher = btn.dataset.teacher;
+      if (!teacher) return;
+
+      openEditModal(teacher);
+    });
+
+    async function openEditModal(teacher) {
+      try {
+        const res = await fetch(`/teacher-record/data?teacherName=${encodeURIComponent(teacher)}`);
+        const payload = await res.json();
+        if (!res.ok || !payload.success) {
+          alert(payload.message || 'Unable to load teacher data');
+          return;
+        }
+        const record = payload.data;
+        document.getElementById('editModalTitle').textContent = 'Edit: ' + teacher;
+
+        const body = document.getElementById('editModalBody');
+        body.innerHTML = '';
+        if (!record.issues || !record.issues.length) {
+          body.innerHTML = '<div>No issues to edit.</div>';
+        } else {
+          record.issues.forEach((it) => {
+            const div = document.createElement('div');
+            div.className = 'modal-issue';
+            div.dataset.issueId = it._id;
+            div.style.borderBottom = '1px solid #eee';
+            div.style.padding = '8px 0';
+
+            div.innerHTML = `
+              <div style="display:flex;gap:12px;align-items:center;margin-bottom:6px;"><strong>Date:</strong><span>${it.dateBs || ''}</span></div>
+              <div style="margin-bottom:6px;"><label style="font-weight:600;">Issue / Note</label><textarea class="modal-issue-text" style="width:100%;min-height:60px;">${it.issue || ''}</textarea></div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">
+                <div><label>Late In Reason</label><input class="modal-lateInReason" value="${it.lateInReason || ''}" style="width:100%"></div>
+                <div><label>Early Out Reason</label><input class="modal-earlyOutReason" value="${it.earlyOutReason || ''}" style="width:100%"></div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">
+                <div><label>Temporary Out Time</label><input type="time" class="modal-outTime" value="${it.outTime || ''}" style="width:100%"></div>
+                <div><label>Comeback Time</label><input type="time" class="modal-comebackTime" value="${it.comebackTime || ''}" style="width:100%"></div>
+              </div>
+              <div style="margin-bottom:6px;"><label>Temporary Out Reason</label><input class="modal-outReason" value="${it.outReason || ''}" style="width:100%"></div>
+              <div style="text-align:right;"><button class="btn btn-primary update-issue-btn" data-issue-id="${it._id}">Update</button></div>
+            `;
+
+            // remember original issue text so we can adjust issue count if changed
+            div.dataset.originalIssue = String(it.issue || '').trim();
+
+            body.appendChild(div);
+          });
+        }
+
+        document.getElementById('editModal').style.display = 'flex';
+      } catch (err) {
+        console.error(err);
+        alert('Error loading data');
+      }
+    }
+
+    // Close modal
+    document.getElementById('closeEditModal').addEventListener('click', function() {
+      document.getElementById('editModal').style.display = 'none';
+    });
+
+    // Delegate update clicks inside modal
+    document.getElementById('editModalBody').addEventListener('click', async function(e) {
+      const btn = e.target.closest('.update-issue-btn');
+      if (!btn) return;
+      const issueId = btn.dataset.issueId;
+      const container = btn.closest('.modal-issue');
+      if (!issueId || !container) return;
+
+      const issueText = container.querySelector('.modal-issue-text').value.trim();
+      const lateInReason = container.querySelector('.modal-lateInReason').value.trim();
+      const earlyOutReason = container.querySelector('.modal-earlyOutReason').value.trim();
+      const outReason = container.querySelector('.modal-outReason').value.trim();
+      const outTime = container.querySelector('.modal-outTime').value.trim();
+      const comebackTime = container.querySelector('.modal-comebackTime').value.trim();
+
+      try {
+        btn.disabled = true;
+        const res = await fetch(`/teacher-record/issue/${issueId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ issue: issueText, lateInReason, earlyOutReason, outReason, outTime, comebackTime })
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) throw new Error(data.message || 'Update failed');
+
+        // update main table DOM for this issue using returned issue
+        if (data && data.issue) {
+          const updated = data.issue;
+          const mainNode = document.querySelector(`[data-issue-id="${issueId}"]`);
+          if (mainNode) {
+            // rebuild inner content similar to server render
+            const parts = [];
+            if (updated.fullLeave) parts.push('Full Leave'); else if (updated.halfLeave) parts.push('Half Leave');
+            if (updated.lateIn) parts.push('Late In' + (updated.lateInTime ? (' at ' + updated.lateInTime) : '') + (updated.lateInReason ? (' - ' + updated.lateInReason) : ''));
+            if (updated.earlyOut) parts.push('Early Out' + (updated.earlyOutTime ? (' at ' + updated.earlyOutTime) : '') + (updated.earlyOutReason ? (' - ' + updated.earlyOutReason) : ''));
+            if (updated.temporaryOut) {
+              const ot = updated.outTime ? (function(t){ const p=t.split(':'); let h=parseInt(p[0]); const m=p[1]; const per=h>=12?'pm':'am'; const hh=h%12||12; return hh+':'+m+per;})(updated.outTime) : '';
+              const ct = updated.comebackTime ? (function(t){ const p=t.split(':'); let h=parseInt(p[0]); const m=p[1]; const per=h>=12?'pm':'am'; const hh=h%12||12; return hh+':'+m+per;})(updated.comebackTime) : '';
+              const timerange = ot ? (ot + (ct ? ('-' + ct) : '')) : '';
+              parts.push((updated.outReason || 'Temporary Out') + (timerange ? (' (' + timerange + ')') : ''));
+            }
+            if (updated.issue) parts.push(updated.issue);
+
+            const addedBy = updated.addedByName ? (' (' + updated.addedByName + ')') : '';
+
+            // Build HTML similarly to original block
+            mainNode.innerHTML = `<div style="flex:1"><strong></strong><span>${updated.dateBs || '-' } - </span><span>${parts.length ? parts.join(' | ') : '-'}${addedBy}</span></div>`;
+          }
+        }
+
+        // adjust issue count cell if issue text presence changed
+        try {
+          const prev = String(container.dataset.originalIssue || '').trim();
+          const now = String(issueText || '').trim();
+          if (prev !== now) {
+            // find table row and issueCount cell (7th column index 6)
+            const row = mainNode ? mainNode.closest('tr') : null;
+            if (row) {
+              const cells = row.querySelectorAll('td');
+              const countCell = cells && cells[6];
+              if (countCell) {
+                let cur = parseInt(countCell.textContent || '0', 10) || 0;
+                if (!prev && now) cur = cur + 1; // became an issue
+                if (prev && !now) cur = Math.max(0, cur - 1); // removed issue text
+                countCell.textContent = cur;
+              }
+            }
+            // update stored original
+            container.dataset.originalIssue = now;
+          }
+        } catch (e) {}
+
+        btn.disabled = false;
+        showSaveStatus('Updated', 'success');
+      } catch (err) {
+        console.error(err);
+        btn.disabled = false;
+        alert(err.message || 'Update failed');
+      }
+    });
+
+    // showSaveStatus helper
+    function showSaveStatus(message, type) {
+      const existing = document.querySelector('.save-status');
+      if (existing) existing.remove();
+      const status = document.createElement('div');
+      status.className = 'save-status';
+      status.textContent = message;
+      status.style.position = 'fixed';
+      status.style.right = '16px';
+      status.style.bottom = '16px';
+      status.style.padding = '8px 12px';
+      status.style.borderRadius = '8px';
+      status.style.zIndex = 2000;
+      if (type === 'success') {
+        status.style.background = '#16a34a';
+        status.style.color = '#fff';
+      } else if (type === 'error') {
+        status.style.background = '#ef4444';
+        status.style.color = '#fff';
+      } else {
+        status.style.background = '#2563eb';
+        status.style.color = '#fff';
+      }
+      document.body.appendChild(status);
+      setTimeout(() => status.remove(), 2500);
+    }
+
+    function applyFilter() {
+      const teacherName = (filterTeacherInput.value || '').trim();
+      const params = new URLSearchParams();
+      if (teacherName) {
+        params.set('teacherName', teacherName);
+      }
+      window.location.href = `/teacher-record${params.toString() ? `?${params.toString()}` : ''}`;
+    }
+
+    function clearFilter() {
+      window.location.href = '/teacher-record';
+    }
+  </script>
+  <script src="/js/preeti.js"></script>
+  <script src="/js/preeti-input-toggle.js"></script>
+  <script>
+    // Default to Nepali (Preeti) mode when not previously set
+    try {
+      if (localStorage.getItem('preeti_mode_enabled') === null) {
+        localStorage.setItem('preeti_mode_enabled', '1');
+      }
+    } catch (e) {}
+  </script>
+</body>
+</html>

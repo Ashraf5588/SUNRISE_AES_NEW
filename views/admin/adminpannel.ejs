@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | AES</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet">
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">  <!-- DataTables CSS -->
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css">
+  <link rel="stylesheet" type="text/css" href="/datatable-buttons.css">
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.bootstrap5.min.css">
+  <link rel="stylesheet" href="/nav.css">
+  
+  <style>
+    :root {
+      --primary: #0ea5e9;  /* skyblue */
+      --primary-dark: #0284c7;  /* darker skyblue */
+      --secondary: #8b5a2b;  /* brown */
+      --secondary-dark: #6b4423;  /* darker brown */
+      --accent: #a16207;  /* amber brown for accent */
+      --light: #f8fafc;
+      --dark: #1e293b;
+      --gray: #64748b;
+      --success: #22c55e;
+      --error: #ef4444;
+      --warning: #f59e0b;
+    }
+    
+    body {
+      font-family: 'Lexend', sans-serif;
+      background-color: #f8fafc;
+      color: var(--dark);
+    }
+    
+    .admin-greeting {
+      text-align: center;
+      padding: 2rem 0 1rem;
+    }
+    
+    .admin-greeting h1 {
+      font-weight: 700;
+      color: var(--dark);
+    }
+    
+    .admin-greeting span {
+      color: var(--primary-dark);
+    }
+    
+    .dashboard-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin: 1.5rem auto;
+      max-width: 1200px;
+      padding: 0 1rem;
+    }
+    
+    .dashboard-card {
+      background-color: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      text-decoration: none;
+      color: var(--dark);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .dashboard-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      border-color: var(--primary);
+    }
+    
+    .dashboard-card i {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      color: var(--primary);
+    }
+    
+    .dashboard-card h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    
+    .dashboard-card p {
+      color: var(--gray);
+      margin-bottom: 0;
+    }
+    
+    .data-section {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+    
+    .data-toggle {
+      background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: center;
+      margin-bottom: 1.5rem;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.75rem;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+    
+    .data-toggle:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+    
+    .data-toggle i {
+      font-size: 1.1rem;
+    }
+    
+    .data-content {
+      background-color: white;
+      border-radius: 12px;
+      padding: 2rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      display: none;
+      animation: fadeIn 0.5s ease-out;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .data-header {
+      text-align: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .data-header h2 {
+      font-weight: 700;
+      color: var(--dark);
+    }
+    
+    .data-header span {
+      color: var(--primary-dark);
+    }
+    
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    .data-table th {
+      background: linear-gradient(90deg, var(--primary-dark) 0%, var(--secondary-dark) 100%);
+      color: white;
+      font-weight: 600;
+      padding: 1rem;
+      text-align: left;
+    }
+    
+    .data-table td {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+    
+    .data-table tbody tr:hover {
+      background-color: rgba(14, 165, 233, 0.05);
+    }
+    
+    .data-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+    .terminal-btn {
+      background: skyblue;
+      color: white !important;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }    .selected {
+      background:#082451;
+     
+      color: white !important;
+      padding: 0.7rem 1.3rem;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 500;
+
+      transition: all 0.3s ease;
+
+    }
+    
+    /* Styles for the pivoted table */
+    #pivotedTable thead th {
+      background: linear-gradient(90deg, var(--primary-dark) 0%, var(--secondary-dark) 100%);
+      color: white;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    
+    #pivotedTable td:first-child {
+      background-color: #f8f9fa;
+      position: sticky;
+      left: 0;
+      z-index: 5;
+      font-weight: 600;
+      border-right: 2px solid #dee2e6;
+    }
+    
+    #pivotedTable th:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 15;
+      border-right: 2px solid #dee2e6;
+    }
+    
+    #pivotedTable tr:hover td {
+      background-color: rgba(14, 165, 233, 0.1);
+    }
+    
+    #pivotedTable td.highlight {
+      background-color: rgba(59, 130, 246, 0.2);
+      font-weight: 600;
+    }
+      /* Styles for tab navigation */
+    .nav-tabs .nav-link {
+      color: var(--dark);
+      font-weight: 500;
+    }
+    
+    .nav-tabs .nav-link.active {
+      color: var(--primary-dark);
+      font-weight: 600;
+      border-bottom: 2px solid var(--primary-dark);
+    }
+      /* Cell highlighting based on value */
+    .cell-highlight-1 {
+      background-color: rgba(14, 165, 233, 0.1);
+    }
+    .cell-highlight-2 {
+      background-color: rgba(14, 165, 233, 0.2);
+    }
+    .cell-highlight-3 {
+      background-color: rgba(14, 165, 233, 0.3);
+    }
+    .cell-highlight-4 {
+      background-color: rgba(14, 165, 233, 0.4);
+    }
+    .cell-highlight-5 {
+      background-color: rgba(14, 165, 233, 0.5);
+    }
+    
+    /* Interactive highlighting */
+    .table-hover {
+      background-color: rgba(59, 130, 246, 0.05) !important;
+    }
+    
+    .column-highlight {
+      background-color: rgba(59, 130, 246, 0.05) !important;
+    }
+    
+    .value-highlight {
+      background-color: rgba(251, 191, 36, 0.2) !important;
+      position: relative;
+      font-weight: bold;
+    }
+    
+    .value-highlight::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border: 2px solid rgba(251, 191, 36, 0.6);
+      pointer-events: none;
+    }
+    
+    /* Improve the pivot table appearance */
+    #pivotedTable {
+      border-collapse: separate;
+      border-spacing: 0;
+      border: 1px solid #dee2e6;
+      border-radius: 0.375rem;
+      overflow: hidden;
+    }
+      #pivotedTable th, #pivotedTable td {
+      border: 1px solid #dee2e6;
+      transition: all 0.2s ease-in-out;
+    }
+      /* Heatmap styles */
+    .heatmap-container {
+      display: flex;
+      flex-direction: column;
+      margin-top: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    
+    .heatmap-grid {
+      display: flex;
+      overflow-x: auto;
+    }
+    
+    .heatmap-labels {
+      display: flex;
+      flex-direction: column;
+      background-color: #f8f9fa;
+      border-right: 2px solid #dee2e6;
+      min-width: 120px;
+    }
+    
+    .heatmap-corner {
+      height: 40px;
+      padding: 10px;
+      background-color: #f1f5f9;
+      border-bottom: 2px solid #dee2e6;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .heatmap-label {
+      height: 40px;
+      padding: 10px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid #dee2e6;
+    }
+    
+    .heatmap-data {
+      flex: 1;
+      overflow-x: auto;
+    }
+    
+    .heatmap-header {
+      display: flex;
+      background: linear-gradient(90deg, var(--primary-dark) 0%, var(--secondary-dark) 100%);
+      color: white;
+      position: sticky;
+      top: 0;
+    }
+    
+    .heatmap-header-cell {
+      min-width: 100px;
+      padding: 10px;
+      text-align: center;
+      font-weight: 600;
+      border-right: 1px solid rgba(255, 255, 255, 0.2);
+      border-bottom: 2px solid #dee2e6;
+    }
+    
+    .heatmap-body {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .heatmap-row {
+      display: flex;
+      border-bottom: 1px solid #dee2e6;
+      height: 40px;
+    }
+    
+    .heatmap-cell {
+      min-width: 100px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 500;
+      border-right: 1px solid #dee2e6;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      color: #1e293b;
+    }
+    
+    .heatmap-cell:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+      z-index: 10;
+    }
+    
+    .heatmap-legend {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      margin-bottom: 10px;
+    }
+    
+    .heatmap-gradient {
+      height: 20px;
+      width: 200px;
+      background: linear-gradient(to right, rgba(14, 165, 233, 0.1), rgba(14, 165, 233, 1));
+      border-radius: 4px;
+      margin: 0 10px;
+    }
+      .details-title {
+      font-weight: 600;
+      color: var(--dark);
+    }
+    
+    .selected-cell {
+      box-shadow: 0 0 0 2px var(--primary-dark) !important;
+      z-index: 20;
+      font-weight: bold;
+      transform: scale(1.05);
+    }
+    a{
+      text-decoration: none !important;
+
+    }
+    #page-loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255,255,255,0.9);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+  }
+
+  #page-loader .spinner {
+    width: 60px;
+    height: 60px;
+    border: 6px solid #ccc;
+    border-top: 6px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+</style>
+
+<!-- Loader HTML -->
+<div id="page-loader">
+  <div class="spinner"></div>
+</div>
+  </style>
+</head>
+
+<body>
+  <script>
+  // Show loader before navigating
+  document.addEventListener("DOMContentLoaded", function() {
+    const loader = document.getElementById("page-loader");
+
+    // Find all internal navigation links
+    document.querySelectorAll("a.nav-link").forEach(link => {
+      link.addEventListener("click", function(e) {
+        const href = this.getAttribute("href");
+
+        // Only show loader for real page navigation
+        if (href && !href.startsWith("#") && !href.startsWith("javascript")) {
+          loader.style.display = "flex"; // Show loader
+        }
+      });
+    });
+
+    // Hide loader once page fully loaded
+    window.addEventListener("load", () => {
+      loader.style.display = "none";
+    });
+  });
+</script>
+
+
+  <%- include('../partials/nav',{currentPage:'admin'}) %> <br><br><br>
+
+ <%- include('../partials/sidenav', { 
+     subjects: subjects, 
+     studentClassdata: studentClassdata,
+     terminals: terminals 
+ }) %> 
+
+ <a href="/crossheet"><button style="float: right;background-color: #0ea5e9;border-radius: 5px;border: none;color: white;margin: 1%;"><i class="fa-solid fa-gears" style="color: #ffffff;"></i><center>Generate Markslip</center></button></a> 
+
+  <div class="admin-greeting">
+    <h1>Welcome, <span>Admin</span></h1>
+  </div>
+  
+  <div class="dashboard-cards">
+    <a href="/admin/class" class="dashboard-card">
+      <i class="fa-solid fa-chalkboard-user"></i>
+      <h3>Class Management</h3>
+      <p>View and manage class details and sections</p>
+    </a>
+     <a href="/admin/new/subject" class="dashboard-card">
+      <i class="fa-solid fa-book-open"></i>
+      <h3>Add New Subject</h3>
+      <p>Add new subject name for data entry</p>
+    </a>
+    
+    <a href="/admin/subject" class="dashboard-card">
+     <i class="fa-solid fa-file-circle-question" style="color: #74C0FC;"></i>
+      <h3>Set Question Format</h3>
+      <p>View and manage subject details and curriculum</p>
+    </a>
+     <a href="/admin/terminal" class="dashboard-card">
+     <i class="fa-solid fa-pen-nib" style="color: #74C0FC;"></i>
+      <h3>Add Custom Terminal or Unit Test</h3>
+      <p>View and manage terminal or test details</p>
+    </a>
+     <a href="/studentrecord" class="dashboard-card">
+    <i class="fa-solid fa-circle-user" style="color: #74C0FC;"></i>
+      <h3>Add Student records</h3>
+      <p>View and manage student records</p>
+    </a>
+     <a href="/user" class="dashboard-card">
+     <i class="fa-solid fa-user-plus" style="color: #74C0FC;"></i>
+      <h3>Manage User</h3>
+      <p>Add or Delete Teacher, Modify Teacher data, Reset Password, Assigned Password</p>
+    </a>
+    <a href="/report" class="dashboard-card">
+     <i class="fas fa-print" style="color: #74C0FC;"></i>
+      <h3>Print Report</h3>
+      <p>Print the report of particular class,section and terminal</p>
+    </a>
+    <a href="/exammanagement" class="dashboard-card">
+     <i class="fas fa-print" style="color: #74C0FC;"></i>
+      <h3>Exam Management</h3>
+      <p>Manage exam schedules, formats, and reports</p>
+    </a>
+  </div>
+ 
+  </div>
+  
+  <div class="data-section">
+   
+    
+    <div class="data-conten">
+      <div class="data-header">
+        <h2>Entry <span>Data</span></h2>
+
+
+  <% terminals.forEach((term) => { %>
+    <a href="/admin/term/<%= term.terminal%>"><span class="<%= terminal === term.terminal ? 'selected' : 'terminal-btn' %>"><%= term.terminal %></span></a>
+  <% }); %>
+      </div>      <!-- Tabs for switching between views -->
+      <div class="mb-4">
+        <ul class="nav nav-tabs" id="viewTab" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="matrix-tab" data-bs-toggle="tab" data-bs-target="#matrix" type="button" role="tab" aria-controls="matrix" aria-selected="true">Matrix View</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="list-tab" data-bs-toggle="tab" data-bs-target="#list" type="button" role="tab" aria-controls="list" aria-selected="false">List View</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="heatmap-tab" data-bs-toggle="tab" data-bs-target="#heatmap" type="button" role="tab" aria-controls="heatmap" aria-selected="false">Heat Map</button>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Tab content -->
+      <div class="tab-content" id="viewTabContent">
+        <!-- Matrix (Pivoted) View -->
+        <div class="tab-pane fade show active" id="matrix" role="tabpanel" aria-labelledby="matrix-tab">
+          <div class="table-responsive">
+            <table class="table table-bordered" id="pivotedTable">              <thead class="table-primary">
+                <tr>
+                  <th>Subject</th>
+                  <% if (typeof pivotedData !== 'undefined' && pivotedData.headers) { %>
+                    <% pivotedData.headers.forEach(header => { %>
+                      <th><%= header %></th>
+                    <% }); %>
+                    <th class="bg-light">Total</th>
+                  <% } %>
+                </tr>
+              </thead>
+              <tbody>                <% if (typeof pivotedData !== 'undefined' && pivotedData.subjects && pivotedData.headers) { %>
+                  <% 
+                    // Calculate column totals
+                    const columnTotals = {};
+                    pivotedData.headers.forEach(header => {
+                      columnTotals[header] = 0;
+                    });
+                    
+                    // Calculate grand total
+                    let grandTotal = 0;
+                    
+                    pivotedData.subjects.forEach(subjectName => {
+                      let rowTotal = 0;
+                      pivotedData.headers.forEach(header => {
+                        const value = pivotedData.pivotTable[subjectName][header];
+                        rowTotal += value;
+                        columnTotals[header] += value;
+                        grandTotal += value;
+                      });
+                      
+                      // Store row total
+                      columnTotals[subjectName + '_rowTotal'] = rowTotal;
+                    });
+                  %>
+                
+                  <% pivotedData.subjects.forEach(subjectName => { %>
+                    <tr>
+                      <td><strong><%= subjectName %></strong></td>
+                      <% 
+                        let rowTotal = 0;
+                        pivotedData.headers.forEach(header => {
+                          const value = pivotedData.pivotTable[subjectName][header];
+                          rowTotal += value;
+                      %>                        <td class="text-center <%= value > 0 ? 'cell-highlight-' + Math.min(Math.floor(value / 10) + 1, 5) : '' %>">
+                          <% if (value > 0) { %>
+                            <%= value %>
+                          <% } else { %>
+                            <span class="text-muted">-</span>
+                          <% } %>
+                        </td>
+                      <% }); %>
+                      <!-- Row total -->
+                      <td class="text-center fw-bold bg-light"><%= columnTotals[subjectName + '_rowTotal'] %></td>
+                    </tr>
+                  <% }); %>
+                  
+                  <!-- Column totals row -->
+                  <tr class="bg-light">
+                    <td class="fw-bold">Total</td>
+                    <% pivotedData.headers.forEach(header => { %>
+                      <td class="text-center fw-bold"><%= columnTotals[header] %></td>
+                    <% }); %>
+                    <td class="text-center fw-bold bg-secondary text-white"><%= grandTotal %></td>
+                  </tr>
+                <% } else { %>
+                  <tr>
+                    <td colspan="2" class="text-center">No data available</td>
+                  </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <!-- Original List View -->
+        <div class="tab-pane fade" id="list" role="tabpanel" aria-labelledby="list-tab">
+          <div class="table-responsive">
+            <table class="table" id="entryTable">
+              <thead>
+                <tr>
+                  <th>Class</th>
+                  <th>Section</th>
+                  <th>Subject</th>
+                  <th>Total Entry</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (entryArray && entryArray.length > 0 && terminal) { %>
+                  <% entryArray.forEach((data) => { %>
+                    <tr>
+                      <td><%= data.studentClass %></td>
+                      <td><%= data.section %></td>
+                      <td><%= data.subject %></td>
+                      <td><%= data.totalentry %></td>
+                    </tr>
+                  <% }); %>
+                <% } else { %>
+                  <tr>
+                    <td colspan="4" class="text-center">No data available</td>
+                  </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+          <!-- Heat Map View -->
+        <div class="tab-pane fade" id="heatmap" role="tabpanel" aria-labelledby="heatmap-tab">
+          <% 
+            // Initialize pivotedData if it doesn't exist
+            if (typeof pivotedData === 'undefined') {
+              pivotedData = { subjects: [], headers: [], pivotTable: {} };
+            }
+            
+            if (pivotedData && pivotedData.subjects && pivotedData.headers && pivotedData.subjects.length > 0) { 
+          %>            <div class="mb-4">
+              <div class="heatmap-legend">
+                <span>Fewer entries</span>
+                <div class="heatmap-gradient"></div>
+                <span>More entries</span>
+              </div>
+            </div>
+              <% 
+              // Find the max value for scaling the heatmap
+              let maxValue = 0;
+              pivotedData.subjects.forEach(subjectName => {
+                pivotedData.headers.forEach(header => {
+                  const value = pivotedData.pivotTable[subjectName][header];
+                  if (value > maxValue) maxValue = value;
+                });
+              });
+            %>
+
+            <div class="heatmap-container">
+              <div class="heatmap-grid">
+                <div class="heatmap-labels">
+                  <div class="heatmap-corner">Subject</div>
+                  <% pivotedData.subjects.forEach(subjectName => { %>
+                    <div class="heatmap-label"><%= subjectName %></div>
+                  <% }); %>
+                </div>
+                
+                <div class="heatmap-data">
+                  <div class="heatmap-header">
+                    <% pivotedData.headers.forEach(header => { %>
+                      <div class="heatmap-header-cell"><%= header %></div>
+                    <% }); %>
+                  </div>
+                  
+                  <div class="heatmap-body">
+                    <% pivotedData.subjects.forEach(subjectName => { %>
+                      <div class="heatmap-row">
+                        <% pivotedData.headers.forEach(header => { %>
+                          <% 
+                            const value = pivotedData.pivotTable[subjectName][header];
+                            // Calculate intensity (0-100%) for the heat color
+                            const intensity = maxValue > 0 ? Math.min(100, Math.round((value / maxValue) * 100)) : 0;
+                            const bgColor = `rgba(14, 165, 233, ${intensity/100})`;
+                          %>
+                          <div class="heatmap-cell" 
+                              style="background-color: <%= bgColor %>;" 
+                              data-value="<%= value %>"
+                              data-subject="<%= subjectName %>"
+                              data-class-section="<%= header %>">
+                            <%= value > 0 ? value : '' %>
+                          </div>
+                        <% }); %>
+                      </div>
+                    <% }); %>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="heatmap-details mt-4 p-3 border rounded bg-light d-none">
+              <h5 class="details-title mb-3">Selected Cell Details</h5>
+              <div class="row">
+                <div class="col-md-4">
+                  <p><strong>Subject:</strong> <span id="detail-subject"></span></p>
+                </div>
+                <div class="col-md-4">
+                  <p><strong>Class-Section:</strong> <span id="detail-class-section"></span></p>
+                </div>
+                <div class="col-md-4">
+                  <p><strong>Entry Count:</strong> <span id="detail-value"></span></p>
+                </div>
+              </div>
+            </div>
+          <% } else { %>
+            <div class="alert alert-info">
+              No data available for heat map visualization.
+            </div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
+  <script>
+    // Utility function to safely access pivoted data
+    function getPivotedValue(subject, header) {
+      try {
+        if (typeof pivotedData === 'undefined' || 
+            !pivotedData.pivotTable || 
+            !pivotedData.pivotTable[subject] || 
+            typeof pivotedData.pivotTable[subject][header] === 'undefined') {
+          return 0;
+        }
+        return pivotedData.pivotTable[subject][header];
+      } catch (error) {
+        console.error("Error accessing pivoted data:", error);
+        return 0;
+      }
+    }
+    
+    // Initialize DataTables for both views
+    $(document).ready(function() {
+      // Initialize DataTables for the pivoted table with export options
+      $('#pivotedTable').DataTable({
+        responsive: true,
+        dom: 'Bfrtip',
+        buttons: [
+          'copy', 'excel', 'pdf', 'print'
+        ],
+        paging: false, // Disable pagination for the pivoted view as it's better to see all subjects
+        order: [], // Disable initial sorting
+        searching: false // Disable search for the matrix view
+      });
+      
+      // Initialize DataTables for the list view
+      $('#entryTable').DataTable({
+        responsive: true,
+        dom: 'Bfrtip',
+        buttons: [
+          'copy', 'excel', 'pdf', 'print'
+        ]
+      });
+      
+      // Interactive highlighting for the pivot table
+      const pivotTable = $('#pivotedTable');
+      
+      // Highlight row on hover
+      pivotTable.on('mouseenter', 'tbody tr', function() {
+        $(this).addClass('table-hover');
+      }).on('mouseleave', 'tbody tr', function() {
+        $(this).removeClass('table-hover');
+      });
+      
+      // Highlight column on header hover
+      pivotTable.on('mouseenter', 'thead th', function() {
+        const index = $(this).index();
+        if (index > 0) { // Skip the Subject column
+          pivotTable.find('tbody tr').each(function() {
+            $(this).find('td').eq(index).addClass('column-highlight');
+          });
+        }
+      }).on('mouseleave', 'thead th', function() {
+        const index = $(this).index();
+        if (index > 0) {
+          pivotTable.find('tbody tr').each(function() {
+            $(this).find('td').eq(index).removeClass('column-highlight');
+          });
+        }
+      });
+      
+      // Highlight cells with the same value on click
+      pivotTable.on('click', 'tbody td:not(:first-child)', function() {
+        const value = $(this).text().trim();
+        if (value !== '-') {
+          // Remove any existing highlighting
+          pivotTable.find('td.value-highlight').removeClass('value-highlight');
+          
+          // Add highlighting to cells with the same value
+          pivotTable.find('tbody td').each(function() {
+            if ($(this).text().trim() === value && value !== '-') {
+              $(this).addClass('value-highlight');
+            }
+          });
+        }
+      });
+      
+      // Clear value highlighting when clicking elsewhere
+      $(document).on('click', function(e) {
+        if (!$(e.target).closest('#pivotedTable tbody td').length) {
+          pivotTable.find('td.value-highlight').removeClass('value-highlight');
+        }
+      });
+        // Heatmap initialization and interaction
+      function initializeHeatmap() {
+        // Handle cell click event to show details
+        $('.heatmap-cell').on('click', function() {
+          const value = $(this).attr('data-value');
+          const subject = $(this).attr('data-subject');
+          const classSection = $(this).attr('data-class-section');
+          
+          // Update details section
+          $('#detail-subject').text(subject);
+          $('#detail-class-section').text(classSection);
+          $('#detail-value').text(value || '0');
+          
+          // Highlight the selected cell
+          $('.heatmap-cell').removeClass('selected-cell');
+          $(this).addClass('selected-cell');
+          
+          // Show details section
+          $('.heatmap-details').removeClass('d-none').hide().fadeIn(300);
+        });
+      }
+      
+      // Initialize heatmap when tab is shown
+      $('#heatmap-tab').on('shown.bs.tab', function (e) {
+        initializeHeatmap();
+      });
+      
+      // Initialize heat map if it's the active tab on page load
+      if ($('#heatmap-tab').hasClass('active')) {
+        initializeHeatmap();
+      }
+    });
+  </script>
+  
+</body>
+</html>

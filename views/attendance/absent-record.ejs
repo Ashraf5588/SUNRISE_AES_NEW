@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Absent Record</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;600;700;800&family=Manrope:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --ink:#1f2937;
+      --muted:#6b7280;
+      --accent:#f97316;
+      --accent-dark:#ea580c;
+      --sky:#1f3b73;
+      --sky-light:#345b9a;
+      --paper:#ffffff;
+      --bg:#eef2f9;
+      --border:#d7e0ee;
+      --row:#f9fbff;
+      --shadow:0 18px 40px rgba(15,23,42,.12)
+    }
+
+    *{box-sizing:border-box;margin:0;padding:0}
+
+    body{
+      font-family:'Lexend',sans-serif;
+      background:
+        radial-gradient(circle at top right, rgba(249,115,22,.18), transparent 45%),
+        radial-gradient(circle at top left, rgba(31,59,115,.18), transparent 45%),
+        linear-gradient(180deg, #eef2f9 0%, #f7f9fd 100%);
+      color:var(--ink);
+      min-height:100vh;
+      padding:24px 18px 40px;
+    }
+
+    .page{
+      max-width:1040px;
+      margin:0 auto;
+    }
+
+    .header{
+      background:linear-gradient(135deg, var(--sky) 0%, var(--sky-light) 55%, var(--accent) 100%);
+      color:#fff;
+      padding:22px 24px;
+      border-radius:18px;
+      box-shadow:var(--shadow);
+    }
+
+    .title{
+      font-size:26px;
+      font-weight:800;
+      letter-spacing:.3px;
+    }
+
+    .subtitle{
+      margin-top:6px;
+      color:rgba(255,255,255,.88);
+      font-size:14px;
+    }
+
+    .school-absent{
+      margin-top:10px;
+      font-size:15px;
+      font-weight:800;
+      text-align:center;
+      letter-spacing:.3px;
+    }
+
+    .filters{
+      margin-top:18px;
+      background:var(--paper);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:16px 18px;
+      box-shadow:0 10px 28px rgba(15,23,42,.08);
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+      gap:12px;
+      align-items:end;
+    }
+
+    .filters label{
+      font-size:12px;
+      font-weight:700;
+      color:var(--muted);
+      margin-bottom:6px;
+      display:block;
+    }
+
+    .filters select{
+      width:100%;
+      padding:8px 10px;
+      border:1px solid var(--border);
+      border-radius:10px;
+      background:#fff;
+      color:var(--ink);
+      font-size:13px;
+    }
+
+    .filters .btn{
+      border:0;
+      border-radius:10px;
+      padding:10px 12px;
+      font-weight:700;
+      cursor:pointer;
+      font-size:13px;
+      letter-spacing:.3px;
+    }
+
+    .btn-primary{
+      background:linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+      color:#fff;
+    }
+
+    .btn-outline{
+      background:#fff;
+      border:1px solid var(--border);
+      color:var(--ink);
+    }
+
+    .btn-print{
+      background:linear-gradient(135deg, #0f172a 0%, #334155 100%);
+      color:#fff;
+      border:1px solid #0f172a;
+      letter-spacing:.4px;
+    }
+
+    .btn-print:hover{
+      filter:brightness(1.05);
+    }
+
+    .detail-panel{
+      margin-top:18px;
+      display:none;
+    }
+
+    .detail-panel.is-visible{
+      display:block;
+    }
+
+    .detail-actions{
+      margin-top:14px;
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));
+      gap:10px;
+    }
+
+    .month-check{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-size:13px;
+      font-weight:600;
+      color:var(--ink);
+    }
+
+    .month-table{
+      margin-top:18px;
+    }
+
+    .month-title{
+      font-size:15px;
+      font-weight:800;
+      color:var(--sky);
+      margin-bottom:8px;
+    }
+
+    .content{
+      margin-top:22px;
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+      gap:18px;
+    }
+
+    .group-card{
+      background:var(--paper);
+      border-radius:16px;
+      border:1px solid var(--border);
+      box-shadow:0 12px 26px rgba(15,23,42,.08);
+      padding:16px 18px;
+    }
+
+    .group-header{
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding-bottom:12px;
+      border-bottom:1px dashed var(--border);
+    }
+
+    .group-title{
+      font-size:16px;
+      font-weight:800;
+      color:var(--sky);
+    }
+
+    .group-count{
+      background:rgba(249,115,22,.12);
+      color:var(--accent-dark);
+      font-weight:700;
+      padding:6px 12px;
+      border-radius:999px;
+      font-size:12px;
+      letter-spacing:.3px;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:12px;
+    }
+
+    th,td{
+      text-align:left;
+      padding:8px 10px;
+      font-size:13px;
+    }
+
+    thead th{
+      color:var(--muted);
+      font-weight:700;
+      border-bottom:1px solid var(--border);
+    }
+
+    tbody tr:nth-child(even){
+      background:var(--row);
+    }
+
+    .reason{
+      display:block;
+      margin-top:4px;
+      font-size:11px;
+      color:var(--muted);
+      line-height:1.35;
+    }
+
+    .empty{
+      padding:28px;
+      text-align:center;
+      color:var(--muted);
+      font-weight:600;
+      background:var(--paper);
+      border-radius:16px;
+      border:1px solid var(--border);
+    }
+
+    @media (max-width:720px){
+      .title{font-size:22px}
+      .group-title{font-size:15px}
+      .filters{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+      .content{grid-template-columns:1fr}
+    }
+
+    @media print{
+      body{
+        background:#fff;
+        padding:0;
+      }
+
+      .header,
+      .filters,
+      .btn-outline,
+      .btn-primary{
+        display:none !important;
+      }
+
+      .page{
+        max-width:100%;
+        margin:0;
+      }
+
+      .group-card{
+        box-shadow:none;
+        border:0;
+        border-radius:0;
+        page-break-inside:avoid;
+      }
+
+      .detail-actions{
+        display:none !important;
+      }
+
+      .print-detail .summary-section{
+        display:none !important;
+      }
+
+      .print-detail .detail-panel{
+        display:block !important;
+      }
+
+      table{
+        border:1px solid #000;
+      }
+
+      th,td{
+        border:1px solid #000;
+      }
+
+      .empty{
+        border:1px solid #000;
+      }
+
+      @page{
+        size:A4;
+        margin:12mm;
+      }
+
+      .content{
+        grid-template-columns:repeat(2, minmax(0, 1fr));
+        gap:12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <% const schoolAbsentCount = Array.isArray(groups)
+      ? groups.reduce((sum, group) => sum + (Number(group.absentCount) || 0), 0)
+      : 0;
+    const classOrder = ['Nursery', 'LKG', 'UKG', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+    const classOrderMap = classOrder.reduce((acc, name, index) => {
+      acc[name.toLowerCase()] = index;
+      return acc;
+    }, {});
+    const sortedGroups = Array.isArray(groups)
+      ? [...groups].sort((a, b) => {
+          const aClass = String(a.studentClass || '').trim();
+          const bClass = String(b.studentClass || '').trim();
+          const aRank = classOrderMap[aClass.toLowerCase()] ?? 999;
+          const bRank = classOrderMap[bClass.toLowerCase()] ?? 999;
+          if (aRank !== bRank) return aRank - bRank;
+          if (aClass !== bClass) return aClass.localeCompare(bClass);
+          const aSection = String(a.section || '').trim();
+          const bSection = String(b.section || '').trim();
+          return aSection.localeCompare(bSection);
+        })
+      : []; %>
+    <header class="header">
+      <div class="title">Absent Record</div>
+      <div class="subtitle">
+        Date (BS): <strong><%= todayBs %></strong>
+        | Academic Year: <strong><%= academicYear %></strong>
+        | Month: <strong><%= currentMonthName %></strong>
+        | Day: <strong><%= todayDay %></strong>
+        | Total Absent: <strong><%= totalAbsentCount || 0 %></strong>
+      </div>
+      <div class="school-absent">School Absent Count: <strong><%= schoolAbsentCount %></strong></div>
+    </header>
+
+    <form class="filters" method="GET" action="/absent-record">
+      <div>
+        <label for="academicYear">Academic Year</label>
+        <select name="academicYear" id="academicYear">
+          <% (academicYearOptions || []).forEach((year) => { %>
+            <option value="<%= year %>" <%= String(year) === String(academicYear) ? 'selected' : '' %>><%= year %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div>
+        <label for="month">Month</label>
+        <select name="month" id="month">
+          <% (monthOptions || []).forEach((month) => { %>
+            <option value="<%= month %>" <%= String(month) === String(currentMonthName) ? 'selected' : '' %>><%= month %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div>
+        <label for="day">Day</label>
+        <select name="day" id="day">
+          <% (dayOptions || []).forEach((day) => { %>
+            <option value="<%= day %>" <%= Number(day) === Number(todayDay) ? 'selected' : '' %>><%= day %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div>
+        <button class="btn btn-primary" type="submit">Load Absent List</button>
+      </div>
+      <div>
+        <button class="btn btn-print" id="print-summary-btn" type="button" onclick="window.print()">Print A4</button>
+      </div>
+      <div>
+        <button class="btn btn-outline" id="detail-print-btn" type="button">Print Detail Report</button>
+      </div>
+    </form>
+
+    <section class="content">
+      <article class="group-card summary-section" style="grid-column:1/-1">
+        <div class="group-header">
+          <div class="group-title">Absent Summary</div>
+            <div class="group-count">Total: <%= schoolAbsentCount %></div>
+        </div>
+        <% if (sortedGroups && sortedGroups.length > 0) { %>
+          <table>
+            <thead>
+              <tr>
+                <th style="width:60px">SN</th>
+                <th style="width:110px">Class</th>
+                <th style="width:120px">Section</th>
+                  <th style="width:110px">Total Absent</th>
+                  <th style="width:110px">Present</th>
+                  <th style="width:160px">Entered Time</th>
+              </tr>
+            </thead>
+            <tbody>
+                <% sortedGroups.forEach((group, index) => {
+                     const absent = Number(group.absentCount) || 0;
+                     const total = Number(group.totalStudents || 0);
+                     const attendanceDone = Boolean(group.attendanceDone);
+                     const present = attendanceDone && Number.isFinite(total) ? (total - absent) : null;
+                     const timeStr = group.enteredTime || (attendanceDone ? 'Recorded' : 'Attendance not done');
+                %>
+                  <tr>
+                    <td><%= index + 1 %></td>
+                    <td><%= group.studentClass || '-' %></td>
+                    <td><%= group.section || '-' %></td>
+                    <td><%= absent %></td>
+                    <td><%= present === null ? '-' : present %></td>
+                    <td><%= timeStr %></td>
+                  </tr>
+                <% }) %>
+                <tr>
+                  <td colspan="4" style="font-weight:700">Total</td>
+                  <td style="font-weight:800"><%= (() => {
+                        const schoolTotal = Array.isArray(groups) ? groups.reduce((s,g)=> s + (Number(g.totalStudents||0)), 0) : 0;
+                        return schoolTotal > 0 ? (schoolTotal - schoolAbsentCount) : '-';
+                      })() %></td>
+                  <td style="font-weight:800"><%= schoolAbsentCount %></td>
+                </tr>
+            </tbody>
+          </table>
+        <% } else { %>
+          <div class="empty">No absent students found for the selected date.</div>
+        <% } %>
+      </article>
+    </section>
+
+    <section class="detail-panel" id="detail-panel">
+      <article class="group-card" style="grid-column:1/-1">
+        <div class="group-header">
+          <div class="group-title">Detail Report (Monthly)</div>
+          <div class="group-count">Select Months</div>
+        </div>
+        <div class="detail-actions">
+          <label class="month-check">
+            <input type="checkbox" id="month-all" />
+            <span>All</span>
+          </label>
+          <% (monthOptions || []).forEach((month) => { %>
+            <label class="month-check">
+              <input class="month-checkbox" type="checkbox" value="<%= month %>" />
+              <span><%= month %></span>
+            </label>
+          <% }) %>
+        </div>
+        <div id="detail-empty" class="empty" style="display:none">Select at least one month to view details.</div>
+        <div id="detail-tables"></div>
+      </article>
+    </section>
+  </div>
+  <script>
+    const monthSummaries = <%- JSON.stringify(monthSummaries || []) %>;
+    const monthOptions = <%- JSON.stringify(monthOptions || []) %>;
+    const detailPanel = document.getElementById('detail-panel');
+    const detailTables = document.getElementById('detail-tables');
+    const detailEmpty = document.getElementById('detail-empty');
+    const detailButton = document.getElementById('detail-print-btn');
+    const summaryPrintButton = document.getElementById('print-summary-btn');
+    const allCheckbox = document.getElementById('month-all');
+    const monthCheckboxes = Array.from(document.querySelectorAll('.month-checkbox'));
+
+    const summaryMap = new Map(
+      monthSummaries.map((summary) => [String(summary.month || '').toLowerCase(), summary])
+    );
+
+    const buildCell = (text, isHeader) => {
+      const cell = document.createElement(isHeader ? 'th' : 'td');
+      cell.textContent = text;
+      return cell;
+    };
+
+    const buildMonthTable = (monthName, summary) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'month-table';
+
+      const title = document.createElement('div');
+      title.className = 'month-title';
+      title.textContent = monthName;
+      wrapper.appendChild(title);
+
+      if (!summary || !Array.isArray(summary.groups) || summary.groups.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = 'No absent records for this month.';
+        wrapper.appendChild(empty);
+        return wrapper;
+      }
+
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      const headerRow = document.createElement('tr');
+      headerRow.appendChild(buildCell('SN', true));
+      headerRow.appendChild(buildCell('Class', true));
+      headerRow.appendChild(buildCell('Section', true));
+      headerRow.appendChild(buildCell('Total Month Absent', true));
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      summary.groups.forEach((group, index) => {
+        const row = document.createElement('tr');
+        row.appendChild(buildCell(String(index + 1)));
+        row.appendChild(buildCell(group.studentClass || '-'));
+        row.appendChild(buildCell(group.section || '-'));
+        row.appendChild(buildCell(String(group.absentCount || 0)));
+        tbody.appendChild(row);
+      });
+
+      const totalRow = document.createElement('tr');
+      const totalLabel = buildCell('Total');
+      totalLabel.colSpan = 3;
+      totalLabel.style.fontWeight = '700';
+      totalRow.appendChild(totalLabel);
+      const totalValue = buildCell(String(summary.totalAbsent || 0));
+      totalValue.style.fontWeight = '800';
+      totalRow.appendChild(totalValue);
+      tbody.appendChild(totalRow);
+
+      table.appendChild(tbody);
+      wrapper.appendChild(table);
+      return wrapper;
+    };
+
+    const renderDetailTables = () => {
+      detailTables.innerHTML = '';
+      const selectedMonths = monthOptions.filter((month) => {
+        const checkbox = monthCheckboxes.find((box) => box.value === month);
+        return checkbox && checkbox.checked;
+      });
+
+      if (selectedMonths.length === 0) {
+        detailEmpty.style.display = 'block';
+        return;
+      }
+
+      detailEmpty.style.display = 'none';
+      selectedMonths.forEach((month) => {
+        const summary = summaryMap.get(String(month).toLowerCase());
+        detailTables.appendChild(buildMonthTable(month, summary));
+      });
+    };
+
+    allCheckbox.addEventListener('change', () => {
+      monthCheckboxes.forEach((box) => {
+        box.checked = allCheckbox.checked;
+      });
+      renderDetailTables();
+    });
+
+    monthCheckboxes.forEach((box) => {
+      box.addEventListener('change', () => {
+        allCheckbox.checked = monthCheckboxes.every((item) => item.checked);
+        renderDetailTables();
+      });
+    });
+
+    detailButton.addEventListener('click', () => {
+      const isVisible = detailPanel.classList.contains('is-visible');
+      if (!isVisible) {
+        detailPanel.classList.add('is-visible');
+        renderDetailTables();
+        detailPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      document.body.classList.add('print-detail');
+      window.print();
+    });
+
+    summaryPrintButton.addEventListener('click', () => {
+      document.body.classList.remove('print-detail');
+    });
+
+    window.addEventListener('afterprint', () => {
+      document.body.classList.remove('print-detail');
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>See Rubriks</title>
+  <style>
+    table {
+      width: 90%;
+      border-collapse: collapse;
+      margin: 20px auto;
+      font-family: Arial, sans-serif;
+    }
+    th{
+      background-color: rgb(17, 91, 156);
+      color: white;
+      font-size: 20px;
+      padding: 10px;
+      font-weight:450;
+      
+    }
+    td
+    {
+      text-align: left;
+      font-size: 18px;
+    }
+    body
+    {
+      background-color: aliceblue;
+    }
+  </style>
+</head>
+<body>
+       <%- include('../partials/mainnav') %>
+  <center>Entry Detail</center>
+
+  <center><span style="font-weight: bold; font-size: 24px;">Lesson Wise Practical & Project Work</span></center>
+  <br>
+  
+<!-- Existing Lesson Data Display Table -->
+<% if (typeof lessonData !== 'undefined' && lessonData && lessonData.length > 0) { %>
+<div class="form-card" style="margin-top: 2rem;">
+  <div class="header-card" style="margin-bottom: 1rem; padding: 1rem;">
+    <h3 style="color: #4a90e2; margin: 0;">📚 Existing Lesson Configuration</h3>
+    <p style="margin: 0.5rem 0 0 0; color: #7f8c8d;">Current units and practicals setup</p>
+  </div>
+  
+  <div class="table-container" style="overflow-x: auto; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+    <table class="data-table" style="width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden;">
+      <thead>
+        <tr style="background: linear-gradient(135deg, #4a90e2, #357abd); color: white;">
+          <th style="padding: 1rem 0.75rem; text-align: center; font-weight: 600; border: none;">S.N</th>
+          <th style="padding: 1rem 0.75rem; text-align: center; font-weight: 600; border: none;">Unit Name</th>
+          <th style="padding: 1rem 0.75rem; text-align: center; font-weight: 600; border: none;">Portion</th>
+          <th style="padding: 1rem 0.75rem; text-align: center; font-weight: 600; border: none;">Practicals</th>
+          <th style="padding: 1rem 0.75rem; text-align: center; font-weight: 600; border: none;">Project Works</th>
+          <th style="padding: 1rem 0.75rem; text-align: center; font-weight: 600; border: none;">Terminal</th>
+          <th style="padding: 1rem 0.75rem; text-align: center; font-weight: 600; border: none;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% let globalUnitIndex = 0; %>
+        <% lessonData.forEach((lesson) => { %>
+          <% lesson.totalLessons.forEach((totalLesson) => { %>
+            <% totalLesson.units.forEach((unit, unitIndex) => { %>
+              <% globalUnitIndex++; %>
+              <tr style="<%= globalUnitIndex % 2 === 0 ? 'background-color: #f8f9fa;' : 'background-color: white;' %> transition: all 0.3s ease;" 
+                  onmouseover="this.style.backgroundColor='#e3f2fd'; this.style.transform='translateY(-1px)'" 
+                  onmouseout="this.style.backgroundColor='<%= globalUnitIndex % 2 === 0 ? '#f8f9fa' : 'white' %>'; this.style.transform='translateY(0)'">
+                
+                <!-- Serial Number -->
+                <td style="padding: 1rem 0.75rem; text-align: center; border: 1px solid #dee2e6; font-weight: 600; color: #4a90e2;">
+                  <%= globalUnitIndex %>
+                </td>
+                
+                <!-- Unit Name -->
+                <td style="padding: 1rem 0.75rem; text-align: center; border: 1px solid #dee2e6; font-weight: 500; color: #2c3e50;">
+                  <div >
+                    <%= unit.unitName || 'N/A' %>
+                  </div>
+                </td>
+                
+                <!-- Portion -->
+                <td style="padding: 1rem 0.75rem; text-align: center; border: 1px solid #dee2e6; color: #5a6c7d;">
+                  <%= unit.portion || 'Not specified' %>
+                </td>
+                
+                <!-- Practicals -->
+                <td style="padding: 1rem 0.75rem; border: 1px solid #dee2e6;">
+                  <% if (unit.practicals && unit.practicals.length > 0) { %>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: center;">
+                      <% unit.practicals.forEach((practical, pIndex) => { %>
+                        <span >
+                          P<%= pIndex + 1 %>: <%= practical %>
+                        </span>
+                      <% }); %>
+                    </div>
+                  <% } else { %>
+                    <span style="color: #95a5a6; font-style: italic; font-size: 0.9rem;">No practicals</span>
+                  <% } %>
+                </td>
+                
+                <!-- Project Works -->
+                <td style="padding: 1rem 0.75rem; border: 1px solid #dee2e6;">
+                  <% if (unit.projectworks && unit.projectworks.length > 0) { %>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: center;">
+                      <% unit.projectworks.forEach((project, projIndex) => { %>
+                        <span style=" border-radius: 12px; font-size: 0.8rem; font-weight: 500; display: inline-block;">
+                          PW<%= projIndex + 1 %>: <%= project %>
+                        </span>
+                      <% }); %>
+                    </div>
+                  <% } else { %>
+                    <span style="color: #95a5a6; font-style: italic; font-size: 0.9rem;">No projects</span>
+                  <% } %>
+                </td>
+                
+                <!-- Terminal -->
+                <td style="padding: 1rem 0.75rem; text-align: center; border: 1px solid #dee2e6;">
+                  <div style=" padding: 0.4rem 0.8rem; border-radius: 15px; display: inline-block; font-size: 0.85rem; font-weight: 600;">
+                    <%= totalLesson.terminal || 'N/A' %>
+                  </div>
+                </td>
+                
+                <!-- Actions -->
+                <td style="padding: 1rem 0.75rem; text-align: center; border: 1px solid #dee2e6;">
+                  <div style="display: flex; gap: 0.5rem; justify-content: center; align-items: center;">
+                    <a href="/editlessondata?lessonId=<%= totalLesson._id %>&studentClass=<%= studentClass %>&terminal=<%= terminal%>" style="text-decoration: none;">
+                      <button type="button" style="background: linear-gradient(135deg, #1286f3, #82b8f1); color: white; border: none; padding: 0.5rem 0.8rem; border-radius: 8px; cursor: pointer; font-size: 0.8rem; font-weight: 500; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(243, 156, 18, 0.3);" 
+                              onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(243, 156, 18, 0.4)'"
+                              onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(243, 156, 18, 0.3)'">
+                         Edit
+                      </button>
+                    </a>
+                    <a href="/deletelessondata?lessonId=<%= totalLesson._id %>&studentClass=<%= studentClass %>&terminal=<%= terminal %>&subject=<%= subject %>&section=<%= section %>" onclick="return confirm('Are you sure you want to delete this lesson data?')" style="text-decoration: none;">
+                      <button type="button" style="background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; border: none; padding: 0.5rem 0.8rem; border-radius: 8px; cursor: pointer; font-size: 0.8rem; font-weight: 500; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);"
+                              onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(231, 76, 60, 0.4)'"
+                              onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(231, 76, 60, 0.3)'">
+                        🗑️ Delete
+                      </button>
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            <% }); %>
+          <% }); %>
+        <% }); %>
+        <%}%>
+      </tbody>
+    </table>
+  </div>
+ <center><span style="font-weight: bold; font-size: 24px;">Practical Work Rubriks</span></center>
+ <center><table cellspacing="0" border="1" style="background-color: white;"> 
+  <thead>
+                                <tr>
+                                  <th>SN</th>
+                                  <th>आधार</th>
+                                  <th>पक्ष</th>
+                                 <th>सूचक</th>
+                                 
+                                  <th>प्राप्तांक</th>
+                                  
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <% let iIndex = 0 %>
+                                <% practicalFormatData.forEach(function(doc) { %>
+                                  <% doc.themes.forEach(function(theme) { %>
+                                    <% let themeRowspan = theme.learningOutcome.reduce((sum, lo) => sum + lo.indicators.length, 0); %>
+                                    <% let firstThemeRow = true; %>
+
+                                    <% theme.learningOutcome.forEach(function(lo,loIdx) { %>
+                                      <% let loRowspan = lo.indicators.length; %>
+                                      <% let mulyIndex = iIndex; %>
+
+                                      <% lo.indicators.forEach(function(ind, indIndex) { %>
+                                        <tr>
+                                          <% if(firstThemeRow && indIndex === 0) { %>
+                                            <td rowspan="<%= themeRowspan %>"><%= iIndex+1 %></td>
+                                            <td rowspan="<%= themeRowspan %>"><%= theme.themeName %></td>
+                                            <% firstThemeRow = false; %>
+                                          <% } %>
+
+                                          <% if(indIndex === 0) { %>
+                                            <td rowspan="<%= loRowspan %>"><%= lo.learningOutcomeName %></td>
+                                          <% } %>
+
+                                          <td><%= ind.indicatorName %></td>
+                                          <td>
+                                            <div class="radio-group">
+                                              
+     
+
+                                              <%= ind.indicatorsMarks %>
+                                            </div>
+                                          </td>
+                                          
+                                        </tr>
+                                      <% }) %>
+                                      
+                                      <% iIndex++ %>
+                                      
+                                    <% }) %>
+                                    
+                                  <% }) %>
+                                  
+                                <% }) %>
+                              </tbody>
+</table>
+
+<center><span style="font-weight: bold; font-size: 24px;">Project Work Rubriks</span></center>
+<table cellspacing="0" border="1" style="background-color: white;"> 
+  <thead>
+                                <tr>
+                                  <th>SN</th>
+                                  <th>आधार</th>
+                                  <th>पक्ष</th>
+                                  <th>सूचक</th>
+                                  <th>प्राप्तांक</th>
+                                
+                                </tr>
+                              </thead>
+                              <tbody>
+                                
+                                <% projectFormatData.forEach(function(doc) { %>
+                                  <% doc.themes.forEach(function(theme) { %>
+                                    <% let themeRowspan = theme.learningOutcome.reduce((sum, lo) => sum + lo.indicators.length, 0); %>
+                                    <% let firstThemeRow = true; %>
+
+                                    <% theme.learningOutcome.forEach(function(lo,loIdx) { %>
+                                      <% let loRowspan = lo.indicators.length; %>
+                                      <% let mulyIndex = iIndex; %>
+
+                                      <% lo.indicators.forEach(function(ind, indIndex) { %>
+                                        <tr>
+                                          <% if(firstThemeRow && indIndex === 0) { %>
+                                            <td rowspan="<%= themeRowspan %>"><%= iIndex+1 %></td>
+                                            <td rowspan="<%= themeRowspan %>"><%= theme.themeName %></td>
+                                            <% firstThemeRow = false; %>
+                                          <% } %>
+
+                                          <% if(indIndex === 0) { %>
+                                            <td rowspan="<%= loRowspan %>"><%= lo.learningOutcomeName %></td>
+                                          <% } %>
+
+                                          <td><%= ind.indicatorName %></td>
+                                          <td>
+                                            <div class="radio-group">
+                                              
+     
+
+                                              <%= ind.indicatorsMarks %>
+                                            </div>
+                                          </td>
+                                         
+                                        </tr>
+                                      <% }) %>
+                                      <% iIndex++ %>
+                                    <% }) %>
+                                  <% }) %>
+                                <% }) %>
+                              </tbody>
+</table></center> 
+</body>
+</html>

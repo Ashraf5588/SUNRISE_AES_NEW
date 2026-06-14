@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Data | Question <%= qno %></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- DataTables CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.4.1/css/responsive.bootstrap5.min.css">
+    <!-- jQuery and DataTables JS -->
+    <script type="text/javascript" language="javascript" src="https://code.jquery.com/jquery-3.7.0.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.bootstrap5.min.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/responsive/2.4.1/js/dataTables.responsive.min.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/responsive/2.4.1/js/responsive.bootstrap5.min.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+    <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
+    
+    <link rel="stylesheet" href="/nav.css">
+    
+    <style>
+        :root {
+            --primary: #0ea5e9;  /* skyblue */
+            --primary-dark: #0284c7;  /* darker skyblue */
+            --secondary: #8b5a2b;  /* brown */
+            --secondary-dark: #6b4423;  /* darker brown */
+            --light: #f8fafc;
+            --dark: #1e293b;
+            --accent: #a16207;  /* amber brown for accent */
+            --gray: #64748b;
+            --success: #22c55e;
+            --error: #ef4444;
+            --warning: #f59e0b;
+        }
+        
+        body {
+            background-color: #f8fafc;
+            font-family: 'Lexend', sans-serif;
+            color: var(--dark);
+            padding-bottom: 3rem;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 80%);
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+            color: white;
+            padding-bottom: 1rem;
+        }
+        
+        .hero-section {
+            padding: 2rem 1rem;
+            text-align: center;
+        }
+        
+        #firstheading {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-top: 0;
+            color: white;
+        }
+        
+        #firstspan {
+            color: var(--accent);
+            font-weight: 800;
+        }
+        
+        .subheading {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 1.2rem;
+            display: block;
+            margin-top: 0.5rem;
+        }
+        
+        .table-container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 15px -3px rgba(14, 165, 233, 0.1), 0 4px 6px -2px rgba(139, 90, 43, 0.05);
+            border-top: 3px solid var(--primary);
+        }
+        
+        .question-badge {
+            background: linear-gradient(90deg, var(--secondary) 0%, var(--secondary-dark) 100%);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 30px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            font-size: 1.1rem;
+        }
+        
+        .status-badge {
+            font-size: 0.8rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 30px;
+            color: white;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        
+        .badge-correct {
+            background-color: var(--success);
+        }
+        
+        .badge-incorrect {
+            background-color: var(--error);
+        }
+        
+        .badge-notattempt {
+            background-color: var(--gray);
+        }
+        
+        .badge-above50 {
+            background-color: var(--primary);
+        }
+        
+        .badge-below50 {
+            background-color: var(--warning);
+        }
+        
+        .print-btn {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--primary);
+            color: white;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            z-index: 100;
+        }
+        
+        .print-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 20px -3px rgba(0, 0, 0, 0.3);
+            background: var(--primary-dark);
+        }
+        
+        .breadcrumb {
+            background-color: white;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1.25rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+        
+        .info-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid var(--primary);
+        }
+        
+        .info-card h5 {
+            color: var(--primary-dark);
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .table > :not(caption) > * > * {
+            padding: 0.75rem 1rem;
+        }
+        
+        .table thead th {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 1rem;
+            font-weight: 500;
+        }
+        
+        .table tbody tr:nth-of-type(odd) {
+            background-color: rgba(14, 165, 233, 0.05);
+        }
+        
+        .table tbody tr:hover {
+            background-color: rgba(14, 165, 233, 0.1);
+        }
+        
+        .table td {
+            vertical-align: middle;
+        }
+        
+        @media print {
+            .print-btn, header, .breadcrumb, .back-btn-container {
+                display: none !important;
+            }
+            
+            body {
+                padding: 1rem;
+                background-color: white;
+            }
+            
+            .table-container {
+                box-shadow: none;
+                border: none;
+            }
+            
+            .container-fluid {
+                width: 100%;
+                max-width: 100%;
+                padding: 0;
+            }
+            
+            .table {
+                width: 100%;
+            }
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease forwards;
+        }
+        
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(90deg, var(--secondary) 0%, var(--secondary-dark) 100%);
+            color: white;
+            border-radius: 6px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            gap: 0.5rem;
+        }
+        
+        .back-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <%- include('./partials/nav',{currentPage:'teacher'}) %>
+        <div class="hero-section">
+            <h1 id="firstheading">Student <span id="firstspan">Records</span></h1>
+            <span class="subheading">Detailed analysis of student responses for Question <%= qno %></span>
+        </div>
+    </header>
+    
+    <div class="container-fluid" style="max-width: 1400px;">
+        <!-- Breadcrumb Navigation -->        <nav aria-label="breadcrumb" class="mb-4 fade-in">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/forms" class="text-decoration-none">Home</a></li>
+                <% if (StudentData && StudentData.length > 0) { %>
+                    <li class="breadcrumb-item"><a href="/findData/<%= StudentData[0].subject.toLowerCase() %>/<%= StudentData[0].studentClass %>/<%= StudentData[0].section %>/<%= StudentData[0].terminal %>" class="text-decoration-none">Analysis</a></li>
+                <% } else { %>
+                    <li class="breadcrumb-item"><a href="/findData/<%= subjectinput.toLowerCase() %>/<%= studentClass %>/<%= section %>/<%= terminal %>" class="text-decoration-none">Analysis</a></li>
+                <% } %>
+                <li class="breadcrumb-item active" aria-current="page">Question <%= qno %></li>
+            </ol>
+        </nav>
+        
+        <div class="row mb-4">
+            <div class="col-md-8 fade-in" style="animation-delay: 0.1s;">
+                <div class="info-card">
+                    <h5><i class="fas fa-clipboard-check me-2"></i>Question Information</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <strong>Question Number:</strong> <%= qno %>
+                            </p>
+                            <p class="mb-2">
+                                <strong>Subject:</strong> <%= StudentData[0].subject %>
+                            </p>
+                            <p class="mb-2">
+                                <strong>Terminal:</strong> <%= StudentData[0].terminal %>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <strong>Class:</strong> <%= StudentData[0].studentClass %>
+                            </p>
+                            <p class="mb-2">
+                                <strong>Section:</strong> <%= StudentData[0].section %>
+                            </p>
+                            <p class="mb-2">
+                                <strong>Students:</strong> <%= StudentData.length %> 
+                                <% 
+                                let statusText = "";
+                                let badgeClass = "";
+                                if(StudentData[0][qno] === "correct") {
+                                    statusText = "Correct";
+                                    badgeClass = "badge-correct";
+                                } else if(StudentData[0][qno] === "incorrect") {
+                                    statusText = "Incorrect";
+                                    badgeClass = "badge-incorrect";
+                                } else if(StudentData[0][qno] === "notattempt") {
+                                    statusText = "Not Attempted";
+                                    badgeClass = "badge-notattempt";
+                                } else if(StudentData[0][qno] === "correctabove50") {
+                                    statusText = "Correct Above 50%";
+                                    badgeClass = "badge-above50";
+                                } else if(StudentData[0][qno] === "correctbelow50") {
+                                    statusText = "Correct Below 50%";
+                                    badgeClass = "badge-below50";
+                                }
+                                %>
+                                <span class="status-badge <%= badgeClass %>">
+                                    <i class="fas <%= 
+                                        StudentData[0][qno] === 'correct' ? 'fa-check-circle' : 
+                                        StudentData[0][qno] === 'incorrect' ? 'fa-times-circle' : 
+                                        StudentData[0][qno] === 'notattempt' ? 'fa-minus-circle' :
+                                        StudentData[0][qno] === 'correctabove50' ? 'fa-check' :
+                                        'fa-exclamation-circle'
+                                    %>"></i>
+                                    <%= statusText %>
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 fade-in" style="animation-delay: 0.2s;">
+                <div class="d-flex align-items-center justify-content-center h-100">
+                    <div class="question-badge">
+                        <i class="fas fa-question-circle fa-lg"></i>
+                        Question <%= qno %>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-12 fade-in" style="animation-delay: 0.3s;">
+                <div class="card">
+                    <div class="card-header py-3" style="background-color: var(--primary); color: white;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-users me-2"></i> Student Records for Question <%= qno %>
+                            </h5>
+                            <button onclick="window.print()" class="btn btn-sm btn-light">
+                                <i class="fas fa-print me-1"></i> Print
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="studentTable">
+                                <thead>
+                                    <tr>
+                                        <th><i class="fas fa-user-tie me-2"></i>Name</th>
+                                        <th><i class="fas fa-id-card me-2"></i>Roll</th>
+                                        <th><i class="fas fa-school me-2"></i>Class</th>
+                                        <th><i class="fas fa-users me-2"></i>Section</th>
+                                        <th><i class="fas fa-book me-2"></i>Subject</th>
+                                        <th><i class="fas fa-clipboard-check me-2"></i>Status</th>
+                                        <th><i class="fas fa-calendar-alt me-2"></i>Term</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% StudentData.forEach((student, index) => { %>
+                                        <tr class="fade-in" style="animation-delay: <%= 0.4 + (index * 0.05) %>s;">
+                                            <td><%= student.name %></td>
+                                            <td><%= student.roll %></td>
+                                            <td><%= student.studentClass %></td>
+                                            <td><%= student.section %></td>
+                                            <td><%= student.subject %></td>
+                                            <td>
+                                                <span class="status-badge <%= 
+                                                    student[qno] === 'correct' ? 'badge-correct' : 
+                                                    student[qno] === 'incorrect' ? 'badge-incorrect' : 
+                                                    student[qno] === 'notattempt' ? 'badge-notattempt' :
+                                                    student[qno] === 'correctabove50' ? 'badge-above50' :
+                                                    'badge-below50'
+                                                %>">
+                                                    <i class="fas <%= 
+                                                        student[qno] === 'correct' ? 'fa-check-circle' : 
+                                                        student[qno] === 'incorrect' ? 'fa-times-circle' : 
+                                                        student[qno] === 'notattempt' ? 'fa-minus-circle' :
+                                                        student[qno] === 'correctabove50' ? 'fa-check' :
+                                                        'fa-exclamation-circle'
+                                                    %>"></i>
+                                                    <%= student[qno] %>
+                                                </span>
+                                            </td>
+                                            <td><%= student.terminal %></td>
+                                        </tr>
+                                    <% }) %>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-12 mt-4 mb-5 text-center fade-in back-btn-container" style="animation-delay: 0.6s;">
+                <a href="/findData/<%= StudentData[0].subject %>/<%= StudentData[0].studentClass %>/<%= StudentData[0].section %>/<%= StudentData[0].terminal %>" class="back-btn">
+                    <i class="fas fa-arrow-left"></i> Back to Analysis
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <button class="print-btn d-print-none" onclick="window.print()">
+        <i class="fas fa-print"></i>
+    </button>
+
+    <script>
+        $(document).ready(function() {
+            $('#studentTable').DataTable({
+                responsive: true,
+                dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
+                     "<'row'<'col-sm-12'tr>>" +
+                     "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
+                buttons: [
+                    {
+                        extend: 'copy',
+                        className: 'btn btn-sm btn-outline-primary',
+                    },
+                    {
+                        extend: 'excel',
+                        className: 'btn btn-sm btn-outline-primary',
+                    },
+                    {
+                        extend: 'pdf',
+                        className: 'btn btn-sm btn-outline-primary',
+                    }
+                ]
+            });
+        });
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
+</body>
+</html>

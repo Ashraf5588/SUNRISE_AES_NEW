@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Practical Project Record</title>
+</head>
+<body>
+       <%- include('../partials/mainnav') %>
+  <h1>Practical Project Record</h1>
+
+  <% sciencepracticaldata.forEach((student, index) => { %>
+    <h2>Student Name: <%= student.name %> | Roll: <%= student.roll %></h2>
+    <p>Class: <%= student.studentClass %> | Section: <%= student.section %></p>
+
+    <table border="1" cellspacing="0" cellpadding="5">
+      <tr>
+        <th rowspan="2">SN</th>
+        <th rowspan="2">Unit</th>
+        <th colspan="3">Practical/Project</th>
+        <th>Remarks</th>
+      </tr>
+      <tr>
+        <th>Total Practical/Project Given</th>
+        <th>Total Practical/Project Done</th>
+        <th>Obtained Practical/Project Marks</th>
+        
+      
+      </tr>
+
+      <% let totalGivenAllPractical = 0; %>
+      <% let totalGivenAllProject = 0; %>
+      <% let totalObtainedAllPractical = 0; %>
+      <% let totalObtainedAllProject = 0; %>
+      <% let totalDoneAllPractical = 0; %>
+      <% let totalDoneAllProject = 0; %>
+
+
+      <% lessonData.forEach((lesson) => { %>
+        <% lesson.units.forEach((unit, uIndex) => { 
+          // Find corresponding unit in student data safely
+          const studentUnit = student.unit?.find(u => u.unitName === unit.unitName) || { practicals: [], projectWorks: [] };
+
+          // Practical counts & marks
+          const totalPracticalGiven = unit.practicals?.length || 0;
+          const totalPracticalDone = studentUnit.practicals?.length || 0;
+          const obtainedPracticalMarks = studentUnit.practicals?.reduce((sum, p) => sum + (p.practicalMarks || 0), 0);
+
+          // Project counts & marks
+          const totalProjectGiven = unit.projectworks?.length || 0;
+          const totalProjectDone = studentUnit.projectWorks?.length || 0;
+          const obtainedProjectMarks = studentUnit.projectWorks?.reduce((sum, p) => sum + (p.projectMarks || 0), 0);
+        %>
+        %>
+<% totalGivenAllPractical += totalPracticalGiven; %>
+<% totalGivenAllProject += totalProjectGiven; %>
+<% totalObtainedAllPractical += obtainedPracticalMarks; %>
+<% totalObtainedAllProject += obtainedProjectMarks; %>
+<% totalDoneAllPractical += totalPracticalDone; %>
+<% totalDoneAllProject += totalProjectDone; %>
+
+        <tr>
+          <td><%= uIndex + 1 %></td>
+          <td><%= unit.unitName %></td>
+          <td><%= totalPracticalGiven %></td>
+          <td><%= totalProjectDone %></td>
+          <td><%= ((obtainedProjectMarks)) %></td>
+        
+          
+          
+          
+          <td></td>
+        </tr>
+     
+        <% }) %>
+      <% }) %>
+        
+      
+    </table>
+    <br><br>
+  <% }) %>
+</body>
+</html>
+

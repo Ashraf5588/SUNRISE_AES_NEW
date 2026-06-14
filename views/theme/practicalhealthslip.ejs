@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Practical Project Record</title>
+</head>
+<body>
+       <%- include('../partials/mainnav') %>
+  <h1>Practical Project Slip</h1>
+
+
+
+  <% sciencepracticaldata.forEach((student, index) => { %>
+
+
+    <table border="1" cellspacing="0" cellpadding="5">
+      <tr>
+       <th>Name</th>
+       <th>Roll</th>
+       <th>Class</th>
+       <th>Section</th>
+       <th>Attendance & Participation (4)</th>
+       <th>Project Work & Practical Work (36)</th>
+       <th>Terminal Exam Marks (10)</th>
+       <th>Total</th>
+       <th>Grade</th>
+      </tr>
+    <tr>
+      <td><%=student.roll %></td>
+       <td><%=student.name %></td>
+        <td><%=student.studentClass %></td>
+         <td><%=student.section %></td>
+          <td><%=student.terminal[0].attendanceMarks+student.terminal[0].participationMarks %></td>
+
+
+
+      <% let totalGivenAllPractical = 0; %>
+      <% let totalGivenAllProject = 0; %>
+      <% let totalObtainedAllPractical = 0; %>
+      <% let totalObtainedAllProject = 0; %>
+      <% let totalDoneAllPractical = 0; %>
+      <% let totalDoneAllProject = 0; %>
+
+
+      <% lessonData.forEach((lesson) => { %>
+        <% lesson.units.forEach((unit, uIndex) => { 
+          // Find corresponding unit in student data safely
+          const studentUnit = student.terminal?.[0]?.unit?.find(u => u.unitName === unit.unitName) || { practicals: [], projectWorks: [] };
+
+          // Practical counts & marks
+          const totalPracticalGiven = unit.practicals?.length || 0;
+          const totalPracticalDone = studentUnit.practicals?.length || 0;
+          const obtainedPracticalMarks = studentUnit.practicals?.reduce((sum, p) => sum + (p.practicalMarks || 0), 0);
+
+          // Project counts & marks
+          const totalProjectGiven = unit.projectworks?.length || 0;
+          const totalProjectDone = studentUnit.projectWorks?.length || 0;
+          const obtainedProjectMarks = studentUnit.projectWorks?.reduce((sum, p) => sum + (p.projectMarks || 0), 0);
+        %>
+<% totalGivenAllPractical += totalPracticalGiven; %>
+<% totalGivenAllProject += totalProjectGiven; %>
+<% totalObtainedAllPractical += obtainedPracticalMarks; %>
+<% totalObtainedAllProject += obtainedProjectMarks; %>
+<% totalDoneAllPractical += totalPracticalDone; %>
+<% totalDoneAllProject += totalProjectDone; %>
+     
+        <% }) %>
+      <% }) %>
+
+
+           <td><%= (((((totalObtainedAllPractical)) + (((totalObtainedAllProject)/8)*16))) / lessonData[0].units.length)%></td>
+
+           <td><%= student.terminal[0].attendanceMarks+student.terminal[0].terminalMarks %></td>
+           <% totalPractical = (student.terminal[0].attendanceMarks+student.terminal[0].participationMarks+
+           ((((totalObtainedAllPractical))) + (((totalObtainedAllProject)/8)*16)) / lessonData[0].units.length
+           +student.terminal[0].attendanceMarks+student.terminal[0].terminalMarks)/50*100 %>
+           <td><%=student.terminal[0].attendanceMarks+student.terminal[0].participationMarks+
+            (((((totalObtainedAllPractical))) 
+            + (((totalObtainedAllProject)/8)*16)) / lessonData[0].units.length)+student.terminal[0].attendanceMarks+student.terminal[0].terminalMarks %></td>
+           <td> <% if (totalPractical >= 90 && totalPractical <= 100) { %>
+  A+
+<% } else if (totalPractical >= 85 && totalPractical < 90) { %>
+  A
+<% } else if (totalPractical >= 80 && totalPractical < 85) { %>
+  B+
+<% } else if (totalPractical >= 70 && totalPractical < 80) { %>
+  B
+<% } else if (totalPractical >= 60 && totalPractical < 70) { %>
+  C+
+<% } else if (totalPractical >= 50 && totalPractical < 60) { %>
+  C
+<% } else if (totalPractical >= 40 && totalPractical < 50) { %>
+  D
+<% } else { %>
+  E
+<% } %>
+
+        </td>
+      
+         
+        </tr>
+    </table>
+    <br><br>
+  <% }) %>
+</body>
+</html>
