@@ -171,6 +171,27 @@
       border-radius: 8px;
     }
 
+    .tool-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      margin-bottom: 0.5rem;
+      padding: 0.5rem;
+      background: rgba(248, 249, 250, 0.9);
+      border-radius: 8px;
+    }
+
+    .tool-row input[type="text"] {
+      flex: 1 1 auto;
+      padding: 0.6rem 0.8rem;
+      border-radius: 8px;
+      border: 1px solid #e0e6ea;
+    }
+
+    .tools-container {
+      margin: 0.5rem 0 0.75rem 0;
+    }
+
     .btn {
       padding: 0.75rem 1.5rem;
       border: none;
@@ -1201,6 +1222,8 @@
         }, 10);
         
         themeIndex++;
+        // Keep form field names contiguous after adding a theme
+        if (typeof reindexForm === 'function') reindexForm();
       } catch (e) {
         console.error("Fatal error in addTheme:", e);
       }
@@ -1263,9 +1286,11 @@
                     rows="1"
                   oninput="autoResize(this); scheduleAutoSave();">${outcomeData ? outcomeData.learningOutcomeName || '' : ''}</textarea>
           </div>
-          <div class="indicators-container" id="indicators-${themeIdx}-${outcomeIndex}"></div>
+          <div class="aspects-container" id="aspects-${themeIdx}-${outcomeIndex}"></div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
-            <button type="button" class="btn btn-primary" onclick="addIndicator(${themeIdx}, ${outcomeIndex})">+ Add Indicator</button>
+            <div class="btn-group">
+              <button type="button" class="btn btn-primary" onclick="addAspect(${themeIdx}, ${outcomeIndex})">+ Add Assessment Aspect</button>
+            </div>
             <div class="total-display">
               <label>कुल अंक (Total Marks):</label>
               <input type="number" step="0.01" readonly id="totalMarks-${themeIdx}-${outcomeIndex}" 
@@ -1280,19 +1305,23 @@
 
         outcomesContainer.appendChild(outcomeDiv);
         
-        // Add existing indicators or create a default one
-        if (outcomeData && Array.isArray(outcomeData.indicators) && outcomeData.indicators.length > 0) {
-          console.log(`Outcome ${outcomeIndex} (Theme ${themeIdx}) has ${outcomeData.indicators.length} indicators`);
-          outcomeData.indicators.forEach((indicatorData, idx) => {
+        // Add existing assessment aspects (new shape) or migrate old flat indicators into a default aspect/tool
+        if (outcomeData && Array.isArray(outcomeData.assessmentAspects) && outcomeData.assessmentAspects.length > 0) {
+          console.log(`Outcome ${outcomeIndex} (Theme ${themeIdx}) has ${outcomeData.assessmentAspects.length} assessment aspects`);
+          outcomeData.assessmentAspects.forEach((aspData, idx) => {
             try {
-              addIndicator(themeIdx, outcomeIndex, indicatorData);
+              addAspect(themeIdx, outcomeIndex, aspData);
             } catch (e) {
-              console.error(`Error adding indicator ${idx} to outcome ${outcomeIndex}:`, e);
+              console.error(`Error adding aspect ${idx} to outcome ${outcomeIndex}:`, e);
             }
           });
+        } else if (outcomeData && Array.isArray(outcomeData.indicators) && outcomeData.indicators.length > 0) {
+          // migrate flat indicators into a default aspect -> default tool
+          console.log(`Migrating ${outcomeData.indicators.length} flat indicators into default aspect/tool`);
+          addAspect(themeIdx, outcomeIndex, { aspectName: 'Default Aspect', tools: [{ toolName: 'Default Tool', indicators: outcomeData.indicators }] });
         } else {
-          console.log(`Outcome ${outcomeIndex} (Theme ${themeIdx}) has no indicators, adding default`);
-          addIndicator(themeIdx, outcomeIndex);
+          console.log(`Outcome ${outcomeIndex} (Theme ${themeIdx}) has no aspects, adding default`);
+          addAspect(themeIdx, outcomeIndex);
         }
 
         // Initialize auto-resize for new textareas
@@ -1301,81 +1330,221 @@
             autoResize(textarea);
           });
         }, 10);
+        // Ensure indices are contiguous after adding outcome
+        if (typeof reindexForm === 'function') reindexForm();
       } catch (e) {
         console.error(`Fatal error in addOutcome (Theme ${themeIdx}):`, e);
       }
     }
 
-    function addIndicator(themeIdx, outcomeIdx, indicatorData = null) {
+    // Add an assessment aspect under an outcome. Each aspect contains multiple tools.
+    function addAspect(themeIdx, outcomeIdx, aspectData = null) {
       try {
-        const container = document.getElementById(`indicators-${themeIdx}-${outcomeIdx}`);
+        const container = document.getElementById(`aspects-${themeIdx}-${outcomeIdx}`);
         if (!container) {
-            console.error(`Indicators container indicators-${themeIdx}-${outcomeIdx} not found`);
-            return;
+          console.error(`Aspects container aspects-${themeIdx}-${outcomeIdx} not found`);
+          return;
         }
-        
-        const indicatorIndex = container.children.length;
+
+        const aspIndex = container.children.length;
+
+        const aspectDiv = document.createElement('div');
+        aspectDiv.className = 'outcome-section';
+
+        aspectDiv.innerHTML = `
+          <div class="outcome-header">
+            <h4>Assessment Aspect ${aspIndex + 1}</h4>
+            <div class="btn-group">
+              <button type="button" class="btn btn-warning" onclick="removeAspect(this)">Remove Aspect</button>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="aspectName_${themeIdx}_${outcomeIdx}_${aspIndex}">Aspect Name</label>
+            <textarea name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][assessmentAspects][${aspIndex}][aspectName]" 
+                      id="aspectName_${themeIdx}_${outcomeIdx}_${aspIndex}" rows="1"
+                      oninput="autoResize(this); scheduleAutoSave();">${aspectData ? aspectData.aspectName || '' : ''}</textarea>
+          </div>
+          <div class="tools-container" id="tools-${themeIdx}-${outcomeIdx}-${aspIndex}"></div>
+          <div style="display:flex; justify-content: flex-end; gap:8px; margin-top:8px;">
+            <button type="button" class="btn btn-primary" onclick="addTool(${themeIdx}, ${outcomeIdx}, ${aspIndex})">+ Add Tool</button>
+          </div>
+        `;
+
+        container.appendChild(aspectDiv);
+
+        // populate tools if provided
+        if (aspectData && Array.isArray(aspectData.tools) && aspectData.tools.length > 0) {
+          aspectData.tools.forEach((toolData, tIdx) => {
+            try {
+              addTool(themeIdx, outcomeIdx, aspIndex, toolData);
+            } catch (e) {
+              console.error(`Error adding tool ${tIdx} to aspect ${aspIndex}:`, e);
+            }
+          });
+        } else {
+          // add a default tool
+          addTool(themeIdx, outcomeIdx, aspIndex);
+        }
+      } catch (e) {
+        console.error(`Fatal error in addAspect (Theme ${themeIdx}, Outcome ${outcomeIdx}):`, e);
+      }
+    }
+
+    function removeAspect(button) {
+      if (confirm('Remove this assessment aspect?')) {
+        button.closest('.outcome-section').remove();
+        scheduleAutoSave();
+      }
+    }
+
+    // Add a tool under a specific aspect
+    function addTool(themeIdx, outcomeIdx, aspIdx, toolData = null) {
+      try {
+        const container = document.getElementById(`tools-${themeIdx}-${outcomeIdx}-${aspIdx}`);
+        if (!container) {
+          console.error(`Tools container tools-${themeIdx}-${outcomeIdx}-${aspIdx} not found`);
+          return;
+        }
+
+        const toolIdx = container.children.length;
+
+        const toolDiv = document.createElement('div');
+        toolDiv.className = 'tool-row';
+
+        toolDiv.innerHTML = `
+          <input type="text" name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][toolName]" 
+                 placeholder="Tool Name" value="${toolData ? toolData.toolName || '' : ''}" 
+                 oninput="scheduleAutoSave();">
+          <div id="tool-indicators-${themeIdx}-${outcomeIdx}-${aspIdx}-${toolIdx}" style="flex:1"></div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button type="button" class="btn btn-primary" onclick="addIndicator(${themeIdx}, ${outcomeIdx}, ${aspIdx}, ${toolIdx})">+ Indicator</button>
+            <button type="button" class="btn btn-danger" onclick="removeTool(this, ${themeIdx}, ${outcomeIdx}, ${aspIdx})">Remove Tool</button>
+          </div>
+        `;
+
+        container.appendChild(toolDiv);
+
+        // populate indicators if provided
+        if (toolData && Array.isArray(toolData.indicators) && toolData.indicators.length > 0) {
+          toolData.indicators.forEach((indData, idx) => {
+            try {
+              addIndicator(themeIdx, outcomeIdx, aspIdx, toolIdx, indData);
+            } catch (e) {
+              console.error(`Error adding indicator ${idx} to tool ${toolIdx}:`, e);
+            }
+          });
+        } else {
+          addIndicator(themeIdx, outcomeIdx, aspIdx, toolIdx);
+        }
+      } catch (e) {
+        console.error(`Fatal error in addTool (Theme ${themeIdx}, Outcome ${outcomeIdx}, Aspect ${aspIdx}):`, e);
+      }
+    }
+
+    function removeTool(button, themeIdx, outcomeIdx, aspIdx) {
+      if (confirm('Remove this tool?')) {
+        const row = button.closest('.tool-row');
+        if (row) row.remove();
+        updateTotalMarks(themeIdx, outcomeIdx);
+        if (typeof reindexForm === 'function') reindexForm();
+        scheduleAutoSave();
+      }
+    }
+
+    // Add an indicator under a specific tool
+    function addIndicator(themeIdx, outcomeIdx, aspIdx, toolIdx, indicatorData = null) {
+      try {
+        const container = document.getElementById(`tool-indicators-${themeIdx}-${outcomeIdx}-${aspIdx}-${toolIdx}`);
+        if (!container) {
+          console.error(`Tool indicators container tool-indicators-${themeIdx}-${outcomeIdx}-${aspIdx}-${toolIdx} not found`);
+          return;
+        }
+
+        const indIndex = container.children.length;
 
         const group = document.createElement('div');
         group.className = 'indicator-group';
 
         group.innerHTML = `
-          <textarea  name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][indicators][${indicatorIndex}][indicatorName]" data-theme-index="${themeIdx}" data-outcome-index="${outcomeIdx}" data-indicator-index="${indicatorIndex}"
-                placeholder="Enter indicator name (सूचक)" required rows="1"
-                oninput="autoResize(this); scheduleAutoSave();">${indicatorData ? indicatorData.indicatorName || '' : ''}</textarea>
+          <textarea name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][indicators][${indIndex}][indicatorName]" 
+                    placeholder="Enter indicator name (सूचक)" required rows="1"
+                    oninput="autoResize(this); scheduleAutoSave();">${indicatorData ? indicatorData.indicatorName || '' : ''}</textarea>
           <input type="number" step="0.01" class="indicator-marks" 
-                name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][indicators][${indicatorIndex}][indicatorsMarks]" 
-                placeholder="Marks" required min="0"
-                value="${indicatorData ? indicatorData.indicatorsMarks || '' : ''}"
-                oninput="updateTotalMarks(${themeIdx}, ${outcomeIdx}); scheduleAutoSave();">
+                 name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][indicators][${indIndex}][indicatorsMarks]" 
+                 placeholder="Marks" required min="0"
+                 value="${indicatorData ? indicatorData.indicatorsMarks || '' : ''}"
+                 oninput="updateTotalMarks(${themeIdx}, ${outcomeIdx}); scheduleAutoSave();">
           <button type="button" class="btn btn-danger" onclick="removeIndicator(this, ${themeIdx}, ${outcomeIdx})">Remove</button>
         `;
 
         container.appendChild(group);
-        
+
         // Initialize auto-resize for the new textarea
         const textarea = group.querySelector('textarea');
         if (textarea) {
           setTimeout(() => autoResize(textarea), 10);
         }
-        
+
         updateTotalMarks(themeIdx, outcomeIdx);
       } catch (e) {
         console.error(`Fatal error in addIndicator (Theme ${themeIdx}, Outcome ${outcomeIdx}):`, e);
       }
     }
 
+    function removeIndicator(button, themeIdx, outcomeIdx) {
+      button.closest('.indicator-group').remove();
+      updateTotalMarks(themeIdx, outcomeIdx);
+      if (typeof reindexForm === 'function') reindexForm();
+      scheduleAutoSave();
+    }
+
     function updateTotalMarks(themeIdx, outcomeIdx) {
-      const container = document.getElementById(`indicators-${themeIdx}-${outcomeIdx}`);
+      // Sum all indicator marks under this outcome across aspects and tools
+      const aspectsContainer = document.getElementById(`aspects-${themeIdx}-${outcomeIdx}`);
       let total = 0;
-      container.querySelectorAll('.indicator-marks').forEach(input => {
+      if (!aspectsContainer) return;
+      aspectsContainer.querySelectorAll('.indicator-marks').forEach(input => {
         const val = parseFloat(input.value);
-        if (!isNaN(val)) total = Math.max(total, val);
+        if (!isNaN(val)) total += val;
       });
 
-      document.getElementById(`totalMarks-${themeIdx}-${outcomeIdx}`).value = total;
-      document.getElementById(`totalMarksInput-${themeIdx}-${outcomeIdx}`).value = total;
+      const totalEl = document.getElementById(`totalMarks-${themeIdx}-${outcomeIdx}`);
+      const totalInputEl = document.getElementById(`totalMarksInput-${themeIdx}-${outcomeIdx}`);
+      if (totalEl) totalEl.value = total;
+      if (totalInputEl) totalInputEl.value = total;
+
+      // Update overall total rubriks marks
+      try {
+        const totals = Array.from(document.querySelectorAll('input[id^="totalMarks-"]'))
+          .filter(el => !el.id.startsWith('totalMarksInput-'))
+          .map(el => parseFloat(el.value) || 0);
+        const overall = totals.reduce((s, v) => s + v, 0);
+        const overallEl = document.getElementById('totalRubriksmarks');
+        if (overallEl) overallEl.value = overall;
+      } catch (e) {
+        console.error('Error updating overall total:', e);
+      }
     }
 
     function removeTheme(button) {
       if (confirm('Are you sure you want to remove this theme?')) {
         button.closest('.theme-section').remove();
-       
+        // Fix indices and autosave after removal
+        if (typeof reindexForm === 'function') reindexForm();
+        scheduleAutoSave();
       }
     }
 
     function removeOutcome(button) {
       if (confirm('Are you sure you want to remove this learning outcome?')) {
         button.closest('.outcome-section').remove();
+        // Reindex names so arrays stay contiguous, then autosave
+        if (typeof reindexForm === 'function') reindexForm();
         scheduleAutoSave();
       }
     }
 
-    function removeIndicator(button, themeIdx, outcomeIdx) {
-      button.closest('.indicator-group').remove();
-      updateTotalMarks(themeIdx, outcomeIdx);
-      scheduleAutoSave();
-    }
+    
 
     // Auto-save functionality
     function scheduleAutoSave() {
@@ -1398,11 +1567,10 @@
       }
 
       try {
+        // ensure names are contiguous before collecting
+        if (typeof reindexForm === 'function') reindexForm();
         const formData = collectFormData();
-        
-        // Show saving indicator
-        
-        
+
         const response = await fetch('/autosave-themefillup', {
           method: 'POST',
           headers: {
@@ -1412,9 +1580,7 @@
             studentClass: studentClass,
             subject: subject,
             credit: credit,
-            themes: formData.themes,
-            outcomes: formData.outcomes,
-            indicators: formData.indicators
+            themes: formData.themes
           })
         });
 
@@ -1434,49 +1600,155 @@
 
     function collectFormData() {
       const themes = [];
-      const outcomes = [];
-      const indicators = [];
-      
+
       document.querySelectorAll('.theme-section').forEach((themeSection, themeIdx) => {
         const themeName = themeSection.querySelector(`[name="themes[${themeIdx}][themeName]"]`)?.value || '';
-        
+
         const themeOutcomes = [];
-        themeSection.querySelectorAll('.outcome-section').forEach((outcomeSection, outcomeIdx) => {
-          const outcomeName = outcomeSection.querySelector(`[name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][learningOutcomeName]"]`)?.value || '';
-          const totalMarks = outcomeSection.querySelector(`[name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][totalMarks]"]`)?.value || 0;
-          
-          const outcomeIndicators = [];
-          outcomeSection.querySelectorAll('.indicator-group').forEach((indicatorGroup, indicatorIdx) => {
-            const indicatorName = indicatorGroup.querySelector(`[name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][indicators][${indicatorIdx}][indicatorName]"]`)?.value || '';
-            const indicatorMarks = indicatorGroup.querySelector(`[name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][indicators][${indicatorIdx}][indicatorsMarks]"]`)?.value || 0;
-            
-            if (indicatorName || indicatorMarks) {
-              outcomeIndicators.push({
-                indicatorName: indicatorName,
-                indicatorsMarks: indicatorMarks
+        // Prefer explicit outcomes container children to avoid selecting nested aspect blocks
+        const outcomesContainer = themeSection.querySelector(`#outcomes-${themeIdx}`) || themeSection.querySelector('.outcomes-container');
+        const outcomeElements = outcomesContainer ? Array.from(outcomesContainer.children) : Array.from(themeSection.querySelectorAll('.outcome-section'));
+        outcomeElements.forEach((outcomeSection, outcomeIdx) => {
+            const outcomeName = outcomeSection.querySelector(`[name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][learningOutcomeName]"]`)?.value || '';
+            const totalMarks = outcomeSection.querySelector(`#totalMarksInput-${themeIdx}-${outcomeIdx}`)?.value || 0;
+
+            const aspects = [];
+            const aspectsContainer = document.getElementById(`aspects-${themeIdx}-${outcomeIdx}`) || outcomeSection.querySelector('.aspects-container');
+            if (aspectsContainer) {
+              const aspectElements = Array.from(aspectsContainer.children);
+              aspectElements.forEach((aspectDiv, aspIdx) => {
+                const aspectName = aspectDiv.querySelector(`[name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][assessmentAspects][${aspIdx}][aspectName]"]`)?.value || '';
+
+                const tools = [];
+                const toolsContainer = document.getElementById(`tools-${themeIdx}-${outcomeIdx}-${aspIdx}`) || aspectDiv.querySelector('.tools-container');
+                if (toolsContainer) {
+                  const toolElements = Array.from(toolsContainer.querySelectorAll('.tool-row'));
+                  toolElements.forEach((toolDiv, toolIdx) => {
+                    const toolName = toolDiv.querySelector(`[name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][toolName]"]`)?.value || '';
+
+                    const indicators = [];
+                    const toolIndicators = document.getElementById(`tool-indicators-${themeIdx}-${outcomeIdx}-${aspIdx}-${toolIdx}`) || toolDiv.querySelector('.indicators-container');
+                    if (toolIndicators) {
+                      const indicatorElements = Array.from(toolIndicators.children);
+                      indicatorElements.forEach((indDiv, indIdx) => {
+                        const indicatorName = indDiv.querySelector(`[name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][indicators][${indIdx}][indicatorName]"]`)?.value || '';
+                        const indicatorMarks = indDiv.querySelector(`[name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][indicators][${indIdx}][indicatorsMarks]"]`)?.value || 0;
+                        if (indicatorName || indicatorMarks) {
+                          indicators.push({ indicatorName: indicatorName, indicatorsMarks: indicatorMarks });
+                        }
+                      });
+                    }
+
+                    // Only include tool if it has a name or non-empty indicators
+                    if (toolName || (Array.isArray(indicators) && indicators.length > 0)) {
+                      tools.push({ toolName: toolName, indicators: indicators });
+                    }
+                  });
+                }
+
+                // Only include aspect if it has a name or non-empty tools
+                if (aspectName || (Array.isArray(tools) && tools.length > 0)) {
+                  aspects.push({ aspectName: aspectName, tools: tools });
+                }
               });
             }
+
+            // Only include outcome if it has a name or non-empty aspects
+            if (outcomeName || (Array.isArray(aspects) && aspects.length > 0)) {
+              themeOutcomes.push({ learningOutcomeName: outcomeName, totalMarks: totalMarks, assessmentAspects: aspects });
+            }
           });
-          
-          if (outcomeName || outcomeIndicators.length > 0) {
-            themeOutcomes.push({
-              learningOutcomeName: outcomeName,
-              totalMarks: totalMarks,
-              indicators: outcomeIndicators
-            });
-          }
-        });
-        
-        if (themeName || themeOutcomes.length > 0) {
-          themes.push({
-            themeName: themeName,
-            learningOutcome: themeOutcomes
-          });
-        }
+
+        themes.push({ themeName: themeName, learningOutcome: themeOutcomes });
       });
-      
-      return { themes, outcomes, indicators };
+
+      return { themes };
     }
+
+  // Ensure all form field name indexes are contiguous before submit
+  function reindexForm() {
+    const themesContainer = document.getElementById('themes-container');
+    if (!themesContainer) return;
+
+    Array.from(themesContainer.children).forEach((themeDiv, tIdx) => {
+      themeDiv.dataset.index = tIdx;
+      // Update themeName
+      const themeNameEl = themeDiv.querySelector('[name$="[themeName]"]');
+      if (themeNameEl) {
+        themeNameEl.name = `themes[${tIdx}][themeName]`;
+        themeNameEl.id = `themeName_${tIdx}`;
+        themeNameEl.setAttribute('data-index', tIdx);
+      }
+
+      // Outcomes
+      const outcomesContainer = themeDiv.querySelector(`#outcomes-${tIdx}`) || themeDiv.querySelector('.outcomes-container') || themeDiv.querySelector('[id^="outcomes-"]');
+      // If our id-based selector didn't match (because indices changed), find container by class
+      const outcomesContainerLocal = outcomesContainer || themeDiv.querySelector('.outcomes-container');
+      const outcomeElements = outcomesContainerLocal ? Array.from(outcomesContainerLocal.children) : Array.from(themeDiv.querySelectorAll('.outcome-section'));
+      Array.from(outcomeElements).forEach((outcomeDiv, oIdx) => {
+        // outcomeName
+        const outcomeName = outcomeDiv.querySelector('[name$="[learningOutcomeName]"]');
+        if (outcomeName) {
+          outcomeName.name = `themes[${tIdx}][learningOutcome][${oIdx}][learningOutcomeName]`;
+          outcomeName.id = `outcomeName_${tIdx}_${oIdx}`;
+          outcomeName.setAttribute('data-theme-index', tIdx);
+          outcomeName.setAttribute('data-outcome-index', oIdx);
+        }
+
+        // total marks inputs
+        const totalMarksInput = outcomeDiv.querySelector('[id^="totalMarksInput-"]');
+        const totalMarksDisplay = outcomeDiv.querySelector('[id^="totalMarks-"]');
+        if (totalMarksInput) {
+          totalMarksInput.name = `themes[${tIdx}][learningOutcome][${oIdx}][totalMarks]`;
+          totalMarksInput.id = `totalMarksInput-${tIdx}-${oIdx}`;
+        }
+        if (totalMarksDisplay) {
+          totalMarksDisplay.id = `totalMarks-${tIdx}-${oIdx}`;
+        }
+
+        // Aspects - find aspect blocks inside this outcome. Use a safe selector.
+        const aspectsContainer = outcomeDiv.querySelector(`#aspects-${tIdx}-${oIdx}`) || outcomeDiv.querySelector('[id^="aspects-"]') || outcomeDiv.querySelector('.aspects-container');
+        const aspectElements = aspectsContainer ? Array.from(aspectsContainer.children) : Array.from(outcomeDiv.querySelectorAll('.outcome-section'));
+        Array.from(aspectElements).forEach((aspDiv, aIdx) => {
+          // Only process aspect blocks that contain an aspectName field
+          const aspectName = aspDiv.querySelector('[name$="[aspectName]"]');
+          if (!aspectName) return;
+          aspectName.name = `themes[${tIdx}][learningOutcome][${oIdx}][assessmentAspects][${aIdx}][aspectName]`;
+          aspectName.id = `aspectName_${tIdx}_${oIdx}_${aIdx}`;
+
+          // Tools inside this aspect
+          const toolsContainer = aspDiv.querySelector(`#tools-${tIdx}-${oIdx}-${aIdx}`) || aspDiv.querySelector('[id^="tools-"]');
+          const tools = toolsContainer ? Array.from((toolsContainer.querySelectorAll && toolsContainer.querySelectorAll('.tool-row')) || toolsContainer.children) : Array.from(aspDiv.querySelectorAll('.tool-row'));
+          Array.from(tools).forEach((toolDiv, toolIdx) => {
+            const toolInput = toolDiv.querySelector('input[type="text"][name$="[toolName]"]');
+            if (toolInput) {
+              toolInput.name = `themes[${tIdx}][learningOutcome][${oIdx}][assessmentAspects][${aIdx}][tools][${toolIdx}][toolName]`;
+            }
+
+            // indicators container id update
+            const indicatorsContainer = toolDiv.querySelector(`#tool-indicators-${tIdx}-${oIdx}-${aIdx}-${toolIdx}`) || toolDiv.querySelector('[id^="tool-indicators-"]');
+            if (indicatorsContainer) {
+              indicatorsContainer.id = `tool-indicators-${tIdx}-${oIdx}-${aIdx}-${toolIdx}`;
+            }
+
+            // Indicators inside tool
+            const indicatorGroups = toolDiv.querySelectorAll('.indicator-group');
+            const indicatorElements = indicatorGroups ? Array.from(indicatorGroups) : Array.from((toolDiv.querySelector('.indicators-container') || {children: []}).children);
+            Array.from(indicatorElements).forEach((indDiv, indIdx) => {
+              const indTextarea = indDiv.querySelector('textarea[name$="[indicatorName]"]');
+              const indMarks = indDiv.querySelector('input[name$="[indicatorsMarks]"]');
+              if (indTextarea) {
+                indTextarea.name = `themes[${tIdx}][learningOutcome][${oIdx}][assessmentAspects][${aIdx}][tools][${toolIdx}][indicators][${indIdx}][indicatorName]`;
+              }
+              if (indMarks) {
+                indMarks.name = `themes[${tIdx}][learningOutcome][${oIdx}][assessmentAspects][${aIdx}][tools][${toolIdx}][indicators][${indIdx}][indicatorsMarks]`;
+              }
+            });
+          });
+        });
+      });
+    });
+  }
 
     function showSaveStatus(message, type) {
       // Remove existing status
@@ -1612,6 +1884,8 @@
 
     // Form validation
     document.getElementById('mainForm').addEventListener('submit', function(e) {
+      // Reindex dynamic field names so body-parser receives arrays correctly
+      reindexForm();
       const themes = document.querySelectorAll('.theme-section');
       if (themes.length === 0) {
         e.preventDefault();

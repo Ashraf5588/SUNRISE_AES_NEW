@@ -392,6 +392,7 @@ student.get('/editpracticalrubriks',verifytoken,authorized,themecontroller.editp
 student.get('/deletepracticalrubriks',verifytoken,authorized,themecontroller.deletepracticalrubriks)
 student.get('/getThemeDataFromDB', verifytoken, authorized, themecontroller.getThemeDataFromDB);
 student.get('/get-tools', verifytoken, authorized, themecontroller.getTools);
+student.get('/get-aspects', verifytoken, authorized, themecontroller.getAspects);
 student.post('/add-tool', verifytoken, authorized, themecontroller.addTool);
 
 student.get('/editlessondata', verifytoken, authorized, practical410controller.editlessondata);
@@ -426,6 +427,14 @@ student.delete('/addtools/group', verifytoken, authorized, themecontroller.delet
 student.put('/addtools/classes', verifytoken, authorized, themecontroller.updatetoolsClasses);
 student.put('/addtools', verifytoken, authorized, themecontroller.edittools);
 student.delete('/addtools', verifytoken, authorized, themecontroller.deletetools);
+// Assessment Aspect routes (mirror of addtools)
+student.get('/addaspect', verifytoken, authorized, themecontroller.addaspectForm);
+student.post('/addaspect/single', verifytoken, authorized, themecontroller.addSingleaspect);
+student.post('/addaspect', verifytoken, authorized, themecontroller.saveaddaspectForm);
+student.delete('/addaspect/group', verifytoken, authorized, themecontroller.deleteaspectsGroup);
+student.put('/addaspect/classes', verifytoken, authorized, themecontroller.updateaspectsClasses);
+student.put('/addaspect', verifytoken, authorized, themecontroller.editaspects);
+student.delete('/addaspect', verifytoken, authorized, themecontroller.deleteaspects);
 
 // add events
 student.get('/createevent', verifytoken, authorized, eventcontroller.createEventForm);

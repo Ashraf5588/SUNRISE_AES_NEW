@@ -6,28 +6,45 @@ const themeSchemaFor1 = new mongoose.Schema(
     subject:{ type:String, required:false},
     credit: {type:Number,required:false},
     themes: [
-            {
-                themeName: {type:String, required:false},
-                learningOutcome: [
-
+      {
+        themeName: {type:String, required:false},
+        // Legacy flat learningOutcome structure
+        learningOutcome: [
+          {
+            learningOutcomeName: {type:String, required:false},
+            // Legacy flat indicators
+            indicators: [
+              {
+                indicatorName: {type:String, required:false},
+                indicatorsMarks: {type:Number, required:false},
+                maxMarks: {type:Number, required:false}
+              }
+            ],
+            // New nested structure: assessment aspects -> tools -> indicators
+            assessmentAspects: [
+              {
+                aspectName: { type: String, required: false },
+                tools: [
                   {
-                    learningOutcomeName: {type:String, required:false},
-                     indicators: [
+                    toolName: { type: String, required: false },
+                    indicators: [
                       {
-                        indicatorName: {type:String, required:false},
-                        indicatorsMarks: {type:Number, required:false},
-                      
-
-                     }],
-                     totalMarks : {type:Number, required:false},
+                        indicatorName: { type: String, required: false },
+                        indicatorsMarks: { type: Number, required: false },
+                        maxMarks: { type: Number, required: false }
+                      }
+                    ]
                   }
-                ],
-            }
+                ]
+              }
+            ],
+            totalMarks : {type:Number, required:false},
+          }
         ],
+      }
+    ],
     date: {type:Date, required:false},
     teacherName: {type:String, required:false},
-    
-
   }
 )
 
@@ -51,8 +68,7 @@ const scienceSchema = new mongoose.Schema(
   } 
 )
 
-FinalPracticalSlipSchema = new mongoose.Schema
-(
+const FinalPracticalSlipSchema = new mongoose.Schema(
   {
     reg: {type:String, required:false},
     roll: { type: String, required: false},
@@ -66,4 +82,5 @@ FinalPracticalSlipSchema = new mongoose.Schema
     grade: { type: String, required: false }
   }
 )
+
 module.exports = { themeSchemaFor1,scienceSchema,FinalPracticalSlipSchema }

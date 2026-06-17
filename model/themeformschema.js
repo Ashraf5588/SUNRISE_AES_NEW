@@ -49,80 +49,39 @@ const ThemeEvaluationSchema = new mongoose.Schema({
             required: true,
             set: handleArrayOrSingle 
           },
-          
           // Array of learning outcomes for each theme
           learningOutcomes: [
             {
-              name: { 
-                type: String, 
-                required: true,
-                set: handleArrayOrSingle 
-              },
-              evaluationDateBefore: { 
-                type: String,
-                set: handleArrayOrSingle 
-              },
-                 evaluationDateAfter: { 
-                type: String,
-                set: handleArrayOrSingle 
-              },
-
-              
-              // Indicators for each learning outcome
-              indicators: [
+              name: { type: String, required: true, set: handleArrayOrSingle },
+              // Assessment aspects under learning outcome
+              assessmentAspects: [
                 {
-                  name: { 
-                    type: String, 
-                    required: true,
-                    set: handleArrayOrSingle 
-                  },
-                  maxMarks: { 
-                    type: Number, 
-                    required: true,
-                    set: handleArrayOrSingle 
-                  },
-                  marksBeforeIntervention: { 
-                    type: Number, 
-                    default: 0,
-                    set: handleArrayOrSingle 
-                  },
-                  marksAfterIntervention: { 
-                    type: Number, 
-                    default: 0,
-                    set: handleArrayOrSingle 
-                  },
-                  toolsUsed: { 
-                    type: String,
-                    set: handleArrayOrSingle 
-                  }
+                  aspectName: { type: String, required: false, set: handleArrayOrSingle },
+                  tools: [
+                    {
+                      toolName: { type: String, required: false, set: handleArrayOrSingle },
+                      evaluationDateBefore: { type: String, default: "", set: handleArrayOrSingle },
+                      evaluationDateAfter: { type: String, default: "", set: handleArrayOrSingle },
+                      indicators: [
+                        {
+                          indicatorName: { type: String, required: false, set: handleArrayOrSingle },
+                          maxMarks: { type: Number, required: false, default: 0, set: handleArrayOrSingle },
+                          obtainedBefore: { type: Number, required: false, default: 0, set: handleArrayOrSingle },
+                          obtainedAfter: { type: Number, required: false, default: 0, set: handleArrayOrSingle }
+                        }
+                      ],
+                      totalBefore: { type: Number, required: false, default: 0, set: handleArrayOrSingle },
+                      totalAfter: { type: Number, required: false, default: 0, set: handleArrayOrSingle }
+                    }
+                  ]
                 }
               ],
-              
-              // Total marks for this learning outcome
-              totalMarksBeforeIntervention: { 
-                type: Number, 
-                default: 0,
-                set: handleArrayOrSingle 
-              },
-              totalMarksAfterIntervention: { 
-                type: Number, 
-                default: 0,
-                set: handleArrayOrSingle 
-              }
+              totalMarksBeforeIntervention: { type: Number, default: 0, set: handleArrayOrSingle },
+              totalMarksAfterIntervention: { type: Number, default: 0, set: handleArrayOrSingle }
             }
           ],
-          
-          // Overall theme total
-          overallTotalBefore: { 
-            type: Number, 
-            default: 0,
-            set: handleArrayOrSingle 
-          },
-          overallTotalAfter: { 
-            type: Number, 
-            default: 0,
-            set: handleArrayOrSingle 
-          }
+          overallTotalBefore: { type: Number, default: 0, set: handleArrayOrSingle },
+          overallTotalAfter: { type: Number, default: 0, set: handleArrayOrSingle }
         }
       ]
     }
@@ -164,10 +123,12 @@ ThemeEvaluationSchema.pre('save', function(next) {
     Object.keys(obj).forEach(key => {
       const value = obj[key];
       
-      // If it's an array but not supposed to be an array field
-      if (Array.isArray(value) && 
-          !['subjects', 'themes', 'learningOutcomes', 'indicators'].includes(key)) {
-        obj[key] = value[0]; // Take the first element
+      // If it's an array but not supposed to be an array field - preserve known array fields
+      if (Array.isArray(value)) {
+        const preserveArrayKeys = ['subjects', 'themes', 'learningOutcomes', 'learningOutcome', 'assessmentAspects', 'tools', 'indicators'];
+        if (!preserveArrayKeys.includes(key)) {
+          obj[key] = value[0]; // Take the first element for scalar-like arrays
+        }
       }
       
       // Process nested objects/arrays recursively

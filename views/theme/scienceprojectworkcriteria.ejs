@@ -656,13 +656,17 @@
     function updateTotalMarks(themeIdx, outcomeIdx) {
       const container = document.getElementById(`indicators-${themeIdx}-${outcomeIdx}`);
       let total = 0;
-      container.querySelectorAll('.indicator-marks').forEach(input => {
-        const val = parseFloat(input.value);
-        if (!isNaN(val)) total += val;
-      });
+      if (container) {
+        container.querySelectorAll('.indicator-marks').forEach(input => {
+          const val = parseFloat(input.value);
+          if (!isNaN(val)) total += val;
+        });
+      }
 
-      document.getElementById(`totalMarks-${themeIdx}-${outcomeIdx}`).value = total;
-      document.getElementById(`totalMarksInput-${themeIdx}-${outcomeIdx}`).value = total;
+      const totalEl = document.getElementById(`totalMarks-${themeIdx}-${outcomeIdx}`);
+      const totalInputEl = document.getElementById(`totalMarksInput-${themeIdx}-${outcomeIdx}`);
+      if (totalEl) totalEl.value = total;
+      if (totalInputEl) totalInputEl.value = total;
     }
 
     function removeTheme(button) {

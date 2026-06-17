@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Add Tools Manager</title>
+  <title>Add Assessment Aspects Manager</title>
   <!-- Google Fonts for modern feel -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -25,6 +25,95 @@
 
      * {
         box-sizing: border-box;
+
+  <script>
+      // --- Add Single Aspect Modal Scripts ---
+      const addAspectModal = document.getElementById('addAspectModal');
+      const newAspectNameInput = document.getElementById('newToolNameInput');
+      const addAspectIdInput = document.getElementById('addToolIdInput');
+
+      function openAddAspectModal(chapterId) {
+          addAspectIdInput.value = chapterId;
+          newAspectNameInput.value = '';
+          addAspectModal.classList.add('active');
+          newAspectNameInput.focus();
+      }
+
+      function closeAddAspectModal() {
+          addAspectModal.classList.remove('active');
+      }
+      
+      addAspectModal.addEventListener('click', (e) => {
+          if (e.target === addAspectModal) closeAddAspectModal();
+      });
+
+      function saveNewAspect() {
+          const chapterId = addAspectIdInput.value;
+          const aspectName = newAspectNameInput.value;
+
+          if (!aspectName.trim()) {
+              alert("Please enter an aspect name.");
+              return;
+          }
+
+          fetch('/addaspect/single', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  chapterId: chapterId,
+                  toolName: aspectName,
+                  subject: currentSubject,
+                  studentClass: currentClass
+              })
+          })
+          .then(async res => {
+             if (!res.ok) {
+                 const txt = await res.text();
+                 throw new Error(txt);
+             }
+             return res.json();
+          })
+          .then(data => {
+              window.location.reload();
+          })
+          .catch(err => {
+              alert('An error occurred: ' + err.message);
+          });
+      }
+
+      function deleteAspectGroup(chapterId) {
+          if (!confirm('Are you sure you want to delete this ENTIRE group of aspects? This action cannot be undone.')) return;
+
+          fetch('/addaspect/group', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ chapterId: chapterId })
+          })
+          .then(async res => {
+             if (!res.ok) {
+                 const txt = await res.text();
+                 throw new Error(txt);
+             }
+             return res.json();
+          })
+          .then(data => {
+              window.location.reload();
+          })
+          .catch(err => {
+              alert('Error deleting group: ' + err.message);
+          });
+      }
+  </script>
+
+  <script>
+    // Render aspect inputs if totalaspect has a value on load
+    window.addEventListener('load', function() {
+      const total = parseInt(document.getElementById('totalaspect').value);
+      if (total) {
+        document.getElementById('totalaspect').dispatchEvent(new Event('input'));
+      }
+    });
+  </script>
         margin: 0;
         padding: 0;
      }
@@ -243,14 +332,14 @@
      }
 
      /* Dynamic Chapter Inputs */
-     #chapterinputcontainer, #toolinputcontainer {
+     #chapterinputcontainer, #aspectinputcontainer {
         display: grid;
         gap: 1rem;
         margin-top: 1.5rem;
         margin-bottom: 2rem;
      }
      
-     #chapterinputcontainer input, #toolinputcontainer input {
+     #chapterinputcontainer input, #aspectinputcontainer input {
         animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         border-left: 4px solid var(--accent-orange);
         padding-left: 1rem !important; /* Override general padding */
@@ -453,7 +542,6 @@
   <div class="selector-grid">
      <div class="form-group">
         <label for="subject">Subject</label>
-
                 <select name="subject" id="subject">
                     <option value="">Choose subject</option>
                     <% if (Array.isArray(newsubjectList)) { %>
@@ -462,9 +550,10 @@
                             <option value="<%= subjectName %>"><%= subjectName %></option>
                         <% }) %>
                     <% } else { %>
+                        <% /* fallback: try subjects if newsubjectList not provided */ %>
                         <% if (Array.isArray(subjects)) { %>
                             <% uniqueSubjects = new Set(subjects.map((subject)=>subject.newsubject)) %>
-                            <%uniqueSubjects.forEach((subject)=>{%>
+                            <% uniqueSubjects.forEach((subject)=>{%>
                                 <option value="<%=subject%>"><%=subject%></option>
                             <%})%>
                         <% } %>
@@ -491,14 +580,50 @@
     {
         const selectedSubject = document.getElementById('subject').value;
         const currentClasses= "<%=studentClass%>";
-        window.location.href=(`/addtools?subject=${selectedSubject}&studentClass=${currentClasses}`)
+        window.location.href=(`/addaspect?subject=${selectedSubject}&studentClass=${currentClasses}`)
     }
   </script>
+
+        <script>
+            (function() {
+                function setupAspectInputs() {
+                    const el = document.getElementById('totalaspect');
+                    const container = document.getElementById('aspectinputcontainer');
+                    if (!el || !container) return;
+                    el.addEventListener('input', function() {
+                        const total = parseInt(this.value);
+                        container.innerHTML = '';
+                        if (!total || total <= 0) return;
+                        for (let i = 1; i <= total; i++) {
+                            const div = document.createElement('div');
+                            div.className = 'form-group';
+                            const label = document.createElement('label');
+                            label.textContent = `Aspect ${i} Name`;
+                            const input = document.createElement('input');
+                            input.type = 'text';
+                            input.name = `aspect[${i-1}]`;
+                            input.className = 'form-control';
+                            input.placeholder = `Enter name for aspect ${i}`;
+                            input.required = true;
+                            div.appendChild(label);
+                            div.appendChild(input);
+                            container.appendChild(div);
+                        }
+                    });
+                }
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', setupAspectInputs);
+                } else {
+                    setupAspectInputs();
+                }
+            })();
+        </script>
 
   <div class="form-wrapper">
     <div class="info-badge">Subject: <%= subject %></div>
     
-  <form action="/addtools?studentClass=<%=studentClass%>&subject=<%=subject%>" method="POST">
+  <form action="/addaspect?studentClass=<%=studentClass%>&subject=<%=subject%>" method="POST">
     <input type="hidden" name="studentClass" value="<%=studentClass%>">
     <input type="hidden" name="subject" value="<%=subject%>">
     
@@ -516,39 +641,39 @@
     </div>
 
     <div class="form-group">
-        <label for="totaltools">Number of Tools</label>
-        <input type="number" id="totaltools" name="totaltools" class="form-control" placeholder="Enter total number of tools" required>
+        <label for="totalaspect">Number of Aspects</label>
+        <input type="number" id="totalaspect" name="totalaspect" class="form-control" placeholder="Enter total number of aspects" required>
     </div>
      
-    <div id="toolinputcontainer"></div>
+    <div id="aspectinputcontainer"></div>
     
     <div style="margin-top: 2rem;">
       <button type="submit">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 8px;">
           <path d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H9.5a1 1 0 0 0-1 1v7.293l2.646-2.647a.5.5 0 0 1 .708.708l-3.5 3.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L7.5 9.293V2a2 2 0 0 1 2-2H14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h2.5a.5.5 0 0 1 0 1H2z"/>
         </svg>
-        Save Tools
+        Save Aspects
       </button>
     </div>
   </form>
   </div>
   <div class="toolnametable">
-      <% if (oldtoolsData && oldtoolsData.length > 0) { %>
-      <div class="section-header">Existing Tools By Class Group</div>
-      <% oldtoolsData.forEach(function(toolGroup, index) { %>
+      <% if (oldaspectsData && oldaspectsData.length > 0) { %>
+      <div class="section-header">Existing Aspects By Class Group</div>
+      <% oldaspectsData.forEach(function(aspectGroup, index) { %>
         <div class="tool-group">
          <div class="tool-group-header">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
             </svg>
-            <span style="flex-grow: 1;">Classes: <span id="class-display-<%= toolGroup._id %>"><%= toolGroup.forClass.join(", ") %></span></span>
-            <button class="action-btn" style="background-color: #ecfccb; color: #3f6212; border: 1px solid #d9f99d; margin-right: 0.5rem;" onclick="openAddToolModal('<%= toolGroup._id %>')">
-               + Add Tool
+            <span style="flex-grow: 1;">Classes: <span id="class-display-<%= aspectGroup._id %>"><%= aspectGroup.forClass.join(", ") %></span></span>
+            <button class="action-btn" style="background-color: #ecfccb; color: #3f6212; border: 1px solid #d9f99d; margin-right: 0.5rem;" onclick="openAddAspectModal('<%= aspectGroup._id %>')">
+               + Add Aspect
             </button>
-            <button class="action-btn edit-btn" onclick='openClassEditModal("<%= toolGroup._id %>", <%= JSON.stringify(toolGroup.forClass) %>)'>
+            <button class="action-btn edit-btn" onclick='openClassEditModal("<%= aspectGroup._id %>", <%= JSON.stringify(aspectGroup.forClass) %>)'>
                Edit Classes
             </button>
-            <button class="action-btn delete-btn" onclick="deleteToolGroup('<%= toolGroup._id %>')">
+            <button class="action-btn delete-btn" onclick="deleteAspectGroup('<%= aspectGroup._id %>')">
                 Delete Group
             </button>
          </div>
@@ -556,22 +681,22 @@
             <thead>
                 <tr>
                     <th style="width: 60px;">SN</th>
-                    <th>Tool Name</th>
+                    <th>Aspect Name</th>
                     <th style="width: 180px;">Actions</th>
                 </tr>
             </thead>
             <tbody>
-                <% if(toolGroup.tools && toolGroup.tools.length > 0) { %>
-                    <% toolGroup.tools.forEach(function(toolName, idx) { %>
+                <% if(aspectGroup.aspect && aspectGroup.aspect.length > 0) { %>
+                    <% aspectGroup.aspect.forEach(function(aspectName, idx) { %>
                     <tr>
                         <td style="color: var(--text-secondary); font-variant-numeric: tabular-nums;"><%= idx + 1 %></td>
-                        <td style="font-weight: 500;"><%= toolName %></td>
+                        <td style="font-weight: 500;"><%= aspectName %></td>
                         <td>
                             <div class="action-buttons">
-                                <button type="button" class="action-btn edit-btn" onclick="openEditModal('<%= toolGroup._id %>', <%= idx %>, '<%= toolName.replace(/'/g, "\\'") %>')">
+                                <button type="button" class="action-btn edit-btn" onclick="openEditModal('<%= aspectGroup._id %>', <%= idx %>, '<%= aspectName.replace(/'/g, "\\'") %>')">
                                     Edit
                                 </button>
-                                <button type="button" class="action-btn delete-btn" onclick="deleteTool('<%= toolGroup._id %>', <%= idx %>)">
+                                <button type="button" class="action-btn delete-btn" onclick="deleteAspect('<%= aspectGroup._id %>', <%= idx %>)">
                                     Delete
                                 </button>
                             </div>
@@ -579,7 +704,7 @@
                     </tr> 
                     <% }); %>
                 <% } else { %>
-                    <tr><td colspan="3" style="text-align:center; padding: 2rem; color: var(--text-secondary);">No tools found.</td></tr>
+                    <tr><td colspan="3" style="text-align:center; padding: 2rem; color: var(--text-secondary);">No aspects found.</td></tr>
                 <% } %>
             </tbody>
          </table> 
@@ -591,7 +716,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <p>No tools added yet for this subject.</p>
+            <p>No aspects added yet for this subject.</p>
         </div>
       <% } %>
   </div>
@@ -599,9 +724,9 @@
   <!-- Edit Modal -->
   <div class="modal-overlay" id="editModal">
       <div class="modal-card">
-          <div class="modal-title">Edit Tool</div>
+          <div class="modal-title">Edit Aspect</div>
           <div class="form-group">
-              <label for="editToolName">Tool Name</label>
+              <label for="editToolName">Aspect Name</label>
               <input type="text" id="editToolName" class="form-control">
               <input type="hidden" id="editToolId">
               <input type="hidden" id="editToolIndex">
@@ -617,7 +742,7 @@
   <div class="modal-overlay" id="editClassModal">
       <div class="modal-card" style="max-width: 500px;"> 
           <div class="modal-title">Edit Targeted Classes</div>
-          <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">Select classes that this tool list applies to:</p>
+          <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">Select classes that this aspect list applies to:</p>
           
           <div class="class-selection" id="modalClassCheckboxes">
               <!-- Dynamically populated -->
@@ -632,18 +757,18 @@
       </div>
   </div>
 
-  <!-- Add Single Tool Modal -->
-  <div class="modal-overlay" id="addToolModal">
+  <!-- Add Single Aspect Modal -->
+  <div class="modal-overlay" id="addAspectModal">
       <div class="modal-card">
-          <div class="modal-title">Add New Tool</div>
+          <div class="modal-title">Add New Aspect</div>
           <div class="form-group">
-              <label for="newToolNameInput">Tool Name</label>
-              <input type="text" id="newToolNameInput" class="form-control" placeholder="Enter tool name">
+              <label for="newToolNameInput">Aspect Name</label>
+              <input type="text" id="newToolNameInput" class="form-control" placeholder="Enter aspect name">
               <input type="hidden" id="addToolIdInput">
           </div>
           <div class="modal-actions">
-              <button class="btn btn-outline" onclick="closeAddToolModal()" style="width: auto;">Cancel</button>
-              <button class="btn" onclick="saveNewTool()" style="width: auto;">Add</button>
+              <button class="btn btn-outline" onclick="closeAddAspectModal()" style="width: auto;">Cancel</button>
+              <button class="btn" onclick="saveNewAspect()" style="width: auto;">Add</button>
           </div>
       </div>
   </div>
@@ -656,14 +781,13 @@
       const availableClasses = <%- JSON.stringify(Array.from(new Set(studentClassdata.map(data => data.studentClass)))) %>;
 
 
-      function deleteTool(chapterId, index) {
-          if(!confirm('Are you sure you want to delete this tool? This action cannot be undone.')) return;
+      function deleteAspect(chapterId, index) {
+          if(!confirm('Are you sure you want to delete this aspect? This action cannot be undone.')) return;
 
-          fetch(`/addtools?chapterId=${chapterId}&index=${index}&subject=${currentSubject}&studentClass=${currentClass}`, {
+          fetch(`/addaspect?chapterId=${chapterId}&index=${index}&subject=${currentSubject}&studentClass=${currentClass}`, {
               method: 'DELETE'
           })
           .then(res => {
-             // Since backend redirects, we just reload effectively
              window.location.reload();
           })
           .catch(err => {
@@ -695,11 +819,11 @@
           const name = nameInput.value;
 
           if(!name.trim()) {
-              alert('Tool name is required');
+              alert('Aspect name is required');
               return;
           }
 
-          fetch('/addtools', {
+          fetch('/addaspect', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -778,7 +902,7 @@
               return;
           }
 
-          fetch('/addtools/classes', {
+          fetch('/addaspect/classes', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -807,141 +931,4 @@
               alert('An error occurred: ' + err.message);
           });
       }
-
-      // --- Add Single Tool Modal Scripts ---
-      const addToolModal = document.getElementById('addToolModal');
-      const newToolNameInput = document.getElementById('newToolNameInput');
-      const addToolIdInput = document.getElementById('addToolIdInput');
-
-      function openAddToolModal(chapterId) {
-          addToolIdInput.value = chapterId;
-          newToolNameInput.value = '';
-          addToolModal.classList.add('active');
-          newToolNameInput.focus();
-      }
-
-      function closeAddToolModal() {
-          addToolModal.classList.remove('active');
-      }
-      
-      addToolModal.addEventListener('click', (e) => {
-          if (e.target === addToolModal) closeAddToolModal();
-      });
-
-      function saveNewTool() {
-          const chapterId = addToolIdInput.value;
-          const toolName = newToolNameInput.value;
-
-          if (!toolName.trim()) {
-              alert("Please enter a tool name.");
-              return;
-          }
-
-          fetch('/addtools/single', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                  chapterId: chapterId,
-                  toolName: toolName,
-                  subject: currentSubject,
-                  studentClass: currentClass
-              })
-          })
-          .then(async res => {
-             if (!res.ok) {
-                 const txt = await res.text();
-                 throw new Error(txt);
-             }
-             return res.json();
-          })
-          .then(data => {
-              window.location.reload();
-          })
-          .catch(err => {
-              alert('An error occurred: ' + err.message);
-          });
-      }
-
-      function deleteToolGroup(chapterId) {
-          if (!confirm('Are you sure you want to delete this ENTIRE group of tools? This action cannot be undone.')) return;
-
-          fetch('/addtools/group', {
-              method: 'DELETE',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ chapterId: chapterId })
-          })
-          .then(async res => {
-             if (!res.ok) {
-                 const txt = await res.text();
-                 throw new Error(txt);
-             }
-             return res.json();
-          })
-          .then(data => {
-              window.location.reload();
-          })
-          .catch(err => {
-              alert('Error deleting group: ' + err.message);
-          });
-      }
-  </script>
-  <script>
-    document.getElementById('totaltools').addEventListener('input', function() {
-      const totalTools = parseInt(this.value);
-      const container = document.getElementById('toolinputcontainer');
-      container.innerHTML = '';
-      
-      if (!totalTools || totalTools <= 0) return;
-
-      for(let i = 1; i <= totalTools; i++) {
-        const div = document.createElement('div');
-        div.className = 'form-group';
-        
-        const label = document.createElement('label');
-        label.textContent = `Tool ${i} Name`;
-        
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.name = `tools[${i-1}]`;
-        input.className = 'form-control';
-        input.placeholder = `Enter name for tool ${i}`;
-        input.required = true;
-        input.style.animationDelay = `${i * 0.05}s`; // Stagger effect
-        
-        div.appendChild(label);
-        div.appendChild(input);
-        container.appendChild(div);
-      }
-    });
-  </script>
-
-  
-  <script>
-    window.addEventListener('load', function() {
-      const totalTools = parseInt(document.getElementById('totaltools').value);
-      if (totalTools) {
-          document.getElementById('totaltools').dispatchEvent(new Event('input'));
-      }
-    });
-  </script>
-    <script>
-        (function () {
-            const checkbox = document.getElementById('nepaliToggle');
-            const track = document.getElementById('addToolsToggleTrack');
-            const thumb = document.getElementById('addToolsToggleThumb');
-            if (!checkbox || !track || !thumb) return;
-
-            const syncVisual = () => {
-                thumb.style.transform = checkbox.checked ? 'translateX(26px)' : 'translateX(0)';
-                track.style.backgroundColor = checkbox.checked ? '#4caf50' : '#cfd8dc';
-            };
-
-            checkbox.addEventListener('change', syncVisual);
-            document.addEventListener('DOMContentLoaded', syncVisual);
-            syncVisual();
-        })();
-    </script>
-    <script src="/js/preeti.js"></script>
-    <script src="/js/preeti-input-toggle.js"></script>
-</body>
-</html>
+*** End Patch

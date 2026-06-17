@@ -354,7 +354,7 @@ app.use(cirriculum)
 app.use(attendance)
 app.use(student)
 app.use(express.static('public'));
-app.listen(80,()=>{
-    console.log('Server is running on port 80')
-
-})
+const PORT = process.env.PORT || 80;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});

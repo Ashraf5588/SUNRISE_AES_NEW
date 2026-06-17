@@ -11,6 +11,8 @@ const { classSchema, subjectSchema,terminalSchema } = require("../model/adminsch
 const {newsubjectSchema } = require("../model/adminschema");
 const {addToolsSchema} = require("../model/addtoolsSchema");
 const ToolsModel = mongoose.model("tools", addToolsSchema, "tools");
+const {addAspectSchema} = require("../model/addaspectSchema");
+const AspectsModel = mongoose.model("assessmentaspect", addAspectSchema, "assessmentaspect");
 
 const { name } = require("ejs");
 const subjectlist = mongoose.model("subjectlist", subjectSchema, "subjectlist");
@@ -85,8 +87,8 @@ const getSidenavData = async (req) => {
       console.log('No user found in request, returning all data');
       accessibleSubject = subjects;
       accessibleClass = studentClassdata;
-      newsubjectList = newaccessibleSubjects;
-      
+      // expose the full newsubject list when no user filtering is needed
+      newaccessibleSubjects = newsubjectList;
     }
     
     return {
@@ -192,6 +194,16 @@ const existingThemeData = await themeForstudentData.find(
 exports.themeformSave = async (req, res) => {
   try {
     console.log("Form data received:", JSON.stringify(req.body, null, 2));
+    console.log('Request headers accept:', req.headers.accept);
+    console.log('Is autosave flag:', req.body && req.body.autosave);
+    try {
+      console.log('Request body keys:', Object.keys(req.body || {}));
+      if (req.body.subjects) {
+        console.log('subjects payload:', JSON.stringify(req.body.subjects, null, 2));
+      }
+    } catch (e) {
+      console.warn('Error logging request body details', e);
+    }
     
     // Debug: Check for evaluationDate in the request body
     if (req.body.subjects && req.body.subjects[0] && req.body.subjects[0].themes && req.body.subjects[0].themes[0] && req.body.subjects[0].themes[0].learningOutcomes) {
@@ -244,37 +256,47 @@ exports.themeformSave = async (req, res) => {
     // Clean up the form data to handle arrays
     const processFormData = (obj) => {
       if (!obj || typeof obj !== 'object') return obj;
-      
+
+      const arrayKeys = new Set(['subjects','themes','learningOutcomes','learningOutcome','assessmentAspects','tools','indicators']);
+
       // Create a new object to store processed data
       const result = Array.isArray(obj) ? [] : {};
-      
-      // Process each key in the object
+
       Object.keys(obj).forEach(key => {
         const value = obj[key];
-        
-        // Special handling for evaluationDate - ensure it's a String
-        if (key === 'evaluationDate') {
-          if (Array.isArray(value)) {
-            result[key] = String(value[0] || ''); // Convert to String
+
+        // Treat evaluation date variants as plain strings
+        if (/^evaluationDate/i.test(key) || key === 'evaluationDate') {
+          if (Array.isArray(value)) result[key] = String(value[0] || '');
+          else result[key] = String(value || '');
+          return;
+        }
+
+        // If value is an array and should be preserved as an array, process each element
+        if (Array.isArray(value)) {
+          // If key is in known array keys or array elements are objects, preserve as array
+          const elemsAreObjects = value.length > 0 && value.every(v => v && typeof v === 'object');
+          if (arrayKeys.has(key) || elemsAreObjects) {
+            result[key] = value.map(v => (v && typeof v === 'object') ? processFormData(v) : v);
+          } else if (value.length === 1) {
+            // collapse single-element arrays for scalar fields
+            result[key] = value[0];
           } else {
-            result[key] = String(value || ''); // Convert to String
+            result[key] = value.map(v => (v && typeof v === 'object') ? processFormData(v) : v);
           }
+          return;
         }
-        // If value is array with 1 element and not supposed to be an array field
-        else if (Array.isArray(value) && 
-            !['subjects', 'themes', 'learningOutcomes', 'indicators'].includes(key)) {
-          result[key] = value[0]; // Take the first value
-        }
-        // If it's an object or array, process recursively
-        else if (value && typeof value === 'object') {
+
+        // Recursively process objects
+        if (value && typeof value === 'object') {
           result[key] = processFormData(value);
+          return;
         }
-        // Otherwise use the value as is
-        else {
-          result[key] = value;
-        }
+
+        // Scalars
+        result[key] = value;
       });
-      
+
       return result;
     };
 
@@ -282,6 +304,228 @@ exports.themeformSave = async (req, res) => {
     const newThemeData = processFormData(req.body.subjects[0].themes[0]);
     
     console.log("Processed new theme data:", JSON.stringify(newThemeData, null, 2));
+
+    // Defensive normalization for student-submitted theme: remove empty placeholders
+    const normalizeStudentTheme = (theme) => {
+      if (!theme || typeof theme !== 'object') return theme;
+      const t = { ...theme };
+
+      const loKey = t.learningOutcomes || t.learningOutcome || [];
+      t.learningOutcomes = Array.isArray(loKey) ? loKey.map(lo => {
+        const newLo = { ...lo };
+
+        // Ensure indicators array exists at LO level (fallback)
+        if (!Array.isArray(newLo.indicators)) newLo.indicators = Array.isArray(newLo.indicators) ? newLo.indicators : [];
+
+        // Normalize assessmentAspects into an array
+        if (!Array.isArray(newLo.assessmentAspects) && newLo.assessmentAspects && typeof newLo.assessmentAspects === 'object') {
+          newLo.assessmentAspects = [newLo.assessmentAspects];
+        }
+
+        if (Array.isArray(newLo.assessmentAspects)) {
+          newLo.assessmentAspects = newLo.assessmentAspects.map(asp => {
+            const newAsp = { ...asp };
+
+            // Normalize tools into an array
+            if (!Array.isArray(newAsp.tools) && newAsp.tools && typeof newAsp.tools === 'object') {
+              newAsp.tools = [newAsp.tools];
+            }
+
+            if (Array.isArray(newAsp.tools)) {
+              newAsp.tools = newAsp.tools.map(tool => {
+                const newTool = { ...tool };
+
+                // Ensure indicators is an array
+                if (!Array.isArray(newTool.indicators) && newTool.indicators && typeof newTool.indicators === 'object') {
+                  newTool.indicators = [newTool.indicators];
+                }
+
+                if (Array.isArray(newTool.indicators)) {
+                  newTool.indicators = newTool.indicators.map(ind => {
+                    const newInd = { ...ind };
+
+                    // Normalize indicator name and marks
+                    newInd.indicatorName = (newInd.indicatorName || newInd.name || '').toString();
+                    newInd.maxMarks = Number(newInd.maxMarks || newInd.indicatorsMarks || 0);
+                    newInd.obtainedBefore = Number(newInd.obtainedBefore || newInd.marksBeforeIntervention || 0);
+                    newInd.obtainedAfter = Number(newInd.obtainedAfter || newInd.marksAfterIntervention || 0);
+
+                    // remove legacy fields
+                    if (newInd.indicatorsMarks !== undefined) delete newInd.indicatorsMarks;
+                    if (newInd.name !== undefined) delete newInd.name;
+
+                    return newInd;
+                  }).filter(ind => {
+                    // keep indicators that have a name or non-zero maxMarks
+                    const hasName = (ind.indicatorName || '').toString().trim().length > 0;
+                    const hasMax = typeof ind.maxMarks === 'number' && ind.maxMarks >= 0;
+                    return hasName || hasMax;
+                  });
+                } else {
+                  newTool.indicators = [];
+                }
+
+                // Ensure tool-level dates and totals
+                // If the form provided LO-level dates but not tool-level, inherit from LO
+                newTool.evaluationDateBefore = newTool.evaluationDateBefore || newLo.evaluationDateBefore || '';
+                newTool.evaluationDateAfter = newTool.evaluationDateAfter || newLo.evaluationDateAfter || '';
+                newTool.totalBefore = Number(newTool.totalBefore || 0);
+                newTool.totalAfter = Number(newTool.totalAfter || 0);
+
+                // remove legacy name alias if present
+                if (newTool.name !== undefined) delete newTool.name;
+
+                return newTool;
+              }).filter(tool => {
+                const hasName = (tool.toolName || '').toString().trim().length > 0;
+                const hasIndicators = Array.isArray(tool.indicators) && tool.indicators.length > 0;
+                return hasName || hasIndicators;
+              });
+            } else {
+              newAsp.tools = [];
+            }
+
+            // ensure aspectName exists
+            newAsp.aspectName = newAsp.aspectName || newAsp.name || '';
+            if (newAsp.name !== undefined) delete newAsp.name;
+
+            return newAsp;
+          }).filter(asp => {
+            const hasName = (asp.aspectName || '').toString().trim().length > 0;
+            const hasTools = Array.isArray(asp.tools) && asp.tools.length > 0;
+            return hasName || hasTools;
+          });
+        } else {
+          newLo.assessmentAspects = [];
+        }
+
+        // LO-level defaults
+        newLo.name = newLo.name || newLo.learningOutcomeName || '';
+        newLo.totalMarksBeforeIntervention = Number(newLo.totalMarksBeforeIntervention || 0);
+        newLo.totalMarksAfterIntervention = Number(newLo.totalMarksAfterIntervention || 0);
+
+        // Clean up legacy fields
+        if (newLo.learningOutcomeName !== undefined) delete newLo.learningOutcomeName;
+
+        return newLo;
+      }).filter(lo => {
+        const hasName = (lo.name || '').toString().trim().length > 0;
+        const hasAspects = Array.isArray(lo.assessmentAspects) && lo.assessmentAspects.length > 0;
+        return hasName || hasAspects;
+      }) : [];
+
+      // Ensure theme-level defaults
+      t.overallTotalBefore = Number(t.overallTotalBefore || 0);
+      t.overallTotalAfter = Number(t.overallTotalAfter || 0);
+
+      return t;
+    };
+
+    const normalizedTheme = normalizeStudentTheme(newThemeData);
+    console.log('Normalized theme for save:', JSON.stringify(normalizedTheme, null, 2));
+
+    // Compute aggregated totals and add legacy/alternate field names expected by UI
+    const computeTotalsAndAliases = (theme) => {
+      if (!theme || typeof theme !== 'object') return theme;
+
+      const num = v => Number(v) || 0;
+
+      const los = theme.learningOutcomes || theme.learningOutcome || [];
+
+      let themeTotalBefore = 0;
+      let themeTotalAfter = 0;
+
+      theme.learningOutcomes = Array.isArray(los) ? los.map(lo => {
+        const newLo = { ...lo };
+        let loTotalBefore = 0;
+        let loTotalAfter = 0;
+
+        if (Array.isArray(newLo.assessmentAspects)) {
+          newLo.assessmentAspects = newLo.assessmentAspects.map(asp => {
+            const newAsp = { ...asp };
+            let aspTotalBefore = 0;
+            let aspTotalAfter = 0;
+
+            if (Array.isArray(newAsp.tools)) {
+              newAsp.tools = newAsp.tools.map(tool => {
+                const newTool = { ...tool };
+                let toolTotalBefore = 0;
+                let toolTotalAfter = 0;
+
+                if (Array.isArray(newTool.indicators)) {
+                  newTool.indicators = newTool.indicators.map(ind => {
+                    const newInd = { ...ind };
+                    // Support legacy names too
+                    const obtainedBefore = num(newInd.obtainedBefore || newInd.marksBeforeIntervention || newInd.marksBefore || newInd.marksBeforeIntervention);
+                    const obtainedAfter = num(newInd.obtainedAfter || newInd.marksAfterIntervention || newInd.marksAfter || newInd.marksAfterIntervention);
+                    // store normalized fields
+                    newInd.obtainedBefore = obtainedBefore;
+                    newInd.obtainedAfter = obtainedAfter;
+                    newInd.maxMarks = num(newInd.maxMarks || newInd.indicatorsMarks || newInd.maxMarks);
+
+                    toolTotalBefore += obtainedBefore;
+                    toolTotalAfter += obtainedAfter;
+                    return newInd;
+                  });
+                }
+
+                // Set tool totals
+                newTool.totalBefore = toolTotalBefore;
+                newTool.totalAfter = toolTotalAfter;
+
+                aspTotalBefore += toolTotalBefore;
+                aspTotalAfter += toolTotalAfter;
+
+                return newTool;
+              });
+            }
+
+            // set aspect totals
+            newAsp.assessmentAspectTotalBefore = aspTotalBefore;
+            newAsp.assessmentAspectTotalAfter = aspTotalAfter;
+
+            loTotalBefore += aspTotalBefore;
+            loTotalAfter += aspTotalAfter;
+
+            return newAsp;
+          });
+        }
+
+        // compute LO totals
+        newLo.totalMarksBeforeIntervention = loTotalBefore;
+        newLo.totalMarksAfterIntervention = loTotalAfter;
+
+        themeTotalBefore += loTotalBefore;
+        themeTotalAfter += loTotalAfter;
+
+        return newLo;
+      }) : [];
+
+      theme.overallTotalBefore = themeTotalBefore;
+      theme.overallTotalAfter = themeTotalAfter;
+
+      return theme;
+    };
+
+    const { computeThemeTotals } = require('../utils/computeThemeTotals');
+    const enrichedTheme = computeThemeTotals(normalizedTheme);
+    console.log('Enriched theme for save (with totals/aliases):', JSON.stringify(enrichedTheme, null, 2));
+    // Debug: show tool dates for inspection
+    try {
+      enrichedTheme.learningOutcomes && enrichedTheme.learningOutcomes.forEach((lo, li) => {
+        lo.assessmentAspects && lo.assessmentAspects.forEach((asp, ai) => {
+          asp.tools && asp.tools.forEach((tool, ti) => {
+            console.log(`Tool date check LO[${li}] ASP[${ai}] TOOL[${ti}]:`, {
+              toolName: tool.toolName,
+              evaluationDateBefore: tool.evaluationDateBefore,
+              evaluationDateAfter: tool.evaluationDateAfter
+            });
+          });
+        });
+      });
+    } catch (dbgErr) {
+      console.warn('Error while logging tool dates:', dbgErr);
+    }
     
     // Get data from the appropriate collection based on class
     const ThemeModel = await getStudentThemeData(studentClass);
@@ -331,18 +575,45 @@ exports.themeformSave = async (req, res) => {
         
         if (themeIndex !== -1) {
           // Theme exists, update it
-          existingStudentRecord.subjects[subjectIndex].themes[themeIndex] = newThemeData;
+          // Merge existing tool dates into enrichedTheme when incoming data lacks them
+          try {
+            const existingTheme = existingStudentRecord.subjects[subjectIndex].themes[themeIndex];
+            if (existingTheme && Array.isArray(existingTheme.learningOutcomes) && Array.isArray(enrichedTheme.learningOutcomes)) {
+              enrichedTheme.learningOutcomes.forEach((newLo, loIdx) => {
+                const oldLo = existingTheme.learningOutcomes[loIdx];
+                if (!oldLo) return;
+                if (Array.isArray(newLo.assessmentAspects) && Array.isArray(oldLo.assessmentAspects)) {
+                  newLo.assessmentAspects.forEach((newAsp, ai) => {
+                    const oldAsp = oldLo.assessmentAspects[ai];
+                    if (!oldAsp) return;
+                    if (Array.isArray(newAsp.tools) && Array.isArray(oldAsp.tools)) {
+                      newAsp.tools.forEach((newTool, ti) => {
+                        const oldTool = oldAsp.tools[ti];
+                        if (!oldTool) return;
+                        if (!newTool.evaluationDateBefore && oldTool.evaluationDateBefore) newTool.evaluationDateBefore = oldTool.evaluationDateBefore;
+                        if (!newTool.evaluationDateAfter && oldTool.evaluationDateAfter) newTool.evaluationDateAfter = oldTool.evaluationDateAfter;
+                      });
+                    }
+                  });
+                }
+              });
+            }
+          } catch (mergeErr) {
+            console.warn('Error while merging existing dates:', mergeErr);
+          }
+
+          existingStudentRecord.subjects[subjectIndex].themes[themeIndex] = enrichedTheme;
           console.log("Updated existing theme");
         } else {
           // Theme doesn't exist, add new theme to existing subject
-          existingStudentRecord.subjects[subjectIndex].themes.push(newThemeData);
+          existingStudentRecord.subjects[subjectIndex].themes.push(enrichedTheme);
           console.log("Added new theme to existing subject");
         }
       } else {
         // Subject doesn't exist, add new subject with the theme
         existingStudentRecord.subjects.push({
           name: subject,
-          themes: [newThemeData]
+          themes: [enrichedTheme]
         });
         console.log("Added new subject with theme");
       }
@@ -359,7 +630,7 @@ exports.themeformSave = async (req, res) => {
         section: section,
         subjects: [{
           name: subject,
-          themes: [newThemeData]
+          themes: [enrichedTheme]
         }],
         createdAt: new Date(),
         updatedAt: new Date()
@@ -446,6 +717,46 @@ exports.themefillupformsave = async (req, res) => {
       
       const ThemeModel = getThemeFormat(studentClass);
       // Update the existing record with new data
+      // Normalize themes before updating
+      if (req.body.themes) {
+        const normalize = (themesInput) => {
+          if (!Array.isArray(themesInput)) return themesInput;
+          return themesInput.map(theme => {
+            const t = { ...theme };
+            const loKey = t.learningOutcome || t.learningOutcomes || [];
+            t.learningOutcome = Array.isArray(loKey) ? loKey.map(lo => {
+              const newLo = { ...lo };
+              if (Array.isArray(newLo.assessmentAspects)) {
+                newLo.assessmentAspects = newLo.assessmentAspects.map(asp => {
+                  const newAsp = { ...asp };
+                  if (Array.isArray(newAsp.tools)) {
+                    newAsp.tools = newAsp.tools.map(tool => {
+                      const newTool = { ...tool };
+                      if (Array.isArray(newTool.indicators)) {
+                        newTool.indicators = newTool.indicators.map(ind => {
+                          const newInd = { ...ind };
+                          if (newInd.indicatorsMarks !== undefined && (newInd.maxMarks === undefined)) {
+                            newInd.maxMarks = Number(newInd.indicatorsMarks) || 0;
+                            delete newInd.indicatorsMarks;
+                          }
+                          return newInd;
+                        });
+                      }
+                      return newTool;
+                    });
+                  }
+                  return newAsp;
+                });
+              }
+              return newLo;
+            }) : [];
+            return t;
+          });
+        };
+
+        req.body.themes = normalize(req.body.themes);
+      }
+
       await ThemeModel.findByIdAndUpdate(projectId, req.body);
 
       return res.render("theme/success", {link:"themefillupform",studentClass,subject,section:"",terminal,editing:false});
@@ -463,7 +774,45 @@ exports.themefillupformsave = async (req, res) => {
     
     // Ensure the studentClass in the request body is set correctly
     req.body.studentClass = studentClass;
-    
+
+    // Normalize themes in req.body if present (same logic as autosave)
+    const normalizeThemesOnce = (themesInput) => {
+      if (!Array.isArray(themesInput)) return themesInput;
+      return themesInput.map(theme => {
+        const t = { ...theme };
+        const loKey = t.learningOutcome || t.learningOutcomes || [];
+        t.learningOutcome = Array.isArray(loKey) ? loKey.map(lo => {
+          const newLo = { ...lo };
+          if (Array.isArray(newLo.assessmentAspects)) {
+            newLo.assessmentAspects = newLo.assessmentAspects.map(asp => {
+              const newAsp = { ...asp };
+              if (Array.isArray(newAsp.tools)) {
+                newAsp.tools = newAsp.tools.map(tool => {
+                  const newTool = { ...tool };
+                  if (Array.isArray(newTool.indicators)) {
+                    newTool.indicators = newTool.indicators.map(ind => {
+                      const newInd = { ...ind };
+                      if (newInd.indicatorsMarks !== undefined && (newInd.maxMarks === undefined)) {
+                        newInd.maxMarks = Number(newInd.indicatorsMarks) || 0;
+                        delete newInd.indicatorsMarks;
+                      }
+                      return newInd;
+                    });
+                  }
+                  return newTool;
+                });
+              }
+              return newAsp;
+            });
+          }
+          return newLo;
+        }) : [];
+        return t;
+      });
+    };
+
+    if (req.body.themes) req.body.themes = normalizeThemesOnce(req.body.themes);
+
     // This is for theme format, so use getThemeFormat
     const model = getThemeFormat(studentClass);
     const result = await model.create(req.body);
@@ -1107,17 +1456,80 @@ exports.autoSaveThemeFillup = async (req, res, next) => {
   try {
     const { studentClass, subject, terminal, themes, credit } = req.body;
     const Practicalmodel =  getThemeFormat(studentClass);
+    // Normalize incoming themes structure and defensively remove empty placeholders
+    const normalizeThemes = (themesInput) => {
+      if (!Array.isArray(themesInput)) return themesInput;
+      return themesInput.map(theme => {
+        const t = { ...theme };
+        const loKey = t.learningOutcome || t.learningOutcomes || [];
+
+        t.learningOutcome = Array.isArray(loKey) ? loKey.map(lo => {
+          const newLo = { ...lo };
+
+          // Normalize assessmentAspects -> tools -> indicators and convert marks
+          if (Array.isArray(newLo.assessmentAspects)) {
+            newLo.assessmentAspects = newLo.assessmentAspects.map(asp => {
+              const newAsp = { ...asp };
+              if (Array.isArray(newAsp.tools)) {
+                newAsp.tools = newAsp.tools.map(tool => {
+                  const newTool = { ...tool };
+                  if (Array.isArray(newTool.indicators)) {
+                    newTool.indicators = newTool.indicators.map(ind => {
+                      const newInd = { ...ind };
+                      if (newInd.indicatorsMarks !== undefined && (newInd.maxMarks === undefined)) {
+                        newInd.maxMarks = Number(newInd.indicatorsMarks) || 0;
+                        delete newInd.indicatorsMarks;
+                      }
+                      // keep indicatorName if present; trim later in filtering
+                      return newInd;
+                    }).filter(ind => {
+                      // remove indicators that have no meaningful name and zero marks
+                      const name = (ind.indicatorName || ind.name || '').toString().trim();
+                      const hasMarks = (typeof ind.maxMarks === 'number' && ind.maxMarks > 0);
+                      return name.length > 0 || hasMarks;
+                    });
+                  }
+                  return newTool;
+                }).filter(tool => {
+                  // remove tools with no name and no indicators
+                  const hasName = (tool.toolName || tool.name || '').toString().trim().length > 0;
+                  const hasIndicators = Array.isArray(tool.indicators) && tool.indicators.length > 0;
+                  return hasName || hasIndicators;
+                });
+              }
+              return newAsp;
+            }).filter(asp => {
+              // remove aspects with no name and no tools
+              const hasName = (asp.aspectName || asp.name || '').toString().trim().length > 0;
+              const hasTools = Array.isArray(asp.tools) && asp.tools.length > 0;
+              return hasName || hasTools;
+            });
+          }
+
+          return newLo;
+        }).filter(lo => {
+          // remove learning outcomes that are empty placeholders
+          const hasName = (lo.learningOutcomeName || lo.name || '').toString().trim().length > 0;
+          const hasAspects = Array.isArray(lo.assessmentAspects) && lo.assessmentAspects.length > 0;
+          const hasTotal = (typeof lo.totalMarks === 'number' && lo.totalMarks > 0) || (typeof lo.totalMarksBeforeIntervention === 'number' && lo.totalMarksBeforeIntervention > 0);
+          return hasName || hasAspects || hasTotal;
+        }) : [];
+
+        return t;
+      });
+    };
+
+    const normalized = normalizeThemes(themes);
+
     await Practicalmodel.updateOne(
         { studentClass, subject},
         {
         $set: {
           studentClass,
           subject,
-       
           credit,
-          themes,
+          themes: normalized,
           updatedAt: new Date()
-         
         }
       },
       { upsert: true }
@@ -1157,9 +1569,11 @@ exports.addtoolsForm = async (req,res,next) =>
   try{
   const {subject,studentClass} = req.query;
   const oldtoolsData = await ToolsModel.find({subject:subject}).lean();
+  
   console.log("oldtoolsData:", oldtoolsData);
   console.log("Subject:", subject, "Student Class:", studentClass);
   const sidenavData = await getSidenavData(req);
+  
   res.render('./chapterwise/addtoolsform',{...sidenavData,subject,studentClass,oldtoolsData});
   }catch(err)
   {
@@ -1284,6 +1698,175 @@ exports.deletetoolsGroup = async (req, res, next) => {
     }
     await ToolsModel.findByIdAndDelete(chapterId);
     return res.status(200).json({ message: 'Tool group deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+    console.log(err);
+  }
+};
+
+// ---- Assessment Aspect handlers (mirror of tools but different collection/field names) ----
+exports.getAspects = async (req, res) => {
+  try {
+    const { studentClass, subject } = req.query;
+    if (!studentClass || !subject) {
+      return res.json([]);
+    }
+    const aspectDoc = await AspectsModel.findOne({ subject: subject, forClass: studentClass }).lean();
+    if (aspectDoc && aspectDoc.aspect) {
+      res.json(aspectDoc.aspect.sort());
+    } else {
+      res.json([]);
+    }
+  } catch (err) {
+    console.error("Error fetching aspects:", err);
+    res.status(500).json({ error: "Failed to fetch aspects" });
+  }
+};
+
+exports.addAspect = async (req, res) => {
+  try {
+    const { studentClass, subject, name } = req.body;
+    if (!studentClass || !subject || !name) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+    const aspectName = name.trim();
+    if(!aspectName) return res.json({ success: false });
+
+    let aspectDoc = await AspectsModel.findOne({ subject: subject, forClass: studentClass });
+    if(aspectDoc) {
+       if(!aspectDoc.aspect.includes(aspectName)) {
+           aspectDoc.aspect.push(aspectName);
+           aspectDoc.totalaspect = aspectDoc.aspect.length;
+           await aspectDoc.save();
+           return res.json({ success: true, message: "Aspect added to existing list" });
+       } else {
+           return res.json({ success: true, message: "Aspect already exists" });
+       }
+    } else {
+       const newAspect = new AspectsModel({ subject: subject, forClass: [studentClass], aspect: [aspectName], totalaspect: 1 });
+       await newAspect.save();
+       return res.json({ success: true, message: "New aspect list created" });
+    }
+  } catch (err) {
+    console.error("Error saving aspect:", err);
+    res.status(500).json({ error: "Failed to save aspect" });
+  }
+};
+exports.addaspectForm = async (req,res,next) =>
+{
+  try{
+    const {subject,studentClass} = req.query;
+    const oldaspectsData = await AspectsModel.find({subject:subject}).lean();
+    const sidenavData = await getSidenavData(req);
+    res.render('./chapterwise/addaspectform',{...sidenavData,subject,studentClass,oldaspectsData});
+  }catch(err)
+  {
+    res.status(500).json({ error: err.message });
+    console.log(err)
+  }
+};
+exports.saveaddaspectForm= async (req,res,next) =>
+{
+  try{
+    const {subject,studentClass} = req.query;
+    await AspectsModel.create(req.body);
+    res.redirect(`/addaspect?subject=${subject}&studentClass=${studentClass}`);
+  }catch(err)
+  {
+    res.status(500).json({ error: err.message });
+    console.log(err)
+  }
+};
+exports.deleteaspects= async (req,res,next) =>
+{
+  try{
+    const {chapterId,subject,studentClass,index} = req.query;
+    const doc = await AspectsModel.findById(chapterId);
+    if (!doc) {
+      return res.status(404).json({ error: 'Aspect Group not found' });
+    }
+    doc.aspect.splice(parseInt(index), 1);
+    doc.totalaspect = doc.aspect.length;
+    await doc.save();
+    res.redirect(`/addaspect?subject=${subject}&studentClass=${studentClass}`);
+  }
+  catch(err)
+  {
+    res.status(500).json({ error: err.message });
+    console.log(err)
+  }
+}
+
+exports.editaspects = async (req, res, next) => {
+  try {
+    const { chapterId, index, newName } = req.body;
+    if (!newName || newName.trim() === "") {
+        return res.status(400).json({ error: "Aspect name cannot be empty" });
+    }
+    const doc = await AspectsModel.findById(chapterId);
+    if (!doc) {
+      return res.status(404).json({ error: 'Aspect document not found' });
+    }
+    if (index >= 0 && index < doc.aspect.length) {
+      doc.aspect[index] = newName;
+      await doc.save();
+      return res.status(200).json({ message: 'Aspect updated successfully' });
+    } else {
+      return res.status(400).json({ error: 'Invalid aspect index' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+    console.log(err);
+  }
+};
+
+exports.updateaspectsClasses = async (req, res, next) => {
+  try {
+    const { chapterId, newClasses } = req.body;
+    if (!newClasses || !Array.isArray(newClasses) || newClasses.length === 0) {
+      return res.status(400).json({ error: "At least one class must be selected." });
+    }
+    const doc = await AspectsModel.findById(chapterId);
+    if (!doc) {
+      return res.status(404).json({ error: 'Aspect document not found' });
+    }
+    doc.forClass = newClasses;
+    await doc.save();
+    return res.status(200).json({ message: 'Classes updated successfully' });
+  } catch (err) {
+    console.log("Error in updateaspectsClasses:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.addSingleaspect = async (req, res, next) => {
+  try {
+    const { chapterId, toolName } = req.body;
+    if (!toolName || toolName.trim() === "") {
+        return res.status(400).json({ error: "Aspect name cannot be empty" });
+    }
+    const doc = await AspectsModel.findById(chapterId);
+    if (!doc) {
+      return res.status(404).json({ error: 'Aspect document not found' });
+    }
+    doc.aspect.push(toolName);
+    doc.totalaspect = doc.aspect.length; 
+    await doc.save();
+    return res.status(200).json({ message: 'Aspect added successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+    console.log(err);
+  }
+};
+
+exports.deleteaspectsGroup = async (req, res, next) => {
+  try {
+    const { chapterId } = req.body;
+    if (!chapterId) {
+        return res.status(400).json({ error: "Aspect Group ID is required" });
+    }
+    await AspectsModel.findByIdAndDelete(chapterId);
+    return res.status(200).json({ message: 'Aspect group deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
     console.log(err);
