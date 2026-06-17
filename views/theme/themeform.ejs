@@ -1520,6 +1520,33 @@
 
    
   
+    <style>
+      /* Responsive adjustments for theme form */
+      .theme-form-top-controls{display:flex;gap:8px;align-items:center;margin:8px 0 12px;flex-wrap:wrap}
+      .theme-form-top-controls .btn{padding:8px 12px;border-radius:6px;border:1px solid #2b7cff;background:#fff;color:#2b7cff;cursor:pointer}
+      .theme-form-top-controls .btn.ghost{background:transparent}
+      .form-card{padding:12px}
+      .container{max-width:960px;margin:0 auto;padding:0 12px}
+      .evaluation-table{width:100%;border-collapse:collapse;overflow:auto;display:block}
+      .evaluation-table th,.evaluation-table td{padding:6px 8px;border:1px solid #e6eefb;text-align:left}
+      .evaluation-table caption{font-size:1rem}
+      .marks-input{width:72px;max-width:20%;box-sizing:border-box}
+      input.nepali-datepicker, input[type="text"], select{width:100%;box-sizing:border-box}
+      @media (max-width:600px){
+        .marks-input{width:48px}
+        .theme-form-top-controls{flex-direction:column;align-items:stretch}
+        .evaluation-table th,.evaluation-table td{padding:8px 6px;font-size:13px}
+      }
+    </style>
+
+    <div class="theme-form-top-controls">
+      <button type="button" id="setDefaultsBtn" class="btn">Set Default (NEPALI / Three / CRIMSON)</button>
+      <button type="button" id="clearDefaultsBtn" class="btn ghost">Clear Defaults</button>
+      <button type="button" id="openWithDefaultsBtn" class="btn">Open With Defaults</button>
+      <div style="flex:1 1 auto"></div>
+      <div style="font-size:13px;color:#666">Tip: use Quick-select to pick LO → Aspect → Tool</div>
+    </div>
+
     <form action="/themeform" method="POST" id="themeEvaluationForm" class="themeEvaluationForm"  >
       <!-- Hidden fields for backend validation -->
       <input type="hidden" id="rollHidden" name="roll" value="">
@@ -1587,18 +1614,17 @@
         </div>
       </div>
       <div class="form-row">
-        <div class="form-group">
+        <div class="form-group" style="flex:1 1 300px;">
           <label for="quickTool">Tool</label>
           <select id="quickTool" onchange="onToolChange()">
             <option value="" selected disabled>Select Tool</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>Indicators</label>
-          <div id="quickIndicators" style="padding:8px; background:#fff; border-radius:6px; min-height:44px;">
-            <!-- radio buttons populated here -->
-          </div>
-        </div>
+      </div>
+
+      <!-- Indicators/table appears in a full-width container below the selects -->
+      <div id="quickIndicators" style="padding:8px; background:#fff; border-radius:6px; min-height:44px; margin-top:10px; width:100%; clear:both;">
+        <!-- dynamic evaluation table will be inserted here -->
       </div>
 
       <!-- Hidden fields to compose single-theme payload for submission -->
@@ -1844,32 +1870,28 @@
       outcomeWrappers.forEach((wrapper, index) => {
         const wrapperTheme = wrapper.dataset.theme;
         const isSelected = wrapperTheme === selectedTheme;
-        
+
         console.log(`Wrapper ${index}: theme="${wrapperTheme}", selected=${isSelected}`);
-        
-        wrapper.style.display = isSelected ? 'block' : 'none';
-        
+
+        // Always keep legacy wrappers hidden to use the new quick-select table UI.
+        wrapper.style.display = 'none';
+
         if (isSelected) {
           selectedWrapper = wrapper;
         }
-        
-        // Important: Don't disable fields - instead modify form submission behavior
-        // This ensures that all theme data is preserved but only selected theme is submitted
-        
+
+        // Important: Don't disable fields - instead modify form submission behavior.
+        // Keep inputs enabled so they can be renamed and submitted, but hidden from view.
         const themeFields = wrapper.querySelectorAll('.theme-field');
         themeFields.forEach(field => {
-          // Add a data attribute to identify if this field belongs to the selected theme
+          // mark which wrapper is selected via data attribute for debugging
           field.setAttribute('data-theme-selected', isSelected ? 'true' : 'false');
-          
-          // Don't disable the fields - this was causing the issue
-          // field.disabled = !isSelected;
         });
-        
-        // Handle mark inputs - also don't disable them
+
+        // Handle mark inputs - also keep enabled
         const markInputs = wrapper.querySelectorAll('.marks-input');
         markInputs.forEach(input => {
           input.setAttribute('data-theme-selected', isSelected ? 'true' : 'false');
-          // Don't disable: input.disabled = !isSelected;
         });
       });
       
@@ -1917,6 +1939,66 @@
         opt.textContent = (lo.learningOutcomeName || lo.name || lo.learningOutcomeName === 0 ? lo.learningOutcomeName : null) || lo.name || `Learning Outcome ${idx+1}`;
         loSelect.appendChild(opt);
       });
+
+      // After populating options, try to apply any saved quick selection for this theme
+      try { applyQuickSelection(themeName); } catch(e){ console.warn('applyQuickSelection failed', e); }
+    }
+
+    // Persist and restore the last quick selection per subject/class/section+theme
+    function getQuickSelectionKey(themeName){
+      const subj = (document.getElementById('subjectHidden') && document.getElementById('subjectHidden').value) || (document.getElementById('subject') && document.getElementById('subject').value) || '';
+      const cls = (document.getElementById('studentClassHidden') && document.getElementById('studentClassHidden').value) || (document.getElementById('studentClass') && document.getElementById('studentClass').value) || '';
+      const sec = (document.getElementById('sectionHidden') && document.getElementById('sectionHidden').value) || (document.getElementById('section') && document.getElementById('section').value) || '';
+      return `themeform_lastSelection_${subj}_${cls}_${sec}_${themeName}`;
+    }
+
+    function saveQuickSelection(){
+      try{
+        const themeName = document.getElementById('themeName').value || '';
+        if(!themeName) return;
+        const key = getQuickSelectionKey(themeName);
+        const payload = {
+          lo: document.getElementById('quickLO').value || '',
+          asp: document.getElementById('quickAspect').value || '',
+          tool: document.getElementById('quickTool').value || '',
+          ts: Date.now()
+        };
+        localStorage.setItem(key, JSON.stringify(payload));
+      }catch(e){console.warn('saveQuickSelection failed', e);}
+    }
+
+    function loadQuickSelection(themeName){
+      try{
+        const key = getQuickSelectionKey(themeName);
+        const s = localStorage.getItem(key);
+        return s ? JSON.parse(s) : null;
+      }catch(e){console.warn('loadQuickSelection failed', e); return null;}
+    }
+
+    function applyQuickSelection(themeName){
+      const sel = loadQuickSelection(themeName);
+      if(!sel) return;
+      const loSelect = document.getElementById('quickLO');
+      const aspSelect = document.getElementById('quickAspect');
+      const toolSelect = document.getElementById('quickTool');
+
+      // Apply LO if valid
+      if (sel.lo !== undefined && loSelect.options[sel.lo]) {
+        loSelect.value = sel.lo;
+        try{ onLOChange(); } catch(e){ console.warn('onLOChange failed', e); }
+      }
+
+      // Apply aspect if valid (onLOChange should have populated aspects)
+      if (sel.asp !== undefined && aspSelect.options[sel.asp]) {
+        aspSelect.value = sel.asp;
+        try{ onAspectChange(); } catch(e){ console.warn('onAspectChange failed', e); }
+      }
+
+      // Apply tool if valid
+      if (sel.tool !== undefined && toolSelect.options[sel.tool]) {
+        toolSelect.value = sel.tool;
+        try{ onToolChange(); } catch(e){ console.warn('onToolChange failed', e); }
+      }
     }
 
     function onLOChange() {
@@ -1942,6 +2024,8 @@
           aspectSelect.appendChild(opt);
         });
       }
+      // persist choice
+      try { saveQuickSelection(); } catch(e){ console.warn('saveQuickSelection failed', e); }
     }
 
     function onAspectChange() {
@@ -1967,6 +2051,8 @@
           toolSelect.appendChild(opt);
         });
       }
+      // persist choice
+      try { saveQuickSelection(); } catch(e){ console.warn('saveQuickSelection failed', e); }
     }
 
     function onToolChange() {
@@ -2136,6 +2222,8 @@
           }
         });
       } catch(e) { console.warn('Error initializing nepali datepickers', e); }
+      // persist current selection (LO/Aspect/Tool)
+      try { saveQuickSelection(); } catch(e){ console.warn('saveQuickSelection failed', e); }
     }
 
     function saveSelectedIndicator() {
@@ -2191,6 +2279,11 @@
       document.getElementById('selectedIndicatorMarksAfterHidden').value = 0;
       document.getElementById('selectedEvalDateBeforeHidden').value = '';
       document.getElementById('selectedEvalDateAfterHidden').value = '';
+      // remove stored quick selection for this theme
+      try{
+        const themeName = document.getElementById('themeName').value || '';
+        if(themeName){ localStorage.removeItem(getQuickSelectionKey(themeName)); }
+      }catch(e){ console.warn('clear quick selection failed', e); }
     }
     
     // New function to update field names for the selected theme
@@ -2740,6 +2833,87 @@
     });
 
     autoSaveObserver.observe(document.body, { childList: true, subtree: true });
+  </script>
+
+  <script>
+    // Defaults handling: redirect to saved defaults, apply query params to form, and populate data
+    document.addEventListener('DOMContentLoaded', function() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const subjectParam = params.get('subject');
+        const classParam = params.get('studentClass');
+        const sectionParam = params.get('section');
+
+        // If no query params but defaults are saved, redirect to include them
+        if (!subjectParam && !classParam && !sectionParam) {
+          const saved = localStorage.getItem('themeformDefaults');
+          if (saved) {
+            const obj = JSON.parse(saved);
+            const q = new URLSearchParams(obj).toString();
+            if (q) {
+              // preserve current path
+              window.location.search = q;
+              return;
+            }
+          }
+        }
+
+        // If query params exist, set the form fields and populate
+        if (subjectParam || classParam || sectionParam) {
+          const subjEl = document.getElementById('subject');
+          const clsEl = document.getElementById('studentClass');
+          const secEl = document.getElementById('section');
+          const subjHidden = document.getElementById('subjectHidden');
+          const classHidden = document.getElementById('studentClassHidden');
+          const sectionHidden = document.getElementById('sectionHidden');
+
+          if (subjEl && subjectParam) subjEl.value = subjectParam;
+          if (clsEl && classParam) clsEl.value = classParam;
+          if (secEl && sectionParam) secEl.value = sectionParam;
+          if (subjHidden && subjectParam) subjHidden.value = subjectParam;
+          if (classHidden && classParam) classHidden.value = classParam;
+          if (sectionHidden && sectionParam) sectionHidden.value = sectionParam;
+
+          // Sync hidden fields and attempt to open first theme view
+          setTimeout(() => {
+            try { syncHiddenFields(); } catch (e) { console.warn('syncHiddenFields missing', e); }
+            const themeSel = document.getElementById('themeName');
+            if (themeSel && themeSel.options.length > 1) {
+              // don't force selection if already set
+              if (!themeSel.value) themeSel.selectedIndex = 1;
+              try { filterLearningOutcomes(themeSel, 0); } catch (e) { console.warn('filterLearningOutcomes failed', e); }
+            }
+          }, 250);
+        }
+
+        // Button handlers
+        const setBtn = document.getElementById('setDefaultsBtn');
+        const clearBtn = document.getElementById('clearDefaultsBtn');
+        const openBtn = document.getElementById('openWithDefaultsBtn');
+
+        if (setBtn) setBtn.addEventListener('click', function() {
+          const def = {
+            subject: (document.getElementById('subject') && document.getElementById('subject').value) || 'NEPALI',
+            studentClass: (document.getElementById('studentClass') && document.getElementById('studentClass').value) || 'Three',
+            section: (document.getElementById('section') && document.getElementById('section').value) || 'CRIMSON',
+            terminal: ''
+          };
+          localStorage.setItem('themeformDefaults', JSON.stringify(def));
+          alert('Defaults saved. Visiting /themeform will redirect with these defaults.');
+        });
+
+        if (clearBtn) clearBtn.addEventListener('click', function() { localStorage.removeItem('themeformDefaults'); alert('Defaults cleared'); });
+
+        if (openBtn) openBtn.addEventListener('click', function() {
+          const saved = localStorage.getItem('themeformDefaults');
+          if (!saved) { alert('No defaults saved. Click "Set Default" first.'); return; }
+          const obj = JSON.parse(saved);
+          const q = new URLSearchParams(obj).toString();
+          window.location.href = window.location.pathname + (q ? ('?' + q) : '');
+        });
+
+      } catch (err) { console.warn('Defaults handler failed', err); }
+    });
   </script>
 
   <!-- autofill name  -->
