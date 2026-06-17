@@ -13,6 +13,7 @@ const {addToolsSchema} = require("../model/addtoolsSchema");
 const ToolsModel = mongoose.model("tools", addToolsSchema, "tools");
 const {addAspectSchema} = require("../model/addaspectSchema");
 const AspectsModel = mongoose.model("assessmentaspect", addAspectSchema, "assessmentaspect");
+const AspectContainer = require('../model/aspectcontainerschema');
 
 const { name } = require("ejs");
 const subjectlist = mongoose.model("subjectlist", subjectSchema, "subjectlist");
@@ -1711,6 +1712,15 @@ exports.getAspects = async (req, res) => {
     if (!studentClass || !subject) {
       return res.json([]);
     }
+    // Prefer AspectContainer collection which stores full aspects/tools/indicators
+    const acFilter = { studentClass: String(studentClass), subject: String(subject) };
+    const acDoc = await AspectContainer.findOne(acFilter).lean();
+    if (acDoc && Array.isArray(acDoc.aspects)) {
+      // return array of aspect names for backward compatibility
+      const names = acDoc.aspects.map(a => (a && (a.aspectName || a.name)) || '').filter(Boolean).sort();
+      return res.json(names);
+    }
+    // Fallback to legacy AspectsModel if AspectContainer not present
     const aspectDoc = await AspectsModel.findOne({ subject: subject, forClass: studentClass }).lean();
     if (aspectDoc && aspectDoc.aspect) {
       res.json(aspectDoc.aspect.sort());

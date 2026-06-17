@@ -1922,8 +1922,8 @@
       loSelect.innerHTML = '<option value="" selected disabled>Select Learning Outcome</option>';
       aspectSelect.innerHTML = '<option value="" selected disabled>Select Aspect</option>';
       toolSelect.innerHTML = '<option value="" selected disabled>Select Tool</option>';
-      indicatorsDiv.innerHTML = '';
-
+        aspectSelect.innerHTML = '<option value="" selected disabled>Select Aspect</option>';
+        document.getElementById('quickTool').innerHTML = '<option value="" selected disabled>Select Tool</option>';
       // Find themeItem from provided themes array
       let themeItem = null;
       if (Array.isArray(themesArr)) {
@@ -1940,8 +1940,31 @@
         loSelect.appendChild(opt);
       });
 
-      // After populating options, try to apply any saved quick selection for this theme
-      try { applyQuickSelection(themeName); } catch(e){ console.warn('applyQuickSelection failed', e); }
+      // Try to load AspectContainer for this class+subject and populate aspect/tool/indicators from it
+      (async function(){
+        try{
+          const cls = (document.getElementById('studentClassHidden') && document.getElementById('studentClassHidden').value) || (document.getElementById('studentClass') && document.getElementById('studentClass').value) || '';
+          const subj = (document.getElementById('subjectHidden') && document.getElementById('subjectHidden').value) || (document.getElementById('subject') && document.getElementById('subject').value) || '';
+          if(!cls || !subj) return;
+          const res = await fetch(`/aspect/get/theme?studentClass=${encodeURIComponent(cls)}&subject=${encodeURIComponent(subj)}`);
+          const j = await res.json();
+          if(j && j.success && Array.isArray(j.aspects) && j.aspects.length){
+            // populate aspectSelect from aspectcontainer aspects
+            aspectSelect.innerHTML = '<option value="" selected disabled>Select Aspect</option>';
+            j.aspects.forEach((asp, aIdx) => {
+              const opt = document.createElement('option');
+              opt.value = aIdx;
+              opt.textContent = asp.aspectName || `Aspect ${aIdx+1}`;
+              aspectSelect.appendChild(opt);
+            });
+            // store fetched aspects on the select for later use
+            aspectSelect._aspectContainerAspects = j.aspects;
+          } else {
+            // After populating options from themeData, try to apply any saved quick selection for this theme
+            try { applyQuickSelection(themeName); } catch(e){ console.warn('applyQuickSelection failed', e); }
+          }
+        }catch(e){ console.warn('populateQuickSelects aspectcontainer fetch failed', e); try { applyQuickSelection(themeName); } catch(err){} }
+      })();
     }
 
     // Persist and restore the last quick selection per subject/class/section+theme
@@ -2005,17 +2028,23 @@
       const loIdx = document.getElementById('quickLO').value;
       const themeName = document.getElementById('themeName').value;
       const aspectSelect = document.getElementById('quickAspect');
-      aspectSelect.innerHTML = '<option value="" selected disabled>Select Aspect</option>';
       document.getElementById('quickTool').innerHTML = '<option value="" selected disabled>Select Tool</option>';
       document.getElementById('quickIndicators').innerHTML = '';
       if (loIdx === '' || loIdx === null) return;
+      // If aspectcontainer aspects are present, keep them (aspect select is independent)
+      if (aspectSelect._aspectContainerAspects && Array.isArray(aspectSelect._aspectContainerAspects) && aspectSelect._aspectContainerAspects.length) {
+        try { saveQuickSelection(); } catch(e){ console.warn('saveQuickSelection failed', e); }
+        return;
+      }
+      // Clear aspect options only for fallback behaviour (when no AspectContainer data)
+      aspectSelect.innerHTML = '<option value="" selected disabled>Select Aspect</option>';
+      // Fallback: populate aspects from themeData (legacy behavior)
       let themeItem = null;
       themeData.forEach(td => td.themes.forEach(item => { if(item.themeName === themeName) themeItem = item; }));
       if (!themeItem) return;
       const loArray = Array.isArray(themeItem.learningOutcome) ? themeItem.learningOutcome : (Array.isArray(themeItem.learningOutcomes) ? themeItem.learningOutcomes : []);
       const lo = loArray[Number(loIdx)];
       if (!lo) return;
-      // Populate aspects
       if (Array.isArray(lo.assessmentAspects) && lo.assessmentAspects.length) {
         lo.assessmentAspects.forEach((asp, aIdx) => {
           const opt = document.createElement('option');
@@ -2029,12 +2058,29 @@
     }
 
     function onAspectChange() {
-      const loIdx = document.getElementById('quickLO').value;
-      const aspIdx = document.getElementById('quickAspect').value;
-      const themeName = document.getElementById('themeName').value;
+      const aspSelect = document.getElementById('quickAspect');
+      const aspIdx = aspSelect.value;
       const toolSelect = document.getElementById('quickTool');
       toolSelect.innerHTML = '<option value="" selected disabled>Select Tool</option>';
       document.getElementById('quickIndicators').innerHTML = '';
+      if (!aspIdx) return;
+      // If aspectcontainer data is present on the select, use it
+      const acAspects = aspSelect._aspectContainerAspects;
+      if (Array.isArray(acAspects) && acAspects.length){
+        const asp = acAspects[Number(aspIdx)];
+        if (!asp || !Array.isArray(asp.tools)) return;
+        asp.tools.forEach((tool, tIdx) => {
+          const opt = document.createElement('option');
+          opt.value = tIdx;
+          opt.textContent = tool.toolName || `Tool ${tIdx+1}`;
+          toolSelect.appendChild(opt);
+        });
+        try { saveQuickSelection(); } catch(e){ console.warn('saveQuickSelection failed', e); }
+        return;
+      }
+      // Fallback to themeData-based behavior
+      const loIdx = document.getElementById('quickLO').value;
+      const themeName = document.getElementById('themeName').value;
       if (loIdx === '' || aspIdx === '' ) return;
       let themeItem = null;
       themeData.forEach(td => td.themes.forEach(item => { if(item.themeName === themeName) themeItem = item; }));
@@ -2056,12 +2102,165 @@
     }
 
     function onToolChange() {
-      const loIdx = document.getElementById('quickLO').value;
-      const aspIdx = document.getElementById('quickAspect').value;
+      const aspSelect = document.getElementById('quickAspect');
       const toolIdx = document.getElementById('quickTool').value;
-      const themeName = document.getElementById('themeName').value;
       const indicatorsDiv = document.getElementById('quickIndicators');
       indicatorsDiv.innerHTML = '';
+      if (!aspSelect.value || !toolIdx) return;
+      // If aspectcontainer data is present, use it and render the full indicators table
+      const acAspects = aspSelect._aspectContainerAspects;
+      if (Array.isArray(acAspects) && acAspects.length){
+        const aspObj = acAspects[Number(aspSelect.value)];
+        const tool = aspObj && Array.isArray(aspObj.tools) ? aspObj.tools[Number(toolIdx)] : null;
+        if (!tool || !Array.isArray(tool.indicators)) return;
+        const indicators = tool.indicators;
+
+        const table = document.createElement('table');
+        table.className = 'evaluation-table';
+
+        const caption = document.createElement('caption');
+        caption.style.fontWeight = '700';
+        caption.style.marginBottom = '8px';
+        const themeName = document.getElementById('themeName').value || '';
+        caption.textContent = themeName;
+        table.appendChild(caption);
+
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        ['Learning Outcome', 'Assessment Aspect', 'Tool', 'Indicator', 'Eval Date Before', 'Marks Before', 'Eval Date After', 'Marks After'].forEach(h => {
+          const th = document.createElement('th');
+          th.textContent = h;
+          headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+
+        const loIdx = document.getElementById('quickLO').value;
+        const aspIdx = aspSelect.value;
+        const loName = (document.getElementById('quickLO').options[document.getElementById('quickLO').selectedIndex] || {}).text || '';
+        const aspName = aspObj.aspectName || aspObj.name || '';
+        const toolNameLocal = tool.toolName || tool.name || '';
+        const toolUnique = `${themeName}_${loIdx}_${aspIdx}_${toolIdx}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+        indicators.forEach((ind, iIdx) => {
+          const tr = document.createElement('tr');
+
+          if (iIdx === 0) {
+            const tdLO = document.createElement('td');
+            tdLO.rowSpan = indicators.length;
+            tdLO.textContent = loName || `LO ${Number(loIdx)+1}`;
+            tr.appendChild(tdLO);
+
+            const tdAsp = document.createElement('td');
+            tdAsp.rowSpan = indicators.length;
+            tdAsp.textContent = aspName || `Aspect ${Number(aspIdx)+1}`;
+            tr.appendChild(tdAsp);
+
+            const tdTool = document.createElement('td');
+            tdTool.rowSpan = indicators.length;
+            tdTool.textContent = toolNameLocal || `Tool ${Number(toolIdx)+1}`;
+            tr.appendChild(tdTool);
+          }
+
+          const tdIndicator = document.createElement('td');
+          tdIndicator.textContent = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+          tr.appendChild(tdIndicator);
+
+          if (iIdx === 0) {
+            const tdEvalBefore = document.createElement('td');
+            tdEvalBefore.rowSpan = indicators.length;
+            const dateBefore = document.createElement('input');
+            dateBefore.type = 'text';
+            dateBefore.className = 'nepali-datepicker quick-eval-date-before';
+            dateBefore.id = `quick_eval_before_${toolUnique}`;
+            dateBefore.name = `subjects[0][themes][0][learningOutcomes][${loIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][evaluationDateBefore]`;
+            dateBefore.value = (tool.evaluationDateBefore || '') ;
+            dateBefore.addEventListener('change', () => {
+              document.getElementById('selectedEvalDateBeforeHidden').value = dateBefore.value || '';
+            });
+            tdEvalBefore.appendChild(dateBefore);
+            tr.appendChild(tdEvalBefore);
+          }
+
+          const tdMarksBefore = document.createElement('td');
+          const rbBeforeName = 'quickMarkBefore_' + toolUnique;
+          const valBefore = ind.maxMarks || ind.indicatorsMarks || 0;
+          const rbBefore = document.createElement('input');
+          rbBefore.type = 'radio';
+          rbBefore.name = rbBeforeName;
+          rbBefore.value = valBefore;
+          rbBefore.addEventListener('click', () => {
+            document.getElementById('selectedIndicatorMarksBeforeHidden').value = rbBefore.value;
+            document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+            document.getElementById('selectedIndicatorMaxMarksHidden').value = valBefore;
+          });
+          tdMarksBefore.appendChild(rbBefore);
+          const spanBefore = document.createElement('span');
+          spanBefore.style.marginLeft = '6px';
+          spanBefore.textContent = String(valBefore);
+          tdMarksBefore.appendChild(spanBefore);
+          tr.appendChild(tdMarksBefore);
+
+          if (iIdx === 0) {
+            const tdEvalAfter = document.createElement('td');
+            tdEvalAfter.rowSpan = indicators.length;
+            const dateAfter = document.createElement('input');
+            dateAfter.type = 'text';
+            dateAfter.className = 'nepali-datepicker quick-eval-date-after';
+            dateAfter.id = `quick_eval_after_${toolUnique}`;
+            dateAfter.name = `subjects[0][themes][0][learningOutcomes][${loIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][evaluationDateAfter]`;
+            dateAfter.value = (tool.evaluationDateAfter || '');
+            dateAfter.addEventListener('change', () => {
+              document.getElementById('selectedEvalDateAfterHidden').value = dateAfter.value || '';
+            });
+            tdEvalAfter.appendChild(dateAfter);
+            tr.appendChild(tdEvalAfter);
+          }
+
+          const tdMarksAfter = document.createElement('td');
+          const rbAfterName = 'quickMarkAfter_' + toolUnique;
+          const valAfter = ind.maxMarks || ind.indicatorsMarks || 0;
+          const rbAfter = document.createElement('input');
+          rbAfter.type = 'radio';
+          rbAfter.name = rbAfterName;
+          rbAfter.value = valAfter;
+          rbAfter.addEventListener('click', () => {
+            document.getElementById('selectedIndicatorMarksAfterHidden').value = rbAfter.value;
+            document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+            document.getElementById('selectedIndicatorMaxMarksHidden').value = valAfter;
+          });
+          tdMarksAfter.appendChild(rbAfter);
+          const spanAfter = document.createElement('span');
+          spanAfter.style.marginLeft = '6px';
+          spanAfter.textContent = String(valAfter);
+          tdMarksAfter.appendChild(spanAfter);
+          tr.appendChild(tdMarksAfter);
+
+          tbody.appendChild(tr);
+        });
+
+        table.appendChild(tbody);
+        indicatorsDiv.innerHTML = '';
+        indicatorsDiv.appendChild(table);
+
+        try {
+          const newDateInputs = indicatorsDiv.querySelectorAll('.nepali-datepicker:not([data-initialized])');
+          newDateInputs.forEach(inp => {
+            if (typeof inp.nepaliDatePicker === 'function') {
+              try { inp.nepaliDatePicker(); inp.setAttribute('data-initialized', 'true'); } catch(e){ console.warn('nepaliDatePicker init failed', e); }
+            }
+          });
+        } catch(e) { console.warn('Error initializing nepali datepickers', e); }
+
+        try { saveQuickSelection(); } catch(e){ console.warn('saveQuickSelection failed', e); }
+        return;
+      }
+      // Fallback to themeData behavior
+      const loIdx = document.getElementById('quickLO').value;
+      const aspIdx = document.getElementById('quickAspect').value;
+      const themeName = document.getElementById('themeName').value;
       if (loIdx === '' || aspIdx === '' || toolIdx === '') return;
       let themeItem = null;
       themeData.forEach(td => td.themes.forEach(item => { if(item.themeName === themeName) themeItem = item; }));
@@ -2238,14 +2437,24 @@
 
       // set hidden fields (ensure LO/Aspect/Tool names are set)
       document.getElementById('selectedThemeNameHidden').value = theme;
-      const themeItem = (Array.isArray(themeData) ? themeData.flatMap(td => td.themes).find(t => t.themeName === theme) : null) || null;
-      const loArray = themeItem ? (Array.isArray(themeItem.learningOutcome) ? themeItem.learningOutcome : (Array.isArray(themeItem.learningOutcomes) ? themeItem.learningOutcomes : [])) : [];
-      const lo = loArray[Number(loIdx)] || {};
-      document.getElementById('selectedLOHidden').value = lo.learningOutcomeName || lo.name || '';
-      const asp = (lo.assessmentAspects && lo.assessmentAspects[Number(aspIdx)]) || {};
-      document.getElementById('selectedAspectHidden').value = asp.aspectName || asp.name || '';
-      const tool = (asp.tools && asp.tools[Number(toolIdx)]) || {};
-      document.getElementById('selectedToolHidden').value = tool.toolName || tool.name || '';
+      // Prefer AspectContainer values if present (aspect select populated from AspectContainer)
+      document.getElementById('selectedLOHidden').value = (document.getElementById('quickLO').options[document.getElementById('quickLO').selectedIndex] || {}).text || '';
+      const aspSelect = document.getElementById('quickAspect');
+      if (aspSelect._aspectContainerAspects && Array.isArray(aspSelect._aspectContainerAspects) && aspSelect._aspectContainerAspects.length) {
+        const acAsp = aspSelect._aspectContainerAspects[Number(aspSelect.value)] || {};
+        document.getElementById('selectedAspectHidden').value = acAsp.aspectName || acAsp.name || '';
+        const acTool = (acAsp.tools && acAsp.tools[Number(document.getElementById('quickTool').value)]) || {};
+        document.getElementById('selectedToolHidden').value = acTool.toolName || acTool.name || '';
+      } else {
+        const themeItem = (Array.isArray(themeData) ? themeData.flatMap(td => td.themes).find(t => t.themeName === theme) : null) || null;
+        const loArray = themeItem ? (Array.isArray(themeItem.learningOutcome) ? themeItem.learningOutcome : (Array.isArray(themeItem.learningOutcomes) ? themeItem.learningOutcomes : [])) : [];
+        const lo = loArray[Number(loIdx)] || {};
+        document.getElementById('selectedLOHidden').value = lo.learningOutcomeName || lo.name || '';
+        const asp = (lo.assessmentAspects && lo.assessmentAspects[Number(aspIdx)]) || {};
+        document.getElementById('selectedAspectHidden').value = asp.aspectName || asp.name || '';
+        const tool = (asp.tools && asp.tools[Number(toolIdx)]) || {};
+        document.getElementById('selectedToolHidden').value = tool.toolName || tool.name || '';
+      }
 
       // Ensure marks and dates from quick fields are preserved (they are set by the quick UI)
       // if they are empty, leave as is
@@ -3165,9 +3374,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const studentClass = document.getElementById('studentClassHidden') ? document.getElementById('studentClassHidden').value : "<%= studentClass %>";
     const subject = "<%= subject %>";
-    const res = await fetch(`/get-aspects?studentClass=${encodeURIComponent(studentClass)}&subject=${encodeURIComponent(subject)}`);
+    const res = await fetch(`/aspect/get?studentClass=${encodeURIComponent(studentClass)}&subject=${encodeURIComponent(subject)}`);
     if (!res.ok) return;
-    const aspects = await res.json();
+    const json = await res.json();
+    const aspects = (json && json.success) ? (Array.isArray(json.aspects) ? json.aspects : []) : (Array.isArray(json) ? json : []);
+    // expose aspects for other handlers
+    window.aspectContainerAspects = aspects;
     const aspectSelects = document.querySelectorAll('select.aspect-dropdown[placeholder="Enter assessment aspect"]');
     aspectSelects.forEach(select => {
       select.innerHTML = '';
@@ -3175,19 +3387,57 @@ document.addEventListener('DOMContentLoaded', async () => {
       defaultOpt.value = '';
       defaultOpt.textContent = 'Select aspect';
       select.appendChild(defaultOpt);
+      // aspects may be objects from AspectContainer; extract aspectName
       aspects.forEach(a => {
+        const name = (a && (a.aspectName || a.name)) || String(a || '');
         const opt = document.createElement('option');
-        opt.value = a;
-        opt.textContent = a;
+        opt.value = name;
+        opt.textContent = name;
         select.appendChild(opt);
       });
-      // sync with hidden input in same row
+      // sync with hidden input in same row and populate tools for the row
       select.addEventListener('change', function() {
         const row = select.closest('tr');
         if (!row) return;
         const hidden = row.querySelector('input[type="hidden"][name*="[indicators]"][name$="[name]"]');
         if (hidden) hidden.value = this.value;
+        // populate tools select in same row from AspectContainer if available
+        try {
+          const toolsSelect = row.querySelector('select.tools-dropdown');
+          if (!toolsSelect) return;
+          toolsSelect.dataset.aspectDriven = '1';
+          toolsSelect.innerHTML = '';
+          const defaultTool = document.createElement('option');
+          defaultTool.value = '';
+          defaultTool.textContent = 'Select tool';
+          toolsSelect.appendChild(defaultTool);
+          const selectedAspectName = this.value;
+          const acAspects = Array.isArray(window.aspectContainerAspects) ? window.aspectContainerAspects : [];
+          let matched = null;
+          for (let ai = 0; ai < acAspects.length; ai++) {
+            const a = acAspects[ai];
+            const name = (a && (a.aspectName || a.name)) || String(a || '');
+            if (name === selectedAspectName) { matched = a; break; }
+          }
+          if (matched && Array.isArray(matched.tools)) {
+            matched.tools.forEach(t => {
+              const tname = (t && (t.toolName || t.name)) || String(t || '');
+              const opt = document.createElement('option');
+              opt.value = tname;
+              opt.textContent = tname;
+              toolsSelect.appendChild(opt);
+            });
+          }
+          toolsSelect.addEventListener('change', function() {
+            const hiddenTool = row.querySelector('input[type="hidden"][name*="[tools]"]');
+            if (hiddenTool) hiddenTool.value = this.value;
+          });
+        } catch (e) { console.warn('populate tools failed', e); }
       });
+      // If select has a preselected value (existing data), trigger change to populate tools
+      if (select.value) {
+        try { select.dispatchEvent(new Event('change')); } catch(e) { console.warn('trigger aspect change failed', e); }
+      }
     });
   } catch (err) {
     console.error('Failed to load aspects', err);
@@ -3195,8 +3445,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function populateSelect(select) {
-  // don't populate tool suggestions into aspect selects
-  if (select.classList && select.classList.contains('aspect-dropdown')) return;
+  // don't populate tool suggestions into aspect selects or selects driven by AspectContainer
+  if (select.classList && (select.classList.contains('aspect-dropdown') || select.dataset.aspectDriven === '1')) return;
     // preserve first option
     const firstOption = select.options[0];
     select.innerHTML = '';

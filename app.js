@@ -4,6 +4,7 @@ const attendance  = require('./routers/attendance');
 const fs = require('fs');
 const admincontrol = require('./controller/admincontroller')
 const cirriculum = require('./routers/cirriculum');
+const aspectRouter = require('./routers/aspect');
 const app = express();
 const {verifytoken} = require('./middleware/auth');
 const cors = require("cors");
@@ -353,6 +354,7 @@ app.get('/convert-docx/:filename', (req, res) => {
 app.use(cirriculum)
 app.use(attendance)
 app.use(student)
+app.use(aspectRouter)
 app.use(express.static('public'));
 const PORT = process.env.PORT || 80;
 app.listen(PORT, () => {

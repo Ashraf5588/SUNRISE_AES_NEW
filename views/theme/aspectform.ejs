@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Aspect Container</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;padding:12px;background:#f4f7fb}
+    .card{max-width:900px;margin:12px auto;background:#fff;padding:14px;border-radius:8px;border:1px solid #e6eef6}
+    .row{display:flex;gap:8px}
+    .col{flex:1}
+    label{display:block;margin-bottom:6px;font-weight:600}
+    input,textarea,select{width:100%;padding:8px;border:1px solid #d9e6ef;border-radius:6px}
+    .aspect{border:1px solid #dbeaf6;padding:10px;border-radius:8px;margin-bottom:10px}
+    .tool{background:#fbfdff;padding:8px;border-radius:6px;margin-bottom:8px}
+    .btn{display:inline-block;padding:8px 12px;border-radius:6px;background:#3498db;color:#fff;border:none;cursor:pointer}
+    .btn.secondary{background:#6c757d}
+    .btn.danger{background:#e74c3c}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Aspect Container</h2>
+    <form id="form">
+      <div class="row">
+        <div class="col"><label>Class</label><input id="studentClass" name="studentClass" value="<%= studentClass || (existingData && existingData.studentClass) || '' %>"></div>
+        <div class="col"><label>Subject</label><input id="subject" name="subject" value="<%= subject || (existingData && existingData.subject) || '' %>"></div>
+      </div>
+      <div style="margin-top:10px">
+        <button type="button" class="btn" onclick="addAspect()">+ Add Aspect</button>
+      </div>
+      <div id="container" style="margin-top:12px"></div>
+      <div style="text-align:right;margin-top:12px">
+        <button class="btn" type="submit">Save</button>
+      </div>
+    </form>
+  </div>
+
+<script>
+// Existing data injected from server
+const existing = <%- JSON.stringify(typeof existingData !== 'undefined' && existingData ? existingData : null) %>;
+let aspectIdx = 0;
+
+function setByPath(obj, path, value){
+  const parts = path.replace(/\]/g,'').split('[');
+  let cur = obj;
+  for (let i=0;i<parts.length;i++){
+    const p = parts[i];
+    const next = parts[i+1];
+    if (i === parts.length-1){
+      if (/^\d+$/.test(p)){
+        if (!Array.isArray(cur)) cur = [];
+        cur[Number(p)] = value;
+      } else {
+        cur[p] = value;
+      }
+    } else {
+      if (/^\d+$/.test(p)){
+        const idx = Number(p);
+        if (!Array.isArray(cur)) cur = [];
+        if (!cur[idx]) cur[idx] = (/^\d+$/.test(next) ? [] : {});
+        cur = cur[idx];
+      } else {
+        if (!cur[p]) cur[p] = (/^\d+$/.test(next) ? [] : {});
+        cur = cur[p];
+      }
+    }
+  }
+}
+
+function reindex(){ /* names created with indices stay contiguous by construction */ }
+
+function addAspect(data){
+  const container = document.getElementById('container');
+  const idx = aspectIdx++;
+  const div = document.createElement('div');
+  div.className = 'aspect';
+  div.dataset.idx = idx;
+  div.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+      <div style="flex:1"><label>Aspect Name</label><input name="aspects[${idx}][aspectName]" value="${(data && data.aspectName) ? data.aspectName.replace(/"/g,'&quot;') : ''}"></div>
+      <div style="width:120px"><button type="button" class="btn secondary" onclick="this.closest('.aspect').remove();">Remove</button></div>
+    </div>
+    <div id="tools-${idx}"></div>
+    <div style="margin-top:8px"><button type="button" class="btn" onclick="addTool(${idx})">+ Add Tool</button></div>
+  `;
+  container.appendChild(div);
+  // populate tools if any
+  if (data && Array.isArray(data.tools)){
+    data.tools.forEach(t => addTool(idx, t));
+  } else {
+    // add a default tool + indicator
+    addTool(idx);
+  }
+}
+
+function addTool(aspIdx, data){
+  const toolsContainer = document.getElementById('tools-'+aspIdx);
+  const tIdx = toolsContainer.children.length;
+  const div = document.createElement('div');
+  div.className = 'tool';
+  div.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <div style="flex:1"><label>Tool Name</label><input name="aspects[${aspIdx}][tools][${tIdx}][toolName]" value="${(data && data.toolName)? data.toolName.replace(/"/g,'&quot;') : ''}"></div>
+      
+      <div style="width:90px"><button type="button" class="btn danger" onclick="this.closest('.tool').remove()">Remove</button></div>
+    </div>
+    <div id="inds-${aspIdx}-${tIdx}" style="margin-top:8px"></div>
+    <div style="margin-top:6px"><button type="button" class="btn" onclick="addIndicator(${aspIdx},${tIdx})">+ Add Indicator</button></div>
+  `;
+  toolsContainer.appendChild(div);
+  if (data && Array.isArray(data.indicators)){
+    data.indicators.forEach(ind => addIndicator(aspIdx, tIdx, ind));
+  } else {
+    addIndicator(aspIdx, tIdx);
+  }
+}
+
+function addIndicator(aspIdx, tIdx, data){
+  const cont = document.getElementById(`inds-${aspIdx}-${tIdx}`);
+  const iIdx = cont.children.length;
+  const div = document.createElement('div');
+  div.style.marginTop = '6px';
+  div.innerHTML = `
+    <div style="display:flex;gap:8px;align-items:center">
+      <div style="flex:1"><input name="aspects[${aspIdx}][tools][${tIdx}][indicators][${iIdx}][indicatorName]" placeholder="Indicator" value="${(data && data.indicatorName)? data.indicatorName.replace(/"/g,'&quot;') : ''}"></div>
+      <div style="width:100px"><input type="number" name="aspects[${aspIdx}][tools][${tIdx}][indicators][${iIdx}][maxMarks]" placeholder="Max" value="${(data && data.maxMarks)? data.maxMarks : ''}"></div>
+      
+      <div style="width:80px"><button type="button" class="btn danger" onclick="this.closest('div').remove()">Remove</button></div>
+    </div>
+  `;
+  cont.appendChild(div);
+}
+
+// Populate initial DOM: ensure there is at least one aspect/tool/indicator
+function populateFromExisting(){
+  if (existing && Array.isArray(existing.aspects) && existing.aspects.length){
+    existing.aspects.forEach(a => addAspect(a));
+  } else {
+    addAspect();
+  }
+}
+
+populateFromExisting();
+
+// Build nested object from FormData
+function buildObjectFromForm(form){
+  const fd = new FormData(form);
+  const obj = {};
+  for (const [k,v] of fd.entries()){
+    setByPath(obj, k, v);
+  }
+  return obj;
+}
+
+// Autosave
+let autoSaveTimer;
+function scheduleAutoSave(){
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(()=> performAutoSave(), 800);
+}
+async function performAutoSave(){
+    try{
+      const payload = buildObjectFromForm(document.getElementById('form'));
+      await fetch('/aspect/save', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    }catch(e){ console.warn('autosave failed', e); }
+}
+
+// Attach listeners for autosave
+document.addEventListener('input', function(e){
+  const t = e.target;
+  if (!t) return;
+  if (t.matches('input,textarea,select')) scheduleAutoSave();
+});
+
+// Submit handler
+async function submitForm(e){
+  e.preventDefault();
+  const payload = buildObjectFromForm(document.getElementById('form'));
+    try{
+      const res = await fetch('/aspect/save', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      const j = await res.json();
+      if (j && j.success) alert('Saved'); else alert('Save failed: ' + (j.message||'unknown'));
+    }catch(err){ alert('Error: '+err.message); }
+}
+
+document.getElementById('form').addEventListener('submit', submitForm);
+</script>
+</body>
+</html>
