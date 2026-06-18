@@ -1059,7 +1059,7 @@
                                           <td><%= ind.indicatorName %></td>
                                           <td>
                                             <div class="marks-display">
-                                              <%= ind.indicatorsMarks %>
+                                              <%= (typeof ind.maxMarks !== 'undefined') ? ind.maxMarks : (typeof ind.indicatorsMarks !== 'undefined' ? ind.indicatorsMarks : '') %>
                                             </div>
                                           </td>
                                           <td>
