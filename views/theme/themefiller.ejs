@@ -1513,7 +1513,7 @@
           <input type="number" step="0.01" class="indicator-marks" 
                  name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][indicators][${indIndex}][indicatorsMarks]" 
                  placeholder="Marks" required min="0"
-                 value="${indicatorData ? indicatorData.indicatorsMarks || '' : ''}"
+                 value="${indicatorData ? (typeof indicatorData.maxMarks !== 'undefined' ? indicatorData.maxMarks : (indicatorData.indicatorsMarks || '')) : ''}"
                  oninput="updateTotalMarks(${themeIdx}, ${outcomeIdx}); scheduleAutoSave();">
           <button type="button" class="btn btn-danger" onclick="removeIndicator(this, ${themeIdx}, ${outcomeIdx})">Remove</button>
         `;
@@ -1673,7 +1673,8 @@
                       const indicatorElements = Array.from(toolIndicators.children);
                       indicatorElements.forEach((indDiv, indIdx) => {
                         const indicatorName = indDiv.querySelector(`[name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][indicators][${indIdx}][indicatorName]"]`)?.value || '';
-                        const indicatorMarks = indDiv.querySelector(`[name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][indicators][${indIdx}][indicatorsMarks]"]`)?.value || 0;
+                        const indicatorMarksElem = indDiv.querySelector(`[name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][indicators][${indIdx}][maxMarks]"]`) || indDiv.querySelector(`[name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][indicators][${indIdx}][indicatorsMarks]"]`);
+                        const indicatorMarks = indicatorMarksElem ? indicatorMarksElem.value : 0;
                         if (indicatorName || indicatorMarks) {
                           indicators.push({ indicatorName: indicatorName, indicatorsMarks: indicatorMarks });
                         }
@@ -1777,7 +1778,7 @@
             const indicatorElements = indicatorGroups ? Array.from(indicatorGroups) : Array.from((toolDiv.querySelector('.indicators-container') || {children: []}).children);
             Array.from(indicatorElements).forEach((indDiv, indIdx) => {
               const indTextarea = indDiv.querySelector('textarea[name$="[indicatorName]"]');
-              const indMarks = indDiv.querySelector('input[name$="[indicatorsMarks]"]');
+              const indMarks = indDiv.querySelector('input[name$="[indicatorsMarks]"]') || indDiv.querySelector('input[name$="[maxMarks]"]');
               if (indTextarea) {
                 indTextarea.name = `themes[${tIdx}][learningOutcome][${oIdx}][assessmentAspects][${aIdx}][tools][${toolIdx}][indicators][${indIdx}][indicatorName]`;
               }
