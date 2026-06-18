@@ -2151,6 +2151,42 @@
       const aspectHidden = (aspSelect && (aspSelect.style.display === 'none' || aspSelect.hidden || aspSelect.options.length <= 1));
       console.log('aspectHidden?', aspectHidden);
       if (!toolIdx) return;
+      // helper to update hidden fields when checkboxes used
+      function updateQuickCheckboxes() {
+        try {
+          const beforeBoxes = Array.from(document.querySelectorAll('.quick-indicator-checkbox[data-timing="Before"]'));
+          const afterBoxes = Array.from(document.querySelectorAll('.quick-indicator-checkbox[data-timing="After"]'));
+          const selectedNames = new Set();
+          let sumBefore = 0;
+          let sumAfter = 0;
+          let maxSum = 0;
+
+          beforeBoxes.forEach(b => {
+            if (b.checked) {
+              selectedNames.add(b.dataset.indicatorName || b.getAttribute('data-indicator-name') || b.value);
+              sumBefore += parseFloat(b.value) || 0;
+              maxSum += parseFloat(b.dataset.maxMarks) || 0;
+            }
+          });
+          afterBoxes.forEach(b => {
+            if (b.checked) {
+              selectedNames.add(b.dataset.indicatorName || b.getAttribute('data-indicator-name') || b.value);
+              sumAfter += parseFloat(b.value) || 0;
+              maxSum += parseFloat(b.dataset.maxMarks) || 0;
+            }
+          });
+
+          const namesArr = Array.from(selectedNames);
+          const selHidden = document.getElementById('selectedIndicatorHidden');
+          if (selHidden) selHidden.value = namesArr.join(',');
+          const beforeHidden = document.getElementById('selectedIndicatorMarksBeforeHidden');
+          if (beforeHidden) beforeHidden.value = sumBefore;
+          const afterHidden = document.getElementById('selectedIndicatorMarksAfterHidden');
+          if (afterHidden) afterHidden.value = sumAfter;
+          const maxHidden = document.getElementById('selectedIndicatorMaxMarksHidden');
+          if (maxHidden) maxHidden.value = maxSum;
+        } catch (e) { console.warn('updateQuickCheckboxes failed', e); }
+      }
       // If aspectcontainer data is present, use it and render the full indicators table
       const acAspects = aspSelect._aspectContainerAspects;
       if (Array.isArray(acAspects) && acAspects.length){
@@ -2220,7 +2256,7 @@
             dateBefore.className = 'nepali-datepicker quick-eval-date-before';
             dateBefore.id = `quick_eval_before_${toolUnique}`;
             dateBefore.name = `subjects[0][themes][0][learningOutcomes][${loIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][evaluationDateBefore]`;
-            dateBefore.value = (tool.evaluationDateBefore || '') ;
+            dateBefore.value = (ind && (ind.evaluationDateBefore || ind.evaluationDateBefore === '') ? ind.evaluationDateBefore : (tool.evaluationDateBefore || '')) ;
             dateBefore.addEventListener('change', () => {
               document.getElementById('selectedEvalDateBeforeHidden').value = dateBefore.value || '';
             });
@@ -2229,22 +2265,50 @@
           }
 
           const tdMarksBefore = document.createElement('td');
-          const rbBeforeName = 'quickMarkBefore_' + toolUnique;
           const valBefore = ind.maxMarks || ind.indicatorsMarks || 0;
-          const rbBefore = document.createElement('input');
-          rbBefore.type = 'radio';
-          rbBefore.name = rbBeforeName;
-          rbBefore.value = valBefore;
-          rbBefore.addEventListener('click', () => {
-            document.getElementById('selectedIndicatorMarksBeforeHidden').value = rbBefore.value;
-            document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
-            document.getElementById('selectedIndicatorMaxMarksHidden').value = valBefore;
-          });
-          tdMarksBefore.appendChild(rbBefore);
-          const spanBefore = document.createElement('span');
-          spanBefore.style.marginLeft = '6px';
-          spanBefore.textContent = String(valBefore);
-          tdMarksBefore.appendChild(spanBefore);
+          const subjName = (document.getElementById('subject') && document.getElementById('subject').value || '').trim().toLowerCase();
+          if (subjName === 'hamro serofero') {
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.className = 'quick-indicator-checkbox';
+            cb.dataset.indicatorName = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+            cb.dataset.maxMarks = valBefore || 1;
+            cb.value = 1; // default value per requirement
+            cb.setAttribute('data-timing','Before');
+            cb.addEventListener('change', updateQuickCheckboxes);
+            // Pre-check if saved
+            try { if (ind.obtainedBefore) cb.checked = true; } catch(e){ }
+            tdMarksBefore.appendChild(cb);
+            const spanBefore = document.createElement('span');
+            spanBefore.style.marginLeft = '6px';
+            spanBefore.textContent = String(cb.value);
+            tdMarksBefore.appendChild(spanBefore);
+          } else {
+            const rbBeforeName = 'quickMarkBefore_' + toolUnique;
+            const rbBefore = document.createElement('input');
+            rbBefore.type = 'radio';
+            rbBefore.name = rbBeforeName;
+            rbBefore.value = valBefore;
+            rbBefore.addEventListener('click', () => {
+              document.getElementById('selectedIndicatorMarksBeforeHidden').value = rbBefore.value;
+              document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+              document.getElementById('selectedIndicatorMaxMarksHidden').value = valBefore;
+            });
+            // Pre-select radio if saved
+            try {
+              if (typeof ind.obtainedBefore !== 'undefined' && Number(ind.obtainedBefore) === Number(valBefore)) {
+                rbBefore.checked = true;
+                document.getElementById('selectedIndicatorMarksBeforeHidden').value = rbBefore.value;
+                document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+                document.getElementById('selectedIndicatorMaxMarksHidden').value = valBefore;
+              }
+            } catch(e) {}
+            tdMarksBefore.appendChild(rbBefore);
+            const spanBefore = document.createElement('span');
+            spanBefore.style.marginLeft = '6px';
+            spanBefore.textContent = String(valBefore);
+            tdMarksBefore.appendChild(spanBefore);
+          }
           tr.appendChild(tdMarksBefore);
 
           if (iIdx === 0) {
@@ -2255,7 +2319,7 @@
             dateAfter.className = 'nepali-datepicker quick-eval-date-after';
             dateAfter.id = `quick_eval_after_${toolUnique}`;
             dateAfter.name = `subjects[0][themes][0][learningOutcomes][${loIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][evaluationDateAfter]`;
-            dateAfter.value = (tool.evaluationDateAfter || '');
+            dateAfter.value = (ind && (ind.evaluationDateAfter || ind.evaluationDateAfter === '') ? ind.evaluationDateAfter : (tool.evaluationDateAfter || ''));
             dateAfter.addEventListener('change', () => {
               document.getElementById('selectedEvalDateAfterHidden').value = dateAfter.value || '';
             });
@@ -2264,22 +2328,50 @@
           }
 
           const tdMarksAfter = document.createElement('td');
-          const rbAfterName = 'quickMarkAfter_' + toolUnique;
           const valAfter = ind.maxMarks || ind.indicatorsMarks || 0;
-          const rbAfter = document.createElement('input');
-          rbAfter.type = 'radio';
-          rbAfter.name = rbAfterName;
-          rbAfter.value = valAfter;
-          rbAfter.addEventListener('click', () => {
-            document.getElementById('selectedIndicatorMarksAfterHidden').value = rbAfter.value;
-            document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
-            document.getElementById('selectedIndicatorMaxMarksHidden').value = valAfter;
-          });
-          tdMarksAfter.appendChild(rbAfter);
-          const spanAfter = document.createElement('span');
-          spanAfter.style.marginLeft = '6px';
-          spanAfter.textContent = String(valAfter);
-          tdMarksAfter.appendChild(spanAfter);
+          const subjName2 = (document.getElementById('subject') && document.getElementById('subject').value || '').trim().toLowerCase();
+          if (subjName2 === 'hamro serofero') {
+            const cb2 = document.createElement('input');
+            cb2.type = 'checkbox';
+            cb2.className = 'quick-indicator-checkbox';
+            cb2.dataset.indicatorName = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+            cb2.dataset.maxMarks = valAfter || 1;
+            cb2.value = 1; // default value
+            cb2.setAttribute('data-timing','After');
+            cb2.addEventListener('change', updateQuickCheckboxes);
+            // Pre-check if saved
+            try { if (ind.obtainedAfter) cb2.checked = true; } catch(e){ }
+            tdMarksAfter.appendChild(cb2);
+            const spanAfter = document.createElement('span');
+            spanAfter.style.marginLeft = '6px';
+            spanAfter.textContent = String(cb2.value);
+            tdMarksAfter.appendChild(spanAfter);
+          } else {
+            const rbAfterName = 'quickMarkAfter_' + toolUnique;
+            const rbAfter = document.createElement('input');
+            rbAfter.type = 'radio';
+            rbAfter.name = rbAfterName;
+            rbAfter.value = valAfter;
+            rbAfter.addEventListener('click', () => {
+              document.getElementById('selectedIndicatorMarksAfterHidden').value = rbAfter.value;
+              document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+              document.getElementById('selectedIndicatorMaxMarksHidden').value = valAfter;
+            });
+            // Pre-select radio if saved
+            try {
+              if (typeof ind.obtainedAfter !== 'undefined' && Number(ind.obtainedAfter) === Number(valAfter)) {
+                rbAfter.checked = true;
+                document.getElementById('selectedIndicatorMarksAfterHidden').value = rbAfter.value;
+                document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+                document.getElementById('selectedIndicatorMaxMarksHidden').value = valAfter;
+              }
+            } catch(e) {}
+            tdMarksAfter.appendChild(rbAfter);
+            const spanAfter = document.createElement('span');
+            spanAfter.style.marginLeft = '6px';
+            spanAfter.textContent = String(valAfter);
+            tdMarksAfter.appendChild(spanAfter);
+          }
           tr.appendChild(tdMarksAfter);
 
           tbody.appendChild(tr);
@@ -2298,6 +2390,13 @@
             }
           });
         } catch(e) { console.warn('Error initializing nepali datepickers', e); }
+          try {
+            try { updateQuickCheckboxes(); } catch(e) {}
+            const db = indicatorsDiv.querySelector('.quick-eval-date-before');
+            const da = indicatorsDiv.querySelector('.quick-eval-date-after');
+            if (db && document.getElementById('selectedEvalDateBeforeHidden')) document.getElementById('selectedEvalDateBeforeHidden').value = db.value || '';
+            if (da && document.getElementById('selectedEvalDateAfterHidden')) document.getElementById('selectedEvalDateAfterHidden').value = da.value || '';
+          } catch(e) { console.warn('Error initializing quick hidden fields', e); }
 
         try { saveQuickSelection(); } catch(e){ console.warn('saveQuickSelection failed', e); }
         return;
@@ -2403,7 +2502,7 @@
             dateBefore.className = 'nepali-datepicker quick-eval-date-before';
             dateBefore.id = `quick_eval_before_${toolUnique}`;
             dateBefore.name = `subjects[0][themes][0][learningOutcomes][${loIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][evaluationDateBefore]`;
-            dateBefore.value = (tool.evaluationDateBefore || '') ;
+            dateBefore.value = (ind && (ind.evaluationDateBefore || ind.evaluationDateBefore === '') ? ind.evaluationDateBefore : (tool.evaluationDateBefore || '')) ;
             dateBefore.addEventListener('change', () => {
               document.getElementById('selectedEvalDateBeforeHidden').value = dateBefore.value || '';
             });
@@ -2412,22 +2511,48 @@
           }
 
           const tdMarksBefore = document.createElement('td');
-          const rbBeforeName = 'quickMarkBefore_' + toolUnique;
           const valBefore = ind.maxMarks || ind.indicatorsMarks || 0;
-          const rbBefore = document.createElement('input');
-          rbBefore.type = 'radio';
-          rbBefore.name = rbBeforeName;
-          rbBefore.value = valBefore;
-          rbBefore.addEventListener('click', () => {
-            document.getElementById('selectedIndicatorMarksBeforeHidden').value = rbBefore.value;
-            document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
-            document.getElementById('selectedIndicatorMaxMarksHidden').value = valBefore;
-          });
-          tdMarksBefore.appendChild(rbBefore);
-          const spanBefore = document.createElement('span');
-          spanBefore.style.marginLeft = '6px';
-          spanBefore.textContent = String(valBefore);
-          tdMarksBefore.appendChild(spanBefore);
+          const subjName = (document.getElementById('subject') && document.getElementById('subject').value || '').trim().toLowerCase();
+          if (subjName === 'hamro serofero') {
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.className = 'quick-indicator-checkbox';
+            cb.dataset.indicatorName = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+            cb.dataset.maxMarks = valBefore || 1;
+            cb.value = 1;
+            cb.setAttribute('data-timing','Before');
+            cb.addEventListener('change', updateQuickCheckboxes);
+            try { if (ind.obtainedBefore) cb.checked = true; } catch(e) {}
+            tdMarksBefore.appendChild(cb);
+            const spanBefore = document.createElement('span');
+            spanBefore.style.marginLeft = '6px';
+            spanBefore.textContent = String(cb.value);
+            tdMarksBefore.appendChild(spanBefore);
+          } else {
+            const rbBeforeName = 'quickMarkBefore_' + toolUnique;
+            const rbBefore = document.createElement('input');
+            rbBefore.type = 'radio';
+            rbBefore.name = rbBeforeName;
+            rbBefore.value = valBefore;
+            rbBefore.addEventListener('click', () => {
+              document.getElementById('selectedIndicatorMarksBeforeHidden').value = rbBefore.value;
+              document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+              document.getElementById('selectedIndicatorMaxMarksHidden').value = valBefore;
+            });
+            try {
+              if (typeof ind.obtainedBefore !== 'undefined' && Number(ind.obtainedBefore) === Number(valBefore)) {
+                rbBefore.checked = true;
+                document.getElementById('selectedIndicatorMarksBeforeHidden').value = rbBefore.value;
+                document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+                document.getElementById('selectedIndicatorMaxMarksHidden').value = valBefore;
+              }
+            } catch(e) {}
+            tdMarksBefore.appendChild(rbBefore);
+            const spanBefore = document.createElement('span');
+            spanBefore.style.marginLeft = '6px';
+            spanBefore.textContent = String(valBefore);
+            tdMarksBefore.appendChild(spanBefore);
+          }
           tr.appendChild(tdMarksBefore);
 
           if (iIdx === 0) {
@@ -2438,7 +2563,7 @@
             dateAfter.className = 'nepali-datepicker quick-eval-date-after';
             dateAfter.id = `quick_eval_after_${toolUnique}`;
             dateAfter.name = `subjects[0][themes][0][learningOutcomes][${loIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][evaluationDateAfter]`;
-            dateAfter.value = (tool.evaluationDateAfter || '');
+            dateAfter.value = (ind && (ind.evaluationDateAfter || ind.evaluationDateAfter === '') ? ind.evaluationDateAfter : (tool.evaluationDateAfter || ''));
             dateAfter.addEventListener('change', () => {
               document.getElementById('selectedEvalDateAfterHidden').value = dateAfter.value || '';
             });
@@ -2447,22 +2572,48 @@
           }
 
           const tdMarksAfter = document.createElement('td');
-          const rbAfterName = 'quickMarkAfter_' + toolUnique;
           const valAfter = ind.maxMarks || ind.indicatorsMarks || 0;
-          const rbAfter = document.createElement('input');
-          rbAfter.type = 'radio';
-          rbAfter.name = rbAfterName;
-          rbAfter.value = valAfter;
-          rbAfter.addEventListener('click', () => {
-            document.getElementById('selectedIndicatorMarksAfterHidden').value = rbAfter.value;
-            document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
-            document.getElementById('selectedIndicatorMaxMarksHidden').value = valAfter;
-          });
-          tdMarksAfter.appendChild(rbAfter);
-          const spanAfter = document.createElement('span');
-          spanAfter.style.marginLeft = '6px';
-          spanAfter.textContent = String(valAfter);
-          tdMarksAfter.appendChild(spanAfter);
+          const subjName2 = (document.getElementById('subject') && document.getElementById('subject').value || '').trim().toLowerCase();
+          if (subjName2 === 'hamro serofero') {
+            const cb2 = document.createElement('input');
+            cb2.type = 'checkbox';
+            cb2.className = 'quick-indicator-checkbox';
+            cb2.dataset.indicatorName = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+            cb2.dataset.maxMarks = valAfter || 1;
+            cb2.value = 1;
+            cb2.setAttribute('data-timing','After');
+            cb2.addEventListener('change', updateQuickCheckboxes);
+            try { if (ind.obtainedAfter) cb2.checked = true; } catch(e) {}
+            tdMarksAfter.appendChild(cb2);
+            const spanAfter = document.createElement('span');
+            spanAfter.style.marginLeft = '6px';
+            spanAfter.textContent = String(cb2.value);
+            tdMarksAfter.appendChild(spanAfter);
+          } else {
+            const rbAfterName = 'quickMarkAfter_' + toolUnique;
+            const rbAfter = document.createElement('input');
+            rbAfter.type = 'radio';
+            rbAfter.name = rbAfterName;
+            rbAfter.value = valAfter;
+            rbAfter.addEventListener('click', () => {
+              document.getElementById('selectedIndicatorMarksAfterHidden').value = rbAfter.value;
+              document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+              document.getElementById('selectedIndicatorMaxMarksHidden').value = valAfter;
+            });
+            try {
+              if (typeof ind.obtainedAfter !== 'undefined' && Number(ind.obtainedAfter) === Number(valAfter)) {
+                rbAfter.checked = true;
+                document.getElementById('selectedIndicatorMarksAfterHidden').value = rbAfter.value;
+                document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+                document.getElementById('selectedIndicatorMaxMarksHidden').value = valAfter;
+              }
+            } catch(e) {}
+            tdMarksAfter.appendChild(rbAfter);
+            const spanAfter = document.createElement('span');
+            spanAfter.style.marginLeft = '6px';
+            spanAfter.textContent = String(valAfter);
+            tdMarksAfter.appendChild(spanAfter);
+          }
           tr.appendChild(tdMarksAfter);
 
           tbody.appendChild(tr);
@@ -2569,7 +2720,7 @@
           // Set name so browser includes this input in form submit (tool-level path)
           dateBefore.name = `subjects[0][themes][0][learningOutcomes][${loIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][evaluationDateBefore]`;
           // initialize with existing tool/LO date if available
-          dateBefore.value = (tool.evaluationDateBefore || loObj.evaluationDateBefore || '') ;
+          dateBefore.value = (ind && (ind.evaluationDateBefore || ind.evaluationDateBefore === '') ? ind.evaluationDateBefore : (tool.evaluationDateBefore || loObj.evaluationDateBefore || '')) ;
           dateBefore.addEventListener('change', () => {
             document.getElementById('selectedEvalDateBeforeHidden').value = dateBefore.value || '';
           });
@@ -2606,7 +2757,7 @@
           dateAfter.className = 'nepali-datepicker quick-eval-date-after';
           dateAfter.id = `quick_eval_after_${toolUnique}`;
           dateAfter.name = `subjects[0][themes][0][learningOutcomes][${loIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][evaluationDateAfter]`;
-          dateAfter.value = (tool.evaluationDateAfter || loObj.evaluationDateAfter || '');
+          dateAfter.value = (ind && (ind.evaluationDateAfter || ind.evaluationDateAfter === '') ? ind.evaluationDateAfter : (tool.evaluationDateAfter || loObj.evaluationDateAfter || ''));
           dateAfter.addEventListener('change', () => {
             document.getElementById('selectedEvalDateAfterHidden').value = dateAfter.value || '';
           });
@@ -2616,22 +2767,39 @@
 
         // Marks After
         const tdMarksAfter = document.createElement('td');
-        const rbAfterName = 'quickMarkAfter_' + toolUnique;
         const valAfter = ind.maxMarks || ind.indicatorsMarks || 0;
-        const rbAfter = document.createElement('input');
-        rbAfter.type = 'radio';
-        rbAfter.name = rbAfterName;
-        rbAfter.value = valAfter;
-        rbAfter.addEventListener('click', () => {
-          document.getElementById('selectedIndicatorMarksAfterHidden').value = rbAfter.value;
-          document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
-          document.getElementById('selectedIndicatorMaxMarksHidden').value = valAfter;
-        });
-        tdMarksAfter.appendChild(rbAfter);
-        const spanAfter = document.createElement('span');
-        spanAfter.style.marginLeft = '6px';
-        spanAfter.textContent = String(valAfter);
-        tdMarksAfter.appendChild(spanAfter);
+        const subjName2 = (document.getElementById('subject') && document.getElementById('subject').value || '').trim().toLowerCase();
+        if (subjName2 === 'hamro serofero') {
+          const cb2 = document.createElement('input');
+          cb2.type = 'checkbox';
+          cb2.className = 'quick-indicator-checkbox';
+          cb2.dataset.indicatorName = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+          cb2.dataset.maxMarks = valAfter || 1;
+          cb2.value = 1; // default value
+          cb2.setAttribute('data-timing','After');
+          cb2.addEventListener('change', updateQuickCheckboxes);
+          tdMarksAfter.appendChild(cb2);
+          const spanAfter = document.createElement('span');
+          spanAfter.style.marginLeft = '6px';
+          spanAfter.textContent = String(cb2.value);
+          tdMarksAfter.appendChild(spanAfter);
+        } else {
+          const rbAfterName = 'quickMarkAfter_' + toolUnique;
+          const rbAfter = document.createElement('input');
+          rbAfter.type = 'radio';
+          rbAfter.name = rbAfterName;
+          rbAfter.value = valAfter;
+          rbAfter.addEventListener('click', () => {
+            document.getElementById('selectedIndicatorMarksAfterHidden').value = rbAfter.value;
+            document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+            document.getElementById('selectedIndicatorMaxMarksHidden').value = valAfter;
+          });
+          tdMarksAfter.appendChild(rbAfter);
+          const spanAfter = document.createElement('span');
+          spanAfter.style.marginLeft = '6px';
+          spanAfter.textContent = String(valAfter);
+          tdMarksAfter.appendChild(spanAfter);
+        }
         tr.appendChild(tdMarksAfter);
 
         tbody.appendChild(tr);
@@ -2649,6 +2817,14 @@
           }
         });
       } catch(e) { console.warn('Error initializing nepali datepickers', e); }
+      // Initialize hidden fields from newly rendered inputs and checkbox states
+      try {
+        try { updateQuickCheckboxes(); } catch(e) { /* ignore */ }
+        const db = indicatorsDiv.querySelector('.quick-eval-date-before');
+        const da = indicatorsDiv.querySelector('.quick-eval-date-after');
+        if (db && document.getElementById('selectedEvalDateBeforeHidden')) document.getElementById('selectedEvalDateBeforeHidden').value = db.value || '';
+        if (da && document.getElementById('selectedEvalDateAfterHidden')) document.getElementById('selectedEvalDateAfterHidden').value = da.value || '';
+      } catch(e) { console.warn('Error initializing quick hidden fields', e); }
       // persist current selection (LO/Aspect/Tool)
       try { saveQuickSelection(); } catch(e){ console.warn('saveQuickSelection failed', e); }
     }
