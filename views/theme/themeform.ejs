@@ -1642,6 +1642,10 @@
       <input type="hidden" name="subjects[0][themes][0][learningOutcomes][0][evaluationDateBefore]" id="selectedEvalDateBeforeHidden" value="">
       <input type="hidden" name="subjects[0][themes][0][learningOutcomes][0][evaluationDateAfter]" id="selectedEvalDateAfterHidden" value="">
 
+      <!-- Hidden holders for selected indicator ids (populated by quick UI, injected into nested names on save) -->
+      <input type="hidden" id="selectedIndicatorIdsBeforeHidden" value="">
+      <input type="hidden" id="selectedIndicatorIdsAfterHidden" value="">
+
       <div style="margin-bottom:12px; display:flex; gap:8px;">
         <button type="button" class="btn btn-success" onclick="saveSelectedIndicator()">Save Selected Indicator</button>
         <button type="button" class="btn btn-warning" onclick="clearQuickSelection()">Clear</button>
@@ -2156,6 +2160,8 @@
         try {
           const beforeBoxes = Array.from(document.querySelectorAll('.quick-indicator-checkbox[data-timing="Before"]'));
           const afterBoxes = Array.from(document.querySelectorAll('.quick-indicator-checkbox[data-timing="After"]'));
+          let beforeIds = [];
+          let afterIds = [];
           const selectedNames = new Set();
           let sumBefore = 0;
           let sumAfter = 0;
@@ -2166,6 +2172,7 @@
               selectedNames.add(b.dataset.indicatorName || b.getAttribute('data-indicator-name') || b.value);
               sumBefore += parseFloat(b.value) || 0;
               maxSum += parseFloat(b.dataset.maxMarks) || 0;
+              if (b.dataset.indicatorId) beforeIds.push(b.dataset.indicatorId);
             }
           });
           afterBoxes.forEach(b => {
@@ -2173,12 +2180,17 @@
               selectedNames.add(b.dataset.indicatorName || b.getAttribute('data-indicator-name') || b.value);
               sumAfter += parseFloat(b.value) || 0;
               maxSum += parseFloat(b.dataset.maxMarks) || 0;
+              if (b.dataset.indicatorId) afterIds.push(b.dataset.indicatorId);
             }
           });
 
           const namesArr = Array.from(selectedNames);
           const selHidden = document.getElementById('selectedIndicatorHidden');
           if (selHidden) selHidden.value = namesArr.join(',');
+          const selIdsBefore = document.getElementById('selectedIndicatorIdsBeforeHidden');
+          const selIdsAfter = document.getElementById('selectedIndicatorIdsAfterHidden');
+          if (selIdsBefore) selIdsBefore.value = beforeIds.join(',');
+          if (selIdsAfter) selIdsAfter.value = afterIds.join(',');
           const beforeHidden = document.getElementById('selectedIndicatorMarksBeforeHidden');
           if (beforeHidden) beforeHidden.value = sumBefore;
           const afterHidden = document.getElementById('selectedIndicatorMarksAfterHidden');
@@ -2272,6 +2284,7 @@
             cb.type = 'checkbox';
             cb.className = 'quick-indicator-checkbox';
             cb.dataset.indicatorName = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+            if (ind && ind._id) cb.dataset.indicatorId = ind._id;
             cb.dataset.maxMarks = valBefore || 1;
             cb.value = 1; // default value per requirement
             cb.setAttribute('data-timing','Before');
@@ -2289,10 +2302,13 @@
             rbBefore.type = 'radio';
             rbBefore.name = rbBeforeName;
             rbBefore.value = valBefore;
+            rbBefore.dataset.indicatorId = ind && ind._id ? ind._id : '';
             rbBefore.addEventListener('click', () => {
               document.getElementById('selectedIndicatorMarksBeforeHidden').value = rbBefore.value;
               document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
               document.getElementById('selectedIndicatorMaxMarksHidden').value = valBefore;
+              // set id hidden as well
+              if (document.getElementById('selectedIndicatorIdsBeforeHidden')) document.getElementById('selectedIndicatorIdsBeforeHidden').value = rbBefore.dataset.indicatorId || '';
             });
             // Pre-select radio if saved
             try {
@@ -2301,6 +2317,7 @@
                 document.getElementById('selectedIndicatorMarksBeforeHidden').value = rbBefore.value;
                 document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
                 document.getElementById('selectedIndicatorMaxMarksHidden').value = valBefore;
+                if (document.getElementById('selectedIndicatorIdsBeforeHidden')) document.getElementById('selectedIndicatorIdsBeforeHidden').value = rbBefore.dataset.indicatorId || '';
               }
             } catch(e) {}
             tdMarksBefore.appendChild(rbBefore);
@@ -2335,6 +2352,7 @@
             cb2.type = 'checkbox';
             cb2.className = 'quick-indicator-checkbox';
             cb2.dataset.indicatorName = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+            if (ind && ind._id) cb2.dataset.indicatorId = ind._id;
             cb2.dataset.maxMarks = valAfter || 1;
             cb2.value = 1; // default value
             cb2.setAttribute('data-timing','After');
@@ -2352,10 +2370,12 @@
             rbAfter.type = 'radio';
             rbAfter.name = rbAfterName;
             rbAfter.value = valAfter;
+            rbAfter.dataset.indicatorId = ind && ind._id ? ind._id : '';
             rbAfter.addEventListener('click', () => {
               document.getElementById('selectedIndicatorMarksAfterHidden').value = rbAfter.value;
               document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
               document.getElementById('selectedIndicatorMaxMarksHidden').value = valAfter;
+              if (document.getElementById('selectedIndicatorIdsAfterHidden')) document.getElementById('selectedIndicatorIdsAfterHidden').value = rbAfter.dataset.indicatorId || '';
             });
             // Pre-select radio if saved
             try {
@@ -2364,6 +2384,7 @@
                 document.getElementById('selectedIndicatorMarksAfterHidden').value = rbAfter.value;
                 document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
                 document.getElementById('selectedIndicatorMaxMarksHidden').value = valAfter;
+                if (document.getElementById('selectedIndicatorIdsAfterHidden')) document.getElementById('selectedIndicatorIdsAfterHidden').value = rbAfter.dataset.indicatorId || '';
               }
             } catch(e) {}
             tdMarksAfter.appendChild(rbAfter);
@@ -2888,6 +2909,26 @@
       syncHiddenFields();
 
       // Submit the form (this will use themeformSave to persist for the student)
+      // Inject nested hidden inputs for selected indicator ids so server receives arrays
+      try {
+        const form = document.getElementById('themeEvaluationForm');
+        // remove any previous selectedIndicators inputs for this LO
+        const nameBefore = `subjects[0][themes][0][learningOutcomes][${loIdx}][selectedIndicatorsBefore][]`;
+        const nameAfter = `subjects[0][themes][0][learningOutcomes][${loIdx}][selectedIndicatorsAfter][]`;
+        Array.from(form.querySelectorAll(`input[name="${nameBefore}"]`)).forEach(n=>n.remove());
+        Array.from(form.querySelectorAll(`input[name="${nameAfter}"]`)).forEach(n=>n.remove());
+        const idsBeforeStr = (document.getElementById('selectedIndicatorIdsBeforeHidden')||{value:''}).value || '';
+        const idsAfterStr = (document.getElementById('selectedIndicatorIdsAfterHidden')||{value:''}).value || '';
+        const idsBefore = idsBeforeStr.split(',').map(s=>s.trim()).filter(Boolean);
+        const idsAfter = idsAfterStr.split(',').map(s=>s.trim()).filter(Boolean);
+        idsBefore.forEach(id => {
+          const inp = document.createElement('input'); inp.type='hidden'; inp.name = nameBefore; inp.value = id; form.appendChild(inp);
+        });
+        idsAfter.forEach(id => {
+          const inp = document.createElement('input'); inp.type='hidden'; inp.name = nameAfter; inp.value = id; form.appendChild(inp);
+        });
+      } catch(e) { console.warn('Could not inject selectedIndicators inputs', e); }
+
       document.getElementById('themeEvaluationForm').submit();
     }
 
@@ -3766,6 +3807,23 @@ document.addEventListener('DOMContentLoaded', async () => {
               }
             });
           }
+        
+        // Inject selectedIndicators nested inputs for quick selection into the form (autosave path)
+        try {
+          const loIdx = (document.getElementById('quickLO') && document.getElementById('quickLO').value) || '';
+          if (loIdx !== '') {
+            const nameBefore = `subjects[0][themes][0][learningOutcomes][${loIdx}][selectedIndicatorsBefore][]`;
+            const nameAfter = `subjects[0][themes][0][learningOutcomes][${loIdx}][selectedIndicatorsAfter][]`;
+            Array.from(form.querySelectorAll(`input[name="${nameBefore}"]`)).forEach(n=>n.remove());
+            Array.from(form.querySelectorAll(`input[name="${nameAfter}"]`)).forEach(n=>n.remove());
+            const idsBeforeStr = (document.getElementById('selectedIndicatorIdsBeforeHidden')||{value:''}).value || '';
+            const idsAfterStr = (document.getElementById('selectedIndicatorIdsAfterHidden')||{value:''}).value || '';
+            const idsBefore = idsBeforeStr.split(',').map(s=>s.trim()).filter(Boolean);
+            const idsAfter = idsAfterStr.split(',').map(s=>s.trim()).filter(Boolean);
+            idsBefore.forEach(id => { const inp = document.createElement('input'); inp.type='hidden'; inp.name = nameBefore; inp.value = id; form.appendChild(inp); });
+            idsAfter.forEach(id => { const inp = document.createElement('input'); inp.type='hidden'; inp.name = nameAfter; inp.value = id; form.appendChild(inp); });
+          }
+        } catch(e) { console.warn('Could not inject selectedIndicators inputs for autosave', e); }
         } catch(e) { console.warn('Tool/aspect adjustment failed', e); }
     } catch (e) {
         console.error("Error loading tools", e);
@@ -3837,19 +3895,46 @@ document.addEventListener('DOMContentLoaded', async () => {
       defaultOpt.value = '';
       defaultOpt.textContent = 'Select aspect';
       select.appendChild(defaultOpt);
-      // aspects may be objects from AspectContainer; extract aspectName
-      aspects.forEach(a => {
-        const name = (a && (a.aspectName || a.name)) || String(a || '');
-        const opt = document.createElement('option');
-        opt.value = name;
-        opt.textContent = name;
-        select.appendChild(opt);
-      });
+      // If no aspects available, offer an explicit 'None' option
+      if (!Array.isArray(aspects) || aspects.length === 0) {
+        const noneOpt = document.createElement('option');
+        noneOpt.value = '__NONE__';
+        noneOpt.textContent = 'None';
+        select.appendChild(noneOpt);
+      } else {
+        // aspects may be objects from AspectContainer; extract aspectName
+        aspects.forEach(a => {
+          const name = (a && (a.aspectName || a.name)) || String(a || '');
+          const opt = document.createElement('option');
+          opt.value = name;
+          opt.textContent = name;
+          select.appendChild(opt);
+        });
+      }
       // sync with hidden input in same row and populate tools for the row
       select.addEventListener('change', function() {
         const row = select.closest('tr');
         if (!row) return;
         const hidden = row.querySelector('input[type="hidden"][name*="[indicators]"][name$="[name]"]');
+        // If user selected the special 'None' option, clear related fields and tools
+        if (this.value === '__NONE__') {
+          if (hidden) hidden.value = '';
+          try {
+            const toolsSelect = row.querySelector('select.tools-dropdown');
+            if (toolsSelect) {
+              toolsSelect.innerHTML = '';
+              const defaultTool = document.createElement('option');
+              defaultTool.value = '';
+              defaultTool.textContent = 'Select tool';
+              toolsSelect.appendChild(defaultTool);
+              // also clear hidden tools input if present
+              const hiddenTool = row.querySelector('input[type="hidden"][name*="[tools]"]');
+              if (hiddenTool) hiddenTool.value = '';
+            }
+          } catch (e) { console.warn('clearing tools failed', e); }
+          return;
+        }
+
         if (hidden) hidden.value = this.value;
         // populate tools select in same row from AspectContainer if available
         try {

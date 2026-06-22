@@ -62,20 +62,19 @@ const ThemeEvaluationSchema = new mongoose.Schema({
                       toolName: { type: String, required: false, set: handleArrayOrSingle },
                       evaluationDateBefore: { type: String, default: "", set: handleArrayOrSingle },
                       evaluationDateAfter: { type: String, default: "", set: handleArrayOrSingle },
-                      indicators: [
-                        {
-                          indicatorName: { type: String, required: false, set: handleArrayOrSingle },
-                          maxMarks: { type: Number, required: false, default: 0, set: handleArrayOrSingle },
-                          obtainedBefore: { type: Number, required: false, default: 0, set: handleArrayOrSingle },
-                          obtainedAfter: { type: Number, required: false, default: 0, set: handleArrayOrSingle }
-                        }
-                      ],
+                      // Note: indicators definitions are kept only in the master theme collection.
+                      // Student records should not store full indicator objects to avoid duplication.
+                      // The UI/save process will reference indicators by their ObjectId via
+                      // learningOutcome.selectedIndicatorsBefore/After arrays defined below.
                       totalBefore: { type: Number, required: false, default: 0, set: handleArrayOrSingle },
                       totalAfter: { type: Number, required: false, default: 0, set: handleArrayOrSingle }
                     }
                   ]
                 }
               ],
+              // Selected indicator ids from master collection (one or many depending on subject)
+              selectedIndicatorsBefore: [{ type: mongoose.Schema.Types.ObjectId, required: false }],
+              selectedIndicatorsAfter: [{ type: mongoose.Schema.Types.ObjectId, required: false }],
               totalMarksBeforeIntervention: { type: Number, default: 0, set: handleArrayOrSingle },
               totalMarksAfterIntervention: { type: Number, default: 0, set: handleArrayOrSingle }
             }
@@ -125,7 +124,7 @@ ThemeEvaluationSchema.pre('save', function(next) {
       
       // If it's an array but not supposed to be an array field - preserve known array fields
       if (Array.isArray(value)) {
-        const preserveArrayKeys = ['subjects', 'themes', 'learningOutcomes', 'learningOutcome', 'assessmentAspects', 'tools', 'indicators'];
+        const preserveArrayKeys = ['subjects', 'themes', 'learningOutcomes', 'learningOutcome', 'assessmentAspects', 'tools', 'indicators', 'selectedIndicatorsBefore', 'selectedIndicatorsAfter'];
         if (!preserveArrayKeys.includes(key)) {
           obj[key] = value[0]; // Take the first element for scalar-like arrays
         }

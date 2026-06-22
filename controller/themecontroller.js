@@ -258,7 +258,7 @@ exports.themeformSave = async (req, res) => {
     const processFormData = (obj) => {
       if (!obj || typeof obj !== 'object') return obj;
 
-      const arrayKeys = new Set(['subjects','themes','learningOutcomes','learningOutcome','assessmentAspects','tools','indicators']);
+      const arrayKeys = new Set(['subjects','themes','learningOutcomes','learningOutcome','assessmentAspects','tools','indicators','selectedIndicatorsBefore','selectedIndicatorsAfter']);
 
       // Create a new object to store processed data
       const result = Array.isArray(obj) ? [] : {};
@@ -425,6 +425,59 @@ exports.themeformSave = async (req, res) => {
     const normalizedTheme = normalizeStudentTheme(newThemeData);
     console.log('Normalized theme for save:', JSON.stringify(normalizedTheme, null, 2));
 
+    // If the incoming payload contains selected indicator ids, compute LO totals from
+    // the master theme format so student docs don't duplicate indicator definitions.
+    try {
+      const ThemeFormatModel = getThemeFormat(studentClass);
+      const masterDocs = await ThemeFormatModel.find({ studentClass: studentClass, subject: subject }).lean();
+      const indicatorMap = new Map();
+      if (Array.isArray(masterDocs) && masterDocs.length) {
+        masterDocs.forEach(md => {
+          if (Array.isArray(md.themes)) {
+            md.themes.forEach(theme => {
+              if (!theme || !theme.learningOutcome) return;
+              theme.learningOutcome.forEach(lo => {
+                if (!lo || !Array.isArray(lo.assessmentAspects)) return;
+                lo.assessmentAspects.forEach(asp => {
+                  if (!asp || !Array.isArray(asp.tools)) return;
+                  asp.tools.forEach(tool => {
+                    if (!tool || !Array.isArray(tool.indicators)) return;
+                    tool.indicators.forEach(ind => {
+                      if (!ind) return;
+                      try {
+                        if (ind._id) indicatorMap.set(String(ind._id), Number(ind.indicatorsMarks || ind.maxMarks || 0));
+                      } catch (e) { /* ignore */ }
+                    });
+                  });
+                });
+              });
+            });
+          }
+        });
+      }
+
+      // For each LO in normalizedTheme, if selectedIndicatorsBefore/After arrays present,
+      // compute totals by summing indicator marks from master indicatorMap.
+      if (Array.isArray(normalizedTheme.learningOutcomes)) {
+        normalizedTheme.learningOutcomes.forEach(lo => {
+          try {
+            if (Array.isArray(lo.selectedIndicatorsBefore) && lo.selectedIndicatorsBefore.length) {
+              let s = 0;
+              lo.selectedIndicatorsBefore.forEach(id => { if (id) s += Number(indicatorMap.get(String(id)) || 0); });
+              lo.totalMarksBeforeIntervention = Number(s);
+            }
+            if (Array.isArray(lo.selectedIndicatorsAfter) && lo.selectedIndicatorsAfter.length) {
+              let s2 = 0;
+              lo.selectedIndicatorsAfter.forEach(id => { if (id) s2 += Number(indicatorMap.get(String(id)) || 0); });
+              lo.totalMarksAfterIntervention = Number(s2);
+            }
+          } catch(e) { /* ignore per-LO errors */ }
+        });
+      }
+    } catch (errMap) {
+      console.warn('Could not compute totals from master indicators:', errMap);
+    }
+
     // Compute aggregated totals and add legacy/alternate field names expected by UI
     const computeTotalsAndAliases = (theme) => {
       if (!theme || typeof theme !== 'object') return theme;
@@ -492,9 +545,13 @@ exports.themeformSave = async (req, res) => {
           });
         }
 
-        // compute LO totals
-        newLo.totalMarksBeforeIntervention = loTotalBefore;
-        newLo.totalMarksAfterIntervention = loTotalAfter;
+        // compute LO totals only if selectedIndicators were not provided (preserve computed totals)
+        if (!Array.isArray(newLo.selectedIndicatorsBefore) || newLo.selectedIndicatorsBefore.length === 0) {
+          newLo.totalMarksBeforeIntervention = loTotalBefore;
+        }
+        if (!Array.isArray(newLo.selectedIndicatorsAfter) || newLo.selectedIndicatorsAfter.length === 0) {
+          newLo.totalMarksAfterIntervention = loTotalAfter;
+        }
 
         themeTotalBefore += loTotalBefore;
         themeTotalAfter += loTotalAfter;
