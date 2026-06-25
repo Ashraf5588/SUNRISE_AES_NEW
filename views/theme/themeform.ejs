@@ -1592,8 +1592,8 @@
           <select id="themeName" name="themeNameDisplay" required onchange="filterLearningOutcomes(this,0); document.getElementById('themeNameHidden').value = this.value;">
             <option value="" selected>Select a <%= (studentClass == "4" || (studentClass && studentClass.toLowerCase() == "four")) ? "Unit" : "Theme" %></option>
             <% themeData.forEach(theme => { %>
-              <% theme.themes.forEach((themeitem,themeItemIndex) => { %>
-                <%= themeItemIndex %><option value="<%= themeitem.themeName %>"  required><%= themeitem.themeName %></option>
+              <% theme.themes.forEach((themeitem) => { %>
+                <option value="<%= themeitem.themeName %>" required><%= themeitem.themeName %></option>
               <% }) %>
             <% }) %>
           </select>
@@ -1966,14 +1966,29 @@
         loSelect.appendChild(opt);
       });
 
-      // Try to load AspectContainer for this class+subject and populate aspect/tool/indicators from it
+      // Populate aspect/tool options for the selected theme. For English, aspects come from the selected LO in themeData
+      // and tools come from the tools collection.
       (async function(){
         try{
           const cls = (document.getElementById('studentClassHidden') && document.getElementById('studentClassHidden').value) || (document.getElementById('studentClass') && document.getElementById('studentClass').value) || '';
           const subj = (document.getElementById('subjectHidden') && document.getElementById('subjectHidden').value) || (document.getElementById('subject') && document.getElementById('subject').value) || '';
           const subjNorm = String(subj || '').toLowerCase();
-          // For subjects other than Nepali and English, hide aspect select and populate tools from globalToolsList
-          if (subjNorm && subjNorm !== 'nepali' && subjNorm !== 'english') {
+          if (subjNorm === 'english') {
+            aspectSelect.style.display = '';
+            aspectSelect.innerHTML = '<option value="" selected disabled>Select Aspect</option>';
+            toolSelect.innerHTML = '<option value="" selected disabled>Select Tool</option>';
+            if (Array.isArray(window.globalToolsList) && window.globalToolsList.length) {
+              window.globalToolsList.forEach((tool, tIdx) => {
+                const opt = document.createElement('option');
+                opt.value = tIdx;
+                opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${tIdx+1}`);
+                toolSelect.appendChild(opt);
+              });
+            }
+            try { applyQuickSelection(themeName); } catch(e){}
+            return;
+          }
+          if (subjNorm && subjNorm !== 'nepali') {
             try {
               aspectSelect.style.display = 'none';
             } catch (e) {}
@@ -1982,7 +1997,7 @@
               window.globalToolsList.forEach((tool, tIdx) => {
                 const opt = document.createElement('option');
                 opt.value = tIdx;
-                opt.textContent = tool.toolName || tool.name || `Tool ${tIdx+1}`;
+                opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${tIdx+1}`);
                 toolSelect.appendChild(opt);
               });
             }
@@ -1993,7 +2008,6 @@
           const res = await fetch(`/aspect/get/theme?studentClass=${encodeURIComponent(cls)}&subject=${encodeURIComponent(subj)}`);
           const j = await res.json();
           if(j && j.success && Array.isArray(j.aspects) && j.aspects.length){
-            // populate aspectSelect from aspectcontainer aspects
             aspectSelect.style.display = '';
             aspectSelect.innerHTML = '<option value="" selected disabled>Select Aspect</option>';
             j.aspects.forEach((asp, aIdx) => {
@@ -2002,10 +2016,8 @@
               opt.textContent = asp.aspectName || `Aspect ${aIdx+1}`;
               aspectSelect.appendChild(opt);
             });
-            // store fetched aspects on the select for later use
             aspectSelect._aspectContainerAspects = j.aspects;
           } else {
-            // After populating options from themeData, try to apply any saved quick selection for this theme
             try { applyQuickSelection(themeName); } catch(e){ console.warn('applyQuickSelection failed', e); }
           }
         }catch(e){ console.warn('populateQuickSelects aspectcontainer fetch failed', e); try { applyQuickSelection(themeName); } catch(err){} }
@@ -2073,17 +2085,50 @@
       const loIdx = document.getElementById('quickLO').value;
       const themeName = document.getElementById('themeName').value;
       const aspectSelect = document.getElementById('quickAspect');
-      document.getElementById('quickTool').innerHTML = '<option value="" selected disabled>Select Tool</option>';
+      const quickToolSelect = document.getElementById('quickTool');
+      quickToolSelect.innerHTML = '<option value="" selected disabled>Select Tool</option>';
       document.getElementById('quickIndicators').innerHTML = '';
-      if (loIdx === '' || loIdx === null) return;
-      // If aspectcontainer aspects are present, keep them (aspect select is independent)
+      const subjName = (document.getElementById('subject') && document.getElementById('subject').value || '').trim().toLowerCase();
+      try {
+        if (subjName === 'english' && Array.isArray(window.globalToolsList) && window.globalToolsList.length) {
+          window.globalToolsList.forEach((tool, tIdx) => {
+            const opt = document.createElement('option');
+            opt.value = tIdx;
+            opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${tIdx+1}`);
+            quickToolSelect.appendChild(opt);
+          });
+        }
+      } catch (e) { /* ignore */ }
+      if (loIdx === '' || loIdx === null) {
+        aspectSelect.innerHTML = '<option value="" selected disabled>Select Aspect</option>';
+        return;
+      }
+      if (subjName === 'english') {
+        aspectSelect.innerHTML = '<option value="" selected disabled>Select Aspect</option>';
+        let themeItem = null;
+        try { themeData.forEach(td => td.themes.forEach(item => { if(item.themeName === themeName) themeItem = item; })); } catch (e) { themeItem = null; }
+        if (!themeItem) {
+          try { saveQuickSelection(); } catch(e){ console.warn('saveQuickSelection failed', e); }
+          return;
+        }
+        const loArray = Array.isArray(themeItem.learningOutcome) ? themeItem.learningOutcome : (Array.isArray(themeItem.learningOutcomes) ? themeItem.learningOutcomes : []);
+        const lo = loArray[Number(loIdx)];
+        if (Array.isArray(lo && lo.assessmentAspects) && lo.assessmentAspects.length) {
+          lo.assessmentAspects.forEach((asp, aIdx) => {
+            const opt = document.createElement('option');
+            opt.value = aIdx;
+            opt.textContent = asp.aspectName || asp.name || `Aspect ${aIdx+1}`;
+            aspectSelect.appendChild(opt);
+          });
+        }
+        try { saveQuickSelection(); } catch(e){ console.warn('saveQuickSelection failed', e); }
+        return;
+      }
       if (aspectSelect._aspectContainerAspects && Array.isArray(aspectSelect._aspectContainerAspects) && aspectSelect._aspectContainerAspects.length) {
         try { saveQuickSelection(); } catch(e){ console.warn('saveQuickSelection failed', e); }
         return;
       }
-      // Clear aspect options only for fallback behaviour (when no AspectContainer data)
       aspectSelect.innerHTML = '<option value="" selected disabled>Select Aspect</option>';
-      // Fallback: populate aspects from themeData (legacy behavior)
       let themeItem = null;
       themeData.forEach(td => td.themes.forEach(item => { if(item.themeName === themeName) themeItem = item; }));
       if (!themeItem) return;
@@ -2098,7 +2143,6 @@
           aspectSelect.appendChild(opt);
         });
       }
-      // persist choice
       try { saveQuickSelection(); } catch(e){ console.warn('saveQuickSelection failed', e); }
     }
 
@@ -2109,7 +2153,19 @@
       toolSelect.innerHTML = '<option value="" selected disabled>Select Tool</option>';
       document.getElementById('quickIndicators').innerHTML = '';
       if (!aspIdx) return;
-      // If aspectcontainer data is present on the select, use it
+      const subjName = (document.getElementById('subject') && document.getElementById('subject').value || '').trim().toLowerCase();
+      if (subjName === 'english') {
+        if (Array.isArray(window.globalToolsList) && window.globalToolsList.length) {
+          window.globalToolsList.forEach((tool, tIdx) => {
+            const opt = document.createElement('option');
+            opt.value = tIdx;
+            opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${tIdx+1}`);
+            toolSelect.appendChild(opt);
+          });
+        }
+        try { saveQuickSelection(); } catch(e){ console.warn('saveQuickSelection failed', e); }
+        return;
+      }
       const acAspects = aspSelect._aspectContainerAspects;
       if (Array.isArray(acAspects) && acAspects.length){
         const asp = acAspects[Number(aspIdx)];
@@ -2117,13 +2173,12 @@
         asp.tools.forEach((tool, tIdx) => {
           const opt = document.createElement('option');
           opt.value = tIdx;
-          opt.textContent = tool.toolName || `Tool ${tIdx+1}`;
+          opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${tIdx+1}`);
           toolSelect.appendChild(opt);
         });
         try { saveQuickSelection(); } catch(e){ console.warn('saveQuickSelection failed', e); }
         return;
       }
-      // Fallback to themeData-based behavior
       const loIdx = document.getElementById('quickLO').value;
       const themeName = document.getElementById('themeName').value;
       if (loIdx === '' || aspIdx === '' ) return;
@@ -2138,11 +2193,10 @@
         asp.tools.forEach((tool, tIdx) => {
           const opt = document.createElement('option');
           opt.value = tIdx;
-          opt.textContent = tool.toolName || `Tool ${tIdx+1}`;
+          opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${tIdx+1}`);
           toolSelect.appendChild(opt);
         });
       }
-      // persist choice
       try { saveQuickSelection(); } catch(e){ console.warn('saveQuickSelection failed', e); }
     }
 
@@ -2199,13 +2253,68 @@
           if (maxHidden) maxHidden.value = maxSum;
         } catch (e) { console.warn('updateQuickCheckboxes failed', e); }
       }
-      // If aspectcontainer data is present, use it and render the full indicators table
-      const acAspects = aspSelect._aspectContainerAspects;
-      if (Array.isArray(acAspects) && acAspects.length){
-        const aspObj = acAspects[Number(aspSelect.value)];
-        const tool = aspObj && Array.isArray(aspObj.tools) ? aspObj.tools[Number(toolIdx)] : null;
-        if (!tool || !Array.isArray(tool.indicators)) return;
-        const indicators = tool.indicators;
+      const subjName = (document.getElementById('subject') && document.getElementById('subject').value || '').trim().toLowerCase();
+
+      let currentAspectObj = null;
+      let selectedAspectName = '';
+      const selectedAspectIdx = Number(aspSelect.value);
+      const selectedAspectOption = (aspSelect && aspSelect.options && aspSelect.selectedIndex >= 0) ? aspSelect.options[aspSelect.selectedIndex] : null;
+      selectedAspectName = (selectedAspectOption && selectedAspectOption.textContent) ? selectedAspectOption.textContent.trim() : '';
+
+      if (subjName === 'english') {
+        const loIdx = document.getElementById('quickLO').value;
+        const themeName = document.getElementById('themeName').value;
+        let themeItem = null;
+        try {
+          themeData.forEach(td => td.themes.forEach(item => { if (item.themeName === themeName) themeItem = item; }));
+        } catch (e) { themeItem = null; }
+        const loArray = Array.isArray(themeItem && themeItem.learningOutcome) ? themeItem.learningOutcome : (Array.isArray(themeItem && themeItem.learningOutcomes) ? themeItem.learningOutcomes : []);
+        const loObj = loArray[Number(loIdx)] || null;
+        currentAspectObj = (loObj && Array.isArray(loObj.assessmentAspects)) ? loObj.assessmentAspects[selectedAspectIdx] : null;
+        if (!selectedAspectName) {
+          selectedAspectName = (currentAspectObj && (currentAspectObj.aspectName || currentAspectObj.name)) || '';
+        }
+      } else if (aspSelect && aspSelect._aspectContainerAspects && Array.isArray(aspSelect._aspectContainerAspects)) {
+        currentAspectObj = aspSelect._aspectContainerAspects[selectedAspectIdx] || null;
+        if (!selectedAspectName) {
+          selectedAspectName = (currentAspectObj && (currentAspectObj.aspectName || currentAspectObj.name)) || '';
+        }
+      } else {
+        const loIdx = document.getElementById('quickLO').value;
+        const themeName = document.getElementById('themeName').value;
+        let themeItem = null;
+        try {
+          themeData.forEach(td => td.themes.forEach(item => { if (item.themeName === themeName) themeItem = item; }));
+        } catch (e) { themeItem = null; }
+        const loArray = Array.isArray(themeItem && themeItem.learningOutcome) ? themeItem.learningOutcome : (Array.isArray(themeItem && themeItem.learningOutcomes) ? themeItem.learningOutcomes : []);
+        const loObj = loArray[Number(loIdx)] || null;
+        currentAspectObj = (loObj && Array.isArray(loObj.assessmentAspects)) ? loObj.assessmentAspects[selectedAspectIdx] : null;
+        if (!selectedAspectName) {
+          selectedAspectName = (currentAspectObj && (currentAspectObj.aspectName || currentAspectObj.name)) || '';
+        }
+      }
+
+      if (subjName === 'english') {
+        let indicators = [];
+        let tool = null;
+        let toolNameLocal = '';
+
+        tool = (Array.isArray(window.globalToolsList) && window.globalToolsList[Number(toolIdx)]) ? window.globalToolsList[Number(toolIdx)] : null;
+        toolNameLocal = (typeof tool === 'string') ? tool.trim() : (tool && (tool.toolName || tool.name)) || '';
+        const selectedToolHiddenElem = document.getElementById('selectedToolHidden');
+        if (selectedToolHiddenElem) selectedToolHiddenElem.value = toolNameLocal || selectedToolHiddenElem.value || '';
+
+        if (currentAspectObj && Array.isArray(currentAspectObj.indicators) && currentAspectObj.indicators.length) {
+          indicators = currentAspectObj.indicators;
+        } else if (tool && Array.isArray(tool.indicators) && tool.indicators.length) {
+          indicators = tool.indicators;
+        } else if (currentAspectObj && Array.isArray(currentAspectObj.tools)) {
+          currentAspectObj.tools.forEach(t => { if (t && Array.isArray(t.indicators)) indicators = indicators.concat(t.indicators); });
+        }
+
+        if (!indicators || !Array.isArray(indicators) || indicators.length === 0) {
+          indicators = [{ indicatorName: 'Indicator 1', maxMarks: 1 }];
+        }
 
         const table = document.createElement('table');
         table.className = 'evaluation-table';
@@ -2232,8 +2341,7 @@
         const loIdx = document.getElementById('quickLO').value;
         const aspIdx = aspSelect.value;
         const loName = (document.getElementById('quickLO').options[document.getElementById('quickLO').selectedIndex] || {}).text || '';
-        const aspName = aspObj.aspectName || aspObj.name || '';
-        const toolNameLocal = (typeof tool === 'string') ? tool : (tool && (tool.toolName || tool.name)) || '';
+        const aspName = selectedAspectName || (currentAspectObj && (currentAspectObj.aspectName || currentAspectObj.name)) || '';
         const toolUnique = `${themeName}_${loIdx}_${aspIdx}_${toolIdx}`.replace(/[^a-zA-Z0-9_-]/g, '_');
 
         indicators.forEach((ind, iIdx) => {
@@ -2658,19 +2766,19 @@
         return;
       }
       // Fallback to themeData behavior
-      const loIdx = document.getElementById('quickLO').value;
-      const aspIdx = document.getElementById('quickAspect').value;
+      const fallbackLoIdx = document.getElementById('quickLO').value;
+      const fallbackAspectIdx = document.getElementById('quickAspect').value;
       const themeName = document.getElementById('themeName').value;
-      if (loIdx === '' || aspIdx === '' || toolIdx === '') return;
+      if (fallbackLoIdx === '' || fallbackAspectIdx === '' || toolIdx === '') return;
       let themeItem = null;
       themeData.forEach(td => td.themes.forEach(item => { if(item.themeName === themeName) themeItem = item; }));
       if (!themeItem) return;
       const loArray = Array.isArray(themeItem.learningOutcome) ? themeItem.learningOutcome : (Array.isArray(themeItem.learningOutcomes) ? themeItem.learningOutcomes : []);
-      const loObj = loArray[Number(loIdx)];
+      const loObj = loArray[Number(fallbackLoIdx)];
       if (!loObj || !Array.isArray(loObj.assessmentAspects)) return;
-      const aspObj = loObj.assessmentAspects[Number(aspIdx)];
-      if (!aspObj || !Array.isArray(aspObj.tools)) return;
-      const tool = aspObj.tools[Number(toolIdx)];
+      const fallbackAspectObj = loObj.assessmentAspects[Number(fallbackAspectIdx)];
+      if (!fallbackAspectObj || !Array.isArray(fallbackAspectObj.tools)) return;
+      const tool = fallbackAspectObj.tools[Number(toolIdx)];
       if (!tool || !Array.isArray(tool.indicators)) return;
       // Build a table showing LO / Aspect / Tool / Indicators (radio per indicator)
       const indicators = tool.indicators;
@@ -2699,7 +2807,18 @@
 
       const loName = (themeItem && themeItem.learningOutcome && themeItem.learningOutcome[Number(loIdx)] && (themeItem.learningOutcome[Number(loIdx)].learningOutcomeName || themeItem.learningOutcome[Number(loIdx)].name)) || (themeItem && themeItem.learningOutcomes && themeItem.learningOutcomes[Number(loIdx)] && (themeItem.learningOutcomes[Number(loIdx)].learningOutcomeName || themeItem.learningOutcomes[Number(loIdx)].name)) || '';
       const aspName = (themeItem && themeItem.learningOutcome && themeItem.learningOutcome[Number(loIdx)] && themeItem.learningOutcome[Number(loIdx)].assessmentAspects && themeItem.learningOutcome[Number(loIdx)].assessmentAspects[Number(aspIdx)] && (themeItem.learningOutcome[Number(loIdx)].assessmentAspects[Number(aspIdx)].aspectName || themeItem.learningOutcome[Number(loIdx)].assessmentAspects[Number(aspIdx)].name)) || (themeItem && themeItem.learningOutcomes && themeItem.learningOutcomes[Number(loIdx)] && themeItem.learningOutcomes[Number(loIdx)].assessmentAspects && themeItem.learningOutcomes[Number(loIdx)].assessmentAspects[Number(aspIdx)] && (themeItem.learningOutcomes[Number(loIdx)].assessmentAspects[Number(aspIdx)].aspectName || themeItem.learningOutcomes[Number(loIdx)].assessmentAspects[Number(aspIdx)].name)) || '';
-      const toolNameLocal = (typeof tool === 'string') ? tool : (tool && (tool.toolName || tool.name)) || '';
+      let toolNameLocal = (typeof tool === 'string') ? (tool || '').trim() : (tool && (tool.toolName || tool.name)) || '';
+      // Prefer globalToolsList label for hidden-aspect subjects (non-Nepali) when available
+      try {
+        if ((!toolNameLocal || toolNameLocal === '') && Array.isArray(window.globalToolsList) && window.globalToolsList[Number(toolIdx)]) {
+          const g = window.globalToolsList[Number(toolIdx)];
+          const glabel = (typeof g === 'string') ? g.trim() : (g && (g.toolName || g.name));
+          if (glabel) {
+            toolNameLocal = glabel;
+          }
+        }
+      } catch(e) { /* ignore */ }
+      console.log('Resolved toolNameLocal for quick indicators:', { toolIdx, toolNameLocal });
 
       // Create a unique id for this tool's quick groups
       const toolUnique = `${themeName}_${loIdx}_${aspIdx}_${toolIdx}`.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -2866,44 +2985,63 @@
       }
 
       // set hidden fields (ensure LO/Aspect/Tool names are set)
+      const quickLO = document.getElementById('quickLO');
+      const quickAsp = document.getElementById('quickAspect');
+      const quickTool = document.getElementById('quickTool');
+      const quickLOText = (quickLO && quickLO.options[quickLO.selectedIndex] ? quickLO.options[quickLO.selectedIndex].text : '') || '';
+      const quickAspText = (quickAsp && quickAsp.options[quickAsp.selectedIndex] ? quickAsp.options[quickAsp.selectedIndex].text : '') || '';
+      const quickToolText = (quickTool && quickTool.options[quickTool.selectedIndex] ? quickTool.options[quickTool.selectedIndex].text : '') || '';
+      const subjName = (document.getElementById('subject') && document.getElementById('subject').value || '').trim().toLowerCase();
+
       document.getElementById('selectedThemeNameHidden').value = theme;
-      // Prefer AspectContainer values if present (aspect select populated from AspectContainer)
-      document.getElementById('selectedLOHidden').value = (document.getElementById('quickLO').options[document.getElementById('quickLO').selectedIndex] || {}).text || '';
-      if (aspSelect && aspSelect._aspectContainerAspects && Array.isArray(aspSelect._aspectContainerAspects) && aspSelect._aspectContainerAspects.length) {
-        const acAsp = aspSelect._aspectContainerAspects[Number(aspSelect.value)] || {};
-        document.getElementById('selectedAspectHidden').value = acAsp.aspectName || acAsp.name || '';
-        const acTool = (acAsp.tools && acAsp.tools[Number(document.getElementById('quickTool').value)]) || {};
-        document.getElementById('selectedToolHidden').value = acTool.toolName || acTool.name || '';
-      } else {
-        const themeItem = (Array.isArray(themeData) ? themeData.flatMap(td => td.themes).find(t => t.themeName === theme) : null) || null;
-        const loArray = themeItem ? (Array.isArray(themeItem.learningOutcome) ? themeItem.learningOutcome : (Array.isArray(themeItem.learningOutcomes) ? themeItem.learningOutcomes : [])) : [];
-        const lo = loArray[Number(loIdx)] || {};
-        document.getElementById('selectedLOHidden').value = lo.learningOutcomeName || lo.name || '';
-        const asp = (lo.assessmentAspects && lo.assessmentAspects[Number(aspIdx)]) || {};
-        document.getElementById('selectedAspectHidden').value = asp.aspectName || asp.name || '';
-        const tool = (asp.tools && asp.tools[Number(toolIdx)]) || {};
-        document.getElementById('selectedToolHidden').value = tool.toolName || tool.name || '';
+      document.getElementById('selectedLOHidden').value = quickLOText;
+      document.getElementById('selectedAspectHidden').value = quickAspText;
+      const selectedToolHidden = document.getElementById('selectedToolHidden');
+      if (selectedToolHidden) {
+        selectedToolHidden.value = quickToolText || selectedToolHidden.value;
       }
-      // If aspect is hidden (non-language subjects), ensure aspect is saved as blank and tool from globalToolsList
+      if (!quickToolText) {
+        const gtool = (Array.isArray(window.globalToolsList) && window.globalToolsList[Number(toolIdx)]) ? window.globalToolsList[Number(toolIdx)] : null;
+        if (selectedToolHidden) {
+          selectedToolHidden.value = (typeof gtool === 'string') ? gtool : (gtool && (gtool.toolName || gtool.name)) || selectedToolHidden.value;
+        }
+      }
+      if (subjName !== 'english') {
+        if (aspSelect && aspSelect._aspectContainerAspects && Array.isArray(aspSelect._aspectContainerAspects) && aspSelect._aspectContainerAspects.length) {
+          const acAsp = aspSelect._aspectContainerAspects[Number(aspSelect.value)] || {};
+          document.getElementById('selectedAspectHidden').value = acAsp.aspectName || acAsp.name || quickAspText;
+          const acTool = (acAsp.tools && acAsp.tools[Number(document.getElementById('quickTool').value)]) || {};
+          if (selectedToolHidden) selectedToolHidden.value = acTool.toolName || acTool.name || quickToolText || selectedToolHidden.value;
+        } else {
+          const themeItem = (Array.isArray(themeData) ? themeData.flatMap(td => td.themes).find(t => t.themeName === theme) : null) || null;
+          const loArray = themeItem ? (Array.isArray(themeItem.learningOutcome) ? themeItem.learningOutcome : (Array.isArray(themeItem.learningOutcomes) ? themeItem.learningOutcomes : [])) : [];
+          const lo = loArray[Number(loIdx)] || {};
+          document.getElementById('selectedLOHidden').value = lo.learningOutcomeName || lo.name || quickLOText;
+          const asp = (lo.assessmentAspects && lo.assessmentAspects[Number(aspIdx)]) || {};
+          document.getElementById('selectedAspectHidden').value = asp.aspectName || asp.name || quickAspText;
+          const tool = (asp.tools && asp.tools[Number(toolIdx)]) || {};
+          if (selectedToolHidden) selectedToolHidden.value = tool.toolName || tool.name || quickToolText || selectedToolHidden.value;
+        }
+      }
       if (aspectHidden) {
         document.getElementById('selectedAspectHidden').value = '';
         const gtool = (Array.isArray(window.globalToolsList) && window.globalToolsList[Number(toolIdx)]) ? window.globalToolsList[Number(toolIdx)] : null;
-        document.getElementById('selectedToolHidden').value = (typeof gtool === 'string') ? gtool : (gtool && (gtool.toolName || gtool.name)) || document.getElementById('selectedToolHidden').value;
+        if (selectedToolHidden) selectedToolHidden.value = (typeof gtool === 'string') ? gtool : (gtool && (gtool.toolName || gtool.name)) || selectedToolHidden.value;
       }
 
-      // Ensure marks and dates from quick fields are preserved (they are set by the quick UI)
-      // if they are empty, leave as is
+      const evalBeforeInput = document.querySelector('.quick-eval-date-before');
+      const evalAfterInput = document.querySelector('.quick-eval-date-after');
+      const selDateBefore = evalBeforeInput ? evalBeforeInput.value : document.getElementById('selectedEvalDateBeforeHidden').value;
+      const selDateAfter = evalAfterInput ? evalAfterInput.value : document.getElementById('selectedEvalDateAfterHidden').value;
       const selMax = document.getElementById('selectedIndicatorMaxMarksHidden').value;
       const selMarksBefore = document.getElementById('selectedIndicatorMarksBeforeHidden').value;
       const selMarksAfter = document.getElementById('selectedIndicatorMarksAfterHidden').value;
-      const selDateBefore = document.getElementById('selectedEvalDateBeforeHidden').value;
-      const selDateAfter = document.getElementById('selectedEvalDateAfterHidden').value;
 
       if (selMax) document.getElementById('selectedIndicatorMaxMarksHidden').value = selMax;
       if (selMarksBefore) document.getElementById('selectedIndicatorMarksBeforeHidden').value = selMarksBefore;
       if (selMarksAfter) document.getElementById('selectedIndicatorMarksAfterHidden').value = selMarksAfter;
-      if (selDateBefore) document.getElementById('selectedEvalDateBeforeHidden').value = selDateBefore;
-      if (selDateAfter) document.getElementById('selectedEvalDateAfterHidden').value = selDateAfter;
+      if (evalBeforeInput) document.getElementById('selectedEvalDateBeforeHidden').value = selDateBefore || '';
+      if (evalAfterInput) document.getElementById('selectedEvalDateAfterHidden').value = selDateAfter || '';
 
       // Set roll/name/class/section hidden fields via syncHiddenFields
       syncHiddenFields();
@@ -3779,34 +3917,148 @@ document.addEventListener('DOMContentLoaded', async () => {
         const res = await fetch(`/get-tools?studentClass=${encodeURIComponent(studentClass)}&subject=${encodeURIComponent(subject)}`);
         const data = await res.json();
         console.log('Fetched tools for', studentClass, subject, data);
-        window.globalToolsList = data || [];
-        
+        // Decide source of tools based on subject
+        const subjNorm = String(subject || '').toLowerCase();
+        // Use AspectContainer for Nepali only
+        window.useAspectContainerForTools = (subjNorm === 'nepali');
+        if (window.useAspectContainerForTools) {
+          // For Nepali, tools come from AspectContainer; do not populate global tools
+          window.globalToolsList = [];
+        } else {
+          // For ENGLISH, MATHEMATICS, HAMRO SEROFERO and other non-Nepali subjects, use tools collection
+          if (Array.isArray(data)) window.globalToolsList = data;
+          else if (data && Array.isArray(data.tools)) window.globalToolsList = data.tools;
+          else window.globalToolsList = data || [];
+        }
+
         // Populate all select dropdowns (include quickTool if present)
         const selects = document.querySelectorAll('select.tools-dropdown, select#quickTool');
         selects.forEach(select => {
           populateSelect(select);
         });
 
-        // If subject is not Nepali or English, hide aspect selects and ensure tool selects appear independent
+        // Ensure quickTool shows fetched tool labels (use numeric values for indexing)
         try {
-          const subjNorm = String(subject || '').toLowerCase();
-          if (subjNorm && subjNorm !== 'nepali' && subjNorm !== 'english') {
+          const quick = document.getElementById('quickTool');
+          if (quick && Array.isArray(window.globalToolsList) && window.globalToolsList.length) {
+            // Only overwrite if only default option exists
+            if (quick.options.length <= 1) {
+              quick.innerHTML = '<option value="" selected disabled>Select Tool</option>';
+              window.globalToolsList.forEach((tool, tIdx) => {
+                const opt = document.createElement('option');
+                opt.value = tIdx;
+                opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${tIdx+1}`);
+                quick.appendChild(opt);
+              });
+            }
+          }
+        } catch (e) { console.warn('quickTool population failed', e); }
+
+        // Patch any stale 'Tool N' labels by replacing with fetched labels where possible
+        (function patchToolLabels() {
+          try {
+            const quick = document.getElementById('quickTool');
+            if (!quick || !Array.isArray(window.globalToolsList) || !window.globalToolsList.length) return;
+            // Delay slightly to let other handlers finish
+            setTimeout(() => {
+              for (let i = 1; i < quick.options.length; i++) {
+                const opt = quick.options[i];
+                if (!opt) continue;
+                const txt = (opt.textContent || '').trim();
+                if (/^Tool\s*\d+$/i.test(txt) && window.globalToolsList[i-1]) {
+                  const tool = window.globalToolsList[i-1];
+                  opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || txt);
+                }
+              }
+            }, 150);
+          } catch (e) { /* non-fatal */ }
+        })();
+
+        // If subject is not Nepali, hide aspect selects and ensure tool selects appear independent
+        try {
+          if (subjNorm && subjNorm !== 'nepali') {
             document.querySelectorAll('select.aspect-dropdown').forEach(s => {
               s.style.display = 'none';
             });
             // Also populate any tool selects that might be marked as aspect-driven (include quickTool)
             document.querySelectorAll('select.tools-dropdown, select#quickTool').forEach(select => {
-              if (select.options.length <= 1 && Array.isArray(window.globalToolsList)) {
-                select.innerHTML = '<option value="" selected disabled">Select Tool</option>';
+              if (select.options.length <= 1 && Array.isArray(window.globalToolsList) && window.globalToolsList.length > 0) {
+                select.innerHTML = '<option value="" selected disabled>Select Tool</option>';
                 window.globalToolsList.forEach((tool, tIdx) => {
                   const opt = document.createElement('option');
                   opt.value = tIdx;
-                  opt.textContent = tool.toolName || tool.name || `Tool ${tIdx+1}`;
+                  opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${tIdx+1}`);
                   select.appendChild(opt);
                 });
               }
             });
           }
+          // If subject is English, install a MutationObserver to enforce tool labels from tools collection
+          try {
+            if (subjNorm === 'english') {
+              const quick = document.getElementById('quickTool');
+              if (quick) {
+                quick.dataset.forceGlobal = '1';
+                // populate immediately (in case other handlers clear options later)
+                if (Array.isArray(window.globalToolsList) && window.globalToolsList.length) {
+                  quick.innerHTML = '<option value="" selected disabled>Select Tool</option>';
+                  window.globalToolsList.forEach((tool, tIdx) => {
+                    const opt = document.createElement('option');
+                    opt.value = tIdx;
+                    opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${tIdx+1}`);
+                    quick.appendChild(opt);
+                  });
+                }
+                // Observe changes and re-apply labels from globalToolsList when options mutate
+                const mo = new MutationObserver(() => {
+                  try {
+                    if (!Array.isArray(window.globalToolsList) || !window.globalToolsList.length) return;
+                    const curVal = quick.value;
+                    // Rebuild options but attempt to preserve selection
+                    mo.disconnect();
+                    quick.innerHTML = '<option value="" selected disabled>Select Tool</option>';
+                    window.globalToolsList.forEach((tool, tIdx) => {
+                      const opt = document.createElement('option');
+                      opt.value = tIdx;
+                      opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${tIdx+1}`);
+                      quick.appendChild(opt);
+                    });
+                    try { quick.value = curVal; } catch(e) {}
+                    mo.observe(quick, { childList: true });
+                  } catch (e) { console.warn('quickTool observer reapply failed', e); }
+                });
+                mo.observe(quick, { childList: true });
+              }
+            }
+          } catch (e) { /* ignore */ }
+
+          // Final safeguard: some other handlers repopulate quickTool later; ensure quickTool shows proper labels
+          setTimeout(() => {
+            try {
+              const quick = document.getElementById('quickTool');
+              if (!quick) return;
+              if (Array.isArray(window.globalToolsList) && window.globalToolsList.length) {
+                // repopulate quick tool to ensure labels are correct
+                quick.innerHTML = '<option value="" selected disabled>Select Tool</option>';
+                window.globalToolsList.forEach((tool, tIdx) => {
+                  const opt = document.createElement('option');
+                  opt.value = tIdx;
+                  opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${tIdx+1}`);
+                  quick.appendChild(opt);
+                });
+              } else {
+                // if no global tools, patch any 'Tool N' placeholders
+                for (let i = 1; i < quick.options.length; i++) {
+                  const opt = quick.options[i];
+                  if (!opt) continue;
+                  const txt = (opt.textContent || '').trim();
+                  if (/^Tool\s*\d+$/i.test(txt)) {
+                    // leave placeholder — will be replaced when tools load
+                  }
+                }
+              }
+            } catch (e) { console.warn('quickTool final repopulation failed', e); }
+          }, 400);
         
         // Inject selectedIndicators nested inputs for quick selection into the form (autosave path)
         try {
@@ -3983,16 +4235,26 @@ function populateSelect(select) {
   // don't populate tool suggestions into pure aspect selects or selects driven by AspectContainer
   // If a select has both 'aspect-dropdown' and 'tools-dropdown', treat it as a tools select.
   if (select.classList && ((select.classList.contains('aspect-dropdown') && !select.classList.contains('tools-dropdown')) || select.dataset.aspectDriven === '1')) return;
+  // If Nepali uses AspectContainer for tools, do not populate generic tool selects here
+  if (window.useAspectContainerForTools && select.classList && select.classList.contains('tools-dropdown') && select.dataset.aspectDriven !== '1') return;
+  // If this quickTool is forced to use the global tools collection for English, do not overwrite it here
+  if (select.id === 'quickTool' && select.dataset && select.dataset.forceGlobal === '1') return;
     // preserve first option
     const firstOption = select.options[0];
     select.innerHTML = '';
     select.appendChild(firstOption);
     
     const useIndex = (select.id === 'quickTool' || select.dataset.useIndex === '1');
+    // If no tools available yet, skip population — may be populated later
+    if (!Array.isArray(window.globalToolsList) || window.globalToolsList.length === 0) return;
     (window.globalToolsList || []).forEach((tool, idx) => {
       const opt = document.createElement('option');
-      opt.value = useIndex ? idx : tool; // quickTool uses index, others use tool name for form submission
-      opt.textContent = tool;
+      if (useIndex) opt.value = idx;
+      else {
+        const label = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || String(idx));
+        opt.value = label;
+      }
+      opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${idx+1}`);
       select.appendChild(opt);
     });
 }

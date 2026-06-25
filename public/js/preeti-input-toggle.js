@@ -1,6 +1,8 @@
 (function () {
-  const MODE_KEY = "preeti_mode_enabled";
   let isConverting = false;
+    const BASE_MODE_KEY = "preeti_mode_enabled";
+    // Use a page-scoped key so toggle is per-page (path-based). Fallback to global key if page key not set.
+    const MODE_KEY = `${BASE_MODE_KEY}::${(typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname : 'global'}`;
 
   function isTextTarget(el) {
     if (!el || el.disabled || el.readOnly) return false;
@@ -91,7 +93,8 @@
     window.isNepaliMode = Boolean(enabled);
 
     try {
-      window.localStorage.setItem(MODE_KEY, window.isNepaliMode ? "1" : "0");
+        // Persist only page-specific preference to avoid cross-page side-effects
+        window.localStorage.setItem(MODE_KEY, window.isNepaliMode ? "1" : "0");
     } catch (_) {}
 
     const checkbox = document.getElementById("nepaliToggle");
@@ -151,7 +154,15 @@
     let initialMode = false;
 
     try {
-      initialMode = window.localStorage.getItem(MODE_KEY) === "1";
+        // Try page-specific key first
+        const pageValue = window.localStorage.getItem(MODE_KEY);
+        if (pageValue !== null) {
+          initialMode = pageValue === "1";
+        } else {
+          // Fallback to global key for backward compatibility
+          const globalValue = window.localStorage.getItem(BASE_MODE_KEY);
+          initialMode = globalValue === "1";
+        }
     } catch (_) {}
 
     const existingCheckbox = document.getElementById("nepaliToggle");
