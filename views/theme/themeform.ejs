@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-        document.querySelectorAll('.student-nav-button').forEach(b => {
-          b.classList.remove('active');
-        });
+      
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
@@ -1048,10 +1046,11 @@
   
   <!-- Auto theme manager for initialization and auto-save -->
   <script src="/auto-theme-manager.js"></script>
+  <script id="theme-data" type="application/json"><%- JSON.stringify(themeData || []) %></script>
   <script>
-    // Expose server-rendered themeData to client scripts
     try {
-      window.themeData = <%- JSON.stringify(themeData || []) %>;
+      const themeDataElement = document.getElementById('theme-data');
+      window.themeData = themeDataElement ? JSON.parse(themeDataElement.textContent || '[]') : [];
     } catch (e) {
       window.themeData = [];
       console.warn('themeData not available on client:', e);
@@ -1647,8 +1646,8 @@
       <input type="hidden" id="selectedIndicatorIdsAfterHidden" value="">
 
       <div style="margin-bottom:12px; display:flex; gap:8px;">
-        <button type="button" class="btn btn-success" onclick="saveSelectedIndicator()">Save Selected Indicator</button>
-        <button type="button" class="btn btn-warning" onclick="clearQuickSelection()">Clear</button>
+        <button type="button" class="btn submit-btn" onclick="saveSelectedIndicator()">Save Selected Indicator</button>
+        <button type="button" class="btn " onclick="clearQuickSelection()">Clear</button>
       </div>
 
       <!-- Learning Outcomes Section -->
@@ -1821,9 +1820,7 @@
         <% }); %>
       <% }); %>
       
-      <button type="submit" class="submit-btn">
-        Save Evaluation
-      </button>
+      
       
      
     </form>
@@ -2535,25 +2532,61 @@
         const loIdx = document.getElementById('quickLO').value;
         const themeName = document.getElementById('themeName').value;
         const tool = (Array.isArray(window.globalToolsList) && window.globalToolsList[Number(toolIdx)]) ? window.globalToolsList[Number(toolIdx)] : null;
+        const subjName = (document.getElementById('subject') && document.getElementById('subject').value || '').trim().toLowerCase();
+        const useThemeFormatIndicators = ['mathematics', 'hamro serofero','hamro serophero'].includes(subjName);
 
-        // If the tools list entry is an object with indicators, use it.
-        // Otherwise fall back to the server-rendered themeData: take indicators from the selected learning outcome.
         let indicators = [];
-        if (tool && Array.isArray(tool.indicators) && tool.indicators.length) {
+        if (useThemeFormatIndicators) {
+          let themeItem = null;
+          try { themeData.forEach(td => td.themes.forEach(item => { if (item.themeName === themeName) themeItem = item; })); } catch(e) { themeItem = null; }
+          const toolNameLocal = (typeof tool === 'string') ? tool.trim() : (tool && (tool.toolName || tool.name)) || '';
+          if (themeItem) {
+            const loArray = Array.isArray(themeItem.learningOutcome) ? themeItem.learningOutcome : (Array.isArray(themeItem.learningOutcomes) ? themeItem.learningOutcomes : []);
+            const loObj = loArray[Number(loIdx)];
+            if (loObj) {
+              const matchingTool = (() => {
+                if (!Array.isArray(loObj.assessmentAspects)) return null;
+                for (const aspect of loObj.assessmentAspects) {
+                  if (!aspect || !Array.isArray(aspect.tools)) continue;
+                  for (const candidate of aspect.tools) {
+                    if (!candidate) continue;
+                    const candidateName = candidate.toolName || candidate.name || '';
+                    if (candidateName && toolNameLocal && String(candidateName).toLowerCase() === String(toolNameLocal).toLowerCase()) {
+                      return candidate;
+                    }
+                  }
+                }
+                return null;
+              })();
+              if (matchingTool && Array.isArray(matchingTool.indicators) && matchingTool.indicators.length) {
+                indicators = matchingTool.indicators;
+              } else if (Array.isArray(loObj.indicators) && loObj.indicators.length) {
+                indicators = loObj.indicators;
+              } else if (Array.isArray(loObj.assessmentAspects)) {
+                loObj.assessmentAspects.forEach(aspect => {
+                  if (!aspect) return;
+                  const toolsArr = Array.isArray(aspect.tools) ? aspect.tools : [];
+                  toolsArr.forEach(t => {
+                    if (t && Array.isArray(t.indicators) && t.indicators.length) {
+                      indicators = indicators.concat(t.indicators);
+                    }
+                  });
+                });
+              }
+            }
+          }
+        } else if (tool && Array.isArray(tool.indicators) && tool.indicators.length) {
           indicators = tool.indicators;
         } else {
-          // fallback to themeData for indicators of the selected LO
           let themeItem = null;
           try { themeData.forEach(td => td.themes.forEach(item => { if (item.themeName === themeName) themeItem = item; })); } catch(e) { themeItem = null; }
           if (themeItem) {
             const loArray = Array.isArray(themeItem.learningOutcome) ? themeItem.learningOutcome : (Array.isArray(themeItem.learningOutcomes) ? themeItem.learningOutcomes : []);
             const loObj = loArray[Number(loIdx)];
             if (loObj) {
-              // Prefer direct indicators array if present
               if (Array.isArray(loObj.indicators) && loObj.indicators.length) {
                 indicators = loObj.indicators;
               } else if (Array.isArray(loObj.assessmentAspects)) {
-                // Aggregate indicators from all aspects/tools under this LO
                 loObj.assessmentAspects.forEach(aspect => {
                   if (!aspect) return;
                   const toolsArr = Array.isArray(aspect.tools) ? aspect.tools : [];
@@ -2568,7 +2601,7 @@
           }
         }
         if (!indicators || !Array.isArray(indicators) || indicators.length === 0) {
-          console.warn('No indicators found for selected tool (aspectHidden path)', { tool, indicators });
+          console.warn('No indicators found for selected tool (aspectHidden path)', { tool, indicators, useThemeFormatIndicators });
           return;
         }
 
@@ -2583,7 +2616,8 @@
 
         const thead = document.createElement('thead');
         const headerRow = document.createElement('tr');
-        ['Learning Outcome', 'Assessment Aspect', 'Tool', 'Indicator', 'Eval Date Before', 'Marks Before', 'Eval Date After', 'Marks After'].forEach(h => {
+        const headers = useThemeFormatIndicators ? ['Learning Outcome', 'Tool', 'Indicator', 'Eval Date Before', 'Marks Before', 'Eval Date After', 'Marks After'] : ['Learning Outcome', 'Assessment Aspect', 'Tool', 'Indicator', 'Eval Date Before', 'Marks Before', 'Eval Date After', 'Marks After'];
+        headers.forEach(h => {
           const th = document.createElement('th');
           th.textContent = h;
           headerRow.appendChild(th);
@@ -2593,14 +2627,15 @@
 
         const tbody = document.createElement('tbody');
 
-        const aspIdx = 0; // save blank aspect as first index with empty name
+        const aspIdx = 0;
         const loName = (document.getElementById('quickLO').options[document.getElementById('quickLO').selectedIndex] || {}).text || '';
         const aspName = '';
-        const toolNameLocal = tool.toolName || tool.name || '';
-        const toolUnique = `${themeName}_${loIdx}_${aspIdx}_${toolIdx}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+        const toolNameLocal = (typeof tool === 'string') ? tool.trim() : (tool && (tool.toolName || tool.name)) || '';
+        const toolUnique = `${themeName}_${(document.getElementById('quickLO').value || '')}_${aspIdx}_${toolIdx}`.replace(/[^a-zA-Z0-9_-]/g, '_');
 
         indicators.forEach((ind, iIdx) => {
           const tr = document.createElement('tr');
+          const indicatorName = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
 
           if (iIdx === 0) {
             const tdLO = document.createElement('td');
@@ -2608,10 +2643,12 @@
             tdLO.textContent = loName || `LO ${Number(loIdx)+1}`;
             tr.appendChild(tdLO);
 
-            const tdAsp = document.createElement('td');
-            tdAsp.rowSpan = indicators.length;
-            tdAsp.textContent = aspName;
-            tr.appendChild(tdAsp);
+            if (!useThemeFormatIndicators) {
+              const tdAsp = document.createElement('td');
+              tdAsp.rowSpan = indicators.length;
+              tdAsp.textContent = aspName;
+              tr.appendChild(tdAsp);
+            }
 
             const tdTool = document.createElement('td');
             tdTool.rowSpan = indicators.length;
@@ -2620,7 +2657,7 @@
           }
 
           const tdIndicator = document.createElement('td');
-          tdIndicator.textContent = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+          tdIndicator.textContent = indicatorName;
           tr.appendChild(tdIndicator);
 
           if (iIdx === 0) {
@@ -2631,7 +2668,7 @@
             dateBefore.className = 'nepali-datepicker quick-eval-date-before';
             dateBefore.id = `quick_eval_before_${toolUnique}`;
             dateBefore.name = `subjects[0][themes][0][learningOutcomes][${loIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][evaluationDateBefore]`;
-            dateBefore.value = (ind && (ind.evaluationDateBefore || ind.evaluationDateBefore === '') ? ind.evaluationDateBefore : (tool.evaluationDateBefore || '')) ;
+            dateBefore.value = (ind && (ind.evaluationDateBefore || ind.evaluationDateBefore === '') ? ind.evaluationDateBefore : (tool && (tool.evaluationDateBefore || '')));
             dateBefore.addEventListener('change', () => {
               document.getElementById('selectedEvalDateBeforeHidden').value = dateBefore.value || '';
             });
@@ -2641,15 +2678,15 @@
 
           const tdMarksBefore = document.createElement('td');
           const valBefore = ind.maxMarks || ind.indicatorsMarks || 0;
-          const subjName = (document.getElementById('subject') && document.getElementById('subject').value || '').trim().toLowerCase();
           if (subjName === 'hamro serofero') {
             const cb = document.createElement('input');
             cb.type = 'checkbox';
             cb.className = 'quick-indicator-checkbox';
-            cb.dataset.indicatorName = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+            cb.dataset.indicatorName = indicatorName;
             cb.dataset.maxMarks = valBefore || 1;
             cb.value = 1;
             cb.setAttribute('data-timing','Before');
+            if (ind && ind._id) cb.dataset.indicatorId = ind._id;
             cb.addEventListener('change', updateQuickCheckboxes);
             try { if (ind.obtainedBefore) cb.checked = true; } catch(e) {}
             tdMarksBefore.appendChild(cb);
@@ -2663,17 +2700,20 @@
             rbBefore.type = 'radio';
             rbBefore.name = rbBeforeName;
             rbBefore.value = valBefore;
+            if (ind && ind._id) rbBefore.dataset.indicatorId = ind._id;
             rbBefore.addEventListener('click', () => {
               document.getElementById('selectedIndicatorMarksBeforeHidden').value = rbBefore.value;
-              document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+              document.getElementById('selectedIndicatorHidden').value = indicatorName;
               document.getElementById('selectedIndicatorMaxMarksHidden').value = valBefore;
+              if (document.getElementById('selectedIndicatorIdsBeforeHidden')) document.getElementById('selectedIndicatorIdsBeforeHidden').value = rbBefore.dataset.indicatorId || '';
             });
             try {
               if (typeof ind.obtainedBefore !== 'undefined' && Number(ind.obtainedBefore) === Number(valBefore)) {
                 rbBefore.checked = true;
                 document.getElementById('selectedIndicatorMarksBeforeHidden').value = rbBefore.value;
-                document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+                document.getElementById('selectedIndicatorHidden').value = indicatorName;
                 document.getElementById('selectedIndicatorMaxMarksHidden').value = valBefore;
+                if (document.getElementById('selectedIndicatorIdsBeforeHidden')) document.getElementById('selectedIndicatorIdsBeforeHidden').value = rbBefore.dataset.indicatorId || '';
               }
             } catch(e) {}
             tdMarksBefore.appendChild(rbBefore);
@@ -2692,7 +2732,7 @@
             dateAfter.className = 'nepali-datepicker quick-eval-date-after';
             dateAfter.id = `quick_eval_after_${toolUnique}`;
             dateAfter.name = `subjects[0][themes][0][learningOutcomes][${loIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][evaluationDateAfter]`;
-            dateAfter.value = (ind && (ind.evaluationDateAfter || ind.evaluationDateAfter === '') ? ind.evaluationDateAfter : (tool.evaluationDateAfter || ''));
+            dateAfter.value = (ind && (ind.evaluationDateAfter || ind.evaluationDateAfter === '') ? ind.evaluationDateAfter : (tool && (tool.evaluationDateAfter || '')));
             dateAfter.addEventListener('change', () => {
               document.getElementById('selectedEvalDateAfterHidden').value = dateAfter.value || '';
             });
@@ -2702,15 +2742,15 @@
 
           const tdMarksAfter = document.createElement('td');
           const valAfter = ind.maxMarks || ind.indicatorsMarks || 0;
-          const subjName2 = (document.getElementById('subject') && document.getElementById('subject').value || '').trim().toLowerCase();
-          if (subjName2 === 'hamro serofero') {
+          if (subjName === 'hamro serofero') {
             const cb2 = document.createElement('input');
             cb2.type = 'checkbox';
             cb2.className = 'quick-indicator-checkbox';
-            cb2.dataset.indicatorName = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+            cb2.dataset.indicatorName = indicatorName;
             cb2.dataset.maxMarks = valAfter || 1;
             cb2.value = 1;
             cb2.setAttribute('data-timing','After');
+            if (ind && ind._id) cb2.dataset.indicatorId = ind._id;
             cb2.addEventListener('change', updateQuickCheckboxes);
             try { if (ind.obtainedAfter) cb2.checked = true; } catch(e) {}
             tdMarksAfter.appendChild(cb2);
@@ -2724,17 +2764,20 @@
             rbAfter.type = 'radio';
             rbAfter.name = rbAfterName;
             rbAfter.value = valAfter;
+            if (ind && ind._id) rbAfter.dataset.indicatorId = ind._id;
             rbAfter.addEventListener('click', () => {
               document.getElementById('selectedIndicatorMarksAfterHidden').value = rbAfter.value;
-              document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+              document.getElementById('selectedIndicatorHidden').value = indicatorName;
               document.getElementById('selectedIndicatorMaxMarksHidden').value = valAfter;
+              if (document.getElementById('selectedIndicatorIdsAfterHidden')) document.getElementById('selectedIndicatorIdsAfterHidden').value = rbAfter.dataset.indicatorId || '';
             });
             try {
               if (typeof ind.obtainedAfter !== 'undefined' && Number(ind.obtainedAfter) === Number(valAfter)) {
                 rbAfter.checked = true;
                 document.getElementById('selectedIndicatorMarksAfterHidden').value = rbAfter.value;
-                document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+                document.getElementById('selectedIndicatorHidden').value = indicatorName;
                 document.getElementById('selectedIndicatorMaxMarksHidden').value = valAfter;
+                if (document.getElementById('selectedIndicatorIdsAfterHidden')) document.getElementById('selectedIndicatorIdsAfterHidden').value = rbAfter.dataset.indicatorId || '';
               }
             } catch(e) {}
             tdMarksAfter.appendChild(rbAfter);
@@ -2751,7 +2794,7 @@
         table.appendChild(tbody);
         indicatorsDiv.innerHTML = '';
         indicatorsDiv.appendChild(table);
-        console.log('Rendered indicators table from globalTools/themeData fallback, indicators count:', indicators.length);
+        console.log('Rendered indicators table from theme-format data for subject', subjName, 'indicators count:', indicators.length);
 
         try {
           const newDateInputs = indicatorsDiv.querySelectorAll('.nepali-datepicker:not([data-initialized])');
@@ -2762,6 +2805,177 @@
           });
         } catch(e) { console.warn('Error initializing nepali datepickers', e); }
 
+        try { saveQuickSelection(); } catch(e){ console.warn('saveQuickSelection failed', e); }
+        return;
+      }
+      // Nepali subject should render tool indicators from the aspect container
+      if (subjName === 'nepali' && currentAspectObj && Array.isArray(currentAspectObj.tools)) {
+        const themeName = document.getElementById('themeName').value;
+        const loIdx = document.getElementById('quickLO').value;
+        const aspIdx = aspSelect.value;
+        const tool = currentAspectObj.tools[Number(toolIdx)];
+        if (!tool || !Array.isArray(tool.indicators)) {
+          console.warn('Nepali tool selected but no indicators found', { toolIdx, currentAspectObj });
+          return;
+        }
+        const resolveIndicatorIdForNepali = (indicatorName) => {
+          if (!indicatorName) return '';
+          if (!Array.isArray(themeData)) return '';
+          let found = '';
+          try {
+            themeData.some(td => {
+              if (!td || !Array.isArray(td.themes)) return false;
+              return td.themes.some(theme => {
+                if (found || theme.themeName !== themeName) return false;
+                const loArray = Array.isArray(theme.learningOutcome) ? theme.learningOutcome : (Array.isArray(theme.learningOutcomes) ? theme.learningOutcomes : []);
+                const loObj2 = loArray[Number(loIdx)];
+                if (!loObj2 || !Array.isArray(loObj2.assessmentAspects)) return false;
+                const aspObj2 = loObj2.assessmentAspects[Number(aspIdx)];
+                if (!aspObj2 || !Array.isArray(aspObj2.tools)) return false;
+                const toolObj2 = aspObj2.tools[Number(toolIdx)];
+                if (!toolObj2 || !Array.isArray(toolObj2.indicators)) return false;
+                return toolObj2.indicators.some(ii => {
+                  const iName = (ii && (ii.indicatorName || ii.name)) || '';
+                  if (iName === indicatorName) {
+                    found = ii._id || '';
+                    return true;
+                  }
+                  return false;
+                });
+              });
+            });
+          } catch (e) {
+            console.warn('resolveIndicatorIdForNepali failed', e);
+          }
+          return found;
+        };
+        const indicators = tool.indicators;
+        const table = document.createElement('table');
+        table.className = 'evaluation-table';
+        const caption = document.createElement('caption');
+        caption.style.fontWeight = '700';
+        caption.style.marginBottom = '8px';
+        caption.textContent = themeName;
+        table.appendChild(caption);
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        ['Learning Outcome', 'Assessment Aspect', 'Tool', 'Indicator', 'Eval Date Before', 'Marks Before', 'Eval Date After', 'Marks After'].forEach(h => {
+          const th = document.createElement('th');
+          th.textContent = h;
+          headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+        const tbody = document.createElement('tbody');
+        const loName = (document.getElementById('quickLO').options[document.getElementById('quickLO').selectedIndex] || {}).text || '';
+        const aspName = selectedAspectName || '';
+        const toolNameLocal = tool && (tool.toolName || tool.name) ? (tool.toolName || tool.name) : '';
+        const toolUnique = `${themeName}_${loIdx}_${aspIdx}_${toolIdx}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+        indicators.forEach((ind, iIdx) => {
+          const tr = document.createElement('tr');
+          if (iIdx === 0) {
+            const tdLO = document.createElement('td');
+            tdLO.rowSpan = indicators.length;
+            tdLO.textContent = loName || `LO ${Number(loIdx)+1}`;
+            tr.appendChild(tdLO);
+            const tdAsp = document.createElement('td');
+            tdAsp.rowSpan = indicators.length;
+            tdAsp.textContent = aspName || `Aspect ${Number(aspIdx)+1}`;
+            tr.appendChild(tdAsp);
+            const tdTool = document.createElement('td');
+            tdTool.rowSpan = indicators.length;
+            tdTool.textContent = toolNameLocal || `Tool ${Number(toolIdx)+1}`;
+            tr.appendChild(tdTool);
+          }
+          const tdIndicator = document.createElement('td');
+          tdIndicator.textContent = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+          tr.appendChild(tdIndicator);
+          if (iIdx === 0) {
+            const tdEvalBefore = document.createElement('td');
+            tdEvalBefore.rowSpan = indicators.length;
+            const dateBefore = document.createElement('input');
+            dateBefore.type = 'text';
+            dateBefore.className = 'nepali-datepicker quick-eval-date-before';
+            dateBefore.id = `quick_eval_before_${toolUnique}`;
+            dateBefore.name = `subjects[0][themes][0][learningOutcomes][${loIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][evaluationDateBefore]`;
+            dateBefore.value = (ind && (ind.evaluationDateBefore || ind.evaluationDateBefore === '') ? ind.evaluationDateBefore : (tool.evaluationDateBefore || ''));
+            dateBefore.addEventListener('change', () => {
+              document.getElementById('selectedEvalDateBeforeHidden').value = dateBefore.value || '';
+            });
+            tdEvalBefore.appendChild(dateBefore);
+            tr.appendChild(tdEvalBefore);
+          }
+          const tdMarksBefore = document.createElement('td');
+          const valBefore = ind.maxMarks || ind.indicatorsMarks || 0;
+          const rbBeforeName = 'quickMarkBefore_' + toolUnique;
+          const rbBefore = document.createElement('input');
+          rbBefore.type = 'radio';
+          rbBefore.name = rbBeforeName;
+          rbBefore.value = valBefore;
+          const beforeIndicatorId = (ind && ind._id) ? ind._id : resolveIndicatorIdForNepali(ind.indicatorName || ind.name || '');
+          rbBefore.dataset.indicatorId = beforeIndicatorId || '';
+          rbBefore.addEventListener('click', () => {
+            document.getElementById('selectedIndicatorMarksBeforeHidden').value = rbBefore.value;
+            document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+            document.getElementById('selectedIndicatorMaxMarksHidden').value = valBefore;
+            if (document.getElementById('selectedIndicatorIdsBeforeHidden')) document.getElementById('selectedIndicatorIdsBeforeHidden').value = rbBefore.dataset.indicatorId || '';
+          });
+          tdMarksBefore.appendChild(rbBefore);
+          const spanBefore = document.createElement('span');
+          spanBefore.style.marginLeft = '6px';
+          spanBefore.textContent = String(valBefore);
+          tdMarksBefore.appendChild(spanBefore);
+          tr.appendChild(tdMarksBefore);
+          if (iIdx === 0) {
+            const tdEvalAfter = document.createElement('td');
+            tdEvalAfter.rowSpan = indicators.length;
+            const dateAfter = document.createElement('input');
+            dateAfter.type = 'text';
+            dateAfter.className = 'nepali-datepicker quick-eval-date-after';
+            dateAfter.id = `quick_eval_after_${toolUnique}`;
+            dateAfter.name = `subjects[0][themes][0][learningOutcomes][${loIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][evaluationDateAfter]`;
+            dateAfter.value = (ind && (ind.evaluationDateAfter || ind.evaluationDateAfter === '') ? ind.evaluationDateAfter : (tool.evaluationDateAfter || ''));
+            dateAfter.addEventListener('change', () => {
+              document.getElementById('selectedEvalDateAfterHidden').value = dateAfter.value || '';
+            });
+            tdEvalAfter.appendChild(dateAfter);
+            tr.appendChild(tdEvalAfter);
+          }
+          const tdMarksAfter = document.createElement('td');
+          const valAfter = ind.maxMarks || ind.indicatorsMarks || 0;
+          const rbAfterName = 'quickMarkAfter_' + toolUnique;
+          const rbAfter = document.createElement('input');
+          rbAfter.type = 'radio';
+          rbAfter.name = rbAfterName;
+          rbAfter.value = valAfter;
+          const afterIndicatorId = (ind && ind._id) ? ind._id : resolveIndicatorIdForNepali(ind.indicatorName || ind.name || '');
+          rbAfter.dataset.indicatorId = afterIndicatorId || '';
+          rbAfter.addEventListener('click', () => {
+            document.getElementById('selectedIndicatorMarksAfterHidden').value = rbAfter.value;
+            document.getElementById('selectedIndicatorHidden').value = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
+            document.getElementById('selectedIndicatorMaxMarksHidden').value = valAfter;
+            if (document.getElementById('selectedIndicatorIdsAfterHidden')) document.getElementById('selectedIndicatorIdsAfterHidden').value = rbAfter.dataset.indicatorId || '';
+          });
+          tdMarksAfter.appendChild(rbAfter);
+          const spanAfter = document.createElement('span');
+          spanAfter.style.marginLeft = '6px';
+          spanAfter.textContent = String(valAfter);
+          tdMarksAfter.appendChild(spanAfter);
+          tr.appendChild(tdMarksAfter);
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        indicatorsDiv.innerHTML = '';
+        indicatorsDiv.appendChild(table);
+        try {
+          const newDateInputs = indicatorsDiv.querySelectorAll('.nepali-datepicker:not([data-initialized])');
+          newDateInputs.forEach(inp => {
+            if (typeof inp.nepaliDatePicker === 'function') {
+              try { inp.nepaliDatePicker(); inp.setAttribute('data-initialized', 'true'); } catch(e){ console.warn('nepaliDatePicker init failed', e); }
+            }
+          });
+        } catch(e) { console.warn('Error initializing nepali datepickers', e); }
+        try { updateQuickCheckboxes(); } catch(e) {}
         try { saveQuickSelection(); } catch(e){ console.warn('saveQuickSelection failed', e); }
         return;
       }
@@ -3055,10 +3269,24 @@
         const nameAfter = `subjects[0][themes][0][learningOutcomes][${loIdx}][selectedIndicatorsAfter][]`;
         Array.from(form.querySelectorAll(`input[name="${nameBefore}"]`)).forEach(n=>n.remove());
         Array.from(form.querySelectorAll(`input[name="${nameAfter}"]`)).forEach(n=>n.remove());
+        const gatherSelectedIndicatorIds = (timing) => {
+          const ids = new Set();
+          const selector = `input[name^="quickMark${timing}_"]:checked, .quick-indicator-checkbox[data-timing="${timing}"]:checked`;
+          Array.from(form.querySelectorAll(selector)).forEach(el => {
+            if (el.dataset.indicatorId) ids.add(el.dataset.indicatorId);
+          });
+          return ids;
+        };
         const idsBeforeStr = (document.getElementById('selectedIndicatorIdsBeforeHidden')||{value:''}).value || '';
         const idsAfterStr = (document.getElementById('selectedIndicatorIdsAfterHidden')||{value:''}).value || '';
-        const idsBefore = idsBeforeStr.split(',').map(s=>s.trim()).filter(Boolean);
-        const idsAfter = idsAfterStr.split(',').map(s=>s.trim()).filter(Boolean);
+        const idsBefore = Array.from(new Set([
+          ...idsBeforeStr.split(',').map(s=>s.trim()).filter(Boolean),
+          ...Array.from(gatherSelectedIndicatorIds('Before'))
+        ]));
+        const idsAfter = Array.from(new Set([
+          ...idsAfterStr.split(',').map(s=>s.trim()).filter(Boolean),
+          ...Array.from(gatherSelectedIndicatorIds('After'))
+        ]));
         idsBefore.forEach(id => {
           const inp = document.createElement('input'); inp.type='hidden'; inp.name = nameBefore; inp.value = id; form.appendChild(inp);
         });
