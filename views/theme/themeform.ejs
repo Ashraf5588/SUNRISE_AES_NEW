@@ -2320,7 +2320,7 @@ function findToolByNameInStudentData(themeName, toolName) {
   }
 }
       // helper to update hidden fields when checkboxes used
-     function updateQuickCheckboxes() {
+   function updateQuickCheckboxes() {
   try {
     // Get checked radio buttons (for non-Hamro subjects)
     const beforeRadios = document.querySelectorAll('#quickIndicators input[name^="quickMarkBefore_"]:checked');
@@ -2337,28 +2337,206 @@ function findToolByNameInStudentData(themeName, toolName) {
     let sumAfter = 0;
     let maxSum = 0;
 
-    // Process radio buttons (Mathematics, Nepali, English)
+    // Helper function to find indicator ID from themeForTwo data by name
+    function findIndicatorIdFromThemeData(indicatorName) {
+      // Get current selection context
+      const themeName = document.getElementById('themeName').value;
+      const loIdx = document.getElementById('quickLO').value;
+      const aspIdx = document.getElementById('quickAspect').value;
+      const toolIdx = document.getElementById('quickTool').value;
+      
+      // Try to find in themeData (themeForTwo collection from database)
+      if (window.themeData && Array.isArray(window.themeData)) {
+        for (const td of window.themeData) {
+          if (td.themes && Array.isArray(td.themes)) {
+            for (const theme of td.themes) {
+              if (theme.themeName === themeName) {
+                // Get learning outcomes - could be 'learningOutcome' or 'learningOutcomes'
+                const loArray = Array.isArray(theme.learningOutcome) ? theme.learningOutcome : 
+                               (Array.isArray(theme.learningOutcomes) ? theme.learningOutcomes : []);
+                const lo = loArray[Number(loIdx)];
+                if (lo) {
+                  // Get assessment aspects - could be at different levels
+                  let aspects = [];
+                  if (lo.assessmentAspects && Array.isArray(lo.assessmentAspects)) {
+                    aspects = lo.assessmentAspects;
+                  } else if (lo.assessmentAspect && Array.isArray(lo.assessmentAspect)) {
+                    aspects = lo.assessmentAspect;
+                  }
+                  
+                  const asp = aspects[Number(aspIdx)];
+                  if (asp) {
+                    // Get tools
+                    let tools = [];
+                    if (asp.tools && Array.isArray(asp.tools)) {
+                      tools = asp.tools;
+                    } else if (asp.tool && Array.isArray(asp.tool)) {
+                      tools = asp.tool;
+                    }
+                    
+                    const tool = tools[Number(toolIdx)];
+                    if (tool) {
+                      // Get indicators
+                      let indicators = [];
+                      if (tool.indicators && Array.isArray(tool.indicators)) {
+                        indicators = tool.indicators;
+                      } else if (tool.indicator && Array.isArray(tool.indicator)) {
+                        indicators = tool.indicator;
+                      }
+                      
+                      // Try exact match first
+                      let match = indicators.find(ind => 
+                        (ind.indicatorName || ind.name || '') === indicatorName
+                      );
+                      
+                      // Try partial match (for Nepali with special characters)
+                      if (!match) {
+                        // Clean up both strings for comparison
+                        const cleanName = (str) => str.replace(/\s/g, '').replace(/[,.]/g, '').toLowerCase();
+                        const cleanIndicatorName = cleanName(indicatorName);
+                        
+                        match = indicators.find(ind => {
+                          const indName = (ind.indicatorName || ind.name || '');
+                          const cleanIndName = cleanName(indName);
+                          return cleanIndName && cleanIndicatorName && 
+                                 (cleanIndName.includes(cleanIndicatorName) || 
+                                  cleanIndicatorName.includes(cleanIndName));
+                        });
+                      }
+                      
+                      if (match) {
+                        const id = match._id || match.id || '';
+                        if (id) {
+                          console.log('✅ Found indicator ID in themeForTwo:', { 
+                            indicatorName, 
+                            id, 
+                            matchName: match.indicatorName || match.name 
+                          });
+                          return id;
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      // If not found in themeData, try studentThemeData (saved student data)
+      if (window.studentThemeData && Array.isArray(window.studentThemeData)) {
+        const savedTheme = window.studentThemeData.find(t => t.themeName === themeName);
+        if (savedTheme && savedTheme.learningOutcomes) {
+          const lo = savedTheme.learningOutcomes[Number(loIdx)];
+          if (lo && lo.assessmentAspects) {
+            const asp = lo.assessmentAspects[Number(aspIdx)];
+            if (asp && asp.tools) {
+              const tool = asp.tools[Number(toolIdx)];
+              if (tool && tool.indicators) {
+                let match = tool.indicators.find(ind => 
+                  (ind.indicatorName || ind.name) === indicatorName
+                );
+                if (!match) {
+                  const cleanName = (str) => str.replace(/\s/g, '').replace(/[,.]/g, '').toLowerCase();
+                  const cleanIndicatorName = cleanName(indicatorName);
+                  match = tool.indicators.find(ind => {
+                    const indName = (ind.indicatorName || ind.name || '');
+                    const cleanIndName = cleanName(indName);
+                    return cleanIndName && cleanIndicatorName && 
+                           (cleanIndName.includes(cleanIndicatorName) || 
+                            cleanIndicatorName.includes(cleanIndName));
+                  });
+                }
+                if (match) {
+                  const id = match._id || match.id || '';
+                  if (id) {
+                    console.log('✅ Found indicator ID in studentThemeData:', { indicatorName, id });
+                    return id;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      console.warn('⚠️ No indicator ID found for:', indicatorName);
+      return '';
+    }
+
+    // Process BEFORE radio buttons
     beforeRadios.forEach(radio => {
       if (radio.checked) {
-        const name = radio.dataset.indicatorName || '';
-        if (name) selectedNames.add(name);
+        let indicatorName = radio.dataset.indicatorName || '';
+        
+        // Try to get indicator name from the row if not available
+        if (!indicatorName) {
+          const row = radio.closest('tr');
+          if (row) {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 4) {
+              indicatorName = cells[3] ? cells[3].textContent.trim() : '';
+            }
+          }
+        }
+        
+        if (indicatorName) selectedNames.add(indicatorName);
         const val = parseFloat(radio.value) || 0;
         sumBefore += val;
         maxSum += val;
-        if (radio.dataset.indicatorId) beforeIds.push(radio.dataset.indicatorId);
-        console.log('✅ updateQuickCheckboxes - BEFORE radio found:', { name, val, id: radio.dataset.indicatorId });
+        
+        // Get indicator ID from dataset or find it
+        let indicatorId = radio.dataset.indicatorId || '';
+        if (!indicatorId && indicatorName) {
+          indicatorId = findIndicatorIdFromThemeData(indicatorName);
+          // Store it for future use
+          if (indicatorId) {
+            radio.dataset.indicatorId = indicatorId;
+          }
+        }
+        
+        if (indicatorId) {
+          beforeIds.push(indicatorId);
+        }
+        
+        console.log('✅ BEFORE radio:', { indicatorName, val, id: indicatorId });
       }
     });
     
+    // Process AFTER radio buttons
     afterRadios.forEach(radio => {
       if (radio.checked) {
-        const name = radio.dataset.indicatorName || '';
-        if (name) selectedNames.add(name);
+        let indicatorName = radio.dataset.indicatorName || '';
+        
+        if (!indicatorName) {
+          const row = radio.closest('tr');
+          if (row) {
+            const cells = row.querySelectorAll('td');
+            if (cells.length >= 4) {
+              indicatorName = cells[3] ? cells[3].textContent.trim() : '';
+            }
+          }
+        }
+        
+        if (indicatorName) selectedNames.add(indicatorName);
         const val = parseFloat(radio.value) || 0;
         sumAfter += val;
         maxSum += val;
-        if (radio.dataset.indicatorId) afterIds.push(radio.dataset.indicatorId);
-        console.log('✅ updateQuickCheckboxes - AFTER radio found:', { name, val, id: radio.dataset.indicatorId });
+        
+        let indicatorId = radio.dataset.indicatorId || '';
+        if (!indicatorId && indicatorName) {
+          indicatorId = findIndicatorIdFromThemeData(indicatorName);
+          if (indicatorId) {
+            radio.dataset.indicatorId = indicatorId;
+          }
+        }
+        
+        if (indicatorId) {
+          afterIds.push(indicatorId);
+        }
+        
+        console.log('✅ AFTER radio:', { indicatorName, val, id: indicatorId });
       }
     });
 
@@ -2406,13 +2584,13 @@ function findToolByNameInStudentData(themeName, toolName) {
     if (afterHidden) afterHidden.value = sumAfter;
     if (maxHidden) maxHidden.value = maxSum;
     
-    // ALSO update the selectedLOTotalBefore/After fields
+    // Update selectedLOTotalBefore/After fields
     const loTotalBefore = document.getElementById('selectedLOTotalBefore');
     const loTotalAfter = document.getElementById('selectedLOTotalAfter');
     if (loTotalBefore) loTotalBefore.value = sumBefore;
     if (loTotalAfter) loTotalAfter.value = sumAfter;
     
-    console.log('✅ updateQuickCheckboxes - Final values:', {
+    console.log('✅ updateQuickCheckboxes - Final:', {
       beforeIds: beforeIds.join(','),
       afterIds: afterIds.join(','),
       sumBefore,
@@ -2420,15 +2598,49 @@ function findToolByNameInStudentData(themeName, toolName) {
       maxSum,
       names: namesArr.join(',')
     });
+    
+    // ★★★ CRITICAL: Also create hidden form inputs for selected indicators ★★★
+    // This ensures the data is actually submitted
+    const form = document.getElementById('themeEvaluationForm');
+    const loIdx = document.getElementById('quickLO').value;
+    const aspIdx = document.getElementById('quickAspect').value;
+    const toolIdx = document.getElementById('quickTool').value;
+    
+    if (loIdx && form) {
+      // Remove existing selectedIndicators inputs
+      const nameBefore = `subjects[0][themes][0][learningOutcomes][${loIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][selectedIndicatorsBefore][]`;
+      const nameAfter = `subjects[0][themes][0][learningOutcomes][${loIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][selectedIndicatorsAfter][]`;
+      Array.from(form.querySelectorAll(`input[name="${nameBefore}"]`)).forEach(n => n.remove());
+      Array.from(form.querySelectorAll(`input[name="${nameAfter}"]`)).forEach(n => n.remove());
+      
+      // Add new hidden inputs for each selected indicator ID
+      beforeIds.forEach(id => {
+        const inp = document.createElement('input');
+        inp.type = 'hidden';
+        inp.name = nameBefore;
+        inp.value = id;
+        form.appendChild(inp);
+      });
+      
+      afterIds.forEach(id => {
+        const inp = document.createElement('input');
+        inp.type = 'hidden';
+        inp.name = nameAfter;
+        inp.value = id;
+        form.appendChild(inp);
+      });
+      
+      console.log('✅ Added selectedIndicators hidden inputs:', {
+        before: beforeIds,
+        after: afterIds
+      });
+    }
+    
   } catch (e) { 
-    console.warn('updateQuickCheckboxes failed', e); 
+    console.warn('updateQuickCheckboxes failed:', e); 
   }
 }
 window.updateQuickCheckboxes = updateQuickCheckboxes;
-   
-
-
-
 
 //ontoolchange 
 function onToolChange() {
@@ -2623,9 +2835,9 @@ function onToolChange() {
         rbBefore.type = 'radio';
         rbBefore.name = rbBeforeName;
         rbBefore.value = valBefore;
-        const indicatorId = indicatorData && (indicatorData._id || indicatorData.id) ? (indicatorData._id || indicatorData.id) : '';
-        rbBefore.dataset.indicatorId = indicatorId;
-        rbBefore.dataset.indicatorName = indicatorData.indicatorName || indicatorData.name || ('Indicator ' + (iIdx+1));
+     const indicatorId = indicatorData && (indicatorData._id || indicatorData.id) ? (indicatorData._id || indicatorData.id) : '';
+rbBefore.dataset.indicatorId = indicatorId;
+rbBefore.dataset.indicatorName = indicatorData.indicatorName || indicatorData.name || ('Indicator ' + (iIdx+1));
         rbBefore.addEventListener('click', () => {
           document.getElementById('selectedIndicatorMarksBeforeHidden').value = rbBefore.value;
           document.getElementById('selectedIndicatorHidden').value = indicatorData.indicatorName || indicatorData.name || ('Indicator ' + (iIdx+1));
@@ -3052,9 +3264,11 @@ function onToolChange() {
         rbBefore.type = 'radio';
         rbBefore.name = rbBeforeName;
         rbBefore.value = valBefore;
-        const indicatorId = indicatorData && (indicatorData._id || indicatorData.id) ? (indicatorData._id || indicatorData.id) : '';
-        rbBefore.dataset.indicatorId = indicatorId;
-        rbBefore.dataset.indicatorName = indicatorData.indicatorName || indicatorData.name || ('Indicator ' + (iIdx+1));
+       const indicatorId = indicatorData && (indicatorData._id || indicatorData.id) ? (indicatorData._id || indicatorData.id) : '';
+rbBefore.dataset.indicatorId = indicatorId;
+rbBefore.dataset.indicatorName = indicatorData.indicatorName || indicatorData.name || ('Indicator ' + (iIdx+1));
+
+
         rbBefore.addEventListener('click', () => {
           document.getElementById('selectedIndicatorMarksBeforeHidden').value = rbBefore.value;
           document.getElementById('selectedIndicatorHidden').value = indicatorData.indicatorName || indicatorData.name || ('Indicator ' + (iIdx+1));
@@ -3421,9 +3635,9 @@ function onToolChange() {
       rbBefore.type = 'radio';
       rbBefore.name = rbBeforeName;
       rbBefore.value = valBefore;
-      const indicatorId = indicatorData && (indicatorData._id || indicatorData.id) ? (indicatorData._id || indicatorData.id) : '';
-      rbBefore.dataset.indicatorId = indicatorId;
-      rbBefore.dataset.indicatorName = indicatorData.indicatorName || indicatorData.name || ('Indicator ' + (iIdx+1));
+  const indicatorId = indicatorData && (indicatorData._id || indicatorData.id) ? (indicatorData._id || indicatorData.id) : '';
+rbBefore.dataset.indicatorId = indicatorId;
+rbBefore.dataset.indicatorName = indicatorData.indicatorName || indicatorData.name || ('Indicator ' + (iIdx+1));
       rbBefore.addEventListener('click', () => {
         document.getElementById('selectedIndicatorMarksBeforeHidden').value = rbBefore.value;
         document.getElementById('selectedIndicatorHidden').value = indicatorData.indicatorName || indicatorData.name || ('Indicator ' + (iIdx+1));
