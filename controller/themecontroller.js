@@ -238,14 +238,18 @@ exports.themeformSave = async (req, res) => {
     let name = getValue(req.body.name);
     let studentClass = getValue(req.body.studentClass);
     let section = getValue(req.body.section);
-    let subject = req.body.subjects && req.body.subjects[0] ? 
-                 getValue(req.body.subjects[0].name) : '';
-    let themeName = req.body.subjects && 
-                   req.body.subjects[0] && 
-                   req.body.subjects[0].themes && 
-                   req.body.subjects[0].themes[0] ? 
-                   getValue(req.body.subjects[0].themes[0].themeName) : '';
-    
+    let subject = req.body.subjects && req.body.subjects[0] ? getValue(req.body.subjects[0].name || req.body.subjects[0].subject || req.body.subjects[0].subjectDisplay) : '';
+    let themeName = getValue(req.body.themeName) || '';
+
+    const allSubmittedThemes = req.body.subjects && req.body.subjects[0] && Array.isArray(req.body.subjects[0].themes)
+      ? req.body.subjects[0].themes
+      : [];
+
+    if (!themeName && allSubmittedThemes.length) {
+      const firstThemeWithName = allSubmittedThemes.find(th => getValue(th.themeName) || getValue(th.themeNameDisplay));
+      themeName = firstThemeWithName ? getValue(firstThemeWithName.themeName || firstThemeWithName.themeNameDisplay) : '';
+    }
+
     if (!roll || !name || !studentClass || !section || !subject || !themeName) {
       console.error("Missing required fields:", { roll, name, studentClass, section, subject, themeName });
       return res.status(400).json({
@@ -253,7 +257,7 @@ exports.themeformSave = async (req, res) => {
         message: "Missing required fields: roll, name, class, section, subject, or themeName"
       });
     }
-    
+
     // Clean up the form data to handle arrays
     const processFormData = (obj) => {
       if (!obj || typeof obj !== 'object') return obj;
@@ -302,7 +306,22 @@ exports.themeformSave = async (req, res) => {
     };
 
     // Process the new theme data
-    const newThemeData = processFormData(req.body.subjects[0].themes[0]);
+    const submittedThemes = Array.isArray(req.body.subjects[0].themes)
+      ? req.body.subjects[0].themes.filter(t => t && typeof t === 'object' && Object.keys(t).length > 0)
+      : [];
+    let submittedTheme = submittedThemes[0] || null;
+    if (submittedThemes.length && themeName) {
+      const matching = submittedThemes.find(t => {
+        const tn = getValue(t.themeName) || getValue(t.themeNameDisplay) || '';
+        return tn.toString().trim() === themeName.toString().trim();
+      });
+      if (matching) submittedTheme = matching;
+    }
+    if (!submittedTheme) {
+      // Fall back to the first non-empty theme object if theme selection is missing
+      submittedTheme = submittedThemes[0] || req.body.subjects[0].themes[0];
+    }
+    const newThemeData = processFormData(submittedTheme);
     
     console.log("Processed new theme data:", JSON.stringify(newThemeData, null, 2));
 
@@ -424,6 +443,37 @@ exports.themeformSave = async (req, res) => {
 
     const normalizedTheme = normalizeStudentTheme(newThemeData);
     console.log('Normalized theme for save:', JSON.stringify(normalizedTheme, null, 2));
+
+    // Fallback: if LO names or tool names are missing, populate from quick-selection fields
+    try {
+      const fallbackLOName = getValue(req.body.selectedLO) || '';
+      const fallbackAspect = getValue(req.body.selectedAspect) || '';
+      const fallbackTool = getValue(req.body.selectedTool) || '';
+      if (normalizedTheme && Array.isArray(normalizedTheme.learningOutcomes)) {
+        normalizedTheme.learningOutcomes.forEach((lo, idx) => {
+          if (!lo.name || !lo.name.toString().trim()) {
+            if (fallbackLOName) lo.name = fallbackLOName;
+            else lo.name = `Learning Outcome ${idx+1}`;
+          }
+          if (Array.isArray(lo.assessmentAspects)) {
+            lo.assessmentAspects.forEach((asp) => {
+              if (!asp.aspectName || !asp.aspectName.toString().trim()) {
+                if (fallbackAspect) asp.aspectName = fallbackAspect;
+                else asp.aspectName = '';
+              }
+              if (Array.isArray(asp.tools)) {
+                asp.tools.forEach((tool) => {
+                  if (!tool.toolName || !tool.toolName.toString().trim()) {
+                    if (fallbackTool) tool.toolName = fallbackTool;
+                    else tool.toolName = '';
+                  }
+                });
+              }
+            });
+          }
+        });
+      }
+    } catch (e) { console.warn('Fallback LO/tool population failed', e); }
 
     // If the incoming payload contains selected indicator ids, compute LO totals from
     // the master theme format so student docs don't duplicate indicator definitions.
