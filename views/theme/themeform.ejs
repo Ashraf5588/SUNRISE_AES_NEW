@@ -2001,6 +2001,7 @@
               });
             }
             try { applyQuickSelection(themeName); } catch(e){}
+            try { restoreSavedQuickSelection(themeName); } catch(e){}
             return;
           }
           if (subjNorm && subjNorm !== 'nepali') {
@@ -2017,6 +2018,7 @@
               });
             }
             try { applyQuickSelection(themeName); } catch(e){}
+            try { restoreSavedQuickSelection(themeName); } catch(e){}
             return;
           }
           if(!cls || !subj) return;
@@ -2032,10 +2034,12 @@
               aspectSelect.appendChild(opt);
             });
             aspectSelect._aspectContainerAspects = j.aspects;
+            try { restoreSavedQuickSelection(themeName); } catch(e){}
           } else {
             try { applyQuickSelection(themeName); } catch(e){ console.warn('applyQuickSelection failed', e); }
+            try { restoreSavedQuickSelection(themeName); } catch(e){}
           }
-        }catch(e){ console.warn('populateQuickSelects aspectcontainer fetch failed', e); try { applyQuickSelection(themeName); } catch(err){} }
+        }catch(e){ console.warn('populateQuickSelects aspectcontainer fetch failed', e); try { applyQuickSelection(themeName); } catch(err){} try { restoreSavedQuickSelection(themeName); } catch(err){} }
       })();
     }
 
@@ -2090,6 +2094,68 @@
       if (sel.tool !== undefined && toolSelect.options[sel.tool]) {
         toolSelect.value = sel.tool;
         try{ onToolChange(); } catch(e){ console.warn('onToolChange failed', e); }
+      }
+    }
+
+    function restoreSavedQuickSelection(themeName) {
+      try {
+        const savedTheme = getSavedTheme(themeName);
+        if (!savedTheme) return;
+
+        const loArray = Array.isArray(savedTheme.learningOutcomes)
+          ? savedTheme.learningOutcomes
+          : (Array.isArray(savedTheme.learningOutcome) ? savedTheme.learningOutcome : []);
+
+        for (let loIdx = 0; loIdx < loArray.length; loIdx++) {
+          const lo = loArray[loIdx];
+          const aspArray = Array.isArray(lo.assessmentAspects) ? lo.assessmentAspects : [];
+          for (let aspIdx = 0; aspIdx < aspArray.length; aspIdx++) {
+            const asp = aspArray[aspIdx];
+            const toolArray = Array.isArray(asp.tools) ? asp.tools : [];
+            for (let toolIdx = 0; toolIdx < toolArray.length; toolIdx++) {
+              const tool = toolArray[toolIdx];
+              const hasSavedSelection = (Array.isArray(tool.selectedIndicatorsBefore) && tool.selectedIndicatorsBefore.length) ||
+                (Array.isArray(tool.selectedIndicatorsAfter) && tool.selectedIndicatorsAfter.length) ||
+                tool.evaluationDateBefore || tool.evaluationDateAfter ||
+                tool.totalBefore || tool.totalAfter ||
+                tool.totalMarksBeforeIntervention || tool.totalMarksAfterIntervention;
+              if (!hasSavedSelection) continue;
+
+              const loSelect = document.getElementById('quickLO');
+              const aspSelect = document.getElementById('quickAspect');
+              const toolSelect = document.getElementById('quickTool');
+
+              if (loSelect && loSelect.options[loIdx]) {
+                loSelect.value = loIdx;
+                try { onLOChange(); } catch (e) { console.warn('onLOChange failed', e); }
+              }
+
+              if (aspSelect && aspSelect.options[aspIdx]) {
+                aspSelect.value = aspIdx;
+                try { onAspectChange(); } catch (e) { console.warn('onAspectChange failed', e); }
+              }
+
+              const selectedToolName = (tool.toolName || tool.name || '').toString().trim();
+              if (toolSelect) {
+                if (toolSelect.options[toolIdx]) {
+                  toolSelect.value = toolIdx;
+                  try { onToolChange(); } catch (e) { console.warn('onToolChange failed', e); }
+                } else if (selectedToolName) {
+                  for (let idx = 0; idx < toolSelect.options.length; idx++) {
+                    if (toolSelect.options[idx].textContent.trim() === selectedToolName) {
+                      toolSelect.value = idx;
+                      try { onToolChange(); } catch (e) { console.warn('onToolChange failed', e); }
+                      break;
+                    }
+                  }
+                }
+              }
+              return;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('restoreSavedQuickSelection failed', e);
       }
     }
 
@@ -2212,31 +2278,51 @@
       try { saveQuickSelection(); } catch(e){ console.warn('saveQuickSelection failed', e); }
     }
 
+    function findMatchingSavedItemByName(items, name, nameKeys = ['name', 'toolName', 'aspectName', 'learningOutcomeName']) {
+  if (!Array.isArray(items) || !name) return null;
+  const cleanedTarget = name.toString().trim().toLowerCase();
+  return items.find(item => {
+    if (!item || typeof item !== 'object') return false;
+    return nameKeys.some(key => {
+      const value = (item[key] || '').toString().trim().toLowerCase();
+      return value && value === cleanedTarget;
+    });
+  }) || null;
+}
+
     function getSavedThemeSelectionContext(themeName, loIdx, aspIdx, toolIdx) {
   try {
-    const savedThemes = Array.isArray(window.studentThemeData) ? window.studentThemeData : [];
-    const savedTheme = savedThemes.find(t => t && (t.themeName || t.name) === themeName);
+    const savedTheme = getSavedTheme(themeName);
     if (!savedTheme) return null;
+
+    const loSelect = document.getElementById('quickLO');
+    const aspSelect = document.getElementById('quickAspect');
+    const toolSelect = document.getElementById('quickTool');
+
+    const loName = loSelect && loSelect.options[loSelect.selectedIndex] ? loSelect.options[loSelect.selectedIndex].text.trim() : '';
+    const aspName = aspSelect && aspSelect.options[aspSelect.selectedIndex] ? aspSelect.options[aspSelect.selectedIndex].text.trim() : '';
+    const toolName = toolSelect && toolSelect.options[toolSelect.selectedIndex] ? toolSelect.options[toolSelect.selectedIndex].text.trim() : '';
 
     const loArray = Array.isArray(savedTheme.learningOutcomes)
       ? savedTheme.learningOutcomes
       : (Array.isArray(savedTheme.learningOutcome) ? savedTheme.learningOutcome : []);
-    const loObj = loArray[Number(loIdx)] || null;
+
+    let loObj = null;
+    if (loName) loObj = findMatchingSavedItemByName(loArray, loName, ['name', 'learningOutcomeName']);
+    if (!loObj) loObj = loArray[Number(loIdx)] || null;
     if (!loObj) return null;
 
     const aspArray = Array.isArray(loObj.assessmentAspects) ? loObj.assessmentAspects : [];
-    const aspObj = aspArray[Number(aspIdx)] || null;
+    let aspObj = null;
+    if (aspName) aspObj = findMatchingSavedItemByName(aspArray, aspName, ['aspectName', 'name']);
+    if (!aspObj) aspObj = aspArray[Number(aspIdx)] || null;
     if (!aspObj) return null;
 
     const toolArray = Array.isArray(aspObj.tools) ? aspObj.tools : [];
-    const toolName = getSelectedToolName();
     let toolObj = null;
-    if (toolName) {
-      toolObj = toolArray.find(t => (t.toolName || t.name) === toolName);
-    }
-    if (!toolObj) {
-      toolObj = toolArray[Number(toolIdx)] || null;
-    }
+    if (toolName) toolObj = findMatchingSavedItemByName(toolArray, toolName, ['toolName', 'name']);
+    if (!toolObj) toolObj = toolArray[Number(toolIdx)] || null;
+
     return { savedTheme, loObj, aspObj, toolObj };
   } catch (e) {
     console.warn('Could not resolve saved theme selection context', e);
@@ -2244,12 +2330,6 @@
   }
 }
 
-function getSelectedToolName() {
-  const quickTool = document.getElementById('quickTool');
-  if (!quickTool || !quickTool.options || quickTool.selectedIndex < 0) return '';
-  const selectedOption = quickTool.options[quickTool.selectedIndex];
-  return selectedOption ? selectedOption.textContent.trim() : '';
-}
     function getSavedIndicatorSelection(ind, savedTool, timing, fallbackIndex) {
   const currentId = ind && (ind._id || ind.id || '');
   
@@ -2260,12 +2340,7 @@ function getSelectedToolName() {
     selectedIds = savedTool && (savedTool.selectedIndicatorsAfter || savedTool.selectedIndicatorsAfterIds || []);
   }
   
-  const indicatorMarks = timing === 'Before'
-    ? (ind && (ind.marksBeforeIntervention || ind.marksBefore || ind.obtainedBefore || null))
-    : (ind && (ind.marksAfterIntervention || ind.marksAfter || ind.obtainedAfter || null));
-
   const matchedById = Boolean(currentId && Array.isArray(selectedIds) && selectedIds.some(id => String(id) === String(currentId)));
-  const hasSavedMarks = indicatorMarks !== null && Number(indicatorMarks) > 0;
 
   const targetValue = timing === 'Before'
     ? (savedTool && (savedTool.totalBefore ?? savedTool.totalMarksBeforeIntervention ?? savedTool.marksBeforeIntervention ?? null))
@@ -2274,7 +2349,6 @@ function getSelectedToolName() {
   const targetNumber = Number(targetValue);
   const currentValue = Number(ind && (ind.maxMarks || ind.indicatorsMarks || 0));
   const matchedByValue = Number.isFinite(targetNumber) && targetNumber > 0 && currentValue === targetNumber;
-  const matchedByOwnMarks = hasSavedMarks;
 
   const toolIndicators = savedTool && Array.isArray(savedTool.indicators) ? savedTool.indicators : [];
   const indicatorById = currentId ? toolIndicators.find(item => String(item && (item._id || item.id)) === String(currentId)) : null;
@@ -2285,11 +2359,11 @@ function getSelectedToolName() {
     const toolSelectedIds = timing === 'Before' 
       ? (savedTool.selectedIndicatorsBefore || [])
       : (savedTool.selectedIndicatorsAfter || []);
-    matchedByToolLevel = toolSelectedIds.some(id => String(id) === String(currentId));
+    matchedByToolLevel = Array.isArray(toolSelectedIds) && toolSelectedIds.some(id => String(id) === String(currentId));
   }
 
   return {
-    matched: matchedById || matchedByValue || matchedByOwnMarks || matchedByToolLevel,
+    matched: matchedById || matchedByValue || matchedByToolLevel,
     indicatorData: indicatorById || fallbackIndicator || ind,
     targetValue: targetNumber
   };
@@ -2587,28 +2661,31 @@ function findToolByNameInStudentData(themeName, toolName) {
         
         const nameBefore = `subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][selectedIndicatorsBefore][]`;
         const nameAfter = `subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][selectedIndicatorsAfter][]`;
-          inp.type = 'hidden';
-          inp.name = nameBefore;
-          inp.value = id;
-          form.appendChild(inp);
-        }
- 
-  
 
-      afterIds.forEach(id => {
-        if (id) {
-          const inp = document.createElement('input');
-          inp.type = 'hidden';
-          inp.name = nameAfter;
-          inp.value = id;
-          form.appendChild(inp);
-        }
-      });
-    }
-     catch (e) {
-        console.error('Error occurred while processing beforeIds:', e);
+        beforeIds.forEach(id => {
+          if (id) {
+            const inp = document.createElement('input');
+            inp.type = 'hidden';
+            inp.name = nameBefore;
+            inp.value = id;
+            form.appendChild(inp);
+          }
+        });
+
+        afterIds.forEach(id => {
+          if (id) {
+            const inp = document.createElement('input');
+            inp.type = 'hidden';
+            inp.name = nameAfter;
+            inp.value = id;
+            form.appendChild(inp);
+          }
+        });
       }
+    } catch (e) {
+      console.error('Error occurred while processing beforeIds:', e);
     }
+  }
     
 
   
@@ -2630,14 +2707,28 @@ function onToolChange() {
   const loIdx = document.getElementById('quickLO').value;
   const aspIdx = Number(document.getElementById('quickAspect').value);
   
-  // Get indicators from themeData
+  // Get indicators from themeData or Nepali aspect container data
   let indicators = [];
   let themeItem = null;
   try {
     themeData.forEach(td => td.themes.forEach(item => { if (item.themeName === themeName) themeItem = item; }));
   } catch (e) { themeItem = null; }
-  
-  if (themeItem) {
+
+  const useAspectContainer = subjName === 'nepali';
+  if (useAspectContainer) {
+    const acAspects = aspSelect._aspectContainerAspects;
+    if (Array.isArray(acAspects) && acAspects.length) {
+      const asp = acAspects[Number(aspIdx)];
+      if (asp && Array.isArray(asp.tools)) {
+        const currentTool = asp.tools[Number(toolIdx)] || asp.tools[0];
+        if (currentTool && Array.isArray(currentTool.indicators) && currentTool.indicators.length) {
+          indicators = currentTool.indicators;
+        }
+      }
+    }
+  }
+
+  if (!indicators.length && themeItem) {
     const loArray = Array.isArray(themeItem.learningOutcome) ? themeItem.learningOutcome : 
                    (Array.isArray(themeItem.learningOutcomes) ? themeItem.learningOutcomes : []);
     const lo = loArray[Number(loIdx)];
@@ -3746,6 +3837,21 @@ function saveSelectedIndicator() {
     var currentThemeDataByStudent = {};
     var currentThemeData = null;
     var isEditMode = false;
+    
+    var windowStudentThemeDataFromServer = [];
+    window.studentThemeData = [];
+    try {
+      windowStudentThemeDataFromServer = <%- JSON.stringify(existingThemeData || []) %>;
+      if (Array.isArray(windowStudentThemeDataFromServer) && windowStudentThemeDataFromServer.length) {
+        const firstRecord = windowStudentThemeDataFromServer[0];
+        if (firstRecord && Array.isArray(firstRecord.subjects) && firstRecord.subjects[0] && Array.isArray(firstRecord.subjects[0].themes)) {
+          window.studentThemeData = firstRecord.subjects[0].themes;
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load existing theme data from server', err);
+      window.studentThemeData = [];
+    }
     
     const subject = document.getElementById('subject').value.trim();
     const studentClass = document.getElementById('studentClass').value.trim();
