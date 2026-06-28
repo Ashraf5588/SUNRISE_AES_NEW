@@ -439,6 +439,17 @@ function findToolByNameInStudentData(themeName, toolName) {
     return null;
   }
 }
+// Helper to robustly detect Hamro Serofero subject (handles casing, extra spaces, typos)
+function isHamroSerofero(subj) {
+  if (!subj) return false;
+  try {
+    const s = String(subj).toLowerCase().replace(/\s+/g, ' ').trim();
+    const variants = ['hamro serofero', 'hamro serophero', 'hamro sero phero', 'hamro serofero'];
+    if (variants.includes(s)) return true;
+    // fallback: look for presence of both keywords
+    return s.includes('hamro') && s.includes('sero');
+  } catch (e) { return false; }
+}
       // helper to update hidden fields when checkboxes used
      function updateQuickCheckboxes() {
   try {
@@ -697,9 +708,9 @@ window.updateQuickCheckboxes = updateQuickCheckboxes;
 
       const tdMarksBefore = document.createElement('td');
       const valBefore = ind.maxMarks || ind.indicatorsMarks || 0;
-      const subjNameCheck = (document.getElementById('subject') && document.getElementById('subject').value || '').trim().toLowerCase();
+      const subjNameCheck = (document.getElementById('subject') && document.getElementById('subject').value || '').trim();
       
-      if (subjNameCheck === 'hamro serofero') {
+      if (isHamroSerofero(subjNameCheck)) {
         const cb = document.createElement('input');
         cb.type = 'checkbox';
         cb.className = 'quick-indicator-checkbox';
@@ -833,9 +844,9 @@ window.updateQuickCheckboxes = updateQuickCheckboxes;
 
       const tdMarksAfter = document.createElement('td');
       const valAfter = ind.maxMarks || ind.indicatorsMarks || 0;
-      const subjNameCheck2 = (document.getElementById('subject') && document.getElementById('subject').value || '').trim().toLowerCase();
+      const subjNameCheck2 = (document.getElementById('subject') && document.getElementById('subject').value || '').trim();
 
-      if (subjNameCheck2 === 'hamro serofero') {
+      if (isHamroSerofero(subjNameCheck2)) {
         const cb2 = document.createElement('input');
         cb2.type = 'checkbox';
         cb2.className = 'quick-indicator-checkbox';
@@ -983,8 +994,8 @@ window.updateQuickCheckboxes = updateQuickCheckboxes;
         const loIdx = document.getElementById('quickLO').value;
         const themeName = document.getElementById('themeName').value;
         const tool = (Array.isArray(window.globalToolsList) && window.globalToolsList[Number(toolIdx)]) ? window.globalToolsList[Number(toolIdx)] : null;
-        const subjName = (document.getElementById('subject') && document.getElementById('subject').value || '').trim().toLowerCase();
-        const useThemeFormatIndicators = ['mathematics', 'hamro serofero','hamro serophero'].includes(subjName);
+        const subjName = (document.getElementById('subject') && document.getElementById('subject').value || '').trim();
+        const useThemeFormatIndicators = String(subjName).toLowerCase() === 'mathematics' || isHamroSerofero(subjName);
 
         let indicators = [];
         if (useThemeFormatIndicators) {
@@ -1135,7 +1146,7 @@ const savedTool = savedSelection && savedSelection.toolObj ? savedSelection.tool
 
           const tdMarksBefore = document.createElement('td');
           const valBefore = ind.maxMarks || ind.indicatorsMarks || 0;
-          if (subjName === 'hamro serofero') {
+          if (isHamroSerofero(subjName)) {
   const cb = document.createElement('input');
   cb.type = 'checkbox';
   cb.className = 'quick-indicator-checkbox';
@@ -1279,7 +1290,7 @@ rbBefore.addEventListener('click', () => {
 
           const tdMarksAfter = document.createElement('td');
           const valAfter = ind.maxMarks || ind.indicatorsMarks || 0;
-     if (subjName === 'hamro serofero') {
+    if (isHamroSerofero(subjName)) {
   const cb = document.createElement('input');
   cb.type = 'checkbox';
   cb.className = 'quick-indicator-checkbox';
@@ -1900,7 +1911,7 @@ rbAfter.addEventListener('click', () => {
         const tdMarksAfter = document.createElement('td');
         const valAfter = ind.maxMarks || ind.indicatorsMarks || 0;
         const subjName2 = (document.getElementById('subject') && document.getElementById('subject').value || '').trim().toLowerCase();
-       if (subjName2 === 'hamro serofero') {
+      if (isHamroSerofero(subjName2)) {
   const cb2 = document.createElement('input');
   cb2.type = 'checkbox';
   cb2.className = 'quick-indicator-checkbox';
