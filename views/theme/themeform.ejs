@@ -2137,17 +2137,16 @@
 
               const selectedToolName = (tool.toolName || tool.name || '').toString().trim();
               if (toolSelect) {
-                if (toolSelect.options[toolIdx]) {
-                  toolSelect.value = toolIdx;
+                const matchingOption = Array.from(toolSelect.options).find(opt => {
+                  if (!opt || !opt.value) return false;
+                  if (selectedToolName && opt.textContent.trim() === selectedToolName) return true;
+                  if (String(opt.value) === String(toolIdx)) return true;
+                  return false;
+                });
+
+                if (matchingOption) {
+                  toolSelect.value = matchingOption.value;
                   try { onToolChange(); } catch (e) { console.warn('onToolChange failed', e); }
-                } else if (selectedToolName) {
-                  for (let idx = 0; idx < toolSelect.options.length; idx++) {
-                    if (toolSelect.options[idx].textContent.trim() === selectedToolName) {
-                      toolSelect.value = idx;
-                      try { onToolChange(); } catch (e) { console.warn('onToolChange failed', e); }
-                      break;
-                    }
-                  }
                 }
               }
               return;
@@ -2318,52 +2317,129 @@
     if (!aspObj) aspObj = aspArray[Number(aspIdx)] || null;
     if (!aspObj) return null;
 
-    const toolArray = Array.isArray(aspObj.tools) ? aspObj.tools : [];
+    const toolArray = Array.isArray(aspObj.tools) ? aspObj.tools : (Array.isArray(aspObj.tool) ? aspObj.tool : []);
     let toolObj = null;
     if (toolName) toolObj = findMatchingSavedItemByName(toolArray, toolName, ['toolName', 'name']);
-    if (!toolObj) toolObj = toolArray[Number(toolIdx)] || null;
+    if (!toolObj && toolArray[Number(toolIdx)]) toolObj = toolArray[Number(toolIdx)];
+    if (!toolObj) toolObj = toolArray.find(t => (Array.isArray(t.selectedIndicatorsBefore) && t.selectedIndicatorsBefore.length) || (Array.isArray(t.selectedIndicatorsAfter) && t.selectedIndicatorsAfter.length));
+    if (!toolObj) toolObj = toolArray[0] || null;
 
-    return { savedTheme, loObj, aspObj, toolObj };
+    const toolIndicators = Array.isArray(toolObj && toolObj.indicators)
+      ? toolObj.indicators
+      : (Array.isArray(toolObj && toolObj.indicator) ? toolObj.indicator : []);
+    const toolIndicatorIds = toolIndicators
+      .map(ind => String(ind && (ind._id || ind.id || '')).trim())
+      .filter(Boolean);
+
+    const allSavedBefore = [
+      ...(Array.isArray(loObj && loObj.selectedIndicatorsBefore) ? loObj.selectedIndicatorsBefore : []),
+      ...(Array.isArray(toolObj && toolObj.selectedIndicatorsBefore) ? toolObj.selectedIndicatorsBefore : []),
+      ...(Array.isArray(toolObj && toolObj.selectedIndicatorsBeforeIds) ? toolObj.selectedIndicatorsBeforeIds : []),
+      ...(Array.isArray(toolObj && toolObj.selectedIndicatorIdsBefore) ? toolObj.selectedIndicatorIdsBefore : [])
+    ].map(id => String(id || '').trim()).filter(Boolean);
+
+    const allSavedAfter = [
+      ...(Array.isArray(loObj && loObj.selectedIndicatorsAfter) ? loObj.selectedIndicatorsAfter : []),
+      ...(Array.isArray(toolObj && toolObj.selectedIndicatorsAfter) ? toolObj.selectedIndicatorsAfter : []),
+      ...(Array.isArray(toolObj && toolObj.selectedIndicatorsAfterIds) ? toolObj.selectedIndicatorsAfterIds : []),
+      ...(Array.isArray(toolObj && toolObj.selectedIndicatorIdsAfter) ? toolObj.selectedIndicatorIdsAfter : [])
+    ].map(id => String(id || '').trim()).filter(Boolean);
+
+    const savedIndicatorsBefore = toolIndicatorIds.length
+      ? Array.from(new Set(allSavedBefore.filter(id => toolIndicatorIds.includes(id))))
+      : Array.from(new Set(allSavedBefore));
+    const savedIndicatorsAfter = toolIndicatorIds.length
+      ? Array.from(new Set(allSavedAfter.filter(id => toolIndicatorIds.includes(id))))
+      : Array.from(new Set(allSavedAfter));
+
+    const combinedToolObj = toolObj ? { ...toolObj } : null;
+    if (combinedToolObj) {
+      if (savedIndicatorsBefore.length) combinedToolObj.selectedIndicatorsBefore = savedIndicatorsBefore;
+      if (savedIndicatorsAfter.length) combinedToolObj.selectedIndicatorsAfter = savedIndicatorsAfter;
+    }
+
+    const loggedToolObj = combinedToolObj ? {
+      toolName: combinedToolObj.toolName || combinedToolObj.name,
+      selectedIndicatorsBefore: Array.isArray(combinedToolObj.selectedIndicatorsBefore) ? combinedToolObj.selectedIndicatorsBefore : [],
+      selectedIndicatorsAfter: Array.isArray(combinedToolObj.selectedIndicatorsAfter) ? combinedToolObj.selectedIndicatorsAfter : [],
+      selectedIndicatorsBeforeIds: Array.isArray(combinedToolObj.selectedIndicatorsBeforeIds) ? combinedToolObj.selectedIndicatorsBeforeIds : [],
+      selectedIndicatorsAfterIds: Array.isArray(combinedToolObj.selectedIndicatorsAfterIds) ? combinedToolObj.selectedIndicatorsAfterIds : [],
+      indicatorsCount: Array.isArray(combinedToolObj.indicators) ? combinedToolObj.indicators.length : 0
+    } : null;
+
+    console.log('getSavedThemeSelectionContext:', {
+      themeName,
+      loIdx,
+      aspIdx,
+      toolIdx,
+      loName,
+      aspName,
+      toolName,
+      loObj: !!loObj,
+      aspObj: !!aspObj,
+      toolObj: !!combinedToolObj,
+      toolObjValue: loggedToolObj,
+      toolArrayLength: toolArray.length,
+      savedIndicatorsBefore,
+      savedIndicatorsAfter
+    });
+    return { savedTheme, loObj, aspObj, toolObj: combinedToolObj, savedIndicatorsBefore, savedIndicatorsAfter };
   } catch (e) {
     console.warn('Could not resolve saved theme selection context', e);
     return null;
   }
 }
 
-    function getSavedIndicatorSelection(ind, savedTool, timing, fallbackIndex) {
+    function getSavedIndicatorSelection(ind, savedContext, timing, fallbackIndex) {
   const currentId = ind && (ind._id || ind.id || '');
-  
-  let selectedIds = [];
-  if (timing === 'Before') {
-    selectedIds = savedTool && (savedTool.selectedIndicatorsBefore || savedTool.selectedIndicatorsBeforeIds || []);
-  } else {
-    selectedIds = savedTool && (savedTool.selectedIndicatorsAfter || savedTool.selectedIndicatorsAfterIds || []);
-  }
-  
+  const currentName = (ind && (ind.indicatorName || ind.name || '')).toString().trim();
+  if (!savedContext) return { matched: false, indicatorData: ind, targetValue: null };
+
+  const savedTool = savedContext.toolObj;
+  const toolIndicators = savedTool && Array.isArray(savedTool.indicators) ? savedTool.indicators : [];
+  const savedIdsFromContext = timing === 'Before'
+    ? savedContext.savedIndicatorsBefore || []
+    : savedContext.savedIndicatorsAfter || [];
+
+  const savedIdsFromTool = timing === 'Before'
+    ? (savedTool && (savedTool.selectedIndicatorsBefore || savedTool.selectedIndicatorsBeforeIds || savedTool.selectedIndicatorIdsBefore || []))
+    : (savedTool && (savedTool.selectedIndicatorsAfter || savedTool.selectedIndicatorsAfterIds || savedTool.selectedIndicatorIdsAfter || []));
+
+  const selectedIds = [
+    ...Array.isArray(savedIdsFromContext) ? savedIdsFromContext : [],
+    ...Array.isArray(savedIdsFromTool) ? savedIdsFromTool : []
+  ].map(id => String(id || '').trim()).filter(Boolean);
+
   const matchedById = Boolean(currentId && Array.isArray(selectedIds) && selectedIds.some(id => String(id) === String(currentId)));
+  const matchedByName = Boolean(!matchedById && currentName && Array.isArray(toolIndicators) && toolIndicators.some(item => {
+    const itemId = item && (item._id || item.id || '');
+    const itemName = (item && (item.indicatorName || item.name || '')).toString().trim();
+    return itemId && selectedIds.some(id => String(id) === String(itemId)) && itemName === currentName;
+  }));
 
   const targetValue = timing === 'Before'
     ? (savedTool && (savedTool.totalBefore ?? savedTool.totalMarksBeforeIntervention ?? savedTool.marksBeforeIntervention ?? null))
     : (savedTool && (savedTool.totalAfter ?? savedTool.totalMarksAfterIntervention ?? savedTool.marksAfterIntervention ?? null));
 
   const targetNumber = Number(targetValue);
-  const currentValue = Number(ind && (ind.maxMarks || ind.indicatorsMarks || 0));
-  const matchedByValue = Number.isFinite(targetNumber) && targetNumber > 0 && currentValue === targetNumber;
-
-  const toolIndicators = savedTool && Array.isArray(savedTool.indicators) ? savedTool.indicators : [];
   const indicatorById = currentId ? toolIndicators.find(item => String(item && (item._id || item.id)) === String(currentId)) : null;
-  const fallbackIndicator = toolIndicators[fallbackIndex] || null;
+  const fallbackIndicator = Array.isArray(toolIndicators) ? toolIndicators[fallbackIndex] : null;
 
-  let matchedByToolLevel = false;
-  if (savedTool && currentId) {
-    const toolSelectedIds = timing === 'Before' 
-      ? (savedTool.selectedIndicatorsBefore || [])
-      : (savedTool.selectedIndicatorsAfter || []);
-    matchedByToolLevel = Array.isArray(toolSelectedIds) && toolSelectedIds.some(id => String(id) === String(currentId));
-  }
+  console.log('getSavedIndicatorSelection:', {
+    indId: currentId,
+    indName: currentName,
+    timing,
+    selectedIds,
+    matchedById,
+    matchedByName,
+    matched: matchedById || matchedByName,
+    toolIndicatorsCount: toolIndicators.length,
+    indicatorById: indicatorById ? (indicatorById._id || indicatorById.id) : null,
+    fallbackIndicator: fallbackIndicator ? (fallbackIndicator._id || fallbackIndicator.id) : null,
+  });
 
   return {
-    matched: matchedById || matchedByValue || matchedByToolLevel,
+    matched: matchedById || matchedByName,
     indicatorData: indicatorById || fallbackIndicator || ind,
     targetValue: targetNumber
   };
@@ -2396,6 +2472,93 @@ function findToolByNameInStudentData(themeName, toolName) {
     console.warn('findToolByNameInStudentData failed', e);
     return null;
   }
+}
+
+function resolveIndicatorId(themeName, loIdx, aspIdx, toolIdx, indicatorName) {
+  const cleanName = (indicatorName || '').toString().trim();
+  if (!cleanName) return '';
+
+  const searchScopes = [window.themeData, window.studentThemeData];
+  for (const scope of searchScopes) {
+    if (!Array.isArray(scope)) continue;
+    for (const td of scope) {
+      if (!td || !Array.isArray(td.themes)) continue;
+      for (const theme of td.themes) {
+        if ((theme.themeName || theme.name) !== themeName) continue;
+        const loArray = Array.isArray(theme.learningOutcome)
+          ? theme.learningOutcome
+          : (Array.isArray(theme.learningOutcomes) ? theme.learningOutcomes : []);
+        const lo = loArray[Number(loIdx)];
+        if (!lo) continue;
+        const aspArray = Array.isArray(lo.assessmentAspects)
+          ? lo.assessmentAspects
+          : (Array.isArray(lo.assessmentAspect) ? lo.assessmentAspect : []);
+        const asp = aspArray[Number(aspIdx)];
+        if (!asp) continue;
+        const toolArray = Array.isArray(asp.tools)
+          ? asp.tools
+          : (Array.isArray(asp.tool) ? asp.tool : []);
+        const tool = toolArray[Number(toolIdx)];
+        if (!tool) continue;
+        const indicators = Array.isArray(tool.indicators)
+          ? tool.indicators
+          : (Array.isArray(tool.indicator) ? tool.indicator : []);
+        const match = indicators.find(ind => ((ind.indicatorName || ind.name || '').toString().trim() === cleanName));
+        if (match) return match._id || match.id || '';
+      }
+    }
+  }
+
+  return '';
+}
+
+function restoreQuickIndicatorCheckboxes(savedContext) {
+  if (!savedContext) return;
+  const savedTool = savedContext.toolObj || null;
+
+  const beforeIds = [
+    ...(Array.isArray(savedContext.savedIndicatorsBefore) ? savedContext.savedIndicatorsBefore : []),
+    ...(Array.isArray(savedTool && savedTool.selectedIndicatorsBefore) ? savedTool.selectedIndicatorsBefore : []),
+    ...(Array.isArray(savedTool && savedTool.selectedIndicatorsBeforeIds) ? savedTool.selectedIndicatorsBeforeIds : []),
+    ...(Array.isArray(savedTool && savedTool.selectedIndicatorIdsBefore) ? savedTool.selectedIndicatorIdsBefore : [])
+  ].map(id => String(id || '').trim()).filter(Boolean);
+  const afterIds = [
+    ...(Array.isArray(savedContext.savedIndicatorsAfter) ? savedContext.savedIndicatorsAfter : []),
+    ...(Array.isArray(savedTool && savedTool.selectedIndicatorsAfter) ? savedTool.selectedIndicatorsAfter : []),
+    ...(Array.isArray(savedTool && savedTool.selectedIndicatorsAfterIds) ? savedTool.selectedIndicatorsAfterIds : []),
+    ...(Array.isArray(savedTool && savedTool.selectedIndicatorIdsAfter) ? savedTool.selectedIndicatorIdsAfter : [])
+  ].map(id => String(id || '').trim()).filter(Boolean);
+
+  const toolIndicatorIds = Array.isArray(savedTool && savedTool.indicators)
+    ? savedTool.indicators.map(ind => String(ind && (ind._id || ind.id || '')).trim()).filter(Boolean)
+    : [];
+
+  const filteredBeforeIds = toolIndicatorIds.length
+    ? Array.from(new Set(beforeIds.filter(id => toolIndicatorIds.includes(id))))
+    : Array.from(new Set(beforeIds));
+  const filteredAfterIds = toolIndicatorIds.length
+    ? Array.from(new Set(afterIds.filter(id => toolIndicatorIds.includes(id))))
+    : Array.from(new Set(afterIds));
+
+  if (!filteredBeforeIds.length && !filteredAfterIds.length) {
+    console.log('restoreQuickIndicatorCheckboxes: no saved IDs found on savedContext', savedContext);
+    return;
+  }
+
+  const checkboxes = document.querySelectorAll('.quick-indicator-checkbox');
+  checkboxes.forEach(cb => {
+    const indicatorId = cb.dataset.indicatorId || '';
+    const timing = cb.dataset.timing;
+    if (!indicatorId) return;
+
+    if (timing === 'Before' && filteredBeforeIds.some(id => String(id) === String(indicatorId))) {
+      cb.checked = true;
+      return;
+    }
+    if (timing === 'After' && filteredAfterIds.some(id => String(id) === String(indicatorId))) {
+      cb.checked = true;
+    }
+  });
 }
       // helper to update hidden fields when checkboxes used
   function updateQuickCheckboxes() {
@@ -2789,10 +2952,13 @@ function onToolChange() {
   indicators.forEach((ind, iIdx) => {
     const indicatorName = ind.indicatorName || ind.name || ('Indicator ' + (iIdx+1));
     let indicatorId = ind._id || ind.id || '';
+    if (!indicatorId) {
+      indicatorId = resolveIndicatorId(themeName, loIdx, aspIdx, toolIdx, indicatorName);
+    }
     
     const indicatorData = { ...ind, _id: indicatorId };
-    const savedIndicatorStateBefore = getSavedIndicatorSelection(ind, savedTool, 'Before', iIdx);
-    const savedIndicatorStateAfter = getSavedIndicatorSelection(ind, savedTool, 'After', iIdx);
+    const savedIndicatorStateBefore = getSavedIndicatorSelection(ind, savedSelection, 'Before', iIdx);
+    const savedIndicatorStateAfter = getSavedIndicatorSelection(ind, savedSelection, 'After', iIdx);
 
     const tr = document.createElement('tr');
 
@@ -2855,19 +3021,12 @@ function onToolChange() {
         if (typeof scheduleAutoSave === 'function') scheduleAutoSave();
       });
 
-      let shouldCheck = false;
-      if (savedIndicatorStateBefore && savedIndicatorStateBefore.matched) shouldCheck = true;
-      if (!shouldCheck) {
-        const savedMarks = indicatorData.marksBeforeIntervention || indicatorData.marksBefore || indicatorData.obtainedBefore || 0;
-        if (Number(savedMarks) > 0) shouldCheck = true;
-      }
+      let shouldCheck = Boolean(savedIndicatorStateBefore && savedIndicatorStateBefore.matched);
       if (!shouldCheck && savedTool && indicatorId) {
-        const selectedIds = savedTool.selectedIndicatorsBefore || [];
-        if (selectedIds.some(id => String(id) === String(indicatorId))) shouldCheck = true;
-      }
-      if (!shouldCheck && savedTool) {
-        const totalBefore = savedTool.totalBefore || savedTool.totalMarksBeforeIntervention || 0;
-        if (Number(totalBefore) > 0 && Number(totalBefore) === Number(valBefore)) shouldCheck = true;
+        const selectedIds = savedTool.selectedIndicatorsBefore || savedTool.selectedIndicatorsBeforeIds || [];
+        if (Array.isArray(selectedIds) && selectedIds.some(id => String(id) === String(indicatorId))) {
+          shouldCheck = true;
+        }
       }
       if (shouldCheck) cb.checked = true;
       tdMarksBefore.appendChild(cb);
@@ -2943,19 +3102,12 @@ function onToolChange() {
         if (typeof scheduleAutoSave === 'function') scheduleAutoSave();
       });
 
-      let shouldCheckAfter = false;
-      if (savedIndicatorStateAfter && savedIndicatorStateAfter.matched) shouldCheckAfter = true;
-      if (!shouldCheckAfter) {
-        const savedMarksAfter = indicatorData.marksAfterIntervention || indicatorData.marksAfter || indicatorData.obtainedAfter || 0;
-        if (Number(savedMarksAfter) > 0) shouldCheckAfter = true;
-      }
+      let shouldCheckAfter = Boolean(savedIndicatorStateAfter && savedIndicatorStateAfter.matched);
       if (!shouldCheckAfter && savedTool && indicatorId) {
-        const selectedIdsAfter = savedTool.selectedIndicatorsAfter || [];
-        if (selectedIdsAfter.some(id => String(id) === String(indicatorId))) shouldCheckAfter = true;
-      }
-      if (!shouldCheckAfter && savedTool) {
-        const totalAfter = savedTool.totalAfter || savedTool.totalMarksAfterIntervention || 0;
-        if (Number(totalAfter) > 0 && Number(totalAfter) === Number(valAfter)) shouldCheckAfter = true;
+        const selectedIdsAfter = savedTool.selectedIndicatorsAfter || savedTool.selectedIndicatorsAfterIds || [];
+        if (Array.isArray(selectedIdsAfter) && selectedIdsAfter.some(id => String(id) === String(indicatorId))) {
+          shouldCheckAfter = true;
+        }
       }
       if (shouldCheckAfter) cb2.checked = true;
       tdMarksAfter.appendChild(cb2);
@@ -3015,8 +3167,23 @@ function onToolChange() {
     });
   } catch(e) {}
   
+  try { restoreQuickIndicatorCheckboxes(savedSelection); } catch(e) { console.warn('restoreQuickIndicatorCheckboxes failed', e); }
   try { updateQuickCheckboxes(); } catch(e) {}
   try { saveQuickSelection(); } catch(e){}
+  console.log('after build quick indicators', {
+    themeName,
+    loIdx,
+    aspIdx,
+    toolIdx,
+    savedTool: savedTool ? {
+      selectedIndicatorsBefore: Array.isArray(savedTool.selectedIndicatorsBefore) ? savedTool.selectedIndicatorsBefore : [],
+      selectedIndicatorsAfter: Array.isArray(savedTool.selectedIndicatorsAfter) ? savedTool.selectedIndicatorsAfter : [],
+      indicatorsCount: Array.isArray(savedTool.indicators) ? savedTool.indicators.length : 0,
+    } : null,
+    totalCheckboxes: indicatorsDiv.querySelectorAll('.quick-indicator-checkbox').length,
+    checkedBefore: indicatorsDiv.querySelectorAll('.quick-indicator-checkbox[data-timing="Before"]:checked').length,
+    checkedAfter: indicatorsDiv.querySelectorAll('.quick-indicator-checkbox[data-timing="After"]:checked').length,
+  });
 }
 
 // ===== CRITICAL FIX: saveSelectedIndicator function with MULTIPLE THEME support =====
