@@ -434,6 +434,7 @@ exports.themeformSave = async (req, res) => {
         return hasName || hasAspects;
       }) : [];
 
+      t.learningOutcome = t.learningOutcomes;
       // Ensure theme-level defaults
       t.overallTotalBefore = Number(t.overallTotalBefore || 0);
       t.overallTotalAfter = Number(t.overallTotalAfter || 0);
@@ -611,6 +612,7 @@ exports.themeformSave = async (req, res) => {
 
       theme.overallTotalBefore = themeTotalBefore;
       theme.overallTotalAfter = themeTotalAfter;
+      theme.learningOutcome = theme.learningOutcomes;
 
       return theme;
     };
@@ -668,6 +670,88 @@ exports.themeformSave = async (req, res) => {
       });
     }
 
+    // Merge helper functions for existing themes and learning outcomes
+    const mergeIndicators = (existingIndicators = [], incomingIndicators = []) => {
+      const merged = Array.isArray(existingIndicators) ? [...existingIndicators] : [];
+      if (!Array.isArray(incomingIndicators)) return merged;
+      incomingIndicators.forEach((incoming) => {
+        if (!incoming || typeof incoming !== 'object') return;
+        const incomingName = String(incoming.indicatorName || incoming.name || '').trim();
+        const existingIndex = merged.findIndex((old) => String(old.indicatorName || old.name || '').trim() === incomingName);
+        if (existingIndex !== -1) {
+          merged[existingIndex] = { ...merged[existingIndex], ...incoming };
+        } else {
+          merged.push(incoming);
+        }
+      });
+      return merged;
+    };
+
+    const mergeTools = (existingTools = [], incomingTools = []) => {
+      const merged = Array.isArray(existingTools) ? [...existingTools] : [];
+      if (!Array.isArray(incomingTools)) return merged;
+      incomingTools.forEach((incoming) => {
+        if (!incoming || typeof incoming !== 'object') return;
+        const incomingName = String(incoming.toolName || incoming.name || '').trim();
+        const existingIndex = merged.findIndex((old) => String(old.toolName || old.name || '').trim() === incomingName);
+        if (existingIndex !== -1) {
+          merged[existingIndex] = {
+            ...merged[existingIndex],
+            ...incoming,
+            indicators: mergeIndicators(merged[existingIndex].indicators, incoming.indicators)
+          };
+        } else {
+          merged.push(incoming);
+        }
+      });
+      return merged;
+    };
+
+    const getLearningOutcomes = (theme) => {
+      if (!theme || typeof theme !== 'object') return [];
+      return Array.isArray(theme.learningOutcomes) ? theme.learningOutcomes : (Array.isArray(theme.learningOutcome) ? theme.learningOutcome : []);
+    };
+
+    const mergeAspects = (existingAspects = [], incomingAspects = []) => {
+      const merged = Array.isArray(existingAspects) ? [...existingAspects] : [];
+      if (!Array.isArray(incomingAspects)) return merged;
+      incomingAspects.forEach((incoming) => {
+        if (!incoming || typeof incoming !== 'object') return;
+        const incomingName = String(incoming.aspectName || incoming.name || '').trim();
+        const existingIndex = merged.findIndex((old) => String(old.aspectName || old.name || '').trim() === incomingName);
+        if (existingIndex !== -1) {
+          merged[existingIndex] = {
+            ...merged[existingIndex],
+            ...incoming,
+            tools: mergeTools(merged[existingIndex].tools, incoming.tools)
+          };
+        } else {
+          merged.push(incoming);
+        }
+      });
+      return merged;
+    };
+
+    const mergeLearningOutcomes = (existingLOs = [], incomingLOs = []) => {
+      const merged = Array.isArray(existingLOs) ? [...existingLOs] : [];
+      if (!Array.isArray(incomingLOs)) return merged;
+      incomingLOs.forEach((incoming) => {
+        if (!incoming || typeof incoming !== 'object') return;
+        const incomingName = String(incoming.name || incoming.learningOutcomeName || '').trim();
+        const existingIndex = merged.findIndex((old) => String(old.name || old.learningOutcomeName || '').trim() === incomingName);
+        if (existingIndex !== -1) {
+          merged[existingIndex] = {
+            ...merged[existingIndex],
+            ...incoming,
+            assessmentAspects: mergeAspects(merged[existingIndex].assessmentAspects, incoming.assessmentAspects)
+          };
+        } else {
+          merged.push(incoming);
+        }
+      });
+      return merged;
+    };
+
     // If updating existing record
     if (existingStudentRecord) {
       console.log("Found existing student record");
@@ -682,36 +766,18 @@ exports.themeformSave = async (req, res) => {
         );
         
         if (themeIndex !== -1) {
-          // Theme exists, update it
-          // Merge existing tool dates into enrichedTheme when incoming data lacks them
-          try {
-            const existingTheme = existingStudentRecord.subjects[subjectIndex].themes[themeIndex];
-            if (existingTheme && Array.isArray(existingTheme.learningOutcomes) && Array.isArray(enrichedTheme.learningOutcomes)) {
-              enrichedTheme.learningOutcomes.forEach((newLo, loIdx) => {
-                const oldLo = existingTheme.learningOutcomes[loIdx];
-                if (!oldLo) return;
-                if (Array.isArray(newLo.assessmentAspects) && Array.isArray(oldLo.assessmentAspects)) {
-                  newLo.assessmentAspects.forEach((newAsp, ai) => {
-                    const oldAsp = oldLo.assessmentAspects[ai];
-                    if (!oldAsp) return;
-                    if (Array.isArray(newAsp.tools) && Array.isArray(oldAsp.tools)) {
-                      newAsp.tools.forEach((newTool, ti) => {
-                        const oldTool = oldAsp.tools[ti];
-                        if (!oldTool) return;
-                        if (!newTool.evaluationDateBefore && oldTool.evaluationDateBefore) newTool.evaluationDateBefore = oldTool.evaluationDateBefore;
-                        if (!newTool.evaluationDateAfter && oldTool.evaluationDateAfter) newTool.evaluationDateAfter = oldTool.evaluationDateAfter;
-                      });
-                    }
-                  });
-                }
-              });
-            }
-          } catch (mergeErr) {
-            console.warn('Error while merging existing dates:', mergeErr);
-          }
+          // Theme exists, merge incoming learning outcomes into the existing theme
+          const existingTheme = existingStudentRecord.subjects[subjectIndex].themes[themeIndex];
+          const mergedLearningOutcomes = mergeLearningOutcomes(getLearningOutcomes(existingTheme), getLearningOutcomes(enrichedTheme));
+          const mergedTheme = {
+            ...existingTheme,
+            ...enrichedTheme,
+            learningOutcomes: mergedLearningOutcomes,
+            learningOutcome: mergedLearningOutcomes
+          };
 
-          existingStudentRecord.subjects[subjectIndex].themes[themeIndex] = enrichedTheme;
-          console.log("Updated existing theme");
+          existingStudentRecord.subjects[subjectIndex].themes[themeIndex] = computeTotalsAndAliases(mergedTheme);
+          console.log("Merged incoming theme into existing theme");
         } else {
           // Theme doesn't exist, add new theme to existing subject
           existingStudentRecord.subjects[subjectIndex].themes.push(enrichedTheme);

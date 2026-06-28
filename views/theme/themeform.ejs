@@ -1325,83 +1325,103 @@
     }
     
     // New function to populate data for a specific theme
-    function populateThemeData(themeName, allThemes) {
+    function populateThemeData(themeName, allThemes, savedTheme = null) {
       console.log("Populating data for theme:", themeName);
-      
-      // Find the specific theme data
-      const themeData = allThemes.find(theme => theme.themeName === themeName);
+
+      const themeData = Array.isArray(allThemes)
+        ? allThemes.find(theme => (theme.themeName || theme.name) === themeName)
+        : null;
       if (!themeData) {
         console.log("No data found for theme:", themeName);
         return;
       }
-      
-      // Find the theme wrapper that matches this theme name
+
       const themeWrapper = document.querySelector(`.learning-outcome-wrapper[data-theme="${themeName}"]`);
       if (!themeWrapper) {
         console.log("Theme wrapper not found for:", themeName);
         return;
       }
-      
-      // Get the original theme index from the wrapper
+
       const originalThemeIndex = themeWrapper.dataset.themeIndex;
       console.log("Using original theme index:", originalThemeIndex);
-      
-      // Populate learning outcomes for this specific theme
-      if(themeData.learningOutcomes && themeData.learningOutcomes.length > 0) {
-        themeData.learningOutcomes.forEach((outcome, outcomeIndex) => {
-          // Set evaluation date
-          if (outcome.evaluationDateBefore) {
-            const dateInput = document.getElementById(`nepali-datepicker${originalThemeIndex}${outcomeIndex}`);
-            if (dateInput) dateInput.value = outcome.evaluationDateBefore;
-          }
-          
-          // Populate indicators
-          if(outcome.indicators && outcome.indicators.length > 0) {
-            outcome.indicators.forEach((indicator, indicatorIndex) => {
-              const beforeInput = document.getElementById(`indicatorBefore_${originalThemeIndex}_${outcomeIndex}_${indicatorIndex}`);
-              const afterInput = document.getElementById(`indicatorAfter_${originalThemeIndex}_${outcomeIndex}_${indicatorIndex}`);
-              
-              if (beforeInput) {
-                beforeInput.value = indicator.marksBeforeIntervention || 0;
-                // Also update the hidden input (these will have updated names after filterLearningOutcomes)
-                const hiddenBefore = themeWrapper.querySelector(`input[name*="[marksBeforeIntervention]"][name*="[${outcomeIndex}]"][name*="[${indicatorIndex}]"]`);
-                if(hiddenBefore) hiddenBefore.value = indicator.marksBeforeIntervention || 0;
-              }
-              
-              if (afterInput) {
-                afterInput.value = indicator.marksAfterIntervention || 0;
-                // Also update the hidden input
-                const hiddenAfter = themeWrapper.querySelector(`input[name*="[marksAfterIntervention]"][name*="[${outcomeIndex}]"][name*="[${indicatorIndex}]"]`);
-                if(hiddenAfter) hiddenAfter.value = indicator.marksAfterIntervention || 0;
-              }
-              
-              // Update tools used (supports select or input)
-              const toolInput = themeWrapper.querySelector(`[name*="[toolsUsed]"][name*="[${outcomeIndex}]"][name*="[${indicatorIndex}]"]`);
-              if (toolInput && indicator.toolsUsed) {
-                toolInput.value = indicator.toolsUsed;
-              }
-            });
-          }
-          
-          // Set totals for this learning outcome
-          const totalBefore = document.getElementById(`totalBefore_${originalThemeIndex}_${outcomeIndex}`);
-          const totalAfter = document.getElementById(`totalAfter_${originalThemeIndex}_${outcomeIndex}`);
-          const outcomeBeforeDisplay = document.getElementById(`outcomeBeforeDisplay_${originalThemeIndex}_${outcomeIndex}`);
-          const outcomeAfterDisplay = document.getElementById(`outcomeAfterDisplay_${originalThemeIndex}_${outcomeIndex}`);
-          
-          if(totalBefore) totalBefore.value = outcome.totalMarksBeforeIntervention || 0;
-          if(totalAfter) totalAfter.value = outcome.totalMarksAfterIntervention || 0;
-          if(outcomeBeforeDisplay) outcomeBeforeDisplay.textContent = outcome.totalMarksBeforeIntervention || 0;
-          if(outcomeAfterDisplay) outcomeAfterDisplay.textContent = outcome.totalMarksAfterIntervention || 0;
-        });
-        
-        // Set overall theme totals
-        const overallTotalBefore = document.getElementById(`overallTotalBefore_${originalThemeIndex}`);
-        const overallTotalAfter = document.getElementById(`overallTotalAfter_${originalThemeIndex}`);
-        
-        if(overallTotalBefore) overallTotalBefore.value = themeData.overallTotalBefore || 0;
-        if(overallTotalAfter) overallTotalAfter.value = themeData.overallTotalAfter || 0;
+
+      const masterLOs = Array.isArray(themeData.learningOutcomes)
+        ? themeData.learningOutcomes
+        : (Array.isArray(themeData.learningOutcome) ? themeData.learningOutcome : []);
+
+      const savedLOs = savedTheme
+        ? (Array.isArray(savedTheme.learningOutcomes) ? savedTheme.learningOutcomes : (Array.isArray(savedTheme.learningOutcome) ? savedTheme.learningOutcome : []))
+        : [];
+
+      const resolveSavedOutcome = (masterOutcome, idx) => {
+        if (!Array.isArray(savedLOs) || !savedLOs.length) return null;
+        if (savedLOs[idx]) return savedLOs[idx];
+        const masterName = (masterOutcome.learningOutcomeName || masterOutcome.name || '').toString().trim();
+        if (!masterName) return null;
+        return savedLOs.find(lo => ((lo.name || lo.learningOutcomeName || '').toString().trim() === masterName)) || null;
+      };
+
+      if (masterLOs.length === 0) {
+        return;
       }
+
+      masterLOs.forEach((outcome, outcomeIndex) => {
+        const savedOutcome = resolveSavedOutcome(outcome, outcomeIndex);
+
+        if (outcome.evaluationDateBefore) {
+          const dateInput = document.getElementById(`nepali-datepicker${originalThemeIndex}${outcomeIndex}`);
+          if (dateInput) dateInput.value = outcome.evaluationDateBefore;
+        }
+
+        if (Array.isArray(outcome.indicators) && outcome.indicators.length > 0) {
+          outcome.indicators.forEach((indicator, indicatorIndex) => {
+            const beforeInput = document.getElementById(`indicatorBefore_${originalThemeIndex}_${outcomeIndex}_${indicatorIndex}`);
+            const afterInput = document.getElementById(`indicatorAfter_${originalThemeIndex}_${outcomeIndex}_${indicatorIndex}`);
+            const savedIndicator = (savedOutcome && Array.isArray(savedOutcome.indicators)) ? savedOutcome.indicators[indicatorIndex] : null;
+
+            const beforeValue = (savedIndicator && (savedIndicator.marksBeforeIntervention || savedIndicator.marksBefore || savedIndicator.obtainedBefore || savedIndicator.obtainedBeforeIntervention)) || indicator.marksBeforeIntervention || 0;
+            const afterValue = (savedIndicator && (savedIndicator.marksAfterIntervention || savedIndicator.marksAfter || savedIndicator.obtainedAfter || savedIndicator.obtainedAfterIntervention)) || indicator.marksAfterIntervention || 0;
+
+            if (beforeInput) {
+              beforeInput.value = beforeValue;
+              const hiddenBefore = themeWrapper.querySelector(`input[name*="[marksBeforeIntervention]"][name*="[${outcomeIndex}]"][name*="[${indicatorIndex}]"]`);
+              if (hiddenBefore) hiddenBefore.value = beforeValue;
+            }
+
+            if (afterInput) {
+              afterInput.value = afterValue;
+              const hiddenAfter = themeWrapper.querySelector(`input[name*="[marksAfterIntervention]"][name*="[${outcomeIndex}]"][name*="[${indicatorIndex}]"]`);
+              if (hiddenAfter) hiddenAfter.value = afterValue;
+            }
+
+            const toolInput = themeWrapper.querySelector(`[name*="[toolsUsed]"][name*="[${outcomeIndex}]" ][name*="[${indicatorIndex}]" ]`);
+            if (toolInput) {
+              toolInput.value = (savedIndicator && savedIndicator.toolsUsed) || indicator.toolsUsed || '';
+            }
+          });
+        }
+
+        const totalBefore = document.getElementById(`totalBefore_${originalThemeIndex}_${outcomeIndex}`);
+        const totalAfter = document.getElementById(`totalAfter_${originalThemeIndex}_${outcomeIndex}`);
+        const outcomeBeforeDisplay = document.getElementById(`outcomeBeforeDisplay_${originalThemeIndex}_${outcomeIndex}`);
+        const outcomeAfterDisplay = document.getElementById(`outcomeAfterDisplay_${originalThemeIndex}_${outcomeIndex}`);
+
+        const totalBeforeValue = (savedOutcome && (savedOutcome.totalMarksBeforeIntervention || savedOutcome.totalBefore || 0)) || outcome.totalMarksBeforeIntervention || 0;
+        const totalAfterValue = (savedOutcome && (savedOutcome.totalMarksAfterIntervention || savedOutcome.totalAfter || 0)) || outcome.totalMarksAfterIntervention || 0;
+
+        if (totalBefore) totalBefore.value = totalBeforeValue;
+        if (totalAfter) totalAfter.value = totalAfterValue;
+        if (outcomeBeforeDisplay) outcomeBeforeDisplay.textContent = totalBeforeValue;
+        if (outcomeAfterDisplay) outcomeAfterDisplay.textContent = totalAfterValue;
+      });
+
+      const overallTotalBefore = document.getElementById(`overallTotalBefore_${originalThemeIndex}`);
+      const overallTotalAfter = document.getElementById(`overallTotalAfter_${originalThemeIndex}`);
+      const overallBeforeValue = (savedTheme && (savedTheme.overallTotalBefore || savedTheme.overallTotalAfter || 0)) || themeData.overallTotalBefore || 0;
+      const overallAfterValue = (savedTheme && (savedTheme.overallTotalAfter || savedTheme.overallTotalBefore || 0)) || themeData.overallTotalAfter || 0;
+
+      if (overallTotalBefore) overallTotalBefore.value = overallBeforeValue;
+      if (overallTotalAfter) overallTotalAfter.value = overallAfterValue;
     }
 
    </script>
@@ -1919,12 +1939,17 @@
       
       // If a theme is selected, populate theme view and quick-select lists.
       if (selectedTheme) {
-        // Populate student-specific theme data if available, otherwise use server-rendered themeData
-        const themesSource = window.studentThemeData || (typeof themeData !== 'undefined' ? [].concat(...themeData.map(td => td.themes)) : []);
-        console.log('Populating theme view from themesSource for:', selectedTheme);
-        populateThemeData(selectedTheme, themesSource);
-        populateQuickSelects(selectedTheme, themesSource);
+        const masterThemes = (typeof themeData !== 'undefined' ? [].concat(...themeData.map(td => td.themes)) : []);
+        const savedTheme = getSavedTheme(selectedTheme);
+        console.log('Populating theme view using master theme format with saved overrides for:', selectedTheme, 'savedTheme exists:', !!savedTheme);
+        populateThemeData(selectedTheme, masterThemes, savedTheme);
+        populateQuickSelects(selectedTheme, masterThemes);
       }
+    }
+
+    function getSavedTheme(themeName) {
+      if (!themeName || !Array.isArray(window.studentThemeData)) return null;
+      return window.studentThemeData.find(t => (t.themeName || t.name) === themeName) || null;
     }
 
     // Populate quick-select dropdowns from themeData for a given theme
@@ -1942,12 +1967,14 @@
       // Find themeItem from provided themes array
       let themeItem = null;
       if (Array.isArray(themesArr)) {
-        themeItem = themesArr.find(item => item.themeName === themeName) || null;
+        themeItem = themesArr.find(item => (item.themeName || item.name) === themeName) || null;
       }
       if (!themeItem) return;
 
       // Populate LOs - support both 'learningOutcome' and 'learningOutcomes'
-      const loArray = Array.isArray(themeItem.learningOutcome) ? themeItem.learningOutcome : (Array.isArray(themeItem.learningOutcomes) ? themeItem.learningOutcomes : []);
+      const loArray = Array.isArray(themeItem.learningOutcome)
+        ? themeItem.learningOutcome
+        : (Array.isArray(themeItem.learningOutcomes) ? themeItem.learningOutcomes : []);
       loArray.forEach((lo, idx) => {
         const opt = document.createElement('option');
         opt.value = idx;
@@ -2541,37 +2568,33 @@ function findToolByNameInStudentData(themeName, toolName) {
     const toolIdx = document.getElementById('quickTool').value;
     
     if (loIdx && form) {
-      // Use dynamic index - get the current count to determine the correct index
-      const themeName = document.getElementById('themeName').value;
-      let currentLOCount = 0;
-      
-      if (window.studentThemeData && Array.isArray(window.studentThemeData)) {
-        const savedTheme = window.studentThemeData.find(t => t.themeName === themeName);
-        if (savedTheme) {
-          const loArray = Array.isArray(savedTheme.learningOutcomes) ? savedTheme.learningOutcomes : 
-                         (Array.isArray(savedTheme.learningOutcome) ? savedTheme.learningOutcome : []);
-          currentLOCount = loArray.length;
+        const themeName = document.getElementById('themeName').value;
+        const themeIndex = getThemeIndexForSelectedTheme(themeName);
+
+        // Use dynamic index - get the current count to determine the correct index
+        let currentLOCount = 0;
+        if (window.studentThemeData && Array.isArray(window.studentThemeData)) {
+          const savedTheme = window.studentThemeData.find(t => (t.themeName || t.name) === themeName);
+          if (savedTheme) {
+            const loArray = Array.isArray(savedTheme.learningOutcomes) ? savedTheme.learningOutcomes : 
+                           (Array.isArray(savedTheme.learningOutcome) ? savedTheme.learningOutcome : []);
+            currentLOCount = loArray.length;
+          }
         }
-      }
-      
-      // Use the count as the new index
-      const newLOIndex = currentLOCount;
-      
-      const nameBefore = `subjects[0][themes][0][learningOutcomes][${newLOIndex}][selectedIndicatorsBefore][]`;
-      const nameAfter = `subjects[0][themes][0][learningOutcomes][${newLOIndex}][selectedIndicatorsAfter][]`;
-      Array.from(form.querySelectorAll(`input[name="${nameBefore}"]`)).forEach(n => n.remove());
-      Array.from(form.querySelectorAll(`input[name="${nameAfter}"]`)).forEach(n => n.remove());
-      
-      beforeIds.forEach(id => {
-        if (id) {
-          const inp = document.createElement('input');
+        
+        // Use the count as the new index
+        const newLOIndex = currentLOCount;
+        
+        const nameBefore = `subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][selectedIndicatorsBefore][]`;
+        const nameAfter = `subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][selectedIndicatorsAfter][]`;
           inp.type = 'hidden';
           inp.name = nameBefore;
           inp.value = id;
           form.appendChild(inp);
         }
-      });
-      
+ 
+  
+
       afterIds.forEach(id => {
         if (id) {
           const inp = document.createElement('input');
@@ -2582,11 +2605,14 @@ function findToolByNameInStudentData(themeName, toolName) {
         }
       });
     }
+     catch (e) {
+        console.error('Error occurred while processing beforeIds:', e);
+      }
+    }
     
-  } catch (e) { 
-    console.warn('updateQuickCheckboxes failed:', e); 
-  }
-}
+
+  
+
 window.updateQuickCheckboxes = updateQuickCheckboxes;
 
 // onToolChange function - shortened for brevity, same as before
@@ -2600,6 +2626,7 @@ function onToolChange() {
 
   const subjName = (document.getElementById('subject') && document.getElementById('subject').value || '').trim().toLowerCase();
   const themeName = document.getElementById('themeName').value;
+  const themeIndex = getThemeIndexForSelectedTheme(themeName);
   const loIdx = document.getElementById('quickLO').value;
   const aspIdx = Number(document.getElementById('quickAspect').value);
   
@@ -2706,7 +2733,7 @@ function onToolChange() {
       dateBefore.type = 'text';
       dateBefore.className = 'nepali-datepicker quick-eval-date-before';
       dateBefore.id = `quick_eval_before_${toolUnique}`;
-      dateBefore.name = `subjects[0][themes][0][learningOutcomes][${loIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][evaluationDateBefore]`;
+      dateBefore.name = `subjects[0][themes][${themeIndex}][learningOutcomes][${loIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][evaluationDateBefore]`;
       dateBefore.value = (indicatorData && (indicatorData.evaluationDateBefore || '') || (savedTool && savedTool.evaluationDateBefore || ''));
       dateBefore.addEventListener('change', () => {
         document.getElementById('selectedEvalDateBeforeHidden').value = dateBefore.value || '';
@@ -2761,7 +2788,7 @@ function onToolChange() {
       dateAfter.type = 'text';
       dateAfter.className = 'nepali-datepicker quick-eval-date-after';
       dateAfter.id = `quick_eval_after_${toolUnique}`;
-      dateAfter.name = `subjects[0][themes][0][learningOutcomes][${loIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][evaluationDateAfter]`;
+      dateAfter.name = `subjects[0][themes][${themeIndex}][learningOutcomes][${loIdx}][assessmentAspects][${aspIdx}][tools][${toolIdx}][evaluationDateAfter]`;
       dateAfter.value = (indicatorData && (indicatorData.evaluationDateAfter || '') || (savedTool && savedTool.evaluationDateAfter || ''));
       dateAfter.addEventListener('change', () => {
         document.getElementById('selectedEvalDateAfterHidden').value = dateAfter.value || '';
@@ -3112,6 +3139,7 @@ function saveSelectedIndicator() {
       form.appendChild(inp);
     }
   });
+
   
   idsAfter.forEach(id => {
     if (id) {
@@ -3199,21 +3227,38 @@ function saveSelectedIndicator() {
     }
     
     function updateFieldNamesForSelectedTheme(selectedWrapper) {
-      console.log('Updating field names for selected theme wrapper');
+      if (!selectedWrapper) return;
+      const themeIndex = Number(selectedWrapper.dataset.themeIndex);
+      if (Number.isNaN(themeIndex) || themeIndex < 0) {
+        console.warn('Could not determine theme index for selected wrapper', selectedWrapper);
+        return;
+      }
+
+      console.log('Updating field names for selected theme wrapper to theme index', themeIndex);
       const allInputs = selectedWrapper.querySelectorAll('input, select, textarea');
       allInputs.forEach(input => {
         if (input.name && input.name.includes('[themes][')) {
           const originalName = input.name;
-          const updatedName = input.name.replace(/\[themes\]\[\d+\]/, '[themes][0]');
+          const updatedName = input.name.replace(/\[themes\]\[\d+\]/, `[themes][${themeIndex}]`);
           if (originalName !== updatedName) {
             input.name = updatedName;
           }
         }
       });
-      const themeNameSelect = document.getElementById('themeName');
-      if (themeNameSelect) {
-        themeNameSelect.name = 'subjects[0][themes][0][themeName]';
+    }
+
+    function getThemeIndexForSelectedTheme(themeName) {
+      if (!themeName) return 0;
+      const selectedWrapper = document.querySelector(`.learning-outcome-wrapper[data-theme="${themeName}"]`);
+      if (selectedWrapper) {
+        const idx = Number(selectedWrapper.dataset.themeIndex);
+        if (!Number.isNaN(idx) && idx >= 0) return idx;
       }
+      if (window.studentThemeData && Array.isArray(window.studentThemeData)) {
+        const savedIndex = window.studentThemeData.findIndex(t => (t.themeName || t.name) === themeName);
+        if (savedIndex !== -1) return savedIndex;
+      }
+      return 0;
     }
 
     function updateMarks(input, outcomeIndex, indicatorIndex, timing, themeIndex) {
@@ -3370,8 +3415,9 @@ function saveSelectedIndicator() {
         updateQuickCheckboxes();
         const loIdx = document.getElementById('quickLO').value;
         if (loIdx) {
-          const nameBefore = `subjects[0][themes][0][learningOutcomes][${loIdx}][selectedIndicatorsBefore][]`;
-          const nameAfter = `subjects[0][themes][0][learningOutcomes][${loIdx}][selectedIndicatorsAfter][]`;
+          const themeIndex = getThemeIndexForSelectedTheme(themeName);
+          const nameBefore = `subjects[0][themes][${themeIndex}][learningOutcomes][${loIdx}][selectedIndicatorsBefore][]`;
+          const nameAfter = `subjects[0][themes][${themeIndex}][learningOutcomes][${loIdx}][selectedIndicatorsAfter][]`;
           Array.from(form.querySelectorAll(`input[name="${nameBefore}"]`)).forEach(n => n.remove());
           Array.from(form.querySelectorAll(`input[name="${nameAfter}"]`)).forEach(n => n.remove());
           const beforeIds = document.getElementById('selectedIndicatorIdsBeforeHidden').value;
@@ -3384,16 +3430,8 @@ function saveSelectedIndicator() {
         ensureIndicatorNameSet();
         
         // Also ensure theme name is set in the form data
-        // Get the correct theme index
-        let themeIndex = 0;
-        if (window.studentThemeData && Array.isArray(window.studentThemeData)) {
-          const existingIdx = window.studentThemeData.findIndex(t => t.themeName === themeName);
-          if (existingIdx !== -1) {
-            themeIndex = existingIdx;
-          } else {
-            themeIndex = window.studentThemeData.length;
-          }
-        }
+        // Get the correct theme index from the visible wrapper or saved theme data
+        const themeIndex = getThemeIndexForSelectedTheme(themeName);
         
         // Set theme name in the form
         const themeNameField = form.querySelector(`input[name="subjects[0][themes][${themeIndex}][themeName]"]`);
@@ -3732,62 +3770,6 @@ function saveSelectedIndicator() {
       const loader = document.getElementById('data-loading-indicator');
       if (loader) { loader.style.display = 'none'; }
     }
-    
-    function populateThemeData(themeName, allThemes) {
-      console.log("Populating data for theme:", themeName);
-      const themeData = allThemes.find(theme => theme.themeName === themeName);
-      if (!themeData) { console.log("No data found for theme:", themeName); return; }
-      const themeWrapper = document.querySelector(`.learning-outcome-wrapper[data-theme="${themeName}"]`);
-      if (!themeWrapper) { console.log("Theme wrapper not found for:", themeName); return; }
-      const originalThemeIndex = themeWrapper.dataset.themeIndex;
-      console.log("Using original theme index:", originalThemeIndex);
-      
-      if(themeData.learningOutcomes && themeData.learningOutcomes.length > 0) {
-        themeData.learningOutcomes.forEach((outcome, outcomeIndex) => {
-          if(outcome.evaluationDateBefore && outcome.evaluationDateBefore !== "0") {
-            const dateBeforeInput = document.getElementById(`nepali-datepickerBefore${originalThemeIndex}${outcomeIndex}`);
-            if(dateBeforeInput) { dateBeforeInput.value = outcome.evaluationDateBefore; }
-            const altDateBeforeInput = themeWrapper.querySelector(`input[name*="[evaluationDateBefore]"][name*="[${outcomeIndex}]"]`);
-            if(altDateBeforeInput && !dateBeforeInput) { altDateBeforeInput.value = outcome.evaluationDateBefore; }
-          }
-          if(outcome.evaluationDateAfter && outcome.evaluationDateAfter !== "0") {
-            const dateAfterInput = document.getElementById(`nepali-datepickerAfter${originalThemeIndex}${outcomeIndex}`) ||
-                                  themeWrapper.querySelector(`input[name*="[evaluationDateAfter]"][name*="[${outcomeIndex}]"]`);
-            if(dateAfterInput) { dateAfterInput.value = outcome.evaluationDateAfter; }
-          }
-          if(outcome.indicators && outcome.indicators.length > 0) {
-            outcome.indicators.forEach((indicator, indicatorIndex) => {
-              const beforeInput = document.getElementById(`indicatorBefore_${originalThemeIndex}_${outcomeIndex}_${indicatorIndex}`);
-              const afterInput = document.getElementById(`indicatorAfter_${originalThemeIndex}_${outcomeIndex}_${indicatorIndex}`);
-              if (beforeInput) {
-                beforeInput.value = indicator.marksBeforeIntervention || 0;
-                const hiddenBefore = themeWrapper.querySelector(`input[name*="[marksBeforeIntervention]"][name*="[${outcomeIndex}]"][name*="[${indicatorIndex}]"]`);
-                if(hiddenBefore) hiddenBefore.value = indicator.marksBeforeIntervention || 0;
-              }
-              if (afterInput) {
-                afterInput.value = indicator.marksAfterIntervention || 0;
-                const hiddenAfter = themeWrapper.querySelector(`input[name*="[marksAfterIntervention]"][name*="[${outcomeIndex}]"][name*="[${indicatorIndex}]"]`);
-                if(hiddenAfter) hiddenAfter.value = indicator.marksAfterIntervention || 0;
-              }
-              const toolInput = themeWrapper.querySelector(`[name*="[toolsUsed]"][name*="[${outcomeIndex}]"][name*="[${indicatorIndex}]"]`);
-              if (toolInput && indicator.toolsUsed) { toolInput.value = indicator.toolsUsed; }
-            });
-          }
-          const totalBefore = document.getElementById(`totalBefore_${originalThemeIndex}_${outcomeIndex}`);
-          const totalAfter = document.getElementById(`totalAfter_${originalThemeIndex}_${outcomeIndex}`);
-          const outcomeBeforeDisplay = document.getElementById(`outcomeBeforeDisplay_${originalThemeIndex}_${outcomeIndex}`);
-          const outcomeAfterDisplay = document.getElementById(`outcomeAfterDisplay_${originalThemeIndex}_${outcomeIndex}`);
-          if(totalBefore) totalBefore.value = outcome.totalMarksBeforeIntervention || 0;
-          if(totalAfter) totalAfter.value = outcome.totalMarksAfterIntervention || 0;
-          if(outcomeBeforeDisplay) outcomeBeforeDisplay.textContent = outcome.totalMarksBeforeIntervention || 0;
-          if(outcomeAfterDisplay) outcomeAfterDisplay.textContent = outcome.totalMarksAfterIntervention || 0;
-        });
-        const overallTotalBefore = document.getElementById(`overallTotalBefore_${originalThemeIndex}`);
-        const overallTotalAfter = document.getElementById(`overallTotalAfter_${originalThemeIndex}`);
-        if(overallTotalBefore) overallTotalBefore.value = themeData.overallTotalBefore || 0;
-        if(overallTotalAfter) overallTotalAfter.value = themeData.overallTotalAfter || 0;
-      }
-    }   
   </script>
 
 <script>
