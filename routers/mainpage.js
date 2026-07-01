@@ -339,7 +339,7 @@ student.post('/themeform', verifytoken, authorized, newthemecontroller.themeform
 student.get('/thememarks', verifytoken, authorized, themecontroller.themeformMarks);
 student.post('/autosave-themefillup', verifytoken, authorized, themecontroller.autoSaveThemeFillup);
 student.post('/autosave-projectrubrik', verifytoken, authorized, practical410controller.autoSaveRubrik);
-student.get('/thememarksofstudent', verifytoken, authorized, themecontroller.thememarksOfStudent);
+student.get('/thememarksofstudent', verifytoken, authorized, themecontroller.thememarksheetOfStudent);
 student.get('/themewisemarks', verifytoken, authorized, themecontroller.themewisemarks);
 student.get('/themeMarksheet', verifytoken, authorized, themecontroller.themeMarksheet);
 

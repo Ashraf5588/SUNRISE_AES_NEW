@@ -1216,7 +1216,7 @@ exports.themeformMarks = async (req, res) => {
 
   }
 }  
-exports.thememarksOfStudent = async (req, res) => {
+exports.thememarksheetOfStudent = async (req, res) => {
   try {
     const { subject, studentClass, section } = req.query;
     
@@ -1224,10 +1224,28 @@ exports.thememarksOfStudent = async (req, res) => {
     let query = {};
     if (studentClass) query.studentClass = studentClass;
     if (section) query.section = section;
+    
     const ThemeModel = await getStudentThemeData(studentClass);
-    const themeData = await ThemeModel.find(query).lean();
+    const themewisemarks = await ThemeModel.find(query).lean();
 
-    console.log("Theme data fetched successfully for marks:", themeData.length, "records");
+    console.log("Theme data fetched successfully for marks:", themewisemarks.length, "records");
+   const themeModel = await getThemeFormat(studentClass);
+    const themeData = await themeModel.find({
+      studentClass: studentClass,
+      subject: subject
+    }).lean();
+const marksMap = {};
+
+      console.log("Total DB Records:", themewisemarks.length);
+
+themewisemarks.forEach(record => {
+    const key =
+        `${record.reg}|${record.themeName}|${record.learningOutcomeName}`;
+
+    marksMap[key] = record;
+
+    console.log("MAP KEY =", key);
+});
 
     // Get sidenav data
     const sidenavData = await getSidenavData(req);
@@ -1241,7 +1259,9 @@ exports.thememarksOfStudent = async (req, res) => {
       selectedClass: studentClass || '',
       selectedSection: section || '',
       selectedSubject: subject || '',
-      themeData 
+      themeData,
+      themewisemarks,
+      marksMap
     });
   } catch (error) {
     console.error('Error fetching theme for marks:', error);
@@ -1276,7 +1296,7 @@ themewisemarks.forEach(record => {
 
     marksMap[key] = record;
 
-    console.log("MAP KEY =", key);
+    
 });
 
     return res.render("theme/newthemewisemarks", {
@@ -1331,6 +1351,8 @@ exports.themeMarksheet =  async (req, res) => {
       section: section,
       
     }).lean();
+
+
     return res.render("theme/themeMarksheet", {
       ...await getSidenavData(req),
       editing: false,
