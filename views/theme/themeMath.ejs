@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Math</title>
+  <link rel="stylesheet" href="/form.css">
+  <link rel="stylesheet" href="/mobile-form-enhancements.css">
  <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
  <link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css"/>
 </head>
@@ -209,26 +211,24 @@ function showTable() {
             .forEach((indicator, index) => {
 
                 // Indicator name
-                indicatorTDs[i].append(
-                    document.createTextNode(
-                        indicator.indicatorName
-                    )
-                );
-             
-                indicatorTDs[i].appendChild(
-                    document.createElement("br")
-                );
+                const indicatorName = document.createElement("div");
+                indicatorName.className = "indicator-name";
+                indicatorName.textContent = indicator.indicatorName;
+                indicatorTDs[i].appendChild(indicatorName);
 
-                // BEFORE RADIO
-                const radioBefore =
-                    document.createElement("input");
+                const indicatorDivider = document.createElement("div");
+                indicatorDivider.className = "indicator-separator";
+                indicatorTDs[i].appendChild(indicatorDivider);
+                // BEFORE RADIO (wrapped in a touch-friendly button label)
+                const beforeLabel = document.createElement("label");
+                beforeLabel.className = "mark-option-button";
+                beforeLabel.htmlFor = `before_${i}_${index}`;
 
+                const radioBefore = document.createElement("input");
                 radioBefore.type = "radio";
-                radioBefore.name =
-                    `students[${student.reg}][obtainedMarksBefore]`;
+                radioBefore.name = `students[${student.reg}][obtainedMarksBefore]`;
                 radioBefore.value = indicator.maxMarks;
-                radioBefore.id =
-                    `before_${i}_${index}`;
+                radioBefore.id = `before_${i}_${index}`;
 
                 if (
                     existingRecord &&
@@ -238,28 +238,24 @@ function showTable() {
                     radioBefore.checked = true;
                 }
 
-                obtmarksbeforeTDs[i].appendChild(radioBefore);
+                const beforeValue = document.createElement("span");
+                beforeValue.className = "mark-option-label";
+                beforeValue.textContent = indicator.maxMarks;
 
-                obtmarksbeforeTDs[i].append(
-                    document.createTextNode(
-                        " " + indicator.maxMarks
-                    )
-                );
+                beforeLabel.appendChild(radioBefore);
+                beforeLabel.appendChild(beforeValue);
+                obtmarksbeforeTDs[i].appendChild(beforeLabel);
 
-                obtmarksbeforeTDs[i].appendChild(
-                    document.createElement("br")
-                );
+                // AFTER RADIO (wrapped in a touch-friendly button label)
+                const afterLabel = document.createElement("label");
+                afterLabel.className = "mark-option-button";
+                afterLabel.htmlFor = `after_${i}_${index}`;
 
-                // AFTER RADIO
-                const radioAfter =
-                    document.createElement("input");
-
+                const radioAfter = document.createElement("input");
                 radioAfter.type = "radio";
-                radioAfter.name =
-                    `students[${student.reg}][obtainedMarksAfter]`;
+                radioAfter.name = `students[${student.reg}][obtainedMarksAfter]`;
                 radioAfter.value = indicator.maxMarks;
-                radioAfter.id =
-                    `after_${i}_${index}`;
+                radioAfter.id = `after_${i}_${index}`;
 
                 if (
                     existingRecord &&
@@ -269,17 +265,13 @@ function showTable() {
                     radioAfter.checked = true;
                 }
 
-                obtmarksafterTDs[i].appendChild(radioAfter);
+                const afterValue = document.createElement("span");
+                afterValue.className = "mark-option-label";
+                afterValue.textContent = indicator.maxMarks;
 
-                obtmarksafterTDs[i].append(
-                    document.createTextNode(
-                        " " + indicator.maxMarks
-                    )
-                );
-
-                obtmarksafterTDs[i].appendChild(
-                    document.createElement("br")
-                );
+                afterLabel.appendChild(radioAfter);
+                afterLabel.appendChild(afterValue);
+                obtmarksafterTDs[i].appendChild(afterLabel);
             });
     });
 }
