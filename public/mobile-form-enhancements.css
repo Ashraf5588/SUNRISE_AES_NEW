@@ -58,7 +58,7 @@ form[action*="themeform"] input[type="submit"]:hover {
 }
 
 form[action*="themeform"] .themeTable {
-  display: table !important;
+  
   width: 100%;
   min-width: 760px;
   overflow-x: auto;

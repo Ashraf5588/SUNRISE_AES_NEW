@@ -18,7 +18,7 @@
       <option disabled selected>Select Theme</option>
       <%themeData.forEach(data => { %>
         <% data.themes.forEach((theme,themeIndex) => { %>
-          <option value="<%= theme.themeName %>" data-themeIndex="<%= themeIndex %>"><%=themeIndex+1%>.<%= theme.themeName %></option>
+          <option value="<%= theme.themeName %>" data-themeIndex="<%= themeIndex %>"><%= theme.themeName %></option>
         <% }); %>
       <% }); %>
    
@@ -26,14 +26,16 @@
      <select id="learningoutcomeselect" onchange="changeLo()">
         <option disabled selected>Select Learning Outcome</option>
     </select>
+
+    <select id="aspectselect" onchange="showTools()" name="aspectName">
+      <option disabled selected>Select Aspect</option>
+     <%aspectcontainerData.aspects.forEach((aspect, aspectIndex) => { %>
+        <option value="<%= aspect.aspectName %>" data-aspectIndex="<%= aspectIndex %>"><%= aspect.aspectName %></option>
+      <% }); %>
+    </select>
   
      <select id="toolselect" onchange="showTable()">
-      <option selected disabled>Select Tool </otpion>
-      <% toolDoc.tools.forEach(tool => { %>
-        <option value="<%= tool %>"><%= tool%></option>
-      <% }); %>
-        
-  
+      <option selected disabled>Select Tool </otpion>  
     </select>
 <input type="hidden" value="<%=JSON.stringify(themeData)%>" id="themeData">
 
@@ -43,9 +45,9 @@
 
  <th>Eval.Date Before: <input type="text" id="nepali-datepicker" class="masterDateBefore nepali-datepicker" placeholder="Select Nepali Date" /></th>
  <th>Eval.Date After: <input type="text" id="nepali-datepicker" class="masterDateAfter nepali-datepicker" placeholder="Select Nepali Date" /></th>
+<input type="hidden" value="<%=JSON.stringify(aspectcontainerData) %>" id="aspectcontainerData">
 
-
-  <table border="1" cellspacing="0" cellpadding="5" class="themeTable" style="display:none;">
+  <table border="1" style="display:none;" cellspacing="0" cellpadding="5" class="themeTable" >
   
 
     <tr>
@@ -135,6 +137,26 @@ function filterLO() {
 </script>
 
 <script>
+  function showTools() {
+    const selectedAspectIndex =
+        document.getElementById("aspectselect").selectedOptions[0].dataset.aspectindex;
+
+    const toolsSelectbtn = document.getElementById("toolselect");
+    toolsSelectbtn.innerHTML = '<option disabled selected>Select Tool</option>';
+
+    const aspectcontainerData = JSON.parse(document.getElementById("aspectcontainerData").value);
+
+    aspectcontainerData.aspects[selectedAspectIndex].tools.forEach((tool, toolIndex) => {
+        const option = document.createElement("option");
+        option.value = tool.toolName;
+        option.textContent = tool.toolName;
+        option.dataset.toolindex = toolIndex;
+        toolsSelectbtn.appendChild(option);
+    });
+  }
+</script>
+
+<script>
   function changeLo() {
     const selectedThemeIndex =
         document.getElementById("themeselect").selectedOptions[0].dataset.themeindex;
@@ -155,6 +177,8 @@ function showTable() {
     const obtmarksbeforeTDs = document.querySelectorAll("#obtmarksbefore");
     const obtmarksafterTDs = document.querySelectorAll("#obtmarksafter");
 
+
+
     const selectedThemeIndex =
         document.getElementById("themeselect")
             .selectedOptions[0]
@@ -163,7 +187,7 @@ function showTable() {
     const selectedLOIndex =
         document.getElementById("learningoutcomeselect").selectedIndex - 1;
 
-    tables[0].style.display = "block";
+    tables[0].style.display = "table"; // Show table
 
     const studentData =
         JSON.parse(document.getElementById("studentData").value);
@@ -173,6 +197,11 @@ function showTable() {
 
     document.getElementById("toolname").value =
         selectedToolName;
+        const aspectcontainerData = JSON.parse(document.getElementById("aspectcontainerData").value);
+        const aspectIndex = document.getElementById("aspectselect").selectedIndex-1;
+        console.log("Selected Aspect Index:", aspectIndex);
+        const toolIndex = document.getElementById("toolselect").selectedIndex-1;
+        console.log("Selected Tool Index:", toolIndex);
 
     const existingMap =
         JSON.parse(document.getElementById("existingMap").value);
@@ -188,7 +217,7 @@ function showTable() {
             `${themeData[0].themes[selectedThemeIndex].themeName}|` +
             `${themeData[0].themes[selectedThemeIndex]
                 .learningOutcome[selectedLOIndex]
-                .learningOutcomeName}|` +
+                .learningOutcomeName}|` + `${aspectcontainerData.aspects[aspectIndex].aspectName}|` +
             `${selectedToolName}`;
 
         const existingRecord = existingMap[key];
@@ -202,12 +231,8 @@ function showTable() {
         existingRecord?.evalDateAfter || "";
 }
 
-        themeData[0]
-            .themes[selectedThemeIndex]
-            .learningOutcome[selectedLOIndex]
-            .assessmentAspects[0]
-            .tools[0]
-            .indicators
+        
+            aspectcontainerData.aspects[aspectIndex].tools[toolIndex].indicators
             .forEach((indicator, index) => {
 
                 // Indicator name
@@ -298,38 +323,23 @@ function showTable() {
 }
 </script>
 
-<script>
-document.querySelector(".masterDateBefore")
-.addEventListener("input", function () {
 
-    const value = this.value;
-
-    document.querySelectorAll(".studentDateBefore")
-        .forEach(input => {
-            input.value = value;
-        });
-});
-
-document.querySelector(".masterDateAfter")
-.addEventListener("change", function () {
-
-    const value = this.value;
-
-    document.querySelectorAll(".studentDateAfter")
-        .forEach(input => {
-            input.value = value;
-        });
-});
-</script>
 
 <script>
     //fire events
+    document.getElementById("aspectselect").addEventListener("change", function() {
+    const table = document.querySelector(".themeTable");
+    table.style.display = "none"; 
+        showTools();
+});
+
 document.getElementById("learningoutcomeselect").addEventListener("change", function() {
     changeLo();
-    document.getElementById("toolselect").selectedIndex = 0; // Reset tool selection
-    showTable();
+    document.getElementById("toolselect").selectedIndex = 0;
 });
 document.getElementById("toolselect").addEventListener("change", function() {
+ const table = document.querySelector(".themeTable");
+      table.style.display = "table";
     showTable();
 });
 document.getElementById("themeselect").addEventListener("change", function() {
@@ -338,24 +348,6 @@ document.getElementById("themeselect").addEventListener("change", function() {
     document.getElementById("toolselect").selectedIndex = 0; // Reset tool selection
     document.querySelector(".themeTable").style.display = "none"; // Hide table
 });
-document.getElementById("masterDateBefore").addEventListener("input", function() {
-    const value = this.value;
-    setTimeout(() => {
-      if(masterDateBefore.value !== value) {
-        this.value = value;
-      }
-    }, 1000);  
-    document.querySelectorAll(".studentDateBefore").forEach(input => {
-        input.value = value;
-    });
-});
-document.getElementById("masterDateAfter").addEventListener("change", function() {
-    const value = this.value;
-    document.querySelectorAll(".studentDateAfter").forEach(input => {
-        input.value = value;
-    });
-});
-
 
     </script>
 </body>

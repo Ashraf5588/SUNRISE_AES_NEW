@@ -159,7 +159,7 @@ exports.themeform = async (req, res) => {
     const {subject, studentClass, section,roll,themeName} = req.query;
     const studentData =await  studentRecord.find({studentClass:studentClass, section: section});
     const themeForstudentData =  await getStudentThemeData(studentClass);
-    console.log(roll,section,studentClass,subject)
+    
 const existingThemeData = await themeForstudentData.find(
   {
     studentClass,
@@ -169,7 +169,7 @@ const existingThemeData = await themeForstudentData.find(
   },
   { name: 1, studentClass: 1, section: 1, roll: 1, "subjects.$": 1 }
 );
-    console.log("data to display",existingThemeData)
+   
 
 
 
@@ -183,14 +183,14 @@ const existingThemeData = await themeForstudentData.find(
       studentClass: studentClass, 
       subject: subject
     });
-    console.log("Theme data fetched successfully:", themeData);
+ 
 
    
       const toolDoc = await ToolsModel.findOne({
       subject: subject,
       forClass: studentClass
     }).lean();
-    console.log("Tool document fetched:", toolDoc);
+   
 
   
 const existingData = await themeForstudentData.find({
@@ -199,7 +199,9 @@ const existingData = await themeForstudentData.find({
   subject,
 
 }).lean();
-const existingMap = {};
+
+if(subject.toLowerCase() === "maths" || subject.toLowerCase() === "mathematics") {
+  const existingMap = {};
 
 existingData.forEach(item => {
     const key =
@@ -208,19 +210,63 @@ existingData.forEach(item => {
     existingMap[key] = item;
 });
 
-
-  
       res.render("theme/themeMath", { themeData, subject, studentClass, section, studentData, existingThemeData,
       existingMap,
         toolDoc,...await getSidenavData(req),editing: true });
-    
-  
+      }
+if(subject.toLowerCase() === "english") {
+
+  const existingMap = {};
+
+existingData.forEach(item => {
+    const key =
+        `${item.reg}|${item.themeName}|${item.learningOutcomeName}|${item.aspectName}|${item.toolName}`;
+
+    existingMap[key] = item;
+});
+
+  res.render("theme/themeEnglish", { themeData, subject, studentClass, section, studentData, existingThemeData,
+  existingMap,
+    toolDoc,...await getSidenavData(req),editing: true });
+  }
+
+if(subject.toLowerCase() === "nepali") {
+
+  const existingMap = {};
+
+existingData.forEach(item => {
+    const key =
+        `${item.reg}|${item.themeName}|${item.learningOutcomeName}|${item.aspectName}|${item.toolName}`;
+
+    existingMap[key] = item;
+});
+const aspectcontainerData = await AspectContainer.findOne({ subject: subject, studentClass: studentClass }).lean();
+  res.render("theme/themeNepali", { themeData, subject, studentClass, section, studentData, existingThemeData,
+  existingMap,aspectcontainerData,
+    toolDoc,...await getSidenavData(req),editing: true });
+  }
+
+  if(subject.toLowerCase() === "hamro serofero" || subject.toLowerCase() === "hamro serophero") {
+  const existingMap = {};
+
+existingData.forEach(item => {
+    const key =
+        `${item.reg}|${item.themeName}|${item.learningOutcomeName}|${item.toolName}`;
+
+    existingMap[key] = item;
+});
+
+      res.render("theme/themeHamroSerofero", { themeData, subject, studentClass, section, studentData, existingThemeData,
+      existingMap,
+        toolDoc,...await getSidenavData(req),editing: true });
+      }
 
   } catch (err) {
     console.error("Error in theme controller:", err);
     res.status(500).send("Internal Server Error");
   }
 };
+
 
 // exports.themeformSave = async (req, res) => {
 //   try {
@@ -883,9 +929,9 @@ exports.themefillupform = async (req, res) => {
     }).lean();
 
     const existingPracticalData = await practicalFormat.find({studentClass: classParam, subject: subject}).lean();
-    console.log("Existing practical data fetched successfully:", existingPracticalData);
+    
    const subjectData = await newsubject.find({newsubject:subject,forClass:classParam}).lean();
-    console.log("Practical format data fetched successfully:", subjectData);
+   
     const sidenavData = await getSidenavData(req);
     // If studentClass is provided, render the form for that class
     if (classParam) {
@@ -1216,60 +1262,312 @@ exports.themeformMarks = async (req, res) => {
 
   }
 }  
-exports.thememarksheetOfStudent = async (req, res) => {
-  try {
-    const { subject, studentClass, section } = req.query;
-    
-    // Build query based on provided filters
-    let query = {};
-    if (studentClass) query.studentClass = studentClass;
-    if (section) query.section = section;
-    
-    const ThemeModel = await getStudentThemeData(studentClass);
-    const themewisemarks = await ThemeModel.find(query).lean();
 
-    console.log("Theme data fetched successfully for marks:", themewisemarks.length, "records");
-   const themeModel = await getThemeFormat(studentClass);
-    const themeData = await themeModel.find({
-      studentClass: studentClass,
-      subject: subject
-    }).lean();
-const marksMap = {};
+exports.thememarksheetOfStudent  = async (req,res)=>{
+try{
 
-      console.log("Total DB Records:", themewisemarks.length);
+    const {
+        studentClass,
+        section
+    } = req.query;
 
-themewisemarks.forEach(record => {
-    const key =
-        `${record.reg}|${record.themeName}|${record.learningOutcomeName}`;
+    // -------------------------------
+    // Dynamic student marks model
+    // -------------------------------
 
-    marksMap[key] = record;
+    const MarksModel =
+        await getStudentThemeData(studentClass);
 
-    console.log("MAP KEY =", key);
-});
+    // -------------------------------
+    // Theme definition model
+    // -------------------------------
 
-    // Get sidenav data
-    const sidenavData = await getSidenavData(req);
+    const ThemeModel = await getThemeFormat(studentClass);
 
-    return res.render("theme/thememarksheet", {
-      ...sidenavData,
-      editing: false, 
-      subject: subject || '', 
-      studentClass: studentClass || '', 
-      section: section || '', 
-      selectedClass: studentClass || '',
-      selectedSection: section || '',
-      selectedSubject: subject || '',
-      themeData,
-      themewisemarks,
-      marksMap
+    // -------------------------------
+    // Students
+    // -------------------------------
+
+    const students =
+        await studentRecord.find({
+            studentClass,
+            section
+        }).lean();
+
+    // -------------------------------
+    // Theme definitions
+    // -------------------------------
+
+    const themeData =
+        await ThemeModel.find({
+            studentClass
+        }).lean();
+
+    // -------------------------------
+    // Subjects of class
+    // -------------------------------
+
+    const subjects =
+        await newsubject.find({
+            forClass:studentClass
+        }).lean();
+
+    // -------------------------------
+    // All assessment records
+    // -------------------------------
+
+    const marks =
+        await MarksModel.find({
+            studentClass,
+            section
+        }).lean();
+
+    // ======================================
+    // SUBJECT INFO MAP
+    // ======================================
+
+    const subjectInfo = {};
+
+    themeData.forEach(subjectDoc=>{
+
+        let totalLO = 0;
+
+        subjectDoc.themes.forEach(theme=>{
+
+            totalLO +=
+                theme.learningOutcome.length;
+
+        });
+
+        subjectInfo[subjectDoc.subject]={
+            credit:
+                Number(subjectDoc.credit || 0),
+
+            totalLO,
+
+            maxMarks:
+                totalLO * 4
+        };
+
     });
-  } catch (error) {
-    console.error('Error fetching theme for marks:', error);
-    res.render('theme/success', {
-      error: error.message
+
+    console.log(subjectInfo);
+
+    // ======================================
+    // MARKS MAP
+    // ======================================
+
+    const marksMap = {};
+
+    marks.forEach(record=>{
+
+        const key =
+            `${record.reg}|${record.subject}`;
+
+        if(!marksMap[key]){
+            marksMap[key]=0;
+        }
+
+        marksMap[key]+=
+            Number(
+                record.obtainedMarksAfter || 0
+            );
     });
-  }
+
+    // ======================================
+    // GRADE FUNCTION
+    // ======================================
+
+    function getGrade(percentage){
+
+        if(percentage>=90)
+            return {
+                grade:"A+",
+                gp:4.0
+            };
+
+        if(percentage>=80)
+            return {
+                grade:"A",
+                gp:3.6
+            };
+
+        if(percentage>=70)
+            return {
+                grade:"B+",
+                gp:3.2
+            };
+
+        if(percentage>=60)
+            return {
+                grade:"B",
+                gp:2.8
+            };
+
+        if(percentage>=50)
+            return {
+                grade:"C+",
+                gp:2.4
+            };
+
+        if(percentage>=40)
+            return {
+                grade:"C",
+                gp:2.0
+            };
+
+        if(percentage>=35)
+            return {
+                grade:"D",
+                gp:1.6
+            };
+
+        return {
+            grade:"NG",
+            gp:0
+        };
+    }
+
+    // ======================================
+    // BUILD MARKSHEET
+    // ======================================
+
+    const marksheetDataTheme = [];
+
+    students.forEach(student=>{
+
+        const subjectResults=[];
+
+        let totalCredit=0;
+        let totalWeightedGP=0;
+
+        subjects.forEach(sub=>{
+
+            const subjectName =
+                sub.newsubject || sub.subject;
+
+            const obtained =
+                marksMap[
+                    `${student.reg}|${subjectName}`
+                ] || 0;
+
+            const totalLO =
+                subjectInfo[subjectName]?.totalLO || 0;
+
+            const maxMarks =
+                totalLO * 4;
+
+            const percentage =
+                maxMarks>0
+                ? (obtained/maxMarks)*100
+                : 0;
+
+            const gradeData =
+                getGrade(percentage);
+
+            const credit =
+                Number(
+                    subjectInfo[subjectName]?.credit || 0
+                );
+
+            const weightedGP =
+                credit *
+                gradeData.gp;
+
+            totalCredit += credit;
+            totalWeightedGP += weightedGP;
+
+            subjectResults.push({
+
+                subject:
+                    subjectName,
+
+                credit,
+
+                obtained,
+
+                totalLO,
+
+                maxMarks,
+
+                percentage:
+                    Number(
+                        percentage.toFixed(2)
+                    ),
+
+                grade:
+                    gradeData.grade,
+
+                gp:
+                    gradeData.gp,
+
+                weightedGP:
+                    Number(
+                        weightedGP.toFixed(2)
+                    )
+            });
+
+        });
+
+        const gpa =
+            totalCredit>0
+            ? (
+                totalWeightedGP /
+                totalCredit
+              ).toFixed(2)
+            : 0;
+
+        marksheetDataTheme.push({
+
+            reg:
+                student.reg,
+
+            name:
+                student.name,
+
+            roll:
+                student.roll,
+
+            section:
+                student.section,
+
+            studentClass:
+                student.studentClass,
+
+            subjectResults,
+
+            totalCredit,
+
+            totalWeightedGP:
+                Number(
+                    totalWeightedGP.toFixed(2)
+                ),
+
+            gpa
+        });
+
+    });
+
+    
+
+    res.render(
+        "theme/thememarksheet",
+        {
+            marksheetData: marksheetDataTheme
+        }
+    );
+
 }
+catch(err){
+
+    console.log(err);
+
+    res.status(500).send(
+        "Error generating marksheet"
+    );
+
+}
+};
 exports.themewisemarks = async (req, res) => {
   try {
     const { studentClass, section, subject,terminal } = req.query;
@@ -1822,7 +2120,6 @@ exports.addtoolsForm = async (req,res,next) =>
   const {subject,studentClass} = req.query;
   const oldtoolsData = await ToolsModel.find({subject:subject}).lean();
   
-  console.log("oldtoolsData:", oldtoolsData);
   console.log("Subject:", subject, "Student Class:", studentClass);
   const sidenavData = await getSidenavData(req);
   

@@ -138,33 +138,52 @@ exports.themeformSavenew = async (req, res) =>{
 try{
 const {studentClass,section,subject,terminal}= req.query;
 const model = await getStudentThemeData(studentClass);
-console.log(model.modelName);
-console.log(Object.keys(model.schema.paths));
+
 const data = req.body;
-console.log("Received themeformSavenew request with body:",data)
-const records = data.reg.map((reg, index) => ({ 
-  reg,
-   name: data.name[index],
-    roll: data.roll[index], 
-    studentClass: data.studentClass, 
-    section: data.section, 
+const isHamroSerofero =
+    data.subject.toLowerCase() === "hamro serofero" || data.subject.toLowerCase() === "hamro serophero";
+
+const records = data.reg.map((reg, index) => ({
+    reg,
+    name: data.name[index],
+    roll: data.roll[index],
+    studentClass: data.studentClass,
+    section: data.section,
     subject: data.subject,
-     themeName: data.themeName, 
-     
-     learningOutcomeName: data.learningOutcomeName, 
-     aspectName: data.aspectName || "",
-     toolName: data.toolName, obtainedMarksBefore: Number( data.students[reg]?.obtainedMarksBefore || 0 ), obtainedMarksAfter: Number( data.students[reg]?.obtainedMarksAfter || 0 ), 
-     evalDateBefore: data.evalDateBefore[index] || "select date",
-      evalDateAfter: data.evalDateAfter[index] || "select date",
-     
-    }));
+    themeName: data.themeName,
+    learningOutcomeName: data.learningOutcomeName,
+    aspectName: data.aspectName || "",
+    toolName: data.toolName,
+
+    obtainedMarksBefore: isHamroSerofero
+        ? Number(data.students[reg]?.obtainedMarksBefore || 0)
+        : Number(data.students[reg]?.obtainedMarksBefore || 0),
+
+    obtainedMarksAfter: isHamroSerofero
+        ? Number(data.students[reg]?.obtainedMarksAfter || 0)
+        : Number(data.students[reg]?.obtainedMarksAfter || 0),
+
+    indicatorBefore: isHamroSerofero
+        ? JSON.parse(data.students[reg]?.indicatorBefore || "[]")
+        : [],
+
+    indicatorAfter: isHamroSerofero
+        ? JSON.parse(data.students[reg]?.indicatorAfter || "[]")
+        : [],
+
+    evalDateBefore:
+        data.evalDateBefore[index] || "select date",
+
+    evalDateAfter:
+        data.evalDateAfter[index] || "select date"
+}));
 
 const operations = records.map(record => ({
     updateOne: {
         filter: {
             reg: record.reg,
-            name: record.name,
             roll: record.roll,
+            name: record.name,
             studentClass: record.studentClass,
             section: record.section,
             subject: record.subject,
@@ -180,6 +199,8 @@ const operations = records.map(record => ({
                 obtainedMarksAfter: record.obtainedMarksAfter,
                 evalDateBefore: record.evalDateBefore,
                 evalDateAfter: record.evalDateAfter,
+                indicatorBefore: record.indicatorBefore,
+                indicatorAfter: record.indicatorAfter,
              
                 updatedAt: new Date()
             }

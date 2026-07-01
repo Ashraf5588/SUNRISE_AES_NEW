@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Math</title>
+  <title>Hamro Serofero</title>
   <link rel="stylesheet" href="/form.css">
   <link rel="stylesheet" href="/mobile-form-enhancements.css">
  <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
@@ -71,7 +71,21 @@
       <input type="hidden" value="<%= record.name%>" name="name">
       <input type="hidden" value="<%= record.roll%>" name="roll">
      
+<input type="hidden"
+       name="students[<%= record.reg %>][obtainedMarksBefore]"
+       id="totalBefore_<%= record.reg %>">
 
+<input type="hidden"
+       name="students[<%= record.reg %>][obtainedMarksAfter]"
+       id="totalAfter_<%= record.reg %>">
+
+<input type="hidden"
+       name="students[<%= record.reg %>][indicatorBefore]"
+       id="indicatorBefore_<%= record.reg %>">
+
+<input type="hidden"
+       name="students[<%= record.reg %>][indicatorAfter]"
+       id="indicatorAfter_<%= record.reg %>">
        
 
        <td><input type="text" id="nepali-datepicker-<%= idx %>" placeholder="Select Nepali Date"  class="studentDateBefore nepaliDateBefore nepali-datepicker" name="evalDateBefore" /></td>
@@ -225,17 +239,22 @@ function showTable() {
                 beforeLabel.htmlFor = `before_${i}_${index}`;
 
                 const radioBefore = document.createElement("input");
-                radioBefore.type = "radio";
-                radioBefore.name = `students[${student.reg}][obtainedMarksBefore]`;
+                radioBefore.type = "checkbox";
+             
                 radioBefore.value = indicator.maxMarks;
+                radioBefore.dataset.indicatorname = indicator.indicatorName;
                 radioBefore.id = `before_${i}_${index}`;
+                radioBefore.className = `beforeCheck before_${student.reg}`;
+                radioBefore.addEventListener("change", () => {
+    calculateBefore(student.reg);
+});
 
                 if (
                     existingRecord &&
-                    Number(existingRecord.obtainedMarksBefore) ===
-                    Number(indicator.maxMarks)
+                    existingRecord.indicatorBefore.includes(indicator.indicatorName)
                 ) {
                     radioBefore.checked = true;
+                    calculateBefore(student.reg); // Recalculate after marks if the before checkbox is checked
                 }
 
                 const beforeValue = document.createElement("span");
@@ -252,17 +271,23 @@ function showTable() {
                 afterLabel.htmlFor = `after_${i}_${index}`;
 
                 const radioAfter = document.createElement("input");
-                radioAfter.type = "radio";
-                radioAfter.name = `students[${student.reg}][obtainedMarksAfter]`;
+                radioAfter.type = "checkbox";
+               
                 radioAfter.value = indicator.maxMarks;
+                radioAfter.dataset.indicatorname = indicator.indicatorName;
                 radioAfter.id = `after_${i}_${index}`;
+                radioAfter.className = `afterCheck after_${student.reg}`;
+radioAfter.addEventListener("change", () => {
+    calculateAfter(student.reg);
+});
+              
 
                 if (
                     existingRecord &&
-                    Number(existingRecord.obtainedMarksAfter) ===
-                    Number(indicator.maxMarks)
+                   existingRecord.indicatorAfter.includes(indicator.indicatorName)
                 ) {
                     radioAfter.checked = true;
+                    calculateAfter(student.reg); // Recalculate after marks if the after checkbox is checked
                 }
 
                 const afterValue = document.createElement("span");
@@ -295,6 +320,57 @@ function showTable() {
             console.warn('Could not initialize date picker for:', input.id);
         }
     });
+}
+</script>
+<script>
+  function calculateBefore(reg) {
+
+    const checked =
+        document.querySelectorAll(
+            `.before_${reg}:checked`
+        );
+
+    let total = 0;
+    const indicators = [];
+
+    checked.forEach(box => {
+        total += Number(box.value);
+        indicators.push(box.dataset.indicatorname);
+    });
+    console.log("Total Before for", reg, ":", total);
+
+    document.getElementById(
+        `totalBefore_${reg}`
+    ).value = total;
+console.log("Indicators Before for", reg, ":", indicators);
+    document.getElementById(
+        `indicatorBefore_${reg}`
+    ).value = JSON.stringify(indicators);
+}
+
+function calculateAfter(reg) {
+
+    const checked =
+        document.querySelectorAll(
+            `.after_${reg}:checked`
+        );
+
+    let total = 0;
+    const indicators = [];
+
+    checked.forEach(box => {
+        total += Number(box.value);
+        indicators.push(box.dataset.indicatorname);
+    });
+    console.log("Total After for", reg, ":", total);
+
+    document.getElementById(
+        `totalAfter_${reg}`
+    ).value = total;
+console.log("Indicators After for", reg, ":", indicators);
+    document.getElementById(
+        `indicatorAfter_${reg}`
+    ).value = JSON.stringify(indicators);
 }
 </script>
 

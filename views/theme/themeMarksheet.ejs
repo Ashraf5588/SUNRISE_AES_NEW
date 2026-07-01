@@ -1,32 +1,228 @@
 <!DOCTYPE html>
-<html lang="en">
+
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+    <title>Student Marksheet</title>
+
+```
+<style>
+
+    body{
+        font-family: Arial, sans-serif;
+        margin:20px;
+    }
+
+    .marksheet{
+        page-break-after: always;
+        margin-bottom:50px;
+    }
+
+    table{
+        width:100%;
+        border-collapse:collapse;
+        margin-top:15px;
+    }
+
+    th,td{
+        border:1px solid black;
+        padding:6px;
+        text-align:center;
+        font-size:12px;
+    }
+
+    .headerTable{
+        margin-top:10px;
+        margin-bottom:20px;
+    }
+
+    .headerTable td{
+        border:none;
+        text-align:left;
+        font-size:14px;
+        padding:3px;
+    }
+
+    .summaryTable{
+        width:40%;
+        margin-left:auto;
+        margin-top:20px;
+    }
+
+    .schoolTitle{
+        text-align:center;
+        font-size:22px;
+        font-weight:bold;
+    }
+
+    .reportTitle{
+        text-align:center;
+        font-size:18px;
+        margin-top:10px;
+        margin-bottom:20px;
+        font-weight:bold;
+    }
+
+</style>
+```
+
 </head>
+
 <body>
-  <table> 
+
+<% marksheetData.forEach(student => { %>
+
+<div class="marksheet">
+
+```
+<div class="schoolTitle">
+    STUDENT MARKSHEET
+</div>
+
+<div class="reportTitle">
+    Theme Based Continuous Assessment Report
+</div>
+
+<table class="headerTable">
+
     <tr>
-      <th>S.N.</th>
-      <th>SUBJECTS</th>
-      <th>CREDIT HOUR(CH)</th>
-      <th>GRADE POINT</th>
-      <th>GRADE</th>
-      <th>WEIGHTED GRADE POINT</th>
-      <TH>REMARKS</TH>
+        <td>
+            <strong>Name:</strong>
+            <%= student.name %>
+        </td>
+
+        <td>
+            <strong>Roll:</strong>
+            <%= student.roll %>
+        </td>
+
+        <td>
+            <strong>Registration No:</strong>
+            <%= student.reg %>
+        </td>
     </tr>
+
     <tr>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      <td></td>
-      
+        <td>
+            <strong>Class:</strong>
+            <%= student.studentClass %>
+        </td>
+
+        <td>
+            <strong>Section:</strong>
+            <%= student.section %>
+        </td>
+
+        <td></td>
     </tr>
-  </table>
-  
+
+</table>
+
+
+<table>
+
+    <thead>
+
+        <tr>
+            <th>S.N.</th>
+            <th>Subject</th>
+            <th>Credit Hour</th>
+            <th>Total Learning Outcomes</th>
+            <th>Maximum Marks</th>
+            <th>Obtained Marks</th>
+            <th>Achievement %</th>
+            <th>Grade</th>
+            <th>Grade Point</th>
+            <th>Weighted GP</th>
+        </tr>
+
+    </thead>
+
+    <tbody>
+
+    <% student.subjectResults.forEach((subject,index)=>{ %>
+
+        <tr>
+
+            <td>
+                <%= index+1 %>
+            </td>
+
+            <td>
+                <%= subject.subject %>
+            </td>
+
+            <td>
+                <%= subject.credit %>
+            </td>
+
+            <td>
+                <%= subject.totalLO %>
+            </td>
+
+            <td>
+                <%= subject.maxMarks %>
+            </td>
+
+            <td>
+                <%= subject.obtained %>
+            </td>
+
+            <td>
+                <%= subject.percentage %> %
+            </td>
+
+            <td>
+                <%= subject.grade %>
+            </td>
+
+            <td>
+                <%= subject.gp %>
+            </td>
+
+            <td>
+                <%= subject.weightedGP %>
+            </td>
+
+        </tr>
+
+    <% }) %>
+
+    </tbody>
+
+</table>
+
+
+<table class="summaryTable">
+
+    <tr>
+        <th>Total Credit Hour</th>
+        <td>
+            <%= student.totalCredit %>
+        </td>
+    </tr>
+
+    <tr>
+        <th>Total Weighted GP</th>
+        <td>
+            <%= student.totalWeightedGP %>
+        </td>
+    </tr>
+
+    <tr>
+        <th>Final GPA</th>
+        <td>
+            <strong>
+                <%= student.gpa %>
+            </strong>
+        </td>
+    </tr>
+
+</table>
+```
+
+</div>
+
+<% }) %>
+
 </body>
 </html>
