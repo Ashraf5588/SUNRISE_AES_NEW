@@ -22,42 +22,152 @@
     
     /* Student navigation bar */
     .student-nav-bar {
-      display: flex;
-      align-items: center;
+      display: block;
       padding: 10px 16px;
       background: linear-gradient(135deg, #f8f9fa, #e9ecef);
       border-radius: 8px;
       margin: 0 20px 16px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.08);
-      overflow-x: auto;
+      overflow: hidden;
     }
     
     .student-nav-title {
       font-weight: bold;
-      margin-right: 16px;
-      white-space: nowrap;
+      margin-bottom: 10px;
+      display: block;
       color: #2c3e50;
     }
     
     .student-nav-buttons {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
-      overflow-x: auto;
-      padding-bottom: 4px;
-      flex: 1;
+      max-height: calc(3 * 52px + 16px);
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    
+    .student-nav-buttons::-webkit-scrollbar {
+      width: 8px;
+    }
+    .student-nav-buttons::-webkit-scrollbar-thumb {
+      background: rgba(52, 152, 219, 0.35);
+      border-radius: 999px;
     }
     
     .student-nav-button {
-      padding: 8px 16px;
+      padding: 10px 12px;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       background: #fff;
       color: #2c3e50;
       font-size: 14px;
       cursor: pointer;
-      white-space: nowrap;
+      white-space: normal;
+      text-align: center;
       transition: all 0.2s;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      min-height: 48px;
+    }
+    
+    .student-nav-button:hover {
+      background: #f1f1f1;
+    }
+    
+    .student-nav-button.active {
+      background: #3498db;
+      color: white;
+      font-weight: bold;
+    }
+
+    #quickIndicators {
+      overflow-x: auto;
+      width: 100%;
+    }
+
+    .evaluation-table {
+      width: 100%;
+      min-width: 700px;
+      border-collapse: collapse;
+      overflow: auto;
+      display: table;
+    }
+
+    .evaluation-table th,
+    .evaluation-table td {
+      padding: 10px 12px;
+      border: 1px solid #e6eefb;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .ndp-container,
+    .ndp-main,
+    .ndp-calendar,
+    .ndp-widget {
+      z-index: 99999 !important;
+    }
+
+    .ndp-container *,
+    .ndp-main *,
+    .ndp-calendar *,
+    .ndp-widget * {
+      z-index: inherit !important;
+    }
+
+    .nepali-datepicker {
+      position: relative;
+      z-index: 10;
+    }
+
+    .evaluation-table th {
+      background: #f6f8fc;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 900px) {
+      .student-nav-buttons {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .student-nav-bar {
+        margin: 0 10px 16px;
+      }
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+      .evaluation-table {
+        min-width: 100%;
+      }
+      .evaluation-table th,
+      .evaluation-table td {
+        font-size: 13px;
+        padding: 8px 10px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .student-nav-buttons {
+        grid-template-columns: 1fr;
+      }
+      .student-nav-button {
+        min-height: auto;
+        padding: 12px 10px;
+      }
+      .form-card {
+        padding: 1rem;
+      }
+      .container {
+        padding: 0 0.75rem;
+      }
+      .student-nav-bar {
+        margin: 0 0 16px;
+      }
     }
     
     .student-nav-button:hover {
@@ -765,8 +875,6 @@
     margin-bottom: 0.5rem;
   }
   .student-nav-bar {
-    flex-direction: column;
-    align-items: flex-start;
     margin: 0 4px 10px;
     padding: 8px 6px;
   }
@@ -776,14 +884,26 @@
     font-size: 1rem;
   }
   .student-nav-buttons {
-    flex-wrap: wrap;
-    gap: 4px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    max-height: calc(3 * 56px + 16px);
+    overflow-y: auto;
     width: 100%;
+  }
+  .student-nav-buttons::-webkit-scrollbar {
+    width: 8px;
+  }
+  .student-nav-buttons::-webkit-scrollbar-thumb {
+    background: rgba(52, 152, 219, 0.35);
+    border-radius: 999px;
   }
   .student-nav-button {
     font-size: 13px;
-    padding: 6px 10px;
-    margin-bottom: 2px;
+    padding: 8px 10px;
+    min-height: 50px;
+    text-align: center;
+    white-space: normal;
   }
   .learning-outcome-section {
     padding: 0.75rem;
@@ -796,8 +916,8 @@
     font-size: 0.85rem;
   }
   .evaluation-table {
-    font-size: 0.85rem;
-    min-width: 600px;
+    width: 100%;
+    min-width: 720px;
   }
   .totals-section {
     padding: 0.75rem;
@@ -831,7 +951,19 @@
   }
   .evaluation-table {
     overflow-x: auto;
-    display: block;
+    display: table;
+  }
+}
+@media (max-width: 600px) {
+  .student-nav-buttons {
+    grid-template-columns: 1fr;
+  }
+  .student-nav-button {
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+  .evaluation-table {
+    min-width: 100%;
   }
 }
 @media (max-width: 480px) {
@@ -1193,6 +1325,7 @@
       updateUrlWithStudentRoll(studentIndex);
     };
   </script>
+  
 </head>
 <body>
 <nav class="nav-header">
@@ -1276,6 +1409,11 @@
               // If a theme is currently selected, populate only that theme's data
               if(currentlySelectedTheme) {
                 populateThemeData(currentlySelectedTheme, subject.themes);
+                try {
+                  populateQuickSelects(currentlySelectedTheme, subject.themes);
+                } catch (e) {
+                  console.warn('populateQuickSelects after autofill failed', e);
+                }
               }
               // If no theme selected yet, don't auto-select any theme
               // Let the user choose which theme they want to work with
@@ -1862,13 +2000,91 @@
   })();
 </script>
   <script>
-    // Initialize Nepali datepickers
+    function initializeNepaliDatepicker(input) {
+      if (!input || input.dataset.nepaliPickerInitialized) return;
+      input.setAttribute('autocomplete', 'off');
+      const options = {
+        onSelect: function() {
+          try {
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          } catch (e) {}
+        }
+      };
+      const initPicker = () => {
+        try {
+          if (typeof input.nepaliDatePicker === 'function') {
+            input.nepaliDatePicker(options);
+          } else if (typeof input.NepaliDatePicker === 'function') {
+            input.NepaliDatePicker(options);
+          } else {
+            return false;
+          }
+          input.dataset.nepaliPickerInitialized = '1';
+          return true;
+        } catch (e) {
+          console.warn('Nepali datepicker initialization failed:', e);
+          return false;
+        }
+      };
+
+      const setActive = () => { window._lastActiveNepaliDateInput = input; };
+      input.addEventListener('focus', setActive);
+      input.addEventListener('click', setActive);
+      input.addEventListener('blur', function() {
+        setTimeout(() => {
+          if (document.activeElement !== input) {
+            if (window._lastActiveNepaliDateInput === input) {
+              window._lastActiveNepaliDateInput = null;
+            }
+          }
+        }, 0);
+      });
+
+      if (!initPicker()) {
+        const onReady = function() {
+          if (initPicker()) {
+            input.removeEventListener('focus', onReady);
+            input.removeEventListener('click', onReady);
+          }
+        };
+        input.addEventListener('focus', onReady);
+        input.addEventListener('click', onReady);
+      }
+
+      if (!input._nepaliClickHandler) {
+        input._nepaliClickHandler = function() {
+          if (input.dataset.nepaliPickerInitialized) {
+            try { input.focus(); } catch (e) {}
+          }
+        };
+        input.addEventListener('click', input._nepaliClickHandler);
+      }
+    }
+
+    // Initialize Nepali datepickers on page load
     window.addEventListener('load', function() {
       var dateInputs = document.querySelectorAll('.nepali-datepicker');
       dateInputs.forEach(function(input) {
-        if (input.nepaliDatePicker) {
-          input.nepaliDatePicker();
-        }
+        initializeNepaliDatepicker(input);
+      });
+      try { attachAutoSaveToDatePickers(); } catch (e) { console.warn('attachAutoSaveToDatePickers failed on load', e); }
+
+      document.body.addEventListener('mousedown', function(e) {
+        try {
+          if (!window._lastActiveNepaliDateInput) return;
+          const target = e.target;
+          if (!target || typeof target.closest !== 'function') return;
+          const indicatorArea = target.closest('#quickIndicators');
+          if (!indicatorArea) return;
+          if (!target.matches('input[type="radio"], input[type="checkbox"], label')) return;
+          const active = window._lastActiveNepaliDateInput;
+          setTimeout(() => {
+            if (active) {
+              try { active.focus(); } catch (err) {}
+              try { active.dispatchEvent(new Event('click', { bubbles: true })); } catch (err) {}
+            }
+          }, 0);
+        } catch (err) {}
       });
     });
 
@@ -1876,13 +2092,11 @@
     var observer = new MutationObserver(function(mutations) {
       mutations.forEach(function(mutation) {
         if (mutation.addedNodes.length) {
-          var newDateInputs = document.querySelectorAll('.nepali-datepicker:not([data-initialized])');
+          var newDateInputs = document.querySelectorAll('.nepali-datepicker:not([data-nepali-picker-initialized])');
           newDateInputs.forEach(function(input) {
-            if (input.nepaliDatePicker) {
-              input.nepaliDatePicker();
-              input.setAttribute('data-initialized', 'true');
-            }
+            initializeNepaliDatepicker(input);
           });
+          try { attachAutoSaveToDatePickers(document); } catch (e) { console.warn('attachAutoSaveToDatePickers failed', e); }
         }
       });
     });
@@ -1996,7 +2210,7 @@
               window.globalToolsList.forEach((tool, tIdx) => {
                 const opt = document.createElement('option');
                 opt.value = tIdx;
-                opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${tIdx+1}`);
+                opt.textContent = getToolLabel(tool, tIdx);
                 toolSelect.appendChild(opt);
               });
             }
@@ -2013,7 +2227,7 @@
               window.globalToolsList.forEach((tool, tIdx) => {
                 const opt = document.createElement('option');
                 opt.value = tIdx;
-                opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${tIdx+1}`);
+                opt.textContent = getToolLabel(tool, tIdx);
                 toolSelect.appendChild(opt);
               });
             }
@@ -2043,6 +2257,67 @@
       })();
     }
 
+    function getToolLabel(tool, idx) {
+      const normalizeText = (value) => {
+        if (value === null || value === undefined) return '';
+        if (typeof value === 'string') return value.trim();
+        if (typeof value === 'number' || typeof value === 'boolean') return String(value).trim();
+        return '';
+      };
+
+      const extractText = (value, seen = new Set()) => {
+        const text = normalizeText(value);
+        if (text) return text;
+        if (!value || typeof value !== 'object' || seen.has(value)) return '';
+        seen.add(value);
+
+        const keys = ['toolName', 'name', 'label', 'value', 'title', 'text', 'description'];
+        for (const key of keys) {
+          const candidate = normalizeText(value[key]);
+          if (candidate) return candidate;
+        }
+
+        if (Array.isArray(value)) {
+          for (const item of value) {
+            const candidate = extractText(item, seen);
+            if (candidate) return candidate;
+          }
+        } else {
+          for (const candidateValue of Object.values(value)) {
+            const candidate = extractText(candidateValue, seen);
+            if (candidate) return candidate;
+          }
+        }
+
+        return '';
+      };
+
+      const label = typeof tool === 'string' ? tool.trim() : extractText(tool);
+      return label || `Tool ${idx + 1}`;
+    }
+
+    function attachAutoSaveToDatePickers(container = document) {
+      const root = container || document;
+      const dateInputs = root.querySelectorAll('.nepali-datepicker:not([data-autosave-attached])');
+      dateInputs.forEach(dateInput => {
+        dateInput.dataset.autosaveAttached = '1';
+        ['change', 'input', 'blur', 'click', 'datepicker-change', 'nepali-datepicker-change'].forEach(eventName => {
+          dateInput.addEventListener(eventName, scheduleAutoSave);
+        });
+        if (!dateInput._autosaveObserver) {
+          const observer = new MutationObserver(mutations => {
+            mutations.forEach(mutation => {
+              if (mutation.type === 'attributes' && mutation.attributeName === 'value') {
+                scheduleAutoSave();
+              }
+            });
+          });
+          observer.observe(dateInput, { attributes: true, attributeFilter: ['value'] });
+          dateInput._autosaveObserver = observer;
+        }
+      });
+    }
+
     // Persist and restore the last quick selection per subject/class/section+theme
     function getQuickSelectionKey(themeName){
       const subj = (document.getElementById('subjectHidden') && document.getElementById('subjectHidden').value) || (document.getElementById('subject') && document.getElementById('subject').value) || '';
@@ -2051,17 +2326,43 @@
       return `themeform_lastSelection_${subj}_${cls}_${sec}_${themeName}`;
     }
 
+    function normalizeQuickSelectText(text) {
+      const cleaned = (text || '').toString().trim();
+      if (!cleaned) return '';
+      if (/^select\s+(tool|learning\s*outcome|theme)$/i.test(cleaned)) return '';
+      return cleaned;
+    }
+
     function saveQuickSelection(){
       try{
         const themeName = document.getElementById('themeName').value || '';
         if(!themeName) return;
-        const key = getQuickSelectionKey(themeName);
-        const payload = {
-          lo: document.getElementById('quickLO').value || '',
-          asp: document.getElementById('quickAspect').value || '',
-          tool: document.getElementById('quickTool').value || '',
+        const loSelect = document.getElementById('quickLO');
+        const aspSelect = document.getElementById('quickAspect');
+        const toolSelect = document.getElementById('quickTool');
+        const currentIds = getCurrentSelectedIndicatorIds();
+        const rawToolText = toolSelect && toolSelect.options[toolSelect.selectedIndex] ? toolSelect.options[toolSelect.selectedIndex].text : '';
+  const normalizedToolText = normalizeQuickSelectText(rawToolText);
+  const hasValidTool = toolSelect && toolSelect.value !== '' && !isPlaceholderSelectionText(rawToolText) && normalizedToolText !== '';
+  const payload = {
+          lo: loSelect ? loSelect.value : '',
+          loText: normalizeQuickSelectText(loSelect && loSelect.options[loSelect.selectedIndex] ? loSelect.options[loSelect.selectedIndex].text : ''),
+          asp: aspSelect ? aspSelect.value : '',
+          aspText: normalizeQuickSelectText(aspSelect && aspSelect.options[aspSelect.selectedIndex] ? aspSelect.options[aspSelect.selectedIndex].text : ''),
+          tool: hasValidTool ? toolSelect.value : '',
+          toolText: hasValidTool ? normalizedToolText : '',
+          selectedIndicatorHidden: getCurrentSelectedIndicatorName(),
+          selectedIndicatorName: getCurrentSelectedIndicatorName(),
+          selectedIndicatorIdsBefore: currentIds.beforeIds.join(','),
+          selectedIndicatorIdsAfter: currentIds.afterIds.join(','),
+          selectedIndicatorMarksBefore: (document.getElementById('selectedIndicatorMarksBeforeHidden') || { value: '' }).value || '',
+          selectedIndicatorMarksAfter: (document.getElementById('selectedIndicatorMarksAfterHidden') || { value: '' }).value || '',
+          selectedIndicatorMaxMarks: (document.getElementById('selectedIndicatorMaxMarksHidden') || { value: '' }).value || '',
+          selectedEvalDateBefore: (document.getElementById('selectedEvalDateBeforeHidden') || { value: '' }).value || '',
+          selectedEvalDateAfter: (document.getElementById('selectedEvalDateAfterHidden') || { value: '' }).value || '',
           ts: Date.now()
         };
+        const key = getQuickSelectionKey(themeName);
         localStorage.setItem(key, JSON.stringify(payload));
       }catch(e){console.warn('saveQuickSelection failed', e);}
     }
@@ -2074,6 +2375,39 @@
       }catch(e){console.warn('loadQuickSelection failed', e); return null;}
     }
 
+    function normalizeOptionText(text) {
+      if (text === null || text === undefined) return '';
+      return text.toString().trim().replace(/\s+/g, ' ').toLowerCase();
+    }
+
+    function findOptionIndexByText(select, text) {
+      if (!select || !text) return -1;
+      const normalizedText = normalizeOptionText(text);
+      for (let i = 0; i < select.options.length; i++) {
+        const opt = select.options[i];
+        if (!opt) continue;
+        if (normalizeOptionText(opt.textContent) === normalizedText) return i;
+      }
+      return -1;
+    }
+
+    function findOptionIndexByValue(select, value) {
+      if (!select || value === undefined || value === null) return -1;
+      const stringValue = value.toString();
+      for (let i = 0; i < select.options.length; i++) {
+        const opt = select.options[i];
+        if (!opt) continue;
+        if (opt.value === stringValue) return i;
+      }
+      return -1;
+    }
+
+    function isValidToolOption(option) {
+      if (!option) return false;
+      const text = (option.textContent || '').toString().trim();
+      return text !== '' && !isPlaceholderSelectionText(text);
+    }
+
     function applyQuickSelection(themeName){
       const sel = loadQuickSelection(themeName);
       if(!sel) return;
@@ -2081,19 +2415,94 @@
       const aspSelect = document.getElementById('quickAspect');
       const toolSelect = document.getElementById('quickTool');
 
-      if (sel.lo !== undefined && loSelect.options[sel.lo]) {
+      if (sel.lo !== undefined && loSelect && loSelect.options[sel.lo]) {
         loSelect.value = sel.lo;
-        try{ onLOChange(); } catch(e){ console.warn('onLOChange failed', e); }
+      } else if (sel.loText && loSelect) {
+        const idx = findOptionIndexByText(loSelect, sel.loText);
+        if (idx !== -1) loSelect.value = loSelect.options[idx].value;
       }
+      try{ if (loSelect && loSelect.value !== '') onLOChange(); } catch(e){ console.warn('onLOChange failed', e); }
 
-      if (sel.asp !== undefined && aspSelect.options[sel.asp]) {
+      if (sel.asp !== undefined && aspSelect && aspSelect.options[sel.asp]) {
         aspSelect.value = sel.asp;
-        try{ onAspectChange(); } catch(e){ console.warn('onAspectChange failed', e); }
+      } else if (sel.aspText && aspSelect) {
+        const idx = findOptionIndexByText(aspSelect, sel.aspText);
+        if (idx !== -1) aspSelect.value = aspSelect.options[idx].value;
       }
+      try{ if (aspSelect && aspSelect.value !== '') onAspectChange(); } catch(e){ console.warn('onAspectChange failed', e); }
 
-      if (sel.tool !== undefined && toolSelect.options[sel.tool]) {
+      if (sel.tool !== undefined && toolSelect && toolSelect.options[sel.tool]) {
         toolSelect.value = sel.tool;
-        try{ onToolChange(); } catch(e){ console.warn('onToolChange failed', e); }
+      } else if (sel.toolText && toolSelect) {
+        const idx = findOptionIndexByText(toolSelect, sel.toolText);
+        if (idx !== -1) toolSelect.value = toolSelect.options[idx].value;
+      }
+      try{ if (toolSelect && toolSelect.value !== '') onToolChange(); } catch(e){ console.warn('onToolChange failed', e); }
+      try { restoreLocalQuickSelectionState(themeName); } catch (e) { console.warn('restoreLocalQuickSelectionState after apply failed', e); }
+    }
+
+    function restoreLocalQuickSelectionState(themeName) {
+      try {
+        const sel = loadQuickSelection(themeName);
+        if (!sel) return;
+
+        const beforeIds = (sel.selectedIndicatorIdsBefore || '').split(',').map(s => s.trim()).filter(Boolean);
+        const afterIds = (sel.selectedIndicatorIdsAfter || '').split(',').map(s => s.trim()).filter(Boolean);
+        const selBefore = sel.selectedIndicatorMarksBefore || '';
+        const selAfter = sel.selectedIndicatorMarksAfter || '';
+        const selMax = sel.selectedIndicatorMaxMarks || '';
+        const selDateBefore = sel.selectedEvalDateBefore || '';
+        const selDateAfter = sel.selectedEvalDateAfter || '';
+        const selName = sel.selectedIndicatorName || '';
+
+        const hiddenValues = {
+          selectedIndicatorHidden: sel.selectedIndicatorHidden || sel.selectedIndicatorName || '',
+          selectedIndicatorIdsBeforeHidden: sel.selectedIndicatorIdsBefore || '',
+          selectedIndicatorIdsAfterHidden: sel.selectedIndicatorIdsAfter || '',
+          selectedIndicatorMarksBeforeHidden: sel.selectedIndicatorMarksBefore || '',
+          selectedIndicatorMarksAfterHidden: sel.selectedIndicatorMarksAfter || '',
+          selectedIndicatorMaxMarksHidden: sel.selectedIndicatorMaxMarks || '',
+          selectedEvalDateBeforeHidden: sel.selectedEvalDateBefore || '',
+          selectedEvalDateAfterHidden: sel.selectedEvalDateAfter || ''
+        };
+        Object.keys(hiddenValues).forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = hiddenValues[id];
+        });
+
+        const dateBeforeInput = document.querySelector('.quick-eval-date-before');
+        const dateAfterInput = document.querySelector('.quick-eval-date-after');
+        if (dateBeforeInput) {
+          dateBeforeInput.value = selDateBefore;
+          dateBeforeInput.dispatchEvent(new Event('input', { bubbles: true }));
+          dateBeforeInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (dateAfterInput) {
+          dateAfterInput.value = selDateAfter;
+          dateAfterInput.dispatchEvent(new Event('input', { bubbles: true }));
+          dateAfterInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        const restoreElementChecked = (elements, ids, nameKey) => {
+          elements.forEach(el => {
+            const id = (el.dataset && el.dataset.indicatorId) ? el.dataset.indicatorId.trim() : '';
+            const label = (el.dataset && el.dataset.indicatorName) ? el.dataset.indicatorName.trim() : '';
+            if (id && ids.includes(id)) {
+              el.checked = true;
+            } else if (!id && selName && label === selName) {
+              el.checked = true;
+            }
+          });
+        };
+
+        restoreElementChecked(document.querySelectorAll('#quickIndicators input[name^="quickMarkBefore_"]'), beforeIds, 'selectedIndicatorIdsBeforeHidden');
+        restoreElementChecked(document.querySelectorAll('#quickIndicators input[name^="quickMarkAfter_"]'), afterIds, 'selectedIndicatorIdsAfterHidden');
+        restoreElementChecked(document.querySelectorAll('#quickIndicators .quick-indicator-checkbox[data-timing="Before"]'), beforeIds, 'selectedIndicatorIdsBeforeHidden');
+        restoreElementChecked(document.querySelectorAll('#quickIndicators .quick-indicator-checkbox[data-timing="After"]'), afterIds, 'selectedIndicatorIdsAfterHidden');
+
+        updateQuickCheckboxes();
+      } catch (e) {
+        console.warn('restoreLocalQuickSelectionState failed', e);
       }
     }
 
@@ -2102,16 +2511,23 @@
         const savedTheme = getSavedTheme(themeName);
         if (!savedTheme) return;
 
+        const subjName = (document.getElementById('subject') && document.getElementById('subject').value || '').trim().toLowerCase();
+        const useCollectionTools = subjName === 'english' || subjName === 'mathematics' || isHamroSeroferoLocal(subjName);
+
         const loArray = Array.isArray(savedTheme.learningOutcomes)
           ? savedTheme.learningOutcomes
           : (Array.isArray(savedTheme.learningOutcome) ? savedTheme.learningOutcome : []);
 
         for (let loIdx = 0; loIdx < loArray.length; loIdx++) {
           const lo = loArray[loIdx];
-          const aspArray = Array.isArray(lo.assessmentAspects) ? lo.assessmentAspects : [];
+          const aspArray = Array.isArray(lo.assessmentAspects)
+            ? lo.assessmentAspects
+            : (Array.isArray(lo.assessmentAspect) ? lo.assessmentAspect : []);
           for (let aspIdx = 0; aspIdx < aspArray.length; aspIdx++) {
             const asp = aspArray[aspIdx];
-            const toolArray = Array.isArray(asp.tools) ? asp.tools : [];
+            const toolArray = Array.isArray(asp.tools)
+              ? asp.tools
+              : (Array.isArray(asp.tool) ? asp.tool : []);
             for (let toolIdx = 0; toolIdx < toolArray.length; toolIdx++) {
               const tool = toolArray[toolIdx];
               const hasSavedSelection = (Array.isArray(tool.selectedIndicatorsBefore) && tool.selectedIndicatorsBefore.length) ||
@@ -2130,26 +2546,74 @@
                 try { onLOChange(); } catch (e) { console.warn('onLOChange failed', e); }
               }
 
-              if (aspSelect && aspSelect.options[aspIdx]) {
-                aspSelect.value = aspIdx;
+              if (!useCollectionTools) {
+                if (aspSelect && aspSelect.options[aspIdx]) {
+                  aspSelect.value = aspIdx;
+                  try { onAspectChange(); } catch (e) { console.warn('onAspectChange failed', e); }
+                }
+              } else {
+                // for subjects without real aspects, ensure quickTool options exist
+                if (toolSelect && Array.isArray(window.globalToolsList) && window.globalToolsList.length && toolSelect.options.length <= 1) {
+                  toolSelect.innerHTML = '<option value="" selected disabled>Select Tool</option>';
+                  window.globalToolsList.forEach((toolItem, tIdx) => {
+                    const opt = document.createElement('option');
+                    opt.value = tIdx;
+                    opt.textContent = getToolLabel(toolItem, tIdx);
+                    toolSelect.appendChild(opt);
+                  });
+                }
+              }
+
+              const savedLOName = normalizeQuickSelectText(lo.name || lo.learningOutcomeName || lo.name || '');
+              const savedAspName = normalizeQuickSelectText(asp.aspectName || asp.name || '');
+              let selectedToolName = normalizeQuickSelectText(tool.toolName || tool.name || '');
+
+              if (loSelect) {
+                const loIndex = findOptionIndexByText(loSelect, savedLOName);
+                if (loIndex !== -1) {
+                  loSelect.value = loSelect.options[loIndex].value;
+                } else if (loSelect.options[loIdx]) {
+                  loSelect.value = loSelect.options[loIdx].value;
+                }
+                try { onLOChange(); } catch (e) { console.warn('onLOChange failed', e); }
+              }
+
+              if (!useCollectionTools && aspSelect) {
+                const aspIndex = findOptionIndexByText(aspSelect, savedAspName);
+                if (aspIndex !== -1) {
+                  aspSelect.value = aspSelect.options[aspIndex].value;
+                } else if (aspSelect.options[aspIdx]) {
+                  aspSelect.value = aspSelect.options[aspIdx].value;
+                }
                 try { onAspectChange(); } catch (e) { console.warn('onAspectChange failed', e); }
               }
 
-              const selectedToolName = (tool.toolName || tool.name || '').toString().trim();
+              let selectionApplied = false;
               if (toolSelect) {
-                const matchingOption = Array.from(toolSelect.options).find(opt => {
-                  if (!opt || !opt.value) return false;
-                  if (selectedToolName && opt.textContent.trim() === selectedToolName) return true;
-                  if (String(opt.value) === String(toolIdx)) return true;
-                  return false;
-                });
+                const toolIndex = findOptionIndexByText(toolSelect, selectedToolName);
+                const toolByValueIndex = findOptionIndexByValue(toolSelect, toolIdx);
+                if (toolIndex !== -1) {
+                  toolSelect.value = toolSelect.options[toolIndex].value;
+                  selectionApplied = true;
+                } else if (toolByValueIndex !== -1 && isValidToolOption(toolSelect.options[toolByValueIndex])) {
+                  toolSelect.value = toolSelect.options[toolByValueIndex].value;
+                  selectionApplied = true;
+                } else if (toolSelect.options[toolIdx + 1] && isValidToolOption(toolSelect.options[toolIdx + 1])) {
+                  toolSelect.value = toolSelect.options[toolIdx + 1].value;
+                  selectionApplied = true;
+                }
 
-                if (matchingOption) {
-                  toolSelect.value = matchingOption.value;
+                if (selectionApplied) {
                   try { onToolChange(); } catch (e) { console.warn('onToolChange failed', e); }
+                  if (typeof updateQuickCheckboxes === 'function') {
+                    try { updateQuickCheckboxes(); } catch (err) { console.warn('updateQuickCheckboxes failed', err); }
+                  }
                 }
               }
-              return;
+
+              if (selectionApplied || !toolSelect) {
+                return;
+              }
             }
           }
         }
@@ -2165,13 +2629,15 @@
       const quickToolSelect = document.getElementById('quickTool');
       quickToolSelect.innerHTML = '<option value="" selected disabled>Select Tool</option>';
       document.getElementById('quickIndicators').innerHTML = '';
+      resetQuickSelectionState();
       const subjName = (document.getElementById('subject') && document.getElementById('subject').value || '').trim().toLowerCase();
+      const useCollectionTools = subjName === 'english' || subjName === 'mathematics' || isHamroSeroferoLocal(subjName);
       try {
-        if (subjName === 'english' && Array.isArray(window.globalToolsList) && window.globalToolsList.length) {
+        if (useCollectionTools && Array.isArray(window.globalToolsList) && window.globalToolsList.length) {
           window.globalToolsList.forEach((tool, tIdx) => {
             const opt = document.createElement('option');
             opt.value = tIdx;
-            opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${tIdx+1}`);
+            opt.textContent = getToolLabel(tool, tIdx);
             quickToolSelect.appendChild(opt);
           });
         }
@@ -2229,14 +2695,16 @@
       const toolSelect = document.getElementById('quickTool');
       toolSelect.innerHTML = '<option value="" selected disabled>Select Tool</option>';
       document.getElementById('quickIndicators').innerHTML = '';
+      resetQuickSelectionState();
       if (!aspIdx) return;
       const subjName = (document.getElementById('subject') && document.getElementById('subject').value || '').trim().toLowerCase();
-      if (subjName === 'english') {
+      const useCollectionTools = subjName === 'english' || subjName === 'mathematics' || isHamroSeroferoLocal(subjName);
+      if (useCollectionTools) {
         if (Array.isArray(window.globalToolsList) && window.globalToolsList.length) {
           window.globalToolsList.forEach((tool, tIdx) => {
             const opt = document.createElement('option');
             opt.value = tIdx;
-            opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${tIdx+1}`);
+            opt.textContent = getToolLabel(tool, tIdx);
             toolSelect.appendChild(opt);
           });
         }
@@ -2250,7 +2718,7 @@
         asp.tools.forEach((tool, tIdx) => {
           const opt = document.createElement('option');
           opt.value = tIdx;
-          opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${tIdx+1}`);
+          opt.textContent = getToolLabel(tool, tIdx);
           toolSelect.appendChild(opt);
         });
         try { saveQuickSelection(); } catch(e){ console.warn('saveQuickSelection failed', e); }
@@ -2270,7 +2738,7 @@
         asp.tools.forEach((tool, tIdx) => {
           const opt = document.createElement('option');
           opt.value = tIdx;
-          opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${tIdx+1}`);
+          opt.textContent = getToolLabel(tool, tIdx);
           toolSelect.appendChild(opt);
         });
       }
@@ -2411,11 +2879,18 @@
   ].map(id => String(id || '').trim()).filter(Boolean);
 
   const matchedById = Boolean(currentId && Array.isArray(selectedIds) && selectedIds.some(id => String(id) === String(currentId)));
-  const matchedByName = Boolean(!matchedById && currentName && Array.isArray(toolIndicators) && toolIndicators.some(item => {
-    const itemId = item && (item._id || item.id || '');
-    const itemName = (item && (item.indicatorName || item.name || '')).toString().trim();
-    return itemId && selectedIds.some(id => String(id) === String(itemId)) && itemName === currentName;
-  }));
+  const matchedByName = Boolean(!matchedById && currentName && Array.isArray(toolIndicators) && (
+    toolIndicators.some(item => {
+      const itemName = (item && (item.indicatorName || item.name || '')).toString().trim();
+      return itemName && itemName === currentName;
+    }) ||
+    selectedIds.some(id => String(id) === String(currentName)) ||
+    toolIndicators.some(item => {
+      const itemId = item && (item._id || item.id || '');
+      const itemName = (item && (item.indicatorName || item.name || '')).toString().trim();
+      return itemName && itemName === currentName && itemId && selectedIds.some(id => String(id) === String(itemId));
+    })
+  ));
 
   const targetValue = timing === 'Before'
     ? (savedTool && (savedTool.totalBefore ?? savedTool.totalMarksBeforeIntervention ?? savedTool.marksBeforeIntervention ?? null))
@@ -2478,35 +2953,61 @@ function resolveIndicatorId(themeName, loIdx, aspIdx, toolIdx, indicatorName) {
   const cleanName = (indicatorName || '').toString().trim();
   if (!cleanName) return '';
 
+  const normalize = str => (str || '').toString().trim().replace(/\s+/g, ' ').replace(/[.,]/g, '').toLowerCase();
+  const normalizedTarget = normalize(cleanName);
+  const normalizedThemeName = normalize(themeName);
+  if (!normalizedTarget || !normalizedThemeName) return '';
+
+  const searchThemeArray = (themes) => {
+    if (!Array.isArray(themes)) return '';
+    for (const theme of themes) {
+      const themeLabel = normalize(theme && (theme.themeName || theme.name || ''));
+      if (!theme || !themeLabel || themeLabel !== normalizedThemeName) continue;
+      const loArray = Array.isArray(theme.learningOutcome)
+        ? theme.learningOutcome
+        : (Array.isArray(theme.learningOutcomes) ? theme.learningOutcomes : []);
+      const lo = loArray[Number(loIdx)];
+      if (!lo) continue;
+      const aspArray = Array.isArray(lo.assessmentAspects)
+        ? lo.assessmentAspects
+        : (Array.isArray(lo.assessmentAspect) ? lo.assessmentAspect : []);
+      const asp = aspArray[Number(aspIdx)];
+      if (!asp) continue;
+      const toolArray = Array.isArray(asp.tools)
+        ? asp.tools
+        : (Array.isArray(asp.tool) ? asp.tool : []);
+      const tool = toolArray[Number(toolIdx)];
+      if (!tool) continue;
+      const indicators = Array.isArray(tool.indicators)
+        ? tool.indicators
+        : (Array.isArray(tool.indicator) ? tool.indicator : []);
+      const match = indicators.find(ind => {
+        const candidate = (ind && (ind.indicatorName || ind.name || '')).toString().trim();
+        const normalizedCandidate = normalize(candidate);
+        return normalizedCandidate && normalizedTarget && (
+          normalizedCandidate === normalizedTarget ||
+          normalizedCandidate.includes(normalizedTarget) ||
+          normalizedTarget.includes(normalizedCandidate)
+        );
+      });
+      if (match) return match._id || match.id || '';
+    }
+    return '';
+  };
+
   const searchScopes = [window.themeData, window.studentThemeData];
   for (const scope of searchScopes) {
     if (!Array.isArray(scope)) continue;
-    for (const td of scope) {
-      if (!td || !Array.isArray(td.themes)) continue;
-      for (const theme of td.themes) {
-        if ((theme.themeName || theme.name) !== themeName) continue;
-        const loArray = Array.isArray(theme.learningOutcome)
-          ? theme.learningOutcome
-          : (Array.isArray(theme.learningOutcomes) ? theme.learningOutcomes : []);
-        const lo = loArray[Number(loIdx)];
-        if (!lo) continue;
-        const aspArray = Array.isArray(lo.assessmentAspects)
-          ? lo.assessmentAspects
-          : (Array.isArray(lo.assessmentAspect) ? lo.assessmentAspect : []);
-        const asp = aspArray[Number(aspIdx)];
-        if (!asp) continue;
-        const toolArray = Array.isArray(asp.tools)
-          ? asp.tools
-          : (Array.isArray(asp.tool) ? asp.tool : []);
-        const tool = toolArray[Number(toolIdx)];
-        if (!tool) continue;
-        const indicators = Array.isArray(tool.indicators)
-          ? tool.indicators
-          : (Array.isArray(tool.indicator) ? tool.indicator : []);
-        const match = indicators.find(ind => ((ind.indicatorName || ind.name || '').toString().trim() === cleanName));
-        if (match) return match._id || match.id || '';
+    const hasWrapperThemes = scope.some(item => item && Array.isArray(item.themes));
+    if (hasWrapperThemes) {
+      for (const td of scope) {
+        if (!td || !Array.isArray(td.themes)) continue;
+        const result = searchThemeArray(td.themes);
+        if (result) return result;
       }
     }
+    const result = searchThemeArray(scope);
+    if (result) return result;
   }
 
   return '';
@@ -2581,109 +3082,7 @@ function restoreQuickIndicatorCheckboxes(savedContext) {
       const loIdx = document.getElementById('quickLO').value;
       const aspIdx = document.getElementById('quickAspect').value;
       const toolIdx = document.getElementById('quickTool').value;
-      
-      if (window.themeData && Array.isArray(window.themeData)) {
-        for (const td of window.themeData) {
-          if (td.themes && Array.isArray(td.themes)) {
-            for (const theme of td.themes) {
-              if (theme.themeName === themeName) {
-                const loArray = Array.isArray(theme.learningOutcome) ? theme.learningOutcome : 
-                               (Array.isArray(theme.learningOutcomes) ? theme.learningOutcomes : []);
-                const lo = loArray[Number(loIdx)];
-                if (lo) {
-                  let aspects = [];
-                  if (lo.assessmentAspects && Array.isArray(lo.assessmentAspects)) {
-                    aspects = lo.assessmentAspects;
-                  } else if (lo.assessmentAspect && Array.isArray(lo.assessmentAspect)) {
-                    aspects = lo.assessmentAspect;
-                  }
-                  
-                  const asp = aspects[Number(aspIdx)];
-                  if (asp) {
-                    let tools = [];
-                    if (asp.tools && Array.isArray(asp.tools)) {
-                      tools = asp.tools;
-                    } else if (asp.tool && Array.isArray(asp.tool)) {
-                      tools = asp.tool;
-                    }
-                    
-                    const tool = tools[Number(toolIdx)];
-                    if (tool) {
-                      let indicators = [];
-                      if (tool.indicators && Array.isArray(tool.indicators)) {
-                        indicators = tool.indicators;
-                      } else if (tool.indicator && Array.isArray(tool.indicator)) {
-                        indicators = tool.indicator;
-                      }
-                      
-                      let match = indicators.find(ind => 
-                        (ind.indicatorName || ind.name || '') === indicatorName
-                      );
-                      
-                      if (!match) {
-                        const cleanName = (str) => str.replace(/\s/g, '').replace(/[,.]/g, '').toLowerCase();
-                        const cleanIndicatorName = cleanName(indicatorName);
-                        
-                        match = indicators.find(ind => {
-                          const indName = (ind.indicatorName || ind.name || '');
-                          const cleanIndName = cleanName(indName);
-                          return cleanIndName && cleanIndicatorName && 
-                                 (cleanIndName.includes(cleanIndicatorName) || 
-                                  cleanIndicatorName.includes(cleanIndName));
-                        });
-                      }
-                      
-                      if (match) {
-                        const id = match._id || match.id || '';
-                        if (id) {
-                          return id;
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-      
-      if (window.studentThemeData && Array.isArray(window.studentThemeData)) {
-        const savedTheme = window.studentThemeData.find(t => t.themeName === themeName);
-        if (savedTheme && savedTheme.learningOutcomes) {
-          const lo = savedTheme.learningOutcomes[Number(loIdx)];
-          if (lo && lo.assessmentAspects) {
-            const asp = lo.assessmentAspects[Number(aspIdx)];
-            if (asp && asp.tools) {
-              const tool = asp.tools[Number(toolIdx)];
-              if (tool && tool.indicators) {
-                let match = tool.indicators.find(ind => 
-                  (ind.indicatorName || ind.name) === indicatorName
-                );
-                if (!match) {
-                  const cleanName = (str) => str.replace(/\s/g, '').replace(/[,.]/g, '').toLowerCase();
-                  const cleanIndicatorName = cleanName(indicatorName);
-                  match = tool.indicators.find(ind => {
-                    const indName = (ind.indicatorName || ind.name || '');
-                    const cleanIndName = cleanName(indName);
-                    return cleanIndName && cleanIndicatorName && 
-                           (cleanIndName.includes(cleanIndicatorName) || 
-                            cleanIndicatorName.includes(cleanIndName));
-                  });
-                }
-                if (match) {
-                  const id = match._id || match.id || '';
-                  if (id) {
-                    return id;
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-      
-      return '';
+      return resolveIndicatorId(themeName, loIdx, aspIdx, toolIdx, indicatorName);
     }
 
     beforeRadios.forEach(radio => {
@@ -2804,48 +3203,16 @@ function restoreQuickIndicatorCheckboxes(savedContext) {
     const aspIdx = document.getElementById('quickAspect').value;
     const toolIdx = document.getElementById('quickTool').value;
     
+    // Do not append duplicate hidden selected indicator fields here.
+    // The quick selection save path will persist the selected indicators explicitly.
     if (loIdx && form) {
-        const themeName = document.getElementById('themeName').value;
-        const themeIndex = getThemeIndexForSelectedTheme(themeName);
-
-        // Use dynamic index - get the current count to determine the correct index
-        let currentLOCount = 0;
-        if (window.studentThemeData && Array.isArray(window.studentThemeData)) {
-          const savedTheme = window.studentThemeData.find(t => (t.themeName || t.name) === themeName);
-          if (savedTheme) {
-            const loArray = Array.isArray(savedTheme.learningOutcomes) ? savedTheme.learningOutcomes : 
-                           (Array.isArray(savedTheme.learningOutcome) ? savedTheme.learningOutcome : []);
-            currentLOCount = loArray.length;
-          }
-        }
-        
-        // Use the count as the new index
-        const newLOIndex = currentLOCount;
-        
-        const nameBefore = `subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][selectedIndicatorsBefore][]`;
-        const nameAfter = `subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][selectedIndicatorsAfter][]`;
-
-        beforeIds.forEach(id => {
-          if (id) {
-            const inp = document.createElement('input');
-            inp.type = 'hidden';
-            inp.name = nameBefore;
-            inp.value = id;
-            form.appendChild(inp);
-          }
-        });
-
-        afterIds.forEach(id => {
-          if (id) {
-            const inp = document.createElement('input');
-            inp.type = 'hidden';
-            inp.name = nameAfter;
-            inp.value = id;
-            form.appendChild(inp);
-          }
-        });
-      }
-    } catch (e) {
+      // Keep state-only hidden fields current for autosave and saveSelectedIndicator.
+      const beforeIdsField = document.getElementById('selectedIndicatorIdsBeforeHidden');
+      const afterIdsField = document.getElementById('selectedIndicatorIdsAfterHidden');
+      if (beforeIdsField) beforeIdsField.value = beforeIds.join(',');
+      if (afterIdsField) afterIdsField.value = afterIds.join(',');
+    }
+  } catch (e) {
       console.error('Error occurred while processing beforeIds:', e);
     }
   }
@@ -2861,6 +3228,7 @@ function onToolChange() {
   const toolIdx = document.getElementById('quickTool').value;
   const indicatorsDiv = document.getElementById('quickIndicators');
   indicatorsDiv.innerHTML = '';
+  resetQuickSelectionState();
   const aspectHidden = (aspSelect && (aspSelect.style.display === 'none' || aspSelect.hidden || aspSelect.options.length <= 1));
   if (!toolIdx) return;
 
@@ -3159,15 +3527,13 @@ function onToolChange() {
   indicatorsDiv.appendChild(table);
 
   try {
-    const newDateInputs = indicatorsDiv.querySelectorAll('.nepali-datepicker:not([data-initialized])');
-    newDateInputs.forEach(inp => {
-      if (typeof inp.nepaliDatePicker === 'function') {
-        try { inp.nepaliDatePicker(); inp.setAttribute('data-initialized', 'true'); } catch(e){}
-      }
-    });
+    const newDateInputs = indicatorsDiv.querySelectorAll('.nepali-datepicker:not([data-nepali-picker-initialized])');
+    newDateInputs.forEach(inp => { initializeNepaliDatepicker(inp); });
+    try { attachAutoSaveToDatePickers(indicatorsDiv); } catch (e) { console.warn('attachAutoSaveToDatePickers failed after build', e); }
   } catch(e) {}
   
   try { restoreQuickIndicatorCheckboxes(savedSelection); } catch(e) { console.warn('restoreQuickIndicatorCheckboxes failed', e); }
+  try { restoreLocalQuickSelectionState(themeName); } catch(e) { console.warn('restoreLocalQuickSelectionState failed', e); }
   try { updateQuickCheckboxes(); } catch(e) {}
   try { saveQuickSelection(); } catch(e){}
   console.log('after build quick indicators', {
@@ -3188,19 +3554,113 @@ function onToolChange() {
 
 // ===== CRITICAL FIX: saveSelectedIndicator function with MULTIPLE THEME support =====
 // ===== FIXED saveSelectedIndicator function =====
+function getCurrentSelectedIndicatorName() {
+  const getElementIndicatorName = (el) => {
+    if (!el) return '';
+    if (el.dataset && el.dataset.indicatorName) {
+      return el.dataset.indicatorName.toString().trim();
+    }
+    const row = el.closest && el.closest('tr');
+    if (row) {
+      const cells = row.querySelectorAll('td');
+      if (cells.length >= 4) {
+        const labelCell = cells[3];
+        if (labelCell) {
+          const labelText = labelCell.textContent || labelCell.innerText || '';
+          if (labelText.trim()) return labelText.trim();
+        }
+      }
+    }
+    return '';
+  };
+
+  const selected = Array.from(document.querySelectorAll('#quickIndicators input[type="radio"]:checked, #quickIndicators .quick-indicator-checkbox:checked'));
+  const names = selected.map(el => {
+    const indicatorName = getElementIndicatorName(el);
+    return (indicatorName || '').toString().trim();
+  }).filter(Boolean);
+  if (names.length) {
+    return names.join(', ');
+  }
+
+  const indicatorInputs = document.querySelectorAll('#quickIndicators input[type="radio"], #quickIndicators .quick-indicator-checkbox');
+  if (indicatorInputs.length) {
+    return '';
+  }
+
+  const hiddenField = document.getElementById('selectedIndicatorHidden');
+  return hiddenField && hiddenField.value.trim() ? hiddenField.value.trim() : '';
+}
+
+function getCurrentSelectedIndicatorIds() {
+  const beforeIds = new Set();
+  const afterIds = new Set();
+
+  document.querySelectorAll('#quickIndicators input[name^="quickMarkBefore_"]:checked, #quickIndicators .quick-indicator-checkbox[data-timing="Before"]:checked').forEach(el => {
+    const id = (el.dataset && el.dataset.indicatorId) ? el.dataset.indicatorId.trim() : '';
+    if (id) beforeIds.add(id);
+  });
+
+  document.querySelectorAll('#quickIndicators input[name^="quickMarkAfter_"]:checked, #quickIndicators .quick-indicator-checkbox[data-timing="After"]:checked').forEach(el => {
+    const id = (el.dataset && el.dataset.indicatorId) ? el.dataset.indicatorId.trim() : '';
+    if (id) afterIds.add(id);
+  });
+
+  return {
+    beforeIds: Array.from(beforeIds),
+    afterIds: Array.from(afterIds)
+  };
+}
+
+function isPlaceholderSelectionText(value) {
+  const text = (value || '').toString().trim();
+  return text === '' ||
+    /^select\s+(tool|aspect|learning\s*outcome|theme)$/i.test(text) ||
+    /^tool\s*\d+$/i.test(text) ||
+    /^aspect\s*\d+$/i.test(text) ||
+    /^learning\s*outcome\s*\d+$/i.test(text) ||
+    /^theme\s*\d+$/i.test(text);
+}
+
+function isAspectPlaceholderAllowed() {
+  const subjName = (document.getElementById('subject') && document.getElementById('subject').value || '').trim().toLowerCase();
+  return subjName === 'mathematics' || isHamroSeroferoLocal(subjName);
+}
+
 function saveSelectedIndicator() {
+  try { updateQuickCheckboxes(); } catch (e) { console.warn('updateQuickCheckboxes before save failed', e); }
   const theme = document.getElementById('themeName').value;
   if (!theme) { alert('Select theme first'); return; }
   
   const loIdx = document.getElementById('quickLO').value;
   const aspSelect = document.getElementById('quickAspect');
   const aspIdx = document.getElementById('quickAspect').value;
-  const toolIdx = document.getElementById('quickTool').value;
+  const toolSelect = document.getElementById('quickTool');
+  const toolIdx = toolSelect ? toolSelect.value : '';
+  const quickToolText = (toolSelect && toolSelect.options[toolSelect.selectedIndex] ? toolSelect.options[toolSelect.selectedIndex].text : '') || '';
   
-  const selectedIndicatorName = document.getElementById('selectedIndicatorHidden').value;
-  
-  if (loIdx === '' || loIdx === null || toolIdx === '' || toolIdx === null || !selectedIndicatorName) {
-    alert('Select LO, tool and one indicator');
+  const selectedIndicatorName = getCurrentSelectedIndicatorName();
+  const currentIds = getCurrentSelectedIndicatorIds();
+  const selNameHidden = document.getElementById('selectedIndicatorHidden');
+  if (selNameHidden) {
+    selNameHidden.value = selectedIndicatorName;
+  }
+  if (document.getElementById('selectedIndicatorIdsBeforeHidden')) {
+    document.getElementById('selectedIndicatorIdsBeforeHidden').value = currentIds.beforeIds.join(',');
+  }
+  if (document.getElementById('selectedIndicatorIdsAfterHidden')) {
+    document.getElementById('selectedIndicatorIdsAfterHidden').value = currentIds.afterIds.join(',');
+  }
+
+  if (loIdx === '' || loIdx === null || toolIdx === '' || toolIdx === null || !selectedIndicatorName || isPlaceholderSelectionText(quickToolText)) {
+    if (selNameHidden) selNameHidden.value = '';
+    const maxHidden = document.getElementById('selectedIndicatorMaxMarksHidden');
+    const marksBeforeHidden = document.getElementById('selectedIndicatorMarksBeforeHidden');
+    const marksAfterHidden = document.getElementById('selectedIndicatorMarksAfterHidden');
+    if (maxHidden) maxHidden.value = 0;
+    if (marksBeforeHidden) marksBeforeHidden.value = 0;
+    if (marksAfterHidden) marksAfterHidden.value = 0;
+    alert('Select LO, valid tool and one indicator');
     return;
   }
 
@@ -3259,7 +3719,31 @@ function saveSelectedIndicator() {
   const quickAsp = document.getElementById('quickAspect');
   const quickTool = document.getElementById('quickTool');
   const quickAspText = (quickAsp && quickAsp.options[quickAsp.selectedIndex] ? quickAsp.options[quickAsp.selectedIndex].text : '') || '';
-  const quickToolText = (quickTool && quickTool.options[quickTool.selectedIndex] ? quickTool.options[quickTool.selectedIndex].text : '') || '';
+  const quickAspRaw = quickAsp ? quickAsp.value : '';
+  const quickToolRaw = quickTool ? quickTool.value : '';
+  const quickAspIndex = quickAspRaw === '' ? -1 : Number(quickAspRaw);
+  const quickToolIndex = quickToolRaw === '' ? -1 : Number(quickToolRaw);
+  const selectedToolIndex = Number.isInteger(quickToolIndex) && quickToolIndex >= 0 ? quickToolIndex : -1;
+  const selectedAspectIndex = Number.isInteger(quickAspIndex) && quickAspIndex >= 0 ? quickAspIndex : -1;
+
+  const aspectPlaceholderAllowed = isAspectPlaceholderAllowed();
+  const invalidSelection = !quickLOText || selectedToolIndex < 0 ||
+    isPlaceholderSelectionText(quickLOText) ||
+    (!aspectPlaceholderAllowed && isPlaceholderSelectionText(quickAspText)) ||
+    isPlaceholderSelectionText(quickToolText) ||
+    isPlaceholderSelectionText(quickToolText && quickToolText.toString().trim());
+
+  if (loIdx === '' || loIdx === null || toolIdx === '' || toolIdx === null || !selectedIndicatorName || invalidSelection) {
+    if (selNameHidden) selNameHidden.value = '';
+    const maxHidden = document.getElementById('selectedIndicatorMaxMarksHidden');
+    const marksBeforeHidden = document.getElementById('selectedIndicatorMarksBeforeHidden');
+    const marksAfterHidden = document.getElementById('selectedIndicatorMarksAfterHidden');
+    if (maxHidden) maxHidden.value = 0;
+    if (marksBeforeHidden) marksBeforeHidden.value = 0;
+    if (marksAfterHidden) marksAfterHidden.value = 0;
+    alert('Please select a valid learning outcome, aspect, tool and indicator before saving.');
+    return;
+  }
 
   const evalBeforeInput = document.querySelector('.quick-eval-date-before');
   const evalAfterInput = document.querySelector('.quick-eval-date-after');
@@ -3363,70 +3847,70 @@ function saveSelectedIndicator() {
   }
 
   // 2. Assessment Aspect
-  const aspectField = form.querySelector(`input[name="subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][0][aspectName]"]`);
+  const aspectField = form.querySelector(`input[name="subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][${selectedAspectIndex}][aspectName]"]`);
   if (aspectField) {
     aspectField.value = quickAspText;
   } else {
     const inp = document.createElement('input');
     inp.type = 'hidden';
-    inp.name = `subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][0][aspectName]`;
+    inp.name = `subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][${selectedAspectIndex}][aspectName]`;
     inp.value = quickAspText;
     form.appendChild(inp);
   }
 
   // 3. Tool Name
-  const toolField = form.querySelector(`input[name="subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][0][tools][0][toolName]"]`);
+  const toolField = form.querySelector(`input[name="subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][${selectedAspectIndex}][tools][${selectedToolIndex}][toolName]"]`);
   if (toolField) {
     toolField.value = quickToolText;
   } else {
     const inp = document.createElement('input');
     inp.type = 'hidden';
-    inp.name = `subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][0][tools][0][toolName]`;
+    inp.name = `subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][${selectedAspectIndex}][tools][${selectedToolIndex}][toolName]`;
     inp.value = quickToolText;
     form.appendChild(inp);
   }
 
   // 4. Indicator fields
-  const indicatorNameField = form.querySelector(`input[name="subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][0][tools][0][indicators][0][name]"]`);
+  const indicatorNameField = form.querySelector(`input[name="subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][${selectedAspectIndex}][tools][${selectedToolIndex}][indicators][0][name]"]`);
   if (indicatorNameField) {
     indicatorNameField.value = selectedIndicatorName;
   } else {
     const inp = document.createElement('input');
     inp.type = 'hidden';
-    inp.name = `subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][0][tools][0][indicators][0][name]`;
+    inp.name = `subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][${selectedAspectIndex}][tools][${selectedToolIndex}][indicators][0][name]`;
     inp.value = selectedIndicatorName;
     form.appendChild(inp);
   }
 
-  const maxMarksField = form.querySelector(`input[name="subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][0][tools][0][indicators][0][maxMarks]"]`);
+  const maxMarksField = form.querySelector(`input[name="subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][${selectedAspectIndex}][tools][${selectedToolIndex}][indicators][0][maxMarks]"]`);
   if (maxMarksField) {
     maxMarksField.value = selMax || 0;
   } else {
     const inp = document.createElement('input');
     inp.type = 'hidden';
-    inp.name = `subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][0][tools][0][indicators][0][maxMarks]`;
+    inp.name = `subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][${selectedAspectIndex}][tools][${selectedToolIndex}][indicators][0][maxMarks]`;
     inp.value = selMax || 0;
     form.appendChild(inp);
   }
 
-  const marksBeforeField = form.querySelector(`input[name="subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][0][tools][0][indicators][0][marksBeforeIntervention]"]`);
+  const marksBeforeField = form.querySelector(`input[name="subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][${selectedAspectIndex}][tools][${selectedToolIndex}][indicators][0][marksBeforeIntervention]"]`);
   if (marksBeforeField) {
     marksBeforeField.value = selMarksBefore || 0;
   } else {
     const inp = document.createElement('input');
     inp.type = 'hidden';
-    inp.name = `subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][0][tools][0][indicators][0][marksBeforeIntervention]`;
+    inp.name = `subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][${selectedAspectIndex}][tools][${selectedToolIndex}][indicators][0][marksBeforeIntervention]`;
     inp.value = selMarksBefore || 0;
     form.appendChild(inp);
   }
 
-  const marksAfterField = form.querySelector(`input[name="subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][0][tools][0][indicators][0][marksAfterIntervention]"]`);
+  const marksAfterField = form.querySelector(`input[name="subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][${selectedAspectIndex}][tools][${selectedToolIndex}][indicators][0][marksAfterIntervention]"]`);
   if (marksAfterField) {
     marksAfterField.value = selMarksAfter || 0;
   } else {
     const inp = document.createElement('input');
     inp.type = 'hidden';
-    inp.name = `subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][0][tools][0][indicators][0][marksAfterIntervention]`;
+    inp.name = `subjects[0][themes][${themeIndex}][learningOutcomes][${newLOIndex}][assessmentAspects][${selectedAspectIndex}][tools][${selectedToolIndex}][indicators][0][marksAfterIntervention]`;
     inp.value = selMarksAfter || 0;
     form.appendChild(inp);
   }
@@ -3558,7 +4042,13 @@ function ensureQuickSelectionLearningOutcomeFields() {
   const quickLOText = quickLO && quickLO.options[quickLO.selectedIndex] ? quickLO.options[quickLO.selectedIndex].text : '';
   const quickAspText = quickAsp && quickAsp.options[quickAsp.selectedIndex] ? quickAsp.options[quickAsp.selectedIndex].text : '';
   const quickToolText = quickTool && quickTool.options[quickTool.selectedIndex] ? quickTool.options[quickTool.selectedIndex].text : '';
-  if (!theme || !quickLOText) return;
+  if (!theme || !quickLOText || !quickAspText || !quickToolText) return;
+  if (isPlaceholderSelectionText(quickLOText) || isPlaceholderSelectionText(quickAspText) || isPlaceholderSelectionText(quickToolText)) return;
+
+  const quickAspIndex = Number(quickAsp && quickAsp.value);
+  const quickToolIndex = Number(quickTool && quickTool.value);
+  const selectedAspectIndex = Number.isInteger(quickAspIndex) && quickAspIndex >= 0 ? quickAspIndex : 0;
+  const selectedToolIndex = Number.isInteger(quickToolIndex) && quickToolIndex >= 0 ? quickToolIndex : 0;
 
   const form = document.getElementById('themeEvaluationForm');
   if (!form) return;
@@ -3590,17 +4080,36 @@ function ensureQuickSelectionLearningOutcomeFields() {
   createHiddenInput(form, `${prefix}[name]`, quickLOText);
   createHiddenInput(form, `${prefix}[totalMarksBeforeIntervention]`, selectedMarksBefore);
   createHiddenInput(form, `${prefix}[totalMarksAfterIntervention]`, selectedMarksAfter);
-  createHiddenInput(form, `${prefix}[assessmentAspects][0][aspectName]`, quickAspText);
-  createHiddenInput(form, `${prefix}[assessmentAspects][0][tools][0][toolName]`, quickToolText);
-  createHiddenInput(form, `${prefix}[assessmentAspects][0][tools][0][indicators][0][name]`, selectedIndicatorName);
-  createHiddenInput(form, `${prefix}[assessmentAspects][0][tools][0][indicators][0][maxMarks]`, selectedMax);
-  createHiddenInput(form, `${prefix}[assessmentAspects][0][tools][0][indicators][0][marksBeforeIntervention]`, selectedMarksBefore);
-  createHiddenInput(form, `${prefix}[assessmentAspects][0][tools][0][indicators][0][marksAfterIntervention]`, selectedMarksAfter);
+  createHiddenInput(form, `${prefix}[assessmentAspects][${selectedAspectIndex}][aspectName]`, quickAspText);
+  createHiddenInput(form, `${prefix}[assessmentAspects][${selectedAspectIndex}][tools][${selectedToolIndex}][toolName]`, quickToolText);
+  createHiddenInput(form, `${prefix}[assessmentAspects][${selectedAspectIndex}][tools][${selectedToolIndex}][indicators][0][name]`, selectedIndicatorName);
+  createHiddenInput(form, `${prefix}[assessmentAspects][${selectedAspectIndex}][tools][${selectedToolIndex}][indicators][0][maxMarks]`, selectedMax);
+  createHiddenInput(form, `${prefix}[assessmentAspects][${selectedAspectIndex}][tools][${selectedToolIndex}][indicators][0][marksBeforeIntervention]`, selectedMarksBefore);
+  createHiddenInput(form, `${prefix}[assessmentAspects][${selectedAspectIndex}][tools][${selectedToolIndex}][indicators][0][marksAfterIntervention]`, selectedMarksAfter);
   createHiddenInput(form, `${prefix}[evaluationDateBefore]`, selectedEvalBefore);
   createHiddenInput(form, `${prefix}[evaluationDateAfter]`, selectedEvalAfter);
 
   selectedIdsBefore.forEach(id => createHiddenInput(form, `${prefix}[selectedIndicatorsBefore][]`, id));
   selectedIdsAfter.forEach(id => createHiddenInput(form, `${prefix}[selectedIndicatorsAfter][]`, id));
+}
+
+function resetQuickSelectionState() {
+  const selectedIndicatorHidden = document.getElementById('selectedIndicatorHidden');
+  const selectedMaxHidden = document.getElementById('selectedIndicatorMaxMarksHidden');
+  const selectedBeforeHidden = document.getElementById('selectedIndicatorMarksBeforeHidden');
+  const selectedAfterHidden = document.getElementById('selectedIndicatorMarksAfterHidden');
+  const selectedEvalBeforeHidden = document.getElementById('selectedEvalDateBeforeHidden');
+  const selectedEvalAfterHidden = document.getElementById('selectedEvalDateAfterHidden');
+  const selectedIdsBefore = document.getElementById('selectedIndicatorIdsBeforeHidden');
+  const selectedIdsAfter = document.getElementById('selectedIndicatorIdsAfterHidden');
+  if (selectedIndicatorHidden) selectedIndicatorHidden.value = '';
+  if (selectedMaxHidden) selectedMaxHidden.value = 0;
+  if (selectedBeforeHidden) selectedBeforeHidden.value = 0;
+  if (selectedAfterHidden) selectedAfterHidden.value = 0;
+  if (selectedEvalBeforeHidden) selectedEvalBeforeHidden.value = '';
+  if (selectedEvalAfterHidden) selectedEvalAfterHidden.value = '';
+  if (selectedIdsBefore) selectedIdsBefore.value = '';
+  if (selectedIdsAfter) selectedIdsAfter.value = '';
 }
 
     function clearQuickSelection() {
@@ -3614,6 +4123,9 @@ function ensureQuickSelectionLearningOutcomeFields() {
       document.getElementById('selectedIndicatorMarksAfterHidden').value = 0;
       document.getElementById('selectedEvalDateBeforeHidden').value = '';
       document.getElementById('selectedEvalDateAfterHidden').value = '';
+      document.getElementById('selectedIndicatorIdsBeforeHidden').value = '';
+      document.getElementById('selectedIndicatorIdsAfterHidden').value = '';
+      resetQuickSelectionState();
       try{
         const themeName = document.getElementById('themeName').value || '';
         if(themeName){ localStorage.removeItem(getQuickSelectionKey(themeName)); }
@@ -4179,11 +4691,18 @@ document.addEventListener('DOMContentLoaded', async () => {
               window.globalToolsList.forEach((tool, tIdx) => {
                 const opt = document.createElement('option');
                 opt.value = tIdx;
-                opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${tIdx+1}`);
+                opt.textContent = getToolLabel(tool, tIdx);
                 quick.appendChild(opt);
               });
             }
           }
+          try {
+            const currentTheme = document.getElementById('themeName') ? document.getElementById('themeName').value : '';
+            if (currentTheme) {
+              try { restoreSavedQuickSelection(currentTheme); } catch (e) { console.warn('restoreSavedQuickSelection after tool load failed', e); }
+              try { applyQuickSelection(currentTheme); } catch (e) { console.warn('applyQuickSelection after tool load failed', e); }
+            }
+          } catch (e) {}
         } catch (e) {}
 
         (function patchToolLabels() {
@@ -4197,7 +4716,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const txt = (opt.textContent || '').trim();
                 if (/^Tool\s*\d+$/i.test(txt) && window.globalToolsList[i-1]) {
                   const tool = window.globalToolsList[i-1];
-                  opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || txt);
+                  opt.textContent = getToolLabel(tool, i - 1);
                 }
               }
             }, 150);
@@ -4207,52 +4726,57 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
           if (subjNorm && subjNorm !== 'nepali') {
             document.querySelectorAll('select.aspect-dropdown').forEach(s => { s.style.display = 'none'; });
-            document.querySelectorAll('select.tools-dropdown, select#quickTool').forEach(select => {
+          }
+
+          if (subjNorm === 'english' || subjNorm === 'mathematics' || isHamroSeroferoLocal(subjNorm)) {
+            const quick = document.getElementById('quickTool');
+            if (quick) {
+              quick.dataset.forceGlobal = '1';
+              quick.innerHTML = '<option value="" selected disabled>Select Tool</option>';
+              if (Array.isArray(window.globalToolsList) && window.globalToolsList.length) {
+                window.globalToolsList.forEach((tool, tIdx) => {
+                  const opt = document.createElement('option');
+                  opt.value = tIdx;
+                  opt.textContent = getToolLabel(tool, tIdx);
+                  quick.appendChild(opt);
+                });
+              }
+            }
+            document.querySelectorAll('select.tools-dropdown').forEach(select => {
               if (select.options.length <= 1 && Array.isArray(window.globalToolsList) && window.globalToolsList.length > 0) {
                 select.innerHTML = '<option value="" selected disabled>Select Tool</option>';
                 window.globalToolsList.forEach((tool, tIdx) => {
                   const opt = document.createElement('option');
                   opt.value = tIdx;
-                  opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${tIdx+1}`);
+                  opt.textContent = getToolLabel(tool, tIdx);
                   select.appendChild(opt);
                 });
               }
             });
           }
-          try {
-            if (subjNorm === 'english') {
-              const quick = document.getElementById('quickTool');
-              if (quick) {
-                quick.dataset.forceGlobal = '1';
-                if (Array.isArray(window.globalToolsList) && window.globalToolsList.length) {
+
+          if (subjNorm === 'english') {
+            const quick = document.getElementById('quickTool');
+            if (quick) {
+              const mo = new MutationObserver(() => {
+                try {
+                  if (!Array.isArray(window.globalToolsList) || !window.globalToolsList.length) return;
+                  const curVal = quick.value;
+                  mo.disconnect();
                   quick.innerHTML = '<option value="" selected disabled>Select Tool</option>';
                   window.globalToolsList.forEach((tool, tIdx) => {
                     const opt = document.createElement('option');
                     opt.value = tIdx;
-                    opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${tIdx+1}`);
+                    opt.textContent = getToolLabel(tool, tIdx);
                     quick.appendChild(opt);
                   });
-                }
-                const mo = new MutationObserver(() => {
-                  try {
-                    if (!Array.isArray(window.globalToolsList) || !window.globalToolsList.length) return;
-                    const curVal = quick.value;
-                    mo.disconnect();
-                    quick.innerHTML = '<option value="" selected disabled>Select Tool</option>';
-                    window.globalToolsList.forEach((tool, tIdx) => {
-                      const opt = document.createElement('option');
-                      opt.value = tIdx;
-                      opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${tIdx+1}`);
-                      quick.appendChild(opt);
-                    });
-                    try { quick.value = curVal; } catch(e) {}
-                    mo.observe(quick, { childList: true });
-                  } catch (e) {}
-                });
-                mo.observe(quick, { childList: true });
-              }
+                  try { quick.value = curVal; } catch(e) {}
+                  mo.observe(quick, { childList: true });
+                } catch (e) {}
+              });
+              mo.observe(quick, { childList: true });
             }
-          } catch (e) {}
+          }
 
           setTimeout(() => {
             try {
@@ -4263,7 +4787,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 window.globalToolsList.forEach((tool, tIdx) => {
                   const opt = document.createElement('option');
                   opt.value = tIdx;
-                  opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${tIdx+1}`);
+                  opt.textContent = getToolLabel(tool, tIdx);
                   quick.appendChild(opt);
                 });
               }
@@ -4421,7 +4945,7 @@ function populateSelect(select) {
         const label = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || String(idx));
         opt.value = label;
       }
-      opt.textContent = (typeof tool === 'string') ? tool.trim() : (tool.toolName || tool.name || `Tool ${idx+1}`);
+      opt.textContent = getToolLabel(tool, idx);
       select.appendChild(opt);
     });
 }

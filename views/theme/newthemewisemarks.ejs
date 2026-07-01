@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Theme Wise Report</title>
+
+    <style>
+        table{
+            width:100%;
+            border-collapse: collapse;
+            margin-bottom:20px;
+        }
+
+        th,td{
+            border:1px solid black;
+            padding:5px;
+            font-size:12px;
+        }
+
+        .studentContainer{
+            margin-bottom:50px;
+            page-break-after:always;
+        }
+
+        .themeTitle{
+            margin-top:20px;
+            font-weight:bold;
+            font-size:18px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1 align="center">
+    Student Theme Wise Assessment Report
+</h1>
+
+<% studentData.forEach(student => { %>
+
+<div class="studentContainer">
+
+    <h3>
+        Student Name:
+        <%= student.name %>
+
+        &nbsp;&nbsp;&nbsp;
+
+        Roll:
+        <%= student.roll %>
+
+        &nbsp;&nbsp;&nbsp;
+
+        Class:
+        <%= student.studentClass %>
+
+        &nbsp;&nbsp;&nbsp;
+
+        Section:
+        <%= student.section %>
+    </h3>
+
+    <% themeData[0].themes.forEach(theme => { %>
+        <% let sumAfter = 0; %>
+  <% let sumBefore = 0; %>
+  <% let totalLoCount = 0; %>
+
+        <div class="themeTitle">
+            Theme Name:
+            <%= theme.themeName %>
+        </div>
+
+        <table>
+
+            <thead>
+            <tr>
+                <th>S.No</th>
+                <th>Assessment Aspect</th>
+                <th>Tools</th>
+                <th>Learning Outcome</th>
+                <th>Evaluation Date Before</th>
+                <th>Obtained Marks Before</th>
+                <th>Evaluation Date After</th>
+                <th>Obtained Marks After</th>
+            </tr>
+            </thead>
+
+            <tbody>
+
+            <% theme.learningOutcome.forEach((lo,index)=>{ %>
+
+                <%
+                    const key =
+                        `${student.reg}|` +
+                        `${theme.themeName.trim()}|` +
+                        `${lo.learningOutcomeName.trim()}`;
+
+                        console.log("LOOKUP KEY =", key);
+console.log("FOUND =", marksMap[key]);
+
+                    const record = marksMap[key];
+
+                    
+                %>
+
+                <tr>
+
+                    <td>
+                        <%= index+1 %>
+                    </td>
+
+                    <td>
+                        <%= record?.aspectName || "-" %>
+                    </td>
+
+                    <td>
+                        <%= record?.toolName || "-" %>
+                    </td>
+
+                    <td>
+                        <%= lo.learningOutcomeName %>
+                    </td>
+
+                    <td>
+                        <%= record &&
+                            record.evalDateBefore &&
+                            record.evalDateBefore !== "0"
+                            ? record.evalDateBefore
+                            : "-" %>
+                    </td>
+
+                    <td>
+                        <%= record
+                            ? record.obtainedMarksBefore
+                            : "-" %>
+                    </td>
+
+                    <td>
+                        <%= record &&
+                            record.evalDateAfter &&
+                            record.evalDateAfter !== "0"
+                            ? record.evalDateAfter
+                            : "-" %>
+                    </td>
+
+                    <td>
+                        <%= record
+                            ? record.obtainedMarksAfter
+                            : "-" %>
+                    </td>
+
+                </tr>
+              
+                <% sumAfter += record ? record.obtainedMarksAfter : 0; %>
+                <% sumBefore += record ? record.obtainedMarksBefore : 0; %>
+<% totalLoCount++; %>
+            <% }) %>
+<tr>
+  <td colspan="7" style="background-color: #f0f0f0;">Total Obtained</td>
+  <td><%= sumAfter %></td>
+  
+  
+</tr>
+<tr>
+   <td colspan="7" style="background-color: #f0f0f0;">Achievmenet Percentage</td>
+   <td> <%= totalLoCount > 0 ? ((sumAfter / (totalLoCount * 4)) * 100).toFixed(2) : 0 %> %</td>
+</tr>
+            </tbody>
+
+        </table>
+
+    <% }) %>
+
+</div>
+
+<% }) %>
+
+</body>
+</html>

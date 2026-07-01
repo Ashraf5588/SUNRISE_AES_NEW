@@ -127,7 +127,7 @@ const getThemeFormat = (studentClass) => {
 const getStudentThemeData = async(studentClass) => {
   // Collection name: themeForStudent{class}
   const academicYear = await getAcademicYear();
-  const collectionName = `themeForStudent${studentClass}-${academicYear}`;
+  const collectionName = `themeForStudent-${studentClass}-${academicYear}`;
   console.log(`Getting student theme data model for class ${studentClass} using collection ${collectionName}`);
   
   // Check if model already exists
@@ -185,658 +185,691 @@ const existingThemeData = await themeForstudentData.find(
     });
     console.log("Theme data fetched successfully:", themeData);
 
-    res.render("theme/themeform", { themeData, subject, studentClass, section, studentData, existingThemeData });
+   
+      const toolDoc = await ToolsModel.findOne({
+      subject: subject,
+      forClass: studentClass
+    }).lean();
+    console.log("Tool document fetched:", toolDoc);
+
+  
+const existingData = await themeForstudentData.find({
+  studentClass,
+  section,
+  subject,
+
+}).lean();
+const existingMap = {};
+
+existingData.forEach(item => {
+    const key =
+        `${item.reg}|${item.themeName}|${item.learningOutcomeName}|${item.toolName}`;
+
+    existingMap[key] = item;
+});
+
+
+  
+      res.render("theme/themeMath", { themeData, subject, studentClass, section, studentData, existingThemeData,
+      existingMap,
+        toolDoc,...await getSidenavData(req),editing: true });
+    
+  
+
   } catch (err) {
     console.error("Error in theme controller:", err);
     res.status(500).send("Internal Server Error");
   }
 };
 
-exports.themeformSave = async (req, res) => {
-  try {
-    console.log("Form data received:", JSON.stringify(req.body, null, 2));
-    console.log('Request headers accept:', req.headers.accept);
-    console.log('Is autosave flag:', req.body && req.body.autosave);
-    try {
-      console.log('Request body keys:', Object.keys(req.body || {}));
-      if (req.body.subjects) {
-        console.log('subjects payload:', JSON.stringify(req.body.subjects, null, 2));
-      }
-    } catch (e) {
-      console.warn('Error logging request body details', e);
-    }
+// exports.themeformSave = async (req, res) => {
+//   try {
+//     console.log("Form data received:", JSON.stringify(req.body, null, 2));
+//     console.log('Request headers accept:', req.headers.accept);
+//     console.log('Is autosave flag:', req.body && req.body.autosave);
+//     try {
+//       console.log('Request body keys:', Object.keys(req.body || {}));
+//       if (req.body.subjects) {
+//         console.log('subjects payload:', JSON.stringify(req.body.subjects, null, 2));
+//       }
+//     } catch (e) {
+//       console.warn('Error logging request body details', e);
+//     }
     
-    // Debug: Check for evaluationDate in the request body
-    if (req.body.subjects && req.body.subjects[0] && req.body.subjects[0].themes && req.body.subjects[0].themes[0] && req.body.subjects[0].themes[0].learningOutcomes) {
-      console.log("Found learningOutcomes in request:", req.body.subjects[0].themes[0].learningOutcomes);
-      req.body.subjects[0].themes[0].learningOutcomes.forEach((outcome, index) => {
-        if (outcome.evaluationDate) {
-          console.log(`Learning Outcome ${index} has evaluationDate:`, outcome.evaluationDate);
-        } else {
-          console.log(`Learning Outcome ${index} missing evaluationDate`);
-        }
-      });
-    }
+//     // Debug: Check for evaluationDate in the request body
+//     if (req.body.subjects && req.body.subjects[0] && req.body.subjects[0].themes && req.body.subjects[0].themes[0] && req.body.subjects[0].themes[0].learningOutcomes) {
+//       console.log("Found learningOutcomes in request:", req.body.subjects[0].themes[0].learningOutcomes);
+//       req.body.subjects[0].themes[0].learningOutcomes.forEach((outcome, index) => {
+//         if (outcome.evaluationDate) {
+//           console.log(`Learning Outcome ${index} has evaluationDate:`, outcome.evaluationDate);
+//         } else {
+//           console.log(`Learning Outcome ${index} missing evaluationDate`);
+//         }
+//       });
+//     }
     
-    // Check if req.body exists
-    if (!req.body) {
-      console.error("Request body is undefined");
-      return res.status(400).json({
-        success: false,
-        message: "No form data received"
-      });
-    }
+//     // Check if req.body exists
+//     if (!req.body) {
+//       console.error("Request body is undefined");
+//       return res.status(400).json({
+//         success: false,
+//         message: "No form data received"
+//       });
+//     }
     
-    // Helper function to get first value if array
-    const getValue = (value) => {
-      if (!value) return '';
-      return Array.isArray(value) ? value[0] : value;
-    };
+//     // Helper function to get first value if array
+//     const getValue = (value) => {
+//       if (!value) return '';
+//       return Array.isArray(value) ? value[0] : value;
+//     };
     
-    // Validate required fields
-    let roll = getValue(req.body.roll);
-    let name = getValue(req.body.name);
-    let studentClass = getValue(req.body.studentClass);
-    let section = getValue(req.body.section);
-    let subject = req.body.subjects && req.body.subjects[0] ? getValue(req.body.subjects[0].name || req.body.subjects[0].subject || req.body.subjects[0].subjectDisplay) : '';
-    let themeName = getValue(req.body.themeName) || '';
+//     // Validate required fields
+//     let roll = getValue(req.body.roll);
+//     let name = getValue(req.body.name);
+//     let studentClass = getValue(req.body.studentClass);
+//     let section = getValue(req.body.section);
+//     let subject = req.body.subjects && req.body.subjects[0] ? getValue(req.body.subjects[0].name || req.body.subjects[0].subject || req.body.subjects[0].subjectDisplay) : '';
+//     let themeName = getValue(req.body.themeName) || '';
 
-    const allSubmittedThemes = req.body.subjects && req.body.subjects[0] && Array.isArray(req.body.subjects[0].themes)
-      ? req.body.subjects[0].themes
-      : [];
+//     const allSubmittedThemes = req.body.subjects && req.body.subjects[0] && Array.isArray(req.body.subjects[0].themes)
+//       ? req.body.subjects[0].themes
+//       : [];
 
-    if (!themeName && allSubmittedThemes.length) {
-      const firstThemeWithName = allSubmittedThemes.find(th => getValue(th.themeName) || getValue(th.themeNameDisplay));
-      themeName = firstThemeWithName ? getValue(firstThemeWithName.themeName || firstThemeWithName.themeNameDisplay) : '';
-    }
+//     if (!themeName && allSubmittedThemes.length) {
+//       const firstThemeWithName = allSubmittedThemes.find(th => getValue(th.themeName) || getValue(th.themeNameDisplay));
+//       themeName = firstThemeWithName ? getValue(firstThemeWithName.themeName || firstThemeWithName.themeNameDisplay) : '';
+//     }
 
-    if (!roll || !name || !studentClass || !section || !subject || !themeName) {
-      console.error("Missing required fields:", { roll, name, studentClass, section, subject, themeName });
-      return res.status(400).json({
-        success: false,
-        message: "Missing required fields: roll, name, class, section, subject, or themeName"
-      });
-    }
+//     if (!roll || !name || !studentClass || !section || !subject || !themeName) {
+//       console.error("Missing required fields:", { roll, name, studentClass, section, subject, themeName });
+//       return res.status(400).json({
+//         success: false,
+//         message: "Missing required fields: roll, name, class, section, subject, or themeName"
+//       });
+//     }
 
-    // Clean up the form data to handle arrays
-    const processFormData = (obj) => {
-      if (!obj || typeof obj !== 'object') return obj;
+//     // Clean up the form data to handle arrays
+//     const processFormData = (obj) => {
+//       if (!obj || typeof obj !== 'object') return obj;
 
-      const arrayKeys = new Set(['subjects','themes','learningOutcomes','learningOutcome','assessmentAspects','tools','indicators','selectedIndicatorsBefore','selectedIndicatorsAfter']);
+//       const arrayKeys = new Set(['subjects','themes','learningOutcomes','learningOutcome','assessmentAspects','tools','indicators','selectedIndicatorsBefore','selectedIndicatorsAfter']);
 
-      // Create a new object to store processed data
-      const result = Array.isArray(obj) ? [] : {};
+//       // Create a new object to store processed data
+//       const result = Array.isArray(obj) ? [] : {};
 
-      Object.keys(obj).forEach(key => {
-        const value = obj[key];
+//       Object.keys(obj).forEach(key => {
+//         const value = obj[key];
 
-        // Treat evaluation date variants as plain strings
-        if (/^evaluationDate/i.test(key) || key === 'evaluationDate') {
-          if (Array.isArray(value)) result[key] = String(value[0] || '');
-          else result[key] = String(value || '');
-          return;
-        }
+//         // Treat evaluation date variants as plain strings
+//         if (/^evaluationDate/i.test(key) || key === 'evaluationDate') {
+//           if (Array.isArray(value)) result[key] = String(value[0] || '');
+//           else result[key] = String(value || '');
+//           return;
+//         }
 
-        // If value is an array and should be preserved as an array, process each element
-        if (Array.isArray(value)) {
-          // If key is in known array keys or array elements are objects, preserve as array
-          const elemsAreObjects = value.length > 0 && value.every(v => v && typeof v === 'object');
-          if (arrayKeys.has(key) || elemsAreObjects) {
-            result[key] = value.map(v => (v && typeof v === 'object') ? processFormData(v) : v);
-          } else if (value.length === 1) {
-            // collapse single-element arrays for scalar fields
-            result[key] = value[0];
-          } else {
-            result[key] = value.map(v => (v && typeof v === 'object') ? processFormData(v) : v);
-          }
-          return;
-        }
+//         // If value is an array and should be preserved as an array, process each element
+//         if (Array.isArray(value)) {
+//           // If key is in known array keys or array elements are objects, preserve as array
+//           const elemsAreObjects = value.length > 0 && value.every(v => v && typeof v === 'object');
+//           if (arrayKeys.has(key) || elemsAreObjects) {
+//             result[key] = value.map(v => (v && typeof v === 'object') ? processFormData(v) : v);
+//           } else if (value.length === 1) {
+//             // collapse single-element arrays for scalar fields
+//             result[key] = value[0];
+//           } else {
+//             result[key] = value.map(v => (v && typeof v === 'object') ? processFormData(v) : v);
+//           }
+//           return;
+//         }
 
-        // Recursively process objects
-        if (value && typeof value === 'object') {
-          result[key] = processFormData(value);
-          return;
-        }
+//         // Recursively process objects
+//         if (value && typeof value === 'object') {
+//           result[key] = processFormData(value);
+//           return;
+//         }
 
-        // Scalars
-        result[key] = value;
-      });
+//         // Scalars
+//         result[key] = value;
+//       });
 
-      return result;
-    };
+//       return result;
+//     };
 
-    // Process the new theme data
-    const submittedThemes = Array.isArray(req.body.subjects[0].themes)
-      ? req.body.subjects[0].themes.filter(t => t && typeof t === 'object' && Object.keys(t).length > 0)
-      : [];
-    let submittedTheme = submittedThemes[0] || null;
-    if (submittedThemes.length && themeName) {
-      const matching = submittedThemes.find(t => {
-        const tn = getValue(t.themeName) || getValue(t.themeNameDisplay) || '';
-        return tn.toString().trim() === themeName.toString().trim();
-      });
-      if (matching) submittedTheme = matching;
-    }
-    if (!submittedTheme) {
-      // Fall back to the first non-empty theme object if theme selection is missing
-      submittedTheme = submittedThemes[0] || req.body.subjects[0].themes[0];
-    }
-    const newThemeData = processFormData(submittedTheme);
+//     // Process the new theme data
+//     const submittedThemes = Array.isArray(req.body.subjects[0].themes)
+//       ? req.body.subjects[0].themes.filter(t => t && typeof t === 'object' && Object.keys(t).length > 0)
+//       : [];
+//     let submittedTheme = submittedThemes[0] || null;
+//     if (submittedThemes.length && themeName) {
+//       const matching = submittedThemes.find(t => {
+//         const tn = getValue(t.themeName) || getValue(t.themeNameDisplay) || '';
+//         return tn.toString().trim() === themeName.toString().trim();
+//       });
+//       if (matching) submittedTheme = matching;
+//     }
+//     if (!submittedTheme) {
+//       // Fall back to the first non-empty theme object if theme selection is missing
+//       submittedTheme = submittedThemes[0] || req.body.subjects[0].themes[0];
+//     }
+//     const newThemeData = processFormData(submittedTheme);
     
-    console.log("Processed new theme data:", JSON.stringify(newThemeData, null, 2));
+//     console.log("Processed new theme data:", JSON.stringify(newThemeData, null, 2));
 
-    // Defensive normalization for student-submitted theme: remove empty placeholders
-    const normalizeStudentTheme = (theme) => {
-      if (!theme || typeof theme !== 'object') return theme;
-      const t = { ...theme };
+//     // Defensive normalization for student-submitted theme: remove empty placeholders
+//     const normalizeStudentTheme = (theme) => {
+//       if (!theme || typeof theme !== 'object') return theme;
+//       const t = { ...theme };
 
-      const loKey = t.learningOutcomes || t.learningOutcome || [];
-      t.learningOutcomes = Array.isArray(loKey) ? loKey.map(lo => {
-        const newLo = { ...lo };
+//       const loKey = t.learningOutcomes || t.learningOutcome || [];
+//       t.learningOutcomes = Array.isArray(loKey) ? loKey.map(lo => {
+//         const newLo = { ...lo };
 
-        // Ensure indicators array exists at LO level (fallback)
-        if (!Array.isArray(newLo.indicators)) newLo.indicators = Array.isArray(newLo.indicators) ? newLo.indicators : [];
+//         // Ensure indicators array exists at LO level (fallback)
+//         if (!Array.isArray(newLo.indicators)) newLo.indicators = Array.isArray(newLo.indicators) ? newLo.indicators : [];
 
-        // Normalize assessmentAspects into an array
-        if (!Array.isArray(newLo.assessmentAspects) && newLo.assessmentAspects && typeof newLo.assessmentAspects === 'object') {
-          newLo.assessmentAspects = [newLo.assessmentAspects];
-        }
+//         // Normalize assessmentAspects into an array
+//         if (!Array.isArray(newLo.assessmentAspects) && newLo.assessmentAspects && typeof newLo.assessmentAspects === 'object') {
+//           newLo.assessmentAspects = [newLo.assessmentAspects];
+//         }
 
-        if (Array.isArray(newLo.assessmentAspects)) {
-          newLo.assessmentAspects = newLo.assessmentAspects.map(asp => {
-            const newAsp = { ...asp };
+//         if (Array.isArray(newLo.assessmentAspects)) {
+//           newLo.assessmentAspects = newLo.assessmentAspects.map(asp => {
+//             const newAsp = { ...asp };
 
-            // Normalize tools into an array
-            if (!Array.isArray(newAsp.tools) && newAsp.tools && typeof newAsp.tools === 'object') {
-              newAsp.tools = [newAsp.tools];
-            }
+//             // Normalize tools into an array
+//             if (!Array.isArray(newAsp.tools) && newAsp.tools && typeof newAsp.tools === 'object') {
+//               newAsp.tools = [newAsp.tools];
+//             }
 
-            if (Array.isArray(newAsp.tools)) {
-              newAsp.tools = newAsp.tools.map(tool => {
-                const newTool = { ...tool };
+//             if (Array.isArray(newAsp.tools)) {
+//               newAsp.tools = newAsp.tools.map(tool => {
+//                 const newTool = { ...tool };
 
-                // Ensure indicators is an array
-                if (!Array.isArray(newTool.indicators) && newTool.indicators && typeof newTool.indicators === 'object') {
-                  newTool.indicators = [newTool.indicators];
-                }
+//                 // Ensure indicators is an array
+//                 if (!Array.isArray(newTool.indicators) && newTool.indicators && typeof newTool.indicators === 'object') {
+//                   newTool.indicators = [newTool.indicators];
+//                 }
 
-                if (Array.isArray(newTool.indicators)) {
-                  newTool.indicators = newTool.indicators.map(ind => {
-                    const newInd = { ...ind };
+//                 if (Array.isArray(newTool.indicators)) {
+//                   newTool.indicators = newTool.indicators.map(ind => {
+//                     const newInd = { ...ind };
 
-                    // Normalize indicator name and marks
-                    newInd.indicatorName = (newInd.indicatorName || newInd.name || '').toString();
-                    newInd.maxMarks = Number(newInd.maxMarks || newInd.indicatorsMarks || 0);
-                    newInd.obtainedBefore = Number(newInd.obtainedBefore || newInd.marksBeforeIntervention || 0);
-                    newInd.obtainedAfter = Number(newInd.obtainedAfter || newInd.marksAfterIntervention || 0);
+//                     // Normalize indicator name and marks
+//                     newInd.indicatorName = (newInd.indicatorName || newInd.name || '').toString();
+//                     newInd.maxMarks = Number(newInd.maxMarks || newInd.indicatorsMarks || 0);
+//                     newInd.obtainedBefore = Number(newInd.obtainedBefore || newInd.marksBeforeIntervention || 0);
+//                     newInd.obtainedAfter = Number(newInd.obtainedAfter || newInd.marksAfterIntervention || 0);
 
-                    // remove legacy fields
-                    if (newInd.indicatorsMarks !== undefined) delete newInd.indicatorsMarks;
-                    if (newInd.name !== undefined) delete newInd.name;
+//                     // remove legacy fields
+//                     if (newInd.indicatorsMarks !== undefined) delete newInd.indicatorsMarks;
+//                     if (newInd.name !== undefined) delete newInd.name;
 
-                    return newInd;
-                  }).filter(ind => {
-                    // keep indicators that have a name or non-zero maxMarks
-                    const hasName = (ind.indicatorName || '').toString().trim().length > 0;
-                    const hasMax = typeof ind.maxMarks === 'number' && ind.maxMarks >= 0;
-                    return hasName || hasMax;
-                  });
-                } else {
-                  newTool.indicators = [];
-                }
+//                     return newInd;
+//                   }).filter(ind => {
+//                     // keep indicators that have a name or non-zero maxMarks
+//                     const hasName = (ind.indicatorName || '').toString().trim().length > 0;
+//                     const hasMax = typeof ind.maxMarks === 'number' && ind.maxMarks >= 0;
+//                     return hasName || hasMax;
+//                   });
+//                 } else {
+//                   newTool.indicators = [];
+//                 }
 
-                // Ensure tool-level dates and totals
-                // If the form provided LO-level dates but not tool-level, inherit from LO
-                newTool.evaluationDateBefore = newTool.evaluationDateBefore || newLo.evaluationDateBefore || '';
-                newTool.evaluationDateAfter = newTool.evaluationDateAfter || newLo.evaluationDateAfter || '';
-                newTool.totalBefore = Number(newTool.totalBefore || 0);
-                newTool.totalAfter = Number(newTool.totalAfter || 0);
+//                 // Ensure tool-level dates and totals
+//                 // If the form provided LO-level dates but not tool-level, inherit from LO
+//                 newTool.evaluationDateBefore = newTool.evaluationDateBefore || newLo.evaluationDateBefore || '';
+//                 newTool.evaluationDateAfter = newTool.evaluationDateAfter || newLo.evaluationDateAfter || '';
+//                 newTool.totalBefore = Number(newTool.totalBefore || 0);
+//                 newTool.totalAfter = Number(newTool.totalAfter || 0);
 
-                // remove legacy name alias if present
-                if (newTool.name !== undefined) delete newTool.name;
+//                 // remove legacy name alias if present
+//                 if (newTool.name !== undefined) delete newTool.name;
 
-                return newTool;
-              }).filter(tool => {
-                const hasName = (tool.toolName || '').toString().trim().length > 0;
-                const hasIndicators = Array.isArray(tool.indicators) && tool.indicators.length > 0;
-                return hasName || hasIndicators;
-              });
-            } else {
-              newAsp.tools = [];
-            }
+//                 return newTool;
+//               }).filter(tool => {
+//                 const hasName = (tool.toolName || '').toString().trim().length > 0;
+//                 const hasIndicators = Array.isArray(tool.indicators) && tool.indicators.length > 0;
+//                 return hasName || hasIndicators;
+//               });
+//             } else {
+//               newAsp.tools = [];
+//             }
 
-            // ensure aspectName exists
-            newAsp.aspectName = newAsp.aspectName || newAsp.name || '';
-            if (newAsp.name !== undefined) delete newAsp.name;
+//             // ensure aspectName exists
+//             newAsp.aspectName = newAsp.aspectName || newAsp.name || '';
+//             if (newAsp.name !== undefined) delete newAsp.name;
 
-            return newAsp;
-          }).filter(asp => {
-            const hasName = (asp.aspectName || '').toString().trim().length > 0;
-            const hasTools = Array.isArray(asp.tools) && asp.tools.length > 0;
-            return hasName || hasTools;
-          });
-        } else {
-          newLo.assessmentAspects = [];
-        }
+//             return newAsp;
+//           }).filter(asp => {
+//             const hasName = (asp.aspectName || '').toString().trim().length > 0;
+//             const hasTools = Array.isArray(asp.tools) && asp.tools.length > 0;
+//             return hasName || hasTools;
+//           });
+//         } else {
+//           newLo.assessmentAspects = [];
+//         }
 
-        // LO-level defaults
-        newLo.name = newLo.name || newLo.learningOutcomeName || '';
-        newLo.totalMarksBeforeIntervention = Number(newLo.totalMarksBeforeIntervention || 0);
-        newLo.totalMarksAfterIntervention = Number(newLo.totalMarksAfterIntervention || 0);
+//         // LO-level defaults
+//         newLo.name = newLo.name || newLo.learningOutcomeName || '';
+//         newLo.totalMarksBeforeIntervention = Number(newLo.totalMarksBeforeIntervention || 0);
+//         newLo.totalMarksAfterIntervention = Number(newLo.totalMarksAfterIntervention || 0);
 
-        // Clean up legacy fields
-        if (newLo.learningOutcomeName !== undefined) delete newLo.learningOutcomeName;
+//         // Clean up legacy fields
+//         if (newLo.learningOutcomeName !== undefined) delete newLo.learningOutcomeName;
 
-        return newLo;
-      }).filter(lo => {
-        const hasName = (lo.name || '').toString().trim().length > 0;
-        const hasAspects = Array.isArray(lo.assessmentAspects) && lo.assessmentAspects.length > 0;
-        return hasName || hasAspects;
-      }) : [];
+//         return newLo;
+//       }).filter(lo => {
+//         const hasName = (lo.name || '').toString().trim().length > 0;
+//         const hasAspects = Array.isArray(lo.assessmentAspects) && lo.assessmentAspects.length > 0;
+//         return hasName || hasAspects;
+//       }) : [];
 
-      t.learningOutcome = t.learningOutcomes;
-      // Ensure theme-level defaults
-      t.overallTotalBefore = Number(t.overallTotalBefore || 0);
-      t.overallTotalAfter = Number(t.overallTotalAfter || 0);
+//       t.learningOutcome = t.learningOutcomes;
+//       // Ensure theme-level defaults
+//       t.overallTotalBefore = Number(t.overallTotalBefore || 0);
+//       t.overallTotalAfter = Number(t.overallTotalAfter || 0);
 
-      return t;
-    };
+//       return t;
+//     };
 
-    const normalizedTheme = normalizeStudentTheme(newThemeData);
-    console.log('Normalized theme for save:', JSON.stringify(normalizedTheme, null, 2));
+//     const normalizedTheme = normalizeStudentTheme(newThemeData);
+//     console.log('Normalized theme for save:', JSON.stringify(normalizedTheme, null, 2));
 
-    // Fallback: if LO names or tool names are missing, populate from quick-selection fields
-    try {
-      const fallbackLOName = getValue(req.body.selectedLO) || '';
-      const fallbackAspect = getValue(req.body.selectedAspect) || '';
-      const fallbackTool = getValue(req.body.selectedTool) || '';
-      if (normalizedTheme && Array.isArray(normalizedTheme.learningOutcomes)) {
-        normalizedTheme.learningOutcomes.forEach((lo, idx) => {
-          if (!lo.name || !lo.name.toString().trim()) {
-            if (fallbackLOName) lo.name = fallbackLOName;
-            else lo.name = `Learning Outcome ${idx+1}`;
-          }
-          if (Array.isArray(lo.assessmentAspects)) {
-            lo.assessmentAspects.forEach((asp) => {
-              if (!asp.aspectName || !asp.aspectName.toString().trim()) {
-                if (fallbackAspect) asp.aspectName = fallbackAspect;
-                else asp.aspectName = '';
-              }
-              if (Array.isArray(asp.tools)) {
-                asp.tools.forEach((tool) => {
-                  if (!tool.toolName || !tool.toolName.toString().trim()) {
-                    if (fallbackTool) tool.toolName = fallbackTool;
-                    else tool.toolName = '';
-                  }
-                });
-              }
-            });
-          }
-        });
-      }
-    } catch (e) { console.warn('Fallback LO/tool population failed', e); }
+//     // Fallback: if LO names or tool names are missing, populate from quick-selection fields
+//     try {
+//       const fallbackLOName = getValue(req.body.selectedLO) || '';
+//       const fallbackAspect = getValue(req.body.selectedAspect) || '';
+//       const fallbackTool = getValue(req.body.selectedTool) || '';
+//       if (normalizedTheme && Array.isArray(normalizedTheme.learningOutcomes)) {
+//         normalizedTheme.learningOutcomes.forEach((lo, idx) => {
+//           if (!lo.name || !lo.name.toString().trim()) {
+//             if (fallbackLOName) lo.name = fallbackLOName;
+//             else lo.name = `Learning Outcome ${idx+1}`;
+//           }
+//           if (Array.isArray(lo.assessmentAspects)) {
+//             lo.assessmentAspects.forEach((asp) => {
+//               if (!asp.aspectName || !asp.aspectName.toString().trim()) {
+//                 if (fallbackAspect) asp.aspectName = fallbackAspect;
+//                 else asp.aspectName = '';
+//               }
+//               if (Array.isArray(asp.tools)) {
+//                 asp.tools.forEach((tool) => {
+//                   if (!tool.toolName || !tool.toolName.toString().trim()) {
+//                     if (fallbackTool) tool.toolName = fallbackTool;
+//                     else tool.toolName = '';
+//                   }
+//                 });
+//               }
+//             });
+//           }
+//         });
+//       }
+//     } catch (e) { console.warn('Fallback LO/tool population failed', e); }
 
-    // If the incoming payload contains selected indicator ids, compute LO totals from
-    // the master theme format so student docs don't duplicate indicator definitions.
-    try {
-      const ThemeFormatModel = getThemeFormat(studentClass);
-      const masterDocs = await ThemeFormatModel.find({ studentClass: studentClass, subject: subject }).lean();
-      const indicatorMap = new Map();
-      if (Array.isArray(masterDocs) && masterDocs.length) {
-        masterDocs.forEach(md => {
-          if (Array.isArray(md.themes)) {
-            md.themes.forEach(theme => {
-              if (!theme || !theme.learningOutcome) return;
-              theme.learningOutcome.forEach(lo => {
-                if (!lo || !Array.isArray(lo.assessmentAspects)) return;
-                lo.assessmentAspects.forEach(asp => {
-                  if (!asp || !Array.isArray(asp.tools)) return;
-                  asp.tools.forEach(tool => {
-                    if (!tool || !Array.isArray(tool.indicators)) return;
-                    tool.indicators.forEach(ind => {
-                      if (!ind) return;
-                      try {
-                        if (ind._id) indicatorMap.set(String(ind._id), Number(ind.indicatorsMarks || ind.maxMarks || 0));
-                      } catch (e) { /* ignore */ }
-                    });
-                  });
-                });
-              });
-            });
-          }
-        });
-      }
+//     // If the incoming payload contains selected indicator ids, compute LO totals from
+//     // the master theme format so student docs don't duplicate indicator definitions.
+//     try {
+//       const ThemeFormatModel = getThemeFormat(studentClass);
+//       const masterDocs = await ThemeFormatModel.find({ studentClass: studentClass, subject: subject }).lean();
+//       const indicatorMap = new Map();
+//       if (Array.isArray(masterDocs) && masterDocs.length) {
+//         masterDocs.forEach(md => {
+//           if (Array.isArray(md.themes)) {
+//             md.themes.forEach(theme => {
+//               if (!theme || !theme.learningOutcome) return;
+//               theme.learningOutcome.forEach(lo => {
+//                 if (!lo || !Array.isArray(lo.assessmentAspects)) return;
+//                 lo.assessmentAspects.forEach(asp => {
+//                   if (!asp || !Array.isArray(asp.tools)) return;
+//                   asp.tools.forEach(tool => {
+//                     if (!tool || !Array.isArray(tool.indicators)) return;
+//                     tool.indicators.forEach(ind => {
+//                       if (!ind) return;
+//                       try {
+//                         if (ind._id) indicatorMap.set(String(ind._id), Number(ind.indicatorsMarks || ind.maxMarks || 0));
+//                       } catch (e) { /* ignore */ }
+//                     });
+//                   });
+//                 });
+//               });
+//             });
+//           }
+//         });
+//       }
 
-      // For each LO in normalizedTheme, if selectedIndicatorsBefore/After arrays present,
-      // compute totals by summing indicator marks from master indicatorMap.
-      if (Array.isArray(normalizedTheme.learningOutcomes)) {
-        normalizedTheme.learningOutcomes.forEach(lo => {
-          try {
-            if (Array.isArray(lo.selectedIndicatorsBefore) && lo.selectedIndicatorsBefore.length) {
-              let s = 0;
-              lo.selectedIndicatorsBefore.forEach(id => { if (id) s += Number(indicatorMap.get(String(id)) || 0); });
-              lo.totalMarksBeforeIntervention = Number(s);
-            }
-            if (Array.isArray(lo.selectedIndicatorsAfter) && lo.selectedIndicatorsAfter.length) {
-              let s2 = 0;
-              lo.selectedIndicatorsAfter.forEach(id => { if (id) s2 += Number(indicatorMap.get(String(id)) || 0); });
-              lo.totalMarksAfterIntervention = Number(s2);
-            }
-          } catch(e) { /* ignore per-LO errors */ }
-        });
-      }
-    } catch (errMap) {
-      console.warn('Could not compute totals from master indicators:', errMap);
-    }
+//       // For each LO in normalizedTheme, if selectedIndicatorsBefore/After arrays present,
+//       // compute totals by summing indicator marks from master indicatorMap.
+//       if (Array.isArray(normalizedTheme.learningOutcomes)) {
+//         normalizedTheme.learningOutcomes.forEach(lo => {
+//           try {
+//             if (Array.isArray(lo.selectedIndicatorsBefore) && lo.selectedIndicatorsBefore.length) {
+//               let s = 0;
+//               lo.selectedIndicatorsBefore.forEach(id => { if (id) s += Number(indicatorMap.get(String(id)) || 0); });
+//               lo.totalMarksBeforeIntervention = Number(s);
+//             }
+//             if (Array.isArray(lo.selectedIndicatorsAfter) && lo.selectedIndicatorsAfter.length) {
+//               let s2 = 0;
+//               lo.selectedIndicatorsAfter.forEach(id => { if (id) s2 += Number(indicatorMap.get(String(id)) || 0); });
+//               lo.totalMarksAfterIntervention = Number(s2);
+//             }
+//           } catch(e) { /* ignore per-LO errors */ }
+//         });
+//       }
+//     } catch (errMap) {
+//       console.warn('Could not compute totals from master indicators:', errMap);
+//     }
 
-    // Compute aggregated totals and add legacy/alternate field names expected by UI
-    const computeTotalsAndAliases = (theme) => {
-      if (!theme || typeof theme !== 'object') return theme;
+//     // Compute aggregated totals and add legacy/alternate field names expected by UI
+//     const computeTotalsAndAliases = (theme) => {
+//       if (!theme || typeof theme !== 'object') return theme;
 
-      const num = v => Number(v) || 0;
+//       const num = v => Number(v) || 0;
 
-      const los = theme.learningOutcomes || theme.learningOutcome || [];
+//       const los = theme.learningOutcomes || theme.learningOutcome || [];
 
-      let themeTotalBefore = 0;
-      let themeTotalAfter = 0;
+//       let themeTotalBefore = 0;
+//       let themeTotalAfter = 0;
 
-      theme.learningOutcomes = Array.isArray(los) ? los.map(lo => {
-        const newLo = { ...lo };
-        let loTotalBefore = 0;
-        let loTotalAfter = 0;
+//       theme.learningOutcomes = Array.isArray(los) ? los.map(lo => {
+//         const newLo = { ...lo };
+//         let loTotalBefore = 0;
+//         let loTotalAfter = 0;
 
-        if (Array.isArray(newLo.assessmentAspects)) {
-          newLo.assessmentAspects = newLo.assessmentAspects.map(asp => {
-            const newAsp = { ...asp };
-            let aspTotalBefore = 0;
-            let aspTotalAfter = 0;
+//         if (Array.isArray(newLo.assessmentAspects)) {
+//           newLo.assessmentAspects = newLo.assessmentAspects.map(asp => {
+//             const newAsp = { ...asp };
+//             let aspTotalBefore = 0;
+//             let aspTotalAfter = 0;
 
-            if (Array.isArray(newAsp.tools)) {
-              newAsp.tools = newAsp.tools.map(tool => {
-                const newTool = { ...tool };
-                let toolTotalBefore = 0;
-                let toolTotalAfter = 0;
+//             if (Array.isArray(newAsp.tools)) {
+//               newAsp.tools = newAsp.tools.map(tool => {
+//                 const newTool = { ...tool };
+//                 let toolTotalBefore = 0;
+//                 let toolTotalAfter = 0;
 
-                if (Array.isArray(newTool.indicators)) {
-                  newTool.indicators = newTool.indicators.map(ind => {
-                    const newInd = { ...ind };
-                    // Support legacy names too
-                    const obtainedBefore = num(newInd.obtainedBefore || newInd.marksBeforeIntervention || newInd.marksBefore || newInd.marksBeforeIntervention);
-                    const obtainedAfter = num(newInd.obtainedAfter || newInd.marksAfterIntervention || newInd.marksAfter || newInd.marksAfterIntervention);
-                    // store normalized fields
-                    newInd.obtainedBefore = obtainedBefore;
-                    newInd.obtainedAfter = obtainedAfter;
-                    newInd.maxMarks = num(newInd.maxMarks || newInd.indicatorsMarks || newInd.maxMarks);
+//                 if (Array.isArray(newTool.indicators)) {
+//                   newTool.indicators = newTool.indicators.map(ind => {
+//                     const newInd = { ...ind };
+//                     // Support legacy names too
+//                     const obtainedBefore = num(newInd.obtainedBefore || newInd.marksBeforeIntervention || newInd.marksBefore || newInd.marksBeforeIntervention);
+//                     const obtainedAfter = num(newInd.obtainedAfter || newInd.marksAfterIntervention || newInd.marksAfter || newInd.marksAfterIntervention);
+//                     // store normalized fields
+//                     newInd.obtainedBefore = obtainedBefore;
+//                     newInd.obtainedAfter = obtainedAfter;
+//                     newInd.maxMarks = num(newInd.maxMarks || newInd.indicatorsMarks || newInd.maxMarks);
 
-                    toolTotalBefore += obtainedBefore;
-                    toolTotalAfter += obtainedAfter;
-                    return newInd;
-                  });
-                }
+//                     toolTotalBefore += obtainedBefore;
+//                     toolTotalAfter += obtainedAfter;
+//                     return newInd;
+//                   });
+//                 }
 
-                // Set tool totals
-                newTool.totalBefore = toolTotalBefore;
-                newTool.totalAfter = toolTotalAfter;
+//                 // Set tool totals
+//                 newTool.totalBefore = toolTotalBefore;
+//                 newTool.totalAfter = toolTotalAfter;
 
-                aspTotalBefore += toolTotalBefore;
-                aspTotalAfter += toolTotalAfter;
+//                 aspTotalBefore += toolTotalBefore;
+//                 aspTotalAfter += toolTotalAfter;
 
-                return newTool;
-              });
-            }
+//                 return newTool;
+//               });
+//             }
 
-            // set aspect totals
-            newAsp.assessmentAspectTotalBefore = aspTotalBefore;
-            newAsp.assessmentAspectTotalAfter = aspTotalAfter;
+//             // set aspect totals
+//             newAsp.assessmentAspectTotalBefore = aspTotalBefore;
+//             newAsp.assessmentAspectTotalAfter = aspTotalAfter;
 
-            loTotalBefore += aspTotalBefore;
-            loTotalAfter += aspTotalAfter;
+//             loTotalBefore += aspTotalBefore;
+//             loTotalAfter += aspTotalAfter;
 
-            return newAsp;
-          });
-        }
+//             return newAsp;
+//           });
+//         }
 
-        // compute LO totals only if selectedIndicators were not provided (preserve computed totals)
-        if (!Array.isArray(newLo.selectedIndicatorsBefore) || newLo.selectedIndicatorsBefore.length === 0) {
-          newLo.totalMarksBeforeIntervention = loTotalBefore;
-        }
-        if (!Array.isArray(newLo.selectedIndicatorsAfter) || newLo.selectedIndicatorsAfter.length === 0) {
-          newLo.totalMarksAfterIntervention = loTotalAfter;
-        }
+//         // compute LO totals only if selectedIndicators were not provided (preserve computed totals)
+//         if (!Array.isArray(newLo.selectedIndicatorsBefore) || newLo.selectedIndicatorsBefore.length === 0) {
+//           newLo.totalMarksBeforeIntervention = loTotalBefore;
+//         }
+//         if (!Array.isArray(newLo.selectedIndicatorsAfter) || newLo.selectedIndicatorsAfter.length === 0) {
+//           newLo.totalMarksAfterIntervention = loTotalAfter;
+//         }
 
-        themeTotalBefore += loTotalBefore;
-        themeTotalAfter += loTotalAfter;
+//         themeTotalBefore += loTotalBefore;
+//         themeTotalAfter += loTotalAfter;
 
-        return newLo;
-      }) : [];
+//         return newLo;
+//       }) : [];
 
-      theme.overallTotalBefore = themeTotalBefore;
-      theme.overallTotalAfter = themeTotalAfter;
-      theme.learningOutcome = theme.learningOutcomes;
+//       theme.overallTotalBefore = themeTotalBefore;
+//       theme.overallTotalAfter = themeTotalAfter;
+//       theme.learningOutcome = theme.learningOutcomes;
 
-      return theme;
-    };
+//       return theme;
+//     };
 
-    const { computeThemeTotals } = require('../utils/computeThemeTotals');
-    const enrichedTheme = computeThemeTotals(normalizedTheme);
-    console.log('Enriched theme for save (with totals/aliases):', JSON.stringify(enrichedTheme, null, 2));
-    // Debug: show tool dates for inspection
-    try {
-      enrichedTheme.learningOutcomes && enrichedTheme.learningOutcomes.forEach((lo, li) => {
-        lo.assessmentAspects && lo.assessmentAspects.forEach((asp, ai) => {
-          asp.tools && asp.tools.forEach((tool, ti) => {
-            console.log(`Tool date check LO[${li}] ASP[${ai}] TOOL[${ti}]:`, {
-              toolName: tool.toolName,
-              evaluationDateBefore: tool.evaluationDateBefore,
-              evaluationDateAfter: tool.evaluationDateAfter
-            });
-          });
-        });
-      });
-    } catch (dbgErr) {
-      console.warn('Error while logging tool dates:', dbgErr);
-    }
+//     const { computeThemeTotals } = require('../utils/computeThemeTotals');
+//     const enrichedTheme = computeThemeTotals(normalizedTheme);
+//     console.log('Enriched theme for save (with totals/aliases):', JSON.stringify(enrichedTheme, null, 2));
+//     // Debug: show tool dates for inspection
+//     try {
+//       enrichedTheme.learningOutcomes && enrichedTheme.learningOutcomes.forEach((lo, li) => {
+//         lo.assessmentAspects && lo.assessmentAspects.forEach((asp, ai) => {
+//           asp.tools && asp.tools.forEach((tool, ti) => {
+//             console.log(`Tool date check LO[${li}] ASP[${ai}] TOOL[${ti}]:`, {
+//               toolName: tool.toolName,
+//               evaluationDateBefore: tool.evaluationDateBefore,
+//               evaluationDateAfter: tool.evaluationDateAfter
+//             });
+//           });
+//         });
+//       });
+//     } catch (dbgErr) {
+//       console.warn('Error while logging tool dates:', dbgErr);
+//     }
     
-    // Get data from the appropriate collection based on class
-    const ThemeModel = await getStudentThemeData(studentClass);
+//     // Get data from the appropriate collection based on class
+//     const ThemeModel = await getStudentThemeData(studentClass);
     
-    // First, check if student record exists for this student (same roll, class, section)
-    const existingStudentRecord = await ThemeModel.findOne({
-      roll,
-      studentClass,
-      section
-    });
+//     // First, check if student record exists for this student (same roll, class, section)
+//     const existingStudentRecord = await ThemeModel.findOne({
+//       roll,
+//       studentClass,
+//       section
+//     });
     
-    let result;
+//     let result;
     
-    // Calculate overall totals for all themes before saving
-    function updateOverallTotals(subjects) {
-      if (!Array.isArray(subjects)) return;
-      subjects.forEach(subject => {
-        if (Array.isArray(subject.themes)) {
-          subject.themes.forEach(theme => {
-            let overallBefore = 0;
-            let overallAfter = 0;
-            if (Array.isArray(theme.learningOutcomes)) {
-              theme.learningOutcomes.forEach(outcome => {
-                overallBefore += Number(outcome.totalMarksBeforeIntervention || 0);
-                overallAfter += Number(outcome.totalMarksAfterIntervention || 0);
-              });
-            }
-            theme.overallTotalBefore = overallBefore;
-            theme.overallTotalAfter = overallAfter;
-          });
-        }
-      });
-    }
+//     // Calculate overall totals for all themes before saving
+//     function updateOverallTotals(subjects) {
+//       if (!Array.isArray(subjects)) return;
+//       subjects.forEach(subject => {
+//         if (Array.isArray(subject.themes)) {
+//           subject.themes.forEach(theme => {
+//             let overallBefore = 0;
+//             let overallAfter = 0;
+//             if (Array.isArray(theme.learningOutcomes)) {
+//               theme.learningOutcomes.forEach(outcome => {
+//                 overallBefore += Number(outcome.totalMarksBeforeIntervention || 0);
+//                 overallAfter += Number(outcome.totalMarksAfterIntervention || 0);
+//               });
+//             }
+//             theme.overallTotalBefore = overallBefore;
+//             theme.overallTotalAfter = overallAfter;
+//           });
+//         }
+//       });
+//     }
 
-    // Merge helper functions for existing themes and learning outcomes
-    const mergeIndicators = (existingIndicators = [], incomingIndicators = []) => {
-      const merged = Array.isArray(existingIndicators) ? [...existingIndicators] : [];
-      if (!Array.isArray(incomingIndicators)) return merged;
-      incomingIndicators.forEach((incoming) => {
-        if (!incoming || typeof incoming !== 'object') return;
-        const incomingName = String(incoming.indicatorName || incoming.name || '').trim();
-        const existingIndex = merged.findIndex((old) => String(old.indicatorName || old.name || '').trim() === incomingName);
-        if (existingIndex !== -1) {
-          merged[existingIndex] = { ...merged[existingIndex], ...incoming };
-        } else {
-          merged.push(incoming);
-        }
-      });
-      return merged;
-    };
+//     // Merge helper functions for existing themes and learning outcomes
+//     const mergeIndicators = (existingIndicators = [], incomingIndicators = []) => {
+//       const merged = Array.isArray(existingIndicators) ? [...existingIndicators] : [];
+//       if (!Array.isArray(incomingIndicators)) return merged;
+//       incomingIndicators.forEach((incoming) => {
+//         if (!incoming || typeof incoming !== 'object') return;
+//         const incomingName = String(incoming.indicatorName || incoming.name || '').trim();
+//         const existingIndex = merged.findIndex((old) => String(old.indicatorName || old.name || '').trim() === incomingName);
+//         if (existingIndex !== -1) {
+//           merged[existingIndex] = { ...merged[existingIndex], ...incoming };
+//         } else {
+//           merged.push(incoming);
+//         }
+//       });
+//       return merged;
+//     };
 
-    const mergeTools = (existingTools = [], incomingTools = []) => {
-      const merged = Array.isArray(existingTools) ? [...existingTools] : [];
-      if (!Array.isArray(incomingTools)) return merged;
-      incomingTools.forEach((incoming) => {
-        if (!incoming || typeof incoming !== 'object') return;
-        const incomingName = String(incoming.toolName || incoming.name || '').trim();
-        const existingIndex = merged.findIndex((old) => String(old.toolName || old.name || '').trim() === incomingName);
-        if (existingIndex !== -1) {
-          merged[existingIndex] = {
-            ...merged[existingIndex],
-            ...incoming,
-            indicators: mergeIndicators(merged[existingIndex].indicators, incoming.indicators)
-          };
-        } else {
-          merged.push(incoming);
-        }
-      });
-      return merged;
-    };
+//     const mergeTools = (existingTools = [], incomingTools = []) => {
+//       const merged = Array.isArray(existingTools) ? [...existingTools] : [];
+//       if (!Array.isArray(incomingTools)) return merged;
+//       incomingTools.forEach((incoming) => {
+//         if (!incoming || typeof incoming !== 'object') return;
+//         const incomingName = String(incoming.toolName || incoming.name || '').trim();
+//         const existingIndex = merged.findIndex((old) => String(old.toolName || old.name || '').trim() === incomingName);
+//         if (existingIndex !== -1) {
+//           merged[existingIndex] = {
+//             ...merged[existingIndex],
+//             ...incoming,
+//             indicators: mergeIndicators(merged[existingIndex].indicators, incoming.indicators)
+//           };
+//         } else {
+//           merged.push(incoming);
+//         }
+//       });
+//       return merged;
+//     };
 
-    const getLearningOutcomes = (theme) => {
-      if (!theme || typeof theme !== 'object') return [];
-      return Array.isArray(theme.learningOutcomes) ? theme.learningOutcomes : (Array.isArray(theme.learningOutcome) ? theme.learningOutcome : []);
-    };
+//     const getLearningOutcomes = (theme) => {
+//       if (!theme || typeof theme !== 'object') return [];
+//       return Array.isArray(theme.learningOutcomes) ? theme.learningOutcomes : (Array.isArray(theme.learningOutcome) ? theme.learningOutcome : []);
+//     };
 
-    const mergeAspects = (existingAspects = [], incomingAspects = []) => {
-      const merged = Array.isArray(existingAspects) ? [...existingAspects] : [];
-      if (!Array.isArray(incomingAspects)) return merged;
-      incomingAspects.forEach((incoming) => {
-        if (!incoming || typeof incoming !== 'object') return;
-        const incomingName = String(incoming.aspectName || incoming.name || '').trim();
-        const existingIndex = merged.findIndex((old) => String(old.aspectName || old.name || '').trim() === incomingName);
-        if (existingIndex !== -1) {
-          merged[existingIndex] = {
-            ...merged[existingIndex],
-            ...incoming,
-            tools: mergeTools(merged[existingIndex].tools, incoming.tools)
-          };
-        } else {
-          merged.push(incoming);
-        }
-      });
-      return merged;
-    };
+//     const mergeAspects = (existingAspects = [], incomingAspects = []) => {
+//       const merged = Array.isArray(existingAspects) ? [...existingAspects] : [];
+//       if (!Array.isArray(incomingAspects)) return merged;
+//       incomingAspects.forEach((incoming) => {
+//         if (!incoming || typeof incoming !== 'object') return;
+//         const incomingName = String(incoming.aspectName || incoming.name || '').trim();
+//         const existingIndex = merged.findIndex((old) => String(old.aspectName || old.name || '').trim() === incomingName);
+//         if (existingIndex !== -1) {
+//           merged[existingIndex] = {
+//             ...merged[existingIndex],
+//             ...incoming,
+//             tools: mergeTools(merged[existingIndex].tools, incoming.tools)
+//           };
+//         } else {
+//           merged.push(incoming);
+//         }
+//       });
+//       return merged;
+//     };
 
-    const mergeLearningOutcomes = (existingLOs = [], incomingLOs = []) => {
-      const merged = Array.isArray(existingLOs) ? [...existingLOs] : [];
-      if (!Array.isArray(incomingLOs)) return merged;
-      incomingLOs.forEach((incoming) => {
-        if (!incoming || typeof incoming !== 'object') return;
-        const incomingName = String(incoming.name || incoming.learningOutcomeName || '').trim();
-        const existingIndex = merged.findIndex((old) => String(old.name || old.learningOutcomeName || '').trim() === incomingName);
-        if (existingIndex !== -1) {
-          merged[existingIndex] = {
-            ...merged[existingIndex],
-            ...incoming,
-            assessmentAspects: mergeAspects(merged[existingIndex].assessmentAspects, incoming.assessmentAspects)
-          };
-        } else {
-          merged.push(incoming);
-        }
-      });
-      return merged;
-    };
+//     const mergeLearningOutcomes = (existingLOs = [], incomingLOs = []) => {
+//       const merged = Array.isArray(existingLOs) ? [...existingLOs] : [];
+//       if (!Array.isArray(incomingLOs)) return merged;
+//       incomingLOs.forEach((incoming) => {
+//         if (!incoming || typeof incoming !== 'object') return;
+//         const incomingName = String(incoming.name || incoming.learningOutcomeName || '').trim();
+//         const existingIndex = merged.findIndex((old) => String(old.name || old.learningOutcomeName || '').trim() === incomingName);
+//         if (existingIndex !== -1) {
+//           merged[existingIndex] = {
+//             ...merged[existingIndex],
+//             ...incoming,
+//             assessmentAspects: mergeAspects(merged[existingIndex].assessmentAspects, incoming.assessmentAspects)
+//           };
+//         } else {
+//           merged.push(incoming);
+//         }
+//       });
+//       return merged;
+//     };
 
-    // If updating existing record
-    if (existingStudentRecord) {
-      console.log("Found existing student record");
+//     // If updating existing record
+//     if (existingStudentRecord) {
+//       console.log("Found existing student record");
       
-      // Check if this subject already exists
-      const subjectIndex = existingStudentRecord.subjects.findIndex(subj => subj.name === subject);
+//       // Check if this subject already exists
+//       const subjectIndex = existingStudentRecord.subjects.findIndex(subj => subj.name === subject);
       
-      if (subjectIndex !== -1) {
-        // Subject exists, check if this theme already exists
-        const themeIndex = existingStudentRecord.subjects[subjectIndex].themes.findIndex(
-          theme => theme.themeName === themeName
-        );
+//       if (subjectIndex !== -1) {
+//         // Subject exists, check if this theme already exists
+//         const themeIndex = existingStudentRecord.subjects[subjectIndex].themes.findIndex(
+//           theme => theme.themeName === themeName
+//         );
         
-        if (themeIndex !== -1) {
-          // Theme exists, merge incoming learning outcomes into the existing theme
-          const existingTheme = existingStudentRecord.subjects[subjectIndex].themes[themeIndex];
-          const mergedLearningOutcomes = mergeLearningOutcomes(getLearningOutcomes(existingTheme), getLearningOutcomes(enrichedTheme));
-          const mergedTheme = {
-            ...existingTheme,
-            ...enrichedTheme,
-            learningOutcomes: mergedLearningOutcomes,
-            learningOutcome: mergedLearningOutcomes
-          };
+//         if (themeIndex !== -1) {
+//           // Theme exists, merge incoming learning outcomes into the existing theme
+//           const existingTheme = existingStudentRecord.subjects[subjectIndex].themes[themeIndex];
+//           const mergedLearningOutcomes = mergeLearningOutcomes(getLearningOutcomes(existingTheme), getLearningOutcomes(enrichedTheme));
+//           const mergedTheme = {
+//             ...existingTheme,
+//             ...enrichedTheme,
+//             learningOutcomes: mergedLearningOutcomes,
+//             learningOutcome: mergedLearningOutcomes
+//           };
 
-          existingStudentRecord.subjects[subjectIndex].themes[themeIndex] = computeTotalsAndAliases(mergedTheme);
-          console.log("Merged incoming theme into existing theme");
-        } else {
-          // Theme doesn't exist, add new theme to existing subject
-          existingStudentRecord.subjects[subjectIndex].themes.push(enrichedTheme);
-          console.log("Added new theme to existing subject");
-        }
-      } else {
-        // Subject doesn't exist, add new subject with the theme
-        existingStudentRecord.subjects.push({
-          name: subject,
-          themes: [enrichedTheme]
-        });
-        console.log("Added new subject with theme");
-      }
+//           existingStudentRecord.subjects[subjectIndex].themes[themeIndex] = computeTotalsAndAliases(mergedTheme);
+//           console.log("Merged incoming theme into existing theme");
+//         } else {
+//           // Theme doesn't exist, add new theme to existing subject
+//           existingStudentRecord.subjects[subjectIndex].themes.push(enrichedTheme);
+//           console.log("Added new theme to existing subject");
+//         }
+//       } else {
+//         // Subject doesn't exist, add new subject with the theme
+//         existingStudentRecord.subjects.push({
+//           name: subject,
+//           themes: [enrichedTheme]
+//         });
+//         console.log("Added new subject with theme");
+//       }
       
-      updateOverallTotals(existingStudentRecord.subjects);
-      existingStudentRecord.updatedAt = new Date();
-      result = await existingStudentRecord.save();
-    } else {
-      // No existing record, create new one
-      const formData = {
-        roll: roll,
-        name: name,
-        studentClass: studentClass,
-        section: section,
-        subjects: [{
-          name: subject,
-          themes: [enrichedTheme]
-        }],
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
+//       updateOverallTotals(existingStudentRecord.subjects);
+//       existingStudentRecord.updatedAt = new Date();
+//       result = await existingStudentRecord.save();
+//     } else {
+//       // No existing record, create new one
+//       const formData = {
+//         roll: roll,
+//         name: name,
+//         studentClass: studentClass,
+//         section: section,
+//         subjects: [{
+//           name: subject,
+//           themes: [enrichedTheme]
+//         }],
+//         createdAt: new Date(),
+//         updatedAt: new Date()
+//       };
       
-      console.log("Creating new student record:", JSON.stringify(formData, null, 2));
-      updateOverallTotals(formData.subjects);
-      result = await ThemeModel.create(formData);
-      console.log("New theme form data saved successfully");
-    }
+//       console.log("Creating new student record:", JSON.stringify(formData, null, 2));
+//       updateOverallTotals(formData.subjects);
+//       result = await ThemeModel.create(formData);
+//       console.log("New theme form data saved successfully");
+//     }
     
-    // Handle response based on request type
-    if (req.headers.accept && req.headers.accept.includes('application/json') || req.body.autosave === 'true' || req.body.ajax === 'true') {
-      // If it's an AJAX request, autosave, or explicitly requested JSON response
-      res.json({ 
-        success: true, 
-        id: result._id, 
-        message: 'Data saved successfully',
-        isAutosave: req.body.autosave === 'true',
-        redirect: `/themeform?subject=${subject}&studentClass=${studentClass}` 
-      });
-    } else {
-      const terminal = req.query.terminal || '';
-      // If it's a regular form submission, redirect
-      res.render("theme/success", {link:"themeform",studentClass,section,subject,editing:false,terminal});
-    }
-  } catch (err) {
-    console.error("Error saving theme form data:", err);
-    res.status(500).send("Error saving theme form: " + err.message);
-  }
-}
+//     // Handle response based on request type
+//     if (req.headers.accept && req.headers.accept.includes('application/json') || req.body.autosave === 'true' || req.body.ajax === 'true') {
+//       // If it's an AJAX request, autosave, or explicitly requested JSON response
+//       res.json({ 
+//         success: true, 
+//         id: result._id, 
+//         message: 'Data saved successfully',
+//         isAutosave: req.body.autosave === 'true',
+//         redirect: `/themeform?subject=${subject}&studentClass=${studentClass}` 
+//       });
+//     } else {
+//       const terminal = req.query.terminal || '';
+//       // If it's a regular form submission, redirect
+//       res.render("theme/success", {link:"themeform",studentClass,section,subject,editing:false,terminal});
+//     }
+//   } catch (err) {
+//     console.error("Error saving theme form data:", err);
+//     res.status(500).send("Error saving theme form: " + err.message);
+//   }
+// }
 
+exports.themeformSave = async (req, res) => {
+
+}
   
 
 exports.themefillupform = async (req, res) => {
@@ -1199,7 +1232,7 @@ exports.thememarksOfStudent = async (req, res) => {
     // Get sidenav data
     const sidenavData = await getSidenavData(req);
 
-    return res.render("theme/thememarks", {
+    return res.render("theme/thememarksheet", {
       ...sidenavData,
       editing: false, 
       subject: subject || '', 
@@ -1225,8 +1258,28 @@ exports.themewisemarks = async (req, res) => {
       studentClass: studentClass,
       section: section,
     }).lean();
+    const ThemeDataModel = await getThemeFormat(studentClass);
+    const themeData = await ThemeDataModel.find({
+      studentClass: studentClass,
+      subject: subject
+    }).lean();
+
     const marksheetSetting = await marksheetSetup.find({}).lean();
-    return res.render("theme/themewisemarks", {
+    const studentData = await studentRecord.find({ studentClass: studentClass, section: section }).lean();
+ const marksMap = {};
+
+      console.log("Total DB Records:", themewisemarks.length);
+
+themewisemarks.forEach(record => {
+    const key =
+        `${record.reg}|${record.themeName}|${record.learningOutcomeName}`;
+
+    marksMap[key] = record;
+
+    console.log("MAP KEY =", key);
+});
+
+    return res.render("theme/newthemewisemarks", {
       ...await getSidenavData(req),
       editing: false,
       studentClass,
@@ -1235,6 +1288,9 @@ exports.themewisemarks = async (req, res) => {
       subject,
       terminal,
       themewisemarks,
+      themeData,
+      marksMap,
+      studentData,
     });
   } catch (error) {
     console.error('Error fetching theme wise marks:', error); 

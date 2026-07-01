@@ -5,6 +5,7 @@ const newscontroller = require('../controller/newscontroller')
 const examcontroller = require('../controller/examconntroller')
 const nursecontroller = require('../controller/nursecontroller')
 const multer  = require('multer')
+const newthemecontroller = require('../controller/newthemecontroller')
 const examdashboardcontroller = require('../controller/examdashboardcontroller')
 const attendancecontroller = require('../controller/attendancecontroller')
 const practical410controller = require('../controller/practical410controller')
@@ -334,7 +335,7 @@ student.get('/theme', verifytoken, authorized, themecontroller.themeopener);
 student.get('/themeform', verifytoken, authorized, themecontroller.themeform);
 student.get('/themefillupform', verifytoken, authorized, themecontroller.themefillupform);
 student.post('/themefillupform', verifytoken, authorized, themecontroller.themefillupformsave);
-student.post('/themeform', verifytoken, authorized, themecontroller.themeformSave);
+student.post('/themeform', verifytoken, authorized, newthemecontroller.themeformSavenew);
 student.get('/thememarks', verifytoken, authorized, themecontroller.themeformMarks);
 student.post('/autosave-themefillup', verifytoken, authorized, themecontroller.autoSaveThemeFillup);
 student.post('/autosave-projectrubrik', verifytoken, authorized, practical410controller.autoSaveRubrik);
