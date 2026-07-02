@@ -156,7 +156,7 @@ exports.themeopener = async (req, res) => {
 };
 exports.themeform = async (req, res) => {
   try{
-    const {subject, studentClass, section,roll,themeName} = req.query;
+    const {subject, studentClass, section,roll,terminal,themeName} = req.query;
     const studentData =await  studentRecord.find({studentClass:studentClass, section: section});
     const themeForstudentData =  await getStudentThemeData(studentClass);
     
@@ -165,6 +165,7 @@ const existingThemeData = await themeForstudentData.find(
     studentClass,
     section,
     roll: `${roll}`,
+    terminal: `${terminal}`,
     subjects: { $elemMatch: { name: subject, themes: { $elemMatch: { themeName } } } }
   },
   { name: 1, studentClass: 1, section: 1, roll: 1, "subjects.$": 1 }
@@ -211,7 +212,7 @@ existingData.forEach(item => {
 });
 
       res.render("theme/themeMath", { themeData, subject, studentClass, section, studentData, existingThemeData,
-      existingMap,
+      existingMap,terminal,
         toolDoc,...await getSidenavData(req),editing: true });
       }
 if(subject.toLowerCase() === "english") {
@@ -226,7 +227,7 @@ existingData.forEach(item => {
 });
 
   res.render("theme/themeEnglish", { themeData, subject, studentClass, section, studentData, existingThemeData,
-  existingMap,
+  existingMap,terminal,
     toolDoc,...await getSidenavData(req),editing: true });
   }
 
@@ -242,7 +243,7 @@ existingData.forEach(item => {
 });
 const aspectcontainerData = await AspectContainer.findOne({ subject: subject, studentClass: studentClass }).lean();
   res.render("theme/themeNepali", { themeData, subject, studentClass, section, studentData, existingThemeData,
-  existingMap,aspectcontainerData,
+  existingMap,aspectcontainerData,terminal,
     toolDoc,...await getSidenavData(req),editing: true });
   }
 
@@ -257,10 +258,24 @@ existingData.forEach(item => {
 });
 
       res.render("theme/themeHamroSerofero", { themeData, subject, studentClass, section, studentData, existingThemeData,
-      existingMap,
+      existingMap,terminal,
         toolDoc,...await getSidenavData(req),editing: true });
       }
+else
+{
+   const existingMap = {};
 
+existingData.forEach(item => {
+    const key =
+        `${item.reg}|${item.themeName}|${item.learningOutcomeName}|${item.toolName}`;
+
+    existingMap[key] = item;
+});
+
+      res.render("theme/themeMath", { themeData, subject, studentClass, section, studentData, existingThemeData,
+      existingMap,terminal,
+        toolDoc,...await getSidenavData(req),editing: true });
+}
   } catch (err) {
     console.error("Error in theme controller:", err);
     res.status(500).send("Internal Server Error");
