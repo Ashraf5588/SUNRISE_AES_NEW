@@ -84,6 +84,7 @@ exports.createEventForm = async (req, res) => {
   const sidenavData = await getSidenavData(req);
   let events = [];
   let editEvent = null;
+ 
   try {
        if (req.user.role === 'ADMIN') {
          events = await Event.find().sort({ date: -1 }).lean();
@@ -310,7 +311,11 @@ const sendReminderEmail = async (to, title, description, date, time, location, f
 
 const checkEventReminders = async () => {
   try {
-    const emailtoSend = ["ashrafalimiya77@gmail.com","rehanmiya977@gmail.com","axeldhungana123@gmail.com","unitedecd@gmail.com"];
+    const recipients = process.env.MAIL_RECIPIENTS.split(',');
+
+console.log(recipients);
+    const emailtoSend = recipients;
+    
  
     const now = new Date();
     
@@ -387,7 +392,7 @@ const checkEventReminders = async () => {
             event.location,
             event.forClass,
             event.teacherName,
-            7
+            
           );
           event.reminder7SentHour = currentHour;
           event.reminder7SentDate = currentDateKey; // Keep for backward compatibility
@@ -523,8 +528,8 @@ console.log("Tokens to send push:", tokens);
 console.log("Sending push for event:", title);
   await sendPushNotification(
     tokens,
-    "Upcoming Event Reminder",
-    `Don't forget about the upcoming event: ${title}`
+    "Event Reminder",
+    `Upcoming event: ${title}`
   );
   
 };
