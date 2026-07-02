@@ -210,7 +210,7 @@ const operations = records.map(record => ({
 }));
 
 await model.bulkWrite(operations);
-res.json({ message: "Theme form data saved successfully with data " });
+res.redirect(`/themeform?studentClass=${studentClass}&section=${section}&subject=${subject}&terminal=${terminal}`);
 }catch(e)
 {
   console.log(e)

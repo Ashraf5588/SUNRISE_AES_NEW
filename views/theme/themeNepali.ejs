@@ -122,8 +122,9 @@
   
 
     <tr>
-      <th>Name</th>
+ 
         <th>Eval.Date Before</th>
+             <th>Name</th>
       <th>Indicator</th>
       <th>Obt.Marks Before</th>
       <th>Obt.Marks After</th>
@@ -139,7 +140,7 @@
 
       <% studentData.forEach((record, idx) => { %>
     <tr>
-      <td><%= record.name %></td>
+     
        <input type="hidden" value="<%= record.reg%>" name="reg">
       <input type="hidden" value="<%= record.name%>" name="name">
       <input type="hidden" value="<%= record.roll%>" name="roll">
@@ -148,6 +149,7 @@
        
 
        <td><input type="text" id="nepali-datepicker-<%= idx %>" placeholder="Select Nepali Date"  class="studentDateBefore nepaliDateBefore nepali-datepicker" name="evalDateBefore" /></td>
+        <td><%=record.roll%>. <%= record.name %></td>
       <td id="indicatorTD"></td>
       <input type="hidden" id="selectedIndicatorBefore">
        <input type="hidden" id="selectedIndicatorAfter">

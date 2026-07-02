@@ -530,7 +530,7 @@ const attendanceData = await attendancemodel.find({}).lean();
       }
 
       console.log('🎨 Rendering Social project form...');
-      return res.render("theme/socialProjectForm", {
+      return res.render("theme/SocialProjectForm", {
         ...await getSidenavData(req),
         editing: false,
         studentClass,
