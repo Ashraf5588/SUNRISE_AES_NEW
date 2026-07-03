@@ -1943,7 +1943,7 @@ console.log(marksheetSetting)
        const model = getPracticalProjectModel(subject, studentClass, section, academicYear);
         const sciencepracticaldata = await model.find({studentClass:studentClass,terminalName:terminal,subject:subject});
      const lessonData = await ScienceModel.find({studentClass:studentClass,terminal:terminal,subject:subject});
-      res.render("theme/MathinternalReport", {...await getSidenavData(req), editing: false, studentClass, section, subject, sciencepracticaldata, lessonData,terminal,marksheetSetting});
+      res.render("theme/MathInternalReport", {...await getSidenavData(req), editing: false, studentClass, section, subject, sciencepracticaldata, lessonData,terminal,marksheetSetting});
     }
   }
   else if(subject==="SOCIAL")
