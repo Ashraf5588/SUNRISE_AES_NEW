@@ -10,8 +10,8 @@
   <title>NEPALI Project Evaluation Form</title>
   <style>
     :root {
-      --primary-color: #003366; /* Dark Blue */
-      --secondary-color: #ff6600; /* Orange */
+      --primary-color: #003366;
+      --secondary-color: #ff6600;
       --bg-color: #f4f7f6;
       --card-bg: #ffffff;
       --text-color: #333;
@@ -123,27 +123,6 @@
       color: #6c757d;
     }
 
-    .mark-entry {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      justify-content: center;
-    }
-
-    .mark-entry .mark-quick-option {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      white-space: nowrap;
-      font-weight: 600;
-      color: var(--primary-color);
-    }
-
-    .mark-entry .mark-input {
-      max-width: 120px;
-    }
-
-    /* Enhanced Table Styles */
     .evaluation-table, table {
       width: 100%;
       border-collapse: collapse;
@@ -189,7 +168,7 @@
     .radio-group {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 8px;
       margin: 8px 0;
       justify-content: center;
       flex-wrap: wrap;
@@ -222,6 +201,40 @@
       border-color: var(--secondary-color);
       transform: scale(1.05);
       box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    .mark-input-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .mark-input-wrapper .mark-input {
+      width: 80px;
+      padding: 6px 8px;
+      border: 2px solid var(--border-color);
+      border-radius: 4px;
+      font-size: 14px;
+      text-align: center;
+      transition: all 0.3s ease;
+    }
+
+    .mark-input-wrapper .mark-input:focus {
+      outline: none;
+      border-color: var(--secondary-color);
+      box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.1);
+    }
+
+    .mark-input-wrapper .mark-input.has-value {
+      border-color: var(--secondary-color);
+      background-color: #fff8e1;
+    }
+
+    .mark-input-wrapper .mark-input.saved-value {
+      border-color: #28a745;
+      background-color: #e8f5e9;
     }
 
     .unit-section {
@@ -265,7 +278,7 @@
     }
 
     .project-section {
-      background: #ffcc13;
+      background: #fff8e1;
       border: 1px solid var(--border-color);
       border-radius: 8px;
       margin: 15px 0;
@@ -336,7 +349,6 @@
       box-shadow: 0 6px 20px rgba(255, 102, 0, 0.4);
     }
 
-    /* Student List Styles */
     .student-list-container {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -417,7 +429,6 @@
         padding: 20px;
       }
 
-      /* Mobile Optimization */
       .unit-section {
         margin: 15px 0;
       }
@@ -455,7 +466,6 @@
         font-size: 14px;
       }
 
-      /* Table responsive */
       .table-container {
         overflow-x: auto;
         margin: 15px 0;
@@ -485,20 +495,25 @@
       }
 
       .radio-group {
-        gap: 8px;
+        gap: 6px;
       }
 
       .radio-group label {
-        padding: 6px 10px;
-        font-size: 13px;
+        padding: 5px 10px;
+        font-size: 12px;
       }
       
       .student-list-container {
           grid-template-columns: repeat(2, 1fr);
       }
+      
+      .mark-input-wrapper .mark-input {
+        width: 60px;
+        font-size: 12px;
+        padding: 4px 6px;
+      }
     }
 
-    /* Extra small screens */
     @media (max-width: 480px) {
       body {
         padding: 10px 5px;
@@ -518,7 +533,7 @@
       
       .radio-group label {
         padding: 4px 8px;
-        font-size: 12px;
+        font-size: 11px;
       }
     }
   </style>
@@ -649,19 +664,17 @@
             </div>
           </div>
         </div>
+
         <!-- Practical/Project Work Section -->
         <div class="section">
-          
           <div class="section-header">
-            <% if(studentClass > 8 || studentClass == "NINE" || studentClass=="9" || studentClass=="Nine" || studentClass=="10" || studentClass=="Ten" || studentClass=="TEN"){ %>
+            <% if(studentClass > 8){ %>
               सुनाइ, बोलाइ र पढाइ (१२)
             <% } else { %>
             सुनाइ र बोलाइ (२०)
             <% } %>
-
           </div>
           <div class="section-content">
-            
             <% ScienceData.forEach((item, itemIdx) => { %>
               <% item.units.forEach((unit, idx) => { %>
                 <div class="unit-section">
@@ -670,16 +683,12 @@
                     <input type="hidden" name="unit[<%= idx %>][unitName]" value="<%= unit.unitName %>">
                   </div>
                   <div class="unit-content">
-                    <!-- Practicals and Projects Alternating -->
                     <% unit.practicals.forEach((practical, prindx) => { %>
                       <!-- Practical <%= prindx + 1 %> -->
                       <div class="practical-section">
                         <div class="practical-header">
-                          
-
                           <%=studentClass>8?'सुनाइ, बोलाइ र पढाइ': 'सुनाइ र बोलाइ' %> <%= prindx + 1 %>: <%= practical %>
                           <input type="hidden" name="unit[<%= idx %>][practicals][<%= prindx %>][practicalName]" value="<%= practical %>">
-                          
                         </div>
                         <div class="practical-content">
                           <div class="table-container">
@@ -717,33 +726,30 @@
 
                                           <td><%= ind.indicatorName %></td>
                                           <td>
-                                            <div class="mark-entry">
-                                              <label class="mark-quick-option" for="practical-radio-<%= idx %>-<%= prindx %>-<%= iIndex %>-<%= indIndex %>">
-                                                <input type="radio"
-                                                  id="practical-radio-<%= idx %>-<%= prindx %>-<%= iIndex %>-<%= indIndex %>"
-                                                  class="marks-radio-quick"
-                                                  data-practical="<%= idx %>-<%= prindx %>"
-                                                  data-target-id="practical-input-<%= idx %>-<%= prindx %>-<%= iIndex %>-<%= indIndex %>"
-                                                  data-default-mark="<%= ind.indicatorsMarks %>">
-                                                <span><%= ind.indicatorsMarks %></span>
-                                              </label>
-                                              <input type="number"
-                                                step="0.1"
-                                                min="0"
-                                                id="practical-input-<%= idx %>-<%= prindx %>-<%= iIndex %>-<%= indIndex %>"
-                                                class="form-control marks-input mark-input"
-                                                data-practical="<%= idx %>-<%= prindx %>"
-                                                data-default-mark="<%= ind.indicatorsMarks %>"
-                                                data-radio-id="practical-radio-<%= idx %>-<%= prindx %>-<%= iIndex %>-<%= indIndex %>"
-                                                data-hidden-id="practical-hidden-<%= idx %>-<%= prindx %>-<%= iIndex %>-<%= indIndex %>"
-                                                placeholder="अंक लेख्नुहोस्">
+                                            <div class="mark-input-wrapper">
+                                              <div class="radio-group">
+                                                <input type="radio" 
+                                                       value="<%= ind.indicatorsMarks %>||<%= ind.indicatorName %>||<%= theme.themeName %>||<%= lo.learningOutcomeName %>" 
+                                                       class="marks-radio"
+                                                       name="unit[<%= idx %>][practicals][<%= prindx %>][criteria][<%= iIndex %>]"
+                                                       data-practical="<%= idx %>-<%= prindx %>"
+                                                       data-input-id="practical_input_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>"
+                                                       data-criteria-index="<%= iIndex %>"
+                                                       id="practical_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>">
+                                                <label for="practical_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>"><%= ind.indicatorsMarks %></label>
+                                              </div>
+                                              <input type="number" 
+                                                     step="0.1"
+                                                     min="0"
+                                                     max="<%= ind.indicatorsMarks %>"
+                                                     class="mark-input practical-input"
+                                                     data-practical="<%= idx %>-<%= prindx %>"
+                                                     data-radio-id="practical_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>"
+                                                     data-criteria-index="<%= iIndex %>"
+                                                     data-max-mark="<%= ind.indicatorsMarks %>"
+                                                     id="practical_input_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>"
+                                                     placeholder="0-<%= ind.indicatorsMarks %>">
                                             </div>
-                                            <input type="hidden"
-                                                   id="practical-hidden-<%= idx %>-<%= prindx %>-<%= iIndex %>-<%= indIndex %>"
-                                                   name="unit[<%= idx %>][practicals][<%= prindx %>][criteria][<%= iIndex %>][<%= indIndex %>]"
-                                                   data-indicator="<%= ind.indicatorName %>"
-                                                   data-adhar="<%= theme.themeName %>"
-                                                   data-outcome="<%= lo.learningOutcomeName %>">
                                           </td>
                                         </tr>
                                       <% }) %>
@@ -765,8 +771,9 @@
 
                       <!-- Project Work <%= prindx + 1 %> -->
                       <div class="project-section">
-                        <%= studentClass > 8 ? '(ख) सिर्जनात्मक कार्य र परियोजना कार्य तथा प्रस्तुति' : ' पढाई र लेखइ (१६) ' %>
-                      <%= prindx + 1 %>
+                        <div class="project-header">
+                          <%= studentClass > 8 ? '(ख) सिर्जनात्मक कार्य र परियोजना कार्य तथा प्रस्तुति' : 'पढाई र लेखइ (१६)' %>
+                          <%= prindx + 1 %>
                           <input type="hidden" name="unit[<%= idx %>][projectWorks][<%= prindx %>][projectName]" value="">
                         </div>
                         <div class="project-content">
@@ -781,8 +788,7 @@
                                   <th>अंक</th>
                                 </tr>
                               </thead>
-                               <tbody>
-                                
+                              <tbody>
                                 <% projectFormatData.forEach(function(doc) { %>
                                   <% doc.themes.forEach(function(theme) { %>
                                     <% let themeRowspan = theme.learningOutcome.reduce((sum, lo) => sum + lo.indicators.length, 0); %>
@@ -790,7 +796,6 @@
 
                                     <% theme.learningOutcome.forEach(function(lo,loIdx) { %>
                                       <% let loRowspan = lo.indicators.length; %>
-                                      <% let mulyIndex = iIndex; %>
 
                                       <% lo.indicators.forEach(function(ind, indIndex) { %>
                                         <tr>
@@ -806,32 +811,30 @@
 
                                           <td><%= ind.indicatorName %></td>
                                           <td>
-                                            <div class="mark-entry">
-                                              <label class="mark-quick-option" for="project-radio-<%= idx %>-<%= prindx %>-<%= iIndex %>-<%= indIndex %>">
-                                                <input type="radio"
-                                                  id="project-radio-<%= idx %>-<%= prindx %>-<%= iIndex %>-<%= indIndex %>"
-                                                  class="marks-radio-project-quick"
-                                                  data-project="<%= idx %>-<%= prindx %>"
-                                                  data-target-id="project-input-<%= idx %>-<%= prindx %>-<%= iIndex %>-<%= indIndex %>"
-                                                  data-default-mark="<%= ind.indicatorsMarks %>">
-                                                <span><%= ind.indicatorsMarks %></span>
-                                              </label>
-                                              <input type="number"
-                                                step="0.1"
-                                                min="0"
-                                                id="project-input-<%= idx %>-<%= prindx %>-<%= iIndex %>-<%= indIndex %>"
-                                                class="form-control marks-input-project mark-input"
-                                                data-project="<%= idx %>-<%= prindx %>"
-                                                data-default-mark="<%= ind.indicatorsMarks %>"
-                                                data-radio-id="project-radio-<%= idx %>-<%= prindx %>-<%= iIndex %>-<%= indIndex %>"
-                                                data-hidden-id="project-hidden-<%= idx %>-<%= prindx %>-<%= iIndex %>-<%= indIndex %>"
-                                                placeholder="अंक लेख्नुहोस्">
+                                            <div class="mark-input-wrapper">
+                                              <div class="radio-group">
+                                                <input type="radio" 
+                                                       value="<%= ind.indicatorsMarks %>||<%= ind.indicatorName %>||<%= lo.learningOutcomeName %>" 
+                                                       class="marks-radio-project"
+                                                       name="unit[<%= idx %>][projectWorks][<%= prindx %>][criteria][<%= iIndex %>]"
+                                                       data-project="<%= idx %>-<%= prindx %>"
+                                                       data-input-id="project_input_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>"
+                                                       data-criteria-index="<%= iIndex %>"
+                                                       id="project_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>">
+                                                <label for="project_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>"><%= ind.indicatorsMarks %></label>
+                                              </div>
+                                              <input type="number" 
+                                                     step="0.1"
+                                                     min="0"
+                                                     max="<%= ind.indicatorsMarks %>"
+                                                     class="mark-input project-input"
+                                                     data-project="<%= idx %>-<%= prindx %>"
+                                                     data-radio-id="project_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>"
+                                                     data-criteria-index="<%= iIndex %>"
+                                                     data-max-mark="<%= ind.indicatorsMarks %>"
+                                                     id="project_input_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>"
+                                                     placeholder="0-<%= ind.indicatorsMarks %>">
                                             </div>
-                                            <input type="hidden"
-                                                   id="project-hidden-<%= idx %>-<%= prindx %>-<%= iIndex %>-<%= indIndex %>"
-                                                   name="unit[<%= idx %>][projectWorks][<%= prindx %>][criteria][<%= iIndex %>][<%= indIndex %>]"
-                                                   data-indicator="<%= ind.indicatorName %>"
-                                                   data-adhar="<%= lo.learningOutcomeName %>">
                                           </td>
                                         </tr>
                                       <% }) %>
@@ -842,30 +845,7 @@
                               </tbody>
                             </table>
                           </div>
-
-                          <!-- Image Upload Section -->
-                          <div class="upload-section" style="margin-top: 15px; padding: 15px; background: #f8f9fa; border: 1px dashed #ced4da; border-radius: 8px;">
-                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Upload Project Images</label>
-                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                                <input type="file" multiple
-                                       id="imageInput_<%= idx %>_<%= prindx %>" 
-                                       accept="image/*" 
-                                       style="display: none;"
-                                       onchange="uploadImage(this, <%= idx %>, <%= prindx %>)">
-                                <button type="button" 
-                                        onclick="document.getElementById('imageInput_<%= idx %>_<%= prindx %>').click()"
-                                        style="background: #4a90e2; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">
-                                    <i class="fas fa-upload"></i> Choose Image
-                                </button>
-                                <span id="uploadStatus_<%= idx %>_<%= prindx %>" style="font-size: 14px;"></span>
-                            </div>
-                            <!-- Hidden inputs container -->
-                            <div id="hiddenInputs_<%= idx %>_<%= prindx %>"></div>
-                            <!-- Preview container -->
-                            <div id="imagePreview_<%= idx %>_<%= prindx %>" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;"></div>
-                          </div>
-
-                           <div class="total-display">
+                          <div class="total-display">
                             <label>Total Project Marks</label>
                             <input type="number" name="unit[<%= idx %>][projectWorks][<%= prindx %>][projectMarks]" 
                                    value="0" id="project-total-<%= idx %>-<%= prindx %>" 
@@ -885,809 +865,454 @@
       </form>
     </div>
   </div>
- 
 
-
-
-  </form>
-
-
-<input type="number" value="<%=workingDays%>" id="totalWorkingDays" style="display:none;">
-<input type="hidden" value="<%=subjectMarksData.theory%>" id="fullMarks">
-
-
-
+  <input type="number" value="<%=workingDays%>" id="totalWorkingDays" style="display:none;">
+  <input type="hidden" value="<%=subjectMarksData.theory%>" id="fullMarks">
 
   <script>
-
-    //populating terminal
+    // Populating terminal
     const terminal = window.location.search;
-    
     const terminalParams = new URLSearchParams(terminal);
-    
     const terminalValue = terminalParams.get('terminal');
     document.querySelector('#terminal').value = terminalValue;
-function calculateTerminalMarks() {
-      const terminal = window.location.search;
 
-    
-    const terminalParams = new URLSearchParams(terminal);
-    
-    const terminalValue = terminalParams.get('terminal');
+    function calculateTerminalMarks() {
+      const terminal = window.location.search;
+      const terminalParams = new URLSearchParams(terminal);
+      const terminalValue = terminalParams.get('terminal');
   
-    if(terminalValue != "FINAL")
-  {
-    const theoryMarks = parseFloat(document.getElementById('theoryMarks').value);
-    const fullMarks = parseFloat(document.getElementById('fullMarks').value);
-    const studentClass = "<%= studentClass %>";
-    if(isNaN(theoryMarks) || isNaN(fullMarks) || fullMarks === 0) {
-      document.getElementById('obtainedconvertedmarks').value = '';
-      return;
+      if(terminalValue != "FINAL") {
+        const theoryMarks = parseFloat(document.getElementById('theoryMarks').value);
+        const fullMarks = parseFloat(document.getElementById('fullMarks').value);
+        const studentClass = "<%= studentClass %>";
+        if(isNaN(theoryMarks) || isNaN(fullMarks) || fullMarks === 0) {
+          document.getElementById('obtainedconvertedmarks').value = '';
+          return;
+        }
+        if(studentClass>8) {
+          document.getElementById('obtainedconvertedmarks').value = ((theoryMarks/fullMarks)*6).toFixed(2);
+        } else {
+          document.getElementById('obtainedconvertedmarks').value = ((theoryMarks/fullMarks)*10).toFixed(2);
+        }
+      }
     }
-if(studentClass>8 || studentClass=="NINE" || studentClass=="9" || studentClass=="Nine" || studentClass=="10" || studentClass=="Ten" || studentClass=="TEN")
-{
-    document.getElementById('obtainedconvertedmarks').value = ((theoryMarks/fullMarks)*6).toFixed(2);
-}
-else
-{
-    document.getElementById('obtainedconvertedmarks').value = ((theoryMarks/fullMarks)*10).toFixed(2);
-  }
-}
-}
 
     function calculateAttendanceMarks() {
-     const attendanceDays = parseInt(document.getElementById('attendanceDays').value, 10) || 0;
-     const studentClass = "<%= studentClass %>";
-         const totalWorkingDays = document.getElementById('totalWorkingDays').value || 0;
-    
+      const attendanceDays = parseInt(document.getElementById('attendanceDays').value, 10) || 0;
+      const studentClass = "<%= studentClass %>";
+      const totalWorkingDays = document.getElementById('totalWorkingDays').value || 0;
       const attendancePercentage = (attendanceDays / totalWorkingDays) * 100;
-      console.log(attendancePercentage);
 
       if(attendancePercentage >=90 && attendancePercentage <=100) {
-        if(studentClass>8 || studentClass=="NINE" || studentClass=="9" || studentClass=="Nine" || studentClass=="10" || studentClass=="Ten" || studentClass=="TEN")
-        {
-          document.getElementById('attendanceMarks').value = 1;
-        }
-        else
-        {
-          document.getElementById('attendanceMarks').value = 2;
-        }
-      }
-      else if(attendancePercentage >= 85 && attendancePercentage < 90) {
-      
-        if(studentClass>8 || studentClass=="NINE" || studentClass=="9" || studentClass=="Nine" || studentClass=="10" || studentClass=="Ten" || studentClass=="TEN")
-        {
-          document.getElementById('attendanceMarks').value = 0.75;
-        }
-        else
-        {
-          document.getElementById('attendanceMarks').value = 1.5;
-        }
-      }
-      else if(attendancePercentage >= 80 && attendancePercentage < 85) {
-        if(studentClass>8 || studentClass=="NINE" || studentClass=="9" || studentClass=="Nine" || studentClass=="10" || studentClass=="Ten" || studentClass=="TEN")
-        {
-          document.getElementById('attendanceMarks').value = 0.5;
-        }
-        else
-        {
-          document.getElementById('attendanceMarks').value = 1;
-        }
-      }
-      else if(attendancePercentage >=75 && attendancePercentage < 80) {
-        if(studentClass>8 || studentClass=="NINE" || studentClass=="9" || studentClass=="Nine" || studentClass=="10" || studentClass=="Ten" || studentClass=="TEN")
-        {
-          document.getElementById('attendanceMarks').value = 0.25;
-        }
-        else
-        {
-          document.getElementById('attendanceMarks').value = 0.5;
-        }
-      }
-      else {
+        document.getElementById('attendanceMarks').value = studentClass>8 ? 1 : 2;
+      } else if(attendancePercentage >= 85 && attendancePercentage < 90) {
+        document.getElementById('attendanceMarks').value = studentClass>8 ? 0.75 : 1.5;
+      } else if(attendancePercentage >= 80 && attendancePercentage < 85) {
+        document.getElementById('attendanceMarks').value = studentClass>8 ? 0.5 : 1;
+      } else if(attendancePercentage >=75 && attendancePercentage < 80) {
+        document.getElementById('attendanceMarks').value = studentClass>8 ? 0.25 : 0.5;
+      } else {
         document.getElementById('attendanceMarks').value = 0;
       }
     }
-  </script>
-<!-- script to calculate total obtained per input per practical/project -->
-<script>
-function formatTotal(total) {
-  return Number.isInteger(total) ? total : total.toFixed(2);
+
+    // Update practical total
+    function updatePracticalTotal(group) {
+      let totalInput = document.getElementById("practical-total-" + group);
+      if (!totalInput) return;
+      
+      let checked = document.querySelectorAll(`input[data-practical="${group}"]:checked`);
+      let total = Array.from(checked).reduce((sum, r) => {
+        let marks = parseFloat(r.value.split('||')[0]) || 0;
+        return sum + marks;
+      }, 0);
+      
+      totalInput.value = total;
+    }
+
+    // Update project total
+    function updateProjectTotal(group) {
+      let totalInput = document.getElementById("project-total-" + group);
+      if (!totalInput) return;
+      
+      let checked = document.querySelectorAll(`input[data-project="${group}"]:checked`);
+      let total = Array.from(checked).reduce((sum, r) => {
+        let marks = parseFloat(r.value.split('||')[0]) || 0;
+        return sum + marks;
+      }, 0);
+      
+      totalInput.value = total;
+    }
+
+    // Handle practical radio change
+    document.querySelectorAll(".marks-radio").forEach(radio => {
+      radio.addEventListener("change", function(e) {
+        let inputId = this.dataset.inputId;
+        let input = document.getElementById(inputId);
+        if (input) {
+          let marks = this.value.split('||')[0];
+          input.value = marks;
+          input.classList.add('has-value');
+          input.classList.remove('saved-value');
+        }
+        updatePracticalTotal(this.dataset.practical);
+      });
+    });
+
+    // Handle project radio change
+    document.querySelectorAll(".marks-radio-project").forEach(radio => {
+      radio.addEventListener("change", function(e) {
+        let inputId = this.dataset.inputId;
+        let input = document.getElementById(inputId);
+        if (input) {
+          let marks = this.value.split('||')[0];
+          input.value = marks;
+          input.classList.add('has-value');
+          input.classList.remove('saved-value');
+        }
+        updateProjectTotal(this.dataset.project);
+      });
+    });
+
+    // Handle practical manual input
+    document.querySelectorAll(".practical-input").forEach(input => {
+      input.addEventListener("input", function(e) {
+        let radioId = this.dataset.radioId;
+        let radio = document.getElementById(radioId);
+        let value = this.value.trim();
+        let maxMark = parseFloat(this.dataset.maxMark) || 0;
+        
+        // Validate input
+        if (value) {
+          let numValue = parseFloat(value);
+          if (!isNaN(numValue) && numValue >= 0 && numValue <= maxMark) {
+            if (radio) {
+              let parts = radio.value.split('||');
+              parts[0] = value;
+              radio.value = parts.join('||');
+              radio.checked = true;
+              this.classList.add('has-value');
+              this.classList.remove('saved-value');
+            }
+          } else {
+            // Invalid value - uncheck radio
+            if (radio) radio.checked = false;
+            this.classList.remove('has-value');
+            this.classList.remove('saved-value');
+          }
+        } else {
+          // Empty value - uncheck radio
+          if (radio) radio.checked = false;
+          this.classList.remove('has-value');
+          this.classList.remove('saved-value');
+        }
+        updatePracticalTotal(this.dataset.practical);
+      });
+
+      input.addEventListener("blur", function(e) {
+        let value = this.value.trim();
+        let maxMark = parseFloat(this.dataset.maxMark) || 0;
+        
+        if (value) {
+          let numValue = parseFloat(value);
+          if (!isNaN(numValue) && numValue >= 0 && numValue <= maxMark) {
+            let radioId = this.dataset.radioId;
+            let radio = document.getElementById(radioId);
+            if (radio) {
+              let parts = radio.value.split('||');
+              parts[0] = value;
+              radio.value = parts.join('||');
+              radio.checked = true;
+              this.classList.add('has-value');
+              this.classList.remove('saved-value');
+            }
+          }
+        }
+        updatePracticalTotal(this.dataset.practical);
+      });
+    });
+
+    // Handle project manual input
+    document.querySelectorAll(".project-input").forEach(input => {
+      input.addEventListener("input", function(e) {
+        let radioId = this.dataset.radioId;
+        let radio = document.getElementById(radioId);
+        let value = this.value.trim();
+        let maxMark = parseFloat(this.dataset.maxMark) || 0;
+        
+        if (value) {
+          let numValue = parseFloat(value);
+          if (!isNaN(numValue) && numValue >= 0 && numValue <= maxMark) {
+            if (radio) {
+              let parts = radio.value.split('||');
+              parts[0] = value;
+              radio.value = parts.join('||');
+              radio.checked = true;
+              this.classList.add('has-value');
+              this.classList.remove('saved-value');
+            }
+          } else {
+            if (radio) radio.checked = false;
+            this.classList.remove('has-value');
+            this.classList.remove('saved-value');
+          }
+        } else {
+          if (radio) radio.checked = false;
+          this.classList.remove('has-value');
+          this.classList.remove('saved-value');
+        }
+        updateProjectTotal(this.dataset.project);
+      });
+
+      input.addEventListener("blur", function(e) {
+        let value = this.value.trim();
+        let maxMark = parseFloat(this.dataset.maxMark) || 0;
+        
+        if (value) {
+          let numValue = parseFloat(value);
+          if (!isNaN(numValue) && numValue >= 0 && numValue <= maxMark) {
+            let radioId = this.dataset.radioId;
+            let radio = document.getElementById(radioId);
+            if (radio) {
+              let parts = radio.value.split('||');
+              parts[0] = value;
+              radio.value = parts.join('||');
+              radio.checked = true;
+              this.classList.add('has-value');
+              this.classList.remove('saved-value');
+            }
+          }
+        }
+        updateProjectTotal(this.dataset.project);
+      });
+    });
+
+    // Function to set input value and highlight it
+    function setPracticalInputValue(radio, mark) {
+    let inputId = radio.dataset.inputId;
+    let input = document.getElementById(inputId);
+    if (input) {
+        input.value = mark || radio.value.split('||')[0];
+        input.classList.add('has-value');
+        input.classList.add('saved-value');
+    }
 }
 
-function syncQuickRadioState(input) {
-  const radioId = input.dataset.radioId;
-  if (!radioId) return;
-
-  const radio = document.getElementById(radioId);
-  if (!radio) return;
-
-  const entered = parseFloat(input.value);
-  const defaultMark = parseFloat(input.dataset.defaultMark);
-
-  if (Number.isNaN(entered) || Number.isNaN(defaultMark)) {
-    radio.checked = false;
-    return;
-  }
-
-  radio.checked = Math.abs(entered - defaultMark) < 0.001;
+function setProjectInputValue(radio, mark) {
+    let inputId = radio.dataset.inputId;
+    let input = document.getElementById(inputId);
+    if (input) {
+        input.value = mark || radio.value.split('||')[0];
+        input.classList.add('has-value');
+        input.classList.add('saved-value');
+    }
 }
 
-function syncPracticalHiddenValue(input) {
-  const hidden = document.getElementById(input.dataset.hiddenId);
-  if (!hidden) return;
-
-  const marks = (input.value || '').trim();
-  if (!marks) {
-    hidden.value = '';
-    syncQuickRadioState(input);
-    return;
-  }
-
-  const indicator = hidden.dataset.indicator || '';
-  const adhar = hidden.dataset.adhar || '';
-  const outcome = hidden.dataset.outcome || '';
-  hidden.value = `${marks}||${indicator}||${adhar}||${outcome}`;
-  syncQuickRadioState(input);
-}
-
-function syncProjectHiddenValue(input) {
-  const hidden = document.getElementById(input.dataset.hiddenId);
-  if (!hidden) return;
-
-  const marks = (input.value || '').trim();
-  if (!marks) {
-    hidden.value = '';
-    syncQuickRadioState(input);
-    return;
-  }
-
-  const indicator = hidden.dataset.indicator || '';
-  const adhar = hidden.dataset.adhar || '';
-  hidden.value = `${marks}||${indicator}||${adhar}`;
-  syncQuickRadioState(input);
-}
-
-function updatePracticalTotal(group) {
-  const totalInput = document.getElementById("practical-total-" + group);
-  if (!totalInput) return;
-
-  const inputs = document.querySelectorAll(`.marks-input[data-practical="${group}"]`);
-  const total = Array.from(inputs).reduce((sum, input) => {
-    return sum + (parseFloat(input.value) || 0);
-  }, 0);
-
-  totalInput.value = formatTotal(total);
-}
-
-function updateProjectTotal(group) {
-  const totalInput = document.getElementById("project-total-" + group);
-  if (!totalInput) return;
-
-  const inputs = document.querySelectorAll(`.marks-input-project[data-project="${group}"]`);
-  const total = Array.from(inputs).reduce((sum, input) => {
-    return sum + (parseFloat(input.value) || 0);
-  }, 0);
-
-  totalInput.value = formatTotal(total);
-}
-
-document.querySelectorAll(".marks-input").forEach(input => {
-  input.addEventListener("input", e => {
-    const group = e.target.dataset.practical;
-    syncPracticalHiddenValue(e.target);
-    updatePracticalTotal(group);
-  });
-});
-
-document.querySelectorAll(".marks-input-project").forEach(input => {
-  input.addEventListener("input", e => {
-    const group = e.target.dataset.project;
-    syncProjectHiddenValue(e.target);
-    updateProjectTotal(group);
-  });
-});
-
-document.querySelectorAll(".marks-radio-quick").forEach(radio => {
-  radio.addEventListener("change", e => {
-    const input = document.getElementById(e.target.dataset.targetId);
-    if (!input) return;
-    input.value = e.target.dataset.defaultMark || '';
-    syncPracticalHiddenValue(input);
-    updatePracticalTotal(e.target.dataset.practical);
-  });
-});
-
-document.querySelectorAll(".marks-radio-project-quick").forEach(radio => {
-  radio.addEventListener("change", e => {
-    const input = document.getElementById(e.target.dataset.targetId);
-    if (!input) return;
-    input.value = e.target.dataset.defaultMark || '';
-    syncProjectHiddenValue(input);
-    updateProjectTotal(e.target.dataset.project);
-  });
-});
-</script>
-
-
-
-
-<script>
-  async function fill(roll,name,reg) {
-     const buttons = document.querySelectorAll("[id^='studentData']");
+async function fill(roll, name, reg) {
+    const buttons = document.querySelectorAll("[id^='studentData']");
     buttons.forEach(btn => {
-        btn.style.backgroundColor = 'white'; // default color
+        btn.style.backgroundColor = 'white';
         btn.style.color = 'black';
     });
     const clickedBtn = document.getElementById('studentData' + roll);
-    clickedBtn.style.backgroundColor = 'darkblue'; // selected color
+    clickedBtn.style.backgroundColor = 'darkblue';
     clickedBtn.style.color = 'white';
     document.getElementById('roll').value = roll;
     document.getElementById('name').value = name;
     document.querySelector('input[name="reg"]').value = reg;
 
-    if(roll && name && reg) {
-      fillAttendance()
-      // Fetch existing data from server
-      const response = await fetch(`/getPracticalData?roll=${roll}&reg=${reg}&studentClass=<%= studentClass %>&section=<%= section %>&subject=<%= subject %>&terminal=<%= terminal %>`);
-      const practicalData = await response.json();
-      console.log("Fetched data:", practicalData);
+    if (roll && name && reg) {
+        fillAttendance();
+        const response = await fetch(`/getPracticalData?roll=${roll}&reg=${reg}&studentClass=<%= studentClass %>&section=<%= section %>&subject=<%= subject %>&terminal=<%= terminal %>`);
+        const practicalData = await response.json();
+        console.log("Fetched data:", practicalData);
 
-        if(practicalData.participationMarks) {
-          document.querySelector(`input[name="participationMarks"][value="${practicalData.participationMarks}"]`).checked = true;
-
+        if (practicalData.participationMarks) {
+            document.querySelector(`input[name="participationMarks"][value="${practicalData.participationMarks}"]`).checked = true;
         } else {
-          document.querySelectorAll(`input[name="participationMarks"]`).forEach(radio => radio.checked = false);
+            document.querySelectorAll(`input[name="participationMarks"]`).forEach(radio => radio.checked = false);
         }
 
-      if(practicalData.totalAttendance) {
-          document.getElementById('attendanceDays').value = practicalData.totalAttendance || 0;
-          calculateAttendanceMarks();
+        if (practicalData.totalAttendance) {
+            document.getElementById('attendanceDays').value = practicalData.totalAttendance || 0;
+            calculateAttendanceMarks();
+        } else {
+            document.getElementById('attendanceDays').value = '';
+            document.getElementById('attendanceMarks').value = '';
+        }
 
+        if (practicalData.theoryMarks) {
+            document.getElementById('theoryMarks').value = practicalData.theoryMarks;
+            calculateTerminalMarks();
         } else {
-          document.getElementById('attendanceDays').value = '';
-          document.getElementById('attendanceMarks').value = '';
+            document.getElementById('theoryMarks').value = '';
+            document.getElementById('obtainedconvertedmarks').value = '';
         }
-        if(practicalData.theoryMarks) {
-          document.getElementById('theoryMarks').value = practicalData.theoryMarks;
-          calculateTerminalMarks();
-        } else {
-          document.getElementById('theoryMarks').value = '';
-          document.getElementById('obtainedconvertedmarks').value = '';
-        }
+
+        // Clear all inputs first
+        document.querySelectorAll('.practical-input, .project-input').forEach(input => {
+            input.value = '';
+            input.classList.remove('has-value', 'saved-value');
+        });
+
+        // Clear all radios
+        document.querySelectorAll('.marks-radio, .marks-radio-project').forEach(radio => {
+            radio.checked = false;
+        });
+
         // Populate practical marks
-        if(practicalData.unit && Array.isArray(practicalData.unit)) {
-          practicalData.unit.forEach((unit, unitIdx) => {
-            // Populate practical marks
-            if(unit.practicals && Array.isArray(unit.practicals)) {
-              unit.practicals.forEach((practical, practicalIdx) => {
-              // ...existing code...
-if (practical.criteria && Array.isArray(practical.criteria)) {
-  let allInputs = document.querySelectorAll(`.marks-input[data-practical="${unitIdx}-${practicalIdx}"]`);
-
-  allInputs.forEach((input, index) => {
-    const criteria = practical.criteria[index];
-    input.value = criteria ? (criteria.practicalIndicatorMarks || '') : '';
-    syncPracticalHiddenValue(input);
-  });
-}
-// ...existing code...
-
-
-                // Update total for this practical
-                updatePracticalTotal(`${unitIdx}-${practicalIdx}`);
-              });
-            }
-
-            // Populate project marks
-            // Populate project marks
-// ...existing code...
-if(unit.projectWorks && Array.isArray(unit.projectWorks)) {
-  unit.projectWorks.forEach((project, projectIdx) => {
-    if (project.criteria && Array.isArray(project.criteria)) {
-      let allInputs = document.querySelectorAll(`.marks-input-project[data-project="${unitIdx}-${projectIdx}"]`);
-
-      allInputs.forEach((input, index) => {
-        const criteria = project.criteria[index];
-        input.value = criteria ? (criteria.projectIndicatorMarks || '') : '';
-        syncProjectHiddenValue(input);
-      });
-    }
-
-    // Update total
-    updateProjectTotal(`${unitIdx}-${projectIdx}`);
-
-    // Load Project Images
-    const previewDiv = document.getElementById(`imagePreview_${unitIdx}_${projectIdx}`);
-    const hiddenDiv = document.getElementById(`hiddenInputs_${unitIdx}_${projectIdx}`);
-    
-    // Clear first
-    if(previewDiv) previewDiv.innerHTML = '';
-    if(hiddenDiv) hiddenDiv.innerHTML = '';
-
-    if(project.projectImages && Array.isArray(project.projectImages)) {
-       project.projectImages.forEach(imgUrl => {
-         // Create Preview Container
-         const imgContainer = document.createElement('div');
-         imgContainer.style.position = 'relative';
-         imgContainer.style.display = 'inline-block';
-         imgContainer.style.margin = '5px';
-         
-         // Create Image
-         const img = document.createElement('img');
-         img.src = imgUrl;
-         img.style.width = '80px';
-         img.style.height = '80px';
-         img.style.objectFit = 'cover';
-         img.style.borderRadius = '4px';
-         img.style.border = '1px solid #ccc';
-         img.onclick = function() { window.openGallery(imgUrl, project.projectImages); };
-         img.style.cursor = 'pointer';
-         
-         // Create Remove Button
-         const removeBtn = document.createElement('button');
-         removeBtn.innerHTML = '×';
-         removeBtn.style.position = 'absolute';
-         removeBtn.style.top = '-8px';
-         removeBtn.style.right = '-8px';
-         removeBtn.style.background = '#ff4d4d';
-         removeBtn.style.color = 'white';
-         removeBtn.style.border = '2px solid white';
-         removeBtn.style.borderRadius = '50%';
-         removeBtn.style.width = '24px';
-         removeBtn.style.height = '24px';
-         removeBtn.style.cursor = 'pointer';
-         removeBtn.style.display = 'flex';
-         removeBtn.style.alignItems = 'center';
-         removeBtn.style.justifyContent = 'center';
-         removeBtn.style.fontWeight = 'bold';
-         removeBtn.type = 'button'; // Prevent form submit
-         
-         removeBtn.onclick = function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            imgContainer.remove();
-            // Remove corresponding hidden input
-            const inputs = hiddenDiv.querySelectorAll('input');
-            for(let hp of inputs) {
-                if(hp.value === imgUrl) {
-                    hp.remove();
-                    break;
+        if (practicalData.unit && Array.isArray(practicalData.unit)) {
+            practicalData.unit.forEach((unit, unitIdx) => {
+                if (unit.practicals && Array.isArray(unit.practicals)) {
+                    unit.practicals.forEach((practical, practicalIdx) => {
+                        if (practical.criteria && Array.isArray(practical.criteria)) {
+                            // Get all inputs for this practical
+                            let allInputs = document.querySelectorAll(`.practical-input[data-practical="${unitIdx}-${practicalIdx}"]`);
+                            
+                            // Match criteria with inputs by index
+                            practical.criteria.forEach((c, criteriaIdx) => {
+                                if (criteriaIdx < allInputs.length) {
+                                    let mark = c.practicalIndicatorMarks ? c.practicalIndicatorMarks.toString().trim() : '';
+                                    let input = allInputs[criteriaIdx];
+                                    
+                                    if (mark && input) {
+                                        // Set input value
+                                        input.value = mark;
+                                        input.classList.add('has-value');
+                                        input.classList.add('saved-value');
+                                        
+                                        // Find and check matching radio
+                                        let radioId = input.dataset.radioId;
+                                        if (radioId) {
+                                            let radio = document.getElementById(radioId);
+                                            if (radio) {
+                                                // Update radio value
+                                                let parts = radio.value.split('||');
+                                                parts[0] = mark;
+                                                radio.value = parts.join('||');
+                                                radio.checked = true;
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                        updatePracticalTotal(`${unitIdx}-${practicalIdx}`);
+                    });
                 }
-            }
-         };
-         
-         imgContainer.appendChild(img);
-         imgContainer.appendChild(removeBtn);
-         if(previewDiv) previewDiv.appendChild(imgContainer);
 
-         // Create Hidden Input
-         const input = document.createElement('input');
-         input.type = 'hidden';
-         input.name = `unit[${unitIdx}][projectWorks][${projectIdx}][projectImages][]`;
-         input.value = imgUrl;
-         if(hiddenDiv) hiddenDiv.appendChild(input);
-       });
-    }
-
-  });
-}
-// ...existing code...
-          });
+                if (unit.projectWorks && Array.isArray(unit.projectWorks)) {
+                    unit.projectWorks.forEach((project, projectIdx) => {
+                        if (project.criteria && Array.isArray(project.criteria)) {
+                            let allInputs = document.querySelectorAll(`.project-input[data-project="${unitIdx}-${projectIdx}"]`);
+                            
+                            project.criteria.forEach((c, criteriaIdx) => {
+                                if (criteriaIdx < allInputs.length) {
+                                    let mark = c.projectIndicatorMarks ? c.projectIndicatorMarks.toString().trim() : '';
+                                    let input = allInputs[criteriaIdx];
+                                    
+                                    if (mark && input) {
+                                        input.value = mark;
+                                        input.classList.add('has-value');
+                                        input.classList.add('saved-value');
+                                        
+                                        let radioId = input.dataset.radioId;
+                                        if (radioId) {
+                                            let radio = document.getElementById(radioId);
+                                            if (radio) {
+                                                let parts = radio.value.split('||');
+                                                parts[0] = mark;
+                                                radio.value = parts.join('||');
+                                                radio.checked = true;
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                        updateProjectTotal(`${unitIdx}-${projectIdx}`);
+                    });
+                }
+            });
         }
-      } else {
+    } else {
         // Clear form if no data
         document.getElementById('attendanceDays').value = '';
         document.getElementById('attendanceMarks').value = '';
         document.getElementById('theoryMarks').value = '';
         document.getElementById('obtainedconvertedmarks').value = '';
 
-        // Clear practical marks
-        ScienceData.forEach((item) => {
-  item.units.forEach((unit,unitIdx)=> {
-    // Clear practicals
-    unit.practicals.forEach((practical,practicalIdx)=> {
-      document.getElementById(`practical-total-${unitIdx}-${practicalIdx}`).value = '0';
-      document.querySelectorAll(`.marks-input[data-practical="${unitIdx}-${practicalIdx}"]`).forEach(input => {
-        input.value = '';
-        syncPracticalHiddenValue(input);
-      });
-    });
-
-    // Clear projects
-    unit.projectWorks.forEach((project, projectIdx) => {
-      document.getElementById(`project-total-${unitIdx}-${projectIdx}`).value = '0';
-      document.querySelectorAll(`.marks-input-project[data-project="${unitIdx}-${projectIdx}"]`).forEach(input => {
-        input.value = '';
-        syncProjectHiddenValue(input);
-      });
-    });
-  });
-});
-
-      }
-    }
-  
-</script>
-
-<input type="text" id="attendanceData" value='<%= JSON.stringify(attendanceData) %>' style="display:none;">
-<input type="text" id="marksheetSetting" value="<%=JSON.stringify(marksheetSetting)%>" style="display:none;">
-<script>
-
-  function fillAttendance()
-  {
-  const roll = document.getElementById('roll').value;
-  const name = document.getElementById('name').value;
-  const attendanceData = JSON.parse(document.getElementById('attendanceData').value);
-  const marksheetSetting = JSON.parse(document.getElementById('marksheetSetting').value);
-  const terminalname = document.getElementById('terminal').value;
-  console.log("Attendance Data on load:", attendanceData);
-  if(roll && name) {
-    attendanceData.forEach(record => {
-      if(record.roll === roll.toString()) {
-        if(terminalname===marksheetSetting[0].terminals[0].name)
-      {
-        document.getElementById('attendanceDays').value = record.firstTerm || 0;
-        calculateAttendanceMarks();
-      }
-      else if (terminalname===marksheetSetting[0].terminals[1].name) {
-        document.getElementById('attendanceDays').value = record.secondTerm || 0;
-        calculateAttendanceMarks();
-      }
-        else if (terminalname===marksheetSetting[0].terminals[2].name) {
-        document.getElementById('attendanceDays').value = record.thirdTerm || 0;
-        calculateAttendanceMarks();
-        }
-        else if (terminalname===marksheetSetting[0].terminals[3].name) {
-        document.getElementById('attendanceDays').value = record.finalTerm || 0;
-        calculateAttendanceMarks();
-        }
-      }
-    });
-
-  }
-  }
-  
-</script>
-<script>
-  const ScienceData = <%- JSON.stringify(ScienceData) %>;
-
-function clearForm() {
-  // Clear text/number inputs
- 
-  document.getElementById('theoryMarks').value = '';
-  document.getElementById('obtainedconvertedmarks').value = '';
-
-  // ✅ Uncheck all radios properly
-  document.querySelectorAll('input[type="radio"]').forEach(radio => {
-    radio.checked = false;
-  });
-
-  // Clear practical/project mark inputs and hidden values
-  document.querySelectorAll('.marks-input').forEach(input => {
-    input.value = '';
-    syncPracticalHiddenValue(input);
-  });
-  document.querySelectorAll('.marks-input-project').forEach(input => {
-    input.value = '';
-    syncProjectHiddenValue(input);
-  });
-
-  // (Optional) Reset practical/project totals if you have them
-  document.querySelectorAll('[id^="practical-total-"]').forEach(el => el.value = '0');
-  document.querySelectorAll('[id^="project-total-"]').forEach(el => el.value = '0');
-
-  // Clear images
-  document.querySelectorAll('[id^="imagePreview_"]').forEach(el => el.innerHTML = '');
-  document.querySelectorAll('[id^="hiddenInputs_"]').forEach(el => el.innerHTML = '');
-  document.querySelectorAll('[id^="uploadStatus_"]').forEach(el => el.textContent = '');
-  document.querySelectorAll('[id^="imageInput_"]').forEach(el => el.value = '');
-
-  console.log("Form cleared.");
-}
-
-async function uploadImage(input, unitIdx, prIdx) {
-    const files = input.files;
-    if (!files || files.length === 0) return;
-
-    const formData = new FormData();
-    // Append all selected files
-    for (let i = 0; i < files.length; i++) {
-        formData.append('image', files[i]);
-    }
-    
-    const statusSpan = document.getElementById(`uploadStatus_${unitIdx}_${prIdx}`);
-    if(statusSpan) {
-        statusSpan.textContent = `Uploading ${files.length} images...`;
-        statusSpan.style.color = '#0066cc';
-    }
-    
-    try {
-        const response = await fetch('/upload-project-image', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            if(statusSpan) {
-                statusSpan.textContent = 'Uploaded!';
-                statusSpan.style.color = 'green';
-                setTimeout(() => { statusSpan.textContent = ''; }, 3000);
-            }
-            
-            // Add image to preview
-            const previewContainer = document.getElementById(`imagePreview_${unitIdx}_${prIdx}`);
-            const hiddenContainer = document.getElementById(`hiddenInputs_${unitIdx}_${prIdx}`);
-            
-            // Handle both array (new) and single property (old) response
-            const urls = result.filePaths || (result.filePath ? [result.filePath] : []);
-
-            if (previewContainer) {
-                 // Ensure container allows horizontal scrolling
-                 previewContainer.style.display = 'flex';
-                 previewContainer.style.overflowX = 'auto';
-                 previewContainer.style.gap = '10px';
-                 previewContainer.style.padding = '10px';
-                 previewContainer.style.maxWidth = '100%';
-                 previewContainer.style.border = '1px solid #ddd';
-                 previewContainer.classList.add('custom-scrollbar'); // Add class for custom styling
-
-                 urls.forEach((imgUrl, index) => {
-                     const imgContainer = document.createElement('div');
-                     imgContainer.style.position = 'relative';
-                     imgContainer.style.display = 'inline-block';
-                     imgContainer.style.flexShrink = '0'; // Prevent shrinking
-                     
-                     const img = document.createElement('img');
-                     img.src = imgUrl;
-                     
-                     // Helper to gather all images in this container for the gallery
-                     const getAllImagesInGroup = () => {
-                        const imgs = previewContainer.querySelectorAll('img');
-                        return Array.from(imgs).map(img => img.src);
-                     };
-
-                     img.onclick = function() { 
-                        openGallery(imgUrl, getAllImagesInGroup());
-                     };
-
-                     // Bigger display for thumbnails
-                     img.style.width = '150px'; 
-                     img.style.height = '150px';
-                     img.style.objectFit = 'cover';
-                     img.style.borderRadius = '8px';
-                     img.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-                     img.style.cursor = 'pointer';
-                     img.className = 'gallery-item';
-                     
-                     const removeBtn = document.createElement('button');
-                     removeBtn.innerHTML = '&times;';
-                     removeBtn.style.position = 'absolute';
-                     removeBtn.style.top = '-8px';
-                     removeBtn.style.right = '-8px';
-                     removeBtn.style.background = '#ff4d4d';
-                     removeBtn.style.color = 'white';
-                     removeBtn.style.border = '2px solid white';
-                     removeBtn.style.borderRadius = '50%';
-                     removeBtn.style.width = '28px';
-                     removeBtn.style.height = '28px';
-                     removeBtn.style.cursor = 'pointer';
-                     removeBtn.style.display = 'flex';
-                     removeBtn.style.alignItems = 'center';
-                     removeBtn.style.justifyContent = 'center';
-                     removeBtn.style.fontSize = '18px';
-                     removeBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
-                     removeBtn.type = 'button';
-                     
-                     removeBtn.onclick = function(e) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        imgContainer.remove();
-                        // Remove corresponding hidden input
-                        const inputs = hiddenContainer.querySelectorAll('input');
-                        for(let hp of inputs) {
-                            if(hp.value === imgUrl) {
-                                hp.remove();
-                                break;
-                            }
-                        }
-                     };
-                     
-                     imgContainer.appendChild(img);
-                     imgContainer.appendChild(removeBtn);
-                     previewContainer.appendChild(imgContainer);
-
-                     if (hiddenContainer) {
-                        const hiddenInput = document.createElement('input');
-                        hiddenInput.type = 'hidden';
-                        hiddenInput.name = `unit[${unitIdx}][projectWorks][${prIdx}][projectImages][]`;
-                        hiddenInput.value = imgUrl;
-                        hiddenContainer.appendChild(hiddenInput);
-                     }
-                 });
-            }
-            
-            // Clear input so user can select same files again if needed
+        document.querySelectorAll('.practical-input, .project-input').forEach(input => {
             input.value = '';
-        } else {
-            if(statusSpan) {
-                statusSpan.textContent = 'Failed: ' + result.message;
-                statusSpan.style.color = 'red';
+            input.classList.remove('has-value', 'saved-value');
+        });
+
+        document.querySelectorAll('.marks-radio, .marks-radio-project').forEach(radio => {
+            radio.checked = false;
+        });
+
+        ScienceData.forEach((item) => {
+            item.units.forEach((unit, unitIdx) => {
+                unit.practicals.forEach((practical, practicalIdx) => {
+                    document.getElementById(`practical-total-${unitIdx}-${practicalIdx}`).value = '0';
+                });
+                unit.projectWorks.forEach((project, projectIdx) => {
+                    document.getElementById(`project-total-${unitIdx}-${projectIdx}`).value = '0';
+                });
+            });
+        });
+    }
+}
+  </script>
+
+  <input type="text" id="attendanceData" value='<%= JSON.stringify(attendanceData) %>' style="display:none;">
+  <input type="text" id="marksheetSetting" value="<%=JSON.stringify(marksheetSetting)%>" style="display:none;">
+  
+  <script>
+    function fillAttendance() {
+      const roll = document.getElementById('roll').value;
+      const name = document.getElementById('name').value;
+      const attendanceData = JSON.parse(document.getElementById('attendanceData').value);
+      const marksheetSetting = JSON.parse(document.getElementById('marksheetSetting').value);
+      const terminalname = document.getElementById('terminal').value;
+      
+      if(roll && name) {
+        attendanceData.forEach(record => {
+          if(record.roll === roll.toString()) {
+            if(terminalname===marksheetSetting[0].terminals[0].name) {
+              document.getElementById('attendanceDays').value = record.firstTerm || 0;
+              calculateAttendanceMarks();
+            } else if (terminalname===marksheetSetting[0].terminals[1].name) {
+              document.getElementById('attendanceDays').value = record.secondTerm || 0;
+              calculateAttendanceMarks();
+            } else if (terminalname===marksheetSetting[0].terminals[2].name) {
+              document.getElementById('attendanceDays').value = record.thirdTerm || 0;
+              calculateAttendanceMarks();
+            } else if (terminalname===marksheetSetting[0].terminals[3].name) {
+              document.getElementById('attendanceDays').value = record.finalTerm || 0;
+              calculateAttendanceMarks();
             }
-        }
-    } catch (error) {
-        console.error('Error:', error);
-        if(statusSpan) {
-            statusSpan.textContent = 'Error uploading';
-            statusSpan.style.color = 'red';
-        }
+          }
+        });
+      }
     }
-}
 
-</script>
+    const ScienceData = <%- JSON.stringify(ScienceData) %>;
 
-<!-- Gallery Modal -->
-<div id="galleryModal" class="gallery-modal">
-  <span class="close-gallery">&times;</span>
-  <img class="gallery-content" id="galleryImg">
-  <a class="prev-gallery" onclick="changeGalleryImage(-1)">&#10094;</a>
-  <a class="next-gallery" onclick="changeGalleryImage(1)">&#10095;</a>
-  <div id="galleryCaption"></div>
-</div>
-
-<style>
-/* Gallery Modal CSS */
-.gallery-modal {
-  display: none; 
-  position: fixed; 
-  z-index: 2000; 
-  padding-top: 50px; 
-  left: 0; 
-  top: 0; 
-  width: 100%; 
-  height: 100%; 
-  overflow: auto; 
-  background-color: rgba(0,0,0,0.9); 
-}
-.gallery-content {
-  margin: auto;
-  display: block;
-  max-width: 90%;
-  max-height: 85vh;
-  object-fit: contain;
-}
-.gallery-content {  
-  animation-name: zoom;
-  animation-duration: 0.3s;
-}
-@keyframes zoom {
-  from {transform:scale(0.8); opacity: 0} 
-  to {transform:scale(1); opacity: 1}
-}
-.close-gallery {
-  position: absolute;
-  top: 15px;
-  right: 35px;
-  color: #f1f1f1;
-  font-size: 40px;
-  font-weight: bold;
-  transition: 0.3s;
-  cursor: pointer;
-  z-index: 2001;
-}
-.close-gallery:hover,
-.close-gallery:focus {
-  color: #bbb;
-  text-decoration: none;
-  cursor: pointer;
-}
-.prev-gallery, .next-gallery {
-  cursor: pointer;
-  position: absolute;
-  top: 50%;
-  width: auto;
-  padding: 16px;
-  margin-top: -50px;
-  color: white;
-  font-weight: bold;
-  font-size: 40px;
-  transition: 0.3s ease;
-  border-radius: 0 3px 3px 0;
-  user-select: none;
-  background-color: rgba(0,0,0,0.3);
-  z-index: 2001;
-}
-.next-gallery {
-  right: 0;
-  border-radius: 3px 0 0 3px;
-}
-.prev-gallery:hover, .next-gallery:hover {
-  background-color: rgba(0,0,0,0.8);
-}
-.custom-scrollbar {
-    scrollbar-width: thin;
-    scrollbar-color: #888 #f1f1f1;
-}
-.custom-scrollbar::-webkit-scrollbar {
-    height: 10px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: #f1f1f1; 
-    border-radius: 5px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #888; 
-    border-radius: 5px;
-}
-</style>
-
-<script>
-let currentGalleryImages = [];
-let currentIndex = 0;
-
-window.openGallery = function(src, allSrcs) {
-    const modal = document.getElementById("galleryModal");
-    const modalImg = document.getElementById("galleryImg");
-    
-    // Convert allSrcs to array if passed as string/other
-    if (!allSrcs) allSrcs = [src];
-    if (typeof allSrcs === 'string') allSrcs = [allSrcs];
-    
-    currentGalleryImages = allSrcs;
-    currentIndex = currentGalleryImages.indexOf(src);
-    if(currentIndex === -1) currentIndex = 0;
-    
-    modal.style.display = "block";
-    modalImg.src = currentGalleryImages[currentIndex];
-}
-
-window.changeGalleryImage = function(n) {
-    currentIndex += n;
-    if (currentIndex >= currentGalleryImages.length) {
-        currentIndex = 0;
+    function clearForm() {
+      document.getElementById('theoryMarks').value = '';
+      document.getElementById('obtainedconvertedmarks').value = '';
+      document.querySelectorAll('input[type="radio"]').forEach(radio => {
+        radio.checked = false;
+      });
+      document.querySelectorAll('.practical-input, .project-input').forEach(input => {
+        input.value = '';
+        input.classList.remove('has-value', 'saved-value');
+      });
+      document.querySelectorAll('[id^="practical-total-"]').forEach(el => el.value = '0');
+      document.querySelectorAll('[id^="project-total-"]').forEach(el => el.value = '0');
+      console.log("Form cleared.");
     }
-    if (currentIndex < 0) {
-        currentIndex = currentGalleryImages.length - 1;
-    }
-    const modalImg = document.getElementById("galleryImg");
-    modalImg.src = currentGalleryImages[currentIndex];
-    
-    // Slight flash effect
-    modalImg.style.opacity = 0.5;
-    setTimeout(() => { modalImg.style.opacity = 1; }, 50);
-}
-
-// Close gallery
-const closeBtn = document.querySelector(".close-gallery");
-if(closeBtn) {
-    closeBtn.onclick = function() { 
-      document.getElementById("galleryModal").style.display = "none";
-    }
-}
-
-// Close on outside click
-window.onclick = function(event) {
-  const modal = document.getElementById("galleryModal");
-  if (event.target == modal) {
-    modal.style.display = "none";
-  }
-}
-
-// Keyboard nav
-document.addEventListener('keydown', function(event) {
-    const modal = document.getElementById("galleryModal");
-    if (modal && modal.style.display === "block") {
-        if (event.key === "ArrowLeft") {
-            changeGalleryImage(-1);
-        } else if (event.key === "ArrowRight") {
-            changeGalleryImage(1);
-        } else if (event.key === "Escape") {
-            modal.style.display = "none";
-        }
-    }
-});
-</script>
+  </script>
 </body>
 </html>

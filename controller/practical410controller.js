@@ -2538,23 +2538,26 @@ exports.autoSaveRubrik = async (req, res, next) => {
   try {
     const { studentClass, subject, terminal, themes, credit } = req.body;
     const ProjectModel =  getProjectThemeFormat(studentClass);
-    await ProjectModel.updateOne(
+    
+    const result = await ProjectModel.updateOne(
         { studentClass, subject},
         {
         $set: {
           studentClass,
           subject,
-       
           credit,
           themes,
           updatedAt: new Date()
-         
         }
       },
       { upsert: true }
     );
 
-    res.sendStatus(200);
+    res.json({ 
+      success: true, 
+      action: result.upsertedId ? 'created' : 'updated',
+      message: 'Data saved successfully'
+    });
     
   }catch (err) {
     console.error("Error in autosave:", err);

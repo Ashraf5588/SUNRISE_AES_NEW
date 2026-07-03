@@ -1050,31 +1050,47 @@
     }
 
     // Load existing data if available
- 
-    let themesData = <%- JSON.stringify(editing ? existingprojectData.themes : []) %>;
-    const projectDataObj = <%- JSON.stringify(typeof existingprojectData !== 'undefined' && existingprojectData && existingprojectData.length > 0 ? existingprojectData[0] : null) %>;
+    const editing = <%= typeof editing !== 'undefined' ? editing : false %>;
     
-    // If we are not in "editing" mode but we found project data, use that.
-    if ((!themesData || themesData.length === 0) && projectDataObj && projectDataObj.themes) {
-        console.log("Using existingprojectData for themes");
-        themesData = projectDataObj.themes;
+    // Get the correct data object based on mode
+    let existingData = <%- JSON.stringify(
+      editing && typeof existingData !== 'undefined' && existingData 
+        ? existingData 
+        : typeof existingprojectData !== 'undefined' && existingprojectData && existingprojectData.length > 0 
+          ? existingprojectData[0] 
+          : null
+    ) %>;
+    
+    let themesData = [];
+    
+    // Extract themes from the existing data object
+    if (existingData && existingData.themes && Array.isArray(existingData.themes)) {
+        themesData = existingData.themes;
+        console.log("Loaded themes from existing data:", themesData);
         
-        // Ensure subject/class are set
+        // Ensure other fields are set if available
         setTimeout(() => {
             const creditInput = document.getElementById('credit');
-            if(creditInput && !creditInput.value && projectDataObj.credit) creditInput.value = projectDataObj.credit;
+            if(creditInput && !creditInput.value && existingData.credit) {
+                creditInput.value = existingData.credit;
+            }
         }, 0);
     }
 
     const studentClass = <%= typeof studentClass !== 'undefined' ? studentClass : 'null' %>;
     
     console.log("Themes Data to load:", themesData);
+    console.log("Editing mode:", editing);
+    console.log("Existing data:", existingData);
 
     if (themesData && Array.isArray(themesData) && themesData.length > 0) {
+      console.log("Loading " + themesData.length + " themes");
       themesData.forEach((themeData, idx) => {
+        console.log("Adding theme " + idx, themeData);
         addTheme(themeData);
       });
     } else {
+      console.log("No themes found, adding default");
       addTheme(); // Start with one theme by default
     }
 
@@ -1264,14 +1280,12 @@
       const credit = document.getElementById('credit').value;
       
       if (!studentClass || !subject) {
+        console.log("Skipping auto-save: missing required fields (class or subject)");
         return; // Don't save if required fields are missing
       }
 
       try {
         const formData = collectFormData();
-        
-        // Show saving indicator
-        
         
         const response = await fetch('/autosave-projectrubrik', {
           method: 'POST',
@@ -1292,13 +1306,14 @@
         
         if (result.success) {
           showSaveStatus(result.action === 'updated' ? 'Updated' : 'Saved', 'success');
+          console.log("Auto-save successful:", result);
         } else {
-         
           console.error('Auto-save failed:', result.message);
+          showSaveStatus('Auto-save failed: ' + result.message, 'error');
         }
       } catch (error) {
-    
         console.error('Auto-save error:', error);
+        showSaveStatus('Auto-save error: ' + error.message, 'error');
       }
     }
 
