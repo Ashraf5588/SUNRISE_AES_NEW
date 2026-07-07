@@ -686,45 +686,229 @@ oneself or with other's help</td>
                                 </tr>
                               </thead>
                               <tbody>
-                                <% let iIndex = 0 %>
-                                <% practicalFormatData.forEach(function(doc) { %>
-                                  <% doc.themes.forEach(function(theme) { %>
-                                    <% let themeRowspan = theme.learningOutcome.reduce((sum, lo) => sum + lo.indicators.length, 0); %>
-                                    <% let firstThemeRow = true; %>
 
-                                    <% theme.learningOutcome.forEach(function(lo, loIdx) { %>
-                                      <% let loRowspan = lo.indicators.length; %>
 
-                                      <% lo.indicators.forEach(function(ind, indIndex) { %>
-                                        <tr>
-                                          <% if(firstThemeRow && indIndex === 0) { %>
-                                            <td rowspan="<%= themeRowspan %>"><%= iIndex+1 %></td>
-                                            <td rowspan="<%= themeRowspan %>"><%= theme.themeName %></td>
-                                            <% firstThemeRow = false; %>
-                                          <% } %>
 
-                                          <% if(indIndex === 0) { %>
-                                            <td rowspan="<%= loRowspan %>"><%= lo.learningOutcomeName %></td>
-                                          <% } %>
 
-                                          <td><%= ind.indicatorName %></td>
-                                          <td>
-                                            <div class="radio-group">
-                                              <input type="radio" 
-                                                     value="<%= ind.indicatorsMarks %>||<%= ind.indicatorName %>||<%= lo.learningOutcomeName %>" 
-                                                     class="marks-radio"
-                                                     name="unit[<%= idx %>][practicals][<%= prindx %>][criteria][<%= iIndex %>]"
-                                                     data-practical="<%= idx %>-<%= prindx %>"
-                                                     id="practical_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>">
-                                              <label for="practical_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>"><%= ind.indicatorsMarks %></label>
-                                            </div>
-                                          </td>
-                                        </tr>
-                                      <% }) %>
-                                      <% iIndex++ %>
-                                    <% }) %>
-                                  <% }) %>
-                                <% }) %>
+<% let iIndex = 0; %>
+
+
+
+<% practicalFormatData.forEach(function(doc){ %>
+
+
+
+    <% doc.themes.forEach(function(theme){ %>
+
+
+
+        <% 
+
+        let themeRowspan = 0;
+
+
+
+        theme.learningOutcome.forEach(function(lo){
+
+            lo.assessmentAspects.forEach(function(aspect){
+
+                aspect.tools.forEach(function(tool){
+
+                    themeRowspan += tool.indicators.length;
+
+                });
+
+            });
+
+        });
+
+
+
+        let firstThemeRow = true;
+
+        %>
+
+
+
+        <% theme.learningOutcome.forEach(function(lo){ %>
+
+
+
+            <%
+
+            let loRowspan = 0;
+
+
+
+            lo.assessmentAspects.forEach(function(aspect){
+
+                aspect.tools.forEach(function(tool){
+
+                    loRowspan += tool.indicators.length;
+
+                });
+
+            });
+
+
+
+            let firstLoRow = true;
+
+            %>
+
+
+
+            <% lo.assessmentAspects.forEach(function(aspect){ %>
+
+
+
+                <% aspect.tools.forEach(function(tool){ %>
+
+
+
+                    <% tool.indicators.forEach(function(ind, indIndex){ %>
+
+
+
+                        <tr>
+
+
+
+                            <% if(firstThemeRow){ %>
+
+                                <td rowspan="<%= themeRowspan %>">
+
+                                    <%= iIndex + 1 %>
+
+                                </td>
+
+
+
+                                <td rowspan="<%= themeRowspan %>">
+
+                                    <%= theme.themeName %>
+
+                                </td>
+
+
+
+                                <% firstThemeRow = false; %>
+
+                            <% } %>
+
+
+
+                            <% if(firstLoRow){ %>
+
+                                <td rowspan="<%= loRowspan %>">
+
+                                    <%= lo.learningOutcomeName || "-" %>
+
+                                </td>
+
+
+
+                                <% firstLoRow = false; %>
+
+                            <% } %>
+
+
+
+                            <td>
+
+                                <%= ind.indicatorName %>
+
+                            </td>
+
+
+
+                            <td>
+
+
+
+                                <div class="radio-group">
+
+
+
+                                    <input
+
+                                        type="radio"
+
+                                        class="marks-radio"
+
+
+
+                                        value="<%= ind.maxMarks %>||<%= ind.indicatorName %>||<%= theme.themeName %>"
+
+
+
+                                        name="unit[<%= idx %>][practicals][<%= prindx %>][criteria][<%= iIndex %>]"
+
+
+
+                                        data-practical="<%= idx %>-<%= prindx %>"
+
+
+
+                                        id="practical_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= ind._id %>">
+
+
+
+                                    <label
+
+                                        for="practical_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= ind._id %>">
+
+
+
+                                        <%= ind.maxMarks %>
+
+
+
+                                    </label>
+
+
+
+                                </div>
+
+
+
+                            </td>
+
+
+
+                        </tr>
+
+
+
+                    <% }) %>
+
+
+
+                <% }) %>
+
+
+
+            <% }) %>
+
+
+
+            <% iIndex++; %>
+
+
+
+        <% }) %>
+
+
+
+    <% }) %>
+
+
+
+<% }) %>
+
+
+
+
                               </tbody>
                             </table>
                           </div>
