@@ -1219,15 +1219,30 @@ exports.absentRecordPage = async (req, res) => {
       ...Array.from(groupMap.keys()),
       ...Array.from(enteredTimeMap.keys())
     ]);
+    
+    console.log(`[AbsentRecord] Total unique class-section combinations in attendance data: ${allKeys.size}`);
+    console.log(`[AbsentRecord] Current classes in classlist: ${classNameMap.size}`);
+    
+    // Count how many old/deleted classes will be filtered out
+    const oldClassKeys = Array.from(allKeys).filter(key => !classNameMap.has(key));
+    if (oldClassKeys.length > 0) {
+      console.log(`[AbsentRecord] ⚠️ Filtering out ${oldClassKeys.length} old/deleted class records:`, oldClassKeys);
+    }
 
-    const builtGroups = Array.from(allKeys).map((key) => {
+    const builtGroups = Array.from(allKeys)
+      .filter(key => {
+        // ONLY include classes that exist in the current classlist
+        // This filters out deleted/old/renamed classes
+        return classNameMap.has(key);
+      })
+      .map((key) => {
       const [studentClassValue, sectionValue] = key.split('||');
       const grp = groupMap.get(key) || { studentClass: studentClassValue, section: sectionValue, students: [] };
       
-      // Try to get current class name from classlist, fallback to stored name
+      // Get current class name from classlist
       const currentClassInfo = classNameMap.get(key);
-      const displayClassName = currentClassInfo ? currentClassInfo.className : studentClassValue;
-      const displaySection = currentClassInfo ? currentClassInfo.section : sectionValue;
+      const displayClassName = currentClassInfo.className;
+      const displaySection = currentClassInfo.section;
       
       const students = (Array.isArray(grp.students) ? grp.students : []).filter((s) => s.name || s.roll !== undefined)
         .sort((a, b) => String(a.roll || '').localeCompare(String(b.roll || ''), 'en', { numeric: true }))
