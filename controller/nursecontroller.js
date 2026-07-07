@@ -74,6 +74,20 @@ const extractStaffName = (row) => {
     return fallback;
 };
 
+const resolveHeightCmFromInputs = (heightFeet, heightInch) => {
+    const inchValue = normalizeNumber(heightInch);
+    if (inchValue !== null && inchValue > 0) {
+        return inchValue;
+    }
+
+    const feetValue = normalizeNumber(heightFeet);
+    if (feetValue !== null && feetValue > 0) {
+        return feetValue;
+    }
+
+    return null;
+};
+
 const resolveHeightCm = (student) => {
     if (!student || typeof student !== 'object') {
         return null;
@@ -82,12 +96,6 @@ const resolveHeightCm = (student) => {
     const directHeightCm = normalizeNumber(student.heightCm);
     if (directHeightCm !== null) {
         return directHeightCm;
-    }
-
-    const legacyHeightFeet = normalizeNumber(student.heightFeet);
-    const legacyHeightInch = normalizeNumber(student.heightInch);
-    if (legacyHeightFeet !== null && legacyHeightInch !== null) {
-        return (legacyHeightFeet * 30.48) + (legacyHeightInch * 2.54);
     }
 
     const heightText = String(student.height || '').trim().toLowerCase();
@@ -99,9 +107,7 @@ const resolveHeightCm = (student) => {
     const feetMatch = heightText.match(/(\d+(?:\.\d+)?)\s*(ft|feet|foot)/);
     const inchMatch = heightText.match(/(\d+(?:\.\d+)?)\s*(in|inch|inches)/);
     if (feetMatch || inchMatch) {
-        const feetValue = normalizeNumber(feetMatch ? feetMatch[1] : 0) || 0;
-        const inchValue = normalizeNumber(inchMatch ? inchMatch[1] : 0) || 0;
-        return (feetValue * 30.48) + (inchValue * 2.54);
+        return resolveHeightCmFromInputs(feetMatch ? feetMatch[1] : 0, inchMatch ? inchMatch[1] : 0);
     }
 
     return null;
@@ -1106,7 +1112,10 @@ exports.getBmiStudents = async (req, res) => {
                 gender: student.gender || '',
                 dob: student.dob || '',
                 age: student.age || calculateAgeFromDob(student.dob),
-                heightCm: heightCm !== null ? heightCm : '',
+                heightFeet: student.heightFeet || '',
+                heightInch: student.heightInch !== undefined && student.heightInch !== null && student.heightInch !== ''
+                    ? student.heightInch
+                    : (heightCm !== null ? heightCm : ''),
                 weight: student.weight || '',
                 muaq: student.muaq || '',
                 bmi: bmiValue
@@ -1135,7 +1144,9 @@ exports.saveBmiRows = async (req, res) => {
                 continue;
             }
 
-            const heightCm = normalizeNumber(entry.heightCm);
+            const heightFeet = normalizeNumber(entry.heightFeet);
+            const heightInch = normalizeNumber(entry.heightInch);
+            const heightCm = resolveHeightCmFromInputs(heightFeet, heightInch);
             const weight = String(entry.weight || '').trim();
             const muaq = String(entry.muaq || '').trim();
             const bmi = String(entry.bmi || getBmiValue(heightCm, weight) || '').trim();
@@ -1145,6 +1156,8 @@ exports.saveBmiRows = async (req, res) => {
                 continue;
             }
 
+            student.heightFeet = heightFeet !== null ? heightFeet : null;
+            student.heightInch = heightInch !== null ? heightInch : null;
             student.heightCm = heightCm;
             student.height = heightCm !== null ? `${heightCm} cm` : student.height;
             student.weight = weight;

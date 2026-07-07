@@ -130,10 +130,24 @@ window.addEventListener('keydown', (event) => {
   }
 });
 
-const calculateBmi = (heightCm, weight) => {
-  const heightValueCm = Number(heightCm);
+const getHeightCmFromInputs = (heightFeet, heightInch) => {
+  const inchValue = Number(heightInch);
+  if (Number.isFinite(inchValue) && inchValue > 0) {
+    return inchValue;
+  }
+
+  const feetValue = Number(heightFeet);
+  if (Number.isFinite(feetValue) && feetValue > 0) {
+    return feetValue;
+  }
+
+  return null;
+};
+
+const calculateBmi = (heightFeet, heightInch, weight) => {
+  const heightValueCm = getHeightCmFromInputs(heightFeet, heightInch);
   const weightValue = Number(weight);
-  if (!Number.isFinite(heightValueCm) || !Number.isFinite(weightValue) || heightValueCm <= 0 || weightValue <= 0) {
+  if (heightValueCm === null || !Number.isFinite(weightValue) || heightValueCm <= 0 || weightValue <= 0) {
     return '';
   }
   const heightMeters = heightValueCm / 100;
@@ -155,7 +169,8 @@ const renderTable = () => {
       <td>${escapeHtml(row.name)}</td>
       <td>${escapeHtml(formatDate(row.dob))}</td>
       <td>${escapeHtml(row.age || '-')}</td>
-      <td><input class="hm-bmi-input" type="number" step="0.1" min="0" data-field="heightCm" data-index="${index}" value="${escapeHtml(row.heightCm || '')}"></td>
+      <td><input class="hm-bmi-input" type="number" step="0.1" min="0" data-field="heightFeet" data-index="${index}" value="${escapeHtml(row.heightFeet || '')}"></td>
+      <td><input class="hm-bmi-input" type="number" step="0.1" min="0" data-field="heightInch" data-index="${index}" value="${escapeHtml(row.heightInch || '')}"></td>
       <td><input class="hm-bmi-input" type="number" step="0.1" min="0" data-field="weight" data-index="${index}" value="${escapeHtml(row.weight || '')}"></td>
       <td><input class="hm-bmi-input" type="text" data-field="muaq" data-index="${index}" value="${escapeHtml(row.muaq || '')}"></td>
       <td><input class="hm-bmi-input hm-bmi-output" type="text" data-field="bmi" data-index="${index}" value="${escapeHtml(row.bmi || '')}" readonly></td>
@@ -249,8 +264,8 @@ const updateRow = (index, field, value) => {
   }
 
   row[field] = value;
-  if (field === 'heightCm' || field === 'weight') {
-    row.bmi = calculateBmi(row.heightCm, row.weight);
+  if (field === 'heightFeet' || field === 'heightInch' || field === 'weight') {
+    row.bmi = calculateBmi(row.heightFeet, row.heightInch, row.weight);
     const bmiInput = document.querySelector(`.hm-bmi-output[data-index="${index}"]`);
     if (bmiInput) {
       bmiInput.value = row.bmi || '';
