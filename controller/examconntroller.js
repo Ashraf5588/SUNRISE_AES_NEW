@@ -153,47 +153,60 @@ exports.saveEntryform = async (req, res, next) => {
     if (!academicYear) academicYear = req.body.academicYear;
     if (!terminal) terminal = req.body.terminal;
 
+    console.log("[Backend] ====== SAVE ENTRYFORM ======");
+    console.log("[Backend] Query params:", { studentClass, section, subject, academicYear, terminal });
+    console.log("[Backend] Body - reg:", req.body.reg, "totalWorksheet:", req.body.totalWorksheet);
+
     const model = getSlipModel();
-await model.updateOne(
-      {
+    
+    const updateQuery = {
+      reg: req.body.reg,
+      subject: subject,
+      terminal: terminal,
+      academicYear: academicYear,
+      studentClass: studentClass,
+      section: section,
+    };
+    
+    const updateData = {
+      $set: {
         reg: req.body.reg,
-        subject: subject,
+        roll:  req.body.roll,
+        name: req.body.name,
+        theorymarks: Number(req.body.theorymarks) || 0,
+        practicalmarks: Number(req.body.practicalmarks) || 0,
+        totalpracticalmarks: Number(req.body.totalpracticalmarks) || 0,
+        attendance: Number(req.body.attendance) || 0,
         terminal: terminal,
-        academicYear: academicYear,
+        subject: subject,
+        theoryfullmarks: Number(req.body.theoryfullmarks) || 0,
+        passMarks: Number(req.body.passMarks) || 0,
+        practicalfullmarks: Number(req.body.practicalfullmarks) || 0,
         studentClass: studentClass,
         section: section,
+        academicYear: academicYear,
+        gender: req.body.gender || "",
+        totalWorksheet: Number(req.body.totalWorksheet) || 0,
+        worksheetGrades: req.body.worksheetGrades || [],
+        terminalmarks: Number(req.body.terminalmarks) || 0,
       },
-      {
-        $set: {
-          reg: req.body.reg,
-          roll:  req.body.roll,
-          name: req.body.name,
-          theorymarks: Number(req.body.theorymarks) || 0,
-          practicalmarks: Number(req.body.practicalmarks) || 0,
-          totalpracticalmarks: Number(req.body.totalpracticalmarks) || 0,
-          attendance: Number(req.body.attendance) || 0,
-          terminal: terminal,
-          subject: subject,
-          theoryfullmarks: Number(req.body.theoryfullmarks) || 0,
-          passMarks: Number(req.body.passMarks) || 0,
-          practicalfullmarks: Number(req.body.practicalfullmarks) || 0,
-          studentClass: studentClass,
-          section: section,
-          academicYear: academicYear,
-          gender: req.body.gender || "",
-          totalWorksheet: Number(req.body.totalWorksheet) || 0,
-          worksheetGrades: req.body.worksheetGrades || [],
-          terminalmarks: Number(req.body.terminalmarks) || 0,
-        },
-      },
-      { upsert: true }
-    );
-     res.json({ success: true });
+    };
+    
+    console.log("[Backend] Updating doc with query:", JSON.stringify(updateQuery));
+    console.log("[Backend] Setting totalWorksheet to:", updateData.$set.totalWorksheet);
+
+    const result = await model.updateOne(updateQuery, updateData, { upsert: true });
+    
+    console.log("[Backend] Update result:", result);
+    console.log("[Backend] ✓ Data saved successfully (matched:", result.matchedCount, ", upserted:", result.upsertedCount, ")");
+    console.log("[Backend] ====== END SAVE ======");
+    
+    res.json({ success: true, result: result });
 
   } 
   catch (err) {
-    console.error("Error saving entry form:", err);
-    res.status(500).send("Internal Server Error");
+    console.error("[Backend] ✗ Error saving entry form:", err);
+    res.status(500).json({success: false, error: err.message});
   }
 };
 
@@ -201,14 +214,48 @@ exports.getPreviousmarks= async (req,res,next)=>
 {
   try{
     const {subject,studentClass,section,academicYear,terminal}= req.query;
+    
+    console.log("\n[Backend] ====== GET PREVIOUSMARKS ======");
+    console.log("[Backend] Query params received:");
+    console.log(`  - subject: "${subject}"`);
+    console.log(`  - studentClass: "${studentClass}"`);
+    console.log(`  - section: "${section}"`);
+    console.log(`  - academicYear: "${academicYear}"`);
+    console.log(`  - terminal: "${terminal}"`);
+    
+    // Query exam_marks collection
     const model = getSlipModel();
-    const previousMarks = await model.find({subject:subject,terminal:terminal,studentClass:studentClass,section:section,academicYear:academicYear}).lean();
+    console.log(`[Backend] Using collection: exam_marks`);
+    
+    const findQuery = {
+      subject: subject,
+      terminal: terminal,
+      studentClass: studentClass,
+      section: section,
+      academicYear: academicYear
+    };
+    
+    console.log(`[Backend] Find query: ${JSON.stringify(findQuery)}`);
+    
+    const previousMarks = await model.find(findQuery).lean();
+    
+    console.log(`[Backend] ✓ Found ${previousMarks.length} records`);
+    if (previousMarks.length > 0) {
+      console.log("[Backend] 📊 First record data:");
+      console.log(`  - reg: ${previousMarks[0].reg}`);
+      console.log(`  - totalWorksheet: ${previousMarks[0].totalWorksheet}`);
+      console.log(`  - worksheetGrades: ${JSON.stringify(previousMarks[0].worksheetGrades)}`);
+      console.log("[Backend] Full first record:", JSON.stringify(previousMarks[0], null, 2));
+    } else {
+      console.warn("[Backend] ⚠️ No records found in exam_marks collection");
+    }
+    console.log("[Backend] ====== END GET PREVIOUSMARKS ======\n");
 
     res.json(previousMarks);
   }
   catch(err)
   {
-    console.error("Error fetching previous marks:", err);
+    console.error("[Backend] ✗ Error fetching previous marks:", err);
     res.status(500).json({error:"Internal Server Error"});
   }
 }

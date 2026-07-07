@@ -26,14 +26,15 @@
     .entry-container{background:var(--card);border-radius:10px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.1);max-width:1400px;margin:0 auto;overflow-x:auto}
     .entry-title{font-size:20px;font-weight:700;color:var(--secondary);margin-bottom:15px;text-align:center;text-transform:uppercase;letter-spacing:.5px;padding-bottom:12px;border-bottom:3px solid var(--primary)}
     
-    table{width:100%;border-collapse:collapse;margin-top:12px;min-width:900px}
-    table th{background:linear-gradient(135deg,var(--secondary) 0%,var(--secondary-light) 100%);color:#fff;padding:12px 8px;text-align:center;font-weight:600;font-size:13px;border:1px solid var(--secondary-light);position:sticky;top:0;z-index:10}
-    table td{padding:8px;border:1px solid var(--border);text-align:center;background:#fff}
+    table{width:100%;border-collapse:collapse;margin-top:12px;min-width:900px;table-layout:auto}
+    table th{background:linear-gradient(135deg,var(--secondary) 0%,var(--secondary-light) 100%);color:#fff;padding:12px 8px;text-align:center;font-weight:600;font-size:13px;border:1px solid var(--secondary-light);position:sticky;top:0;z-index:10;white-space:nowrap;min-width:80px}
+    table td{padding:8px;border:1px solid var(--border);text-align:center;background:#fff;word-wrap:break-word}
     table tr:nth-child(even) td{background:#fafbfc}
     table tr:hover td{background:var(--hover)}
-    table input[type="text"],table input[type="number"]{width:100%;padding:7px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px;transition:border .2s;text-align:center}
+    table input[type="text"],table input[type="number"],table select{width:100%;padding:7px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px;transition:border .2s;text-align:center}
     table input[type="text"]:read-only{background:#f7fafc;border-color:#e2e8f0;color:#4a5568}
     table input[type="number"]:not([readonly]):focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 2px rgba(255,140,66,.1)}
+    table select:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 2px rgba(255,140,66,.1)}
     table input[readonly]{background:#edf2f7;cursor:not-allowed}
     table img{width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid var(--border)}
     
@@ -42,9 +43,13 @@
     input[type="submit"]:hover{transform:translateY(-1px);box-shadow:0 5px 16px rgba(72,187,120,.4)}
     input[type="submit"]:active{transform:translateY(0)}
     .worksheet-controls{display:flex;justify-content:center;align-items:center;gap:8px;margin:10px 0 4px}
-    .worksheet-controls input[type="number"]{max-width:180px;text-align:center;padding:8px;border:1px solid var(--border);border-radius:6px}
-    .worksheet-btn{width:34px;height:34px;border:0;border-radius:6px;background:var(--secondary);color:#fff;font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+    .worksheet-controls input[type="number"]{max-width:180px;text-align:center;padding:8px;border:1px solid var(--border);border-radius:6px;transition:background-color 0.3s ease, border-color 0.3s ease}
+    .worksheet-btn{width:34px;height:34px;border:0;border-radius:6px;background:var(--secondary);color:#fff;font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background-color 0.2s}
     .worksheet-btn:hover{background:var(--secondary-light)}
+    
+    /* Worksheet checkbox styling */
+    table input[type="checkbox"]{width:18px !important;height:18px !important;cursor:pointer;accent-color:var(--primary);flex-shrink:0}
+    table input[type="checkbox"]:hover{transform:scale(1.1)}
     
     @media(max-width:1024px){.entry-container{padding:15px}table{font-size:12px}table th,table td{padding:7px 5px}}
     @media(max-width:768px){body{padding:10px}.selector-panel,.entry-container{padding:15px;border-radius:8px}.selector-title,.entry-title{font-size:16px}.selector-grid{grid-template-columns:1fr}.entry-container{overflow-x:scroll;-webkit-overflow-scrolling:touch}table{min-width:800px}table th,table td{font-size:11px;padding:6px 4px}table input{font-size:12px;padding:6px}input[type="submit"],.load-btn{width:100%;max-width:100%;padding:11px 20px}.entry-container::after{content:'← Scroll to view all →';display:block;text-align:center;color:var(--primary);font-size:11px;margin-top:8px;font-weight:600}}
@@ -262,61 +267,178 @@ else if (terminal == "FINAL")
 <script>
 async function populateData(subject,studentClass,section,academicYear,terminal)
 {
-  const data = await fetch(`/getPreviousmarks?subject=${subject}&studentClass=${studentClass}&section=${section}&academicYear=${academicYear}&terminal=${terminal}`);
-  const result = await data.json();
-  console.log("Fetched Previous Marks:", result);
-
-  document.getElementById('totalWorksheet').value = result.length > 0 ? result[0].totalWorksheet : 0;
- 
-
-  const attendanceData = await fetch(`/getAttendanceData?subject=${subject}&studentClass=${studentClass}&section=${section}&academicYear=${academicYear}&terminal=${terminal}`);
-  const attendanceResult = await attendanceData.json();
-if(result.length>0)
-{
-  result.forEach((item)=>
-  {
-    const reg = item.reg;
-    document.querySelector(`input[name="theorymarks[${reg}]"]`).value=item.theorymarks;
+  console.log("=== populateData STARTED ===");
+  console.log(`Fetching data for:`);
+  console.log(`  - subject: "${subject}"`);
+  console.log(`  - studentClass: "${studentClass}"`);
+  console.log(`  - section: "${section}"`);
+  console.log(`  - academicYear: "${academicYear}"`);
+  console.log(`  - terminal: "${terminal}"`);
   
-    document.querySelector(`input[name="attendance[${reg}]"]`).value=item.attendance;
+  const fetchUrl = `/getPreviousmarks?subject=${encodeURIComponent(subject)}&studentClass=${studentClass}&section=${section}&academicYear=${academicYear}&terminal=${terminal}`;
+  console.log(`📡 Fetch URL: ${fetchUrl}`);
+  
+  try {
+    const data = await fetch(fetchUrl);
+    console.log(`📡 Fetch response status: ${data.status} ${data.statusText}`);
     
-    // Trigger input events to recalculate marks
-    const theoryInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
-    const attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
+    if (!data.ok) {
+      console.error(`❌ Fetch failed with status ${data.status}`);
+      const errorText = await data.text();
+      console.error(`Error response: ${errorText}`);
+      return;
+    }
     
-    if(theoryInput) theoryInput.dispatchEvent(new Event('input'));
-    if(attendanceInput) attendanceInput.dispatchEvent(new Event('input'));
+    const result = await data.json();
+    console.log("✓ Fetched Previous Marks - Full Response:", JSON.stringify(result, null, 2));
+    console.log(`Found ${result.length} records in DB`);
     
-     document.querySelector(`#totalWorksheet`).dispatchEvent(new Event('input'));
-setTimeout(() => {
-   document.querySelectorAll(`select[name="worksheetGrades[${reg}][]"]`).forEach((select, index) => {
-        if(item.worksheetGrades && item.worksheetGrades[index]) {
-            select.value = item.worksheetGrades[index];
+    if (result.length > 0) {
+      console.log("📋 First record details:", result[0]);
+    } else {
+      console.warn("⚠️ No records found for this filter");
+    }
+
+    // Find the MAXIMUM totalWorksheet count among all students
+    let maxTotalWorksheet = 0;
+    if(result.length > 0) {
+      maxTotalWorksheet = Math.max(...result.map(item => item.totalWorksheet || 0));
+      console.log(`📊 Maximum totalWorksheet across all students: ${maxTotalWorksheet}`);
+    }
+    console.log(`📋 Will create ${maxTotalWorksheet} columns in UI`);
+    
+    // Set the totalWorksheet value and trigger sync to create columns
+    document.getElementById('totalWorksheet').value = maxTotalWorksheet;
+    document.getElementById('totalWorksheet').dispatchEvent(new Event('input'));
+    
+    // Wait longer for columns to be created and DOM to update
+    await new Promise(resolve => setTimeout(resolve, 300));
+    console.log("✓ Columns recreated, waiting for DOM update");
+
+    const attendanceData = await fetch(`/getAttendanceData?subject=${subject}&studentClass=${studentClass}&section=${section}&academicYear=${academicYear}&terminal=${terminal}`);
+    const attendanceResult = await attendanceData.json();
+    
+    if(result.length > 0) {
+      console.log("Populating marks and worksheet data...");
+      result.forEach((item) => {
+        const reg = item.reg;
+        console.log(`  Processing student reg: ${reg}`);
+        console.log(`    Raw item data:`, item);
+        console.log(`    Student's totalWorksheet: ${item.totalWorksheet}`);
+        
+        // Get or create input elements
+        let theoryInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
+        let attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
+        
+        if(!theoryInput || !attendanceInput) {
+          console.warn(`    ⚠️ Marks inputs not found for reg ${reg}, skipping marks population`);
+        } else {
+          theoryInput.value = item.theorymarks || 0;
+          attendanceInput.value = item.attendance || 0;
+          
+          theoryInput.dispatchEvent(new Event('input'));
+          attendanceInput.dispatchEvent(new Event('input'));
+          console.log(`    ✓ Marks populated: theory=${item.theorymarks}, attendance=${item.attendance}`);
+        }
+        
+        // Populate worksheet grade selects - NOW WITH MAX COLUMNS
+        console.log(`    Looking for ${maxTotalWorksheet} worksheet grade selects for reg ${reg}`);
+        const worksheetSelects = document.querySelectorAll(`select[name="worksheetGrades[${reg}][]"]`);
+        console.log(`    Found ${worksheetSelects.length} worksheet grade selects in DOM`);
+        
+        // Handle worksheetGrades - could be array or string
+        let worksheetGrades = item.worksheetGrades;
+        if (typeof worksheetGrades === 'string') {
+          worksheetGrades = worksheetGrades.split(',').map(g => g.trim()).filter(g => g !== '');
+          console.log(`    Converted string worksheetGrades to array:`, worksheetGrades);
+        } else if (!Array.isArray(worksheetGrades)) {
+          worksheetGrades = [];
+        }
+        
+        console.log(`    Worksheet grades data from DB:`, worksheetGrades);
+        
+        if(worksheetSelects.length > 0) {
+          worksheetSelects.forEach((select, index) => {
+            const value = worksheetGrades[index] || '';
+            console.log(`      Setting select[${index}] to value: "${value}"`);
+            select.value = value;
+          });
+          console.log(`    ✓ All ${worksheetSelects.length} worksheet grades populated`);
+        } else {
+          console.warn(`    ⚠️ No worksheet grade selects found for reg ${reg}`);
         }
       });
-}, 500);
+      console.log("✓ All student data populated");
+    } else {
+      console.log("No previous data found - initializing with zero values");
+      // Initialize default records so DB has data to retrieve next time
+      await initializeStudentRecords(subject, studentClass, section, academicYear, terminal);
+    }
+
+    if(attendanceResult.length > 0) {
+      console.log("Populating additional attendance data...");
+      attendanceResult.forEach((item) => {
+        const reg = item.reg;
+        const attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
+        if(attendanceInput) {
+          attendanceInput.value = item.attendance;
+          attendanceInput.dispatchEvent(new Event('input'));
+        }
+      });
+      console.log("✓ Attendance data populated");
+    }
     
+    // Page load complete - now enable autosave for manual +/- clicks
+    isPageLoading = false;
+    console.log("✓ Page load complete - autosave enabled");
+    console.log("=== populateData COMPLETED ===");
+  } catch(err) {
+    console.error("ERROR in populateData:", err);
+  }
+}
+
+// Initialize student records with default values
+async function initializeStudentRecords(subject, studentClass, section, academicYear, terminal) {
+  console.log("[Init] Creating default student records...");
+  
+  const savePromises = studentData.map(student => {
+    const reg = student.reg;
+    const saveData = {
+      reg,
+      theorymarks: 0,
+      attendance: 0,
+      studentClass,
+      section,
+      subject,
+      academicYear,
+      terminal,
+      name: student.name || '',
+      roll: student.roll || '',
+      totalWorksheet: 0,
+      worksheetGrades: [],
+      gender: student.gender || '',
+      passMarks: document.getElementById('passMarks')?.value || 0,
+      practicalfullmarks: document.getElementById('practicalfullmarks')?.value || 0,
+      theoryfullmarks: document.getElementById('fullMarks')?.value || 0,
+    };
+
+    return fetch(`/entryform?studentClass=${studentClass}&section=${section}&subject=${subject}&academicYear=${academicYear}&terminal=${terminal}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(saveData)
+    }).catch(err => {
+      console.error(`[Init] Error initializing student ${reg}:`, err);
+    });
   });
-}
-else
-{
-  console.log("No previous data found");
-}
-if(attendanceResult.length>0)
-{
-  attendanceResult.forEach((item)=>
-  {
-    const reg = item.reg;
-    document.querySelector(`input[name="attendance[${reg}]"]`).value=item.attendance;
-    
-    // Trigger input events to recalculate marks
-    document.querySelector(`input[name="attendance[${reg}]"]`).dispatchEvent(new Event('input'));
-  });
-}
-else
-{
-  console.log("No attendance data found");
-}
+
+  try {
+    await Promise.all(savePromises);
+    console.log("[Init] ✓ Default student records created");
+  } catch (err) {
+    console.error("[Init] Error initializing records:", err);
+  }
 }
 
 
@@ -325,16 +447,30 @@ else
 
 
  window.onload = function() {
-const urlParams = new URLSearchParams(window.location.search);
+  const urlParams = new URLSearchParams(window.location.search);
 
-// Fetch each parameter
-const studentClass = urlParams.get('studentClass');   // "7"
-const section = urlParams.get('section');             // "x"
-const subject = urlParams.get('subject');             // "COMPUTER"
-const terminal = urlParams.get('terminal');           // "THIRD-2082"
-const academicYear = urlParams.get('academicYear');   // "" (empty string in your example)
-    populateData(subject,studentClass,section,academicYear,terminal) // pass the subject here
-  }
+  // Fetch each parameter
+  const studentClass = urlParams.get('studentClass');   // "7"
+  const section = urlParams.get('section');             // "x"
+  const subject = urlParams.get('subject');             // "COMPUTER"
+  const terminal = urlParams.get('terminal');           // "THIRD-2082"
+  const academicYear = urlParams.get('academicYear');   // "" (empty string in your example)
+  
+  console.log("[Page Load] ===== WINDOW ONLOAD STARTED =====");
+  console.log(`[Page Load] URL Params: subject=${subject}, class=${studentClass}, section=${section}, terminal=${terminal}, year=${academicYear}`);
+  
+  // Call populateData with the URL parameters
+  populateData(subject, studentClass, section, academicYear, terminal);
+  
+  // Also trigger autosave for theory marks that are already populated
+  document.querySelectorAll('#theorymarks').forEach(input => {
+    if (input.value) {
+      autoSave(input);  // trigger autosave for backend populated values
+    }
+  });
+  
+  console.log("[Page Load] ===== WINDOW ONLOAD COMPLETED =====");
+}
 
 
   </script>
@@ -390,43 +526,52 @@ const academicYear = urlParams.get('academicYear');   // "" (empty string in you
       worksheetGrades.push(select.value);
     });
       const totalWorksheet = document.getElementById('totalWorksheet').value || 0;    
-      console.log(`Auto-saving data for reg: ${reg}, theorymarks: ${theorymarks}, attendance: ${attendance}, totalWorksheet: ${totalWorksheet}, worksheetGrades: ${worksheetGrades}, studentClass: ${studentClass}, section: ${section}, subject: ${subject}, academicYear: ${academicYear}, terminal: ${terminal}, name: ${name}, roll: ${roll}, gender: ${gender}, passMarks: ${passMarks}, practicalfullmarks: ${practicalfullmarks}, theoryfullmarks: ${theoryfullmarks}`);
+      
+      const saveData = {
+        reg,
+        theorymarks,
+        attendance,
+        studentClass,
+        section,
+        subject,
+        academicYear,
+        terminal,
+        name,
+        roll,
+        totalWorksheet,
+        worksheetGrades,
+        gender,
+        passMarks,
+        practicalfullmarks,
+        theoryfullmarks,
+      };
+      
+      console.log(`[AutoSave] Saving data for reg: ${reg}`);
+      console.log(`  - theorymarks: ${theorymarks}`);
+      console.log(`  - attendance: ${attendance}`);
+      console.log(`  - totalWorksheet: ${totalWorksheet}`);
+      console.log(`  - worksheetGrades (array):`, worksheetGrades);
+      console.log(`  - Full payload:`, JSON.stringify(saveData));
+      
       try {
         const response = await fetch(`/entryform?studentClass=${studentClass}&section=${section}&subject=${subject}&academicYear=${academicYear}&terminal=${terminal}`,{
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
-            reg,
-            theorymarks,
-           
-            attendance,
-            studentClass,
-            section,
-            subject,
-            academicYear,
-            terminal,
-            name,
-            roll,
-            totalWorksheet,
-            worksheetGrades,
-            gender,
-            passMarks,
-            practicalfullmarks,
-            theoryfullmarks,
-
-
-          })
+          body: JSON.stringify(saveData)
         });
         if (response.ok) {
                // Success: Transparent Light Blue
+               console.log(`✓ [AutoSave] Data saved successfully for reg: ${reg}`);
                el.style.backgroundColor = '#e0f2fe'; // Light blue
                el.style.borderColor = '#7dd3fc'; // Light blue border
                el.style.transition = 'background-color 0.3s ease';
+            } else {
+               console.error(`✗ [AutoSave] Failed to save for reg: ${reg}`, response.status, response.statusText);
             }
       } catch (err) {
-        console.error(err);
+        console.error(`✗ [AutoSave] Error saving for reg: ${reg}`, err);
       }
       saveTimers.delete(el);
     },1000);
@@ -444,12 +589,32 @@ const academicYear = urlParams.get('academicYear');   // "" (empty string in you
     const increaseWorksheetBtn = document.getElementById('increaseWorksheet');
     const decreaseWorksheetBtn = document.getElementById('decreaseWorksheet');
     const studentData = <%- JSON.stringify(studentData) %>;
+    let isPageLoading = true; // Flag to prevent autosave during initial page load
 
     function getCurrentWorksheetCount() {
       return Math.max(0, headerRow.children.length - BASE_HEADER_COLUMNS);
     }
 
-    function createWorksheetSelect(reg) {
+    function createWorksheetSelect(reg, worksheetIndex) {
+      // Create container for checkbox and select
+      const container = document.createElement('div');
+      container.style.display = 'flex';
+      container.style.gap = '6px';
+      container.style.alignItems = 'center';
+      container.style.justifyContent = 'center';
+
+      // Create checkbox
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.name = `worksheetCheckbox[${reg}][${worksheetIndex}]`;
+      checkbox.dataset.reg = reg;
+      checkbox.dataset.worksheetIndex = worksheetIndex;
+      checkbox.style.width = '16px';
+      checkbox.style.height = '16px';
+      checkbox.style.cursor = 'pointer';
+      checkbox.title = 'Check to apply grade to multiple worksheets';
+
+      // Create select
       const input = document.createElement('select');
       const grades = ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'NG'];
 
@@ -468,29 +633,207 @@ const academicYear = urlParams.get('academicYear');   // "" (empty string in you
 
       input.name = `worksheetGrades[${reg}][]`;
       input.dataset.reg = reg;
+      input.dataset.worksheetIndex = worksheetIndex;
+      input.style.flex = '1';
+      
       input.addEventListener('change', function() {
+        // Apply this value to all checked worksheets in this row
+        applyGradeToCheckedWorksheets(reg, this.value, this);
         autoSave(input);
       });
-      return input;
+
+      container.appendChild(checkbox);
+      container.appendChild(input);
+      return container;
+    }
+
+    function applyGradeToCheckedWorksheets(reg, gradeValue, sourceSelect) {
+      console.log(`[GradeSync] Applying grade "${gradeValue}" to checked worksheets for reg ${reg}`);
+      
+      // Find all checkboxes for this student that are checked
+      const checkedCheckboxes = document.querySelectorAll(`input[name^="worksheetCheckbox[${reg}]"]:checked`);
+      console.log(`[GradeSync] Found ${checkedCheckboxes.length} checked worksheets`);
+      
+      checkedCheckboxes.forEach((checkbox) => {
+        const worksheetIndex = checkbox.dataset.worksheetIndex;
+        // Find the corresponding select for this worksheet
+        const correspondingSelect = document.querySelector(`select[name="worksheetGrades[${reg}][]"][data-worksheet-index="${worksheetIndex}"]`);
+        
+        if (correspondingSelect && correspondingSelect !== sourceSelect) {
+          console.log(`[GradeSync] Setting Worksheet ${worksheetIndex} for reg ${reg} to "${gradeValue}"`);
+          correspondingSelect.value = gradeValue;
+          
+          // Trigger autosave for the changed selects
+          autoSave(correspondingSelect);
+        }
+      });
+    }
+
+    // Autosave the total worksheet count for all students
+    async function autoSaveWorksheetCount() {
+      const totalWorksheet = totalWorksheetInput.value || 0;
+      const param = new URLSearchParams(window.location.search);
+      const studentClass = param.get('studentClass');
+      const section = param.get('section');
+      const subject = param.get('subject');
+      const academicYear = param.get('academicYear');
+      const terminal = param.get('terminal');
+
+      // Don't skip - always save when user clicks +/- but skip if we're syncing during page load
+      // Only skip if this is called from syncWorksheetColumns AND page is loading AND we're not manually clicking
+      if (isPageLoading) {
+        // During page load, skip autosave since we're just recreating columns
+        console.log(`[WorksheetAutosave] ⏭️ Skipping autosave during page load`);
+        return;
+      }
+
+      console.log(`\n📊 [WorksheetAutosave] ========== SAVING WORKSHEET COUNT ==========`);
+      console.log(`[WorksheetAutosave] Class: ${studentClass}`);
+      console.log(`[WorksheetAutosave] Section: ${section}`);
+      console.log(`[WorksheetAutosave] Subject: ${subject}`);
+      console.log(`[WorksheetAutosave] Terminal: ${terminal}`);
+      console.log(`[WorksheetAutosave] Academic Year: ${academicYear}`);
+      console.log(`[WorksheetAutosave] Total Worksheet Count to Save: ${totalWorksheet}`);
+      console.log(`[WorksheetAutosave] Number of Students: ${studentData.length}`);
+      
+      // Show saving state
+      totalWorksheetInput.style.backgroundColor = '#fef3c7'; // Light yellow
+      totalWorksheetInput.style.borderColor = '#f59e0b'; // Orange border
+      console.log(`[WorksheetAutosave] ⏳ Showing "saving" state (yellow border)...`);
+      
+      try {
+        // Save worksheet count for each student
+        const savePromises = studentData.map(student => {
+          const reg = student.reg;
+          const theorymarks = document.querySelector(`input[name="theorymarks[${reg}]"]`)?.value || 0;
+          const attendance = document.querySelector(`input[name="attendance[${reg}]"]`)?.value || 0;
+          const name = document.querySelector(`input[name="name[${reg}]"]`)?.value || '';
+          const roll = document.querySelector(`input[name="roll[${reg}]"]`)?.value || '';
+          const gender = document.querySelector(`input[name="gender[${reg}]"]`)?.value || '';
+          const passMarks = document.getElementById('passMarks')?.value || 0;
+          const practicalfullmarks = document.getElementById('practicalfullmarks')?.value || 0;
+          const theoryfullmarks = document.getElementById('fullMarks')?.value || 0;
+
+          const worksheekGrade = document.querySelectorAll(`select[name="worksheetGrades[${reg}][]"]`);
+          let worksheetGrades = [];
+          worksheekGrade.forEach((select) => {
+            worksheetGrades.push(select.value);
+          });
+
+          const saveData = {
+            reg,
+            theorymarks: Number(theorymarks),
+            attendance: Number(attendance),
+            studentClass,
+            section,
+            subject,
+            academicYear,
+            terminal,
+            name,
+            roll,
+            totalWorksheet: Number(totalWorksheet),
+            worksheetGrades,
+            gender,
+            passMarks: Number(passMarks),
+            practicalfullmarks: Number(practicalfullmarks),
+            theoryfullmarks: Number(theoryfullmarks),
+          };
+
+          console.log(`  📝 Student ${roll} (${name}): totalWorksheet=${totalWorksheet}, theorymarks=${theorymarks}, attendance=${attendance}`);
+
+          return fetch(`/entryform?studentClass=${studentClass}&section=${section}&subject=${subject}&academicYear=${academicYear}&terminal=${terminal}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(saveData)
+          });
+        });
+
+        console.log(`[WorksheetAutosave] 📤 Sending ${studentData.length} save requests to server...`);
+        const responses = await Promise.all(savePromises);
+        
+        // Check if all responses are ok
+        let allSuccess = true;
+        let successCount = 0;
+        responses.forEach((response, index) => {
+          if (!response.ok) {
+            console.error(`  ✗ Student ${index}: Failed (Status ${response.status})`);
+            allSuccess = false;
+          } else {
+            successCount++;
+          }
+        });
+
+        if (allSuccess) {
+          console.log(`✅ [WorksheetAutosave] ALL ${successCount} saves completed successfully!`);
+          console.log(`✅ [WorksheetAutosave] Worksheet count saved: ${totalWorksheet}`);
+          
+          // Show success state
+          totalWorksheetInput.style.backgroundColor = '#e0f2fe'; // Light blue
+          totalWorksheetInput.style.borderColor = '#7dd3fc'; // Light blue border
+          console.log(`[WorksheetAutosave] ✅ Showing "success" state (blue border)...`);
+        } else {
+          console.error(`❌ [WorksheetAutosave] ${studentData.length - successCount} saves failed out of ${studentData.length}`);
+          totalWorksheetInput.style.backgroundColor = '#fee2e2'; // Light red
+          totalWorksheetInput.style.borderColor = '#f87171'; // Red border
+          console.log(`[WorksheetAutosave] ❌ Showing "error" state (red border)...`);
+        }
+        
+        // Reset to normal after 2 seconds
+        setTimeout(() => {
+          totalWorksheetInput.style.backgroundColor = '';
+          totalWorksheetInput.style.borderColor = '';
+          console.log(`[WorksheetAutosave] Reset border color to normal`);
+          console.log(`[WorksheetAutosave] ========== SAVE COMPLETE ==========\n`);
+        }, 2000);
+      } catch (err) {
+        console.error(`❌ [WorksheetAutosave] ERROR:`, err);
+        // Show error state
+        totalWorksheetInput.style.backgroundColor = '#fee2e2'; // Light red
+        totalWorksheetInput.style.borderColor = '#f87171'; // Red border
+        
+        // Reset to normal after 2 seconds
+        setTimeout(() => {
+          totalWorksheetInput.style.backgroundColor = '';
+          totalWorksheetInput.style.borderColor = '';
+          console.log(`[WorksheetAutosave] ========== SAVE FAILED ==========\n`);
+        }, 2000);
+      }
     }
 
     function addWorksheetColumn() {
-      const nextIndex = getCurrentWorksheetCount() + 1;
+      const currentCount = getCurrentWorksheetCount();
+      const nextIndex = currentCount + 1;
+      
+      console.log(`[+Button] === ADD WORKSHEET COLUMN ===`);
+      console.log(`[+Button] Current worksheet count: ${currentCount}`);
+      console.log(`[+Button] Creating column ${nextIndex}`);
+      
       const th = document.createElement('th');
       th.innerText = `Worksheet ${nextIndex} Marks`;
       headerRow.appendChild(th);
+      console.log(`[+Button] ✓ Header created for Worksheet ${nextIndex}`);
 
+      let selectsCreated = 0;
       studentData.forEach((student) => {
         const reg = student.reg;
         const rollInput = document.querySelector(`input[name="roll[${reg}]"]`);
         if (!rollInput) return;
         const row = rollInput.parentElement.parentElement;
         const td = document.createElement('td');
-        td.appendChild(createWorksheetSelect(reg));
+        // Pass the worksheet index (1-based) to createWorksheetSelect
+        td.appendChild(createWorksheetSelect(reg, nextIndex));
         row.appendChild(td);
+        selectsCreated++;
       });
+      console.log(`[+Button] ✓ Created select dropdowns for ${selectsCreated} students`);
 
       totalWorksheetInput.value = getCurrentWorksheetCount();
+      console.log(`[+Button] Updated totalWorksheet input to: ${totalWorksheetInput.value}`);
+      console.log(`[+Button] Now calling autoSaveWorksheetCount()...`);
+      autoSaveWorksheetCount(); // Save after adding column
+      console.log(`[+Button] === END ADD ===\n`);
     }
 
     function canRemoveLastWorksheetColumn() {
@@ -512,26 +855,98 @@ const academicYear = urlParams.get('academicYear');   // "" (empty string in you
 
     function removeWorksheetColumn() {
       const currentCount = getCurrentWorksheetCount();
+      
+      console.log(`[-Button] === REMOVE WORKSHEET COLUMN ===`);
+      console.log(`[-Button] Current worksheet count: ${currentCount}`);
+      
       if (currentCount <= 0) {
+        console.log(`[-Button] ⚠️ No columns to remove (count is 0)`);
         totalWorksheetInput.value = 0;
+        console.log(`[-Button] === END REMOVE ===\n`);
         return false;
       }
 
-      if (!canRemoveLastWorksheetColumn()) {
-        alert('Cannot remove: the last worksheet column contains data. Clear those grades first.');
-        totalWorksheetInput.value = currentCount;
-        return false;
-      }
+      // The worksheet number we're about to delete
+      const worksheetToDelete = currentCount;
+      console.log(`[-Button] Attempting to delete Worksheet ${worksheetToDelete}`);
 
-      headerRow.removeChild(headerRow.lastChild);
+      // Check if this column has data
       const rows = document.querySelectorAll('#markstable tr#dataEntryRow');
+      let columnsWithData = [];
+      
       rows.forEach((row) => {
-        if (row.children.length > BASE_ROW_COLUMNS) {
-          row.removeChild(row.lastChild);
+        // Find ALL select elements with worksheetGrades names, then get the LAST one (the column to delete)
+        const allSelects = row.querySelectorAll(`select[name^="worksheetGrades"]`);
+        console.log(`[-Button] Row has ${allSelects.length} worksheet select elements`);
+        
+        if (allSelects.length >= currentCount) {
+          // Get the last select (the one we're about to delete)
+          const lastSelect = allSelects[allSelects.length - 1];
+          console.log(`[-Button] Last select value: "${lastSelect.value}"`);
+          
+          if (lastSelect && lastSelect.value && lastSelect.value !== 'Select Grade') {
+            // Try to find the roll number from the row
+            const rollInput = row.querySelector(`input[name*="roll["]`);
+            const roll = rollInput ? rollInput.value : 'Unknown';
+            columnsWithData.push({ roll, grade: lastSelect.value });
+            console.log(`[-Button] Data found - Roll: ${roll}, Grade: ${lastSelect.value}`);
+          }
         }
       });
 
+      console.log(`[-Button] Found ${columnsWithData.length} cells with data in Worksheet ${worksheetToDelete}`);
+      
+      // Show confirmation with specific details
+      let confirmMessage = `Are you sure you want to delete Worksheet ${worksheetToDelete}?\n\n`;
+      
+      if (columnsWithData.length > 0) {
+        confirmMessage += `⚠️ This column contains ${columnsWithData.length} marks that will be DELETED:\n\n`;
+        columnsWithData.slice(0, 5).forEach(item => {
+          confirmMessage += `  • Roll ${item.roll}: Grade ${item.grade}\n`;
+        });
+        if (columnsWithData.length > 5) {
+          confirmMessage += `  • ... and ${columnsWithData.length - 5} more\n`;
+        }
+        confirmMessage += `\nClick OK to confirm deletion or Cancel to keep this column.`;
+      } else {
+        confirmMessage += `This column is empty.\n\nClick OK to delete or Cancel to keep.`;
+      }
+
+      console.log(`[-Button] Showing confirmation dialog:\n${confirmMessage}`);
+      const confirmDelete = confirm(confirmMessage);
+      
+      if (!confirmDelete) {
+        console.log(`[-Button] User cancelled deletion`);
+        console.log(`[-Button] === END REMOVE ===\n`);
+        return false;
+      }
+      
+      console.log(`[-Button] User confirmed deletion of Worksheet ${worksheetToDelete}`);
+
+      headerRow.removeChild(headerRow.lastChild);
+      console.log(`[-Button] ✓ Header removed`);
+      
+      let deletedCount = 0;
+      rows.forEach((row) => {
+        // Find the last select element (the column to delete) and remove its parent td
+        const allSelects = row.querySelectorAll(`select[name^="worksheetGrades"]`);
+        if (allSelects.length > 0) {
+          const lastSelect = allSelects[allSelects.length - 1];
+          const lastTd = lastSelect.closest('td');
+          if (lastTd && lastTd.parentElement === row) {
+            lastTd.remove();
+            deletedCount++;
+            console.log(`[-Button] Removed cell with select for this row`);
+          }
+        }
+      });
+      console.log(`[-Button] ✓ Removed cells from ${deletedCount} rows`);
+
       totalWorksheetInput.value = getCurrentWorksheetCount();
+      console.log(`[-Button] Updated totalWorksheet input to: ${totalWorksheetInput.value}`);
+      console.log(`[-Button] Now calling autoSaveWorksheetCount()...`);
+      autoSaveWorksheetCount(); // Save after removing column
+      console.log(`[-Button] === END REMOVE ===\n`);
       return true;
     }
 
@@ -557,14 +972,17 @@ const academicYear = urlParams.get('academicYear');   // "" (empty string in you
     }
 
     totalWorksheetInput.addEventListener('input', function() {
+      console.log(`[Input Event] totalWorksheet input changed to: ${totalWorksheetInput.value}`);
       syncWorksheetColumns(totalWorksheetInput.value);
     });
 
     increaseWorksheetBtn.addEventListener('click', function() {
+      console.log(`\n🔵 [+BUTTON CLICKED] Adding worksheet column...`);
       addWorksheetColumn();
     });
 
     decreaseWorksheetBtn.addEventListener('click', function() {
+      console.log(`\n🔴 [-BUTTON CLICKED] Removing worksheet column...`);
       removeWorksheetColumn();
     });
   </script>
@@ -605,14 +1023,6 @@ const academicYear = urlParams.get('academicYear');   // "" (empty string in you
     
   }
  </script>
- <script>
-  window.onload = function() {
-  document.querySelectorAll('#theorymarks').forEach(input => {
-    if (input.value) {
-      autoSave(input);  // trigger autosave for backend populated values
-    }
-  });
-};
- </script>
+ 
 </body>
 </html>

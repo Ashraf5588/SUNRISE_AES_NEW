@@ -306,6 +306,18 @@ function showTable() {
                 radioBefore.value = indicator.maxMarks;
                 radioBefore.id = `before_${i}_${index}`;
 
+                radioBefore.addEventListener("change", function () {
+                  
+
+    const afterRadio = document.getElementById(`after_${i}_${index}`);
+
+    if (this.value === "4") {
+        afterRadio.checked = true;
+    } else {
+        afterRadio.checked = false;
+    }
+});
+
                 if (
                     existingRecord &&
                     Number(existingRecord.obtainedMarksBefore) ===
@@ -463,5 +475,6 @@ document.getElementById("masterDateAfter").addEventListener("change", function()
         window.location.search = urlParams.toString();
       }
     </script>
+
 </body>
 </html>
