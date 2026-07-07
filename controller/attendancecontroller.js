@@ -94,6 +94,31 @@ const getSidenavData = async (req) => {
   }
 };
 
+// Helper function to convert UTC time to Kathmandu timezone (UTC+5:45) and format as HH:MM AM/PM
+const formatKathmandTimeTime = (utcDate) => {
+  if (!utcDate) return null;
+  try {
+    const date = new Date(utcDate);
+    // Stored time is in UTC format (ISO string)
+    // Kathmandu timezone: UTC+5:45 (add 5 hours 45 minutes)
+    const kathmanduOffsetMs = (5 * 60 + 45) * 60 * 1000; // 5:45 in milliseconds
+    const kathmandTime = new Date(date.getTime() + kathmanduOffsetMs);
+    
+    // Use UTC methods since we manually adjusted the time
+    let hours = kathmandTime.getUTCHours();
+    let minutes = kathmandTime.getUTCMinutes();
+    const period = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // 0 hours should be 12
+    const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+    
+    return `${hours}:${minutesStr} ${period}`;
+  } catch (err) {
+    console.error('Error formatting Kathmandu time:', err);
+    return null;
+  }
+};
+
 const BS_MONTH_NAMES = {
   1: 'Baisakh',
   2: 'Jestha',
@@ -992,6 +1017,25 @@ exports.absentRecordPage = async (req, res) => {
     const currentMonthName = BS_MONTH_NAMES[monthNumber] || '';
     const selectedMonthName = requestedMonth || currentMonthName;
     const selectedDay = Number.isFinite(requestedDay) ? requestedDay : todayDay;
+    
+    // Fetch current class names from classlist to map old names to new names
+    let classNameMap = new Map();
+    try {
+      const currentClasses = await studentClass.find({}).lean();
+      if (Array.isArray(currentClasses)) {
+        currentClasses.forEach(cls => {
+          const className = String(cls.studentClass || '').trim();
+          const section = String(cls.section || '').trim();
+          if (className && section) {
+            classNameMap.set(`${className}||${section}`, { className, section });
+          }
+        });
+      }
+      console.log(`[AbsentRecord] Loaded ${classNameMap.size} current class names from classlist`);
+    } catch (err) {
+      console.error('[AbsentRecord] Error loading class names:', err);
+    }
+
     const monthVariants = getMonthVariants(selectedMonthName);
 
     let attendanceDocs = await onlineAttendance.find({
@@ -1179,6 +1223,12 @@ exports.absentRecordPage = async (req, res) => {
     const builtGroups = Array.from(allKeys).map((key) => {
       const [studentClassValue, sectionValue] = key.split('||');
       const grp = groupMap.get(key) || { studentClass: studentClassValue, section: sectionValue, students: [] };
+      
+      // Try to get current class name from classlist, fallback to stored name
+      const currentClassInfo = classNameMap.get(key);
+      const displayClassName = currentClassInfo ? currentClassInfo.className : studentClassValue;
+      const displaySection = currentClassInfo ? currentClassInfo.section : sectionValue;
+      
       const students = (Array.isArray(grp.students) ? grp.students : []).filter((s) => s.name || s.roll !== undefined)
         .sort((a, b) => String(a.roll || '').localeCompare(String(b.roll || ''), 'en', { numeric: true }))
         .map((student, idx) => ({ sn: idx + 1, ...student }));
@@ -1188,11 +1238,11 @@ exports.absentRecordPage = async (req, res) => {
       const attendanceDone = enteredTimeMap.has(key) || absentCount > 0;
       const present = attendanceDone && Number.isFinite(totalStudents) ? (totalStudents - absentCount) : null;
       const timeTs = enteredTimeMap.get(key);
-      const timeStr = timeTs ? new Date(timeTs).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : (attendanceDone ? 'Recorded' : null);
+      const timeStr = timeTs ? formatKathmandTimeTime(timeTs) : (attendanceDone ? 'Recorded' : null);
 
       return {
-        studentClass: studentClassValue || '',
-        section: sectionValue || '',
+        studentClass: displayClassName || '',
+        section: displaySection || '',
         students,
         absentCount,
         totalStudents,
