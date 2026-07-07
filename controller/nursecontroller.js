@@ -74,33 +74,189 @@ const extractStaffName = (row) => {
     return fallback;
 };
 
-const getHeightInCm = (feet, inch) => {
-    const heightFeet = normalizeNumber(feet) || 0;
-    const heightInch = normalizeNumber(inch) || 0;
-    const totalInches = (heightFeet * 12) + heightInch;
-    if (totalInches <= 0) {
+const resolveHeightCm = (student) => {
+    if (!student || typeof student !== 'object') {
         return null;
     }
-    return totalInches * 2.54;
+
+    const directHeightCm = normalizeNumber(student.heightCm);
+    if (directHeightCm !== null) {
+        return directHeightCm;
+    }
+
+    const legacyHeightFeet = normalizeNumber(student.heightFeet);
+    const legacyHeightInch = normalizeNumber(student.heightInch);
+    if (legacyHeightFeet !== null && legacyHeightInch !== null) {
+        return (legacyHeightFeet * 30.48) + (legacyHeightInch * 2.54);
+    }
+
+    const heightText = String(student.height || '').trim().toLowerCase();
+    const cmMatch = heightText.match(/(\d+(?:\.\d+)?)\s*(cm|centimeter|centimeters)/);
+    if (cmMatch) {
+        return normalizeNumber(cmMatch[1]);
+    }
+
+    const feetMatch = heightText.match(/(\d+(?:\.\d+)?)\s*(ft|feet|foot)/);
+    const inchMatch = heightText.match(/(\d+(?:\.\d+)?)\s*(in|inch|inches)/);
+    if (feetMatch || inchMatch) {
+        const feetValue = normalizeNumber(feetMatch ? feetMatch[1] : 0) || 0;
+        const inchValue = normalizeNumber(inchMatch ? inchMatch[1] : 0) || 0;
+        return (feetValue * 30.48) + (inchValue * 2.54);
+    }
+
+    return null;
 };
 
-const getBmiValue = (feet, inch, weight) => {
-    const heightCm = getHeightInCm(feet, inch);
+const getBmiValue = (heightCm, weight) => {
+    const heightValueCm = normalizeNumber(heightCm);
     const weightKg = normalizeNumber(weight);
-    if (!heightCm || !weightKg || weightKg <= 0) {
+    if (heightValueCm === null || heightValueCm <= 0 || weightKg === null || weightKg <= 0) {
         return '';
     }
-    const meters = heightCm / 100;
+    const meters = heightValueCm / 100;
     if (meters <= 0) {
         return '';
     }
     return (weightKg / (meters * meters)).toFixed(2);
 };
 
+const updateStudentBmiFromStoredData = async (student) => {
+    if (!student || typeof student !== 'object') {
+        return null;
+    }
+
+    const heightCm = resolveHeightCm(student);
+    const weightKg = normalizeNumber(student.weight);
+    if (heightCm === null || weightKg === null || weightKg <= 0) {
+        return null;
+    }
+
+    const nextBmi = getBmiValue(heightCm, weightKg);
+    if (!nextBmi) {
+        return null;
+    }
+
+    const shouldUpdate = String(student.bmi || '') !== nextBmi || Number(student.heightCm) !== Number(heightCm) || String(student.height || '') !== `${heightCm} cm`;
+    if (!shouldUpdate) {
+        return null;
+    }
+
+    student.heightCm = heightCm;
+    student.height = `${heightCm} cm`;
+    student.bmi = nextBmi;
+    await student.save();
+
+    return nextBmi;
+};
+
+const backfillStudentBmis = async () => {
+    try {
+        const students = await StudentRecord.find({
+            $or: [
+                { weight: { $exists: true, $ne: '' } },
+                { heightCm: { $exists: true } },
+                { heightFeet: { $exists: true } },
+                { heightInch: { $exists: true } },
+                { height: { $exists: true, $ne: '' } }
+            ]
+        }).lean();
+
+        for (const student of students) {
+            const doc = await StudentRecord.findById(student._id);
+            if (!doc) {
+                continue;
+            }
+
+            await updateStudentBmiFromStoredData(doc);
+        }
+    } catch (error) {
+        console.error('Error backfilling BMI values:', error);
+    }
+};
+
 const naturalSort = (left, right) => String(left).localeCompare(String(right), undefined, {
     numeric: true,
     sensitivity: 'base'
 });
+
+const nepaliMonthNames = ['Baisakh', 'Jestha', 'Ashadh', 'Shrawan', 'Bhadra', 'Ashwin', 'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'];
+
+const getNepaliMonthInfo = (record) => {
+    const directValue = String(record?.nepaliDate || '').trim();
+    const directMatch = directValue.match(/(\d{4})[/-](\d{1,2})/);
+    if (directMatch) {
+        const monthIndex = Number.parseInt(directMatch[2], 10);
+        return {
+            year: directMatch[1],
+            monthIndex: Number.isFinite(monthIndex) ? monthIndex : null,
+            monthLabel: Number.isFinite(monthIndex) && monthIndex >= 1 && monthIndex <= 12
+                ? nepaliMonthNames[monthIndex - 1]
+                : 'Unknown'
+        };
+    }
+
+    const convertedValue = toNepaliDate(record?.createdAt);
+    const convertedMatch = String(convertedValue || '').trim().match(/(\d{4})[/-](\d{1,2})/);
+    if (convertedMatch) {
+        const monthIndex = Number.parseInt(convertedMatch[2], 10);
+        return {
+            year: convertedMatch[1],
+            monthIndex: Number.isFinite(monthIndex) ? monthIndex : null,
+            monthLabel: Number.isFinite(monthIndex) && monthIndex >= 1 && monthIndex <= 12
+                ? nepaliMonthNames[monthIndex - 1]
+                : 'Unknown'
+        };
+    }
+
+    return { year: '', monthIndex: null, monthLabel: 'Unknown' };
+};
+
+const normalizeDiagnosisLabel = (value) => {
+    const normalized = String(value || '').trim();
+    return normalized || 'Unspecified';
+};
+
+const buildDiagnosisSummary = (records) => {
+    const monthBuckets = new Map();
+
+    records.forEach((record) => {
+        const { year, monthIndex, monthLabel } = getNepaliMonthInfo(record);
+        const bucketKey = `${year || ''}-${monthIndex || 'unknown'}`;
+        if (!monthBuckets.has(bucketKey)) {
+            monthBuckets.set(bucketKey, {
+                year,
+                monthIndex,
+                monthLabel,
+                totalCases: 0,
+                diagnoses: new Map()
+            });
+        }
+
+        const bucket = monthBuckets.get(bucketKey);
+        bucket.totalCases += 1;
+        const diagnosis = normalizeDiagnosisLabel(record?.diagnosis);
+        bucket.diagnoses.set(diagnosis, (bucket.diagnoses.get(diagnosis) || 0) + 1);
+    });
+
+    return Array.from(monthBuckets.values())
+        .map((bucket) => ({
+            ...bucket,
+            diagnoses: Array.from(bucket.diagnoses.entries())
+                .sort(([leftName], [rightName]) => naturalSort(leftName, rightName))
+                .map(([name, count]) => ({ name, count }))
+        }))
+        .sort((left, right) => {
+            const leftYear = Number(left.year || 0);
+            const rightYear = Number(right.year || 0);
+            if (leftYear !== rightYear) {
+                return leftYear - rightYear;
+            }
+            if (left.monthIndex === null || right.monthIndex === null) {
+                return (left.monthIndex === null ? 1 : 0) - (right.monthIndex === null ? 1 : 0);
+            }
+            return left.monthIndex - right.monthIndex;
+        });
+};
 
 const toNepaliDate = (value) => {
     if (!value) {
@@ -297,6 +453,11 @@ exports.showHealthAnalytics = async (req, res) => {
             .select('name studentClass section roll bmi')
             .lean();
 
+        const healthRecords = await HealthRecord.find({})
+            .select('diagnosis createdAt nepaliDate')
+            .sort({ createdAt: -1 })
+            .lean();
+
         const groups = {
             Underweight: [],
             Normal: [],
@@ -331,9 +492,12 @@ exports.showHealthAnalytics = async (req, res) => {
                 .sort((left, right) => naturalSort(left.name, right.name))
         }));
 
+        const diagnosisSummary = buildDiagnosisSummary(healthRecords);
+
         res.render('nurse/healthanalytics', {
             bmiGroups: orderedGroups,
-            totalWithBmi: students.length
+            totalWithBmi: students.length,
+            diagnosisSummary
         });
     } catch (error) {
         console.error('Error rendering health analytics:', error);
@@ -822,6 +986,7 @@ exports.searchStudents = async (req, res) => {
 
 exports.showBmiForm = async (req, res) => {
     try {
+        await backfillStudentBmis();
         res.render('nurse/bmi');
     } catch (error) {
         console.error('Error rendering BMI form:', error);
@@ -930,20 +1095,23 @@ exports.getBmiStudents = async (req, res) => {
             .sort({ roll: 1, name: 1 })
             .lean();
 
-        const rows = students.map((student) => ({
-            id: String(student._id),
-            reg: student.reg || '',
-            roll: student.roll || '',
-            name: student.name || '',
-            gender: student.gender || '',
-            dob: student.dob || '',
-            age: student.age || calculateAgeFromDob(student.dob),
-            heightFeet: student.heightFeet || '',
-            heightInch: student.heightInch || '',
-            weight: student.weight || '',
-            muaq: student.muaq || '',
-            bmi: student.bmi || getBmiValue(student.heightFeet, student.heightInch, student.weight)
-        }));
+        const rows = students.map((student) => {
+            const heightCm = resolveHeightCm(student);
+            const bmiValue = student.bmi || getBmiValue(heightCm, student.weight);
+            return {
+                id: String(student._id),
+                reg: student.reg || '',
+                roll: student.roll || '',
+                name: student.name || '',
+                gender: student.gender || '',
+                dob: student.dob || '',
+                age: student.age || calculateAgeFromDob(student.dob),
+                heightCm: heightCm !== null ? heightCm : '',
+                weight: student.weight || '',
+                muaq: student.muaq || '',
+                bmi: bmiValue
+            };
+        });
 
         res.status(200).json({ rows });
     } catch (error) {
@@ -967,22 +1135,18 @@ exports.saveBmiRows = async (req, res) => {
                 continue;
             }
 
-            const heightFeet = normalizeNumber(entry.heightFeet);
-            const heightInch = normalizeNumber(entry.heightInch);
+            const heightCm = normalizeNumber(entry.heightCm);
             const weight = String(entry.weight || '').trim();
             const muaq = String(entry.muaq || '').trim();
-            const bmi = String(entry.bmi || getBmiValue(heightFeet, heightInch, weight) || '').trim();
+            const bmi = String(entry.bmi || getBmiValue(heightCm, weight) || '').trim();
 
             const student = await StudentRecord.findById(studentId);
             if (!student) {
                 continue;
             }
 
-            student.heightFeet = heightFeet;
-            student.heightInch = heightInch;
-            student.height = heightFeet !== null && heightInch !== null
-                ? `${heightFeet} ft ${heightInch} in`
-                : student.height;
+            student.heightCm = heightCm;
+            student.height = heightCm !== null ? `${heightCm} cm` : student.height;
             student.weight = weight;
             student.muaq = muaq;
             student.bmi = bmi;

@@ -69,6 +69,7 @@ const studentrecordschema = new mongoose.Schema({
   classStartedAt: { type: Date, required: false },
   age: { type: String, required: false },
   height: { type: String, required: false },
+  heightCm: { type: Number, required: false },
   heightFeet: { type: Number, required: false },
   heightInch: { type: Number, required: false },
   weight: { type: String, required: false },

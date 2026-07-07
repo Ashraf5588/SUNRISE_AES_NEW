@@ -5,6 +5,8 @@ const sidenavClose = document.querySelector('.hm-sidenav-close');
 const backdrop = document.getElementById('hmBackdrop');
 const toggleBtn = document.getElementById('toggleBmiGroupingBtn');
 const groupingPanel = document.getElementById('bmiGroupingPanel');
+const printSummaryBtn = document.getElementById('printDiagnosisSummaryBtn');
+const diagnosisSummaryPanel = document.getElementById('diagnosisSummaryPanel');
 
 const openNav = () => {
   if (!shell || !sidenav || !backdrop || !menuToggle) {
@@ -63,5 +65,13 @@ if (toggleBtn && groupingPanel) {
       groupingPanel.setAttribute('hidden', '');
       toggleBtn.textContent = 'Open BMI Grouping';
     }
+  });
+}
+
+if (printSummaryBtn && diagnosisSummaryPanel) {
+  printSummaryBtn.addEventListener('click', () => {
+    diagnosisSummaryPanel.removeAttribute('hidden');
+    diagnosisSummaryPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    window.setTimeout(() => window.print(), 250);
   });
 }

@@ -52,7 +52,52 @@
             <h2>BMI Grouping</h2>
             <p class="hm-muted">Click to reveal the four-way BMI analysis view.</p>
           </div>
-          <button type="button" class="hm-button" id="toggleBmiGroupingBtn">Open BMI Grouping</button>
+          <div class="hm-analytics-actions">
+            <button type="button" class="hm-button hm-button-secondary" id="printDiagnosisSummaryBtn">Print Summary</button>
+            <button type="button" class="hm-button" id="toggleBmiGroupingBtn">Open BMI Grouping</button>
+          </div>
+        </section>
+
+        <section class="hm-card hm-summary-card" id="diagnosisSummaryPanel" hidden>
+          <div class="hm-summary-header">
+            <div>
+              <p class="hm-kicker">Clinic Summary</p>
+              <h2>Monthly Diagnosis Summary</h2>
+              <p class="hm-muted">Printable report of diagnosis cases grouped by Nepali month.</p>
+            </div>
+            <button type="button" class="hm-button hm-button-secondary" onclick="window.print()">Print</button>
+          </div>
+
+          <% if (diagnosisSummary && diagnosisSummary.length) { %>
+            <div class="hm-summary-grid">
+              <% diagnosisSummary.forEach(function(monthSummary) { %>
+                <article class="hm-summary-month-card">
+                  <div class="hm-summary-month-head">
+                    <h3><%= monthSummary.monthLabel %><% if (monthSummary.year) { %> <%= monthSummary.year %><% } %></h3>
+                    <span class="hm-summary-total">Total cases: <%= monthSummary.totalCases %></span>
+                  </div>
+                  <table class="hm-summary-table">
+                    <thead>
+                      <tr>
+                        <th>Diagnosis</th>
+                        <th>Cases</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <% monthSummary.diagnoses.forEach(function(entry) { %>
+                        <tr>
+                          <td><%= entry.name %></td>
+                          <td><%= entry.count %></td>
+                        </tr>
+                      <% }); %>
+                    </tbody>
+                  </table>
+                </article>
+              <% }); %>
+            </div>
+          <% } else { %>
+            <div class="hm-empty">No diagnosis records found yet.</div>
+          <% } %>
         </section>
 
         <section class="hm-bmi-grouping-panel" id="bmiGroupingPanel" hidden>
