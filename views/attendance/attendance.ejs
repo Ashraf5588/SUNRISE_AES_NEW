@@ -73,9 +73,10 @@ body{
 
 .selector-grid{
     display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
-    gap:12px;
-    margin-bottom:15px
+    grid-template-columns:minmax(220px,1.6fr) minmax(140px,1fr) minmax(120px,0.9fr) auto;
+    gap:10px;
+    margin-bottom:12px;
+    align-items:end
 }
 
 .selector-panel select{
@@ -105,14 +106,15 @@ body{
 .load-btn{
     display:block;
     width:100%;
-    max-width:280px;
-    margin:0 auto;
-    padding:12px 28px;
+    min-width:120px;
+    max-width:180px;
+    margin:0;
+    padding:10px 16px;
     background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);
     color:#fff;
     border:0;
     border-radius:6px;
-    font-size:15px;
+    font-size:14px;
     font-weight:600;
     cursor:pointer;
     transition:transform .2s,box-shadow .2s;
@@ -128,38 +130,36 @@ body{
 
 .edit-toggle-btn{
     display:block;
-    width:100%;
-    max-width:280px;
-    margin:10px auto 0;
-    padding:11px 24px;
+    width:auto;
+    min-width:120px;
+    padding:9px 12px;
     background:#fff;
     border:2px solid var(--secondary);
     border-radius:6px;
-    font-size:14px;
+    font-size:13px;
     font-weight:700;
     color:var(--secondary);
     cursor:pointer;
     transition:all .2s;
     text-transform:uppercase;
-    letter-spacing:.4px
+    letter-spacing:.3px
 }
 
   .house-toggle-btn{
     display:block;
-    width:100%;
-    max-width:280px;
-    margin:10px auto 0;
-    padding:11px 24px;
+    width:auto;
+    min-width:110px;
+    padding:9px 12px;
     background:#fff;
     border:2px solid var(--primary-dark);
     border-radius:6px;
-    font-size:14px;
+    font-size:13px;
     font-weight:700;
     color:var(--primary-dark);
     cursor:pointer;
     transition:all .2s;
     text-transform:uppercase;
-    letter-spacing:.4px
+    letter-spacing:.3px
   }
 
   .house-toggle-btn.active{
@@ -177,13 +177,122 @@ body{
     align-items:center;
     justify-content:center;
     gap:8px;
-    margin-top:10px;
+    margin-top:8px;
     color:var(--secondary);
     font-size:13px;
     font-weight:600
 }
 
-/* ================= ENTRY CONTAINER ================= */
+.quick-actions{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    justify-content:center;
+    margin-top:10px
+}
+
+.quick-actions .action-btn{
+    flex:1 1 120px;
+    min-width:120px;
+    max-width:180px;
+    padding:9px 10px;
+    border-radius:6px;
+    border:1px solid var(--border);
+    background:#fff;
+    color:var(--secondary);
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+    text-transform:uppercase;
+    letter-spacing:.3px
+}
+
+.quick-actions .action-btn.primary{
+    background:var(--secondary);
+    border-color:var(--secondary);
+    color:#fff
+}
+
+.quick-actions .action-btn.warning{
+    background:var(--primary-dark);
+    border-color:var(--primary-dark);
+    color:#fff
+}
+
+.student-search{
+    position:relative;
+    margin:14px 0 10px;
+    width:100%
+}
+
+.student-search input{
+    width:100%;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:10px 12px;
+    font-size:14px;
+    outline:none
+}
+
+.student-search input:focus{
+    border-color:var(--primary);
+    box-shadow:0 0 0 2px rgba(255,140,66,.12)
+}
+
+.search-absent-btn{
+    margin-top:8px;
+    width:100%;
+    padding:10px 12px;
+    border:0;
+    border-radius:8px;
+    background:linear-gradient(135deg,var(--absent) 0%,#dc2626 100%);
+    color:#fff;
+    font-weight:700;
+    cursor:pointer
+}
+
+.search-results{
+    position:absolute;
+    left:0;
+    right:0;
+    top:calc(100% + 4px);
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:8px;
+    box-shadow:0 10px 24px rgba(0,0,0,.12);
+    z-index:30;
+    max-height:220px;
+    overflow:auto;
+    display:none
+}
+
+.search-results.is-open{
+    display:block
+}
+
+.search-result-item{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    padding:10px 12px;
+    cursor:pointer;
+    border-bottom:1px solid #f2f4f7
+}
+
+.search-result-item:last-child{
+    border-bottom:0
+}
+
+.search-result-item:hover{
+    background:#fff7ed
+}
+
+.search-result-item .meta{
+    font-size:12px;
+    color:#64748b;
+    display:block
+}
 
 .entry-container{
     background:var(--card);
@@ -194,6 +303,10 @@ body{
     width:100%;
     margin:0 auto;
     overflow:hidden
+}
+
+.highlight-row{
+    background:#fef2f2 !important
 }
 
 .entry-title{
@@ -264,6 +377,44 @@ table td{
     background:#fff;
     min-width:62px;
     overflow:hidden
+}
+
+@media (max-width: 768px){
+    body{
+        padding:8px
+    }
+
+    .selector-panel,
+    .entry-container{
+        padding:14px;
+        border-radius:8px
+    }
+
+    .selector-grid{
+        grid-template-columns:1fr;
+        gap:8px
+    }
+
+    .load-btn,
+    .edit-toggle-btn,
+    .house-toggle-btn,
+    .quick-actions .action-btn,
+    .search-absent-btn{
+        width:100%;
+        max-width:none
+    }
+
+    .quick-actions{
+        flex-direction:column
+    }
+
+    .quick-actions .action-btn{
+        flex:1 1 auto
+    }
+
+    .table-scroll{
+        height:clamp(280px,calc(100vh - 340px),65vh)
+    }
 }
 
 table tr:nth-child(even) td{
@@ -594,6 +745,16 @@ input[type="submit"]{
         padding:15px
     }
 
+    .selector-grid{
+        grid-template-columns:1fr 1fr;
+        gap:8px
+    }
+
+    .load-btn{
+        grid-column:span 2;
+        max-width:none
+    }
+
     .roll-col{
       min-width:64px;
       width:64px
@@ -613,6 +774,24 @@ input[type="submit"]{
 
     body{
         padding:10px
+    }
+
+    .selector-grid{
+        grid-template-columns:1fr;
+        gap:8px
+    }
+
+    .load-btn{
+        grid-column:auto
+    }
+
+    .quick-actions{
+        justify-content:flex-start
+    }
+
+    .quick-actions .action-btn{
+        flex:1 1 calc(50% - 8px);
+        max-width:none
     }
 
     .selector-panel,
@@ -722,48 +901,52 @@ input[type="submit"]{
 <div class="selector-panel">
   <div class="selector-title">Choose Class, Section and academic Year for Attendance Entry</div>
   <div class="selector-grid">
- 
     <select name="classSection" id="classSection">
-      
       <option value="" disabled>Choose Class & Section</option>
       <% studentClassdata.forEach((data)=>{%>
         <option value="<%=data.studentClass%>-<%=data.section%>"><%=data.studentClass%>-<%=data.section%></option>
       <%})%>
     </select>
-  
-<select name="academicYear" id="academicYear">
-          <option value="" selected disabled>Choose Academic Year</option>
-          <% currentYear = Number(marksheetSetups[0].academicYear) %>;
-            <% for (let i = 0; i < 5; i++) { %>
-              <option value="<%= currentYear - i %>"><%= currentYear - i %></option>
-            <% } %>
-        </select>
-        <select name="month" id="month">
-          <option value="" selected disabled>Choose Month</option>
-          <% const months = [
-           'Baisakh', 'Jestha', 'Asar', 'Shrawan', 'Bhadra', 'Ashwin',
-            'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'
-          ]; %>
-          <% months.forEach((month, index) => { %>
-            <option value="<%= month %>"><%= month %></option>
-          <% }); %>
-        </select>
-        <% const selectMonthKey = month === 'Asar' ? 'Ashadh' : month; %>
-        <% const selectHolidayDays = (HolidayData && Array.isArray(HolidayData.month))
-          ? (HolidayData.month.find((m) => m.monthName === selectMonthKey)?.holidayDays || [])
-          : []; %>
-        <select name="day" id="day">
-          <option value="" selected disabled>Choose Day</option>
-          <% const dayOptions = Array.from({ length: 32 }, (_, i) => i + 1); %>
-          <% dayOptions.forEach((dayOption) => { %>
-            <option value="<%= dayOption %>" class="<%= selectHolidayDays.includes(dayOption) ? 'holiday-option' : '' %>"><%= dayOption %></option>
-          <% }); %>
-        </select>
+
+    <select name="month" id="month">
+      <option value="" selected disabled>Choose Month</option>
+      <% const months = [
+       'Baisakh', 'Jestha', 'Asar', 'Shrawan', 'Bhadra', 'Ashwin',
+        'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'
+      ]; %>
+      <% months.forEach((month, index) => { %>
+        <option value="<%= month %>"><%= month %></option>
+      <% }); %>
+    </select>
+
+    <% const selectMonthKey = month === 'Asar' ? 'Ashadh' : month; %>
+    <% const selectHolidayDays = (HolidayData && Array.isArray(HolidayData.month))
+      ? (HolidayData.month.find((m) => m.monthName === selectMonthKey)?.holidayDays || [])
+      : []; %>
+    <select name="day" id="day">
+      <option value="" selected disabled>Choose Day</option>
+      <% const dayOptions = Array.from({ length: 32 }, (_, i) => i + 1); %>
+      <% dayOptions.forEach((dayOption) => { %>
+        <option value="<%= dayOption %>" class="<%= selectHolidayDays.includes(dayOption) ? 'holiday-option' : '' %>"><%= dayOption %></option>
+      <% }); %>
+    </select>
+
+    <button class="load-btn" onclick="loadform()">Load Form</button>
   </div>
-  <button class="load-btn" onclick="loadform()">Load Form</button>
-  <button class="edit-toggle-btn" id="toggleRollEdit" type="button">Edit Roll Numbers</button>
-  <button class="house-toggle-btn" id="toggleHouseColumn" type="button">Add House</button>
-  <button class="load-btn" id="markAllPresentBtn" type="button">Mark All Present</button>
+
+  <select name="academicYear" id="academicYear" style="display:none;">
+    <option value="" selected disabled>Choose Academic Year</option>
+    <% currentYear = Number(marksheetSetups[0].academicYear) %>;
+    <% for (let i = 0; i < 5; i++) { %>
+      <option value="<%= currentYear - i %>"><%= currentYear - i %></option>
+    <% } %>
+  </select>
+
+  <div class="quick-actions">
+    <button class="action-btn" id="toggleRollEdit" type="button">Edit Roll</button>
+    <button class="action-btn warning" id="toggleHouseColumn" type="button">Add House</button>
+    <button class="action-btn primary" id="markAllPresentBtn" type="button">All Present</button>
+  </div>
   <label class="default-option" for="setDefaultAttendance">
     <input type="checkbox" id="setDefaultAttendance">
     Set current class as default attendance view
@@ -778,6 +961,10 @@ input[type="submit"]{
   const monthEl = document.getElementById('month');
   const setDefaultEl = document.getElementById('setDefaultAttendance');
   const dayEl = document.getElementById('day');
+
+  if (!academicYearEl.value && academicYearEl.options.length > 1) {
+    academicYearEl.value = academicYearEl.options[1].value;
+  }
 
   const queryClass = "<%= studentClass || '' %>";
   const querySection = "<%= section || '' %>";
@@ -935,7 +1122,13 @@ input[type="submit"]{
   <% const dayList = [selectedDay]; %>
   <form action="/saveonlineattendance?<%= `studentClass=${studentClass}&section=${section}&academicYear=${academicYear}` %>" method="POST">
  
-    <div class="table-scroll">
+    <div class="student-search">
+    <input type="text" id="studentSearch" placeholder="Search student by name or roll" />
+    <div id="searchResults" class="search-results"></div>
+    <button class="search-absent-btn" id="searchAbsentBtn" type="button">Mark Selected Student Absent</button>
+  </div>
+
+  <div class="table-scroll">
     <table id="markstable">
       <tr>
 
@@ -955,11 +1148,11 @@ input[type="submit"]{
         : []; %>
       <% sortedStudentData.forEach((student,idx)=>{%>
       
-        <tr>
+        <tr class="student-row" data-reg="<%=student.reg%>">
           <input type="hidden" name="gender[<%=student.reg%>]" value="<%=student.gender%>" readonly  >
         <input type="hidden" name="reg[<%=student.reg%>]" value="<%=student.reg%>" readonly >
           <td class="sticky-col roll-col"><input type="text" class="roll-input" name="roll[<%=student.reg%>]" value="<%=student.roll%>" data-reg="<%= student.reg %>" data-original="<%= student.roll %>" readonly ></td>
-         <td class="sticky-col name-col name-sticky"><input type="text" name="name[<%=student.reg%>]" value="<%=student.name%>" readonly ></td>
+         <td class="sticky-col name-col name-sticky"><input type="text" class="name-input" name="name[<%=student.reg%>]" value="<%=student.name%>" readonly ></td>
           <td class="house-col">
             <select class="house-select" data-reg="<%= student.reg %>" data-original="<%= student.house || '' %>">
               <option value="" <%= !student.house ? 'selected' : '' %>>Select</option>
@@ -1528,6 +1721,104 @@ const month = urlParams.get('month');
       });
     });
   }
+
+  const studentSearchInput = document.getElementById('studentSearch');
+  const searchResultsBox = document.getElementById('searchResults');
+  const searchAbsentBtn = document.getElementById('searchAbsentBtn');
+
+  function getSearchItems() {
+    return Array.from(document.querySelectorAll('#markstable .student-row')).map((row) => {
+      const reg = row.dataset.reg || '';
+      const rollInput = row.querySelector('.roll-input');
+      const nameInput = row.querySelector('.name-input');
+      return {
+        reg,
+        roll: String(rollInput?.value || '').trim(),
+        name: String(nameInput?.value || '').trim(),
+        row
+      };
+    }).filter((item) => item.reg || item.name || item.roll);
+  }
+
+  function renderSearchResults(query) {
+    const items = getSearchItems().filter((item) => {
+      const text = `${item.roll} ${item.name}`.toLowerCase();
+      return text.includes(query.toLowerCase());
+    });
+
+    if (!query.trim()) {
+      searchResultsBox.innerHTML = '';
+      searchResultsBox.classList.remove('is-open');
+      return;
+    }
+
+    if (!items.length) {
+      searchResultsBox.innerHTML = '<div class="search-result-item"><div>No student found</div></div>';
+      searchResultsBox.classList.add('is-open');
+      return;
+    }
+
+    searchResultsBox.innerHTML = items.slice(0, 8).map((item) => `
+      <div class="search-result-item" data-reg="${item.reg}">
+        <div>
+          <strong>${item.name || 'Unnamed'}</strong>
+          <div class="meta">Roll ${item.roll || '-'}</div>
+        </div>
+        <div class="meta">Mark absent</div>
+      </div>
+    `).join('');
+    searchResultsBox.classList.add('is-open');
+  }
+
+  function markSelectedStudentAbsent(reg) {
+    if (!reg) return;
+    const row = document.querySelector(`#markstable .student-row[data-reg="${reg}"]`);
+    if (!row) return;
+    const checkbox = row.querySelector('.attendance-check');
+    if (!checkbox || checkbox.disabled) return;
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new Event('change'));
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    row.classList.add('highlight-row');
+    setTimeout(() => row.classList.remove('highlight-row'), 1600);
+  }
+
+  if (studentSearchInput) {
+    studentSearchInput.addEventListener('input', (event) => renderSearchResults(event.target.value));
+    studentSearchInput.addEventListener('focus', () => renderSearchResults(studentSearchInput.value));
+  }
+
+  if (searchResultsBox) {
+    searchResultsBox.addEventListener('click', (event) => {
+      const item = event.target.closest('.search-result-item');
+      if (!item) return;
+      markSelectedStudentAbsent(item.dataset.reg);
+      searchResultsBox.classList.remove('is-open');
+      if (studentSearchInput) {
+        studentSearchInput.value = '';
+      }
+    });
+  }
+
+  if (searchAbsentBtn) {
+    searchAbsentBtn.addEventListener('click', () => {
+      const query = studentSearchInput ? studentSearchInput.value.trim() : '';
+      const items = getSearchItems();
+      const selected = items.find((item) => {
+        const text = `${item.roll} ${item.name}`.toLowerCase();
+        return text.includes(query.toLowerCase());
+      });
+      if (selected) {
+        markSelectedStudentAbsent(selected.reg);
+      }
+    });
+  }
+
+  document.addEventListener('click', (event) => {
+    if (searchResultsBox && !event.target.closest('.student-search')) {
+      searchResultsBox.classList.remove('is-open');
+    }
+  });
  </script>
 </body>
 </html>
