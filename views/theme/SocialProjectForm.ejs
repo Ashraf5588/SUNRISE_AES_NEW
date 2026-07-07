@@ -628,7 +628,7 @@
         <div class="section">
           <div class="section-header">Practical/Project Work Evaluation</div>
           <div class="section-content">
-            
+            <%= JSON.stringify(practicalFormatData, null, 2) %>
             <% ScienceData.forEach((item, itemIdx) => { %>
               <% item.units.forEach((unit, idx) => { %>
                 <div class="unit-section">
@@ -661,6 +661,7 @@
                                 </tr>
                               </thead>
                               <tbody>
+
                                 <% let iIndex = 0 %>
                                 <% practicalFormatData.forEach(function(doc) { %>
                                   <% doc.themes.forEach(function(theme) { %>
