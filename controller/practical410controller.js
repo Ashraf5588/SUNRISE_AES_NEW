@@ -1398,12 +1398,12 @@ else
       
       await existingConfig.save();
       
-      res.redirect(`/practicalform?studentClass=${studentClass}&section=${section}&subject=${subject}&terminal=${terminal}`);
+      res.redirect(`/practicalform?studentClass=${studentClass}&section=${section || req.query.section}&subject=${subject}&terminal=${terminal}`);
     } else {
       // Create new configuration
       const newSciencePractical = new ScienceModel({
         studentClass,
-        section: section || '',
+        section: section || req.query.section,
         subject,
         terminal,
         units,
@@ -1414,7 +1414,7 @@ else
       await newSciencePractical.save();
       
       console.log('Created new science practical configuration');
-      res.redirect(`/practicalform?studentClass=${studentClass}&section=${section || ''}&subject=${subject}&terminal=${terminal}`);
+      res.redirect(`/practicalform?studentClass=${studentClass}&section=${section || req.query.section}&subject=${subject}&terminal=${terminal}`);
     }
 
   } catch (err) {
@@ -1496,7 +1496,7 @@ exports.saveScienceData = async (req,res,next)=>
       await existingRecord.save();
       
       console.log('Updated existing science student record');
-      res.redirect(`/practicalform?studentClass=${studentClass}&section=${section || ''}&subject=${subject}&terminal=${terminal}`);
+      res.redirect(`/practicalform?studentClass=${studentClass}&section=${section || req.query.section}&subject=${subject}&terminal=${terminal}`);
     } else {
       // Create new record
       const newScienceStudentRecord = new scienceProjectModel({

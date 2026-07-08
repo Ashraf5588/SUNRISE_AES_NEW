@@ -381,8 +381,9 @@
     </div>
 
     <div class="form-card">
-      <form action="/sciencepractical?studentClass=<%= typeof studentClass !== 'undefined' ? studentClass : '' %><% if (typeof editing !== 'undefined' && editing && typeof lessonData !== 'undefined' && lessonData._id) { %>&lessonId=<%= lessonData._id %>&editing=true<% } %>" method="POST" id="sciencePracticalForm">
+      <form action="/sciencepractical?studentClass=<%= typeof studentClass !== 'undefined' ? studentClass : '' %><% if (typeof editing !== 'undefined' && editing && typeof lessonData !== 'undefined' && lessonData._id) { %>&lessonId=<%= lessonData._id %>&editing=true<% } %>&section=<%= typeof section !== 'undefined' ? section : req.query.section %>" method="POST" id="sciencePracticalForm">
         
+      
         <!-- Hidden field for lesson ID when editing -->
         <% if (typeof editing !== 'undefined' && editing && typeof lessonData !== 'undefined' && lessonData._id) { %>
           <input type="hidden" name="lessonId" value="<%= lessonData._id %>">
