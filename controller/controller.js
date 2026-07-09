@@ -1479,3 +1479,279 @@ exports.deleteChapterGroup = async (req, res, next) => {
     console.log(err);
   }
 };
+
+const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const normalizeSelectionValues = (value) => {
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => normalizeSelectionValues(item));
+  }
+
+  if (value === undefined || value === null) {
+    return [];
+  }
+
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+
+  return [String(value)];
+};
+
+const normalizeCollectionToken = (value) => String(value || "").trim().toLowerCase();
+
+const parseClassSelection = (value) => {
+  const trimmed = String(value || "").trim();
+
+  if (trimmed.includes("|")) {
+    const [studentClassValue, sectionValue] = trimmed.split("|").map((item) => item.trim());
+    return {
+      studentClassValue,
+      sectionValue
+    };
+  }
+
+  const match = trimmed.match(/^(\d+|[A-Za-z]+)\s*([A-Za-z0-9]+)$/i);
+  if (match) {
+    return {
+      studentClassValue: match[1],
+      sectionValue: match[2]
+    };
+  }
+
+  return {
+    studentClassValue: trimmed,
+    sectionValue: ""
+  };
+};
+
+const matchesCollectionName = (collectionName, { studentClassValue, sectionValue, terminalValue }) => {
+  const parts = String(collectionName || "").split("_");
+  if (parts.length < 4) {
+    return false;
+  }
+
+  const terminalPart = parts[parts.length - 1];
+  const sectionPart = parts[parts.length - 2];
+  const classPart = parts[parts.length - 3];
+
+  return (
+    normalizeCollectionToken(classPart) === normalizeCollectionToken(studentClassValue) &&
+    normalizeCollectionToken(sectionPart) === normalizeCollectionToken(sectionValue) &&
+    normalizeCollectionToken(terminalPart) === normalizeCollectionToken(terminalValue)
+  );
+};
+
+const buildDeleteAnalysisPreview = async ({ classSelections, terminalSelections }) => {
+  if (!classSelections.length || !terminalSelections.length) {
+    return {
+      results: [],
+      message: "Please select at least one class-section and one terminal."
+    };
+  }
+
+  const classDocs = await studentClass.find({}).lean();
+  const classLookup = new Map(
+    classDocs.map((item) => [
+      `${String(item.studentClass).trim()}|${String(item.section).trim()}`,
+      item
+    ])
+  );
+
+  const collectionNames = (await mongoose.connection.db.listCollections().toArray()).map((item) => item.name);
+  const previewResults = [];
+
+  for (const classSelection of classSelections) {
+    const { studentClassValue, sectionValue } = parseClassSelection(classSelection);
+    const classLabel = classLookup.get(classSelection)
+      ? `${classLookup.get(classSelection).studentClass}-${classLookup.get(classSelection).section}`
+      : `${studentClassValue}${sectionValue ? `-${sectionValue}` : ""}`;
+
+    for (const terminalValue of terminalSelections) {
+      const matchingCollections = collectionNames.filter((name) => matchesCollectionName(name, {
+        studentClassValue,
+        sectionValue,
+        terminalValue
+      }));
+
+      for (const collectionName of matchingCollections) {
+        const subjectName = collectionName
+          .split("_")
+          .slice(0, -3)
+          .join("_") || collectionName;
+        const collection = mongoose.connection.db.collection(collectionName);
+        const matchedCount = await collection.countDocuments({});
+
+        if (matchedCount > 0) {
+          previewResults.push({
+            classLabel,
+            studentClass: studentClassValue,
+            section: sectionValue,
+            terminal: terminalValue,
+            subject: subjectName,
+            collectionName,
+            matchedCount
+          });
+        }
+      }
+    }
+  }
+
+  return {
+    results: previewResults,
+    message: previewResults.length > 0 ? null : "No matching analysis data was found for the selected filters."
+  };
+};
+
+exports.deleteAnalysisPage = async (req, res) => {
+  try {
+    const [classDocs, terminalDocs, marksheetDocs] = await Promise.all([
+      studentClass.find({}).lean(),
+      terminal.find({}).lean(),
+      marksheetSetup.find({}, { academicYear: 1, _id: 0 }).lean()
+    ]);
+
+    const classList = (classDocs || [])
+      .map((item) => ({
+        ...item,
+        value: `${String(item.studentClass).trim()}|${String(item.section).trim()}`
+      }))
+      .sort((a, b) => {
+        const classDiff = Number(a.studentClass) - Number(b.studentClass);
+        if (classDiff !== 0) return classDiff;
+        return String(a.section).localeCompare(String(b.section));
+      });
+
+    const terminalList = (terminalDocs || []).map((item) => item.terminalName || item.name || item.term || item.terminal || "").filter(Boolean);
+    const academicYears = Array.from(new Set((marksheetDocs || []).map((item) => item.academicYear).filter(Boolean)));
+
+    const sidenavData = await getSidenavData(req);
+
+    res.render("deleteAnalysis", {
+      currentPage: "deleteanalysis",
+      classList,
+      terminalList,
+      academicYears,
+      previewResults: [],
+      selectedClasses: [],
+      selectedTerminals: [],
+      selectedAcademicYears: [],
+      message: null,
+      error: null,
+      ...sidenavData
+    });
+  } catch (err) {
+    console.error("Error loading delete analysis page:", err.message);
+    res.status(500).render("404", {
+      errorMessage: "Unable to load delete analysis page",
+      currentPage: "teacher"
+    });
+  }
+};
+
+exports.deleteAnalysis = async (req, res) => {
+  try {
+    const action = req.body.action || req.query.action || "preview";
+    const classSelections = normalizeSelectionValues(req.body.classSelections || req.body.classSelection || req.body.class);
+    const terminalSelections = normalizeSelectionValues(req.body.terminalSelections || req.body.terminals || req.body.terminal);
+    const academicYears = normalizeSelectionValues(req.body.academicYears || req.body.academicYear || req.body.year);
+
+    const [classDocs, terminalDocs, marksheetDocs] = await Promise.all([
+      studentClass.find({}).lean(),
+      terminal.find({}).lean(),
+      marksheetSetup.find({}, { academicYear: 1, _id: 0 }).lean()
+    ]);
+
+    const classList = (classDocs || [])
+      .map((item) => ({
+        ...item,
+        value: `${String(item.studentClass).trim()}|${String(item.section).trim()}`
+      }))
+      .sort((a, b) => {
+        const classDiff = Number(a.studentClass) - Number(b.studentClass);
+        if (classDiff !== 0) return classDiff;
+        return String(a.section).localeCompare(String(b.section));
+      });
+
+    const terminalList = (terminalDocs || []).map((item) => item.terminalName || item.name || item.term || item.terminal || "").filter(Boolean);
+    const academicYearList = Array.from(new Set((marksheetDocs || []).map((item) => item.academicYear).filter(Boolean)));
+
+    if (action === "delete") {
+      if (!classSelections.length || !terminalSelections.length) {
+        return res.status(400).render("deleteAnalysis", {
+          currentPage: "deleteanalysis",
+          classList,
+          terminalList,
+          academicYears: academicYearList,
+          previewResults: [],
+          selectedClasses: classSelections,
+          selectedTerminals: terminalSelections,
+          selectedAcademicYears: academicYears,
+          message: null,
+          error: "Please select at least one class-section and one terminal before deleting.",
+          ...(await getSidenavData(req))
+        });
+      }
+
+      const preview = await buildDeleteAnalysisPreview({
+        classSelections,
+        terminalSelections
+      });
+
+      const deletedTargets = [];
+      let deletedCount = 0;
+
+      for (const item of preview.results) {
+        const collection = mongoose.connection.db.collection(item.collectionName);
+        const result = await collection.deleteMany({});
+        deletedCount += result.deletedCount || 0;
+        deletedTargets.push({
+          ...item,
+          deletedCount: result.deletedCount || 0
+        });
+      }
+
+      return res.render("deleteAnalysis", {
+        currentPage: "deleteanalysis",
+        classList,
+        terminalList,
+        academicYears: academicYearList,
+        previewResults: deletedTargets,
+        selectedClasses: classSelections,
+        selectedTerminals: terminalSelections,
+        selectedAcademicYears: academicYears,
+        message: deletedTargets.length > 0 ? `Deleted ${deletedCount} record(s) from ${deletedTargets.length} subject collection(s).` : "No matching records were deleted.",
+        error: null,
+        ...(await getSidenavData(req))
+      });
+    }
+
+    const preview = await buildDeleteAnalysisPreview({
+      classSelections,
+      terminalSelections
+    });
+
+    return res.render("deleteAnalysis", {
+      currentPage: "deleteanalysis",
+      classList,
+      terminalList,
+      academicYears: academicYearList,
+      previewResults: preview.results,
+      selectedClasses: classSelections,
+      selectedTerminals: terminalSelections,
+      selectedAcademicYears: academicYears,
+      message: preview.message,
+      error: null,
+      ...(await getSidenavData(req))
+    });
+  } catch (err) {
+    console.error("Error deleting analysis data:", err.message);
+    res.status(500).render("404", {
+      errorMessage: "Unable to delete analysis data",
+      currentPage: "teacher"
+    });
+  }
+};

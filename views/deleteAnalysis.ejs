@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Delete Analysis Data</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 24px; background: #f6f8fb; }
+    .card { background: #fff; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .pill { display: inline-block; margin: 4px 6px 4px 0; padding: 6px 10px; background: #eef4ff; border-radius: 999px; }
+    .actions { display: flex; gap: 10px; margin-top: 16px; }
+    button { padding: 10px 14px; border: 0; border-radius: 6px; cursor: pointer; }
+    .btn-delete { background: #c0392b; color: #fff; }
+    .btn-preview { background: #2e86de; color: #fff; }
+    .table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    .table th, .table td { padding: 8px 10px; border-bottom: 1px solid #e6e9ef; text-align: left; }
+    .note { color: #666; font-size: 14px; }
+    .error { color: #c0392b; font-weight: 600; }
+    .success { color: #1f7a1f; font-weight: 600; }
+    .checkbox-list { max-height: 220px; overflow: auto; border: 1px solid #e5e7eb; padding: 10px; border-radius: 8px; }
+    .checkbox-list label { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Delete Analysis Data</h2>
+    <p class="note">Select one or more class-sections and terminals, then preview or delete matching analysis collections.</p>
+
+    <% if (error) { %>
+      <p class="error"><%= error %></p>
+    <% } %>
+    <% if (message) { %>
+      <p class="success"><%= message %></p>
+    <% } %>
+
+    <form method="POST" action="/deleteanalysis">
+      <div class="grid">
+        <div>
+          <h4>Class - Section</h4>
+          <div class="checkbox-list">
+            <% classList.forEach(function(item) { %>
+              <label>
+                <input type="checkbox" name="classSelections" value="<%= item.value %>" <%= selectedClasses.includes(item.value) ? 'checked' : '' %> />
+                <span><%= item.studentClass %> - <%= item.section %></span>
+              </label>
+            <% }) %>
+          </div>
+        </div>
+
+        <div>
+          <h4>Terminal</h4>
+          <div class="checkbox-list">
+            <% terminalList.forEach(function(item) { %>
+              <label>
+                <input type="checkbox" name="terminalSelections" value="<%= item %>" <%= selectedTerminals.includes(item) ? 'checked' : '' %> />
+                <span><%= item %></span>
+              </label>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button type="submit" name="action" value="preview" class="btn-preview">Preview</button>
+        <button type="submit" name="action" value="delete" class="btn-delete">Delete</button>
+      </div>
+    </form>
+  </div>
+
+  <% if (previewResults && previewResults.length > 0) { %>
+    <div class="card">
+      <h3>Preview / Results</h3>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Class</th>
+            <th>Section</th>
+            <th>Terminal</th>
+            <th>Academic Year</th>
+            <th>Subject</th>
+            <th>Collection</th>
+            <th>Matching Records</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% previewResults.forEach(function(item) { %>
+            <tr>
+              <td><%= item.studentClass %></td>
+              <td><%= item.section %></td>
+              <td><%= item.terminal %></td>
+              <td><%= item.academicYear %></td>
+              <td><%= item.subject %></td>
+              <td><%= item.collectionName %></td>
+              <td><%= item.matchedCount %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</body>
+</html>

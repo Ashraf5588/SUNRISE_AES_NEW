@@ -839,58 +839,31 @@
 
 
 
-                            <td>
+                           <td>
+    <div class="radio-group">
 
+        <% for (let j = ind.maxMarks * 2; j >= 1; j--) {
+            const mark = (j / 2).toFixed(1).replace(/\.0$/, '');
+        %>
 
+            <input
+                type="radio"
+                class="marks-radio"
+                value="<%= mark %>||<%= ind.indicatorName %>||<%= theme.themeName %>"
+                name="unit[<%= idx %>][practicals][<%= prindx %>][criteria][<%= iIndex %>]"
+                data-practical="<%= idx %>-<%= prindx %>"
+                  data-criteria-index="<%= iIndex %>"
+                id="practical_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= ind._id %>_<%= mark.replace('.', '_') %>">
 
-                                <div class="radio-group">
+            <label
+                for="practical_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= ind._id %>_<%= mark.replace('.', '_') %>">
+                <%= mark %>
+            </label>
 
+        <% } %>
 
-
-                                    <input
-
-                                        type="radio"
-
-                                        class="marks-radio"
-
-
-
-                                        value="<%= ind.maxMarks %>||<%= ind.indicatorName %>||<%= theme.themeName %>"
-
-
-
-                                        name="unit[<%= idx %>][practicals][<%= prindx %>][criteria][<%= iIndex %>]"
-
-
-
-                                        data-practical="<%= idx %>-<%= prindx %>"
-
-
-
-                                        id="practical_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= ind._id %>">
-
-
-
-                                    <label
-
-                                        for="practical_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= ind._id %>">
-
-
-
-                                        <%= ind.maxMarks %>
-
-
-
-                                    </label>
-
-
-
-                                </div>
-
-
-
-                            </td>
-
+    </div>
+</td>
 
 
                         </tr>
@@ -980,31 +953,41 @@
 
                                           <td><%= ind.indicatorName %></td>
                                           <td>
-                                            <div class="mark-input-wrapper">
-                                              <div class="radio-group">
-                                                <input type="radio" 
-                                                       value="<%= ind.indicatorsMarks %>||<%= ind.indicatorName %>||<%= lo.learningOutcomeName %>" 
-                                                       class="marks-radio-project"
-                                                       name="unit[<%= idx %>][projectWorks][<%= prindx %>][criteria][<%= iIndex %>]"
-                                                       data-project="<%= idx %>-<%= prindx %>"
-                                                       data-input-id="project_input_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>"
-                                                       data-criteria-index="<%= iIndex %>"
-                                                       id="project_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>">
-                                                <label for="project_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>"><%= ind.indicatorsMarks %></label>
-                                              </div>
-                                              <input type="number" 
-                                                     step="0.1"
-                                                     min="0"
-                                                     max="<%= ind.indicatorsMarks %>"
-                                                     class="mark-input project-input"
-                                                     data-project="<%= idx %>-<%= prindx %>"
-                                                     data-radio-id="project_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>"
-                                                     data-criteria-index="<%= iIndex %>"
-                                                     data-max-mark="<%= ind.indicatorsMarks %>"
-                                                     id="project_input_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>"
-                                                     placeholder="0-<%= ind.indicatorsMarks %>">
-                                            </div>
-                                          </td>
+    <div class="mark-input-wrapper">
+        <div class="radio-group">
+            <% for (let j = ind.indicatorsMarks * 2; j >= 1; j--) { 
+                   const mark = (j / 2).toFixed(1).replace(/\.0$/, '');
+            %>
+
+                <input type="radio"
+                       value="<%= mark %>||<%= ind.indicatorName %>||<%= lo.learningOutcomeName %>"
+                       class="marks-radio-project"
+                       name="unit[<%= idx %>][projectWorks][<%= prindx %>][criteria][<%= iIndex %>]"
+                       data-project="<%= idx %>-<%= prindx %>"
+                         data-criteria-index="<%= iIndex %>"
+                       data-input-id="project_input_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>"
+                       data-criteria-index="<%= iIndex %>"
+                       id="project_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>_<%= mark.replace('.', '_') %>">
+
+                <label for="project_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>_<%= mark.replace('.', '_') %>">
+                    <%= mark %>
+                </label>
+
+            <% } %>
+        </div>
+
+        <input type="number"
+               step="0.5"
+               min="0"
+               max="<%= ind.indicatorsMarks %>"
+               class="mark-input project-input"
+               data-project="<%= idx %>-<%= prindx %>"
+               data-criteria-index="<%= iIndex %>"
+               data-max-mark="<%= ind.indicatorsMarks %>"
+               id="project_input_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>"
+               placeholder="0-<%= ind.indicatorsMarks %>">
+    </div>
+</td>
                                         </tr>
                                       <% }) %>
                                       <% iIndex++ %>
@@ -1351,17 +1334,15 @@ async function fill(roll, name, reg) {
                                         input.classList.add('saved-value');
                                         
                                         // Find and check matching radio
-                                        let radioId = input.dataset.radioId;
-                                        if (radioId) {
-                                            let radio = document.getElementById(radioId);
-                                            if (radio) {
-                                                // Update radio value
-                                                let parts = radio.value.split('||');
-                                                parts[0] = mark;
-                                                radio.value = parts.join('||');
-                                                radio.checked = true;
-                                            }
-                                        }
+                         const radios = document.querySelectorAll(
+    `.marks-radio[data-practical="${unitIdx}-${practicalIdx}"]`
+);
+console.log("Radios for practical:", radios);
+
+radios.forEach(radio => {
+    const radioMark = radio.value.split("||")[0].trim();
+    radio.checked = Number(radioMark) === Number(mark);
+});
                                     }
                                 }
                             });
@@ -1385,16 +1366,15 @@ async function fill(roll, name, reg) {
                                         input.classList.add('has-value');
                                         input.classList.add('saved-value');
                                         
-                                        let radioId = input.dataset.radioId;
-                                        if (radioId) {
-                                            let radio = document.getElementById(radioId);
-                                            if (radio) {
-                                                let parts = radio.value.split('||');
-                                                parts[0] = mark;
-                                                radio.value = parts.join('||');
-                                                radio.checked = true;
-                                            }
-                                        }
+                                      const radios = document.querySelectorAll(
+    `.marks-radio[data-project="${unitIdx}-${projectIdx}"]`
+);
+console.log("Radios for project:", radios);
+
+radios.forEach(radio => {
+    const radioMark = radio.value.split("||")[0].trim();
+    radio.checked = Number(radioMark) === Number(mark);
+});
                                     }
                                 }
                             });

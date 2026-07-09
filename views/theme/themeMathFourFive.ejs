@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Math</title>
+  <link rel="stylesheet" href="/form.css">
+  <link rel="stylesheet" href="/mobile-form-enhancements.css">
+ <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
+ <link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css"/>
+ <style>
+  .theme-selector-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 16px 0 20px;
+    align-items: flex-end;
+  }
+  .theme-selector-group {
+    display: flex;
+    flex-direction: column;
+    min-width: 220px;
+    flex: 1;
+  }
+  .theme-selector-group label {
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #2d3748;
+  }
+  .theme-selector-group select {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #cbd5e0;
+    border-radius: 10px;
+    background: #fff;
+    font-size: 15px;
+    color: #2d3748;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+  .theme-selector-group select:focus {
+    outline: none;
+    border-color: #ff8c42;
+    box-shadow: 0 0 0 3px rgba(255,140,66,0.18);
+  }
+  @media (max-width: 768px) {
+    .theme-selector-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .theme-selector-group {
+      min-width: 0;
+    }
+    .theme-selector-group select {
+      font-size: 16px;
+      padding: 13px 14px;
+    }
+  }
+ </style>
+</head>
+<body>
+<%- include('../partials/mainnav') %>
+<div class="theme-selector-row">
+  <div class="theme-selector-group">
+    <label for="classsectionselect">Class & Section</label>
+    <select onchange="changeClassSection()" id="classsectionselect">
+      <option disabled selected><%= studentClass %> - <%= section %></option>
+      <%studentClassdata.forEach(data => { %>
+        <option value="<%= data.studentClass %> - <%= data.section %>"><%= data.studentClass %> - <%= data.section %></option>
+      <% }); %>
+    </select>
+  </div>
+  <div class="theme-selector-group">
+    <label for="subjectselect">Subject</label>
+    <select id="subjectselect" onchange="window.location.href = '/themeform?studentClass=<%= studentClass %>&section=<%= section %>&terminal=<%= terminal %>&subject=' + this.value;">
+      <option disabled selected><%= subject %></option>
+      <% const uniqueSubjects = new Set(newsubjectList.map(item => item.newsubject)); %>
+      
+      <%uniqueSubjects.forEach(subject => { %>
+        <option value="<%= subject %>"><%= subject %></option>
+      <% }); %>
+    </select>
+  </div>
+</div>
+  <form action="/themeform?studentClass=<%= studentClass %>&section=<%= section %>&terminal=<%= terminal %>&subject=<%= subject %>" method="POST">
+
+  
+  
+    Select theme:
+    <select id="themeselect" onchange="filterLO()">
+      <option disabled selected>Select Theme</option>
+      <%themeData.forEach(data => { %>
+        <% data.themes.forEach((theme,themeIndex) => { %>
+          <option value="<%= theme.themeName %>" data-themeIndex="<%= themeIndex %>"><%=themeIndex+1%>.<%= theme.themeName %></option>
+        <% }); %>
+      <% }); %>
+   
+    </select> 
+     <select id="aspectselect" onchange="filterAspect()" name="aspectName">
+        <option disabled selected>Select Aspect</option>
+       
+    </select>
+    
+     <select id="learningoutcomeselect" onchange="changeLo()">
+        <option disabled selected>Select Learning Outcome</option>
+    </select>
+  
+     <select id="toolselect" onchange="showTable()">
+      <option selected disabled>Select Tool </otpion>
+      <% toolDoc.tools.forEach(tool => { %>
+        <option value="<%= tool %>"><%= tool%></option>
+      <% }); %>
+        
+  
+    </select>
+<input type="hidden" value="<%=JSON.stringify(themeData)%>" id="themeData">
+
+<input type="submit">
+
+<input type="hidden" id="existingMap" value="<%=JSON.stringify(existingMap)%>"
+
+ <th>Eval.Date Before: <input type="text" id="nepali-datepicker" class="masterDateBefore nepali-datepicker" placeholder="Select Nepali Date" /></th>
+ <th>Eval.Date After: <input type="text" id="nepali-datepicker" class="masterDateAfter nepali-datepicker" placeholder="Select Nepali Date" /></th>
+
+ <button type="button" id="applydate" onclick="loadDate()">Apply Date</button>
+  <table border="1" cellspacing="0" cellpadding="5" class="themeTable" style="display:none;">
+  
+
+    <tr>
+    
+        <th>Eval.Date Before</th>
+          <th>Name</th>
+      <th>Indicator</th>
+      <th>Obt.Marks Before</th>
+      <th>Obt.Marks After</th>
+      <th>Eval.Date After</th>
+      
+    </tr>
+ <input type="hidden" value="<%= studentClass%>" name="studentClass">
+           <input type="hidden" value="<%= section%>" name="section">
+       <input type="hidden" value="<%= subject%>" name="subject">
+    <input type="hidden"  id="selectedThemeName" name="themeName">
+<input type="hidden"  id="selectedLOName" name="learningOutcomeName">
+<input type="hidden"  id="toolname" name="toolName">
+
+      <% studentData.forEach((record, idx) => { %>
+    <tr>
+    
+       <input type="hidden" value="<%= record.reg%>" name="reg">
+      <input type="hidden" value="<%= record.name%>" name="name">
+      <input type="hidden" value="<%= record.roll%>" name="roll">
+     
+
+       
+
+       <td><input type="text" id="nepali-datepicker-<%= idx %>" placeholder="Select Nepali Date"  class="studentDateBefore nepaliDateBefore nepali-datepicker" name="evalDateBefore" /></td>
+         <td><%=record.roll%>. <%= record.name %></td>
+      <td id="indicatorTD"></td>
+      <input type="hidden" id="selectedIndicatorBefore">
+       <input type="hidden" id="selectedIndicatorAfter">
+      <td id="obtmarksbefore"></td>
+      <td id="obtmarksafter"></td>
+      <td><input type="text" id="nepali-datepicker-<%= idx %>" placeholder="Select Nepali Date"  
+        class="studentDateAfter nepaliDateAfter nepali-datepicker" name="evalDateAfter"/></td>
+    </tr>
+    <%});%>
+  </table> <br>
+
+    </form>
+<input type="hidden" value="<%=JSON.stringify(studentData)%>" id="studentData">
+  <script>
+const themeData = <%- JSON.stringify(themeData) %>;
+
+function filterLO() {
+    const selectedOption =
+        document.querySelector('#themeselect option:checked');
+
+    const selectedThemeIndex =
+        Number(selectedOption.dataset.themeindex);
+
+        // adding name for selected theme to save in db
+
+        document.getElementById('selectedThemeName').value = themeData[0].themes[selectedThemeIndex].themeName;
+          
+    const selectedTheme =
+        themeData[0].themes[selectedThemeIndex];
+const aspectButton = document.getElementById('aspectselect');
+aspectButton.innerHTML = '';
+
+const uniqueAspects = new Map();
+let aspectIndex = 0;
+
+selectedTheme.learningOutcome.forEach((lo) => {
+    lo.assessmentAspects.forEach((aspect) => {
+        if (!uniqueAspects.has(aspect.aspectName)) {
+            uniqueAspects.set(aspect.aspectName, aspectIndex++);
+        }
+    });
+});
+
+aspectButton.appendChild(new Option('Select Aspect', '', true, true));
+
+uniqueAspects.forEach((index, aspectName) => {
+    console.log(aspectName, index);
+
+    const option = new Option(aspectName, aspectName);
+    option.dataset.aspectIndex = index;
+    aspectButton.appendChild(option);
+});
+
+         
+
+
+        
+
+    const learningOutcomeSelect =
+        document.getElementById('learningoutcomeselect');
+
+    learningOutcomeSelect.innerHTML = '';
+
+        
+ const defaultLOoption = document.createElement('option');
+ defaultLOoption.textContent="select Learning Outcome";
+ defaultLOoption.disabled = true;
+ defaultLOoption.selected = true;
+ learningOutcomeSelect.appendChild(defaultLOoption);
+    selectedTheme.learningOutcome.forEach(lo => {
+        const option = document.createElement('option');
+
+        option.value = lo.learningOutcomeName;
+     
+        option.textContent = lo.learningOutcomeName;
+
+        learningOutcomeSelect.appendChild(option);
+           
+    });
+}
+
+</script>
+
+<script>
+  function changeLo() {
+    const selectedThemeIndex =
+        document.getElementById("themeselect").selectedOptions[0].dataset.themeindex;
+
+    const selectedLOIndex =
+        document.getElementById("learningoutcomeselect").selectedIndex-1;
+        console.log("Selected LO Index:", selectedLOIndex);
+
+    // adding name for selected lo to save in db
+    // document.getElementById('selectedLOName').name = `subjects[0][themes][${selectedThemeIndex}][learningOutcome][${selectedLOIndex}][learningOutcomeName]`;
+    document.getElementById('selectedLOName').value = themeData[0].themes[selectedThemeIndex].learningOutcome[selectedLOIndex].learningOutcomeName;
+  }
+</script>
+<script>
+function showTable() {
+    const tables = document.querySelectorAll(".themeTable");
+    const indicatorTDs = document.querySelectorAll("#indicatorTD");
+    const obtmarksbeforeTDs = document.querySelectorAll("#obtmarksbefore");
+    const obtmarksafterTDs = document.querySelectorAll("#obtmarksafter");
+
+    const selectedThemeIndex =
+        document.getElementById("themeselect")
+            .selectedOptions[0]
+            .dataset.themeindex;
+        const selectedAspectIndex= parseInt(document.getElementById("aspectselect").selectedOptions[0].dataset.aspectIndex);
+        console.log("Selected Aspect Index:", selectedAspectIndex);
+
+    const selectedLOIndex =
+        document.getElementById("learningoutcomeselect").selectedIndex - 1;
+
+    tables[0].style.display = "block";
+
+    const studentData =
+        JSON.parse(document.getElementById("studentData").value);
+
+    const selectedToolName =
+        document.getElementById("toolselect").value;
+
+    document.getElementById("toolname").value =
+        selectedToolName;
+        const selectedAspect = document.getElementById("aspectselect").value;
+
+
+    const existingMap =
+        JSON.parse(document.getElementById("existingMap").value);
+
+    studentData.forEach((student, i) => {
+
+        indicatorTDs[i].innerHTML = "";
+        obtmarksbeforeTDs[i].innerHTML = "";
+        obtmarksafterTDs[i].innerHTML = "";
+
+        const key =
+            `${student.reg}|` +`${themeData[0].themes[selectedThemeIndex].themeName}|` + `${themeData[0].themes[selectedThemeIndex]
+                .learningOutcome[selectedLOIndex]
+                .learningOutcomeName}|` + `${selectedAspect}|` +
+            `${selectedToolName}`;
+
+        const existingRecord = existingMap[key];
+
+        console.log("Existing Record:", existingRecord);
+      if (existingRecord) {
+    document.querySelectorAll(".studentDateBefore")[i].value =
+        existingRecord?.evalDateBefore || "";
+
+    document.querySelectorAll(".studentDateAfter")[i].value =
+        existingRecord?.evalDateAfter || "";
+}
+
+        themeData[0]
+            .themes[selectedThemeIndex]
+            .learningOutcome[selectedLOIndex]
+            .assessmentAspects[selectedAspectIndex]
+            .tools[0]
+            .indicators
+            .forEach((indicator, index) => {
+
+                // Indicator name
+                const indicatorName = document.createElement("div");
+                indicatorName.className = "indicator-name";
+                indicatorName.textContent = indicator.indicatorName;
+                indicatorTDs[i].appendChild(indicatorName);
+
+                const indicatorDivider = document.createElement("div");
+                indicatorDivider.className = "indicator-separator";
+                indicatorTDs[i].appendChild(indicatorDivider);
+                // BEFORE RADIO (wrapped in a touch-friendly button label)
+                const beforeLabel = document.createElement("label");
+                beforeLabel.className = "mark-option-button";
+                beforeLabel.htmlFor = `before_${i}_${index}`;
+
+                const radioBefore = document.createElement("input");
+                radioBefore.type = "radio";
+                radioBefore.name = `students[${student.reg}][obtainedMarksBefore]`;
+                radioBefore.value = indicator.maxMarks;
+                radioBefore.id = `before_${i}_${index}`;
+
+                if (
+                    existingRecord &&
+                    Number(existingRecord.obtainedMarksBefore) ===
+                    Number(indicator.maxMarks)
+                ) {
+                    radioBefore.checked = true;
+                }
+
+                const beforeValue = document.createElement("span");
+                beforeValue.className = "mark-option-label";
+                beforeValue.textContent = indicator.maxMarks;
+
+                beforeLabel.appendChild(radioBefore);
+                beforeLabel.appendChild(beforeValue);
+                obtmarksbeforeTDs[i].appendChild(beforeLabel);
+
+                // AFTER RADIO (wrapped in a touch-friendly button label)
+                const afterLabel = document.createElement("label");
+                afterLabel.className = "mark-option-button";
+                afterLabel.htmlFor = `after_${i}_${index}`;
+
+                const radioAfter = document.createElement("input");
+                radioAfter.type = "radio";
+                radioAfter.name = `students[${student.reg}][obtainedMarksAfter]`;
+                radioAfter.value = indicator.maxMarks;
+                radioAfter.id = `after_${i}_${index}`;
+
+                if (
+                    existingRecord &&
+                    Number(existingRecord.obtainedMarksAfter) ===
+                    Number(indicator.maxMarks)
+                ) {
+                    radioAfter.checked = true;
+                }
+
+                const afterValue = document.createElement("span");
+                afterValue.className = "mark-option-label";
+                afterValue.textContent = indicator.maxMarks;
+
+                afterLabel.appendChild(radioAfter);
+                afterLabel.appendChild(afterValue);
+                obtmarksafterTDs[i].appendChild(afterLabel);
+            });
+    });
+}
+
+
+</script>
+   <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
+        <script type="text/javascript">
+            window.onload = function() {
+                initializeDatePickers();
+            };
+        </script>
+
+
+<script>
+   function initializeDatePickers() {
+    document.querySelectorAll('.nepali-datepicker').forEach(input => {
+        try {
+            input.nepaliDatePicker();
+        } catch(e) {
+            console.warn('Could not initialize date picker for:', input.id);
+        }
+    });
+}
+</script>
+
+
+
+<script>
+    //fire events
+document.getElementById("learningoutcomeselect").addEventListener("change", function() {
+    changeLo();
+    document.getElementById("toolselect").selectedIndex = 0; // Reset tool selection
+    showTable();
+});
+document.getElementById("toolselect").addEventListener("change", function() {
+    showTable();
+});
+document.getElementById("themeselect").addEventListener("change", function() {
+    filterLO();
+    document.getElementById("learningoutcomeselect").selectedIndex = 0; // Reset LO selection
+    document.getElementById("toolselect").selectedIndex = 0; // Reset tool selection
+    document.getElementById("aspectselect").selectedIndex = 0; // Reset aspect selection
+    document.querySelector(".themeTable").style.display = "none"; // Hide table
+});
+
+
+document.getElementById("aspectselect").addEventListener("change", function() {
+     
+  document.getElementById("learningoutcomeselect").selectedIndex = 0;
+    document.getElementById("toolselect").selectedIndex = 0;
+    //hide the table
+
+   
+});
+
+
+    </script>
+
+
+    <script>
+function filterAspect() {
+
+    const selectedAspect =
+        document.getElementById("aspectselect").value;
+      
+
+    const selectedThemeIndex =
+        document.getElementById("themeselect")
+            .selectedOptions[0]
+            .dataset.themeindex;
+
+    const learningOutcomeSelect =
+        document.getElementById("learningoutcomeselect");
+
+    learningOutcomeSelect.innerHTML = "";
+
+    // default option
+    const defaultOption =
+        document.createElement("option");
+
+    defaultOption.textContent =
+        "Select Learning Outcome";
+
+    defaultOption.disabled = true;
+    defaultOption.selected = true;
+
+    learningOutcomeSelect.appendChild(defaultOption);
+
+    const selectedTheme =
+        themeData[0].themes[selectedThemeIndex];
+
+    selectedTheme.learningOutcome.forEach(lo => {
+
+        const hasAspect =
+            lo.assessmentAspects.some(aspect =>
+                    aspect.aspectName === selectedAspect
+    );
+
+        if(hasAspect){
+
+            const option =
+                document.createElement("option");
+
+            option.value =
+                lo.learningOutcomeName;
+
+            option.textContent =
+                lo.learningOutcomeName;
+
+            learningOutcomeSelect.appendChild(option);
+        }
+    });
+}
+</script>
+ <script>
+        
+        function loadDate() {
+            const masterDateBefore = document.querySelector(".masterDateBefore").value;
+            const masterDateAfter = document.querySelector(".masterDateAfter").value;
+
+            document.querySelectorAll(".studentDateBefore").forEach(input => {
+                input.value = masterDateBefore;
+            });
+
+            document.querySelectorAll(".studentDateAfter").forEach(input => {
+                input.value = masterDateAfter;
+            });
+        }
+    </script>
+    <script>
+      function changeClassSection() {
+        const select = document.querySelector('select[onchange="changeClassSection()"]');
+        const selectedValue = select.value;
+        const [newClass, newSection] = selectedValue.split(' - ');
+
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.set('studentClass', newClass);
+        urlParams.set('section', newSection);
+
+        window.location.search = urlParams.toString();
+      }
+    </script>
+
+    
+</body>
+</html>

@@ -210,11 +210,18 @@ existingData.forEach(item => {
 
     existingMap[key] = item;
 });
-
+  if(studentClass === "4" || studentClass === "5" || studentClass.toLowerCase() === "four" || studentClass.toLowerCase() === "five") {
+    return res.render("theme/themeMathFourFive", { themeData, subject, studentClass, section, studentData, existingThemeData,
+      existingMap,terminal,
+        toolDoc,...await getSidenavData(req),editing: true });
+  }
+  else{
       return res.render("theme/themeMath", { themeData, subject, studentClass, section, studentData, existingThemeData,
       existingMap,terminal,
         toolDoc,...await getSidenavData(req),editing: true });
       }
+    }
+      
 if(subject.toLowerCase() === "english") {
 
   const existingMap = {};

@@ -26,7 +26,8 @@ const Staff = mongoose.models.staff || mongoose.model("staff", staffSchema, "sta
  const { studentrecordschema } = require("../model/adminschema");
 const modal = mongoose.model("studentrecord", studentrecordschema, "studentrecord");
 const bcrypt = require("bcrypt");
-const {allowedSubjectData} = require("./controller");
+const controllerModule = require("./controller");
+const {allowedSubjectData} = controllerModule;
 const {generateToken} = require("../middleware/auth");
 
 app.set("view engine", "ejs");
@@ -161,6 +162,14 @@ const studentTerminal = mongoose.model("studentTerminal", classSchema, "terminal
 const admin = mongoose.model("admin", adminSchema, "admin");
 const superadmin = mongoose.model("superadmin", superadminSchema, "superadmin");
 let entryArray = [];
+
+exports.deleteAnalysisPage = async (req, res) => {
+  return controllerModule.deleteAnalysisPage(req, res);
+};
+
+exports.deleteAnalysis = async (req, res) => {
+  return controllerModule.deleteAnalysis(req, res);
+};
 
 const CLASS_ORDER = {
   nursery: 1,
@@ -4007,3 +4016,4 @@ exports.deletemarksheetSetup = async (req, res) => {
     res.status(500).send("Error deleting marksheet setup: " + err.message);
   }
 };
+

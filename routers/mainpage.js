@@ -192,6 +192,8 @@ student.post('/user/:userId?',verifytoken,authorized,isAdmin,admincontrol.saveus
 // Route to view/display uploaded files in browser
 student.get('/view-file/:filename',verifytoken,authorized, admincontrol.viewFile)
 student.get('/marksheet',verifytoken,authorized,isAdmin, admincontrol.marksheet);
+student.get('/deleteanalysis',verifytoken,authorized,isAdmin, admincontrol.deleteAnalysisPage);
+student.post('/deleteanalysis',verifytoken,authorized,isAdmin, admincontrol.deleteAnalysis);
 student.get('/marksheetprint',verifytoken,authorized,isAdmin, admincontrol.marksheetprint);
 student.get('/copytheory',verifytoken,authorized,isAdmin, admincontrol.copytheory);
 student.get('/user/delete-teacher/:teacherId', verifytoken, authorized, isAdmin, admincontrol.deleteTeacher);
