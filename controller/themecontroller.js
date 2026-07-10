@@ -235,6 +235,23 @@ existingData.forEach(item => {
       
 if(subject.toLowerCase() === "english") {
 
+  if(studentClass === "4" || studentClass === "5" || studentClass.toLowerCase() === "four" || studentClass.toLowerCase() === "five") {
+     const existingMap = {};
+
+existingData.forEach(item => {
+    const key =
+       `${item.reg}|${item.themeName}|${item.learningOutcomeName}|${item.aspectName}|${item.toolName}`;
+
+    existingMap[key] = item;
+});
+
+
+    return res.render("theme/themeMathFourFive", { themeData, subject, studentClass, section, studentData, existingThemeData,
+      existingMap,terminal,
+        toolDoc,...await getSidenavData(req),editing: true });
+  }else
+  {
+
   const existingMap = {};
 
 existingData.forEach(item => {
@@ -248,6 +265,7 @@ existingData.forEach(item => {
   existingMap,terminal,
     toolDoc,...await getSidenavData(req),editing: true });
   }
+}
 
 if(subject.toLowerCase() === "nepali") {
 
