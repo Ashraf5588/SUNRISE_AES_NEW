@@ -202,7 +202,24 @@ const existingData = await themeForstudentData.find({
 }).lean();
 
 if(subject.toLowerCase() === "maths" || subject.toLowerCase() === "mathematics") {
-  const existingMap = {};
+
+  if(studentClass === "4" || studentClass === "5" || studentClass.toLowerCase() === "four" || studentClass.toLowerCase() === "five") {
+      const existingMap = {};
+
+existingData.forEach(item => {
+    const key =
+       `${item.reg}|${item.themeName}|${item.learningOutcomeName}|${item.aspectName}|${item.toolName}`;
+
+    existingMap[key] = item;
+});
+
+
+    return res.render("theme/themeMathFourFive", { themeData, subject, studentClass, section, studentData, existingThemeData,
+      existingMap,terminal,
+        toolDoc,...await getSidenavData(req),editing: true });
+  }
+  else{
+      const existingMap = {};
 
 existingData.forEach(item => {
     const key =
@@ -210,12 +227,6 @@ existingData.forEach(item => {
 
     existingMap[key] = item;
 });
-  if(studentClass === "4" || studentClass === "5" || studentClass.toLowerCase() === "four" || studentClass.toLowerCase() === "five") {
-    return res.render("theme/themeMathFourFive", { themeData, subject, studentClass, section, studentData, existingThemeData,
-      existingMap,terminal,
-        toolDoc,...await getSidenavData(req),editing: true });
-  }
-  else{
       return res.render("theme/themeMath", { themeData, subject, studentClass, section, studentData, existingThemeData,
       existingMap,terminal,
         toolDoc,...await getSidenavData(req),editing: true });
@@ -240,6 +251,24 @@ existingData.forEach(item => {
 
 if(subject.toLowerCase() === "nepali") {
 
+  if(studentClass === "4" || studentClass === "5" || studentClass.toLowerCase() === "four" || studentClass.toLowerCase() === "five") {
+    const existingMap = {};
+
+existingData.forEach(item => {
+    const key =
+       `${item.reg}|${item.themeName}|${item.learningOutcomeName}|${item.aspectName}|${item.toolName}`;
+
+    existingMap[key] = item;
+});
+
+
+    return res.render("theme/themeMathFourFive", { themeData, subject, studentClass, section, studentData, existingThemeData,
+      existingMap,terminal,
+        toolDoc,...await getSidenavData(req),editing: true });
+  }else
+  {
+  
+
   const existingMap = {};
 
 existingData.forEach(item => {
@@ -254,7 +283,7 @@ const aspectcontainerData = await AspectContainer.findOne({ subject: subject, st
   existingMap,aspectcontainerData,terminal,
     toolDoc,...await getSidenavData(req),editing: true });
   }
-
+}
   if(subject.toLowerCase() === "hamro serofero" || subject.toLowerCase() === "hamro serophero") {
   const existingMap = {};
 

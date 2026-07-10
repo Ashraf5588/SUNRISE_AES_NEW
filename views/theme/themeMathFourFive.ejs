@@ -62,7 +62,7 @@
 <div class="theme-selector-row">
   <div class="theme-selector-group">
     <label for="classsectionselect">Class & Section</label>
-    <select onchange="changeClassSection()" id="classsectionselect">
+    <select onchange="window.location.href = '/themeform?studentClass=' + this.value.split(' - ')[0] + '&section=' + this.value.split(' - ')[1] + '&terminal=<%= terminal %>&subject=<%= subject %>'" id="classsectionselect">
       <option disabled selected><%= studentClass %> - <%= section %></option>
       <%studentClassdata.forEach(data => { %>
         <option value="<%= data.studentClass %> - <%= data.section %>"><%= data.studentClass %> - <%= data.section %></option>
@@ -87,7 +87,7 @@
   
     Select theme:
     <select id="themeselect" onchange="filterLO()">
-      <option disabled selected>Select Theme</option>
+      <option disabled selected>Select Unit</option>
       <%themeData.forEach(data => { %>
         <% data.themes.forEach((theme,themeIndex) => { %>
           <option value="<%= theme.themeName %>" data-themeIndex="<%= themeIndex %>"><%=themeIndex+1%>.<%= theme.themeName %></option>
@@ -96,7 +96,7 @@
    
     </select> 
      <select id="aspectselect" onchange="filterAspect()" name="aspectName">
-        <option disabled selected>Select Aspect</option>
+        <option disabled selected>Select Topic</option>
        
     </select>
     
@@ -197,7 +197,7 @@ selectedTheme.learningOutcome.forEach((lo) => {
     });
 });
 
-aspectButton.appendChild(new Option('Select Aspect', '', true, true));
+aspectButton.appendChild(new Option('Select Topic', '', true, true));
 
 uniqueAspects.forEach((index, aspectName) => {
     console.log(aspectName, index);
@@ -238,150 +238,191 @@ uniqueAspects.forEach((index, aspectName) => {
 </script>
 
 <script>
-  function changeLo() {
-    const selectedThemeIndex =
-        document.getElementById("themeselect").selectedOptions[0].dataset.themeindex;
-
-    const selectedLOIndex =
-        document.getElementById("learningoutcomeselect").selectedIndex-1;
-        console.log("Selected LO Index:", selectedLOIndex);
-
-    // adding name for selected lo to save in db
-    // document.getElementById('selectedLOName').name = `subjects[0][themes][${selectedThemeIndex}][learningOutcome][${selectedLOIndex}][learningOutcomeName]`;
-    document.getElementById('selectedLOName').value = themeData[0].themes[selectedThemeIndex].learningOutcome[selectedLOIndex].learningOutcomeName;
-  }
-</script>
-<script>
-function showTable() {
+    function showTable() {
     const tables = document.querySelectorAll(".themeTable");
     const indicatorTDs = document.querySelectorAll("#indicatorTD");
     const obtmarksbeforeTDs = document.querySelectorAll("#obtmarksbefore");
     const obtmarksafterTDs = document.querySelectorAll("#obtmarksafter");
 
-    const selectedThemeIndex =
-        document.getElementById("themeselect")
-            .selectedOptions[0]
-            .dataset.themeindex;
-        const selectedAspectIndex= parseInt(document.getElementById("aspectselect").selectedOptions[0].dataset.aspectIndex);
-        console.log("Selected Aspect Index:", selectedAspectIndex);
+    const selectedThemeIndex = document.getElementById("themeselect")
+        .selectedOptions[0].dataset.themeindex;
+    
+    const selectedAspectName = document.getElementById("aspectselect").value;
+    console.log("Selected Aspect Name:", selectedAspectName);
 
-    const selectedLOIndex =
-        document.getElementById("learningoutcomeselect").selectedIndex - 1;
+    const selectedLOName = document.getElementById("learningoutcomeselect").value;
+    console.log("Selected LO Name:", selectedLOName);
+
+    // Check if valid selections are made
+    if (!selectedLOName || selectedLOName === "Select Learning Outcome") {
+        console.log("No valid Learning Outcome selected");
+        tables[0].style.display = "none";
+        return;
+    }
 
     tables[0].style.display = "block";
 
-    const studentData =
-        JSON.parse(document.getElementById("studentData").value);
+    const studentData = JSON.parse(document.getElementById("studentData").value);
+    const selectedToolName = document.getElementById("toolselect").value;
+    document.getElementById("toolname").value = selectedToolName;
 
-    const selectedToolName =
-        document.getElementById("toolselect").value;
+    const existingMap = JSON.parse(document.getElementById("existingMap").value);
 
-    document.getElementById("toolname").value =
-        selectedToolName;
-        const selectedAspect = document.getElementById("aspectselect").value;
+    // Find the LO by name
+    let selectedLO = null;
+    let actualLOIndex = -1;
+    const theme = themeData[0].themes[selectedThemeIndex];
+    
+    theme.learningOutcome.forEach((lo, index) => {
+        if (lo.learningOutcomeName === selectedLOName) {
+            selectedLO = lo;
+            actualLOIndex = index;
+            console.log("Found LO at index:", index);
+        }
+    });
 
+    if (!selectedLO) {
+        console.log("LO not found");
+        tables[0].style.display = "none";
+        return;
+    }
 
-    const existingMap =
-        JSON.parse(document.getElementById("existingMap").value);
+    console.log("Selected LO:", selectedLO.learningOutcomeName);
+
+    // Find the aspect within this LO's assessmentAspects that matches the selected aspect name
+    const aspectIndex = selectedLO.assessmentAspects.findIndex(
+        aspect => aspect.aspectName === selectedAspectName
+    );
+    console.log("Aspect Index within LO:", aspectIndex);
+
+    if (aspectIndex === -1) {
+        console.log("No matching aspect found in this Learning Outcome");
+        tables[0].style.display = "none";
+        return;
+    }
+
+    // Get the tools from the correct aspect
+    const tools = selectedLO.assessmentAspects[aspectIndex].tools;
+    console.log("Tools found:", tools);
+
+    if (!tools || tools.length === 0) {
+        console.log("No tools found for this aspect");
+        tables[0].style.display = "none";
+        return;
+    }
+
+    const indicators = tools[0].indicators;
+    console.log("Indicators found:", indicators);
 
     studentData.forEach((student, i) => {
-
         indicatorTDs[i].innerHTML = "";
         obtmarksbeforeTDs[i].innerHTML = "";
         obtmarksafterTDs[i].innerHTML = "";
 
-        const key =
-            `${student.reg}|` +`${themeData[0].themes[selectedThemeIndex].themeName}|` + `${themeData[0].themes[selectedThemeIndex]
-                .learningOutcome[selectedLOIndex]
-                .learningOutcomeName}|` + `${selectedAspect}|` +
-            `${selectedToolName}`;
+        const key = `${student.reg}|${theme.themeName}|${selectedLO.learningOutcomeName}|${selectedAspectName}|${selectedToolName}`;
 
         const existingRecord = existingMap[key];
-
         console.log("Existing Record:", existingRecord);
-      if (existingRecord) {
-    document.querySelectorAll(".studentDateBefore")[i].value =
-        existingRecord?.evalDateBefore || "";
 
-    document.querySelectorAll(".studentDateAfter")[i].value =
-        existingRecord?.evalDateAfter || "";
-}
+        if (existingRecord) {
+            document.querySelectorAll(".studentDateBefore")[i].value = existingRecord?.evalDateBefore || "";
+            document.querySelectorAll(".studentDateAfter")[i].value = existingRecord?.evalDateAfter || "";
+        }
 
-        themeData[0]
-            .themes[selectedThemeIndex]
-            .learningOutcome[selectedLOIndex]
-            .assessmentAspects[selectedAspectIndex]
-            .tools[0]
-            .indicators
-            .forEach((indicator, index) => {
+        indicators.forEach((indicator, index) => {
+            // Indicator name
+            const indicatorName = document.createElement("div");
+            indicatorName.className = "indicator-name";
+            indicatorName.textContent = indicator.indicatorName;
+            indicatorTDs[i].appendChild(indicatorName);
 
-                // Indicator name
-                const indicatorName = document.createElement("div");
-                indicatorName.className = "indicator-name";
-                indicatorName.textContent = indicator.indicatorName;
-                indicatorTDs[i].appendChild(indicatorName);
+            const indicatorDivider = document.createElement("div");
+            indicatorDivider.className = "indicator-separator";
+            indicatorTDs[i].appendChild(indicatorDivider);
+            
+            // BEFORE RADIO
+            const beforeLabel = document.createElement("label");
+            beforeLabel.className = "mark-option-button";
+            beforeLabel.htmlFor = `before_${i}_${index}`;
 
-                const indicatorDivider = document.createElement("div");
-                indicatorDivider.className = "indicator-separator";
-                indicatorTDs[i].appendChild(indicatorDivider);
-                // BEFORE RADIO (wrapped in a touch-friendly button label)
-                const beforeLabel = document.createElement("label");
-                beforeLabel.className = "mark-option-button";
-                beforeLabel.htmlFor = `before_${i}_${index}`;
+            const radioBefore = document.createElement("input");
+            radioBefore.type = "radio";
+            radioBefore.name = `students[${student.reg}][obtainedMarksBefore]`;
+            radioBefore.value = indicator.maxMarks;
+            radioBefore.id = `before_${i}_${index}`;
 
-                const radioBefore = document.createElement("input");
-                radioBefore.type = "radio";
-                radioBefore.name = `students[${student.reg}][obtainedMarksBefore]`;
-                radioBefore.value = indicator.maxMarks;
-                radioBefore.id = `before_${i}_${index}`;
+            if (existingRecord && Number(existingRecord.obtainedMarksBefore) === Number(indicator.maxMarks)) {
+                console.log(`Checking radio for indicator ${index} with maxMarks ${indicator.maxMarks}`);
+                radioBefore.checked = true;
+            }
 
-                if (
-                    existingRecord &&
-                    Number(existingRecord.obtainedMarksBefore) ===
-                    Number(indicator.maxMarks)
-                ) {
-                    radioBefore.checked = true;
-                }
+            const beforeValue = document.createElement("span");
+            beforeValue.className = "mark-option-label";
+            beforeValue.textContent = indicator.maxMarks;
 
-                const beforeValue = document.createElement("span");
-                beforeValue.className = "mark-option-label";
-                beforeValue.textContent = indicator.maxMarks;
+            beforeLabel.appendChild(radioBefore);
+            beforeLabel.appendChild(beforeValue);
+            obtmarksbeforeTDs[i].appendChild(beforeLabel);
 
-                beforeLabel.appendChild(radioBefore);
-                beforeLabel.appendChild(beforeValue);
-                obtmarksbeforeTDs[i].appendChild(beforeLabel);
+            // AFTER RADIO
+            const afterLabel = document.createElement("label");
+            afterLabel.className = "mark-option-button";
+            afterLabel.htmlFor = `after_${i}_${index}`;
 
-                // AFTER RADIO (wrapped in a touch-friendly button label)
-                const afterLabel = document.createElement("label");
-                afterLabel.className = "mark-option-button";
-                afterLabel.htmlFor = `after_${i}_${index}`;
+            const radioAfter = document.createElement("input");
+            radioAfter.type = "radio";
+            radioAfter.name = `students[${student.reg}][obtainedMarksAfter]`;
+            radioAfter.value = indicator.maxMarks;
+            radioAfter.id = `after_${i}_${index}`;
 
-                const radioAfter = document.createElement("input");
-                radioAfter.type = "radio";
-                radioAfter.name = `students[${student.reg}][obtainedMarksAfter]`;
-                radioAfter.value = indicator.maxMarks;
-                radioAfter.id = `after_${i}_${index}`;
+            if (existingRecord && Number(existingRecord.obtainedMarksAfter) === Number(indicator.maxMarks)) {
+                console.log(`Checking radio for indicator ${index} with maxMarks ${indicator.maxMarks}`);
+                radioAfter.checked = true;
+            }
 
-                if (
-                    existingRecord &&
-                    Number(existingRecord.obtainedMarksAfter) ===
-                    Number(indicator.maxMarks)
-                ) {
-                    radioAfter.checked = true;
-                }
+            const afterValue = document.createElement("span");
+            afterValue.className = "mark-option-label";
+            afterValue.textContent = indicator.maxMarks;
 
-                const afterValue = document.createElement("span");
-                afterValue.className = "mark-option-label";
-                afterValue.textContent = indicator.maxMarks;
-
-                afterLabel.appendChild(radioAfter);
-                afterLabel.appendChild(afterValue);
-                obtmarksafterTDs[i].appendChild(afterLabel);
-            });
+            afterLabel.appendChild(radioAfter);
+            afterLabel.appendChild(afterValue);
+            obtmarksafterTDs[i].appendChild(afterLabel);
+        });
     });
 }
+    </script>
 
-
+<script>
+ function changeLo() {
+    const selectedThemeIndex = document.getElementById("themeselect").selectedOptions[0].dataset.themeindex;
+    const selectedLOName = document.getElementById("learningoutcomeselect").value;
+    
+    console.log("Selected LO Name:", selectedLOName);
+    
+    if (selectedLOName && selectedLOName !== "Select Learning Outcome") {
+        // Find the actual LO index by name
+        const themeData = JSON.parse(document.getElementById("themeData").value);
+        const theme = themeData[0].themes[selectedThemeIndex];
+        
+        let foundLOIndex = -1;
+        theme.learningOutcome.forEach((lo, index) => {
+            if (lo.learningOutcomeName === selectedLOName) {
+                foundLOIndex = index;
+                console.log("Found LO at index:", index);
+            }
+        });
+        
+        if (foundLOIndex >= 0) {
+            document.getElementById('selectedLOName').value = selectedLOName;
+            showTable();
+        } else {
+            console.log("LO not found in theme");
+            document.querySelector(".themeTable").style.display = "none";
+        }
+    } else {
+        document.querySelector(".themeTable").style.display = "none";
+    }
+}
 </script>
    <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
         <script type="text/javascript">
@@ -410,7 +451,7 @@ function showTable() {
 document.getElementById("learningoutcomeselect").addEventListener("change", function() {
     changeLo();
     document.getElementById("toolselect").selectedIndex = 0; // Reset tool selection
-    showTable();
+
 });
 document.getElementById("toolselect").addEventListener("change", function() {
     showTable();
@@ -439,86 +480,44 @@ document.getElementById("aspectselect").addEventListener("change", function() {
 
     <script>
 function filterAspect() {
+    const selectedAspect = document.getElementById("aspectselect").value;
+    console.log("Selected Aspect:", selectedAspect);
 
-    const selectedAspect =
-        document.getElementById("aspectselect").value;
-      
+    const selectedThemeIndex = document.getElementById("themeselect")
+        .selectedOptions[0].dataset.themeindex;
 
-    const selectedThemeIndex =
-        document.getElementById("themeselect")
-            .selectedOptions[0]
-            .dataset.themeindex;
-
-    const learningOutcomeSelect =
-        document.getElementById("learningoutcomeselect");
-
+    const learningOutcomeSelect = document.getElementById("learningoutcomeselect");
     learningOutcomeSelect.innerHTML = "";
 
     // default option
-    const defaultOption =
-        document.createElement("option");
-
-    defaultOption.textContent =
-        "Select Learning Outcome";
-
+    const defaultOption = document.createElement("option");
+    defaultOption.textContent = "Select Learning Outcome";
     defaultOption.disabled = true;
     defaultOption.selected = true;
-
     learningOutcomeSelect.appendChild(defaultOption);
 
-    const selectedTheme =
-        themeData[0].themes[selectedThemeIndex];
+    const selectedTheme = themeData[0].themes[selectedThemeIndex];
 
-    selectedTheme.learningOutcome.forEach(lo => {
+    let foundLOs = [];
+    selectedTheme.learningOutcome.forEach((lo, index) => {
+        const hasAspect = lo.assessmentAspects.some(aspect => 
+            aspect.aspectName === selectedAspect
+        );
 
-        const hasAspect =
-            lo.assessmentAspects.some(aspect =>
-                    aspect.aspectName === selectedAspect
-    );
-
-        if(hasAspect){
-
-            const option =
-                document.createElement("option");
-
-            option.value =
-                lo.learningOutcomeName;
-
-            option.textContent =
-                lo.learningOutcomeName;
-
+        if (hasAspect) {
+            foundLOs.push({
+                index: index,
+                name: lo.learningOutcomeName
+            });
+            const option = document.createElement("option");
+            option.value = lo.learningOutcomeName;
+            option.textContent = lo.learningOutcomeName;
             learningOutcomeSelect.appendChild(option);
         }
     });
+
+    console.log("Available Learning Outcomes for this aspect:", foundLOs);
 }
-</script>
- <script>
-        
-        function loadDate() {
-            const masterDateBefore = document.querySelector(".masterDateBefore").value;
-            const masterDateAfter = document.querySelector(".masterDateAfter").value;
-
-            document.querySelectorAll(".studentDateBefore").forEach(input => {
-                input.value = masterDateBefore;
-            });
-
-            document.querySelectorAll(".studentDateAfter").forEach(input => {
-                input.value = masterDateAfter;
-            });
-        }
-    </script>
-    <script>
-      function changeClassSection() {
-        const select = document.querySelector('select[onchange="changeClassSection()"]');
-        const selectedValue = select.value;
-        const [newClass, newSection] = selectedValue.split(' - ');
-
-        const urlParams = new URLSearchParams(window.location.search);
-        urlParams.set('studentClass', newClass);
-        urlParams.set('section', newSection);
-
-        window.location.search = urlParams.toString();
-      }
     </script>
 
     
