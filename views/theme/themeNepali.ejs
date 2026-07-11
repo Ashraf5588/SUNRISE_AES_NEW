@@ -327,6 +327,20 @@ function showTable() {
                 radioBefore.name = `students[${student.reg}][obtainedMarksBefore]`;
                 radioBefore.value = indicator.maxMarks;
                 radioBefore.id = `before_${i}_${index}`;
+                radioBefore.addEventListener("change", function () {
+            
+    const afterRadios = document.querySelectorAll(
+    `input[name="students[${student.reg}][obtainedMarksAfter]"]`
+    );
+
+    afterRadios.forEach(r => r.checked = false);
+
+if (this.value === "4") {
+    const match = [...afterRadios].find(r => r.value === "4");
+    if (match) match.checked = true;
+}
+    });
+
 
                 if (
                     existingRecord &&
