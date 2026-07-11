@@ -11,6 +11,9 @@ const { studentSchema } = require("../model/schema");
 const { studentrecordschema } = require("../model/adminschema");
 const { classSchema, subjectSchema,terminalSchema,newsubjectSchema } = require("../model/adminschema");
 const {examSchema}= require("../model/examschema");
+const { onlineAttendanceSchema } = require("../model/onlineattendanceschema");
+const { holidaySchema } = require("../model/holidayschema");
+const bs = require("bikram-sambat-js");
 const { name } = require("ejs");
 const subjectlist = mongoose.model("subjectlist", subjectSchema, "subjectlist");
 const studentClass = mongoose.model("studentClass", classSchema, "classlist");
@@ -25,6 +28,78 @@ const newsubject = mongoose.model("newsubject", newsubjectSchema, "newsubject");
 const { marksheetsetupschemaForAdmin } = require("../model/marksheetschema");
 const marksheetSetup = mongoose.model("marksheetSetup", marksheetsetupschemaForAdmin, "marksheetSetup");
 const upload = multer({ dest: "uploads/" });
+const onlineAttendance = mongoose.model("onlineAttendance", onlineAttendanceSchema, "onlineAttendance");
+const holiday = mongoose.model("holiday", holidaySchema, "holiday");
+
+const BS_MONTH_NAMES = {
+  1: "Baisakh",
+  2: "Jestha",
+  3: "Asar",
+  4: "Shrawan",
+  5: "Bhadra",
+  6: "Ashwin",
+  7: "Kartik",
+  8: "Mangsir",
+  9: "Poush",
+  10: "Magh",
+  11: "Falgun",
+  12: "Chaitra"
+};
+
+const BS_MONTH_LENGTHS = {
+  Baisakh: 30,
+  Jestha: 31,
+  Asar: 31,
+  Shrawan: 31,
+  Bhadra: 30,
+  Ashwin: 30,
+  Kartik: 29,
+  Mangsir: 29,
+  Poush: 30,
+  Magh: 29,
+  Falgun: 30,
+  Chaitra: 30
+};
+
+const MONTH_KEY_ALIASES = {
+  asar: "Asar",
+  ashar: "Asar",
+  ashadh: "Asar",
+  baisakh: "Baisakh",
+  jestha: "Jestha",
+  shrawan: "Shrawan",
+  bhadra: "Bhadra",
+  ashwin: "Ashwin",
+  ashoj: "Ashwin",
+  kartik: "Kartik",
+  mangsir: "Mangsir",
+  poush: "Poush",
+  magh: "Magh",
+  falgun: "Falgun",
+  chaitra: "Chaitra"
+};
+
+const normalizeText = (value) => String(value || "").trim().toLowerCase();
+
+const getStatusIsAbsent = (status) => {
+  const normalizedStatus = normalizeText(status);
+  return ["absent", "a", "false", "0"].includes(normalizedStatus);
+};
+
+const getCanonicalMonthName = (monthName) => {
+  return MONTH_KEY_ALIASES[normalizeText(monthName)] || String(monthName || "").trim();
+};
+
+const getBsMonthNumber = (monthName) => {
+  const canonicalMonthName = getCanonicalMonthName(monthName);
+  const monthEntry = Object.entries(BS_MONTH_NAMES).find(([, value]) => normalizeText(value) === normalizeText(canonicalMonthName));
+  return Number.parseInt(monthEntry?.[0], 10) || 0;
+};
+
+const getBsMonthLength = (monthName) => {
+  return BS_MONTH_LENGTHS[String(monthName || "").trim()] || 30;
+};
+
 const getSlipModel = () => {
   // to Check if model already exists
   if (mongoose.models[`exam_marks`]) {
@@ -262,10 +337,96 @@ exports.getPreviousmarks= async (req,res,next)=>
 exports.getAttendanceData= async (req,res,next)=>
 {
   try{
-    const {studentClass,section,academicYear,terminal}= req.query;
-    const attendanceModel = getSlipModel();
-    const attendanceData = await attendanceModel.find({terminal:terminal,studentClass:studentClass,section:section,academicYear:academicYear}).lean();
-    res.json(attendanceData);
+    const {studentClass,section,academicYear} = req.query;
+
+    if (!studentClass || !section || !academicYear) {
+      return res.json([]);
+    }
+
+    const normalizedAcademicYear = String(academicYear).trim();
+    const currentBsDate = String(bs.ADToBS(new Date()) || "").trim();
+    const [currentNepaliYear, currentNepaliMonthNumber, currentNepaliDayNumber] = currentBsDate.split("-");
+    const currentNepaliMonth = BS_MONTH_NAMES[Number.parseInt(currentNepaliMonthNumber, 10)] || "";
+    const currentDay = Number.parseInt(currentNepaliDayNumber, 10) || 0;
+    const currentMonthNumber = Number.parseInt(currentNepaliMonthNumber, 10) || 0;
+
+    const holidayDoc = await holiday.findOne({ academicYear: normalizedAcademicYear }).lean();
+    const holidayMonthMap = new Map(
+      Array.isArray(holidayDoc?.month)
+        ? holidayDoc.month.map((monthItem) => [getCanonicalMonthName(monthItem?.monthName), Array.isArray(monthItem?.holidayDays) ? monthItem.holidayDays.map((dayValue) => Number(dayValue)) : []])
+        : []
+    );
+
+    let totalWorkingDaysUptoToday = 0;
+    for (let monthIndex = 1; monthIndex <= currentMonthNumber; monthIndex += 1) {
+      const monthName = BS_MONTH_NAMES[monthIndex];
+      const monthLength = getBsMonthLength(monthName);
+      const monthDayLimit = monthIndex === currentMonthNumber ? currentDay : monthLength;
+      const holidayDaysForMonth = holidayMonthMap.get(getCanonicalMonthName(monthName)) || [];
+      const holidayDaysUntilLimit = holidayDaysForMonth.filter((dayValue) => Number.isFinite(dayValue) && dayValue <= monthDayLimit);
+
+      totalWorkingDaysUptoToday += Math.max(monthDayLimit - holidayDaysUntilLimit.length, 0);
+    }
+
+    const onlineAttendanceDocs = await onlineAttendance
+      .find({ studentClass: String(studentClass).trim(), section: String(section).trim(), academicYear: normalizedAcademicYear })
+      .lean();
+
+    const calculatedAttendance = onlineAttendanceDocs.map((onlineDoc) => {
+      const reg = String(onlineDoc?.reg || "").trim();
+      const attendanceEntries = Array.isArray(onlineDoc?.attendance) ? onlineDoc.attendance : [];
+
+      let absentDays = 0;
+      attendanceEntries.forEach((entry) => {
+        const entryAcademicYear = String(entry?.academicYear || "").trim();
+        if (entryAcademicYear !== normalizedAcademicYear) {
+          return;
+        }
+
+        const entryMonthName = String(entry?.month || "").trim();
+        const entryMonthNumber = getBsMonthNumber(entryMonthName);
+        if (!entryMonthNumber || entryMonthNumber > currentMonthNumber) {
+          return;
+        }
+
+        const entryDay = Number.parseInt(entry?.day, 10);
+        if (!Number.isFinite(entryDay)) {
+          return;
+        }
+
+        const monthDayLimit = entryMonthNumber === currentMonthNumber ? currentDay : getBsMonthLength(BS_MONTH_NAMES[entryMonthNumber]);
+        if (entryDay > monthDayLimit) {
+          return;
+        }
+
+        const holidayDaysForMonth = holidayMonthMap.get(getCanonicalMonthName(entryMonthName)) || [];
+        if (holidayDaysForMonth.includes(entryDay)) {
+          return;
+        }
+
+        if (getStatusIsAbsent(entry?.status)) {
+          absentDays += 1;
+        }
+      });
+
+      const presentDays = Math.max(totalWorkingDaysUptoToday - absentDays, 0);
+
+      return {
+        reg,
+        roll: onlineDoc?.roll || "",
+        name: onlineDoc?.name || "",
+        gender: onlineDoc?.gender || "",
+        attendance: presentDays,
+        totalWorkingDaysUptoToday,
+        holidayDaysInAcademicYear: (holidayDoc?.month || []).reduce((count, monthItem) => count + (Array.isArray(monthItem?.holidayDays) ? monthItem.holidayDays.length : 0), 0),
+        absentDays,
+        currentMonth: currentNepaliMonth,
+        currentDay,
+        currentAcademicYear: normalizedAcademicYear,
+      };
+    });
+
+    res.json(calculatedAttendance);
   }
   catch(err)
   {

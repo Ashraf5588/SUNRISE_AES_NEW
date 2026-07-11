@@ -274,104 +274,73 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
   console.log(`  - section: "${section}"`);
   console.log(`  - academicYear: "${academicYear}"`);
   console.log(`  - terminal: "${terminal}"`);
-  
-  const fetchUrl = `/getPreviousmarks?subject=${encodeURIComponent(subject)}&studentClass=${studentClass}&section=${section}&academicYear=${academicYear}&terminal=${terminal}`;
-  console.log(`📡 Fetch URL: ${fetchUrl}`);
-  
+
+  const fetchUrl = `/getPreviousmarks?subject=${encodeURIComponent(subject)}&studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}&terminal=${encodeURIComponent(terminal)}`;
+  const attendanceDataUrl = `/getAttendanceData?studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}`;
+
   try {
     const data = await fetch(fetchUrl);
-    console.log(`📡 Fetch response status: ${data.status} ${data.statusText}`);
-    
-    if (!data.ok) {
-      console.error(`❌ Fetch failed with status ${data.status}`);
-      const errorText = await data.text();
-      console.error(`Error response: ${errorText}`);
-      return;
-    }
-    
     const result = await data.json();
+    const attendanceResponse = await fetch(attendanceDataUrl);
+    const attendanceResult = await attendanceResponse.json();
+
     console.log("✓ Fetched Previous Marks - Full Response:", JSON.stringify(result, null, 2));
     console.log(`Found ${result.length} records in DB`);
-    
+
     if (result.length > 0) {
       console.log("📋 First record details:", result[0]);
     } else {
       console.warn("⚠️ No records found for this filter");
     }
 
-    // Find the MAXIMUM totalWorksheet count among all students
     let maxTotalWorksheet = 0;
     if(result.length > 0) {
       maxTotalWorksheet = Math.max(...result.map(item => item.totalWorksheet || 0));
       console.log(`📊 Maximum totalWorksheet across all students: ${maxTotalWorksheet}`);
     }
     console.log(`📋 Will create ${maxTotalWorksheet} columns in UI`);
-    
-    // Set the totalWorksheet value and trigger sync to create columns
+
     document.getElementById('totalWorksheet').value = maxTotalWorksheet;
     document.getElementById('totalWorksheet').dispatchEvent(new Event('input'));
-    
-    // Wait longer for columns to be created and DOM to update
+	
     await new Promise(resolve => setTimeout(resolve, 300));
     console.log("✓ Columns recreated, waiting for DOM update");
 
-    const attendanceData = await fetch(`/getAttendanceData?subject=${subject}&studentClass=${studentClass}&section=${section}&academicYear=${academicYear}&terminal=${terminal}`);
-    const attendanceResult = await attendanceData.json();
-    
     if(result.length > 0) {
       console.log("Populating marks and worksheet data...");
       result.forEach((item) => {
         const reg = item.reg;
-        console.log(`  Processing student reg: ${reg}`);
-        console.log(`    Raw item data:`, item);
-        console.log(`    Student's totalWorksheet: ${item.totalWorksheet}`);
-        
-        // Get or create input elements
         let theoryInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
         let attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
-        
+
         if(!theoryInput || !attendanceInput) {
           console.warn(`    ⚠️ Marks inputs not found for reg ${reg}, skipping marks population`);
         } else {
           theoryInput.value = item.theorymarks || 0;
-          attendanceInput.value = item.attendance || 0;
-          
+          attendanceInput.value = '';
+
           theoryInput.dispatchEvent(new Event('input'));
-          attendanceInput.dispatchEvent(new Event('input'));
-          console.log(`    ✓ Marks populated: theory=${item.theorymarks}, attendance=${item.attendance}`);
+          console.log(`    ✓ Marks populated: theory=${item.theorymarks}`);
         }
-        
-        // Populate worksheet grade selects - NOW WITH MAX COLUMNS
-        console.log(`    Looking for ${maxTotalWorksheet} worksheet grade selects for reg ${reg}`);
+
         const worksheetSelects = document.querySelectorAll(`select[name="worksheetGrades[${reg}][]"]`);
-        console.log(`    Found ${worksheetSelects.length} worksheet grade selects in DOM`);
-        
-        // Handle worksheetGrades - could be array or string
         let worksheetGrades = item.worksheetGrades;
         if (typeof worksheetGrades === 'string') {
           worksheetGrades = worksheetGrades.split(',').map(g => g.trim()).filter(g => g !== '');
-          console.log(`    Converted string worksheetGrades to array:`, worksheetGrades);
         } else if (!Array.isArray(worksheetGrades)) {
           worksheetGrades = [];
         }
-        
-        console.log(`    Worksheet grades data from DB:`, worksheetGrades);
-        
+
         if(worksheetSelects.length > 0) {
           worksheetSelects.forEach((select, index) => {
             const value = worksheetGrades[index] || '';
-            console.log(`      Setting select[${index}] to value: "${value}"`);
             select.value = value;
           });
-          console.log(`    ✓ All ${worksheetSelects.length} worksheet grades populated`);
-        } else {
-          console.warn(`    ⚠️ No worksheet grade selects found for reg ${reg}`);
         }
       });
       console.log("✓ All student data populated");
     } else {
       console.log("No previous data found - initializing with zero values");
-      // Initialize default records so DB has data to retrieve next time
       await initializeStudentRecords(subject, studentClass, section, academicYear, terminal);
     }
 
@@ -381,14 +350,13 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
         const reg = item.reg;
         const attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
         if(attendanceInput) {
-          attendanceInput.value = item.attendance;
+          attendanceInput.value = Number(item.attendance) || 0;
           attendanceInput.dispatchEvent(new Event('input'));
         }
       });
       console.log("✓ Attendance data populated");
     }
-    
-    // Page load complete - now enable autosave for manual +/- clicks
+
     isPageLoading = false;
     console.log("✓ Page load complete - autosave enabled");
     console.log("=== populateData COMPLETED ===");

@@ -336,68 +336,67 @@ const terminalMarks = parseFloat(document.getElementById(`terminalmarks_${reg}`)
 }
 async function populateData(subject,studentClass,section,academicYear,terminal)
 {
-  const data = await fetch(`/getPreviousmarks?subject=${subject}&studentClass=${studentClass}&section=${section}&academicYear=${academicYear}&terminal=${terminal}`);
-  const result = await data.json();
+  const previousMarksUrl = `/getPreviousmarks?subject=${encodeURIComponent(subject)}&studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}&terminal=${encodeURIComponent(terminal)}`;
+  const previousMarksResponse = await fetch(previousMarksUrl);
+  const result = await previousMarksResponse.json();
   console.log("Fetched Previous Marks:", result);
 
-  const attendanceData = await fetch(`/getAttendanceData?subject=${subject}&studentClass=${studentClass}&section=${section}&academicYear=${academicYear}&terminal=${terminal}`);
-  const attendanceResult = await attendanceData.json();
-if(result.length>0)
-{
-  result.forEach((item)=>
-  {
-    const reg = item.reg;
-    const theoryInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
-    const practicalInput = document.querySelector(`input[name="practicalmarks[${reg}]"]`);
-    const attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
-    const worksheetSelect = document.querySelector(`select[name="worksheetGrade[${reg}]"]`);
+  const attendanceDataUrl = `/getAttendanceData?studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}`;
+  const attendanceResponse = await fetch(attendanceDataUrl);
+  const attendanceResult = await attendanceResponse.json();
 
-    if(theoryInput) {
+  if(result.length>0)
+  {
+    result.forEach((item)=>
+    {
+      const reg = item.reg;
+      const theoryInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
+      const practicalInput = document.querySelector(`input[name="practicalmarks[${reg}]"]`);
+      const attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
+      const worksheetSelect = document.querySelector(`select[name="worksheetGrade[${reg}]"]`);
+
+      if(theoryInput) {
         theoryInput.value = item.theorymarks || '';
-        // Trigger input events to recalculate marks
         theoryInput.dispatchEvent(new Event('input'));
-    }
-    
-    if(practicalInput) {
+      }
+
+      if(practicalInput) {
         practicalInput.value = item.practicalmarks || '';
-        // Trigger input events if needed for practicals
         practicalInput.dispatchEvent(new Event('input'));
-    }
+      }
 
-    if(attendanceInput) {
-        attendanceInput.value = item.attendance || '';
-        // Trigger input events to recalculate marks
-        attendanceInput.dispatchEvent(new Event('input'));
-    }
+      if(attendanceInput) {
+        attendanceInput.value = '';
+      }
 
-    if(worksheetSelect) {
+      if(worksheetSelect) {
         setTimeout(()=>{
-             worksheetSelect.value = item.worksheetGrade;
+          worksheetSelect.value = item.worksheetGrade || '';
         },500);
-    }
-  });
-}
-else
-{
-  console.log("No previous data found");
-}
-if(attendanceResult.length>0)
-{
-  attendanceResult.forEach((item)=>
+      }
+    });
+  }
+  else
   {
-    const reg = item.reg;
-    const attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
-    if(attendanceInput) {
-        attendanceInput.value=item.attendance;
-        // Trigger input events to recalculate marks
+    console.log("No previous data found");
+  }
+
+  if(attendanceResult.length>0)
+  {
+    attendanceResult.forEach((item)=>
+    {
+      const reg = item.reg;
+      const attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
+      if(attendanceInput) {
+        attendanceInput.value = Number(item.attendance) || 0;
         attendanceInput.dispatchEvent(new Event('input'));
-    }
-  });
-}
-else
-{
-  console.log("No attendance data found");
-}
+      }
+    });
+  }
+  else
+  {
+    console.log("No attendance data found");
+  }
 }
 
 

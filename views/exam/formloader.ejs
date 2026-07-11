@@ -200,7 +200,7 @@
     <div class="form-row">
       <div class="form-group">
         <label for="subject">Subject <span class="required">*</span></label>
-        <select name="subject" id="subject">
+        <select name="subject" id="subject" required>
           <option value="">Choose subject</option>
           <% uniqueSubjects = new Set(subjects.map((subject)=>subject.newsubject)) %>
           <%uniqueSubjects.forEach((subject)=>{%>
@@ -209,9 +209,9 @@
         </select>
       </div>
 
-      <div class="form-group">
+      <div class="form-group" >
         <label for="classSection">Class & Section <span class="required">*</span></label>
-        <select name="classSection" id="classSection">
+        <select name="classSection" id="classSection" required>
           <option value="" selected disabled>Choose class & section</option>
           <% studentClassdata.forEach((data)=>{%>
             <option value="<%=data.studentClass%>-<%=data.section%>"><%=data.studentClass%>-<%=data.section%></option>
@@ -223,7 +223,7 @@
     <div class="form-row">
       <div class="form-group">
         <label for="terminal">Terminal <span class="required">*</span></label>
-        <select name="terminals" id="terminal">
+        <select name="terminals" id="terminal" required>
           <option value="" selected disabled>Choose Terminal</option>
           <% marksheetSetups[0].terminals.forEach((terminal)=>{%>
             <option value="<%=terminal.name%>"><%=terminal.name%></option>
@@ -233,7 +233,7 @@
 
       <div class="form-group">
         <label for="academicYear">Academic Year <span class="required">*</span></label>
-        <select name="academicYear" id="academicYear">
+        <select name="academicYear" id="academicYear" required> 
           <option value="" selected disabled>Choose Academic Year</option>
           <% currentYear = Number(marksheetSetups[0].academicYear) %>;
             <% for (let i = 0; i < 5; i++) { %>
@@ -264,7 +264,42 @@
         const section = classSection.split("-")[1];
         const academicYear = document.getElementById('academicYear').value;
         const terminal = document.getElementById('terminal').value
-
+if(!selectedSubject)
+{
+  const selectsubjectbtn =  document.getElementById('subject');
+  selectsubjectbtn.style.borderColor = "red";
+  selectsubjectbtn.focus();
+  //add little shake effect
+  selectsubjectbtn.style.scale = "1.02"
+  return;
+}
+if(!studentClass || !section)
+{
+  const selectclassbtn =  document.getElementById('classSection');
+  selectclassbtn.style.borderColor = "red";
+  selectclassbtn.focus();
+  //add little shake effect
+  selectclassbtn.style.scale = "1.02"
+  return;
+}
+if(!terminal)
+{
+  const selectterminalbtn =  document.getElementById('terminal');
+  selectterminalbtn.style.borderColor = "red";
+  selectterminalbtn.focus();
+  //add little shake effect
+  selectterminalbtn.style.scale = "1.02"
+  return;
+}
+if(!academicYear)
+{
+  const selectacademicYearbtn =  document.getElementById('academicYear');
+  selectacademicYearbtn.style.borderColor = "red";
+  selectacademicYearbtn.focus();
+  //add little shake effect
+  selectacademicYearbtn.style.scale = "1.02"
+  return;
+}
         window.location.href=(`/entryform?studentClass=${studentClass}&section=${section}&subject=${selectedSubject}&terminal=${terminal}&academicYear=${academicYear}`)
       
     }
