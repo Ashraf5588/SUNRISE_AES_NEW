@@ -931,6 +931,7 @@
                                 </tr>
                               </thead>
                               <tbody>
+                                <% let projectCriteriaIndex = 0; %>
                                 <% projectFormatData.forEach(function(doc) { %>
                                   <% doc.themes.forEach(function(theme) { %>
                                     <% let themeRowspan = theme.learningOutcome.reduce((sum, lo) => sum + lo.indicators.length, 0); %>
@@ -962,14 +963,13 @@
                 <input type="radio"
                        value="<%= mark %>||<%= ind.indicatorName %>||<%= lo.learningOutcomeName %>"
                        class="marks-radio-project"
-                       name="unit[<%= idx %>][projectWorks][<%= prindx %>][criteria][<%= iIndex %>]"
+                       name="unit[<%= idx %>][projectWorks][<%= prindx %>][criteria][<%= projectCriteriaIndex %>]"
                        data-project="<%= idx %>-<%= prindx %>"
-                         data-criteria-index="<%= iIndex %>"
-                       data-input-id="project_input_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>"
-                       data-criteria-index="<%= iIndex %>"
-                       id="project_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>_<%= mark.replace('.', '_') %>">
+                       data-criteria-index="<%= projectCriteriaIndex %>"
+                       data-input-id="project_input_<%= idx %>_<%= prindx %>_<%= projectCriteriaIndex %>_<%= indIndex %>"
+                       id="project_<%= idx %>_<%= prindx %>_<%= projectCriteriaIndex %>_<%= indIndex %>_<%= mark.replace('.', '_') %>">
 
-                <label for="project_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>_<%= mark.replace('.', '_') %>">
+                <label for="project_<%= idx %>_<%= prindx %>_<%= projectCriteriaIndex %>_<%= indIndex %>_<%= mark.replace('.', '_') %>">
                     <%= mark %>
                 </label>
 
@@ -982,15 +982,15 @@
                max="<%= ind.indicatorsMarks %>"
                class="mark-input project-input"
                data-project="<%= idx %>-<%= prindx %>"
-               data-criteria-index="<%= iIndex %>"
+               data-criteria-index="<%= projectCriteriaIndex %>"
                data-max-mark="<%= ind.indicatorsMarks %>"
-               id="project_input_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>"
+               id="project_input_<%= idx %>_<%= prindx %>_<%= projectCriteriaIndex %>_<%= indIndex %>"
                placeholder="0-<%= ind.indicatorsMarks %>">
     </div>
 </td>
                                         </tr>
                                       <% }) %>
-                                      <% iIndex++ %>
+                                      <% projectCriteriaIndex++; %>
                                     <% }) %>
                                   <% }) %>
                                 <% }) %>
@@ -1187,29 +1187,28 @@
     // Handle project manual input
     document.querySelectorAll(".project-input").forEach(input => {
       input.addEventListener("input", function(e) {
-        let radioId = this.dataset.radioId;
-        let radio = document.getElementById(radioId);
         let value = this.value.trim();
         let maxMark = parseFloat(this.dataset.maxMark) || 0;
+        let projectGroup = this.dataset.project;
+        let criteriaIndex = this.dataset.criteriaIndex;
+        let radios = document.querySelectorAll(`.marks-radio-project[data-project="${projectGroup}"][data-criteria-index="${criteriaIndex}"]`);
         
         if (value) {
           let numValue = parseFloat(value);
           if (!isNaN(numValue) && numValue >= 0 && numValue <= maxMark) {
-            if (radio) {
-              let parts = radio.value.split('||');
-              parts[0] = value;
-              radio.value = parts.join('||');
-              radio.checked = true;
-              this.classList.add('has-value');
-              this.classList.remove('saved-value');
-            }
+            radios.forEach(radio => {
+              const radioMark = parseFloat(radio.value.split('||')[0]);
+              radio.checked = !Number.isNaN(radioMark) && Number(radioMark) === Number(numValue);
+            });
+            this.classList.add('has-value');
+            this.classList.remove('saved-value');
           } else {
-            if (radio) radio.checked = false;
+            radios.forEach(radio => radio.checked = false);
             this.classList.remove('has-value');
             this.classList.remove('saved-value');
           }
         } else {
-          if (radio) radio.checked = false;
+          radios.forEach(radio => radio.checked = false);
           this.classList.remove('has-value');
           this.classList.remove('saved-value');
         }
@@ -1219,20 +1218,19 @@
       input.addEventListener("blur", function(e) {
         let value = this.value.trim();
         let maxMark = parseFloat(this.dataset.maxMark) || 0;
+        let projectGroup = this.dataset.project;
+        let criteriaIndex = this.dataset.criteriaIndex;
+        let radios = document.querySelectorAll(`.marks-radio-project[data-project="${projectGroup}"][data-criteria-index="${criteriaIndex}"]`);
         
         if (value) {
           let numValue = parseFloat(value);
           if (!isNaN(numValue) && numValue >= 0 && numValue <= maxMark) {
-            let radioId = this.dataset.radioId;
-            let radio = document.getElementById(radioId);
-            if (radio) {
-              let parts = radio.value.split('||');
-              parts[0] = value;
-              radio.value = parts.join('||');
-              radio.checked = true;
-              this.classList.add('has-value');
-              this.classList.remove('saved-value');
-            }
+            radios.forEach(radio => {
+              const radioMark = parseFloat(radio.value.split('||')[0]);
+              radio.checked = !Number.isNaN(radioMark) && Number(radioMark) === Number(numValue);
+            });
+            this.classList.add('has-value');
+            this.classList.remove('saved-value');
           }
         }
         updateProjectTotal(this.dataset.project);
@@ -1258,6 +1256,19 @@ function setProjectInputValue(radio, mark) {
         input.classList.add('has-value');
         input.classList.add('saved-value');
     }
+}
+
+function syncSavedRadioSelection(selector, mark) {
+    if (mark === undefined || mark === null || mark === '') return;
+
+    const normalizedSavedMark = Number(mark);
+    if (Number.isNaN(normalizedSavedMark)) return;
+
+    const radios = document.querySelectorAll(selector);
+    radios.forEach(radio => {
+        const radioMark = parseFloat(radio.value.split('||')[0]);
+        radio.checked = !Number.isNaN(radioMark) && Number(radioMark) === normalizedSavedMark;
+    });
 }
 
 async function fill(roll, name, reg) {
@@ -1318,32 +1329,12 @@ async function fill(roll, name, reg) {
                 if (unit.practicals && Array.isArray(unit.practicals)) {
                     unit.practicals.forEach((practical, practicalIdx) => {
                         if (practical.criteria && Array.isArray(practical.criteria)) {
-                            // Get all inputs for this practical
-                            let allInputs = document.querySelectorAll(`.practical-input[data-practical="${unitIdx}-${practicalIdx}"]`);
-                            
-                            // Match criteria with inputs by index
                             practical.criteria.forEach((c, criteriaIdx) => {
-                                if (criteriaIdx < allInputs.length) {
-                                    let mark = c.practicalIndicatorMarks ? c.practicalIndicatorMarks.toString().trim() : '';
-                                    let input = allInputs[criteriaIdx];
-                                    
-                                    if (mark && input) {
-                                        // Set input value
-                                        input.value = mark;
-                                        input.classList.add('has-value');
-                                        input.classList.add('saved-value');
-                                        
-                                        // Find and check matching radio
-                         const radios = document.querySelectorAll(
-    `.marks-radio[data-practical="${unitIdx}-${practicalIdx}"]`
-);
-console.log("Radios for practical:", radios);
+                                let mark = c.practicalIndicatorMarks ? c.practicalIndicatorMarks.toString().trim() : '';
 
-radios.forEach(radio => {
-    const radioMark = radio.value.split("||")[0].trim();
-    radio.checked = Number(radioMark) === Number(mark);
-});
-                                    }
+                                if (mark) {
+                                    const radioSelector = `.marks-radio[name="unit[${unitIdx}][practicals][${practicalIdx}][criteria][${criteriaIdx}]"]`;
+                                    syncSavedRadioSelection(radioSelector, mark);
                                 }
                             });
                         }
@@ -1354,27 +1345,26 @@ radios.forEach(radio => {
                 if (unit.projectWorks && Array.isArray(unit.projectWorks)) {
                     unit.projectWorks.forEach((project, projectIdx) => {
                         if (project.criteria && Array.isArray(project.criteria)) {
-                            let allInputs = document.querySelectorAll(`.project-input[data-project="${unitIdx}-${projectIdx}"]`);
-                            
                             project.criteria.forEach((c, criteriaIdx) => {
-                                if (criteriaIdx < allInputs.length) {
-                                    let mark = c.projectIndicatorMarks ? c.projectIndicatorMarks.toString().trim() : '';
-                                    let input = allInputs[criteriaIdx];
-                                    
-                                    if (mark && input) {
-                                        input.value = mark;
-                                        input.classList.add('has-value');
-                                        input.classList.add('saved-value');
-                                        
-                                      const radios = document.querySelectorAll(
-    `.marks-radio[data-project="${unitIdx}-${projectIdx}"]`
-);
-console.log("Radios for project:", radios);
+                                let mark = c.projectIndicatorMarks ? c.projectIndicatorMarks.toString().trim() : '';
 
-radios.forEach(radio => {
-    const radioMark = radio.value.split("||")[0].trim();
-    radio.checked = Number(radioMark) === Number(mark);
-});
+                                if (mark) {
+                                    const radioSelector = `.marks-radio-project[name="unit[${unitIdx}][projectWorks][${projectIdx}][criteria][${criteriaIdx}]"]`;
+                                    const radios = document.querySelectorAll(radioSelector);
+                                    const matchingRadio = Array.from(radios).find(radio => {
+                                        const radioMark = parseFloat(radio.value.split('||')[0]);
+                                        return !Number.isNaN(radioMark) && Number(radioMark) === Number(mark);
+                                    });
+
+                                    if (matchingRadio) {
+                                        matchingRadio.checked = true;
+
+                                        const input = document.getElementById(matchingRadio.dataset.inputId);
+                                        if (input) {
+                                            input.value = mark;
+                                            input.classList.add('has-value');
+                                            input.classList.add('saved-value');
+                                        }
                                     }
                                 }
                             });
