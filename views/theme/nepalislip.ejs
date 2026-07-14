@@ -335,8 +335,8 @@
        <%=studentClass>8 ? 'सुनाइ, बोलाइ र पढाइ (१२)' : 'सुनाइ र बोलाइ(२०)' %></th>
        <th>
         <%=studentClass>8 ? 'सिर्जनात्मक कार्य र परियोजना कार्य तथा प्रस्तुति (४)' : 'पढाइ र लेखाइ(१६)' %></th>
-        <th>
-        <%=studentClass>8 ? 'Total Practical(16)' : 'Total Practical(36)' %></th>
+        
+    
       
        <th>Terminal Exam Marks (<%=studentClass>8 ? 6: 10 %>)</th>
        <th>Total</th>
@@ -406,7 +406,7 @@
             <td><%=(((totalObtainedAllProject)/16)*16)/ (lessonData[0].units.length) %></td>
           <%}%>
 
-           <td><%= student.terminalMarks %></td>
+           <td><%= student.terminalMarks || 'N/A' %></td>
 
            <% if(studentClass > 8 || studentClass == "NINE" || studentClass == "9" || studentClass == "Nine" || studentClass == "10" || studentClass == "Ten" || studentClass == "TEN") { %>
            <% totalPractical = (student.attendanceMarks+student.participationMarks+

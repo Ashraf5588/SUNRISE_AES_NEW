@@ -119,6 +119,7 @@
   <center><div style="font-weight: 800;">Class <%= studentClass %> - <%= section %> | <%= subject %> | <%= terminal %> Terminal- <%= academicYear %></div></center>
   
 
+  <% const isPrimaryLanguage36MarkSubject = (Number(studentClass) >= 4 && Number(studentClass) <= 8) && ['NEPALI', 'ENGLISH'].includes(String(subject || '').toUpperCase()); %>
   <form action="/entryform?<%= `studentClass=${studentClass}&section=${section}&subject=${subject}&academicYear=${academicYear}&terminal=${terminal}` %>" method="POST">
    <% if (!subjectData || subjectData.length === 0) { %>
       <div style="color:red;font-weight:600;margin-top:10px;text-align:center;">Theory Marks and Practical Marks are not setup. Please contact the admin to add subject details.</div>
@@ -178,7 +179,7 @@
          <td><input type="text" name="name[<%=student.reg%>]" value="<%=student.name%>" readonly ></td>
           <td><img src="/student.png" alt="photo"></td>
           <td><input type="number" id="theorymarks" name="theorymarks[<%=student.reg%>]" value="<%= theoryData.find(t => t.reg === student.reg)?.totalMarks || '' %>" data-reg="<%= student.reg %>" min="0" max="<%=subjectData[0].theory%>" data-max="<%=subjectData[0].theory%>" oninput="checkMax(this)"></td>
-           <td><input type="number" data-reg="<%= student.reg %>"  id="practicalmarks" name="practicalmarks[<%=student.reg%>]" value="" data-max="<%=subjectData[0].practical*0.72%>" oninput="checkMax(this)"></td>
+           <td><input type="number" data-reg="<%= student.reg %>"  id="practicalmarks" name="practicalmarks[<%=student.reg%>]" value="" data-max="<%= isPrimaryLanguage36MarkSubject ? 36 : (subjectData[0].practical*0.72) %>" oninput="checkMax(this)"></td>
           <td><input type="number" id="attendance" name="attendance[<%=student.reg%>]" value="" data-reg="<%= student.reg %>" oninput="autoSave(this)"></td>
          
           <td><input type="number" id="attendancemarks_<%=student.reg%>" name="attendanceMarks[<%=student.reg%>]" readonly></td>
@@ -345,6 +346,47 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
   const attendanceResponse = await fetch(attendanceDataUrl);
   const attendanceResult = await attendanceResponse.json();
 
+  const isClassFourToEight = Number(studentClass) >= 4 && Number(studentClass) <= 8;
+  const isNepaliEnglishSubject = ['NEPALI', 'ENGLISH'].includes(String(subject || '').toUpperCase());
+
+  const allPracticalInputs = Array.from(document.querySelectorAll('input[id="practicalmarks"]'));
+  const practicalProjectTotals = new Map();
+
+  if (isClassFourToEight && isNepaliEnglishSubject) {
+    await Promise.all(allPracticalInputs.map(async (practicalInput) => {
+      const reg = practicalInput.dataset.reg;
+      const rollInput = document.querySelector(`input[name="roll[${reg}]"]`);
+      const roll = rollInput ? rollInput.value : '';
+
+      if (!reg || !roll) {
+        return;
+      }
+
+      try {
+        const practicalDataResponse = await fetch(`/getPracticalData?roll=${encodeURIComponent(roll)}&reg=${encodeURIComponent(reg)}&studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&subject=${encodeURIComponent(subject)}&terminal=${encodeURIComponent(terminal)}`);
+        const practicalData = await practicalDataResponse.json();
+
+        let totalPracticalProject = 0;
+        if (practicalData && Array.isArray(practicalData.unit)) {
+          practicalData.unit.forEach((unit) => {
+            (unit.practicals || []).forEach((practical) => {
+              totalPracticalProject += Number(practical.practicalMarks) || 0;
+            });
+            (unit.projectWorks || []).forEach((projectWork) => {
+              totalPracticalProject += Number(projectWork.projectMarks) || 0;
+            });
+          });
+        }
+
+        if (totalPracticalProject > 0) {
+          practicalProjectTotals.set(reg, totalPracticalProject);
+        }
+      } catch (error) {
+        console.error(`Failed to load practical project total for ${reg}:`, error);
+      }
+    }));
+  }
+
   if(result.length>0)
   {
     result.forEach((item)=>
@@ -361,7 +403,15 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
       }
 
       if(practicalInput) {
-        practicalInput.value = item.practicalmarks || '';
+        if (isClassFourToEight && isNepaliEnglishSubject) {
+          practicalInput.dataset.max = '36';
+          practicalInput.setAttribute('max', '36');
+
+          const calculatedPracticalValue = practicalProjectTotals.get(reg);
+          practicalInput.value = calculatedPracticalValue ? calculatedPracticalValue : '';
+        } else {
+          practicalInput.value = item.practicalmarks || '';
+        }
         practicalInput.dispatchEvent(new Event('input'));
       }
 
@@ -379,6 +429,20 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
   else
   {
     console.log("No previous data found");
+  }
+
+  if (isClassFourToEight && isNepaliEnglishSubject) {
+    allPracticalInputs.forEach((practicalInput) => {
+      const reg = practicalInput.dataset.reg;
+      const calculatedPracticalValue = practicalProjectTotals.get(reg);
+
+      if (calculatedPracticalValue !== undefined) {
+        practicalInput.dataset.max = '36';
+        practicalInput.setAttribute('max', '36');
+        practicalInput.value = calculatedPracticalValue;
+        practicalInput.dispatchEvent(new Event('input'));
+      }
+    });
   }
 
   if(attendanceResult.length>0)
