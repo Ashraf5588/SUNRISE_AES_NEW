@@ -260,6 +260,7 @@ exports.saveEntryform = async (req, res, next) => {
         studentClass: studentClass,
         section: section,
         academicYear: academicYear,
+        participationMarks: Number(req.body.participationMarks) || 0,
         gender: req.body.gender || "",
         totalWorksheet: Number(req.body.totalWorksheet) || 0,
         worksheetGrades: req.body.worksheetGrades || [],
