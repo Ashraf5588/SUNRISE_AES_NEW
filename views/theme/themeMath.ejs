@@ -85,7 +85,7 @@
   
     Select <%=studentClass.toUpperCase()==="FOUR" || studentClass.toUpperCase()==="FIVE" ? "Unit" : "Theme"%> 
     <select id="themeselect" onchange="filterLO()">
-      <option disabled selected>Select <%=studentClass.toUpperCase()==="FOUR" || studentClass.toUpperCase()==="FIVE" ? "Unit" : studentClass.toUpperCase()%> Theme</option>
+      <option disabled selected>Select <%=studentClass.toUpperCase()==="FOUR" || studentClass.toUpperCase()==="FIVE" ? "Unit" : "Theme"%></option>
       <%themeData.forEach(data => { %>
         <% data.themes.forEach((theme,themeIndex) => { %>
           <option value="<%= theme.themeName %>" data-themeIndex="<%= themeIndex %>"><%=themeIndex+1%>.<%= theme.themeName %></option>
