@@ -83,7 +83,7 @@
  </div>
   <form action="/themeform?studentClass=<%= studentClass %>&section=<%= section %>&subject=<%= subject %>&terminal=<%= terminal %>" method="POST">
   
-    Select <%=studentClass.toUpperCase()==="FOUR" || studentClass.toUpperCase()==="FIVE" ? "Unit" : studentClass.toUpperCase()%> Theme:
+    Select <%=studentClass.toUpperCase()==="FOUR" || studentClass.toUpperCase()==="FIVE" ? "Unit" : "Theme"%> 
     <select id="themeselect" onchange="filterLO()">
       <option disabled selected>Select <%=studentClass.toUpperCase()==="FOUR" || studentClass.toUpperCase()==="FIVE" ? "Unit" : studentClass.toUpperCase()%> Theme</option>
       <%themeData.forEach(data => { %>
