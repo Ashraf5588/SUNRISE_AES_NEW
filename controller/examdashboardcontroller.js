@@ -126,7 +126,7 @@ exports.generateMarksheet = async (req, res, next) => {
    if(format=="theorypractical")
    {
     console.log("grouped data",studentWisedata);
-    if(studentClass<=3)
+    if(studentClass<=3 || studentClass.toLowerCase() === "nursery" || studentClass.toLowerCase() === "playgroup" || studentClass.toLowerCase() === "lkg" || studentClass.toLowerCase() === "ukg"|| studentClass.toLowerCase() === "one" || studentClass.toLowerCase() === "two" || studentClass.toLowerCase() === "three")
     {
 res.render("./exam/primarytheorypr", {
         currentPage: "exammanagement",
@@ -293,7 +293,7 @@ exports.generateMarksheetStudent = async (req, res, next) => {
    if(format=="theorypractical")
    {
     console.log("grouped data",studentWisedata);
-    if(studentClass<=3)
+    if(studentClass<=3 || studentClass.toLowerCase() === "nursery" || studentClass.toLowerCase() === "playgroup" || studentClass.toLowerCase() === "lkg" || studentClass.toLowerCase() === "ukg"|| studentClass.toLowerCase() === "one" || studentClass.toLowerCase() === "two" || studentClass.toLowerCase() === "three")
     {
 res.render("./exam/primarytheorypr", {
         currentPage: "exammanagement",
