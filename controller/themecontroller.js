@@ -267,7 +267,7 @@ existingData.forEach(item => {
   }
 }
 
-if(subject.toLowerCase() === "nepali") {
+if(subject.toLowerCase() === "nepali" || subject.toLowerCase() === "social") {
 
   if(studentClass === "4" || studentClass === "5" || studentClass.toLowerCase() === "four" || studentClass.toLowerCase() === "five") {
     const existingMap = {};
@@ -1658,6 +1658,7 @@ students.forEach(student => {
         subjectResults,
 
         totalCredit,
+        
 
         totalWeightedGP:
             Number(
@@ -1670,7 +1671,7 @@ students.forEach(student => {
 });
         
 
-        
+        console.log(marksheetDataTheme)
         res.render(
             "theme/thememarksheet",
             {
@@ -2546,4 +2547,352 @@ exports.deleteaspectsGroup = async (req, res, next) => {
     res.status(500).json({ error: err.message });
     console.log(err);
   }
+};
+
+exports.sendthemeData = async (req, res) => {
+    try {
+
+        const {
+            studentClass,
+            section
+        } = req.query;
+
+        // -------------------------------
+        // Dynamic student marks model
+        // -------------------------------
+
+        const MarksModel =
+            await getStudentThemeData(studentClass);
+
+        // -------------------------------
+        // Theme definition model
+        // -------------------------------
+
+        const ThemeModel =
+            await getThemeFormat(studentClass);
+
+        // -------------------------------
+        // Students
+        // -------------------------------
+
+        const students =
+            await studentRecord.find({
+                studentClass,
+                section
+            }).lean();
+
+        // -------------------------------
+        // Theme definitions
+        // -------------------------------
+
+        const themeData =
+            await ThemeModel.find({
+                studentClass
+            }).lean();
+
+        // -------------------------------
+        // Subjects of class
+        // -------------------------------
+
+        const subjects =
+            await newsubject.find({
+                forClass: studentClass
+            }).lean();
+
+        // -------------------------------
+        // All assessment records
+        // -------------------------------
+
+        const marks =
+            await MarksModel.find({
+                studentClass,
+                section
+            }).lean();
+
+        // ======================================
+        // SUBJECT CREDIT MAP
+        // ======================================
+
+        const subjectInfo = {};
+
+        themeData.forEach(subjectDoc => {
+
+            subjectInfo[subjectDoc.subject] = {
+                credit: Number(subjectDoc.credit || 0)
+            };
+
+        });
+
+        console.log("Subject Info:", subjectInfo);
+
+        // ======================================
+        // MARKS MAP
+        // ======================================
+
+        const marksMap = {};
+
+        marks.forEach(record => {
+
+            const key =
+                `${record.reg}|${record.subject}`;
+
+            if (!marksMap[key]) {
+                marksMap[key] = 0;
+            }
+
+            marksMap[key] +=
+                Number(
+                    record.obtainedMarksAfter || 0
+                );
+
+        });
+
+        // ======================================
+        // LEARNING OUTCOME COUNT MAP
+        // ======================================
+
+        const loCountMap = {};
+
+        marks.forEach(record => {
+
+            const key =
+                `${record.reg}|${record.subject}`;
+
+            if (!loCountMap[key]) {
+                loCountMap[key] = new Set();
+            }
+
+            loCountMap[key].add(
+                record.learningOutcomeName
+            );
+
+        });
+
+        console.log("LO Count Map:", loCountMap);
+
+        // ======================================
+        // GRADE FUNCTION
+        // ======================================
+
+        function getGrade(percentage) {
+
+            if (percentage >= 90)
+                return {
+                    grade: "A+",
+                    gp: 4.0
+                };
+
+            if (percentage >= 80)
+                return {
+                    grade: "A",
+                    gp: 3.6
+                };
+
+            if (percentage >= 70)
+                return {
+                    grade: "B+",
+                    gp: 3.2
+                };
+
+            if (percentage >= 60)
+                return {
+                    grade: "B",
+                    gp: 2.8
+                };
+
+            if (percentage >= 50)
+                return {
+                    grade: "C+",
+                    gp: 2.4
+                };
+
+            if (percentage >= 40)
+                return {
+                    grade: "C",
+                    gp: 2.0
+                };
+
+            if (percentage >= 35)
+                return {
+                    grade: "D",
+                    gp: 1.6
+                };
+
+            return {
+                grade: "NG",
+                gp: 0
+            };
+        }
+
+        // ======================================
+        // BUILD MARKSHEET
+        // ======================================
+const marksheetDataTheme = [];
+
+students.forEach(student => {
+
+    const subjectResults = [];
+
+    let totalCredit = 0;
+    let totalWeightedGP = 0;
+
+    subjects.forEach(sub => {
+
+        const subjectName =
+            sub.newsubject || sub.subject;
+
+        // -----------------------------------
+        // Total obtained marks of student
+        // -----------------------------------
+
+        const obtained =
+            marksMap[
+                `${student.reg}|${subjectName}`
+            ] || 0;
+
+        // -----------------------------------
+        // Count unique learning outcomes
+        // from SAVED DATA
+        // Theme + LO combination is unique
+        // -----------------------------------
+
+        const studentSubjectRecords =
+            marks.filter(record =>
+                record.reg === student.reg &&
+                record.subject === subjectName
+            );
+
+        const uniqueLO = new Set();
+
+        studentSubjectRecords.forEach(record => {
+
+            uniqueLO.add(
+                `${record.themeName}|${record.learningOutcomeName}`
+            );
+
+        });
+
+        const totalLO =
+            uniqueLO.size;
+
+        // -----------------------------------
+        // Maximum marks
+        // -----------------------------------
+
+        const maxMarks =
+            totalLO * 4;
+
+        // -----------------------------------
+        // Percentage
+        // -----------------------------------
+
+        const percentage =
+            maxMarks > 0
+            ? (obtained / maxMarks) * 100
+            : 0;
+
+        // -----------------------------------
+        // Grade
+        // -----------------------------------
+
+        const gradeData =
+            getGrade(percentage);
+
+        // -----------------------------------
+        // Credit
+        // -----------------------------------
+
+        const credit =
+            Number(
+                subjectInfo[subjectName]?.credit || 0
+            );
+
+        const weightedGP =
+            credit *
+            gradeData.gp;
+
+        totalCredit += credit;
+        totalWeightedGP += weightedGP;
+
+        subjectResults.push({
+
+            subject:
+                subjectName,
+
+            credit,
+
+            obtained,
+
+            totalLO,
+
+            maxMarks,
+
+            percentage:
+                Number(
+                    percentage.toFixed(2)
+                ),
+
+            grade:
+                gradeData.grade,
+
+            gp:
+                gradeData.gp,
+
+            weightedGP:
+                Number(
+                    weightedGP.toFixed(2)
+                )
+        });
+
+    });
+
+    const gpa =
+        totalCredit > 0
+        ? (
+            totalWeightedGP /
+            totalCredit
+        ).toFixed(2)
+        : 0;
+
+    marksheetDataTheme.push({
+
+        reg:
+            student.reg,
+
+        name:
+            student.name,
+
+        roll:
+            student.roll,
+
+        section:
+            student.section,
+
+        studentClass:
+            student.studentClass,
+
+        subjectResults,
+
+        totalCredit,
+        
+
+        totalWeightedGP:
+            Number(
+                totalWeightedGP.toFixed(2)
+            ),
+
+        gpa
+    });
+
+});
+        
+
+       
+    return res.json(marksheetDataTheme)
+
+    }
+    catch (e) {
+        console.log(e);
+        res.status(500).send(e.message);
+    }
 };

@@ -60,6 +60,33 @@
     table input[type="checkbox"]{width:18px !important;height:18px !important;cursor:pointer;accent-color:var(--primary);flex-shrink:0}
     table input[type="checkbox"]:hover{transform:scale(1.1)}
 
+    /* Grade select styling */
+    .grade-select {
+      width: 100%;
+      padding: 7px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 13px;
+      text-align: center;
+      background: #fff;
+      cursor: pointer;
+      transition: border 0.2s;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a3a52' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 6px center;
+      background-size: 14px;
+      padding-right: 28px;
+    }
+    .grade-select:focus {
+      outline: 0;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(255,140,66,.1);
+    }
+    .grade-select:hover {
+      border-color: var(--primary);
+    }
+
     #markstable.hide-attendance th[data-column="attendance"],
     #markstable.hide-attendance td[data-column="attendance"]{display:none}
     #markstable.hide-theory th[data-column="theory"],
@@ -206,7 +233,7 @@
         <th data-column="worksheet" id="worksheetHeader">Worksheet <span id="worksheetHeaderNumber">1</span> <label style="font-weight:600;margin-left:8px;cursor:pointer"><input type="checkbox" id="worksheetApplyAll" style="margin-right:6px;vertical-align:middle">Apply to all</label></th>
       
         <th data-column="theory">
-          Th Marks (
+          Theory Grade (
           <% if (subjectData && subjectData.length > 0) { %>
             <%= subjectData[0].theory %>
           <% } else { %>
@@ -240,7 +267,20 @@
             </div>
           </td>
           <td data-column="worksheet" data-reg="<%=student.reg%>"></td>
-          <td data-column="theory"><input type="number" id="theorymarks" name="theorymarks[<%=student.reg%>]" value="<%= theoryData.find(t => t.reg === student.reg)?.totalMarks || '' %>" data-reg="<%= student.reg %>" min="0" data-max="<%=subjectData[0].theory%>" oninput="checkMax(this)"></td>
+          <td data-column="theory">
+            <select class="grade-select" name="theoryGrade[<%=student.reg%>]" data-reg="<%= student.reg %>" onchange="handleGradeChange(this)">
+              <option value="0">Select Grade</option>
+              <option value="4.0">A+</option>
+              <option value="3.6">A</option>
+              <option value="3.2">B+</option>
+              <option value="2.8">B</option>
+              <option value="2.4">C+</option>
+              <option value="2.0">C</option>
+              <option value="1.6">D</option>
+              <option value="0.0">NG</option>
+            </select>
+            <input type="hidden" name="theorymarks[<%=student.reg%>]" value="0" data-reg="<%= student.reg %>">
+          </td>
           <td data-column="attendance"><input type="number" id="attendance" name="attendance[<%=student.reg%>]" value="" data-reg="<%= student.reg %>" oninput="autoSave(this)"></td>
         </tr>
       <%})%>
@@ -283,6 +323,181 @@ else if (terminal == "FINAL")
   
 
 <script>
+// Grade mapping for display
+const gradeMap = {
+  '0': 'Select Grade',
+  '4.0': 'A+',
+  '3.6': 'A',
+  '3.2': 'B+',
+  '2.8': 'B',
+  '2.4': 'C+',
+  '2.0': 'C',
+  '1.6': 'D',
+  '0.0': 'NG'
+};
+
+// Store for grade data from DB
+let gradeDataFromDB = {};
+
+// Convert grade to numeric value with proper formatting
+function getGradeValue(grade) {
+  const map = {
+    'A+': 4.0,
+    'A': 3.6,
+    'B+': 3.2,
+    'B': 2.8,
+    'C+': 2.4,
+    'C': 2.0,
+    'D': 1.6,
+    'NG': 0.0
+  };
+  return map[grade] || 0;
+}
+
+// Handle grade change
+function handleGradeChange(select) {
+  const reg = select.dataset.reg;
+  const hiddenInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
+  const selectedValue = select.value;
+  
+  if (hiddenInput) {
+    hiddenInput.value = selectedValue;
+  }
+  
+  // Auto-save when grade changes
+  if (typeof autoSave === 'function') {
+    autoSave(select);
+  }
+}
+
+// Populate grade select from saved numeric value - FIXED VERSION
+function setGradeFromValue(reg, value) {
+  const select = document.querySelector(`select[name="theoryGrade[${reg}]"]`);
+  const hiddenInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
+  
+  if (!select) {
+    console.warn(`Select not found for reg: ${reg}`);
+    return;
+  }
+  
+  // Convert value to proper format (e.g., 4 -> 4.0, 3.8 -> 3.8)
+  let formattedValue = '0';
+  if (value && value !== 0) {
+    // Check if it's a whole number (like 4)
+    if (Number.isInteger(Number(value))) {
+      formattedValue = Number(value).toFixed(1);
+    } else {
+      formattedValue = value.toString();
+    }
+  }
+  
+  console.log(`Setting grade for reg ${reg}: raw value=${value}, formatted=${formattedValue}`);
+  
+  // Find and select matching option
+  let found = false;
+  for (let i = 0; i < select.options.length; i++) {
+    if (select.options[i].value === formattedValue) {
+      select.value = formattedValue;
+      found = true;
+      console.log(`Found matching option: ${select.options[i].text} (${formattedValue})`);
+      break;
+    }
+  }
+  
+  if (!found) {
+    // Try without formatting (direct match)
+    const valueStr = value ? value.toString() : '0';
+    for (let i = 0; i < select.options.length; i++) {
+      if (select.options[i].value === valueStr) {
+        select.value = valueStr;
+        found = true;
+        console.log(`Found matching option (direct): ${select.options[i].text} (${valueStr})`);
+        break;
+      }
+    }
+  }
+  
+  if (!found) {
+    // If value not found, default to 0 (Select Grade)
+    select.value = '0';
+    console.log(`No matching option found for ${value}, defaulting to 0`);
+  }
+  
+  // Update hidden input to match
+  if (hiddenInput) {
+    hiddenInput.value = select.value;
+  }
+  
+  // Store in global for later reference
+  gradeDataFromDB[reg] = value;
+}
+
+// Function to populate all grades after worksheet rendering is complete
+function populateAllGradesAfterRender() {
+  console.log("=== populateAllGradesAfterRender STARTED ===");
+  console.log("Grade data from DB:", gradeDataFromDB);
+  
+  // Get all grade selects
+  const gradeSelects = document.querySelectorAll('select[name^="theoryGrade"]');
+  console.log(`Found ${gradeSelects.length} grade selects`);
+  
+  gradeSelects.forEach(select => {
+    const reg = select.dataset.reg;
+    if (reg && gradeDataFromDB[reg] !== undefined) {
+      const value = gradeDataFromDB[reg];
+      console.log(`Populating grade for reg ${reg} from stored data: ${value}`);
+      
+      // Format the value for comparison
+      let formattedValue = '0';
+      if (value && value !== 0) {
+        if (Number.isInteger(Number(value))) {
+          formattedValue = Number(value).toFixed(1);
+        } else {
+          formattedValue = value.toString();
+        }
+      }
+      
+      let found = false;
+      for (let i = 0; i < select.options.length; i++) {
+        if (select.options[i].value === formattedValue) {
+          select.value = formattedValue;
+          found = true;
+          console.log(`Set reg ${reg} to ${select.options[i].text} (${formattedValue})`);
+          break;
+        }
+      }
+      
+      if (!found) {
+        // Try direct match
+        const valueStr = value ? value.toString() : '0';
+        for (let i = 0; i < select.options.length; i++) {
+          if (select.options[i].value === valueStr) {
+            select.value = valueStr;
+            found = true;
+            console.log(`Set reg ${reg} to ${select.options[i].text} (${valueStr}) - direct match`);
+            break;
+          }
+        }
+      }
+      
+      if (!found) {
+        select.value = '0';
+        console.log(`No matching option for reg ${reg} value ${value}, defaulting to 0`);
+      }
+      
+      // Update hidden input
+      const hiddenInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
+      if (hiddenInput) {
+        hiddenInput.value = select.value;
+      }
+    } else {
+      console.log(`No data for reg ${reg}, keeping default`);
+    }
+  });
+  
+  console.log("=== populateAllGradesAfterRender COMPLETED ===");
+}
+
 async function populateData(subject,studentClass,section,academicYear,terminal)
 {
   console.log("=== populateData STARTED ===");
@@ -318,30 +533,59 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
     }
     console.log(`📋 Will create ${maxTotalWorksheet} columns in UI`);
 
+    // Set total worksheet without triggering save
+    isPageLoading = true;
     document.getElementById('totalWorksheet').value = maxTotalWorksheet;
-    // Don't save to DB during initial load - just build UI
-    await buildWorksheetOptions(maxTotalWorksheet, false);
     
+    // Build worksheet options without saving
+    maxWorksheetNumber = Math.max(1, Number(maxTotalWorksheet) || 1);
+    if (worksheetCountSelect) {
+      worksheetCountSelect.innerHTML = '';
+      for (let i = 1; i <= maxWorksheetNumber; i++) {
+        const option = document.createElement('option');
+        option.value = i;
+        option.textContent = `Worksheet ${i}`;
+        worksheetCountSelect.appendChild(option);
+      }
+      if (currentWorksheetNumber > maxWorksheetNumber) {
+        currentWorksheetNumber = maxWorksheetNumber;
+      }
+      worksheetCountSelect.value = String(currentWorksheetNumber);
+    }
+    if (totalWorksheetInput) {
+      totalWorksheetInput.value = maxWorksheetNumber;
+    }
+	
     await new Promise(resolve => setTimeout(resolve, 300));
     console.log("✓ Columns recreated, waiting for DOM update");
 
+    // STORE GRADE DATA FIRST
     if(result.length > 0) {
-      console.log("Populating marks and worksheet data...");
+      console.log("Storing grade data from DB...");
       result.forEach((item) => {
         const reg = item.reg;
-        let theoryInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
+        const dbValue = item.theorymarks || 0;
+        gradeDataFromDB[reg] = dbValue;
+        console.log(`Stored grade for reg ${reg}: ${dbValue}`);
+      });
+    }
+
+    // Populate attendance and worksheet data
+    if(result.length > 0) {
+      console.log("Populating attendance and worksheet data...");
+      result.forEach((item) => {
+        const reg = item.reg;
+        let theoryHiddenInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
         let attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
 
-        if(!theoryInput || !attendanceInput) {
-          console.warn(`    ⚠️ Marks inputs not found for reg ${reg}, skipping marks population`);
+        if(!theoryHiddenInput || !attendanceInput) {
+          console.warn(`    ⚠️ Inputs not found for reg ${reg}, skipping`);
         } else {
-          theoryInput.value = item.theorymarks || 0;
-          attendanceInput.value = '';
-
-          theoryInput.dispatchEvent(new Event('input'));
-          console.log(`    ✓ Marks populated: theory=${item.theorymarks}`);
+          // Don't set grade here - we'll do it after worksheet render
+          attendanceInput.value = item.attendance || 0;
         }
 
+        // Handle worksheet data
         const worksheetSelects = document.querySelectorAll(`select[name="worksheetGrades[${reg}][]"]`);
         let worksheetGrades = item.worksheetGrades;
         if (typeof worksheetGrades === 'string') {
@@ -363,7 +607,7 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
           });
         }
       });
-      console.log("✓ All student data populated");
+      console.log("✓ Attendance and worksheet data populated");
     } else {
       console.log("No previous data found - initializing with zero values");
       await initializeStudentRecords(subject, studentClass, section, academicYear, terminal);
@@ -376,22 +620,25 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
         const attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
         if(attendanceInput) {
           attendanceInput.value = Number(item.attendance) || 0;
-          attendanceInput.dispatchEvent(new Event('input'));
         }
       });
-      console.log("✓ Attendance data populated");
+      console.log("✓ Additional attendance data populated");
     }
 
-    // Allow saving after initial load is complete
-    setTimeout(() => {
-      isPageLoading = false;
-      console.log("🔓 Page loading complete - autosave enabled");
-    }, 500);
+    // CRITICAL: Populate grades AFTER worksheet rendering is complete
+    console.log("Waiting for worksheet rendering to complete...");
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Now populate all grades
+    populateAllGradesAfterRender();
 
+    isPageLoading = false;
     console.log("✓ Page load complete - autosave enabled");
     console.log("=== populateData COMPLETED ===");
+    
   } catch(err) {
     console.error("ERROR in populateData:", err);
+    isPageLoading = false;
   }
 }
 
@@ -439,15 +686,15 @@ async function initializeStudentRecords(subject, studentClass, section, academic
   }
 }
 
- window.onload = function() {
+window.onload = function() {
   const urlParams = new URLSearchParams(window.location.search);
 
   // Fetch each parameter
-  const studentClass = urlParams.get('studentClass');   // "7"
-  const section = urlParams.get('section');             // "x"
-  const subject = urlParams.get('subject');             // "COMPUTER"
-  const terminal = urlParams.get('terminal');           // "THIRD-2082"
-  const academicYear = urlParams.get('academicYear');   // "" (empty string in your example)
+  const studentClass = urlParams.get('studentClass');
+  const section = urlParams.get('section');
+  const subject = urlParams.get('subject');
+  const terminal = urlParams.get('terminal');
+  const academicYear = urlParams.get('academicYear');
   
   console.log("[Page Load] ===== WINDOW ONLOAD STARTED =====");
   console.log(`[Page Load] URL Params: subject=${subject}, class=${studentClass}, section=${section}, terminal=${terminal}, year=${academicYear}`);
@@ -455,19 +702,9 @@ async function initializeStudentRecords(subject, studentClass, section, academic
   // Call populateData with the URL parameters
   populateData(subject, studentClass, section, academicYear, terminal);
   
-  // Also trigger autosave for theory marks that are already populated
-  document.querySelectorAll('#theorymarks').forEach(input => {
-    if (input.value) {
-      autoSave(input);  // trigger autosave for backend populated values
-    }
-  });
-  
   console.log("[Page Load] ===== WINDOW ONLOAD COMPLETED =====");
 }
-
-  </script>
-
-
+</script>
 
 <!-- script for autosave the data -->
 <script>
@@ -475,8 +712,7 @@ async function initializeStudentRecords(subject, studentClass, section, academic
 
   async function autoSave(el) {
     const reg = el.dataset.reg;
-    const maxMarks = el.dataset.max;
-
+    
     if (!reg) {
       return;
     }
@@ -484,19 +720,21 @@ async function initializeStudentRecords(subject, studentClass, section, academic
     el.style.backgroundColor = '';
     el.style.borderColor = '';
 
-    if (maxMarks && Number(el.value) > Number(maxMarks)) {
-      el.style.backgroundColor = '#fee2e2';
-      el.style.borderColor = '#f87171';
-      el.style.transition = 'background-color 0.3s ease';
-      return;
-    }
-
     if (saveTimers.has(el)) {
       clearTimeout(saveTimers.get(el));
     }
 
     const timer = setTimeout(async () => {
-      const theorymarks = document.querySelector(`input[name="theorymarks[${reg}]"]`)?.value || 0;
+      // Get theory grade from select
+      const gradeSelect = document.querySelector(`select[name="theoryGrade[${reg}]"]`);
+      const theorymarks = gradeSelect ? gradeSelect.value : 0;
+      
+      // Update hidden input
+      const theoryHidden = document.querySelector(`input[name="theorymarks[${reg}]"]`);
+      if (theoryHidden) {
+        theoryHidden.value = theorymarks;
+      }
+      
       const attendance = document.querySelector(`input[name="attendance[${reg}]"]`)?.value || 0;
       const param = new URLSearchParams(window.location.search);
       const studentClass = param.get('studentClass');
@@ -527,8 +765,8 @@ async function initializeStudentRecords(subject, studentClass, section, academic
 
       const saveData = {
         reg,
-        theorymarks,
-        attendance,
+        theorymarks: Number(theorymarks),
+        attendance: Number(attendance),
         studentClass,
         section,
         subject,
@@ -539,9 +777,9 @@ async function initializeStudentRecords(subject, studentClass, section, academic
         totalWorksheet,
         worksheetGrades,
         gender,
-        passMarks,
-        practicalfullmarks,
-        theoryfullmarks,
+        passMarks: Number(passMarks),
+        practicalfullmarks: Number(practicalfullmarks),
+        theoryfullmarks: Number(theoryfullmarks),
       };
 
       try {
@@ -614,7 +852,7 @@ async function initializeStudentRecords(subject, studentClass, section, academic
     }
   }
 
-  async function buildWorksheetOptions(count, saveToDB = true) {
+  function buildWorksheetOptions(count) {
     maxWorksheetNumber = Math.max(1, Number(count) || 1);
     if (worksheetCountSelect) {
       worksheetCountSelect.innerHTML = '';
@@ -632,10 +870,9 @@ async function initializeStudentRecords(subject, studentClass, section, academic
     if (totalWorksheetInput) {
       totalWorksheetInput.value = maxWorksheetNumber;
     }
-    
-    // Save to DB if not during initial page load
-    if (!isPageLoading && saveToDB) {
-      await saveTotalWorksheetToDB(maxWorksheetNumber);
+    // Persist new totalWorksheet count to DB when user changes it (skip during initial load)
+    if (!isPageLoading) {
+      saveTotalWorksheetToDB(maxWorksheetNumber);
     }
   }
 
@@ -655,17 +892,18 @@ async function initializeStudentRecords(subject, studentClass, section, academic
         const savePromises = studentData.map((student) => {
         const reg = student.reg;
         const totalCount = Number(total);
-        // Use stored grades as the base
+        // Use stored grades as the base so reducing/persisting doesn't wipe unseen grades.
         const stored = worksheetGradeStore.get(reg) || [];
         const gradesBase = Array.from({ length: totalCount }, (_, i) => stored[i] || '');
-        // If a select for this reg exists in the DOM, make sure its runtime value is included
+        // If a select for this reg exists in the DOM, make sure its runtime value is included.
         const visible = Array.from(document.querySelectorAll(`select[name="worksheetGrades[${reg}][]"]`));
         visible.forEach((s) => {
           const idx = Number(s.dataset.worksheetIndex) || currentWorksheetNumber;
           if (idx >= 1 && idx <= totalCount) gradesBase[idx - 1] = s.value || '';
         });
         const worksheetGrades = gradesBase;
-        const theorymarks = document.querySelector(`input[name="theorymarks[${reg}]"]`)?.value || 0;
+        const theoryHidden = document.querySelector(`input[name="theorymarks[${reg}]"]`);
+        const theorymarks = theoryHidden ? theoryHidden.value : 0;
         const attendance = document.querySelector(`input[name="attendance[${reg}]"]`)?.value || 0;
         const name = document.querySelector(`input[name="name[${reg}]"]`)?.value || '';
         const roll = document.querySelector(`input[name="roll[${reg}]"]`)?.value || '';
@@ -705,11 +943,9 @@ async function initializeStudentRecords(subject, studentClass, section, academic
       if (allSuccess) {
         totalWorksheetInput.style.backgroundColor = '#e0f2fe';
         totalWorksheetInput.style.borderColor = '#7dd3fc';
-        console.log(`✅ Worksheet count saved to DB: ${total}`);
       } else {
         totalWorksheetInput.style.backgroundColor = '#fee2e2';
         totalWorksheetInput.style.borderColor = '#f87171';
-        console.error('❌ Failed to save worksheet count to DB');
       }
     } catch (err) {
       console.error('Failed to save totalWorksheet:', err);
@@ -760,12 +996,13 @@ async function initializeStudentRecords(subject, studentClass, section, academic
 
     select.addEventListener('change', function () {
       setWorksheetGrade(reg, worksheetNumber, this.value);
-      if (typeof autoSave === 'function') autoSave(select);
+      if (typeof autoSave === 'function') autoSave(select); // ensure source select is saved immediately
 
       const applyAll = document.getElementById('worksheetApplyAll');
       const checkedBoxes = Array.from(document.querySelectorAll(`#markstable input.row-worksheet-checkbox[data-worksheet-index="${worksheetNumber}"]:checked`));
 
       if (applyAll && applyAll.checked) {
+        // apply to all rows in this worksheet
         document.querySelectorAll(`#markstable select[data-worksheet-index="${worksheetNumber}"]`).forEach((s) => {
           if (s !== select) {
             s.value = select.value;
@@ -774,6 +1011,7 @@ async function initializeStudentRecords(subject, studentClass, section, academic
           }
         });
       } else if (checkedBoxes.length > 0) {
+        // apply to selected rows only
         checkedBoxes.forEach((cb) => {
           const regKey = cb.dataset.reg;
           const s = document.querySelector(`#markstable select[data-worksheet-index="${worksheetNumber}"][data-reg="${regKey}"]`);
@@ -783,6 +1021,7 @@ async function initializeStudentRecords(subject, studentClass, section, academic
             if (typeof autoSave === 'function') autoSave(s);
           }
         });
+        // uncheck the boxes after applying to selected
         checkedBoxes.forEach(cb => cb.checked = false);
       }
     });
@@ -803,6 +1042,12 @@ async function initializeStudentRecords(subject, studentClass, section, academic
       }
       td.appendChild(buildWorksheetSelect(reg, worksheetNumber));
     });
+    
+    // After rendering worksheet cells, populate grades if we have data
+    if (Object.keys(gradeDataFromDB).length > 0) {
+      console.log("Worksheet rendered, populating grades...");
+      setTimeout(populateAllGradesAfterRender, 100);
+    }
   }
 
   function syncWorksheetSelection(desiredWorksheetNumber) {
@@ -811,7 +1056,7 @@ async function initializeStudentRecords(subject, studentClass, section, academic
       target = 1;
     }
     if (target > maxWorksheetNumber) {
-      buildWorksheetOptions(target, false);
+      buildWorksheetOptions(target);
     }
     currentWorksheetNumber = target;
     if (worksheetCountSelect) {
@@ -827,35 +1072,22 @@ async function initializeStudentRecords(subject, studentClass, section, academic
   }
 
   if (increaseWorksheetBtn) {
-    increaseWorksheetBtn.addEventListener('click', async function () {
-      const newCount = maxWorksheetNumber + 1;
-      await buildWorksheetOptions(newCount, true); // Save to DB
-      // Keep current worksheet number if within range
-      if (currentWorksheetNumber > maxWorksheetNumber) {
-        syncWorksheetSelection(maxWorksheetNumber);
-      }
+    increaseWorksheetBtn.addEventListener('click', function () {
+      // Increase number of available worksheet options, do NOT change displayed worksheet
+      buildWorksheetOptions(maxWorksheetNumber + 1);
     });
   }
 
   if (decreaseWorksheetBtn) {
-    decreaseWorksheetBtn.addEventListener('click', async function () {
-      if (maxWorksheetNumber <= 1) return;
+    decreaseWorksheetBtn.addEventListener('click', function () {
+      // Ask for confirmation before reducing available worksheets
       if (!confirm('Reduce available worksheet options? This will remove the highest worksheet option. Continue?')) {
         return;
       }
-      const newCount = maxWorksheetNumber - 1;
-      // Clean up grades for removed worksheet
-      studentData.forEach((student) => {
-        const reg = student.reg;
-        const grades = worksheetGradeStore.get(reg) || [];
-        if (grades.length > newCount) {
-          grades.splice(newCount); // Remove grades beyond new count
-          worksheetGradeStore.set(reg, grades);
-        }
-      });
-      
-      await buildWorksheetOptions(newCount, true); // Save to DB
-      
+      if (maxWorksheetNumber <= 1) return;
+      // Decrease available options
+      buildWorksheetOptions(maxWorksheetNumber - 1);
+      // If current displayed worksheet is now out of range, clamp and re-render
       if (currentWorksheetNumber > maxWorksheetNumber) {
         currentWorksheetNumber = maxWorksheetNumber;
         renderWorksheetCells(currentWorksheetNumber);
@@ -865,7 +1097,7 @@ async function initializeStudentRecords(subject, studentClass, section, academic
 
   if (totalWorksheetInput) {
     totalWorksheetInput.addEventListener('input', function () {
-      buildWorksheetOptions(this.value, true);
+      buildWorksheetOptions(this.value);
       if (currentWorksheetNumber > maxWorksheetNumber) {
         syncWorksheetSelection(maxWorksheetNumber);
       }
@@ -875,33 +1107,9 @@ async function initializeStudentRecords(subject, studentClass, section, academic
   syncMobileColumnToggles();
 
   // Start with a single worksheet option by default
-  buildWorksheetOptions(1, false);
+  buildWorksheetOptions(1);
   syncWorksheetSelection(currentWorksheetNumber);
-</script>
-
-<!-- script to check max max exceeds -->
-<script>
-  function checkMax(element) {
-    const maxMarks = element.dataset.max;
-    if (Number(element.value) > Number(maxMarks)) {
-      element.style.backgroundColor = '#fee2e2';
-      element.style.borderColor = '#f87171';
-      element.style.transition = 'background-color 0.3s ease';
-      element.focus();
-      element.placeholder = 'Max Marks Exceeded';
-
-      if (typeof saveTimers !== 'undefined' && saveTimers.has(element)) {
-        clearTimeout(saveTimers.get(element));
-        saveTimers.delete(element);
-      }
-
-      return;
-    }
-
-    element.style.backgroundColor = '';
-    element.style.borderColor = '';
-    autoSave(element);
-  }
+  isPageLoading = false;
 </script>
 
 </body>

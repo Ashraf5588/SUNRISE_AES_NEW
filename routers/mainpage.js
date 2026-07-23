@@ -332,6 +332,8 @@ student.get('/healthrecord/padrecord/records', verifytoken,  nursecontroller.get
 student.post('/healthrecord/padrecord', verifytoken, nursecontroller.savePadRecord)
 student.get('/healthrecord/analytics', verifytoken, nursecontroller.showHealthAnalytics)
 
+//entryform slip practical api
+student.get('/getpracticalslipdata',verifytoken,authorized,examcontroller.getPracticalSlipData)
 // Theme Routes Start Here
 student.get('/theme', verifytoken, authorized, themecontroller.themeopener);
 student.get('/themeform', verifytoken, authorized, themecontroller.themeform);
@@ -344,7 +346,8 @@ student.post('/autosave-projectrubrik', verifytoken, authorized, practical410con
 student.get('/thememarksofstudent', verifytoken, authorized, themecontroller.thememarksheetOfStudent);
 student.get('/themewisemarks', verifytoken, authorized, themecontroller.themewisemarks);
 student.get('/themeMarksheet', verifytoken, authorized, themecontroller.themeMarksheet);
-
+//api to send themedata
+student.get('/getthemedata',verifytoken,authorized,themecontroller.sendthemeData);
 student.get('/themeslip', verifytoken, authorized, themecontroller.themeslip);
 
 student.get('/theme/previous-data', verifytoken, authorized, themecontroller.getPreviousThemeData);

@@ -26,10 +26,125 @@ app.set("view engine", "ejs");
 app.set("view", path.join(rootDir, "views"));
 const newsubject = mongoose.model("newsubject", newsubjectSchema, "newsubject");
 const { marksheetsetupschemaForAdmin } = require("../model/marksheetschema");
-const marksheetSetup = mongoose.model("marksheetSetup", marksheetsetupschemaForAdmin, "marksheetSetup");
+
 const upload = multer({ dest: "uploads/" });
 const onlineAttendance = mongoose.model("onlineAttendance", onlineAttendanceSchema, "onlineAttendance");
 const holiday = mongoose.model("holiday", holidaySchema, "holiday");
+
+const { addChapterSchema } = require("../model/addchapterschema");
+const addChapter = mongoose.model("addChapter", addChapterSchema, "addChapter");
+
+
+
+const {ThemeEvaluationSchema,practicalSchema,scienceprojectSchema, practicalprojectSchema} = require("../model/themeformschema");
+const {themeSchemaFor1,scienceSchema,FinalPracticalSlipSchema} = require("../model/themeschema");
+const { get } = require("http");
+const student = require("../routers/mainpage");
+
+const marksheetSetup = mongoose.models.marksheetSetup || mongoose.model("marksheetSetup", marksheetsetupschemaForAdmin, "marksheetSetup");
+
+const { BlobServiceClient } = require("@azure/storage-blob");
+const sharp = require("sharp");
+require("dotenv").config();
+
+
+
+// Create ScienceModel after importing scienceSchema
+const ScienceModel = mongoose.model('sciencepractical', scienceSchema, 'sciencepracticals');
+const scienceProjectModel = mongoose.model('scienceproject', scienceprojectSchema, 'scienceprojects');
+
+
+
+
+const attendanceModel = (studentClass, section, year) => {
+  // to Check if model already exists
+  if (mongoose.models[`Attendance_${studentClass}_${section}_${year}`]) {
+    return mongoose.models[`Attendance_${studentClass}_${section}_${year}`];
+  }
+  return mongoose.model(`Attendance_${studentClass}_${section}_${year}`, attendanceSchema, `Attendance_${studentClass}_${section}_${year}`);
+};
+const getSidenavData = async (req) => {
+  try {
+    const subjects = await subjectlist.find({}).lean();
+    const studentClassdata = await studentClass.find({}).lean();
+    const terminals = await terminal.find({}).lean();
+    
+    let accessibleSubject = [];
+    let accessibleClass = [];
+      let newaccessibleSubjects = [];
+    const newsubjectList = await newsubject.find({}).lean();
+    
+    // Check if req exists and has user property
+    if (req && req.user) {
+      const user = req.user;
+      // Log user info for debugging
+      if (user && user.role) {
+        console.log('User role:', user.role);
+        console.log('User allowed subjects:', user.allowedSubjects || []);
+      } else {
+        console.log('User object exists but missing role or allowedSubjects');
+      }
+      
+      if (user.role === "ADMIN") {
+        accessibleSubject = subjects;
+        accessibleClass = studentClassdata;
+        newaccessibleSubjects = newsubjectList;
+      } else {
+        // Filter subjects based on user's allowed subjects
+        accessibleSubject = subjects.filter(subj =>
+          user.allowedSubjects && user.allowedSubjects.some(allowed =>
+            allowed.subject === subj.subject
+          )
+        );
+        
+        // Filter classes based on user's allowed classes/sections
+        accessibleClass = studentClassdata.filter(classItem =>
+          user.allowedSubjects && user.allowedSubjects.some(allowed =>
+            allowed.studentClass === classItem.studentClass && 
+            allowed.section === classItem.section
+          )
+        );
+         newaccessibleSubjects = newsubjectList.filter(subj =>
+  user.allowedSubjects.some(allowed =>
+    allowed.subject === subj.newsubject
+  )
+);
+        console.log('Filtered subjects:', accessibleSubject.length);
+        console.log('Filtered classes:', accessibleClass.length);
+      }
+    } else {
+      // If no user is found, return all data (default admin view)
+      console.log('No user found in request, returning all data');
+      accessibleSubject = subjects;
+      accessibleClass = studentClassdata;
+      // expose the full newsubject list when no user filtering is needed
+      newaccessibleSubjects = newsubjectList;
+    }
+    
+    return {
+      subjects: accessibleSubject,
+      studentClassdata: accessibleClass,
+      terminals,
+      newsubjectList: newaccessibleSubjects
+
+    };
+  } catch (error) {
+    console.error('Error fetching sidenav data:', error);
+    return {
+      subjects: [],
+      studentClassdata: [],
+      terminals: []
+    };
+  }
+};
+
+const getSubjectSlipModelForPractical = (subject, studentClass, section, terminal, year) => {
+  // to Check if model already exists
+  if (mongoose.models[`Practicalproject_${subject}_${studentClass}_${section}_${terminal}_${year}`]) {
+    return mongoose.models[`Practicalproject_${subject}_${studentClass}_${section}_${terminal}_${year}`];
+  }
+  return mongoose.model(`Practicalproject_${subject}_${studentClass}_${section}_${terminal}_${year}`, FinalPracticalSlipSchema, `Practicalproject_${subject}_${studentClass}_${section}_${terminal}_${year}`);
+};
 
 const BS_MONTH_NAMES = {
   1: "Baisakh",
@@ -78,7 +193,13 @@ const MONTH_KEY_ALIASES = {
   falgun: "Falgun",
   chaitra: "Chaitra"
 };
-
+const getPracticalProjectModel = (subject, studentClass, section, year) => {
+  // to Check if model already exists
+  if (mongoose.models[`Practicalproject_${subject}_${studentClass}_${section}_${year}`]) {
+    return mongoose.models[`Practicalproject_${subject}_${studentClass}_${section}_${year}`];
+  }
+  return mongoose.model(`Practicalproject_${subject}_${studentClass}_${section}_${year}`, practicalprojectSchema, `Practicalproject_${subject}_${studentClass}_${section}_${year}`);
+};
 const normalizeText = (value) => String(value || "").trim().toLowerCase();
 
 const getStatusIsAbsent = (status) => {
@@ -206,14 +327,22 @@ const theoryData = await model.find({}).lean();
         )
       );
     }
-  if(studentClass>3 || studentClass=="FOUR" || studentClass=="Four" || studentClass=="four" || studentClass=="4" || studentClass=="FIVE" || studentClass=="Five" || studentClass=="five" || studentClass=="5" || studentClass=="SIX" || studentClass=="Six" || studentClass=="six" || studentClass=="6" || studentClass=="SEVEN" || studentClass=="Seven" || studentClass=="seven" || studentClass=="7" || studentClass=="EIGHT" || studentClass=="Eight" || studentClass=="eight" || studentClass=="8" || studentClass=="NINE" || studentClass=="Nine" || studentClass=="nine" || studentClass=="9" || studentClass=="TEN" || studentClass=="Ten" || studentClass=="ten" || studentClass=="10")
+  if(studentClass>3|| studentClass=="SIX" || studentClass=="Six" || studentClass=="six" || studentClass=="6" || studentClass=="SEVEN" || studentClass=="Seven" || studentClass=="seven" || studentClass=="7" || studentClass=="EIGHT" || studentClass=="Eight" || studentClass=="eight" || studentClass=="8" || studentClass=="NINE" || studentClass=="Nine" || studentClass=="nine" || studentClass=="9" || studentClass=="TEN" || studentClass=="Ten" || studentClass=="ten" || studentClass=="10")
   {
 
   res.render("./exam/entryform",{studentData,studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,theoryData});
   }
-  else if (studentClass<=3 || studentClass=="THREE" || studentClass=="Three" || studentClass=="three" || studentClass=="3" || studentClass=="TWO" || studentClass=="Two" || studentClass=="two" || studentClass=="2" || studentClass=="ONE" || studentClass=="One" || studentClass=="one" || studentClass=="1" || studentClass=="NURSERY" || studentClass=="Nursery" || studentClass=="nursery" || studentClass=="LKG" || studentClass=="Lkg" || studentClass=="lkg" || studentClass=="UKG" || studentClass=="Ukg" || studentClass=="ukg" || studentClass=="PLAYGROUP" || studentClass=="Playgroup" || studentClass=="playgroup" )
+  if(studentClass=="FOUR" || studentClass=="Four" || studentClass=="four" || studentClass=="4" || studentClass=="FIVE" || studentClass=="Five" || studentClass=="five" || studentClass=="5")
+  {
+    res.render("./exam/entryformfourfive",{studentData,studentClass:studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData});
+  }
+  else if (studentClass<=3 || studentClass=="THREE" || studentClass=="Three" || studentClass=="three" || studentClass=="3" || studentClass=="TWO" || studentClass=="Two" || studentClass=="two" || studentClass=="2" || studentClass=="ONE" || studentClass=="One" || studentClass=="one" || studentClass=="1")
   {
     res.render("./exam/entryformprimary",{studentData,studentClass:studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData});
+  }
+  else if(studentClass.toLowerCase() === "nursery" || studentClass.toLowerCase() === "playgroup" || studentClass.toLowerCase() === "lkg" || studentClass.toLowerCase() === "ukg")
+  {
+    res.render("./exam/entryformpreprimary",{studentData,studentClass:studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData});
   }
  
 }
@@ -642,6 +771,1030 @@ exports.analysisOfParents = async (req, res, next) => {
 
   }catch (error) {
     console.error("Error in analysis of parents:", error);
-    res.status(500).send("Internal Server Error");
+    res.status(500).json({error:"Internal Server Error"});
   }
 };
+
+//api to get practical data from theme collections
+exports.getPracticalSlipData = async (req, res, next) => {
+ try
+ {
+   const { studentClass, section, subject,terminal } = req.query;
+   console.log(studentClass, section, subject,terminal);
+ 
+   if(subject==="SCIENCE")
+   {
+     if(terminal==="FINAL")
+     {
+       const marksheetSetting = await marksheetSetup.find();
+      const academicYear = marksheetSetting[0].academicYear;
+        const model = getPracticalProjectModel(subject, studentClass, section, academicYear);
+ 
+ 
+      const sciencepracticaldata = await model.aggregate([
+        {
+          $match: {
+            studentClass: studentClass,
+            section: section,
+            subject: subject,
+          }
+        },
+        {
+          $group: {
+            _id: { roll: "$roll", name: "$name", studentClass: "$studentClass" ,section: "$section"}, terminals: { $push: "$$ROOT" }, attendanceTotalmarks: { $sum: "$attendanceMarks" }, participationTotalmarks: { $sum: "$participationMarks" },
+            
+          }
+        }
+      ]);
+ 
+ 
+      const lessonData = await ScienceModel.aggregate([
+        {
+          $match: {
+            studentClass: studentClass,
+            subject: subject
+          }
+        },
+        {
+          $group: {
+            _id: { studentClass: "$studentClass", subject: "$subject" },
+             totalLessons: { $push: "$$ROOT" }
+          }
+        }
+      ]);
+
+              
+ 
+       res.render("theme/projectpracticalslipfinal", {...await getSidenavData(req), editing: false, studentClass, section, subject, sciencepracticaldata, lessonData,terminal,marksheetSetting});
+     }
+     
+     else
+     { 
+       const marksheetSetting = await marksheetSetup.find();
+       const academicYear = marksheetSetting[0].academicYear;
+        const model = getPracticalProjectModel(subject, studentClass, section,  academicYear);
+         const sciencepracticaldata = await model.find({studentClass:studentClass,terminalName:terminal,subject:subject});
+       
+      const lessonData = await ScienceModel.find({studentClass:studentClass,terminal:terminal,subject:subject});
+      const marksMap = {};
+        sciencepracticaldata.forEach((student, index) => { 
+       let totalGivenAllPractical = 0;
+      let totalGivenAllProject = 0;
+      let totalObtainedAllPractical = 0;
+      let totalObtainedAllProject = 0;
+      let totalDoneAllPractical = 0;
+      let totalDoneAllProject = 0;
+       let totalPractical =0;
+       let totalPracticalproject = 0;
+        
+    
+
+      lessonData.forEach((lesson) => { 
+     lesson.units.forEach((unit, uIndex) => { 
+          // Find corresponding unit in student data safely
+          const studentUnit = student.unit?.find(u => u.unitName === unit.unitName) || { practicals: [], projectWorks: [] };
+
+          // Practical counts & marks
+          const totalPracticalGiven = unit.practicals?.length || 0;
+          const totalPracticalDone = studentUnit.practicals?.length || 0;
+          const obtainedPracticalMarks = studentUnit.practicals?.reduce((sum, p) => sum + (p.practicalMarks || 0), 0);
+
+          // Project counts & marks
+          const totalProjectGiven = unit.projectworks?.length || 0;
+          const totalProjectDone = studentUnit.projectWorks?.length || 0;
+          const obtainedProjectMarks = studentUnit.projectWorks?.reduce((sum, p) => sum + (p.projectMarks || 0), 0);
+
+ totalGivenAllPractical += totalPracticalGiven; 
+totalGivenAllProject += totalProjectGiven; 
+ totalObtainedAllPractical += obtainedPracticalMarks; 
+ totalObtainedAllProject += obtainedProjectMarks; 
+ totalDoneAllPractical += totalPracticalDone; 
+ totalDoneAllProject += totalProjectDone; 
+
+         })
+      }) 
+
+if(studentClass>8 || studentClass=="Nine" || studentClass=="Ten" || studentClass=="TEN" || studentClass=="9" || studentClass=="10" || studentClass=="nine" || studentClass=="ten" ){
+totalPracticalproject = (((((totalObtainedAllPractical/10)*10) + (((totalObtainedAllProject)/6)*6))) / lessonData[0].units.length) 
+}else{
+  totalPracticalproject = (((((totalObtainedAllPractical/10)*20) + (((totalObtainedAllProject)/8)*16))) / lessonData[0].units.length) 
+}
+
+          
+
+  if(studentClass>8 || studentClass=="Nine" || studentClass=="Ten" || studentClass=="TEN" || studentClass=="9" || studentClass=="10" || studentClass=="nine" || studentClass=="ten" ){
+           totalPractical = (student.attendanceMarks+student.participationMarks+ totalPracticalproject
+           +student.terminalMarks)/25*100 
+            }else{
+                   totalPractical = (student.attendanceMarks+student.participationMarks+ totalPracticalproject
+           +student.terminalMarks)/50*100
+             }
+               if(studentClass>8 || studentClass=="Nine" || studentClass=="Ten" || studentClass=="TEN" || studentClass=="9" || studentClass=="10" || studentClass=="nine" || studentClass=="ten" ){
+               totalPractical = ((student.attendanceMarks + student.participationMarks +
+               totalPracticalproject + student.terminalMarks)/25*100) 
+               }else{
+                totalPractical = ((student.attendanceMarks + student.participationMarks +
+               totalPracticalproject + student.terminalMarks)/50*100) 
+               }
+               marksMap[student.reg] = {
+        practicalMarks: totalPracticalproject, // This is the value to show in entry form
+        attendanceMarks: student.attendanceMarks || 0,
+        participationMarks: student.participationMarks || 0,
+        terminalMarks: student.terminalMarks || 0,
+        totalMarks: student.attendanceMarks + student.participationMarks + 
+          totalPracticalproject + (student.terminalMarks || 0),
+        totalPercentage: totalPractical,
+        totalObtainedAllPractical: totalObtainedAllPractical,
+        totalObtainedAllProject: totalObtainedAllProject,
+        
+      };
+
+  });
+   
+    
+     
+    res.json({
+      success: true,
+      marks: marksMap,
+      subject: subject,
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal,
+      academicYear: academicYear
+    });
+ 
+     }
+   }
+ 
+    else if(subject==="MATHEMATICS")
+   {
+     if(terminal==="FINAL")
+     {
+ const marksheetSetting = await marksheetSetup.find();
+      const academicYear = marksheetSetting[0].academicYear;
+        const model = getPracticalProjectModel(subject, studentClass, section,academicYear);
+ 
+      const sciencepracticaldata = await model.aggregate([
+        {
+          $match: {
+            studentClass: studentClass,
+            section: section,
+            subject: subject,
+          }
+        },
+        {
+          $group: {
+            _id: { roll: "$roll", name: "$name", studentClass: "$studentClass" ,section: "$section"}, terminals: { $push: "$$ROOT" }, attendanceTotalmarks: { $sum: "$attendanceMarks" }, participationTotalmarks: { $sum: "$participationMarks" },
+            
+          }
+        }
+      ]);
+ 
+ 
+      const lessonData = await ScienceModel.aggregate([
+        {
+          $match: {
+            studentClass: studentClass,
+            subject: subject
+          }
+        },
+        {
+          $group: {
+            _id: { studentClass: "$studentClass", subject: "$subject" },
+             totalLessons: { $push: "$$ROOT" }
+          }
+        }
+      ]);
+ 
+ console.log(marksheetSetting)
+      console.log("projectdata",sciencepracticaldata);
+      console.log("lesson Data", lessonData)
+       res.render("theme/mathslipfinal", {...await getSidenavData(req), editing: false, studentClass, section, subject, sciencepracticaldata, lessonData,terminal,marksheetSetting});
+     }
+     
+     else
+     { 
+     const marksheetSetting = await marksheetSetup.find();
+      const academicYear = marksheetSetting[0].academicYear;
+        const model = getPracticalProjectModel(subject, studentClass, section, academicYear);
+         const sciencepracticaldata = await model.find({studentClass:studentClass,terminalName:terminal,subject:subject});
+      const lessonData = await ScienceModel.find({studentClass:studentClass,terminal:terminal,subject:subject});
+       const marksMap = {};
+        sciencepracticaldata.forEach((student, index) => { 
+       let totalGivenAllPractical = 0;
+      let totalGivenAllProject = 0;
+      let totalObtainedAllPractical = 0;
+      let totalObtainedAllProject = 0;
+      let totalDoneAllPractical = 0;
+      let totalDoneAllProject = 0;
+       let totalPractical =0;
+       let totalPracticalproject = 0;
+        
+    
+
+      lessonData.forEach((lesson) => { 
+     lesson.units.forEach((unit, uIndex) => { 
+          // Find corresponding unit in student data safely
+          const studentUnit = student.unit?.find(u => u.unitName === unit.unitName) || { practicals: [], projectWorks: [] };
+
+          // Practical counts & marks
+          const totalPracticalGiven = unit.practicals?.length || 0;
+          const totalPracticalDone = studentUnit.practicals?.length || 0;
+          const obtainedPracticalMarks = studentUnit.practicals?.reduce((sum, p) => sum + (p.practicalMarks || 0), 0);
+
+          // Project counts & marks
+          const totalProjectGiven = unit.projectworks?.length || 0;
+          const totalProjectDone = studentUnit.projectWorks?.length || 0;
+          const obtainedProjectMarks = studentUnit.projectWorks?.reduce((sum, p) => sum + (p.projectMarks || 0), 0);
+
+ totalGivenAllPractical += totalPracticalGiven; 
+totalGivenAllProject += totalProjectGiven; 
+ totalObtainedAllPractical += obtainedPracticalMarks; 
+ totalObtainedAllProject += obtainedProjectMarks; 
+ totalDoneAllPractical += totalPracticalDone; 
+ totalDoneAllProject += totalProjectDone; 
+
+         })
+      }) 
+
+if(studentClass>8 || studentClass=="Nine" || studentClass=="Ten" || studentClass=="TEN" || studentClass=="9" || studentClass=="10" || studentClass=="nine" || studentClass=="ten" ){
+totalPracticalproject = (((((totalObtainedAllPractical/10)*10) + (((totalObtainedAllProject)/6)*6))) / lessonData[0].units.length) 
+}else{
+  totalPracticalproject = (((((totalObtainedAllPractical/10)*20) + (((totalObtainedAllProject)/8)*16))) / lessonData[0].units.length) 
+}
+
+          
+
+  if(studentClass>8 || studentClass=="Nine" || studentClass=="Ten" || studentClass=="TEN" || studentClass=="9" || studentClass=="10" || studentClass=="nine" || studentClass=="ten" ){
+           totalPractical = (student.attendanceMarks+student.participationMarks+ totalPracticalproject
+           +student.terminalMarks)/25*100 
+            }else{
+                   totalPractical = (student.attendanceMarks+student.participationMarks+ totalPracticalproject
+           +student.terminalMarks)/50*100
+             }
+               if(studentClass>8 || studentClass=="Nine" || studentClass=="Ten" || studentClass=="TEN" || studentClass=="9" || studentClass=="10" || studentClass=="nine" || studentClass=="ten" ){
+               totalPractical = ((student.attendanceMarks + student.participationMarks +
+               totalPracticalproject + student.terminalMarks)/25*100) 
+               }else{
+                totalPractical = ((student.attendanceMarks + student.participationMarks +
+               totalPracticalproject + student.terminalMarks)/50*100) 
+               }
+               marksMap[student.reg] = {
+        practicalMarks: totalPracticalproject, // This is the value to show in entry form
+        attendanceMarks: student.attendanceMarks || 0,
+        participationMarks: student.participationMarks || 0,
+        terminalMarks: student.terminalMarks || 0,
+        totalMarks: student.attendanceMarks + student.participationMarks + 
+          totalPracticalproject + (student.terminalMarks || 0),
+        totalPercentage: totalPractical,
+        totalObtainedAllPractical: totalObtainedAllPractical,
+        totalObtainedAllProject: totalObtainedAllProject,
+        
+      };
+
+  });
+   
+    
+     
+    res.json({
+      success: true,
+      marks: marksMap,
+      subject: subject,
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal,
+      academicYear: academicYear
+    });
+ 
+     
+      
+      
+     
+     }
+   }
+   else if(subject==="NEPALI")
+   {
+     if(terminal==="FINAL")
+     {
+ const marksheetSetting = await marksheetSetup.find();
+      const academicYear = marksheetSetting[0].academicYear;
+        const model = getPracticalProjectModel(subject, studentClass, section, academicYear);
+ 
+      const sciencepracticaldata = await model.aggregate([
+        {
+          $match: {
+            studentClass: studentClass,
+            section: section,
+            subject: subject,
+          }
+        },
+        {
+          $group: {
+            _id: { roll: "$roll", name: "$name", studentClass: "$studentClass" ,section: "$section"}, terminals: { $push: "$$ROOT" }, attendanceTotalmarks: { $sum: "$attendanceMarks" }, participationTotalmarks: { $sum: "$participationMarks" },
+            
+          }
+        }
+      ]);
+ 
+ 
+      const lessonData = await ScienceModel.aggregate([
+        {
+          $match: {
+            studentClass: studentClass,
+            subject: subject
+          }
+        },
+        {
+          $group: {
+            _id: { studentClass: "$studentClass", subject: "$subject" },
+             totalLessons: { $push: "$$ROOT" }
+          }
+        }
+      ]);
+ 
+ console.log(marksheetSetting)
+      console.log("projectdata",sciencepracticaldata);
+      console.log("lesson Data", lessonData)
+       res.render("theme/nepalislipfinal", {...await getSidenavData(req), editing: false, studentClass, section, subject, sciencepracticaldata, lessonData,terminal,marksheetSetting});
+     }
+     
+     else
+     { 
+     const marksheetSetting = await marksheetSetup.find();
+      const academicYear = marksheetSetting[0].academicYear;
+        const model = getPracticalProjectModel(subject, studentClass, section, academicYear);
+         const sciencepracticaldata = await model.find({studentClass:studentClass,terminalName:terminal,subject:subject});
+      const lessonData = await ScienceModel.find({studentClass:studentClass,terminal:terminal,subject:subject});
+ 
+     
+       const marksMap = {};
+        sciencepracticaldata.forEach((student, index) => { 
+       let totalGivenAllPractical = 0;
+      let totalGivenAllProject = 0;
+      let totalObtainedAllPractical = 0;
+      let totalObtainedAllProject = 0;
+      let totalDoneAllPractical = 0;
+      let totalDoneAllProject = 0;
+       let totalPractical =0;
+       let totalPracticalproject = 0;
+        
+    
+
+      lessonData.forEach((lesson) => { 
+     lesson.units.forEach((unit, uIndex) => { 
+          // Find corresponding unit in student data safely
+          const studentUnit = student.unit?.find(u => u.unitName === unit.unitName) || { practicals: [], projectWorks: [] };
+
+          // Practical counts & marks
+          const totalPracticalGiven = unit.practicals?.length || 0;
+          const totalPracticalDone = studentUnit.practicals?.length || 0;
+          const obtainedPracticalMarks = studentUnit.practicals?.reduce((sum, p) => sum + (p.practicalMarks || 0), 0);
+
+          // Project counts & marks
+          const totalProjectGiven = unit.projectworks?.length || 0;
+          const totalProjectDone = studentUnit.projectWorks?.length || 0;
+          const obtainedProjectMarks = studentUnit.projectWorks?.reduce((sum, p) => sum + (p.projectMarks || 0), 0);
+
+ totalGivenAllPractical += totalPracticalGiven; 
+totalGivenAllProject += totalProjectGiven; 
+ totalObtainedAllPractical += obtainedPracticalMarks; 
+ totalObtainedAllProject += obtainedProjectMarks; 
+ totalDoneAllPractical += totalPracticalDone; 
+ totalDoneAllProject += totalProjectDone; 
+
+         })
+      }) 
+
+if(studentClass>8 || studentClass=="Nine" || studentClass=="Ten" || studentClass=="TEN" || studentClass=="9" || studentClass=="10" || studentClass=="nine" || studentClass=="ten" ){
+totalPracticalproject = (((((totalObtainedAllPractical/10)*10) + (((totalObtainedAllProject)/6)*6))) / lessonData[0].units.length) 
+}else{
+  totalPracticalproject = (((((totalObtainedAllPractical/10)*20) + (((totalObtainedAllProject)/8)*16))) / lessonData[0].units.length) 
+}
+
+          
+
+  if(studentClass>8 || studentClass=="Nine" || studentClass=="Ten" || studentClass=="TEN" || studentClass=="9" || studentClass=="10" || studentClass=="nine" || studentClass=="ten" ){
+           totalPractical = (student.attendanceMarks+student.participationMarks+ totalPracticalproject
+           +student.terminalMarks)/25*100 
+            }else{
+                   totalPractical = (student.attendanceMarks+student.participationMarks+ totalPracticalproject
+           +student.terminalMarks)/50*100
+             }
+               if(studentClass>8 || studentClass=="Nine" || studentClass=="Ten" || studentClass=="TEN" || studentClass=="9" || studentClass=="10" || studentClass=="nine" || studentClass=="ten" ){
+               totalPractical = ((student.attendanceMarks + student.participationMarks +
+               totalPracticalproject + student.terminalMarks)/25*100) 
+               }else{
+                totalPractical = ((student.attendanceMarks + student.participationMarks +
+               totalPracticalproject + student.terminalMarks)/50*100) 
+               }
+               marksMap[student.reg] = {
+        practicalMarks: totalPracticalproject, // This is the value to show in entry form
+        attendanceMarks: student.attendanceMarks || 0,
+        participationMarks: student.participationMarks || 0,
+        terminalMarks: student.terminalMarks || 0,
+        totalMarks: student.attendanceMarks + student.participationMarks + 
+          totalPracticalproject + (student.terminalMarks || 0),
+        totalPercentage: totalPractical,
+        totalObtainedAllPractical: totalObtainedAllPractical,
+        totalObtainedAllProject: totalObtainedAllProject,
+        
+      };
+
+  });
+   
+    
+     
+    res.json({
+      success: true,
+      marks: marksMap,
+      subject: subject,
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal,
+      academicYear: academicYear
+    });
+ 
+     }
+   }
+   else if(subject==="ENGLISH")
+   {
+     if(terminal==="FINAL")
+     {
+ const marksheetSetting = await marksheetSetup.find();
+      const academicYear = marksheetSetting[0].academicYear;
+        const model = getPracticalProjectModel(subject, studentClass, section, academicYear);
+ 
+      const sciencepracticaldata = await model.aggregate([
+        {
+          $match: {
+            studentClass: studentClass,
+            section: section,
+            subject: subject,
+          }
+        },
+        {
+          $group: {
+            _id: { roll: "$roll", name: "$name", studentClass: "$studentClass" ,section: "$section"}, terminals: { $push: "$$ROOT" }, attendanceTotalmarks: { $sum: "$attendanceMarks" }, participationTotalmarks: { $sum: "$participationMarks" },
+            
+          }
+        }
+      ]);
+ 
+ 
+      const lessonData = await ScienceModel.aggregate([
+        {
+          $match: {
+            studentClass: studentClass,
+            subject: subject
+          }
+        },
+        {
+          $group: {
+            _id: { studentClass: "$studentClass", subject: "$subject" },
+             totalLessons: { $push: "$$ROOT" }
+          }
+        }
+      ]);
+ 
+ console.log(marksheetSetting)
+      console.log("projectdata",sciencepracticaldata);
+      console.log("lesson Data", lessonData)
+       res.render("theme/englishslipfinal", {...await getSidenavData(req), editing: false, studentClass, section, subject, sciencepracticaldata, lessonData,terminal,marksheetSetting});
+     }
+     
+     else
+     { 
+     const marksheetSetting = await marksheetSetup.find();
+      const academicYear = marksheetSetting[0].academicYear;
+        const model = getPracticalProjectModel(subject, studentClass, section, academicYear);
+         const sciencepracticaldata = await model.find({studentClass:studentClass,terminalName:terminal,subject:subject});
+      const lessonData = await ScienceModel.find({studentClass:studentClass,terminal:terminal,subject:subject});
+ 
+      const marksMap = {};
+        sciencepracticaldata.forEach((student, index) => { 
+       let totalGivenAllPractical = 0;
+      let totalGivenAllProject = 0;
+      let totalObtainedAllPractical = 0;
+      let totalObtainedAllProject = 0;
+      let totalDoneAllPractical = 0;
+      let totalDoneAllProject = 0;
+       let totalPractical =0;
+       let totalPracticalproject = 0;
+        
+    
+
+      lessonData.forEach((lesson) => { 
+     lesson.units.forEach((unit, uIndex) => { 
+          // Find corresponding unit in student data safely
+          const studentUnit = student.unit?.find(u => u.unitName === unit.unitName) || { practicals: [], projectWorks: [] };
+
+          // Practical counts & marks
+          const totalPracticalGiven = unit.practicals?.length || 0;
+          const totalPracticalDone = studentUnit.practicals?.length || 0;
+          const obtainedPracticalMarks = studentUnit.practicals?.reduce((sum, p) => sum + (p.practicalMarks || 0), 0);
+
+          // Project counts & marks
+          const totalProjectGiven = unit.projectworks?.length || 0;
+          const totalProjectDone = studentUnit.projectWorks?.length || 0;
+          const obtainedProjectMarks = studentUnit.projectWorks?.reduce((sum, p) => sum + (p.projectMarks || 0), 0);
+
+ totalGivenAllPractical += totalPracticalGiven; 
+totalGivenAllProject += totalProjectGiven; 
+ totalObtainedAllPractical += obtainedPracticalMarks; 
+ totalObtainedAllProject += obtainedProjectMarks; 
+ totalDoneAllPractical += totalPracticalDone; 
+ totalDoneAllProject += totalProjectDone; 
+
+         })
+      }) 
+
+if(studentClass>8 || studentClass=="Nine" || studentClass=="Ten" || studentClass=="TEN" || studentClass=="9" || studentClass=="10" || studentClass=="nine" || studentClass=="ten" ){
+totalPracticalproject = (((((totalObtainedAllPractical/10)*10) + (((totalObtainedAllProject)/6)*6))) / lessonData[0].units.length) 
+}else{
+  totalPracticalproject = (((((totalObtainedAllPractical/10)*20) + (((totalObtainedAllProject)/8)*16))) / lessonData[0].units.length) 
+}
+
+          
+
+  if(studentClass>8 || studentClass=="Nine" || studentClass=="Ten" || studentClass=="TEN" || studentClass=="9" || studentClass=="10" || studentClass=="nine" || studentClass=="ten" ){
+           totalPractical = (student.attendanceMarks+student.participationMarks+ totalPracticalproject
+           +student.terminalMarks)/25*100 
+            }else{
+                   totalPractical = (student.attendanceMarks+student.participationMarks+ totalPracticalproject
+           +student.terminalMarks)/50*100
+             }
+               if(studentClass>8 || studentClass=="Nine" || studentClass=="Ten" || studentClass=="TEN" || studentClass=="9" || studentClass=="10" || studentClass=="nine" || studentClass=="ten" ){
+               totalPractical = ((student.attendanceMarks + student.participationMarks +
+               totalPracticalproject + student.terminalMarks)/25*100) 
+               }else{
+                totalPractical = ((student.attendanceMarks + student.participationMarks +
+               totalPracticalproject + student.terminalMarks)/50*100) 
+               }
+               marksMap[student.reg] = {
+        practicalMarks: totalPracticalproject, // This is the value to show in entry form
+        attendanceMarks: student.attendanceMarks || 0,
+        participationMarks: student.participationMarks || 0,
+        terminalMarks: student.terminalMarks || 0,
+        totalMarks: student.attendanceMarks + student.participationMarks + 
+          totalPracticalproject + (student.terminalMarks || 0),
+        totalPercentage: totalPractical,
+        totalObtainedAllPractical: totalObtainedAllPractical,
+        totalObtainedAllProject: totalObtainedAllProject,
+        
+      };
+
+  });
+   
+    
+     
+    res.json({
+      success: true,
+      marks: marksMap,
+      subject: subject,
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal,
+      academicYear: academicYear
+    });
+ 
+     }
+   }
+    else if(subject==="SOCIAL")
+   {
+     if(terminal==="FINAL")
+     {
+ const marksheetSetting = await marksheetSetup.find();
+      const academicYear = marksheetSetting[0].academicYear;
+        const model = getPracticalProjectModel(subject, studentClass, section,  academicYear);
+ 
+      const sciencepracticaldata = await model.aggregate([
+        {
+          $match: {
+            studentClass: studentClass,
+            section: section,
+            subject: subject,
+          }
+        },
+        {
+          $group: {
+            _id: { roll: "$roll", name: "$name", studentClass: "$studentClass" ,section: "$section"}, terminals: { $push: "$$ROOT" }, attendanceTotalmarks: { $sum: "$attendanceMarks" }, participationTotalmarks: { $sum: "$participationMarks" },
+            
+          }
+        }
+      ]);
+ 
+ 
+      const lessonData = await ScienceModel.aggregate([
+        {
+          $match: {
+            studentClass: studentClass,
+            subject: subject
+          }
+        },
+        {
+          $group: {
+            _id: { studentClass: "$studentClass", subject: "$subject" },
+             totalLessons: { $push: "$$ROOT" }
+          }
+        }
+      ]);
+ 
+ console.log(marksheetSetting)
+      console.log("projectdata",sciencepracticaldata);
+      console.log("lesson Data", lessonData)
+       res.render("theme/socialslipfinal", {...await getSidenavData(req), editing: false, studentClass, section, subject, sciencepracticaldata, lessonData,terminal,marksheetSetting});
+     }
+     
+     else 
+     { 
+     const marksheetSetting = await marksheetSetup.find();
+      const academicYear = marksheetSetting[0].academicYear;
+        const model = getPracticalProjectModel(subject, studentClass, section, academicYear);
+         const sciencepracticaldata = await model.find({studentClass:studentClass,terminalName:terminal,subject:subject});
+      const lessonData = await ScienceModel.find({studentClass:studentClass,terminal:terminal,subject:subject});
+ 
+     
+      const marksMap = {};
+        sciencepracticaldata.forEach((student, index) => { 
+       let totalGivenAllPractical = 0;
+      let totalGivenAllProject = 0;
+      let totalObtainedAllPractical = 0;
+      let totalObtainedAllProject = 0;
+      let totalDoneAllPractical = 0;
+      let totalDoneAllProject = 0;
+       let totalPractical =0;
+       let totalPracticalproject = 0;
+        
+    
+
+      lessonData.forEach((lesson) => { 
+     lesson.units.forEach((unit, uIndex) => { 
+          // Find corresponding unit in student data safely
+          const studentUnit = student.unit?.find(u => u.unitName === unit.unitName) || { practicals: [], projectWorks: [] };
+
+          // Practical counts & marks
+          const totalPracticalGiven = unit.practicals?.length || 0;
+          const totalPracticalDone = studentUnit.practicals?.length || 0;
+          const obtainedPracticalMarks = studentUnit.practicals?.reduce((sum, p) => sum + (p.practicalMarks || 0), 0);
+
+          // Project counts & marks
+          const totalProjectGiven = unit.projectworks?.length || 0;
+          const totalProjectDone = studentUnit.projectWorks?.length || 0;
+          const obtainedProjectMarks = studentUnit.projectWorks?.reduce((sum, p) => sum + (p.projectMarks || 0), 0);
+
+ totalGivenAllPractical += totalPracticalGiven; 
+totalGivenAllProject += totalProjectGiven; 
+ totalObtainedAllPractical += obtainedPracticalMarks; 
+ totalObtainedAllProject += obtainedProjectMarks; 
+ totalDoneAllPractical += totalPracticalDone; 
+ totalDoneAllProject += totalProjectDone; 
+
+         })
+      }) 
+
+if(studentClass>8 || studentClass=="Nine" || studentClass=="Ten" || studentClass=="TEN" || studentClass=="9" || studentClass=="10" || studentClass=="nine" || studentClass=="ten" ){
+totalPracticalproject = (((((totalObtainedAllPractical/10)*10) + (((totalObtainedAllProject)/6)*6))) / lessonData[0].units.length) 
+}else{
+  totalPracticalproject = (((((totalObtainedAllPractical/10)*20) + (((totalObtainedAllProject)/8)*16))) / lessonData[0].units.length) 
+}
+
+          
+
+  if(studentClass>8 || studentClass=="Nine" || studentClass=="Ten" || studentClass=="TEN" || studentClass=="9" || studentClass=="10" || studentClass=="nine" || studentClass=="ten" ){
+           totalPractical = (student.attendanceMarks+student.participationMarks+ totalPracticalproject
+           +student.terminalMarks)/25*100 
+            }else{
+                   totalPractical = (student.attendanceMarks+student.participationMarks+ totalPracticalproject
+           +student.terminalMarks)/50*100
+             }
+               if(studentClass>8 || studentClass=="Nine" || studentClass=="Ten" || studentClass=="TEN" || studentClass=="9" || studentClass=="10" || studentClass=="nine" || studentClass=="ten" ){
+               totalPractical = ((student.attendanceMarks + student.participationMarks +
+               totalPracticalproject + student.terminalMarks)/25*100) 
+               }else{
+                totalPractical = ((student.attendanceMarks + student.participationMarks +
+               totalPracticalproject + student.terminalMarks)/50*100) 
+               }
+               marksMap[student.reg] = {
+        practicalMarks: totalPracticalproject, // This is the value to show in entry form
+        attendanceMarks: student.attendanceMarks || 0,
+        participationMarks: student.participationMarks || 0,
+        terminalMarks: student.terminalMarks || 0,
+        totalMarks: student.attendanceMarks + student.participationMarks + 
+          totalPracticalproject + (student.terminalMarks || 0),
+        totalPercentage: totalPractical,
+        totalObtainedAllPractical: totalObtainedAllPractical,
+        totalObtainedAllProject: totalObtainedAllProject,
+        
+      };
+
+  });
+   
+    
+     
+    res.json({
+      success: true,
+      marks: marksMap,
+      subject: subject,
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal,
+      academicYear: academicYear
+    });
+ 
+     }
+   }
+   else if(subject==="HEALTH")
+   {
+     if(terminal==="FINAL")
+     {
+ const marksheetSetting = await marksheetSetup.find();
+      const academicYear = marksheetSetting[0].academicYear;
+        const model = getPracticalProjectModel(subject, studentClass, section,  academicYear);
+ 
+      const sciencepracticaldata = await model.aggregate([
+        {
+          $match: {
+            studentClass: studentClass,
+            section: section,
+            subject: subject,
+          }
+        },
+        {
+          $group: {
+            _id: { roll: "$roll", name: "$name", studentClass: "$studentClass" ,section: "$section"}, terminals: { $push: "$$ROOT" }, attendanceTotalmarks: { $sum: "$attendanceMarks" }, participationTotalmarks: { $sum: "$participationMarks" },
+            
+          }
+        }
+      ]);
+ 
+ 
+      const lessonData = await ScienceModel.aggregate([
+        {
+          $match: {
+            studentClass: studentClass,
+            subject: subject
+          }
+        },
+        {
+          $group: {
+            _id: { studentClass: "$studentClass", subject: "$subject" },
+             totalLessons: { $push: "$$ROOT" }
+          }
+        }
+      ]);
+ 
+ console.log(marksheetSetting)
+      console.log("projectdata",sciencepracticaldata);
+      console.log("lesson Data", lessonData)
+       res.render("theme/healthslipfinal", {...await getSidenavData(req), editing: false, studentClass, section, subject, sciencepracticaldata, lessonData,terminal,marksheetSetting});
+     }
+     
+     else 
+     { 
+     const marksheetSetting = await marksheetSetup.find();
+      const academicYear = marksheetSetting[0].academicYear;
+        const model = getPracticalProjectModel(subject, studentClass, section, academicYear);
+         const sciencepracticaldata = await model.find({studentClass:studentClass,terminalName:terminal,subject:subject});
+      const lessonData = await ScienceModel.find({studentClass:studentClass,terminal:terminal,subject:subject});
+ 
+     
+       const marksMap = {};
+        sciencepracticaldata.forEach((student, index) => { 
+       let totalGivenAllPractical = 0;
+      let totalGivenAllProject = 0;
+      let totalObtainedAllPractical = 0;
+      let totalObtainedAllProject = 0;
+      let totalDoneAllPractical = 0;
+      let totalDoneAllProject = 0;
+       let totalPractical =0;
+       let totalPracticalproject = 0;
+        
+    
+
+      lessonData.forEach((lesson) => { 
+     lesson.units.forEach((unit, uIndex) => { 
+          // Find corresponding unit in student data safely
+          const studentUnit = student.unit?.find(u => u.unitName === unit.unitName) || { practicals: [], projectWorks: [] };
+
+          // Practical counts & marks
+          const totalPracticalGiven = unit.practicals?.length || 0;
+          const totalPracticalDone = studentUnit.practicals?.length || 0;
+          const obtainedPracticalMarks = studentUnit.practicals?.reduce((sum, p) => sum + (p.practicalMarks || 0), 0);
+
+          // Project counts & marks
+          const totalProjectGiven = unit.projectworks?.length || 0;
+          const totalProjectDone = studentUnit.projectWorks?.length || 0;
+          const obtainedProjectMarks = studentUnit.projectWorks?.reduce((sum, p) => sum + (p.projectMarks || 0), 0);
+
+ totalGivenAllPractical += totalPracticalGiven; 
+totalGivenAllProject += totalProjectGiven; 
+ totalObtainedAllPractical += obtainedPracticalMarks; 
+ totalObtainedAllProject += obtainedProjectMarks; 
+ totalDoneAllPractical += totalPracticalDone; 
+ totalDoneAllProject += totalProjectDone; 
+
+         })
+      }) 
+
+if(studentClass>8 || studentClass=="Nine" || studentClass=="Ten" || studentClass=="TEN" || studentClass=="9" || studentClass=="10" || studentClass=="nine" || studentClass=="ten" ){
+totalPracticalproject = (((((totalObtainedAllPractical/10)*10) + (((totalObtainedAllProject)/6)*6))) / lessonData[0].units.length) 
+}else{
+  totalPracticalproject = (((((totalObtainedAllPractical/10)*20) + (((totalObtainedAllProject)/8)*16))) / lessonData[0].units.length) 
+}
+
+          
+
+  if(studentClass>8 || studentClass=="Nine" || studentClass=="Ten" || studentClass=="TEN" || studentClass=="9" || studentClass=="10" || studentClass=="nine" || studentClass=="ten" ){
+           totalPractical = (student.attendanceMarks+student.participationMarks+ totalPracticalproject
+           +student.terminalMarks)/25*100 
+            }else{
+                   totalPractical = (student.attendanceMarks+student.participationMarks+ totalPracticalproject
+           +student.terminalMarks)/50*100
+             }
+               if(studentClass>8 || studentClass=="Nine" || studentClass=="Ten" || studentClass=="TEN" || studentClass=="9" || studentClass=="10" || studentClass=="nine" || studentClass=="ten" ){
+               totalPractical = ((student.attendanceMarks + student.participationMarks +
+               totalPracticalproject + student.terminalMarks)/25*100) 
+               }else{
+                totalPractical = ((student.attendanceMarks + student.participationMarks +
+               totalPracticalproject + student.terminalMarks)/50*100) 
+               }
+               marksMap[student.reg] = {
+        practicalMarks: totalPracticalproject, // This is the value to show in entry form
+        attendanceMarks: student.attendanceMarks || 0,
+        participationMarks: student.participationMarks || 0,
+        terminalMarks: student.terminalMarks || 0,
+        totalMarks: student.attendanceMarks + student.participationMarks + 
+          totalPracticalproject + (student.terminalMarks || 0),
+        totalPercentage: totalPractical,
+        totalObtainedAllPractical: totalObtainedAllPractical,
+        totalObtainedAllProject: totalObtainedAllProject,
+        
+      };
+
+  });
+   
+    
+     
+    res.json({
+      success: true,
+      marks: marksMap,
+      subject: subject,
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal,
+      academicYear: academicYear
+    });
+ 
+     }
+   }
+ else
+ {
+   if(terminal==="FINAL")
+     {
+       const marksheetSetting = await marksheetSetup.find();
+      const academicYear = marksheetSetting[0].academicYear;
+        const model = getPracticalProjectModel(subject, studentClass, section, academicYear);
+ 
+ 
+      const sciencepracticaldata = await model.aggregate([
+        {
+          $match: {
+            studentClass: studentClass,
+            section: section,
+            subject: subject,
+          }
+        },
+        {
+          $group: {
+            _id: { roll: "$roll", name: "$name", studentClass: "$studentClass" ,section: "$section"}, terminals: { $push: "$$ROOT" }, attendanceTotalmarks: { $sum: "$attendanceMarks" }, participationTotalmarks: { $sum: "$participationMarks" },
+            
+          }
+        }
+      ]);
+ 
+ 
+      const lessonData = await ScienceModel.aggregate([
+        {
+          $match: {
+            studentClass: studentClass,
+            subject: subject
+          }
+        },
+        {
+          $group: {
+            _id: { studentClass: "$studentClass", subject: "$subject" },
+             totalLessons: { $push: "$$ROOT" }
+          }
+        }
+      ]);
+ 
+ console.log(marksheetSetting)
+      console.log("projectdata",sciencepracticaldata);
+      console.log("lesson Data", lessonData)
+       res.render("theme/projectpracticalslipfinal", {...await getSidenavData(req), editing: false, studentClass, section, subject, sciencepracticaldata, lessonData,terminal,marksheetSetting});
+     }
+     
+     else
+     { 
+       const marksheetSetting = await marksheetSetup.find();
+       const academicYear = marksheetSetting[0].academicYear;
+        const model = getPracticalProjectModel(subject, studentClass, section,  academicYear);
+         const sciencepracticaldata = await model.find({studentClass:studentClass,terminalName:terminal,subject:subject});
+      const lessonData = await ScienceModel.find({studentClass:studentClass,terminal:terminal,subject:subject});
+ 
+     const marksMap = {};
+        sciencepracticaldata.forEach((student, index) => { 
+       let totalGivenAllPractical = 0;
+      let totalGivenAllProject = 0;
+      let totalObtainedAllPractical = 0;
+      let totalObtainedAllProject = 0;
+      let totalDoneAllPractical = 0;
+      let totalDoneAllProject = 0;
+       let totalPractical =0;
+       let totalPracticalproject = 0;
+        
+    
+
+      lessonData.forEach((lesson) => { 
+     lesson.units.forEach((unit, uIndex) => { 
+          // Find corresponding unit in student data safely
+          const studentUnit = student.unit?.find(u => u.unitName === unit.unitName) || { practicals: [], projectWorks: [] };
+
+          // Practical counts & marks
+          const totalPracticalGiven = unit.practicals?.length || 0;
+          const totalPracticalDone = studentUnit.practicals?.length || 0;
+          const obtainedPracticalMarks = studentUnit.practicals?.reduce((sum, p) => sum + (p.practicalMarks || 0), 0);
+
+          // Project counts & marks
+          const totalProjectGiven = unit.projectworks?.length || 0;
+          const totalProjectDone = studentUnit.projectWorks?.length || 0;
+          const obtainedProjectMarks = studentUnit.projectWorks?.reduce((sum, p) => sum + (p.projectMarks || 0), 0);
+
+ totalGivenAllPractical += totalPracticalGiven; 
+totalGivenAllProject += totalProjectGiven; 
+ totalObtainedAllPractical += obtainedPracticalMarks; 
+ totalObtainedAllProject += obtainedProjectMarks; 
+ totalDoneAllPractical += totalPracticalDone; 
+ totalDoneAllProject += totalProjectDone; 
+
+         })
+      }) 
+
+if(studentClass>8 || studentClass=="Nine" || studentClass=="Ten" || studentClass=="TEN" || studentClass=="9" || studentClass=="10" || studentClass=="nine" || studentClass=="ten" ){
+totalPracticalproject = (((((totalObtainedAllPractical/10)*10) + (((totalObtainedAllProject)/6)*6))) / lessonData[0].units.length) 
+}else{
+  totalPracticalproject = (((((totalObtainedAllPractical/10)*20) + (((totalObtainedAllProject)/8)*16))) / lessonData[0].units.length) 
+}
+
+          
+
+  if(studentClass>8 || studentClass=="Nine" || studentClass=="Ten" || studentClass=="TEN" || studentClass=="9" || studentClass=="10" || studentClass=="nine" || studentClass=="ten" ){
+           totalPractical = (student.attendanceMarks+student.participationMarks+ totalPracticalproject
+           +student.terminalMarks)/25*100 
+            }else{
+                   totalPractical = (student.attendanceMarks+student.participationMarks+ totalPracticalproject
+           +student.terminalMarks)/50*100
+             }
+               if(studentClass>8 || studentClass=="Nine" || studentClass=="Ten" || studentClass=="TEN" || studentClass=="9" || studentClass=="10" || studentClass=="nine" || studentClass=="ten" ){
+               totalPractical = ((student.attendanceMarks + student.participationMarks +
+               totalPracticalproject + student.terminalMarks)/25*100) 
+               }else{
+                totalPractical = ((student.attendanceMarks + student.participationMarks +
+               totalPracticalproject + student.terminalMarks)/50*100) 
+               }
+               marksMap[student.reg] = {
+        practicalMarks: totalPracticalproject, // This is the value to show in entry form
+        attendanceMarks: student.attendanceMarks || 0,
+        participationMarks: student.participationMarks || 0,
+        terminalMarks: student.terminalMarks || 0,
+        totalMarks: student.attendanceMarks + student.participationMarks + 
+          totalPracticalproject + (student.terminalMarks || 0),
+        totalPercentage: totalPractical,
+        totalObtainedAllPractical: totalObtainedAllPractical,
+        totalObtainedAllProject: totalObtainedAllProject,
+        
+      };
+
+  });
+   
+    
+     
+    res.json({
+      success: true,
+      marks: marksMap,
+      subject: subject,
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal,
+      academicYear: academicYear
+    });
+ 
+     }
+   
+ }
+ }catch(err)
+ {
+ console.log(err);
+ res.status(500).json({error:"Internal server error",details: err.message});
+ }
+}

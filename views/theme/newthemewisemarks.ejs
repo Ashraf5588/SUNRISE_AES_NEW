@@ -61,8 +61,9 @@
 
     <% themeData[0].themes.forEach(theme => { %>
         <% let sumAfter = 0; %>
-  <% let sumBefore = 0; %>
-  <% let totalLoCount = 0; %>
+        <% let sumBefore = 0; %>
+        <% let totalLoCount = 0; %>
+        <% let completedLoCount = 0; %>
 
         <div class="themeTitle">
             Theme Name:
@@ -99,7 +100,16 @@ console.log("FOUND =", marksMap[key]);
 
                     const record = marksMap[key];
 
-                    
+                    // Check if this LO has any data (either before or after marks)
+                    const hasData = record && (
+                        (record.obtainedMarksBefore !== undefined && record.obtainedMarksBefore !== null && record.obtainedMarksBefore !== '') ||
+                        (record.obtainedMarksAfter !== undefined && record.obtainedMarksAfter !== null && record.obtainedMarksAfter !== '')
+                    );
+
+                    // Increment completed LO count if data exists
+                    if (hasData) {
+                        completedLoCount++;
+                    }
                 %>
 
                 <tr>
@@ -152,7 +162,7 @@ console.log("FOUND =", marksMap[key]);
               
                 <% sumAfter += record ? record.obtainedMarksAfter : 0; %>
                 <% sumBefore += record ? record.obtainedMarksBefore : 0; %>
-<% totalLoCount++; %>
+                <% totalLoCount++; %>
             <% }) %>
 <tr>
   <td colspan="7" style="background-color: #f0f0f0;">Total Obtained</td>
@@ -161,8 +171,19 @@ console.log("FOUND =", marksMap[key]);
   
 </tr>
 <tr>
-   <td colspan="7" style="background-color: #f0f0f0;">Achievmenet Percentage</td>
-   <td> <%= totalLoCount > 0 ? ((sumAfter / (totalLoCount * 4)) * 100).toFixed(2) : 0 %> %</td>
+   <td colspan="7" style="background-color: #f0f0f0;">Achievement Percentage</td>
+   <td> 
+        <% 
+            // Calculate percentage based on completed LOs only
+            const maxPossibleMarks = completedLoCount * 4;
+            const percentage = completedLoCount > 0 ? ((sumAfter / maxPossibleMarks) * 100).toFixed(2) : 0;
+        %>
+        <%= percentage %> %
+   </td>
+</tr>
+<tr>
+   <td colspan="7" style="background-color: #f0f0f0;">Learning Outcomes Completed</td>
+   <td> <%= completedLoCount %> / <%= totalLoCount %></td>
 </tr>
             </tbody>
 

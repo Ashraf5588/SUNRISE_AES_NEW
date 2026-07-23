@@ -57,7 +57,24 @@
     </div>
     
     <div class="format-grid">
-      <a href="/generatemarksheet?format=practicalonly" class="format-card">
+       <a href="/generatemarksheet?format=cdcterminal&studentClass=nursery" class="format-card">
+        <div class="card-image">
+          <img src="/onlypractical.png" alt="CDC Format (Terminal)" onerror="this.style.display='none'">
+        </div>
+        <div class="card-content">
+          <h2 class="card-title">CDC Format (Terminal)</h2>
+          <p class="card-description">Generate marksheets for theory examinations only. Suitable for written tests and theoretical subjects.</p>
+          <div class="card-footer">
+            <span class="card-button">
+              Select Format
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </span>
+          </div>
+        </div>
+      </a>
+      <a href="/generatemarksheet?format=practicalonly&studentClass=nursery" class="format-card">
         <div class="card-image">
           <img src="/onlypractical.png" alt="Practical Only" onerror="this.style.display='none'">
         </div>
@@ -75,7 +92,7 @@
         </div>
       </a>
       
-      <a href="/generatemarksheet?format=theorypractical" class="format-card">
+      <a href="/generatemarksheet?format=theorypractical&studentClass=nursery" class="format-card">
         <div class="card-image">
           <img src="/theory.png" alt="Theory + Practical" onerror="this.style.display='none'">
         </div>
@@ -93,7 +110,7 @@
         </div>
       </a>
       
-      <a href="/generatemarksheet?format=internalexternal" class="format-card">
+      <a href="/generatemarksheet?format=internalexternal&studentClass=nursery" class="format-card">
         <div class="card-image">
           <img src="/onlypractical.png" alt="Internal + External" onerror="this.style.display='none'">
         </div>
@@ -111,7 +128,7 @@
         </div>
       </a>
       
-      <a href="/generatemarksheet?format=theoryonly" class="format-card">
+      <a href="/generatemarksheet?format=theoryonly&studentClass=nursery" class="format-card">
         <div class="card-image">
           <img src="/onlypractical.png" alt="Theory Only" onerror="this.style.display='none'">
         </div>
@@ -128,6 +145,8 @@
           </div>
         </div>
       </a>
+
+      
     </div>
   </div>
 </body>

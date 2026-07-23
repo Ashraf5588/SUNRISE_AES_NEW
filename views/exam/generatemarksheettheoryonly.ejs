@@ -27,78 +27,142 @@
 
     .no-print{padding:18px;text-align:left}
 
-    .control-panel{max-width:1100px;margin:12px auto;display:flex;gap:8px;align-items:center}
+    .control-panel{max-width:1100px;margin:12px auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .control-panel button{padding:8px 14px;border-radius:6px;border:0;background:var(--accent);color:#fff;cursor:pointer}
     .control-panel button.secondary{background:#6c757d}
     .control-panel .hint{color:var(--muted);font-size:13px;margin-left:8px}
+    .column-toggle-group{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-right:8px}
+    .column-toggle-item{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:#222;background:#f8f9fa;border:1px solid #d6d8db;padding:6px 10px;border-radius:999px}
+    .column-toggle-item input{accent-color:#1f6fb3}
+    .hidden-column{display:none !important}
 
     .sheet{
       width:210mm;
-      min-height:auto;
-      max-height:297mm;
-      margin:6mm auto;
+      min-height:297mm;
+      margin:18mm auto;
       background:#fff;
       box-shadow:0 6px 18px rgba(0,0,0,0.08);
-      padding:8mm;
+      padding:10mm;
       position:relative;
       box-sizing:border-box;
       page-break-after:always;
-      border:1px solid #e2e8f0;
       page-break-inside:avoid;
     }
 
-    /* Watermark centered, covers large area but subtle */
+    .border-frame {
+        border: 3px double #000;
+        height: 100%;
+        padding: 15px;
+        box-sizing: border-box;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+    }
+
     .watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:0;opacity:0.06;pointer-events:none;display:flex;align-items:center;justify-content:center}
-    .watermark img{max-width:480px;max-height:480px;opacity:0.08;filter:grayscale(100%)}
+    .watermark img{max-width:400px;max-height:400px;opacity:0.08;filter:grayscale(100%)}
 
-    .content{position:relative;z-index:1}
+    .content{position:relative;z-index:1; flex: 1;}
 
-    .header{display:flex;gap:10px;align-items:center;border-bottom:2px solid var(--border);padding-bottom:6px}
-    .logo{width:90px;height:90px;flex:0 0 90px;border-radius:8px;overflow:hidden;border:1px solid #ddd;background:#fff;display:flex;align-items:center;justify-content:center}
+    .header{
+        display:flex;
+        gap:15px;
+        align-items:center;
+        border-bottom:2px solid #000;
+        padding-bottom:15px;
+        margin-bottom: 15px;
+    }
+    .logo{width:80px;height:80px;flex:0 0 80px;border-radius:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
     .logo img{max-width:100%;max-height:100%;display:block}
-    .head-text{flex:1}
-    .school-name{font-size:18px;font-weight:800;letter-spacing:0.4px}
-    .school-meta{font-size:12px;color:var(--muted);margin-top:4px}
-    .report-title{text-align:right;font-weight:700;color:var(--accent)}
 
-    .student-info{display:grid;grid-template-columns:1fr 1fr;margin-top:8px;gap:6px;font-size:11px}
-    .info-label{font-weight:700;color:var(--muted);min-width:120px}
-    .info-value{font-weight:600}
+    .head-text{flex:1; text-align: center;}
+    .school-name{
+        font-size:28px;
+        font-weight:900;
+        letter-spacing:0.5px;
+        font-family: 'Times New Roman', Times, serif;
+        text-transform: uppercase;
+        color: #000;
+        margin-bottom: 5px;
+        white-space: nowrap;
+    }
+    .school-meta{font-size:14px;color:#333;font-weight: 500;}
 
-    table{width:100%;border-collapse:collapse;margin-top:8px;font-size:11px}
-    table th, table td{border:1px solid #cbd5e1;padding:6px;text-align:center}
-    table th{background:#0b63a8;color:#fff;font-weight:700;font-size:11px}
-    tr:nth-child(even) td{background:#fbfdff}
-    .subject{text-align:left;padding-left:10px}
+    .report-title{
+        text-align:center;
+        font-weight:800;
+        color:#000;
+        margin-top: 10px;
+        text-transform: uppercase;
+        font-size: 18px;
+        border: 1px solid #000;
+        display: inline-block;
+        padding: 5px 15px;
+        border-radius: 20px;
+    }
 
-    .summary{display:flex;justify-content:space-between;margin-top:6px;font-weight:700;font-size:11px}
+    .student-info{display:grid;grid-template-columns:1fr 1fr;margin-top:10px;gap:8px;font-size:14px;border: 1px solid #000;padding: 10px}
+    .info-label{font-weight:700;color:#000;min-width:120px}
+    .info-value{font-weight:600; color: #000;}
 
-    .remark-box{margin-top:8px;padding:8px;border:1px dashed #cbd5e1;background:#fbfcff;font-size:11px}
-    .notes-row{display:flex;gap:10px;margin-top:6px;align-items:stretch;}
+    table{width:100%;border-collapse:collapse;margin-top:15px;font-size:13px; border: 1px solid #000;}
+    table th, table td{border:1px solid #000;padding:6px 8px;text-align:center}
+    table th{background:#f0f0f0;color:#000;font-weight:800;font-size:13px; text-transform: uppercase;}
+    tr:nth-child(even) td{background:#fff}
+    .subject{text-align:left;padding-left:10px; font-weight: 600;}
+
+    .summary{display:flex;justify-content:space-between;margin-top:15px;font-weight:700; border: 1px solid #000; padding: 10px;}
+
+    .remark-box{margin-top:15px;padding:10px;border:1px solid #000;background:#fff; min-height: 40px;}
+    .notes-row{display:flex;gap:10px;margin-top:8px;align-items:stretch;}
     .notes-row .remark-box{margin-top:0;flex:1;}
-    .issued-box{flex:0 0 190px;border:1px solid #cbd5e1;border-radius:4px;background:#fbfcff;padding:8px;font-size:11px;display:flex;align-items:center;justify-content:center;text-align:center;}
+    .issued-box{flex:0 0 200px;border:1px solid #000;border-radius:4px;background:#fff;padding:10px;font-size:12px;display:flex;align-items:center;justify-content:center;text-align:center;}
 
-    .sign-row{display:flex;justify-content:space-between;margin-top:16px}
-    .sign{width:30%;text-align:center}
-    .sign-img{max-width:150px;max-height:55px;object-fit:contain;display:block;margin:0 auto 6px;height:55px;}
-    .sign .line{margin-top:6px;border-top:1px solid #111;padding-top:6px;font-weight:700;font-size:12px}
+    .sign-row{display:flex;justify-content:space-between;align-items:flex-end;margin-top:40px; padding: 0 20px; gap: 16px;}
+    .sign{width:33.333%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-height:110px;gap:8px;text-align:center}
+    .sign .sign-img,
+    .sign .sign-placeholder {
+      display:block;
+      max-width:90px;
+      max-height:48px;
+      width:auto;
+      height:auto;
+      object-fit:contain;
+      margin:0 auto;
+    }
+    .sign .sign-placeholder {
+      width:90px;
+      height:48px;
+      border:1px dashed #cbd5e1;
+      background:#f8fafc;
+    }
+    .sign .line{margin-top:0;border-top:1px solid #000;padding-top:6px;font-weight:700; font-size: 14px;}
 
-    .grading-scale{margin-top:10px;font-size:10px}
-    .grading-scale td{Padding:6px}
+    .grading-scale{margin-top:20px;font-size:11px; width: 100%;}
+    .grading-scale td{padding:4px; border: none; text-align: left;}
 
-    /* Print rules */
     @media print{
       body,html{background:#fff;margin:0;padding:0}
       .no-print{display:none !important}
-      .sheet{box-shadow:none;margin:6mm auto;padding:6mm;width:calc(210mm - 12mm);min-height:auto;page-break-after:always;page-break-inside:avoid}
-      .sheet{height:calc(297mm - 12mm);}
+      .sheet{
+          box-shadow:none;
+          margin:0;
+          padding:5mm;
+          width:210mm;
+          height:297mm;
+          page-break-after:always;
+          page-break-inside:avoid;
+      }
+      .border-frame {
+          height: calc(100% - 2mm);
+          border: 3px double #000;
+      }
       .sheet:last-child{page-break-after:auto}
       .sheet .watermark{opacity:0.06}
     }
 
-    @page{size:A4;margin:6mm}
+    @page{size:A4;margin:0}
 
-    /* Form Selector Styling */
     .form-selector-panel {
       background: linear-gradient(135deg, #ff9d41 0%, #e7b170 100%);
       padding: 25px;
@@ -192,7 +256,6 @@
         display: none !important;
       }
     }
-
 </style>
 
 </head>
@@ -246,10 +309,15 @@
   </script>
 
     <div class="no-print control-panel">
+        <div class="column-toggle-group">
+            <label class="column-toggle-item"><input type="checkbox" data-column-toggle="theorymarks"> Hide Th Marks</label>
+            <label class="column-toggle-item"><input type="checkbox" data-column-toggle="grade"> Hide Grade</label>
+            <label class="column-toggle-item"><input type="checkbox" data-column-toggle="finalgrade"> Hide Final Grade</label>
+            <label class="column-toggle-item"><input type="checkbox" data-column-toggle="remarks"> Hide Remarks</label>
+        </div>
         <button onclick="window.print()">Print All</button>
         <button onclick="downloadPdf()">Download PDF</button>
         <button onclick="exportToWord()" class="secondary">Download Word</button>
-       
     </div>
 
     <input type="hidden" id="pageClass" value="<%= studentClass %>">
@@ -263,16 +331,19 @@
 
     <div class="sheet">
         <div class="watermark"><img src="/image.png" alt="Watermark"></div>
-
+        <div class="border-frame">
         <!-- HEADER -->
         <div class="header">
             <div class="logo"><img src="/image.png" onerror="this.style.display='none'"></div>
             <div class="head-text">
                 <div class="school-name"><%= marksheetSetups[0].schoolName %></div>
                 <div class="school-meta"><%= marksheetSetups[0].address %> &nbsp; | &nbsp; Phone: <%= marksheetSetups[0].phone %></div>
+                <div class="report-title">
+                    <div>ACADEMIC PROGRESS REPORT</div>
+                    <div style="font-size:14px; margin-top:5px; font-weight:600"><%= terminal %> Terminal - <%= academicYear %></div>
+                </div>
             </div>
-            <div class="report-title"><div>ACADEMIC PROGRESS REPORT</div>
-                <div style="font-size:12px;color:var(--muted)"><%= terminal %> Terminal - <%= academicYear %></div></div>
+            <div class="logo" style="border:none; visibility:hidden"></div>
         </div>
 
     <!-- Student Info -->
@@ -291,12 +362,10 @@
                 <th>S.N</th>
                 <th>Subject</th>
                 <th>Credit Hour</th>
-                <th>Obtained Th Marks</th>
-                <th>Obtained Grade</th>
-                
-                
-                <th>Final Grade</th>
-                <th>Remarks</th>
+                <th class="col-theorymarks">Obtained Th Marks</th>
+                <th class="col-grade">Obtained Grade</th>
+                <th class="col-finalgrade">Final Grade</th>
+                <th class="col-remarks">Remarks</th>
             </tr>
         </thead>
 
@@ -353,16 +422,10 @@
             <td><%= index + 1 %></td>
             <td><%= sub.subject %></td>
             <td><% m =  creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.theoryCreditHour || 'N/A' %><%= m %></td>
-            <td><%= sub.theorymarks %> <%= sub.theorymarks<sub.passMarks?'*':'' %></td>
-            
-            
-        
-        
-                 <% totalCredit += m; 
-                  totalGradePoints += (thGP*theoryCreditHour );%>
-            <td><%= getGrade(finalGP) %></td>
-            <td><%= getGrade(finalGP) %></td>
-            <td><% function getRemarks(finalgrade)
+            <td class="col-theorymarks"><%= sub.theorymarks %> <%= sub.theorymarks<sub.passMarks?'*':'' %></td>
+            <td class="col-grade"><%= getGrade(finalGP) %></td>
+            <td class="col-finalgrade"><%= getGrade(finalGP) %></td>
+            <td class="col-remarks"><% function getRemarks(finalgrade)
             {
                 if (finalgrade === "NG") return "Needs Improvement";
                 else if(finalgrade === "D") return "Satisfactory";
@@ -395,13 +458,13 @@
         <% } else if (gpa >= 2.0) { %> Satisfactory
         <% } else { %> Needs Improvement <% } %>
       </div>
-      <div class="issued-box"><b>Issued Date:</b>&nbsp;<%= new Date().toLocaleDateString() %></div>
+      <div class="issued-box"><b>Issued Date:</b>&nbsp;<%= issuedNepaliDate %></div>
     </div>
 
     <!-- SIGNATURES -->
     <div class="sign-row">
       <div class="sign">
-        <div class="sign-img sign-placeholder"></div>
+        <div class="sign-placeholder"></div>
         <div class="line">Class Teacher</div>
       </div>
       <div class="sign">
@@ -441,6 +504,23 @@
 <!-- Include html2pdf from CDN for client-side PDF export and small helpers -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>
 <script>
+    function applyColumnVisibility() {
+        document.querySelectorAll('[data-column-toggle]').forEach(function(checkbox) {
+            const key = checkbox.dataset.columnToggle;
+            const shouldHide = checkbox.checked;
+            document.querySelectorAll('.col-' + key).forEach(function(cell) {
+                cell.classList.toggle('hidden-column', shouldHide);
+                cell.style.display = shouldHide ? 'none' : '';
+            });
+        });
+    }
+
+    document.querySelectorAll('[data-column-toggle]').forEach(function(checkbox) {
+        checkbox.addEventListener('change', applyColumnVisibility);
+    });
+
+    applyColumnVisibility();
+
     // Download all marksheets as a single PDF
     function downloadPdf(){
         const studentClass = document.getElementById('pageClass').value;

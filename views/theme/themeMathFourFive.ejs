@@ -534,6 +534,20 @@ function filterAspect() {
 }
     </script>
 
-    
+    <script>
+        
+        function loadDate() {
+            const masterDateBefore = document.querySelector(".masterDateBefore").value;
+            const masterDateAfter = document.querySelector(".masterDateAfter").value;
+
+            document.querySelectorAll(".studentDateBefore").forEach(input => {
+                input.value = masterDateBefore;
+            });
+
+            document.querySelectorAll(".studentDateAfter").forEach(input => {
+                input.value = masterDateAfter;
+            });
+        }
+    </script>
 </body>
 </html>

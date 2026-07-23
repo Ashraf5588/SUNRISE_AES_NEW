@@ -280,7 +280,7 @@
             <td><%= data.roll %></td>
             <td><%= data.name %></td>
             <% uniqueSubjects.forEach((sub) => { %>
-                <% const subjectData = data.subjectmap[sub]; %>
+                <% const subjectData = data.subjectMap[sub]; %>
             <% if(subjectData){ %>
             <td class="<%= subjectData.theorymarks < subjectData.passMarks ? 'status-fail' : '' %>"><%= subjectData.theorymarks %></td>
             <td><%= subjectData.practicalmarks %></td>

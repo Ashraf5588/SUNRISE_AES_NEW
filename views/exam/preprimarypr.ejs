@@ -38,11 +38,11 @@
 
     .sheet{
       width:210mm;
-      min-height:297mm;
+      min-height:297mm; /* Fixed A4 height */
       margin:18mm auto;
       background:#fff;
       box-shadow:0 6px 18px rgba(0,0,0,0.08);
-      padding:10mm;
+      padding:10mm; /* Reduced padding to allow for border frame */
       position:relative;
       box-sizing:border-box;
       page-break-after:always;
@@ -59,6 +59,7 @@
         flex-direction: column;
     }
 
+    /* Watermark centered */
     .watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:0;opacity:0.06;pointer-events:none;display:flex;align-items:center;justify-content:center}
     .watermark img{max-width:400px;max-height:400px;opacity:0.08;filter:grayscale(100%)}
 
@@ -74,20 +75,20 @@
     }
     .logo{width:80px;height:80px;flex:0 0 80px;border-radius:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
     .logo img{max-width:100%;max-height:100%;display:block}
-
+    
     .head-text{flex:1; text-align: center;}
     .school-name{
-        font-size:28px;
+        font-size:28px; /* Adjusted to fit one line */
         font-weight:900;
         letter-spacing:0.5px;
-        font-family: 'Times New Roman', Times, serif;
+        font-family: 'Times New Roman', Times, serif; /* Professional Serif */
         text-transform: uppercase;
         color: #000;
         margin-bottom: 5px;
         white-space: nowrap;
     }
     .school-meta{font-size:14px;color:#333;font-weight: 500;}
-
+    
     .report-title{
         text-align:center;
         font-weight:800;
@@ -101,69 +102,50 @@
         border-radius: 20px;
     }
 
-    .student-info-container {
-        background: #f8fafc;
-        border-radius: 12px;
+    .student-info{
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        margin-top:10px;
+        gap:8px;
+        font-size:14px;
+        border: 1px solid #000;
         padding: 10px;
-        border: 1px solid #e2e8f0;
-        margin-top: 8px;
     }
-
-    .student-info{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:14px;border: 1px solid #000;padding: 10px}
-    .info-row { display: flex; align-items: center; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px; }
     .info-label{font-weight:700;color:#000;min-width:120px}
     .info-value{font-weight:600; color: #000;}
 
     table{width:100%;border-collapse:collapse;margin-top:15px;font-size:13px; border: 1px solid #000;}
     table th, table td{border:1px solid #000;padding:6px 8px;text-align:center}
     table th{background:#f0f0f0;color:#000;font-weight:800;font-size:13px; text-transform: uppercase;}
-    tr:nth-child(even) td{background:#fff}
+    tr:nth-child(even) td{background:#fff} /* Removed stripe for cleaner print */
     .subject{text-align:left;padding-left:10px; font-weight: 600;}
 
-    .summary-box{display:flex;justify-content:space-between;margin-top:15px;font-weight:700; border: 1px solid #000; padding: 10px;}
+    .summary{display:flex;justify-content:space-between;margin-top:15px;font-weight:700; border: 1px solid #000; padding: 10px;}
 
     .remark-box{margin-top:15px;padding:10px;border:1px solid #000;background:#fff; min-height: 40px;}
-    .notes-row{display:flex;gap:10px;margin-top:8px;align-items:stretch;}
-    .notes-row .remark-box{margin-top:0;flex:1;}
-    .issued-box{flex:0 0 200px;border:1px solid #000;border-radius:4px;background:#fff;padding:10px;font-size:12px;display:flex;align-items:center;justify-content:center;text-align:center;}
 
-    .sign-row{display:flex;justify-content:space-between;align-items:flex-end;margin-top:40px; padding: 0 20px; gap: 16px;}
-    .sign{width:33.333%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-height:110px;gap:8px;text-align:center}
-    .sign .sign-img,
-    .sign .sign-placeholder {
-      display:block;
-      max-width:90px;
-      max-height:48px;
-      width:auto;
-      height:auto;
-      object-fit:contain;
-      margin:0 auto;
-    }
-    .sign .sign-placeholder {
-      width:90px;
-      height:48px;
-      border:1px dashed #cbd5e1;
-      background:#f8fafc;
-    }
-    .sign .line{margin-top:0;border-top:1px solid #000;padding-top:6px;font-weight:700; font-size: 14px;}
+    .sign-row{display:flex;justify-content:space-between;margin-top:40px; padding: 0 20px;}
+    .sign{width:25%;text-align:center}
+    .sign .line{margin-top:40px;border-top:1px solid #000;padding-top:6px;font-weight:700; font-size: 14px;}
 
     .grading-scale{margin-top:20px;font-size:11px; width: 100%;}
     .grading-scale td{padding:4px; border: none; text-align: left;}
 
+    /* Print rules */
     @media print{
       body,html{background:#fff;margin:0;padding:0}
       .no-print{display:none !important}
       .sheet{
           box-shadow:none;
           margin:0;
-          padding:5mm;
+          padding:5mm; /* Small padding for printer margins */
           width:210mm;
           height:297mm;
           page-break-after:always;
           page-break-inside:avoid;
       }
       .border-frame {
-          height: calc(100% - 2mm);
+          height: calc(100% - 2mm); /* Adjust for padding */
           border: 3px double #000;
       }
       .sheet:last-child{page-break-after:auto}
@@ -172,6 +154,7 @@
 
     @page{size:A4;margin:0}
 
+    /* Form Selector Styling */
     .form-selector-panel {
       background: linear-gradient(135deg, #ff9d41 0%, #e7b170 100%);
       padding: 25px;
@@ -265,6 +248,7 @@
         display: none !important;
       }
     }
+
 </style>
 
 </head>
@@ -320,11 +304,10 @@
     <div class="no-print control-panel">
         <div class="column-toggle-group">
             <label class="column-toggle-item"><input type="checkbox" data-column-toggle="theorymarks"> Hide Th Marks</label>
-            <label class="column-toggle-item"><input type="checkbox" data-column-toggle="prmarks"> Hide Pr Marks</label>
-            <label class="column-toggle-item"><input type="checkbox" data-column-toggle="thgp"> Hide Th GP</label>
             <label class="column-toggle-item"><input type="checkbox" data-column-toggle="prgp"> Hide Pr GP</label>
             <label class="column-toggle-item"><input type="checkbox" data-column-toggle="finalgp"> Hide Final GP</label>
             <label class="column-toggle-item"><input type="checkbox" data-column-toggle="finalgrade"> Hide Final Grade</label>
+            <label class="column-toggle-item"><input type="checkbox" data-column-toggle="highestmarks"> Hide Highest Marks</label>
             <label class="column-toggle-item"><input type="checkbox" data-column-toggle="remarks"> Hide Remarks</label>
         </div>
         <button onclick="window.print()">Print All</button>
@@ -338,7 +321,7 @@
     <input type="hidden" id="pageTerminal" value="<%= terminal %>">
 
     <div class="sheets-container">
-<% let attendanceMarks = 0; %>
+
     <% studentWisedata.forEach((data) => { %>
 
     <div class="sheet">
@@ -348,25 +331,23 @@
         <div class="header">
             <div class="logo"><img src="/image.png" onerror="this.style.display='none'"></div>
             <div class="head-text">
-                <div class="school-name"><%= marksheetSetups[0].schoolName %></div>
-                <div class="school-meta"><%= marksheetSetups[0].address %> &nbsp; | &nbsp; Phone: <%= marksheetSetups[0].phone %></div>
+                <div class="school-name">United English Boarding School</div>
+                <div class="school-meta">Manahari-8, Simpani &nbsp; | &nbsp; Phone: +057-414040</div>
                 <div class="report-title">
                     <div>ACADEMIC PROGRESS REPORT</div>
                     <div style="font-size:14px; margin-top:5px; font-weight:600"><%= terminal %> Terminal - <%= academicYear %></div>
                 </div>
             </div>
-            <div class="logo" style="border:none; visibility:hidden"></div>
+            <div class="logo" style="border:none; visibility:hidden"></div> <!-- Spacer for centering -->
         </div>
 
     <!-- Student Info -->
-    <div class="student-info-container">
-        <div class="student-info">
-            <div class="info-row"><span class="info-label">Student Name:</span> <span class="info-value"><%= data.name %></span></div>
-            <div class="info-row"><span class="info-label">Roll No:</span> <span class="info-value"><%= data.roll %></span></div>
-            <div class="info-row"><span class="info-label">Class:</span> <span class="info-value"><%= studentClass %></span></div>
-            <div class="info-row"><span class="info-label">Section:</span> <span class="info-value"><%= section %></span></div>
-            
-        </div>
+    <div class="student-info">
+        <div><span class="info-label">Student Name:</span> <span class="info-value"><%= data.name %></span></div>
+        <div><span class="info-label">Roll No:</span> <span class="info-value"><%= data.roll %></span></div>
+        <div><span class="info-label">Class:</span> <span class="info-value"><%= studentClass %></span></div>
+        <div><span class="info-label">Section:</span> <span class="info-value"><%= section %></span></div>
+        <div><span class="info-label">Academic Year:</span> <span class="info-value"><%= academicYear || 'N/A' %></span></div>
     </div>
 
     <!-- SUBJECT TABLE -->
@@ -377,11 +358,10 @@
                 <th>Subject</th>
                 <th>Credit Hour</th>
                 <th class="col-theorymarks">Th Marks</th>
-                <th class="col-prmarks">Pr Marks</th>
-                <th class="col-thgp">Th GP</th>
                 <th class="col-prgp">Pr GP</th>
                 <th class="col-finalgp">Final GP</th>
                 <th class="col-finalgrade">Final Grade</th>
+                <th class="col-highestmarks">Highest Marks</th>
                 <th class="col-remarks">Remarks</th>
             </tr>
         </thead>
@@ -416,62 +396,70 @@
         }
         %>
 
-<% if(terminal==="FIRST"){ 
-  workingDays = marksheetSetups[0].terminals[0].workingDays;
-} else if(terminal==="SECOND"){ 
-  workingDays = marksheetSetups[0].terminals[1].workingDays;
-} else if(terminal==="THIRD"){ 
-  workingDays = marksheetSetups[0].terminals[2].workingDays;
-} else if(terminal==="FINAL"){ 
-  workingDays = marksheetSetups[0].terminals[3].workingDays;
-} %>
-
         <% data.subjects.forEach((sub, index) => { %>
-<% 
-attendancePercent = (sub.attendance / workingDays) * 100; 
-
-if(attendancePercent >= 90){ 
-  if(sub.theoryfullmarks<=25) {
-    attendanceMarks = 2;
-  } else {
-    attendanceMarks = 2; 
-  }
-} else if(attendancePercent >= 80){ 
-  if(sub.theoryfullmarks<=25) {
-    attendanceMarks = 1.5;
-  } else {
-    attendanceMarks = 1.5;
-  }
-} else if(attendancePercent >= 70){ 
-  if(sub.theoryfullmarks<=25) {
-    attendanceMarks = 1;
-  } else {
-    attendanceMarks = 1; 
-  } 
-} else if(attendancePercent >= 60){ 
-  if(sub.theoryfullmarks<=25) {
-    attendanceMarks = 0.5;
-  } else {
-    attendanceMarks = 0.;
-  }
-} else { 
-  attendanceMarks = 0; 
-} 
-%>
 
         <% 
+      let worksheetMarks=[];
+        let thP = (sub.theorymarks)
+       if (sub.worksheetGrades && Array.isArray(sub.worksheetGrades)) {
+       sub.worksheetGrades.forEach((worksheetgrade)=>{
+        let grade = String(worksheetgrade).trim();
+        if(grade=="A+")
+        {
+          worksheetMarks.push(4)
+        }
+        else if(grade=="A")
+        {
+          worksheetMarks.push(3.6)
+        }
+        else if(grade=="B+")
+        {
+          worksheetMarks.push(3.2)
+        }
+        else if(grade=="B")
+        {
+          worksheetMarks.push(2.8)
+        }
+        else if(grade=="C+")
+        {
+          worksheetMarks.push(2.4)
+        }
+        else if(grade=="C")
+        {
+          worksheetMarks.push(2.0)
+        }
+        else if(grade=="D")
+        {
+          worksheetMarks.push(1.6)
+        }
+        else
+        {
+          worksheetMarks.push(0)
+        }
+       })
+       }
+       %>
+       
+       <%
+       let practicalmarks = 0;
+       
+       if(worksheetMarks.length > 0){
+          practicalmarks = (worksheetMarks.reduce((acc,i)=>{return acc+i}, 0));
+       }
+       %>
+       
+  
+        <% let finalP = ((sub.theorymarks + practicalmarks) /
+                      ( sub.practicalfullmarks)) * 100;
 
-      
-        let thP = (sub.theorymarks / sub.theoryfullmarks) * 100;
-        let prP = (sub.practicalmarks+sub.terminalmarks+attendanceMarks) / sub.practicalfullmarks * 100;
-        let finalP = ((sub.theorymarks + sub.practicalmarks+sub.terminalmarks+attendanceMarks) /
-                      (sub.theoryfullmarks + sub.practicalfullmarks)) * 100;
+        let thGP = sub.theorymarks || 0;
 
-        let thGP = getGP(thP);
-        let prGP = getGP(prP);
+        let prGP = practicalmarks;
         let theoryCreditHour = creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.theoryCreditHour || 0;
         let practicalCreditHour = creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.practicalCreditHour || 0;
-        let finalGP = (thGP*theoryCreditHour + prGP*practicalCreditHour) / (theoryCreditHour + practicalCreditHour);
+        let finalGP =  (sub.theorymarks+practicalmarks)/(worksheetMarks.length+1) || 0;
+
+
 
    
        
@@ -482,14 +470,15 @@ if(attendancePercent >= 90){
             <td><%= index + 1 %></td>
             <td><%= sub.subject %></td>
             <td><% m =  creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.theoryCreditHour + creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.practicalCreditHour  || 'N/A' %><%= m %></td>
-            <td class="col-theorymarks"><%= sub.theorymarks %> <%= sub.theorymarks<sub.passMarks?'*':'' %></td>
-            <td class="col-prmarks"><%= sub.practicalmarks+attendanceMarks+sub.terminalmarks %> <%= sub.practicalmarks+attendanceMarks+sub.terminalmarks<sub.passMarks?'*':'' %></td>
-            <td class="col-thgp"><%= thGP %></td>
-            <td class="col-prgp"><%= prGP %></td>
-            <td class="col-finalgp"><%= finalGP %></td>
+            <td class="col-theorymarks"><%= sub.theorymarks %> </td>
+            
+           
+            <td class="col-prgp"><%= prGP/worksheetMarks.length %></td>
+            <td class="col-finalgp"><%= finalGP.toFixed(2) %></td>
                  <% totalCredit += m; 
-                  totalGradePoints += (thGP*theoryCreditHour + prGP*practicalCreditHour);%>
+                  totalGradePoints += ((finalGP)*practicalCreditHour);%>
             <td class="col-finalgrade"><%= getGrade(finalGP) %></td>
+            <td class="col-highestmarks"><%= sub.highestmarks %></td>
             <td class="col-remarks"><% function getRemarks(finalgrade)
             {
                 if (finalgrade === "NG") return "Needs Improvement";
@@ -506,15 +495,14 @@ if(attendancePercent >= 90){
     </table>
 
         <!-- SUMMARY -->
-        <div class="summary-box">
+        <div class="summary">
             <div>Total Credit Hours: <%= totalCredit %></div>
-               <div><span class="info-label">Attendance:</span> <span class="info-value"><%= totalAttendance || 'N/A' %>/<%= workingDays %></span></div>
+               <div><span class="info-label">Attendance:</span> <span class="info-value"><%= totalAttendance || 'N/A' %></span></div>
             <div>GPA: <%= (totalGradePoints / totalCredit).toFixed(2) %></div>
         </div>
 
     <!-- REMARKS -->
-    <div class="notes-row">
-      <div class="remark-box">
+    <div class="remark-box">
         <b>Remarks:</b><br>
         <% let gpa = (totalGradePoints / totalCredit); %>
         <% if (gpa >= 3.6) { %> Excellent Performance
@@ -522,23 +510,23 @@ if(attendancePercent >= 90){
         <% } else if (gpa >= 2.4) { %> Good
         <% } else if (gpa >= 2.0) { %> Satisfactory
         <% } else { %> Needs Improvement <% } %>
-      </div>
-      <div class="issued-box"><b>Issued Date:</b>&nbsp;<%= issuedNepaliDate %></div>
     </div>
+
+    <p><b>Issued Date:</b> <%= new Date().toLocaleDateString() %></p>
 
     <!-- SIGNATURES -->
     <div class="sign-row">
-        <div class="sign">
-            <div class="sign-placeholder"></div>
-            <div class="line">Class Teacher</div>
+        <div>
+            <br><br>________________________<br>
+              &ensp;&ensp; &ensp;  Class Teacher
         </div>
-        <div class="sign">
-            <img class="sign-img" src="/examcoordinator.webp" alt="Exam Coordinator Signature" onerror="this.style.display='none'">
-            <div class="line">Exam Coordinator</div>
+        <div>
+            <br><br>______________________<br>
+                &ensp; Exam Coordinator
         </div>
-        <div class="sign">
-            <img class="sign-img" src="/principalsign.webp" alt="Principal Signature" onerror="this.style.display='none'">
-            <div class="line">Principal</div>
+        <div>
+            <br><br>____________________<br>
+                     &ensp;&ensp; &ensp;      Principal
         </div>
     </div>
         <hr>
@@ -560,7 +548,7 @@ if(attendancePercent >= 90){
                         </tr>
                 </table>
         </div>
-
+    </div>
 </div>
 
 <% }) %>

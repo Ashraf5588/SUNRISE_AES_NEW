@@ -127,25 +127,9 @@
     .notes-row .remark-box{margin-top:0;flex:1;}
     .issued-box{flex:0 0 200px;border:1px solid #000;border-radius:4px;background:#fff;padding:10px;font-size:12px;display:flex;align-items:center;justify-content:center;text-align:center;}
 
-    .sign-row{display:flex;justify-content:space-between;align-items:flex-end;margin-top:40px; padding: 0 20px; gap: 16px;}
-    .sign{width:33.333%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-height:110px;gap:8px;text-align:center}
-    .sign .sign-img,
-    .sign .sign-placeholder {
-      display:block;
-      max-width:90px;
-      max-height:48px;
-      width:auto;
-      height:auto;
-      object-fit:contain;
-      margin:0 auto;
-    }
-    .sign .sign-placeholder {
-      width:90px;
-      height:48px;
-      border:1px dashed #cbd5e1;
-      background:#f8fafc;
-    }
-    .sign .line{margin-top:0;border-top:1px solid #000;padding-top:6px;font-weight:700; font-size: 14px;}
+    .sign-row{display:flex;justify-content:space-between;margin-top:40px; padding: 0 20px;}
+    .sign{width:25%;text-align:center}
+    .sign .line{margin-top:40px;border-top:1px solid #000;padding-top:6px;font-weight:700; font-size: 14px;}
 
     .grading-scale{margin-top:20px;font-size:11px; width: 100%;}
     .grading-scale td{padding:4px; border: none; text-align: left;}
@@ -434,25 +418,25 @@ if(attendancePercent >= 90){
   if(sub.theoryfullmarks<=25) {
     attendanceMarks = 2;
   } else {
-    attendanceMarks = 2; 
+    attendanceMarks = 4; 
   }
 } else if(attendancePercent >= 80){ 
   if(sub.theoryfullmarks<=25) {
     attendanceMarks = 1.5;
   } else {
-    attendanceMarks = 1.5;
+    attendanceMarks = 3;
   }
 } else if(attendancePercent >= 70){ 
   if(sub.theoryfullmarks<=25) {
     attendanceMarks = 1;
   } else {
-    attendanceMarks = 1; 
+    attendanceMarks = 2; 
   } 
 } else if(attendancePercent >= 60){ 
   if(sub.theoryfullmarks<=25) {
     attendanceMarks = 0.5;
   } else {
-    attendanceMarks = 0.;
+    attendanceMarks = 1;
   }
 } else { 
   attendanceMarks = 0; 
@@ -463,8 +447,8 @@ if(attendancePercent >= 90){
 
       
         let thP = (sub.theorymarks / sub.theoryfullmarks) * 100;
-        let prP = (sub.practicalmarks+sub.terminalmarks+attendanceMarks) / sub.practicalfullmarks * 100;
-        let finalP = ((sub.theorymarks + sub.practicalmarks+sub.terminalmarks+attendanceMarks) /
+        let prP = ((sub.practicalmarks + sub.terminalmarks + attendanceMarks) / sub.practicalfullmarks) * 100;
+        let finalP = ((sub.theorymarks + sub.practicalmarks + sub.terminalmarks + attendanceMarks) /
                       (sub.theoryfullmarks + sub.practicalfullmarks)) * 100;
 
         let thGP = getGP(thP);
@@ -523,21 +507,21 @@ if(attendancePercent >= 90){
         <% } else if (gpa >= 2.0) { %> Satisfactory
         <% } else { %> Needs Improvement <% } %>
       </div>
-      <div class="issued-box"><b>Issued Date:</b>&nbsp;<%= issuedNepaliDate %></div>
+      <div class="issued-box"><b>Issued Date:</b>&nbsp;<%= new Date().toLocaleDateString() %></div>
     </div>
 
     <!-- SIGNATURES -->
     <div class="sign-row">
         <div class="sign">
-            <div class="sign-placeholder"></div>
+        <div class="sign-img sign-placeholder"></div>
             <div class="line">Class Teacher</div>
         </div>
         <div class="sign">
-            <img class="sign-img" src="/examcoordinator.webp" alt="Exam Coordinator Signature" onerror="this.style.display='none'">
+        <img class="sign-img" src="/examcoordinator.webp" alt="Exam Coordinator Signature" onerror="this.style.display='none'">
             <div class="line">Exam Coordinator</div>
         </div>
         <div class="sign">
-            <img class="sign-img" src="/principalsign.webp" alt="Principal Signature" onerror="this.style.display='none'">
+        <img class="sign-img" src="/principalsign.webp" alt="Principal Signature" onerror="this.style.display='none'">
             <div class="line">Principal</div>
         </div>
     </div>
