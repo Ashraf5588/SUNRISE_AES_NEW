@@ -208,6 +208,7 @@
         document.querySelector('#markstable').style.display = 'none';
       </script>
     <% } %>
+ 
     <table id="markstable">
       <tr>
         <th style="width:3.55% !important">Roll</th>
@@ -223,9 +224,16 @@
           )
         </th>
         <th>
-          Pr Marks (50)
+          Pr Marks (<%= subjectData[0].practical %>)
         </th>
+      
         <th>Attendance</th>
+        <% if (subject.toUpperCase()!="ENGLISH" && subject.toUpperCase()!="NEPALI" && subject.toUpperCase()!="MATHEMATICS" && subject.toUpperCase()!="SCIENCE" && subject.toUpperCase()!="SOCIAL" && subject.toUpperCase()!="HEALTH") 
+        {%>
+          <th>Participation</th>
+          <th>Attendance Marks</th>
+          <th>Terminal Marks</th>
+        <%}%>
         
  
      
@@ -248,7 +256,7 @@
           <td><input type="text" name="roll[<%=student.reg%>]" value="<%=student.roll%>" readonly></td>
           <td><input type="text" name="name[<%=student.reg%>]" value="<%=student.name%>" readonly></td>
           
-          <td><input type="number" id="theorymarks" name="theorymarks[<%=student.reg%>]" value="<%= theoryData.find(t => t.reg === student.reg)?.totalMarks || '' %>" data-reg="<%= student.reg %>" min="0" max="<%=subjectData[0].theory%>" data-max="<%=subjectData[0].theory%>" oninput="checkMax(this)"></td>
+          <td><input type="number" id="theorymarks" name="theorymarks[<%=student.reg%>]" value="<%= theoryData.find(t => t.reg === student.reg)?.totalMarks || '' %>" data-reg="<%= student.reg %>" min="0" max="<%=subjectData[0].theory%>" data-max="<%=subjectData[0].theory%>" oninput="handleTheoryChange(this)"></td>
           <td>
             <input type="number" 
                    data-reg="<%= student.reg %>" 
@@ -260,8 +268,8 @@
                    data-percentage=""
                    oninput="handlePracticalMarksChange(this)">
           </td>
-          <td><input type="number" id="attendance" name="attendance[<%=student.reg%>]" value="" data-reg="<%= student.reg %>" oninput="autoSave(this)"></td>
-          <input type="hidden" id="attendancemarks_<%=student.reg%>" name="attendanceMarks[<%=student.reg%>]" readonly>
+          <td><input type="number" id="attendance" name="attendance[<%=student.reg%>]" value="" data-reg="<%= student.reg %>" oninput="handleAttendanceChange(this)"></td>
+          <input type="hidden" id="attendancemarks_<%=student.reg%>" name="attendanceMarks[<%=student.reg%>]" readonly value="0">
    <% if (subject.toUpperCase()==="ENGLISH" || subject.toUpperCase()==="NEPALI" || subject.toUpperCase()==="MATHEMATICS" || subject.toUpperCase()==="SCIENCE" || subject.toUpperCase()==="SOCIAL" || subject.toUpperCase()==="HEALTH") 
 {%>
 <input type="hidden" id="participationMarks_<%=student.reg%>" name="participationMarks[<%=student.reg%>]" value="" oninput="autoSave(this)">
@@ -414,7 +422,7 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
         }
       }
       
-      // Apply marks to input fields
+      // Apply marks to input fields - ONLY PRACTICAL MARKS
       let appliedCount = 0;
       Object.keys(marksMap).forEach((reg) => {
         const practicalInput = document.getElementById(`practicalmarks_${reg}`);
@@ -440,20 +448,8 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
               sourceBadge.innerHTML = `<span class="practical-source-badge badge-theme">📊 Theme Data (${percentage}%)</span>`;
             }
             
-            // Set attendance marks to 0
-            const attendanceMarksInput = document.getElementById(`attendancemarks_${reg}`);
-            if (attendanceMarksInput) {
-              attendanceMarksInput.value = 0;
-            }
-            
-            // Set terminal marks to 0
-            const terminalMarksInput = document.getElementById(`terminalmarks_${reg}`);
-            if (terminalMarksInput) {
-              terminalMarksInput.value = 0;
-            }
-            
             // Recalculate total with attendance 0 and terminal 0
-            calculateTotalWithZeroAttendanceAndTerminal(reg);
+            calculateTotal(reg);
             
             // Auto save to database
             autoSave(practicalInput);
@@ -476,18 +472,6 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
               sourceBadge.innerHTML = `<span class="practical-source-badge badge-manual">✏️ Manual Entry (No %)</span>`;
             }
             
-            // Set attendance marks to 0
-            const attendanceMarksInput = document.getElementById(`attendancemarks_${reg}`);
-            if (attendanceMarksInput) {
-              attendanceMarksInput.value = 0;
-            }
-            
-            // Set terminal marks to 0
-            const terminalMarksInput = document.getElementById(`terminalmarks_${reg}`);
-            if (terminalMarksInput) {
-              terminalMarksInput.value = 0;
-            }
-            
             console.log(`No valid percentage for ${reg} - allowing manual entry`);
           }
         }
@@ -499,21 +483,6 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
     } catch (error) {
       console.error("Error applying theme data:", error);
       return { applied: false, hasValidPercentage: false };
-    }
-  }
-
-  // ==================== CALCULATE TOTAL WITH ZERO ATTENDANCE AND TERMINAL ====================
-
-  function calculateTotalWithZeroAttendanceAndTerminal(reg) {
-    const practicalInput = document.getElementById(`practicalmarks_${reg}`);
-    const totalPracticalInput = document.getElementById(`totalpractical_${reg}`);
-    
-    const practical = parseFloat(practicalInput?.value) || 0;
-    
-    // Attendance marks = 0, Terminal marks = 0, Participation marks = 0
-    // Total = practical only
-    if (totalPracticalInput) {
-      totalPracticalInput.value = practical.toFixed(2);
     }
   }
 
@@ -654,7 +623,9 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
     autoSave(el);
     // Recalculate total
     const reg = el.dataset.reg;
-    calculateTotal(reg);
+    if (reg && reg !== 'null' && reg !== 'undefined' && reg !== '') {
+      calculateTotal(reg);
+    }
   }
 
   // ==================== REFRESH PRACTICAL MARKS ====================
@@ -670,11 +641,12 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
     const terminal = urlParams.get('terminal');
     const academicYear = urlParams.get('academicYear');
     
-    const subjectsWithThemeData = ['NEPALI', 'ENGLISH', 'MATHEMATICS', 'SOCIAL', 'HEALTH'];
+    // 🔥 FIX: Added SCIENCE to theme data subjects
+    const subjectsWithThemeData = ['NEPALI', 'ENGLISH', 'MATHEMATICS', 'SCIENCE', 'SOCIAL', 'HEALTH'];
     const subjectsWithPracticalSlips = ['SCIENCE', 'SOCIAL', 'NEPALI', 'ENGLISH', 'MATHEMATICS', 'HEALTH'];
     
     try {
-      // Clear existing practical marks
+      // Clear existing practical marks only - DO NOT clear theory marks
       document.querySelectorAll('input[id^="practicalmarks_"]').forEach(input => {
         input.value = '';
         input.style.backgroundColor = '';
@@ -695,7 +667,7 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
       let dataApplied = false;
       let hasValidPercentage = false;
       
-      // First priority: Theme data for specific subjects
+      // First priority: Theme data for specific subjects (including SCIENCE)
       if (subjectsWithThemeData.includes(subject.toUpperCase())) {
         const result = await applyThemeDataToPracticalMarks(studentClass, section, subject);
         dataApplied = result.applied;
@@ -763,7 +735,7 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
     }
 
     // Total = practical + attendance + terminal + participation
-    const total = practical
+    const total = practical 
     
     if (totalPracticalInput) {
       totalPracticalInput.value = total.toFixed(2);
@@ -955,213 +927,87 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
     }
   }
 
-  // ==================== POPULATE DATA ====================
-
-  async function populateData(subject, studentClass, section, academicYear, terminal) {
-    // First, fetch previous marks for ALL subjects
-    const previousMarksUrl = `/getPreviousmarks?subject=${encodeURIComponent(subject)}&studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}&terminal=${encodeURIComponent(terminal)}`;
-    const previousMarksResponse = await fetch(previousMarksUrl);
-    const result = await previousMarksResponse.json();
-    console.log("Fetched Previous Marks:", result);
-
-    // Fetch attendance data
-    const attendanceDataUrl = `/getAttendanceData?studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}`;
-    const attendanceResponse = await fetch(attendanceDataUrl);
-    const attendanceResult = await attendanceResponse.json();
-
-    // Determine if subject should get practical marks from API
-    const subjectsWithThemeData = ['NEPALI', 'ENGLISH', 'MATHEMATICS', 'SOCIAL', 'HEALTH'];
-    const subjectsWithPracticalSlips = ['SCIENCE', 'SOCIAL', 'NEPALI', 'ENGLISH', 'MATHEMATICS', 'HEALTH'];
-    const shouldFetchThemeData = subjectsWithThemeData.includes(subject.toUpperCase());
-    const shouldFetchPracticalSlips = subjectsWithPracticalSlips.includes(subject.toUpperCase());
-
-    showLoading(true, 'Loading practical marks...');
-
-    try {
-      let hasValidPercentage = false;
-      
-      // First priority: Theme data for specific subjects
-      if (shouldFetchThemeData) {
-        const result = await applyThemeDataToPracticalMarks(studentClass, section, subject);
-        hasValidPercentage = result.hasValidPercentage;
-        
-        if (result.applied && hasValidPercentage) {
-          console.log("Theme data applied successfully for:", subject);
-          showLoading(false);
-          // Still populate other data but skip practical marks
-          populateOtherData(result, subject, false);
-          populateAttendanceData(attendanceResult);
-          return;
-        } else if (result.applied && !hasValidPercentage) {
-          console.log("No valid percentage found - falling back to database for:", subject);
-        }
-      }
-      
-      // Second priority: Practical slip API for subjects that support it
-      if (shouldFetchPracticalSlips) {
-        await getPracticalMarks();
-        console.log("Fetched practical slips for:", subject);
-      } else {
-        console.log("Skipping practical slips fetch for:", subject, "- will use previous marks");
-      }
-
-      // Populate previous marks (database fallback)
-      populateOtherData(result, subject, shouldFetchPracticalSlips);
-      
-      // Populate attendance
-      populateAttendanceData(attendanceResult);
-      
-    } catch (error) {
-      console.error("Error in populateData:", error);
-    } finally {
-      showLoading(false);
+  // ==================== HANDLE THEORY CHANGE ====================
+  
+  function handleTheoryChange(el) {
+    checkMax(el);
+    const reg = el.dataset.reg;
+    if (reg && reg !== 'null' && reg !== 'undefined' && reg !== '') {
+      calculateTotal(reg);
+      autoSave(el);
     }
   }
 
-  function populateOtherData(result, subject, shouldFetchPracticalSlips) {
-    if (result && Array.isArray(result) && result.length > 0) {
-      console.log("Populating previous marks data...");
-      
-      result.forEach((item) => {
-        const reg = item.reg;
-        if (!reg || reg === 'null' || reg === 'undefined' || reg === '') {
-          console.warn("Item has invalid reg field, skipping:", item);
-          return;
-        }
-        
-        console.log(`Processing reg: ${reg} from previous marks`, item);
-        
-        const theoryInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
-        const attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
-        const participationMarksInput = document.getElementById(`participationMarks_${reg}`);
-        const practicalMarksInput = document.getElementById(`practicalmarks_${reg}`);
-
-        // Set theory marks
-        if (theoryInput && !theoryInput.value) {
-          theoryInput.value = item.theorymarks || item.theoryMarks || '';
-          theoryInput.dispatchEvent(new Event('input'));
-          console.log(`Set theory for ${reg}: ${item.theorymarks || item.theoryMarks || ''}`);
-        }
-        
-        // Set attendance
-        if (attendanceInput && item.attendance !== undefined) {
-          attendanceInput.value = item.attendance || '';
-          console.log(`Set attendance for ${reg}: ${item.attendance}`);
-        }
-        
-        // Set practical marks - only if not already set by theme or API
-        if (practicalMarksInput && !practicalMarksInput.value) {
-          const practicalValue = item.practicalmarks || item.practicalMarks;
-          if (practicalValue !== undefined && practicalValue !== null && practicalValue !== '') {
-            practicalMarksInput.value = practicalValue;
-            practicalMarksInput.dataset.source = 'db';
-            practicalMarksInput.readOnly = false;
-            practicalMarksInput.dispatchEvent(new Event('input'));
-            practicalMarksInput.dispatchEvent(new Event('change'));
-            
-            // Update badge
-            const sourceBadge = document.getElementById('dataSourceBadge');
-            if (sourceBadge && !sourceBadge.innerHTML) {
-              sourceBadge.innerHTML = `<span class="practical-source-badge badge-db">💾 Database</span>`;
-            }
-            
-            console.log(`✅ Set practical marks from previous data for ${reg}: ${practicalValue}`);
-          }
-        }
-        
-        // Set participation marks
-        if (participationMarksInput && !participationMarksInput.value) {
-          const participationValue = item.participationMarks || item.participationmarks;
-          if (participationValue !== undefined && participationValue !== null && participationValue > 0) {
-            participationMarksInput.value = participationValue;
-            participationMarksInput.dispatchEvent(new Event('input'));
-            calculateTotal(reg);
-            console.log(`Using participation from previous marks for ${reg}: ${participationValue}`);
-          }
-        }
-        
-        // Set terminal marks to 0
-        const terminalMarksInput = document.getElementById(`terminalmarks_${reg}`);
-        if (terminalMarksInput) {
-          terminalMarksInput.value = 0;
-        }
-        
-        // Calculate attendance marks if attendance data is available
-        if (attendanceInput && attendanceInput.value) {
-          calculateAttendanceMarks(reg);
-        }
-        
-        // Calculate total after setting all values
-        calculateTotal(reg);
-      });
-    } else if (result && typeof result === 'object' && !Array.isArray(result)) {
-      // If result is an object with reg as keys (backward compatibility)
-      console.log("Result is an object with keys:", Object.keys(result));
-      
-      Object.keys(result).forEach((reg) => {
-        if (!reg || reg === 'null' || reg === 'undefined' || reg === '') {
-          console.warn("Invalid reg key, skipping");
-          return;
-        }
-        
-        const item = result[reg];
-        console.log(`Processing reg: ${reg} from object data`, item);
-        
-        const theoryInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
-        const attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
-        const participationMarksInput = document.getElementById(`participationMarks_${reg}`);
-        const practicalMarksInput = document.getElementById(`practicalmarks_${reg}`);
-
-        if (theoryInput && !theoryInput.value) {
-          theoryInput.value = item.theorymarks || item.theoryMarks || '';
-          theoryInput.dispatchEvent(new Event('input'));
-        }
-        
-        if (attendanceInput && item.attendance !== undefined) {
-          attendanceInput.value = item.attendance || '';
-        }
-        
-        if (practicalMarksInput && !practicalMarksInput.value) {
-          const practicalValue = item.practicalmarks || item.practicalMarks;
-          if (practicalValue !== undefined && practicalValue !== null && practicalValue !== '') {
-            practicalMarksInput.value = practicalValue;
-            practicalMarksInput.dataset.source = 'db';
-            practicalMarksInput.readOnly = false;
-            practicalMarksInput.dispatchEvent(new Event('input'));
-            practicalMarksInput.dispatchEvent(new Event('change'));
-            
-            const sourceBadge = document.getElementById('dataSourceBadge');
-            if (sourceBadge && !sourceBadge.innerHTML) {
-              sourceBadge.innerHTML = `<span class="practical-source-badge badge-db">💾 Database</span>`;
-            }
-          }
-        }
-        
-        if (participationMarksInput && !participationMarksInput.value) {
-          const participationValue = item.participationMarks || item.participationmarks;
-          if (participationValue !== undefined && participationValue !== null && participationValue > 0) {
-            participationMarksInput.value = participationValue;
-            participationMarksInput.dispatchEvent(new Event('input'));
-            calculateTotal(reg);
-          }
-        }
-        
-        // Set terminal marks to 0
-        const terminalMarksInput = document.getElementById(`terminalmarks_${reg}`);
-        if (terminalMarksInput) {
-          terminalMarksInput.value = 0;
-        }
-        
-        if (attendanceInput && attendanceInput.value) {
-          calculateAttendanceMarks(reg);
-        }
-        
-        calculateTotal(reg);
-      });
-    } else {
-      console.log("No previous data found or empty result");
+  // ==================== HANDLE ATTENDANCE CHANGE ====================
+  
+  function handleAttendanceChange(el) {
+    const reg = el.dataset.reg;
+    if (reg && reg !== 'null' && reg !== 'undefined' && reg !== '') {
+      calculateAttendanceMarks(reg);
+      autoSave(el);
     }
   }
+
+  // ==================== POPULATE THEORY MARKS ====================
+  
+  function populateTheoryMarks(result) {
+    if (!result || !Array.isArray(result) || result.length === 0) {
+      console.log("No previous marks data for theory");
+      return;
+    }
+    
+    result.forEach((item) => {
+      const reg = item.reg;
+      if (!reg || reg === 'null' || reg === 'undefined' || reg === '') {
+        return;
+      }
+      
+      const theoryInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
+      if (theoryInput && !theoryInput.value) {
+        theoryInput.value = item.theorymarks || item.theoryMarks || '';
+        theoryInput.dispatchEvent(new Event('input'));
+        console.log(`Set theory for ${reg}: ${item.theorymarks || item.theoryMarks || ''}`);
+      }
+    });
+  }
+
+  // ==================== POPULATE PRACTICAL MARKS FROM PREVIOUS ====================
+  
+  function populatePracticalMarksFromPrevious(result) {
+    if (!result || !Array.isArray(result) || result.length === 0) {
+      console.log("No previous marks data for practical");
+      return;
+    }
+    
+    result.forEach((item) => {
+      const reg = item.reg;
+      if (!reg || reg === 'null' || reg === 'undefined' || reg === '') {
+        return;
+      }
+      
+      const practicalMarksInput = document.getElementById(`practicalmarks_${reg}`);
+      if (practicalMarksInput && !practicalMarksInput.value) {
+        const practicalValue = item.practicalmarks || item.practicalMarks;
+        if (practicalValue !== undefined && practicalValue !== null && practicalValue !== '') {
+          practicalMarksInput.value = practicalValue;
+          practicalMarksInput.dataset.source = 'db';
+          practicalMarksInput.readOnly = false;
+          practicalMarksInput.dispatchEvent(new Event('input'));
+          practicalMarksInput.dispatchEvent(new Event('change'));
+          
+          // Update badge
+          const sourceBadge = document.getElementById('dataSourceBadge');
+          if (sourceBadge && !sourceBadge.innerHTML) {
+            sourceBadge.innerHTML = `<span class="practical-source-badge badge-db">💾 Database</span>`;
+          }
+          
+          console.log(`Set practical marks from previous data for ${reg}: ${practicalValue}`);
+        }
+      }
+    });
+  }
+
+  // ==================== POPULATE ATTENDANCE DATA ====================
 
   function populateAttendanceData(attendanceResult) {
     if (attendanceResult && attendanceResult.length > 0) {
@@ -1183,18 +1029,82 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
     }
   }
 
+  // ==================== POPULATE DATA ====================
+
+  async function populateData(subject, studentClass, section, academicYear, terminal) {
+    // First, fetch previous marks for ALL subjects
+    const previousMarksUrl = `/getPreviousmarks?subject=${encodeURIComponent(subject)}&studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}&terminal=${encodeURIComponent(terminal)}`;
+    const previousMarksResponse = await fetch(previousMarksUrl);
+    const previousMarksResult = await previousMarksResponse.json();
+    console.log("Fetched Previous Marks:", previousMarksResult);
+
+    // Fetch attendance data
+    const attendanceDataUrl = `/getAttendanceData?studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}`;
+    const attendanceResponse = await fetch(attendanceDataUrl);
+    const attendanceResult = await attendanceResponse.json();
+
+    // 🔥 FIX: Added SCIENCE to theme data subjects
+    const subjectsWithThemeData = ['NEPALI', 'ENGLISH', 'MATHEMATICS', 'SCIENCE', 'SOCIAL', 'HEALTH'];
+    const subjectsWithPracticalSlips = ['SCIENCE', 'SOCIAL', 'NEPALI', 'ENGLISH', 'MATHEMATICS', 'HEALTH'];
+    const shouldFetchThemeData = subjectsWithThemeData.includes(subject.toUpperCase());
+    const shouldFetchPracticalSlips = subjectsWithPracticalSlips.includes(subject.toUpperCase());
+
+    showLoading(true, 'Loading practical marks...');
+
+    try {
+      // STEP 1: Populate theory marks from previous data (ALWAYS do this first)
+      populateTheoryMarks(previousMarksResult);
+      
+      // STEP 2: Populate attendance
+      populateAttendanceData(attendanceResult);
+      
+      // STEP 3: Populate practical marks based on priority
+      let hasValidPercentage = false;
+      
+      if (shouldFetchThemeData) {
+        const themeResult = await applyThemeDataToPracticalMarks(studentClass, section, subject);
+        hasValidPercentage = themeResult.hasValidPercentage;
+        
+        if (themeResult.applied && hasValidPercentage) {
+          console.log("Theme data applied successfully for:", subject);
+        } else if (themeResult.applied && !hasValidPercentage) {
+          console.log("No valid percentage found - falling back to database for:", subject);
+          // If no valid theme data, use previous marks for practical
+          populatePracticalMarksFromPrevious(previousMarksResult);
+        } else {
+          // Theme data not applied, use previous marks
+          populatePracticalMarksFromPrevious(previousMarksResult);
+        }
+      } else if (shouldFetchPracticalSlips) {
+        await getPracticalMarks();
+        console.log("Fetched practical slips for:", subject);
+      } else {
+        // For other subjects, use previous marks
+        populatePracticalMarksFromPrevious(previousMarksResult);
+      }
+      
+      // STEP 4: Recalculate totals for all students
+      document.querySelectorAll('input[name="theorymarks"]').forEach((input) => {
+        const reg = input.dataset.reg;
+        if (reg && reg !== 'null' && reg !== 'undefined' && reg !== '') {
+          calculateTotal(reg);
+        }
+      });
+      
+    } catch (error) {
+      console.error("Error in populateData:", error);
+    } finally {
+      showLoading(false);
+    }
+  }
+
   // ==================== EVENT LISTENERS ====================
 
-  // Theory marks input - terminal marks always 0
+  // Theory marks input
   document.addEventListener('input', function(e) {
     if (e.target.id === 'theorymarks' || e.target.matches('input[name^="theorymarks["]')) {
       const reg = e.target.dataset.reg;
       if (reg && reg !== 'null' && reg !== 'undefined' && reg !== '') {
-        // Terminal marks is always 0
-        const terminalMarksInput = document.getElementById(`terminalmarks_${reg}`);
-        if (terminalMarksInput) {
-          terminalMarksInput.value = 0;
-        }
         calculateTotal(reg);
         autoSave(e.target);
       }

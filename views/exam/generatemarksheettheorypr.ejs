@@ -416,16 +416,13 @@
         }
         %>
 
-<% if(terminal==="FIRST"){ 
-  workingDays = marksheetSetups[0].terminals[0].workingDays;
-} else if(terminal==="SECOND"){ 
-  workingDays = marksheetSetups[0].terminals[1].workingDays;
-} else if(terminal==="THIRD"){ 
-  workingDays = marksheetSetups[0].terminals[2].workingDays;
-} else if(terminal==="FINAL"){ 
-  workingDays = marksheetSetups[0].terminals[3].workingDays;
-} %>
+<%
+const terminalData = marksheetSetups[0].terminals.find(
+    t => t.name === terminal
+);
 
+const workingDays = terminalData ? terminalData.workingDays : 0;
+%>
         <% data.subjects.forEach((sub, index) => { %>
 <% 
 attendancePercent = (sub.attendance / workingDays) * 100; 
@@ -463,8 +460,8 @@ if(attendancePercent >= 90){
 
       
         let thP = (sub.theorymarks / sub.theoryfullmarks) * 100;
-        let prP = (sub.practicalmarks+sub.terminalmarks+attendanceMarks) / sub.practicalfullmarks * 100;
-        let finalP = ((sub.theorymarks + sub.practicalmarks+sub.terminalmarks+attendanceMarks) /
+        let prP = (sub.practicalmarks+sub.terminalmarks+attendanceMarks+(sub.participationMarks || 0)) / sub.practicalfullmarks * 100;
+        let finalP = ((sub.theorymarks + sub.practicalmarks+sub.terminalmarks+attendanceMarks+(sub.participationMarks || 0)) /
                       (sub.theoryfullmarks + sub.practicalfullmarks)) * 100;
 
         let thGP = getGP(thP);
@@ -483,7 +480,7 @@ if(attendancePercent >= 90){
             <td><%= sub.subject %></td>
             <td><% m =  creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.theoryCreditHour + creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.practicalCreditHour  || 'N/A' %><%= m %></td>
             <td class="col-theorymarks"><%= sub.theorymarks %> <%= sub.theorymarks<sub.passMarks?'*':'' %></td>
-            <td class="col-prmarks"><%= sub.practicalmarks+attendanceMarks+sub.terminalmarks %> <%= sub.practicalmarks+attendanceMarks+sub.terminalmarks<sub.passMarks?'*':'' %></td>
+            <td class="col-prmarks"><%= sub.practicalmarks+attendanceMarks+sub.terminalmarks %> <%= sub.practicalmarks+attendanceMarks+sub.terminalmarks+(sub.participationMarks || 0)<sub.passMarks?'*':'' %></td>
             <td class="col-thgp"><%= thGP %></td>
             <td class="col-prgp"><%= prGP %></td>
             <td class="col-finalgp"><%= finalGP %></td>

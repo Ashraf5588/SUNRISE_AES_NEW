@@ -283,9 +283,6 @@
     </div>
   </div>
 
-
-
-
   <script>
     function loadform()
     {
@@ -400,79 +397,104 @@
         }
         %>
 
-<% if(terminal==="FIRST"){ 
-  workingDays = marksheetSetups[0].terminals[0].workingDays;
-} else if(terminal==="SECOND"){ 
-  workingDays = marksheetSetups[0].terminals[1].workingDays;
-} else if(terminal==="THIRD"){ 
-  workingDays = marksheetSetups[0].terminals[2].workingDays;
-} else if(terminal==="FINAL"){ 
-  workingDays = marksheetSetups[0].terminals[3].workingDays;
-} %>
+        <% 
+        let workingDays = 0;
+        if(terminal==="FIRST"){ 
+          workingDays = marksheetSetups[0].terminals[0].workingDays;
+        } else if(terminal==="SECOND"){ 
+          workingDays = marksheetSetups[0].terminals[1].workingDays;
+        } else if(terminal==="THIRD"){ 
+          workingDays = marksheetSetups[0].terminals[2].workingDays;
+        } else if(terminal==="FINAL"){ 
+          workingDays = marksheetSetups[0].terminals[3].workingDays;
+        } 
+        %>
 
         <% data.subjects.forEach((sub, index) => { %>
-<% 
-attendancePercent = (sub.attendance / workingDays) * 100; 
-
-if(attendancePercent >= 90){ 
-  if(sub.theoryfullmarks<=25) {
-    attendanceMarks = 2;
-  } else {
-    attendanceMarks = 4; 
-  }
-} else if(attendancePercent >= 80){ 
-  if(sub.theoryfullmarks<=25) {
-    attendanceMarks = 1.5;
-  } else {
-    attendanceMarks = 3;
-  }
-} else if(attendancePercent >= 70){ 
-  if(sub.theoryfullmarks<=25) {
-    attendanceMarks = 1;
-  } else {
-    attendanceMarks = 2; 
-  } 
-} else if(attendancePercent >= 60){ 
-  if(sub.theoryfullmarks<=25) {
-    attendanceMarks = 0.5;
-  } else {
-    attendanceMarks = 1;
-  }
-} else { 
-  attendanceMarks = 0; 
-} 
-%>
 
         <% 
+        // Calculate attendance marks
+        let attendancePercent = 0;
+        let attendanceMarks = 0;
+        if(workingDays > 0) {
+          attendancePercent = (sub.attendance / workingDays) * 100; 
+        }
+        
+        const mainSubjects = ['ENGLISH', 'NEPALI', 'MATHEMATICS', 'SCIENCE', 'SOCIAL', 'HEALTH'];
+        const isMainSubject = mainSubjects.includes(sub.subject.toUpperCase());
+        
+        if(isMainSubject) {
+          attendanceMarks = 0;
+        } else {
+          if(attendancePercent >= 90){ 
+            if(sub.theoryfullmarks <= 25) {
+              attendanceMarks = 2;
+            } else {
+              attendanceMarks = 4; 
+            }
+          } else if(attendancePercent >= 80){ 
+            if(sub.theoryfullmarks <= 25) {
+              attendanceMarks = 1.5;
+            } else {
+              attendanceMarks = 3;
+            }
+          } else if(attendancePercent >= 70){ 
+            if(sub.theoryfullmarks <= 25) {
+              attendanceMarks = 1;
+            } else {
+              attendanceMarks = 2; 
+            } 
+          } else if(attendancePercent >= 60){ 
+            if(sub.theoryfullmarks <= 25) {
+              attendanceMarks = 0.5;
+            } else {
+              attendanceMarks = 1;
+            }
+          } else { 
+            attendanceMarks = 0; 
+          }
+        }
+        %>
 
-      
+        <% 
         let thP = (sub.theorymarks / sub.theoryfullmarks) * 100;
-        let prP = ((sub.practicalmarks + sub.terminalmarks + attendanceMarks) / sub.practicalfullmarks) * 100;
-        let finalP = ((sub.theorymarks + sub.practicalmarks + sub.terminalmarks + attendanceMarks) /
+        if(sub.subject === "ENGLISH" || sub.subject === "NEPALI" || sub.subject === "MATHEMATICS" || sub.subject === "SCIENCE" || sub.subject === "SOCIAL" || sub.subject === "HEALTH") {
+            prP = (sub.practicalmarks / sub.practicalfullmarks) * 100;
+
+             let finalP = ((sub.theorymarks + sub.practicalmarks ) /
                       (sub.theoryfullmarks + sub.practicalfullmarks)) * 100;
+        } else {
+            prP = ((sub.practicalmarks + sub.terminalmarks + attendanceMarks) / sub.practicalfullmarks) * 100;
+             let finalP = ((sub.theorymarks + sub.practicalmarks + sub.terminalmarks + attendanceMarks) /
+                      (sub.theoryfullmarks + sub.practicalfullmarks)) * 100;
+        }
+        
+       
 
         let thGP = getGP(thP);
         let prGP = getGP(prP);
         let theoryCreditHour = creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.theoryCreditHour || 0;
         let practicalCreditHour = creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.practicalCreditHour || 0;
         let finalGP = (thGP*theoryCreditHour + prGP*practicalCreditHour) / (theoryCreditHour + practicalCreditHour);
-
-   
-       
         %>
 
         <tr>
-          
             <td><%= index + 1 %></td>
             <td><%= sub.subject %></td>
             <td><% m =  creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.theoryCreditHour + creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.practicalCreditHour  || 'N/A' %><%= m %></td>
-            <td class="col-theorymarks"><%= sub.theorymarks %> <%= sub.theorymarks<sub.passMarks?'*':'' %></td>
-            <td class="col-prmarks"><%= sub.practicalmarks+attendanceMarks+sub.terminalmarks %> <%= sub.practicalmarks+attendanceMarks+sub.terminalmarks<sub.passMarks?'*':'' %></td>
-            <td class="col-thgp"><%= thGP %></td>
-            <td class="col-prgp"><%= prGP %></td>
-            <td class="col-finalgp"><%= finalGP %></td>
-                 <% totalCredit += m; 
-                  totalGradePoints += (thGP*theoryCreditHour + prGP*practicalCreditHour);%>
+            <td class="col-theorymarks"><%= sub.theorymarks %> <%= sub.theorymarks < sub.passMarks ? '*' : '' %></td>
+            <% if(sub.subject === "ENGLISH" || sub.subject === "NEPALI" || sub.subject === "MATHEMATICS" || sub.subject === "SCIENCE" || sub.subject === "SOCIAL" || sub.subject === "HEALTH") { %>
+                <td class="col-prmarks"><%= sub.practicalmarks %></td>
+            <% } else { %>
+                <td class="col-prmarks"><%= sub.practicalmarks+sub.terminalmarks+attendanceMarks %></td>
+            <% } %>
+
+           
+            <td class="col-thgp"><%= thGP.toFixed(2) %></td>
+            <td class="col-prgp"><%= prGP.toFixed(2) %></td>
+            <td class="col-finalgp"><%= finalGP.toFixed(2) %></td>
+            <% totalCredit += m; 
+            totalGradePoints += (thGP*theoryCreditHour + prGP*practicalCreditHour);%>
             <td class="col-finalgrade"><%= getGrade(finalGP) %></td>
             <td class="col-remarks"><% function getRemarks(finalgrade)
             {
@@ -483,7 +505,7 @@ if(attendancePercent >= 90){
                 else return "Excellent Performance";
             }%><%= getRemarks(getGrade(finalGP)) %></td>
         </tr>
-<% totalAttendance = sub.attendance %>
+        <% totalAttendance = sub.attendance %>
         <% }) %>
 
         </tbody>
@@ -546,9 +568,9 @@ if(attendancePercent >= 90){
         </div>
 
 </div>
-
 <% }) %>
 
+</div>
 
 <!-- Include html2pdf from CDN for client-side PDF export and small helpers -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.9.2/html2pdf.bundle.min.js"></script>

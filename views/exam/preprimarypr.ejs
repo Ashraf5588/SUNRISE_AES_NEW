@@ -296,7 +296,7 @@
         const academicYear = document.getElementById('academicYear').value;
         const terminal = document.getElementById('terminal').value
 
-        window.location.href=(`/generatemarksheet?studentClass=${studentClass}&section=${section}&format=${"theorypractical"}&terminal=${terminal}&academicYear=${academicYear}`)
+        window.location.href=(`/generatemarksheet?studentClass=${studentClass}&section=${section}&format=${"practicalonly"}&terminal=${terminal}&academicYear=${academicYear}`)
       
     }
   </script>
@@ -457,7 +457,7 @@
         let prGP = practicalmarks;
         let theoryCreditHour = creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.theoryCreditHour || 0;
         let practicalCreditHour = creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.practicalCreditHour || 0;
-        let finalGP =  (sub.theorymarks+practicalmarks)/(worksheetMarks.length+1) || 0;
+        let finalGP =  ((sub.theorymarks+practicalmarks))/((worksheetMarks.length+1)) || 0;
 
 
 
@@ -473,7 +473,7 @@
             <td class="col-theorymarks"><%= sub.theorymarks %> </td>
             
            
-            <td class="col-prgp"><%= prGP/worksheetMarks.length %></td>
+            <td class="col-prgp"><%= (prGP/worksheetMarks.length).toFixed(2) %></td>
             <td class="col-finalgp"><%= finalGP.toFixed(2) %></td>
                  <% totalCredit += m; 
                   totalGradePoints += ((finalGP)*practicalCreditHour);%>

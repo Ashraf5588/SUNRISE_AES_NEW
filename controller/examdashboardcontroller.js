@@ -149,7 +149,10 @@ res.render("./exam/primarytheorypr", {
     });
     }
     else
-    {  res.render("./exam/generatemarksheettheorypr", {
+    { 
+      if(studentClass.toLowerCase() === "four" || studentClass.toLowerCase() === "five" || studentClass=="4" || studentClass=="5")
+      {
+         res.render("./exam/marksheetfourfive", {
         currentPage: "exammanagement",
 
             studentClassdata:studentClassdata,
@@ -166,6 +169,27 @@ res.render("./exam/primarytheorypr", {
            
       user: req.user
     });
+      }else{
+
+            
+      res.render("./exam/generatemarksheettheorypr", {
+        currentPage: "exammanagement",
+
+            studentClassdata:studentClassdata,
+            terminals,
+            format,
+            studentWisedata,
+            studentClass:studentClass,
+            section,
+            terminal,
+            academicYear,
+            creditHourData,
+            marksheetSetups,
+            issuedNepaliDate,
+           
+      user: req.user
+    });
+  }
   }
   }
   
@@ -400,7 +424,28 @@ res.render("./exam/primarytheorypr", {
   
     }
     else
-    {  res.render("./exam/generatemarksheettheorypr", {
+
+    { 
+      if(studentClass.toLowerCase() === "four" || studentClass.toLowerCase() === "five" || studentClass=="4" || studentClass=="5")
+      {
+        res.render("./exam/marksheetfourfive", {
+          currentPage: "exammanagement",
+           studentClassdata:studentClassdata,
+            terminals,
+            format,
+            studentWisedata,
+            studentClass,
+            section,
+            terminal,
+            academicYear,
+            creditHourData,
+            marksheetSetups,
+           
+      user: req.user
+      });
+    }
+      else{
+      res.render("./exam/generatemarksheettheorypr", {
         currentPage: "exammanagement",
 
             studentClassdata:studentClassdata,
@@ -416,6 +461,7 @@ res.render("./exam/primarytheorypr", {
            
       user: req.user
     });
+  }
   }
   }
   
