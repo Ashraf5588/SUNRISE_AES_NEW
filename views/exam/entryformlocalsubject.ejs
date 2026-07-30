@@ -99,17 +99,20 @@
 </script>
 
   <script>
-    function loadform()
-    {
+    // FIXED: Made the function async since it uses await
+    async function loadform() {
         const selectedSubject = document.getElementById('subject').value;
         const classSection = document.getElementById('classSection').value
         const studentClass = classSection.split("-")[0];
         const section = classSection.split("-")[1];
         const academicYear = document.getElementById('academicYear').value;
-        const terminal = document.getElementById('terminal').value
-
-        window.location.href=(`/entryform?studentClass=${studentClass}&section=${section}&subject=${selectedSubject}&terminal=${terminal}&academicYear=${academicYear}`)
-      
+        const terminal = document.getElementById('terminal').value;
+        
+        // REMOVED: The code below was misplaced and should not be here
+        // It was causing the "await is only valid in async functions" error
+        // This code belongs in the autoSave function, not in loadform
+        
+        window.location.href=(`/entryform?studentClass=${studentClass}&section=${section}&subject=${selectedSubject}&terminal=${terminal}&academicYear=${academicYear}`);
     }
   </script>
   <!-- end here -->
@@ -205,6 +208,7 @@
     <%}%>
      <input type="hidden" name="studentClass" id="studentClass" value="<%=studentClass %>">
      <input type="hidden" name="section" id="section" value="<%=section %>">
+     <input type="hidden" name="subject" id="subjectHidden" value="<%=subject %>">
 
   </form>
 </div>

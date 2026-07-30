@@ -972,3 +972,44 @@ exports.getPracticalSlipData = async (req, res, next) => {
     res.status(500).json({ error: "Internal server error", details: err.message });
   }
 };
+exports.updateAnalysisTheoryMarks = async (req, res, next) => {
+  try {
+    const { reg, studentClass, section, subject, terminal, totalMarks } = req.body;
+    
+    // Get the theory model
+    const model = getSubjectModel(subject, studentClass, section, terminal);
+    
+    // Find and update the theory document
+    const updatedDoc = await model.findOneAndUpdate(
+      { reg: reg },
+      { 
+        $set: { 
+          totalMarks: parseFloat(totalMarks) || 0 
+        } 
+      },
+      { 
+        new: true,  // Return the updated document
+        upsert: false // Don't create if doesn't exist
+      }
+    );
+    
+    if (!updatedDoc) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Theory record not found' 
+      });
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Theory marks updated successfully',
+      data: updatedDoc 
+    });
+  } catch (error) {
+    console.error('Error updating theory marks:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error updating theory marks' 
+    });
+  }
+};

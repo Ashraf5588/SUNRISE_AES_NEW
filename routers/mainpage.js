@@ -416,6 +416,7 @@ student.get('/projectdatafromanotherclass',verifytoken,authorized,practical410co
 student.get('/uploadolddata',verifytoken,authorized,isAdmin,examdashboardcontroller.uploadOldData)
 student.post('/uploadCSV',verifytoken,authorized,isAdmin,upload.single('marksFile'),examcontroller.uploadOldDataPost)
 // attendance system routes
+student.post('/updateanalysistheorymarks',verifytoken,authorized,examcontroller.updateAnalysisTheoryMarks);
 
 student.get('/addchapterselect', verifytoken, authorized, controller.addChapterSelect);
 student.get('/addchapter', verifytoken, authorized, controller.addChapterForm);

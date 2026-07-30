@@ -554,6 +554,32 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
           console.warn("Invalid reg, skipping save");
           return;
         }
+        if (el.id === 'theorymarks' || el.matches('input[name^="theorymarks["]')) {
+        try {
+          const theoryUpdateResponse = await fetch('/updateanalysistheorymarks', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              reg: reg,
+              studentClass: studentClass,
+              section: section,
+              subject: subject,
+              terminal: terminal,
+              totalMarks: theorymarks || 0
+            })
+          });
+          
+          if (theoryUpdateResponse.ok) {
+            console.log(`Updated theory totalMarks for reg ${reg}: ${theorymarks}`);
+          } else {
+            console.error('Failed to update theory marks');
+          }
+        } catch (theoryError) {
+          console.error('Error updating theory marks:', theoryError);
+        }
+      }
 
         const response = await fetch(`/entryform?studentClass=${studentClass}&section=${section}&subject=${subject}&academicYear=${academicYear}&terminal=${terminal}`, {
           method: 'POST',
@@ -883,6 +909,8 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
     }
   };
 </script>
-
+<script>
+  document.getElementById('th')
+</script>
 </body>
 </html>
