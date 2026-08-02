@@ -20,10 +20,6 @@
   <title>Student Ledger - Primary (1-3)</title>
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <!-- DataTables CSS -->
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
-  <link rel="stylesheet" href="https://cdn.datatables.net/fixedcolumns/4.3.0/css/fixedColumns.dataTables.min.css">
   
   <style>
     :root {
@@ -33,6 +29,10 @@
       --surface: #ffffff;
       --text-main: #0f172a;
       --border: #e2e8f0;
+    }
+
+    * {
+      box-sizing: border-box;
     }
 
     body {
@@ -64,6 +64,38 @@
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 1rem;
       margin-bottom: 1rem;
+    }
+
+    .hide-controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .hide-group {
+      display: grid;
+      gap: 0.4rem;
+    }
+
+    .hide-group-title {
+      font-weight: 700;
+      color: var(--secondary);
+      margin-bottom: 0.25rem;
+    }
+
+    .hide-group label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.92rem;
+      cursor: pointer;
+    }
+
+    .hide-group input {
+      margin: 0;
     }
 
     select {
@@ -138,13 +170,19 @@
       opacity: 0.8;
     }
 
-    table.dataTable {
-      width: 100% !important;
-      border-collapse: collapse;
-      font-size: 0.85rem;
+    .table-wrapper {
+      overflow-x: auto;
+      position: relative;
     }
 
-    table.dataTable thead th {
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      min-width: 800px;
+    }
+
+    table thead th {
       background-color: #153b71;
       color: white;
       font-weight: 600;
@@ -152,20 +190,21 @@
       border: 1px solid #1d3d69;
       text-align: center;
       vertical-align: middle;
+      white-space: nowrap;
     }
 
-    table.dataTable tbody td {
+    table tbody td {
       padding: 8px;
       border: 1px solid var(--border);
       text-align: center;
       vertical-align: middle;
     }
 
-    table.dataTable tbody tr:nth-child(odd) { background-color: #ffffff; }
-    table.dataTable tbody tr:nth-child(even) { background-color: #f1f5f9; }
-    table.dataTable tbody tr:hover { background-color: #e2e8f0 !important; }
+    table tbody tr:nth-child(odd) { background-color: #ffffff; }
+    table tbody tr:nth-child(even) { background-color: #f1f5f9; }
+    table tbody tr:hover { background-color: #e2e8f0 !important; }
 
-    table.dataTable tfoot th, table.dataTable tfoot td {
+    table tfoot th, table tfoot td {
       background-color: #f1f5f9;
       font-weight: 600;
       border: 1px solid var(--border);
@@ -176,25 +215,117 @@
     .status-fail { background-color: #fee2e2 !important; color: #991b1b; }
     .status-pass { background-color: #dcfce7 !important; color: #166534; }
     .status-ng { background-color: #fee2e2 !important; color: #991b1b; }
-    
-    .dt-buttons .dt-button {
-      background: white !important;
-      border: 1px solid var(--border) !important;
-      border-radius: 6px !important;
-      color: var(--secondary) !important;
-      font-size: 0.85rem !important;
-      padding: 0.5rem 1rem !important;
-      margin-right: 0.5rem !important;
+
+    .hidden-column {
+      display: none !important;
     }
-    .dt-buttons .dt-button:hover { background: #f8fafc !important; border-color: var(--primary) !important; }
+
+    .fixed-column {
+      position: sticky;
+      z-index: 10;
+      background-color: inherit;
+    }
+
+    .fixed-column-roll {
+      left: 0;
+      z-index: 11;
+      color:#0f172a !important;
+    }
+
+    .fixed-column-name {
+      left: 42px;
+      z-index: 11;
+      color:#0f172a !important;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 15px;
+    }
+
+    .btn-group button {
+      padding: 0.5rem 1.5rem;
+    }
+
+    .btn-secondary {
+      background: #64748b;
+    }
+
+    .btn-secondary:hover {
+      background: #475569;
+    }
+
+    .btn-success {
+      background: #22c55e;
+    }
+
+    .btn-success:hover {
+      background: #16a34a;
+    }
+
+    .btn-excel {
+      background: #217346;
+    }
+
+    .btn-excel:hover {
+      background: #1a5c38;
+    }
 
     @media print {
       .no-print { display: none; }
       .ledger-container { box-shadow: none; padding: 0; }
+      .hidden-column { display: none !important; }
+      .fixed-column {
+        position: static;
+      }
+    }
+
+    @media screen and (max-width: 768px) {
+      body { padding: 10px; }
+      .form-selector-grid { grid-template-columns: 1fr; }
+      .hide-controls { grid-template-columns: 1fr; }
+      table { font-size: 0.75rem; }
+      table thead th, table tbody td { padding: 5px; }
     }
   </style>
 </head>
 <body>
+  
+  <% 
+    // Build subject info with their worksheet counts
+    const subjectInfo = {};
+    let maxTotalColumns = 0;
+    let hasSubjects = false;
+    if (ledgerData && ledgerData.length > 0) {
+      ledgerData.forEach(student => {
+        if (student.subjectMap && Object.keys(student.subjectMap).length > 0) {
+          hasSubjects = true;
+          Object.keys(student.subjectMap).forEach(subject => {
+            if (!subjectInfo[subject]) {
+              subjectInfo[subject] = { worksheetCount: 0 };
+            }
+            const subjectData = student.subjectMap[subject];
+            let wsCount = 0;
+            if (subjectData && subjectData.totalWorksheet && subjectData.totalWorksheet > 0) {
+              wsCount = subjectData.totalWorksheet;
+            } else if (subjectData && subjectData.worksheetGrades && Array.isArray(subjectData.worksheetGrades)) {
+              wsCount = subjectData.worksheetGrades.length;
+            }
+            if (wsCount > subjectInfo[subject].worksheetCount) {
+              subjectInfo[subject].worksheetCount = wsCount;
+            }
+          });
+        }
+      });
+    }
+    const uniqueSubjects = Object.keys(subjectInfo);
+    uniqueSubjects.forEach(sub => {
+      maxTotalColumns += (subjectInfo[sub].worksheetCount || 0) + 2;
+    });
+  %>
+
   <!-- Selector Panel -->
   <div class="form-selector-panel no-print">
     <div class="form-selector-container">
@@ -224,12 +355,35 @@
           <% } %>
         </select>
       </div>
+      <div class="form-selector-grid hide-controls">
+        <div class="hide-group">
+          <div class="hide-group-title">Show / Hide Columns</div>
+          <label><input type="checkbox" class="column-toggle" data-coltype="col-type-th" checked> Theory</label>
+          <label><input type="checkbox" class="column-toggle" data-coltype="col-type-ws" checked> Worksheets</label>
+          <label><input type="checkbox" class="column-toggle" data-coltype="col-type-gp" checked> Final GP</label>
+          <label><input type="checkbox" class="column-toggle" data-coltype="col-gpa" checked> GPA</label>
+          <label><input type="checkbox" class="column-toggle" data-coltype="col-rank" checked> Rank</label>
+          <label><input type="checkbox" class="column-toggle" data-coltype="col-att" checked> Attendance</label>
+          <label><input type="checkbox" class="column-toggle" data-coltype="col-status" checked> Status</label>
+        </div>
+        <div class="hide-group">
+          <div class="hide-group-title">Hide Subjects</div>
+          <% uniqueSubjects.forEach((sub, index) => { %>
+            <label><input type="checkbox" class="subject-toggle" data-subject-index="<%= index %>" checked> <%= sub %></label>
+          <% }) %>
+        </div>
+      </div>
       <button onclick="loadform()">Load Ledger</button>
     </div>
   </div>
 
   <div class="ledger-container">
-    <button type="button" onclick="shareToWhatsapp()" class="no-print">Share To Whatsapp</button>
+    <div class="btn-group no-print">
+      <button type="button" onclick="shareToWhatsapp()" class="btn-success">Share To Whatsapp</button>
+      <button type="button" onclick="window.print()" class="btn-secondary">Print</button>
+      <button type="button" onclick="exportToCSV()" class="btn-secondary">Export CSV</button>
+      <button type="button" onclick="exportToExcel()" class="btn-excel">Export to Excel</button>
+    </div>
     
     <div class="ledger-school-header">
       <img src="/image.png" alt="School Logo" class="school-logo">
@@ -245,250 +399,248 @@
       <p><strong>Class:</strong> <%= studentClass %> - <%= section %> &nbsp;|&nbsp; <strong>Terminal:</strong> <%= terminal %> &nbsp;|&nbsp; <strong>Year:</strong> <%= academicYear %></p>
     </div>
 
-    <table id="ledgerTable" class="display nowrap" style="width:100%">
-      <thead>
-        <tr>
-          <th rowspan="2">Roll</th>
-          <th rowspan="2">Name</th>
-          <% 
-            // Build subject info with their worksheet counts
-            const subjectInfo = {};
-            let maxTotalColumns = 0;
-            let hasSubjects = false;
-            
-            if (ledgerData && ledgerData.length > 0) {
-              // Check if any student has subject data
-              ledgerData.forEach(student => {
-                if (student.subjectMap && Object.keys(student.subjectMap).length > 0) {
-                  hasSubjects = true;
-                  Object.keys(student.subjectMap).forEach(subject => {
-                    if (!subjectInfo[subject]) {
-                      subjectInfo[subject] = { worksheetCount: 0 };
-                    }
-                    const subjectData = student.subjectMap[subject];
-                    let wsCount = 0;
-                    if (subjectData && subjectData.totalWorksheet && subjectData.totalWorksheet > 0) {
-                      wsCount = subjectData.totalWorksheet;
-                    } else if (subjectData && subjectData.worksheetGrades && Array.isArray(subjectData.worksheetGrades)) {
-                      wsCount = subjectData.worksheetGrades.length;
-                    }
-                    if (wsCount > subjectInfo[subject].worksheetCount) {
-                      subjectInfo[subject].worksheetCount = wsCount;
-                    }
-                  });
-                }
-              });
-            }
-            
-            const uniqueSubjects = Object.keys(subjectInfo);
-            
-            // Calculate total columns
-            uniqueSubjects.forEach(sub => {
-              maxTotalColumns += (subjectInfo[sub].worksheetCount || 0) + 2;
-            });
-          %>
-          <% if (hasSubjects && uniqueSubjects.length > 0) { %>
-            <% uniqueSubjects.forEach((sub) => { 
-              const wsCount = subjectInfo[sub].worksheetCount || 0;
-            %>
-              <th colspan="<%= wsCount + 2 %>"><%= sub %></th>
-            <% }) %>
-          <% } else { %>
-            <th colspan="2">No Subjects</th>
-          <% } %>
-          <th rowspan="2">GPA</th>
-          <th rowspan="2">Rank</th>
-          <th rowspan="2">Att.</th>
-          <th rowspan="2">Status</th>
-        </tr>
-        <tr>
-          <% if (hasSubjects && uniqueSubjects.length > 0) { %>
-            <% uniqueSubjects.forEach((sub) => { 
-              const wsCount = subjectInfo[sub].worksheetCount || 0;
-            %>
-              <th>TH</th>
-              <% for (let i = 1; i <= wsCount; i++) { %>
-                <th>W<%= i %></th>
-              <% } %>
-              <th>GP</th>
-            <% }) %>
-          <% } else { %>
-            <th>-</th>
-            <th>-</th>
-          <% } %>
-        </tr>
-      </thead>
-      
-      <tbody>
-        <% if (ledgerData && ledgerData.length > 0 && hasSubjects && uniqueSubjects.length > 0) { %>
-          <% ledgerData.forEach((data) => { %>
-            <tr>
-              <td><%= data.roll %></td>
-              <td><%= data.name %></td>
-              <% uniqueSubjects.forEach((sub) => { 
-                const subjectData = data.subjectMap && data.subjectMap[sub];
+    <div class="table-wrapper">
+      <table id="ledgerTable">
+        <thead>
+          <tr>
+            <th rowspan="2" class="fixed-column fixed-column-roll">Roll</th>
+            <th rowspan="2" class="fixed-column fixed-column-name">Name</th>
+            <% if (hasSubjects && uniqueSubjects.length > 0) { %>
+              <% uniqueSubjects.forEach((sub, index) => { 
                 const wsCount = subjectInfo[sub].worksheetCount || 0;
               %>
-                <!-- Theory Marks -->
-                <td class="<%= (subjectData && subjectData.theoryGP !== undefined && subjectData.theoryGP === 0) ? 'status-fail' : '' %>">
-                  <%= (subjectData && subjectData.theoryMarks !== undefined && subjectData.theoryMarks !== null) ? subjectData.theoryMarks : '-' %>
-                </td>
-                
-                <!-- Worksheet Columns -->
-                <% 
-                  let worksheetGrades = [];
-                  if (subjectData && subjectData.worksheetGrades && Array.isArray(subjectData.worksheetGrades)) {
-                    worksheetGrades = subjectData.worksheetGrades;
-                  }
-                  for (let i = 0; i < wsCount; i++) { 
-                    const grade = (worksheetGrades[i] !== undefined && worksheetGrades[i] !== null) ? worksheetGrades[i] : '';
-                    const isNG = grade === 'NG' || grade === '' || grade === 'D';
-                %>
-                    <td class="<%= isNG ? 'status-fail' : '' %>">
-                      <%= grade || '-' %>
-                    </td>
-                  <% }
-                %>
-                
-                <!-- GP Column -->
-                <td class="<%= (subjectData && subjectData.finalGP !== undefined && subjectData.finalGP === 0) ? 'status-fail' : '' %>">
-                  <%= (subjectData && subjectData.finalGP !== undefined && subjectData.finalGP !== null) ? subjectData.finalGP.toFixed(2) : '-' %>
-                </td>
+                <th colspan="<%= wsCount + 2 %>" class="subject-header subject-<%= index %>" data-subject="<%= sub %>" data-subject-index="<%= index %>"><%= sub %></th>
               <% }) %>
-              
-              <td><%= (data.gpa !== undefined && data.gpa !== null) ? data.gpa.toFixed(2) : '0.00' %></td>
-              <td><%= data.rank || '-' %></td>
-              <td><%= data.attendance || '-' %></td>
-              <td class="<%= (data.gpa !== undefined && data.gpa !== null && data.gpa < 1.6) ? 'status-fail' : 'status-pass' %>">
-                <%= (data.gpa !== undefined && data.gpa !== null && data.gpa < 1.6) ? 'NG' : 'Pass' %>
+            <% } else { %>
+              <th colspan="2">No Subjects</th>
+            <% } %>
+            <th rowspan="2" class="col-gpa" data-coltype="gpa">GPA</th>
+            <th rowspan="2" class="col-rank" data-coltype="rank">Rank</th>
+            <th rowspan="2" class="col-att" data-coltype="att">Att.</th>
+            <th rowspan="2" class="col-status" data-coltype="status">Status</th>
+          </tr>
+          <tr>
+            <% if (hasSubjects && uniqueSubjects.length > 0) { %>
+              <% uniqueSubjects.forEach((sub, index) => { 
+                const wsCount = subjectInfo[sub].worksheetCount || 0;
+              %>
+                <th class="subject-subheader subject-<%= index %> col-type-th" data-subject="<%= sub %>" data-coltype="th">TH</th>
+                <% for (let i = 1; i <= wsCount; i++) { %>
+                  <th class="subject-subheader subject-<%= index %> col-type-ws" data-subject="<%= sub %>" data-coltype="ws">W<%= i %></th>
+                <% } %>
+                <th class="subject-subheader subject-<%= index %> col-type-gp" data-subject="<%= sub %>" data-coltype="gp">GP</th>
+              <% }) %>
+            <% } else { %>
+              <th>-</th>
+              <th>-</th>
+            <% } %>
+          </tr>
+        </thead>
+        
+        <tbody>
+          <% if (ledgerData && ledgerData.length > 0 && hasSubjects && uniqueSubjects.length > 0) { %>
+            <% ledgerData.forEach((data) => { %>
+              <tr>
+                <td class="fixed-column fixed-column-roll"><%= data.roll %></td>
+                <td class="fixed-column fixed-column-name"><%= data.name %></td>
+                <% uniqueSubjects.forEach((sub) => { 
+                  const subjectData = data.subjectMap && data.subjectMap[sub];
+                  const wsCount = subjectInfo[sub].worksheetCount || 0;
+                %>
+                  <!-- Theory Marks -->
+                  <td class="subject-column subject-<%= uniqueSubjects.indexOf(sub) %> col-type-th <%= (subjectData && subjectData.theoryGP !== undefined && subjectData.theoryGP === 0) ? 'status-fail' : '' %>" data-subject="<%= sub %>" data-coltype="th">
+                    <%= (subjectData && subjectData.theoryMarks !== undefined && subjectData.theoryMarks !== null) ? subjectData.theoryMarks : '-' %>
+                  </td>
+                  
+                  <!-- Worksheet Columns -->
+                  <% 
+                    let worksheetGrades = [];
+                    if (subjectData && subjectData.worksheetGrades && Array.isArray(subjectData.worksheetGrades)) {
+                      worksheetGrades = subjectData.worksheetGrades;
+                    }
+                    for (let i = 0; i < wsCount; i++) { 
+                      const grade = (worksheetGrades[i] !== undefined && worksheetGrades[i] !== null) ? worksheetGrades[i] : '';
+                      const isNG = grade === 'NG' || grade === '' || grade === 'D';
+                  %>
+                      <td class="subject-column subject-<%= uniqueSubjects.indexOf(sub) %> col-type-ws <%= isNG ? 'status-fail' : '' %>" data-subject="<%= sub %>" data-coltype="ws">
+                        <%= grade || '-' %>
+                      </td>
+                    <% }
+                  %>
+                  
+                  <!-- GP Column -->
+                  <td class="subject-column subject-<%= uniqueSubjects.indexOf(sub) %> col-type-gp <%= (subjectData && subjectData.finalGP !== undefined && subjectData.finalGP === 0) ? 'status-fail' : '' %>" data-subject="<%= sub %>" data-coltype="gp">
+                    <%= (subjectData && subjectData.finalGP !== undefined && subjectData.finalGP !== null) ? subjectData.finalGP.toFixed(2) : '-' %>
+                  </td>
+                <% }) %>
+                
+                <td class="col-gpa"><%= (data.gpa !== undefined && data.gpa !== null) ? data.gpa.toFixed(2) : '0.00' %></td>
+                <td class="col-rank"><%= data.rank || '-' %></td>
+                <td class="col-att"><%= data.attendance || '-' %></td>
+                <td class="col-status <%= (data.gpa !== undefined && data.gpa !== null && data.gpa < 1.6) ? 'status-fail' : 'status-pass' %>">
+                  <%= (data.gpa !== undefined && data.gpa !== null && data.gpa < 1.6) ? 'NG' : 'Pass' %>
+                </td>
+              </tr>
+            <% }) %>
+          <% } else { %>
+            <tr>
+              <td colspan="<%= 2 + (maxTotalColumns || 2) + 4 %>" style="text-align: center; padding: 20px;">
+                No data available for the selected criteria.
               </td>
             </tr>
-          <% }) %>
-        <% } else { %>
-          <tr>
-            <td colspan="<%= 2 + (maxTotalColumns || 2) + 4 %>" style="text-align: center; padding: 20px;">
-              No data available for the selected criteria.
-            </td>
-          </tr>
-        <% } %>
-      </tbody>
+          <% } %>
+        </tbody>
 
-      <tfoot>
-        <!-- Simplified footer - only show if data exists -->
-        <% if (hasSubjects && uniqueSubjects.length > 0) { %>
-        <tr>
-          <th colspan="2" style="text-align:right; font-weight:bold;">Section Highest:</th>
-          <% uniqueSubjects.forEach(sub => { 
-            const wsCount = subjectInfo[sub].worksheetCount || 0;
-          %>
-            <td colspan="<%= wsCount + 2 %>"><%= ledgerAnalysisLookup && ledgerAnalysisLookup[sub] ? ledgerAnalysisLookup[sub].highestMarks : '-' %></td>
-          <% }) %>
-          <td colspan="4"></td>
-        </tr>
-        <tr>
-          <th colspan="2" style="text-align:right; font-weight:bold;">Section Lowest:</th>
-          <% uniqueSubjects.forEach(sub => { 
-            const wsCount = subjectInfo[sub].worksheetCount || 0;
-          %>
-            <td colspan="<%= wsCount + 2 %>"><%= ledgerAnalysisLookup && ledgerAnalysisLookup[sub] ? ledgerAnalysisLookup[sub].lowestMarks : '-' %></td>
-          <% }) %>
-          <td colspan="4"></td>
-        </tr>
-        <tr>
-          <th colspan="2" style="text-align:right; font-weight:bold;">Section Average:</th>
-          <% uniqueSubjects.forEach(sub => { 
-            const d = ledgerAnalysisLookup && ledgerAnalysisLookup[sub];
-            const wsCount = subjectInfo[sub].worksheetCount || 0;
-          %>
-            <td colspan="<%= wsCount + 2 %>"><%= d && d.avgMarks !== undefined ? d.avgMarks.toFixed(2) : '-' %></td>
-          <% }) %>
-          <td colspan="4"></td>
-        </tr>
-        <tr>
-          <th colspan="2" style="text-align:right; font-weight:bold;">Pass Count:</th>
-          <% uniqueSubjects.forEach(sub => { 
-            const wsCount = subjectInfo[sub].worksheetCount || 0;
-          %>
-            <td colspan="<%= wsCount + 2 %>"><%= ledgerAnalysisLookup && ledgerAnalysisLookup[sub] ? ledgerAnalysisLookup[sub].passCount : '-' %></td>
-          <% }) %>
-          <td colspan="4"></td>
-        </tr>
-        <tr>
-          <th colspan="2" style="text-align:right; font-weight:bold;">Fail Count:</th>
-          <% uniqueSubjects.forEach(sub => { 
-            const wsCount = subjectInfo[sub].worksheetCount || 0;
-          %>
-            <td colspan="<%= wsCount + 2 %>"><%= ledgerAnalysisLookup && ledgerAnalysisLookup[sub] ? ledgerAnalysisLookup[sub].failCount : '-' %></td>
-          <% }) %>
-          <td colspan="4"></td>
-        </tr>
-        <% } %>
-      </tfoot>
-    </table>
+        <tfoot>
+          <% if (hasSubjects && uniqueSubjects.length > 0) { %>
+          <tr>
+            <th colspan="2" style="text-align:right; font-weight:bold;">Section Highest:</th>
+            <% uniqueSubjects.forEach(sub => { 
+              const wsCount = subjectInfo[sub].worksheetCount || 0;
+            %>
+              <td class="subject-column subject-<%= uniqueSubjects.indexOf(sub) %>" data-subject="<%= sub %>" colspan="<%= wsCount + 2 %>"><%= ledgerAnalysisLookup && ledgerAnalysisLookup[sub] ? ledgerAnalysisLookup[sub].highestMarks : '-' %></td>
+            <% }) %>
+            <td colspan="4"></td>
+          </tr>
+          <tr>
+            <th colspan="2" style="text-align:right; font-weight:bold;">Section Lowest:</th>
+            <% uniqueSubjects.forEach(sub => { 
+              const wsCount = subjectInfo[sub].worksheetCount || 0;
+            %>
+              <td class="subject-column subject-<%= uniqueSubjects.indexOf(sub) %>" data-subject="<%= sub %>" colspan="<%= wsCount + 2 %>"><%= ledgerAnalysisLookup && ledgerAnalysisLookup[sub] ? ledgerAnalysisLookup[sub].lowestMarks : '-' %></td>
+            <% }) %>
+            <td colspan="4"></td>
+          </tr>
+          <tr>
+            <th colspan="2" style="text-align:right; font-weight:bold;">Section Average:</th>
+            <% uniqueSubjects.forEach(sub => { 
+              const d = ledgerAnalysisLookup && ledgerAnalysisLookup[sub];
+              const wsCount = subjectInfo[sub].worksheetCount || 0;
+            %>
+              <td class="subject-column subject-<%= uniqueSubjects.indexOf(sub) %>" data-subject="<%= sub %>" colspan="<%= wsCount + 2 %>"><%= d && d.avgMarks !== undefined ? d.avgMarks.toFixed(2) : '-' %></td>
+            <% }) %>
+            <td colspan="4"></td>
+          </tr>
+          <tr>
+            <th colspan="2" style="text-align:right; font-weight:bold;">Pass Count:</th>
+            <% uniqueSubjects.forEach(sub => { 
+              const wsCount = subjectInfo[sub].worksheetCount || 0;
+            %>
+              <td class="subject-column subject-<%= uniqueSubjects.indexOf(sub) %>" data-subject="<%= sub %>" colspan="<%= wsCount + 2 %>"><%= ledgerAnalysisLookup && ledgerAnalysisLookup[sub] ? ledgerAnalysisLookup[sub].passCount : '-' %></td>
+            <% }) %>
+            <td colspan="4"></td>
+          </tr>
+          <tr>
+            <th colspan="2" style="text-align:right; font-weight:bold;">Fail Count:</th>
+            <% uniqueSubjects.forEach(sub => { 
+              const wsCount = subjectInfo[sub].worksheetCount || 0;
+            %>
+              <td class="subject-column subject-<%= uniqueSubjects.indexOf(sub) %>" data-subject="<%= sub %>" colspan="<%= wsCount + 2 %>"><%= ledgerAnalysisLookup && ledgerAnalysisLookup[sub] ? ledgerAnalysisLookup[sub].failCount : '-' %></td>
+            <% }) %>
+            <td colspan="4"></td>
+          </tr>
+          <% } %>
+        </tfoot>
+      </table>
+    </div>
   </div>
 
   <!-- Scripts -->
-  <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
-  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-  <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
-  <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
-  <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
-  <script src="https://cdn.datatables.net/fixedcolumns/4.3.0/js/dataTables.fixedColumns.min.js"></script>
-
   <script>
-    $(document).ready(function() {
-      const fileName = "Class <%= studentClass %>-<%= section %> <%= terminal %> <%= academicYear %> Ledger";
-      
-      $('#ledgerTable').DataTable({
-        dom: 'Bfrtip',
-        buttons: [
-          { extend: 'copy', footer: true },
-          { extend: 'csv', footer: true, filename: fileName },
-          { 
-            extend: 'excel', 
-            footer: true, 
-            filename: fileName, 
-            title: fileName 
-          },
-          { 
-            extend: 'pdf', 
-            footer: true, 
-            filename: fileName, 
-            title: fileName, 
-            orientation: 'landscape', 
-            pageSize: 'A3' 
-          },
-          { 
-            extend: 'print', 
-            footer: true, 
-            title: fileName,
-            customize: function(win) {
-              var css = '@page { size: landscape; }',
-                  head = win.document.head || win.document.getElementsByTagName('head')[0],
-                  style = win.document.createElement('style');
-           
-              style.type = 'text/css';
-              style.media = 'print';
-           
-              if (style.styleSheet) {
-                style.styleSheet.cssText = css;
-              } else {
-                style.appendChild(win.document.createTextNode(css));
-              }
-              head.appendChild(style);
-            }
+    document.addEventListener('DOMContentLoaded', function() {
+      // Function to update subject group header colspan
+      function updateSubjectGroupHeaderColspan() {
+        const subjectHeaders = document.querySelectorAll('.subject-header');
+        subjectHeaders.forEach(header => {
+          const index = header.dataset.subjectIndex;
+          const visibleSubheaders = document.querySelectorAll(`.subject-subheader.subject-${index}:not(.hidden-column)`);
+          const visibleCount = visibleSubheaders.length;
+          
+          if (visibleCount === 0) {
+            header.classList.add('hidden-column');
+          } else {
+            header.classList.remove('hidden-column');
+            header.colSpan = visibleCount;
           }
-        ],
-        scrollX: true,
-        paging: false,
-        fixedColumns: {
-          left: 2
-        },
-        ordering: false
+        });
+      }
+
+      // Function to refresh table visibility
+      function refreshTable() {
+        updateSubjectGroupHeaderColspan();
+      }
+
+      // Subject toggle handler
+      document.querySelectorAll('.subject-toggle').forEach(toggle => {
+        toggle.addEventListener('change', function() {
+          const index = this.dataset.subjectIndex;
+          const isVisible = this.checked;
+          
+          // Toggle all columns with this subject
+          document.querySelectorAll(`.subject-${index}`).forEach(el => {
+            if (!isVisible) {
+              el.classList.add('hidden-column');
+            } else {
+              el.classList.remove('hidden-column');
+            }
+          });
+          
+          refreshTable();
+        });
       });
+
+      // Column type toggle handler
+      document.querySelectorAll('.column-toggle').forEach(toggle => {
+        toggle.addEventListener('change', function() {
+          const colType = this.dataset.coltype;
+          const isVisible = this.checked;
+          
+          // Toggle all columns with this type
+          document.querySelectorAll(`.${colType}`).forEach(el => {
+            if (!isVisible) {
+              el.classList.add('hidden-column');
+            } else {
+              el.classList.remove('hidden-column');
+            }
+          });
+          
+          refreshTable();
+        });
+      });
+
+      // Initialize visibility on page load
+      function initializeVisibility() {
+        // Subject toggles
+        document.querySelectorAll('.subject-toggle').forEach(toggle => {
+          const index = toggle.dataset.subjectIndex;
+          const isVisible = toggle.checked;
+          document.querySelectorAll(`.subject-${index}`).forEach(el => {
+            if (!isVisible) {
+              el.classList.add('hidden-column');
+            } else {
+              el.classList.remove('hidden-column');
+            }
+          });
+        });
+
+        // Column type toggles
+        document.querySelectorAll('.column-toggle').forEach(toggle => {
+          const colType = toggle.dataset.coltype;
+          const isVisible = toggle.checked;
+          document.querySelectorAll(`.${colType}`).forEach(el => {
+            if (!isVisible) {
+              el.classList.add('hidden-column');
+            } else {
+              el.classList.remove('hidden-column');
+            }
+          });
+        });
+
+        refreshTable();
+      }
+
+      // Initialize after a small delay to ensure DOM is ready
+      setTimeout(initializeVisibility, 100);
     });
 
     function loadform() {
@@ -558,6 +710,249 @@
 
       const whatsappUrl = "https://wa.me/?text=" + encodeURIComponent(message);
       window.open(whatsappUrl, "_blank");
+    }
+
+    function exportToCSV() {
+      const table = document.getElementById('ledgerTable');
+      let csv = [];
+      
+      // Get headers
+      const headers = [];
+      const headerRows = table.querySelectorAll('thead tr');
+      headerRows.forEach(row => {
+        const rowData = [];
+        row.querySelectorAll('th').forEach(th => {
+          if (!th.classList.contains('hidden-column')) {
+            rowData.push('"' + th.textContent.trim() + '"');
+          }
+        });
+        if (rowData.length > 0) {
+          headers.push(rowData.join(','));
+        }
+      });
+      csv.push(headers.join('\n'));
+
+      // Get body data
+      const rows = table.querySelectorAll('tbody tr');
+      rows.forEach(row => {
+        const rowData = [];
+        row.querySelectorAll('td').forEach(td => {
+          if (!td.classList.contains('hidden-column')) {
+            rowData.push('"' + td.textContent.trim() + '"');
+          }
+        });
+        if (rowData.length > 0) {
+          csv.push(rowData.join(','));
+        }
+      });
+
+      // Download CSV
+      const csvContent = csv.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'ledger_<%= studentClass %>_<%= section %>_<%= terminal %>.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function exportToExcel() {
+      const table = document.getElementById('ledgerTable');
+      
+      // Get visible subject data
+      const subjectHeaders = document.querySelectorAll('.subject-header:not(.hidden-column)');
+      const subjectGroups = [];
+      subjectHeaders.forEach(header => {
+        const index = header.dataset.subjectIndex;
+        const subheaders = document.querySelectorAll(`.subject-subheader.subject-${index}:not(.hidden-column)`);
+        subjectGroups.push({
+          name: header.textContent.trim(),
+          count: subheaders.length,
+          index: index,
+          subheaders: subheaders
+        });
+      });
+
+      // Get visible remaining columns (only once)
+      const remainingCols = [];
+      const remainingHeaders = ['gpa', 'rank', 'att', 'status'];
+      remainingHeaders.forEach(type => {
+        const col = document.querySelector(`.col-${type}`);
+        if (col && !col.classList.contains('hidden-column')) {
+          const header = document.querySelector(`th[data-coltype="${type}"]`);
+          if (header) {
+            remainingCols.push({
+              name: header.textContent.trim(),
+              type: type
+            });
+          }
+        }
+      });
+
+      // Build HTML table for Excel
+      let html = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" 
+              xmlns:x="urn:schemas-microsoft-com:office:excel" 
+              xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+          <meta charset="UTF-8">
+          <!--[if gte mso 9]>
+          <xml>
+            <x:ExcelWorkbook>
+              <x:ExcelWorksheets>
+                <x:ExcelWorksheet>
+                  <x:Name>Ledger</x:Name>
+                  <x:WorksheetOptions>
+                    <x:DisplayGridlines/>
+                  </x:WorksheetOptions>
+                </x:ExcelWorksheet>
+              </x:ExcelWorksheets>
+            </x:ExcelWorkbook>
+          </xml>
+          <![endif]-->
+          <style>
+            th {
+              background-color: #153b71;
+              color: #ffffff;
+              font-weight: bold;
+              border: 1px solid #1d3d69;
+              padding: 8px;
+              text-align: center;
+              vertical-align: middle;
+            }
+            td {
+              border: 1px solid #e2e8f0;
+              padding: 6px;
+              text-align: center;
+              vertical-align: middle;
+            }
+            .pass {
+              background-color: #dcfce7;
+            }
+            .fail {
+              background-color: #fee2e2;
+            }
+            .footer-bg {
+              background-color: #f1f5f9;
+              font-weight: bold;
+            }
+            table {
+              border-collapse: collapse;
+              font-family: Inter, Arial, sans-serif;
+              font-size: 11px;
+            }
+          </style>
+        </head>
+        <body>
+          <table>
+      `;
+
+      // FIRST HEADER ROW: Roll, Name, Subject names (merged), remaining headers
+      html += `<tr>`;
+      html += `<th rowspan="2">Roll</th>`;
+      html += `<th rowspan="2">Name</th>`;
+      
+      subjectGroups.forEach(group => {
+        html += `<th colspan="${group.count}">${escapeHtml(group.name)}</th>`;
+      });
+      
+      remainingCols.forEach(col => {
+        html += `<th rowspan="2">${escapeHtml(col.name)}</th>`;
+      });
+      
+      html += `</tr>`;
+
+      // SECOND HEADER ROW: Sub-headers (TH, W1, W2, etc.)
+      html += `<tr>`;
+      subjectGroups.forEach(group => {
+        group.subheaders.forEach(subheader => {
+          html += `<th>${escapeHtml(subheader.textContent.trim())}</th>`;
+        });
+      });
+      html += `</tr>`;
+
+      // DATA ROWS
+      const rows = table.querySelectorAll('tbody tr');
+      rows.forEach(row => {
+        html += `<tr>`;
+        
+        // Roll and Name
+        const roll = row.querySelector('.fixed-column-roll');
+        const name = row.querySelector('.fixed-column-name');
+        html += `<td>${escapeHtml(roll ? roll.textContent.trim() : '')}</td>`;
+        html += `<td>${escapeHtml(name ? name.textContent.trim() : '')}</td>`;
+        
+        // Subject data - get all subject columns in order
+        subjectGroups.forEach(group => {
+          const cells = row.querySelectorAll(`.subject-${group.index}:not(.hidden-column)`);
+          cells.forEach(cell => {
+            const text = cell.textContent.trim();
+            let cls = '';
+            if (text === 'Pass') cls = 'pass';
+            else if (text === 'NG' || text === 'Fail') cls = 'fail';
+            html += `<td class="${cls}">${escapeHtml(text)}</td>`;
+          });
+        });
+        
+        // Remaining columns data (only once)
+        remainingCols.forEach(col => {
+          const cell = row.querySelector(`.col-${col.type}:not(.hidden-column)`);
+          const text = cell ? cell.textContent.trim() : '';
+          let cls = '';
+          if (col.type === 'status') {
+            if (text === 'Pass') cls = 'pass';
+            else if (text === 'NG' || text === 'Fail') cls = 'fail';
+          }
+          html += `<td class="${cls}">${escapeHtml(text)}</td>`;
+        });
+        
+        html += `</tr>`;
+      });
+
+      // FOOTER ROWS
+      const tfootRows = table.querySelectorAll('tfoot tr');
+      tfootRows.forEach(row => {
+        html += `<tr>`;
+        const cells = row.querySelectorAll('th, td');
+        cells.forEach(cell => {
+          if (!cell.classList.contains('hidden-column')) {
+            const text = cell.textContent.trim();
+            const colspan = cell.getAttribute('colspan') || 1;
+            const tag = cell.tagName === 'TH' ? 'th' : 'td';
+            html += `<${tag} colspan="${colspan}" class="footer-bg">${escapeHtml(text)}</${tag}>`;
+          }
+        });
+        html += `</tr>`;
+      });
+
+      html += `
+          </table>
+        </body>
+        </html>
+      `;
+
+      // Download as .xls
+      const blob = new Blob([html], { 
+        type: 'application/vnd.ms-excel;charset=utf-8' 
+      });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `ledger_<%= studentClass %>_<%= section %>_<%= terminal %>.xls`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
     }
   </script>
 </body>

@@ -89,6 +89,21 @@
 
     button:hover { background: #4338ca; }
 
+    .btn-excel {
+      background: #217346;
+    }
+
+    .btn-excel:hover {
+      background: #1a5c38;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 15px;
+    }
+
     /* Ledger Container */
     .ledger-container {
       background: var(--surface);
@@ -118,7 +133,7 @@
     }
 
     .school-logo {
-      height: 80px; /* Adjusted size */
+      height: 80px;
       width: auto;
       object-fit: contain;
       margin-bottom: 0.5rem;
@@ -149,7 +164,7 @@
     }
 
     table.dataTable thead th {
-      background-color: #153b71; /* Slate 600 */
+      background-color: #153b71;
       color: white;
       font-weight: 600;
       padding: 10px;
@@ -167,8 +182,8 @@
 
     /* Zebra Striping */
     table.dataTable tbody tr:nth-child(odd) { background-color: #ffffff; }
-    table.dataTable tbody tr:nth-child(even) { background-color: #f1f5f9; /* Slate 100 */ }
-    table.dataTable tbody tr:hover { background-color: #e2e8f0 !important; /* Slate 200 */ }
+    table.dataTable tbody tr:nth-child(even) { background-color: #f1f5f9; }
+    table.dataTable tbody tr:hover { background-color: #e2e8f0 !important; }
 
     /* Analysis Rows (Footer) */
     table.dataTable tfoot th, table.dataTable tfoot td {
@@ -208,7 +223,7 @@
       <div class="form-selector-title">Marksheet Ledger Configuration</div>
       <div class="form-selector-grid">
         <select name="classSection" id="classSection">
-          <option  selected disabled>Choose Class & Section</option>
+          <option selected disabled>Choose Class & Section</option>
           <% studentClassdata.forEach((data)=>{%>
             <option value="<%=data.studentClass%>-<%=data.section%>"><%=data.studentClass%> - <%=data.section%></option>
           <%})%>
@@ -232,7 +247,10 @@
   </div>
 
   <div class="ledger-container">
-    <button type="button" onclick="shareToWhatsapp()">Share To Whatsapp</button>
+    <div class="btn-group no-print">
+      <button type="button" onclick="shareToWhatsapp()" class="btn-success">Share To Whatsapp</button>
+      <button type="button" onclick="exportToExcel()" class="btn-excel">Export to Excel</button>
+    </div>
     
     <div class="ledger-school-header">
       <img src="/image.png" alt="School Logo" class="school-logo">
@@ -293,7 +311,7 @@
            <% }) %>
             <td><%= data.totalTh %></td>
             <td><%= data.totalPr %></td>
-            <td><%= data.theorypercentage.toFixed(2) %></td>
+            <td><%= data.theorypercentage ? data.theorypercentage.toFixed(2) : '-' %></td>
             <td class="<%= data.failcount > 0 ? 'status-fail' : 'status-pass' %>"><% if (data.failcount>0) { %>Fail<% } else { %>Pass<% } %></td>
             <td><%= data.rank %></td>
             <td><%=data.attendance%></td>
@@ -303,7 +321,6 @@
       </tbody>
 
      <tfoot>
-
   <tr>
     <th colspan="2" style="text-align:right; font-weight:bold;">Section Highest:</th>
     <% uniqueSubjects.forEach(sub => { %>
@@ -595,7 +612,7 @@
         fixedColumns: {
             left: 2
         },
-        ordering: false // Disable ordering to keep analysis rows at bottom if they were in tbody, but now they are in tfoot so it's fine. But complex headers might make ordering weird.
+        ordering: false
       });
     });
 
@@ -620,7 +637,6 @@
         if(currentClass && currentSection) {
             const val = `${currentClass}-${currentSection}`;
             const select = document.getElementById('classSection');
-            // Check if option exists before setting to avoid errors or empty selection
             if(select && select.querySelector(`option[value="${val}"]`)) {
                 select.value = val;
             }
@@ -642,17 +658,192 @@
     } catch(e) {
         console.error("Error setting initial values:", e);
     }
+
+    function shareToWhatsapp() {
+      const url = window.location.href;
+      const message = `📘 Result Published\nClass: <%= studentClass %>-<%= section %>\nTerminal: <%= terminal %>\nYear: <%= academicYear %>\n\n👉 View Result:\n${url}`;
+
+      const whatsappUrl = "https://wa.me/?text=" + encodeURIComponent(message);
+      window.open(whatsappUrl, "_blank");
+    }
+
+    function exportToExcel() {
+      const table = document.getElementById('ledgerTable');
+      
+      // Get the DataTable instance
+      const dataTable = $('#ledgerTable').DataTable();
+      
+      // Get all data including headers
+      const headers = [];
+      const headerRows = table.querySelectorAll('thead tr');
+      headerRows.forEach(row => {
+        const rowData = [];
+        row.querySelectorAll('th').forEach(th => {
+          const text = th.textContent.trim();
+          const colspan = parseInt(th.getAttribute('colspan')) || 1;
+          const rowspan = parseInt(th.getAttribute('rowspan')) || 1;
+          rowData.push({
+            text: text,
+            colspan: colspan,
+            rowspan: rowspan
+          });
+        });
+        headers.push(rowData);
+      });
+
+      // Get data rows
+      const dataRows = [];
+      const rows = table.querySelectorAll('tbody tr');
+      rows.forEach(row => {
+        const rowData = [];
+        row.querySelectorAll('td').forEach(td => {
+          rowData.push(td.textContent.trim());
+        });
+        dataRows.push(rowData);
+      });
+
+      // Get footer rows
+      const footerRows = [];
+      const tfootRows = table.querySelectorAll('tfoot tr');
+      tfootRows.forEach(row => {
+        const rowData = [];
+        row.querySelectorAll('th, td').forEach(cell => {
+          const text = cell.textContent.trim();
+          const colspan = parseInt(cell.getAttribute('colspan')) || 1;
+          rowData.push({
+            text: text,
+            colspan: colspan
+          });
+        });
+        footerRows.push(rowData);
+      });
+
+      // Build HTML for Excel
+      let html = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" 
+              xmlns:x="urn:schemas-microsoft-com:office:excel" 
+              xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+          <meta charset="UTF-8">
+          <!--[if gte mso 9]>
+          <xml>
+            <x:ExcelWorkbook>
+              <x:ExcelWorksheets>
+                <x:ExcelWorksheet>
+                  <x:Name>Ledger</x:Name>
+                  <x:WorksheetOptions>
+                    <x:DisplayGridlines/>
+                  </x:WorksheetOptions>
+                </x:ExcelWorksheet>
+              </x:ExcelWorksheets>
+            </x:ExcelWorkbook>
+          </xml>
+          <![endif]-->
+          <style>
+            th {
+              background-color: #153b71;
+              color: #ffffff;
+              font-weight: bold;
+              border: 1px solid #1d3d69;
+              padding: 8px;
+              text-align: center;
+              vertical-align: middle;
+            }
+            td {
+              border: 1px solid #e2e8f0;
+              padding: 6px;
+              text-align: center;
+              vertical-align: middle;
+            }
+            .pass {
+              background-color: #dcfce7;
+            }
+            .fail {
+              background-color: #fee2e2;
+            }
+            .footer-bg {
+              background-color: #f1f5f9;
+              font-weight: bold;
+            }
+            table {
+              border-collapse: collapse;
+              font-family: Inter, Arial, sans-serif;
+              font-size: 11px;
+            }
+          </style>
+        </head>
+        <body>
+          <table>
+      `;
+
+      // First header row with colspan
+      html += `<tr>`;
+      headers[0].forEach(header => {
+        const rowspan = header.rowspan > 1 ? ` rowspan="${header.rowspan}"` : '';
+        const colspan = header.colspan > 1 ? ` colspan="${header.colspan}"` : '';
+        html += `<th${rowspan}${colspan}>${escapeHtml(header.text)}</th>`;
+      });
+      html += `</tr>`;
+
+      // Second header row
+      if (headers.length > 1) {
+        html += `<tr>`;
+        headers[1].forEach(header => {
+          const colspan = header.colspan > 1 ? ` colspan="${header.colspan}"` : '';
+          html += `<th${colspan}>${escapeHtml(header.text)}</th>`;
+        });
+        html += `</tr>`;
+      }
+
+      // Data rows
+      dataRows.forEach(row => {
+        html += `<tr>`;
+        row.forEach(cell => {
+          let cls = '';
+          if (cell === 'Pass') cls = 'pass';
+          else if (cell === 'Fail' || cell === 'NG') cls = 'fail';
+          html += `<td class="${cls}">${escapeHtml(cell)}</td>`;
+        });
+        html += `</tr>`;
+      });
+
+      // Footer rows
+      footerRows.forEach(row => {
+        html += `<tr>`;
+        row.forEach(cell => {
+          const colspan = cell.colspan > 1 ? ` colspan="${cell.colspan}"` : '';
+          html += `<td class="footer-bg"${colspan}>${escapeHtml(cell.text)}</td>`;
+        });
+        html += `</tr>`;
+      });
+
+      html += `
+          </table>
+        </body>
+        </html>
+      `;
+
+      // Download as .xls
+      const blob = new Blob([html], { 
+        type: 'application/vnd.ms-excel;charset=utf-8' 
+      });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `ledger_<%= studentClass %>_<%= section %>_<%= terminal %>.xls`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
+    }
   </script>
-  <script>
-function shareToWhatsapp() {
-  const url = window.location.href;
-  const message = `📘 Result Published\nClass: <%= studentClass %>-<%= section %>\nTerminal: <%= terminal %>\nYear: <%= academicYear %>\n\n👉 View Result:\n${url}`;
-
-  const whatsappUrl =
-    "https://wa.me/?text=" + encodeURIComponent(message);
-
-  window.open(whatsappUrl, "_blank");
-}
-</script>
 </body>
 </html>

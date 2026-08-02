@@ -1,7 +1,8 @@
 body {
   background: linear-gradient(180deg, #f8fbff 0%, #eef2ff 100%);
   padding: 16px;
-  overflow-x: hidden;
+  overflow-x: auto;
+  touch-action: pan-x pan-y;
 }
 
 form[action*="themeform"] {
@@ -61,10 +62,10 @@ form[action*="themeform"] input[type="submit"]:hover {
   transform: translateY(-1px);
 }
 form[action*="themeform"] .themeTable {
-  
   width: 100%;
   min-width: 760px;
   overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   border-collapse: separate;
   border-spacing: 0;

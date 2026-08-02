@@ -457,6 +457,9 @@
     <div class="quick-actions">
       <h3>🚀 Quick Navigation</h3>
       <div class="action-grid">
+         <button class="compact-action-card" onclick="themeform()" style="background-color: #357ABD;height: 10rem; display: flex; align-items: center; justify-content: center;color:#e0e4e2;font-weight: bold;font-size: 1.2rem;">
+        🚀 Load Form
+      </button>
         <a href="/themewisemarks?studentClass=<%= studentClass %>&section=<%= section %>&subject=<%= subject %>&terminal=<%=terminal%>" class="compact-action-card">
           <div class="compact-action-icon">📊</div>
           <div class="compact-action-title">View Theme Wise Marks</div>
@@ -498,9 +501,7 @@
     
     
 
-      <button class="load-button" onclick="themeform()">
-        🚀 Load Form
-      </button>
+     
     </div>
 <input type="hidden" id="studentClass" value="<%=studentClass%>">
 <input type="hidden" id="section" value="<%=section%>">

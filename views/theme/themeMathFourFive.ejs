@@ -114,7 +114,6 @@
     </select>
 <input type="hidden" value="<%=JSON.stringify(themeData)%>" id="themeData">
 
-<input type="submit">
 
 <input type="hidden" id="existingMap" value="<%=JSON.stringify(existingMap)%>"
 
@@ -131,7 +130,9 @@
           <th>Name</th>
       <th>Indicator</th>
       <th>Obt.Marks Before</th>
+        
       <th>Obt.Marks After</th>
+       <th>Name</th>
       <th>Eval.Date After</th>
       
     </tr>
@@ -158,12 +159,15 @@
       <input type="hidden" id="selectedIndicatorBefore">
        <input type="hidden" id="selectedIndicatorAfter">
       <td id="obtmarksbefore"></td>
+       
       <td id="obtmarksafter"></td>
+      <td><%=record.roll%>. <%= record.name %></td>
       <td><input type="text" id="nepali-datepicker-<%= idx %>" placeholder="Select Nepali Date"  
         class="studentDateAfter nepaliDateAfter nepali-datepicker" name="evalDateAfter"/></td>
     </tr>
     <%});%>
   </table> <br>
+<input type="submit">
 
     </form>
 <input type="hidden" value="<%=JSON.stringify(studentData)%>" id="studentData">
