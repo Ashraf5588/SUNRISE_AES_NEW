@@ -1013,3 +1013,157 @@ exports.updateAnalysisTheoryMarks = async (req, res, next) => {
     });
   }
 };
+// entryCounter.js or your routes file
+
+// API endpoint for data
+// API endpoint for data - ULTRA FAST VERSION
+exports.theoryEntryCounter = async (req, res) => {
+    try {
+        const { terminal, academicYear } = req.query;
+        const startTime = Date.now();
+        
+        console.log('📊 Entry Counter API called with:', { terminal, academicYear });
+        
+        const ExamMarks = getSlipModel();
+        
+        // Run all queries in parallel using Promise.all
+        const [subjects, allClasses, studentCounts, entryCounts] = await Promise.all([
+            newsubject.find({}).lean(),
+            studentClass.find({}).lean(),
+            studentRecord.aggregate([
+                {
+                    $group: {
+                        _id: {
+                            studentClass: "$studentClass",
+                            section: "$section"
+                        },
+                        count: { $sum: 1 }
+                    }
+                }
+            ]),
+            ExamMarks.aggregate([
+                {
+                    $match: {
+                        terminal: terminal || 'FIRST',
+                        academicYear: academicYear || '2083'
+                    }
+                },
+                {
+                    $group: {
+                        _id: {
+                            studentClass: "$studentClass",
+                            section: "$section",
+                            subject: "$subject"
+                        },
+                        count: { $sum: 1 }
+                    }
+                }
+            ])
+        ]);
+        
+        console.log(`📊 All data fetched in ${Date.now() - startTime}ms`);
+        
+        // Create maps for O(1) lookups
+        const studentCountMap = {};
+        studentCounts.forEach(item => {
+            studentCountMap[`${item._id.studentClass}|${item._id.section}`] = item.count;
+        });
+        
+        const entryCountMap = {};
+        entryCounts.forEach(item => {
+            entryCountMap[`${item._id.studentClass}|${item._id.section}|${item._id.subject}`] = item.count;
+        });
+        
+        // Group subjects by class
+        const subjectsByClass = {};
+        subjects.forEach(subject => {
+            const forClass = subject.forClass || 'Unknown';
+            if (!subjectsByClass[forClass]) {
+                subjectsByClass[forClass] = [];
+            }
+            subjectsByClass[forClass].push(subject.newsubject);
+        });
+        
+        // Build response - only include classes that have subjects
+        const result = [];
+        const classMap = {};
+        
+        // Group classes by studentClass
+        allClasses.forEach(cls => {
+            if (!classMap[cls.studentClass]) {
+                classMap[cls.studentClass] = [];
+            }
+            classMap[cls.studentClass].push(cls.section);
+        });
+        
+        // Process only classes that have subjects
+        for (const className of Object.keys(subjectsByClass)) {
+            const classSections = classMap[className] || [];
+            if (classSections.length === 0) continue;
+            
+            const subjectData = {};
+            const classSubjects = subjectsByClass[className] || [];
+            
+            for (const subjectName of classSubjects) {
+                subjectData[subjectName] = {};
+                
+                for (const section of classSections) {
+                    const totalStudents = studentCountMap[`${className}|${section}`] || 0;
+                    const entered = entryCountMap[`${className}|${section}|${subjectName}`] || 0;
+                    
+                    subjectData[subjectName][section] = {
+                        entered: entered,
+                        total: totalStudents,
+                        percentage: totalStudents > 0 ? Math.round((entered / totalStudents) * 100) : 0
+                    };
+                }
+            }
+            
+            result.push({
+                className: className,
+                sections: classSections,
+                subjects: subjectData
+            });
+        }
+        
+        const endTime = Date.now();
+        console.log(`✅ Done! ${result.length} classes in ${endTime - startTime}ms`);
+        
+        res.json({
+            success: true,
+            data: result,
+            terminal: terminal || 'FIRST',
+            academicYear: academicYear || '2083',
+            responseTime: `${endTime - startTime}ms`
+        });
+        
+    } catch (error) {
+        console.error('❌ Error in entry counter:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+};
+
+// Page rendering endpoint
+exports.entryCounter = async (req, res) => {
+    try {
+        // Get data for the page (optional - for initial load)
+        const classes = await studentClass.find({}).lean();
+        const subjects = await newsubject.find({}).lean();
+        const terminals = await terminal.find({}).lean();
+        
+        res.render("./exam/theoryentrycounter", {
+            currentPage: "entry-counter",
+            user: req.user,
+            classes: classes,
+            subjects: subjects,
+            terminals: terminals,
+            title: "Entry Counter Dashboard"
+        });
+    } catch (error) {
+        console.error('❌ Error rendering entry counter page:', error);
+        res.status(500).send("Internal Server Error");
+    }
+};

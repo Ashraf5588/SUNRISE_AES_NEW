@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entry Counter Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+        }
+        
+        .filters {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 15px;
+        }
+        
+        .filters label {
+            color: #fff;
+            font-weight: 500;
+            margin-right: 5px;
+        }
+        
+        .filters select {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            cursor: pointer;
+        }
+        
+        .filters select option {
+            color: #333;
+            background: white;
+        }
+        
+        .filters button {
+            padding: 8px 25px;
+            background: white;
+            color: #667eea;
+            border: none;
+            border-radius: 5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .filters button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+        
+        .stat-card .number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-card .label {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            margin-bottom: 30px;
+        }
+        
+        .table-title {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .table-wrapper {
+            overflow-x: auto;
+            padding: 10px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        thead {
+            background: #f8f9fa;
+        }
+        
+        th {
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #495057;
+            border-bottom: 2px solid #dee2e6;
+            white-space: nowrap;
+        }
+        
+        td {
+            padding: 10px 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .subject-cell {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .entry-cell {
+            text-align: center;
+        }
+        
+        .entry-cell .count {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .entry-cell .count.complete {
+            color: #28a745;
+        }
+        
+        .entry-cell .count.partial {
+            color: #ffc107;
+        }
+        
+        .entry-cell .count.missing {
+            color: #dc3545;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e9ecef;
+            border-radius: 3px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        
+        .progress-bar .fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+        
+        .progress-bar .fill.complete {
+            background: #28a745;
+        }
+        
+        .progress-bar .fill.partial {
+            background: #ffc107;
+        }
+        
+        .progress-bar .fill.missing {
+            background: #dc3545;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-badge.complete {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-badge.partial {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-badge.missing {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 18px;
+            color: #666;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px 20px;
+            border-radius: 10px;
+            border: 1px solid #f5c6cb;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px 20px;
+            border-radius: 10px;
+            border: 1px solid #c3e6cb;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .filters {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .filters select, .filters button {
+                width: 100%;
+            }
+            
+            table {
+                font-size: 12px;
+            }
+            
+            th, td {
+                padding: 8px 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📊 Entry Counter Dashboard</h1>
+            <p>Track subject-wise entry completion across all classes and sections</p>
+            
+            <div class="filters">
+                <div>
+                    <label for="terminal">Terminal:</label>
+                    <select id="terminal">
+                        <option value="FIRST">FIRST</option>
+                        <option value="SECOND">SECOND</option>
+                        <option value="THIRD">THIRD</option>
+                        <option value="FOURTH">FOURTH</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="academicYear">Academic Year:</label>
+                    <select id="academicYear">
+                        <option value="2083">2083</option>
+                        <option value="2082">2082</option>
+                        <option value="2081">2081</option>
+                    </select>
+                </div>
+                
+                <button onclick="loadData()">🔄 Refresh</button>
+                <button onclick="exportData()">📥 Export CSV</button>
+                <button onclick="clearData()">🗑️ Clear Data</button>
+            </div>
+        </div>
+        
+        <!-- Messages -->
+        <div id="errorMessage" class="error-message"></div>
+        <div id="successMessage" class="success-message"></div>
+        
+        <!-- Summary Stats -->
+        <div class="summary-stats" id="summaryStats">
+            <div class="stat-card">
+                <div class="number" id="totalStudents">-</div>
+                <div class="label">Total Students</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="totalEntries">-</div>
+                <div class="label">Total Entries</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="totalExpected">-</div>
+                <div class="label">Expected Entries</div>
+            </div>
+            <div class="stat-card">
+                <div class="number" id="completionRate">-</div>
+                <div class="label">Completion Rate</div>
+            </div>
+        </div>
+        
+        <!-- Loading Spinner -->
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            Loading data...
+        </div>
+        
+        <!-- Data Tables -->
+        <div id="dataContainer">
+            <div class="no-data">Click "Refresh" to load data</div>
+        </div>
+    </div>
+
+    <script>
+        let currentData = null;
+        
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadData();
+        });
+        
+        // Load data function
+        async function loadData() {
+            const terminal = document.getElementById('terminal').value;
+            const academicYear = document.getElementById('academicYear').value;
+            
+            showLoading(true);
+            hideError();
+            hideSuccess();
+            
+            try {
+                // Use the correct API endpoint
+                const apiUrl = '/theoryentrycounter';
+                
+                console.log('📊 Fetching data from:', apiUrl);
+                console.log('📊 Params:', { terminal, academicYear });
+                
+                const response = await fetch(`${apiUrl}?terminal=${terminal}&academicYear=${academicYear}`);
+                
+                console.log('📊 Response status:', response.status);
+                
+                // Check if response is OK
+                if (!response.ok) {
+                    const text = await response.text();
+                    console.log('📊 Response text (first 200 chars):', text.substring(0, 200));
+                    
+                    // Check if response is HTML (error page)
+                    if (text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html')) {
+                        throw new Error('Server returned HTML instead of JSON. The API endpoint might be wrong.');
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                console.log('📊 Data received:', result);
+                
+                if (result.success) {
+                    currentData = result;
+                    renderData(result);
+                    updateSummaryStats(result);
+                    showSuccess('Data loaded successfully!');
+                } else {
+                    showError(result.message || 'Failed to load data');
+                }
+            } catch (error) {
+                console.error('❌ Error loading data:', error);
+                showError(error.message || 'Failed to load data. Please try again.');
+                
+                // Show fallback message
+                document.getElementById('dataContainer').innerHTML = `
+                    <div class="table-container">
+                        <div class="no-data" style="color: #dc3545; padding: 30px;">
+                            <h3>❌ Error loading data</h3>
+                            <p>${error.message}</p>
+                            <p style="font-size: 12px; color: #666; margin-top: 10px;">
+                                Try refreshing the page or check the console for more details.
+                            </p>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            showLoading(false);
+        }
+        
+        // Render data tables
+        function renderData(data) {
+            const container = document.getElementById('dataContainer');
+            
+            if (!data.data || data.data.length === 0) {
+                container.innerHTML = '<div class="no-data">No data available</div>';
+                return;
+            }
+            
+            let html = '';
+            
+            data.data.forEach(classData => {
+                const className = classData.className;
+                const sections = classData.sections || [];
+                const subjects = Object.keys(classData.subjects || {});
+                
+                if (subjects.length === 0) {
+                    return;
+                }
+                
+                html += `
+                    <div class="table-container">
+                        <div class="table-title">
+                            📚 Class ${className}
+                            <span style="font-weight: normal; font-size: 14px; color: #666; margin-left: 15px;">
+                                ${sections.length} section(s) | ${subjects.length} subject(s)
+                            </span>
+                        </div>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="min-width: 150px;">Subject</th>
+                                        ${sections.map(section => `
+                                            <th style="text-align: center; min-width: 120px;">
+                                                ${section}
+                                            </th>
+                                        `).join('')}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${subjects.map(subject => {
+                                        const subjectData = classData.subjects[subject] || {};
+                                        
+                                        return `
+                                            <tr>
+                                                <td class="subject-cell">${subject}</td>
+                                                ${sections.map(section => {
+                                                    const sectionData = subjectData[section] || { entered: 0, total: 0 };
+                                                    const isComplete = sectionData.entered === sectionData.total && sectionData.total > 0;
+                                                    const isPartial = sectionData.entered > 0 && sectionData.entered < sectionData.total;
+                                                    const isMissing = sectionData.entered === 0 && sectionData.total > 0;
+                                                    const percentage = sectionData.total > 0 ? Math.round((sectionData.entered / sectionData.total) * 100) : 0;
+                                                    
+                                                    let statusClass = 'missing';
+                                                    let statusText = '❌ Missing';
+                                                    let countClass = 'missing';
+                                                    
+                                                    if (isComplete) {
+                                                        statusClass = 'complete';
+                                                        statusText = '✅ Complete';
+                                                        countClass = 'complete';
+                                                    } else if (isPartial) {
+                                                        statusClass = 'partial';
+                                                        statusText = '⏳ Partial';
+                                                        countClass = 'partial';
+                                                    }
+                                                    
+                                                    return `
+                                                        <td class="entry-cell">
+                                                            <div class="count ${countClass}">
+                                                                ${sectionData.entered}/${sectionData.total}
+                                                            </div>
+                                                            <div class="progress-bar">
+                                                                <div class="fill ${statusClass}" style="width: ${percentage}%"></div>
+                                                            </div>
+                                                            <span class="status-badge ${statusClass}">${statusText}</span>
+                                                            <div style="font-size: 11px; color: #999; margin-top: 3px;">
+                                                                ${percentage}%
+                                                            </div>
+                                                        </td>
+                                                    `;
+                                                }).join('')}
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                    ${sections.length > 0 ? `
+                                        <tr style="background: #f8f9fa; font-weight: 600;">
+                                            <td style="font-weight: 700; color: #333;">📊 Overall</td>
+                                            ${sections.map(section => {
+                                                let totalEntered = 0;
+                                                let totalStudents = 0;
+                                                
+                                                subjects.forEach(subject => {
+                                                    const subjectData = classData.subjects[subject] || {};
+                                                    const sectionData = subjectData[section] || { entered: 0, total: 0 };
+                                                    totalEntered += sectionData.entered;
+                                                    totalStudents += sectionData.total;
+                                                });
+                                                
+                                                const percentage = totalStudents > 0 ? Math.round((totalEntered / totalStudents) * 100) : 0;
+                                                const isComplete = totalEntered === totalStudents && totalStudents > 0;
+                                                const isPartial = totalEntered > 0 && totalEntered < totalStudents;
+                                                const isMissing = totalEntered === 0 && totalStudents > 0;
+                                                
+                                                let statusClass = 'missing';
+                                                let statusText = '❌ Missing';
+                                                
+                                                if (isComplete) {
+                                                    statusClass = 'complete';
+                                                    statusText = '✅ Complete';
+                                                } else if (isPartial) {
+                                                    statusClass = 'partial';
+                                                    statusText = '⏳ Partial';
+                                                }
+                                                
+                                                return `
+                                                    <td class="entry-cell">
+                                                        <div class="count ${statusClass}">
+                                                            ${totalEntered}/${totalStudents}
+                                                        </div>
+                                                        <div class="progress-bar">
+                                                            <div class="fill ${statusClass}" style="width: ${percentage}%"></div>
+                                                        </div>
+                                                        <span class="status-badge ${statusClass}">${statusText}</span>
+                                                        <div style="font-size: 11px; color: #999; margin-top: 3px;">
+                                                            ${percentage}%
+                                                        </div>
+                                                    </td>
+                                                `;
+                                            }).join('')}
+                                        </tr>
+                                    ` : ''}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        // Update summary statistics
+        function updateSummaryStats(data) {
+            let totalStudents = 0;
+            let totalEntries = 0;
+            let totalExpected = 0;
+            
+            data.data.forEach(classData => {
+                const sections = classData.sections || [];
+                const subjects = Object.keys(classData.subjects || {});
+                
+                sections.forEach(section => {
+                    let sectionStudents = 0;
+                    let sectionEntries = 0;
+                    
+                    subjects.forEach(subject => {
+                        const subjectData = classData.subjects[subject] || {};
+                        const sectionData = subjectData[section] || { entered: 0, total: 0 };
+                        sectionEntries += sectionData.entered;
+                        sectionStudents = sectionData.total; // Same for all subjects in a section
+                    });
+                    
+                    totalStudents += sectionStudents;
+                    totalEntries += sectionEntries;
+                    totalExpected += sectionStudents * subjects.length;
+                });
+            });
+            
+            document.getElementById('totalStudents').textContent = totalStudents;
+            document.getElementById('totalEntries').textContent = totalEntries;
+            document.getElementById('totalExpected').textContent = totalExpected;
+            
+            const completionRate = totalExpected > 0 ? Math.round((totalEntries / totalExpected) * 100) : 0;
+            document.getElementById('completionRate').textContent = completionRate + '%';
+        }
+        
+        // Export data as CSV
+        function exportData() {
+            if (!currentData) {
+                alert('No data to export. Please load data first.');
+                return;
+            }
+            
+            let csv = 'Class,Section,Subject,Entered,Total,Percentage\n';
+            
+            currentData.data.forEach(classData => {
+                const className = classData.className;
+                const sections = classData.sections || [];
+                const subjects = Object.keys(classData.subjects || {});
+                
+                sections.forEach(section => {
+                    subjects.forEach(subject => {
+                        const subjectData = classData.subjects[subject] || {};
+                        const sectionData = subjectData[section] || { entered: 0, total: 0 };
+                        const percentage = sectionData.total > 0 ? Math.round((sectionData.entered / sectionData.total) * 100) : 0;
+                        
+                        csv += `${className},${section},${subject},${sectionData.entered},${sectionData.total},${percentage}\n`;
+                    });
+                });
+            });
+            
+            // Download CSV
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `entry_counter_${document.getElementById('terminal').value}_${document.getElementById('academicYear').value}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // Utility functions
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+        
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.textContent = '❌ ' + message;
+            errorEl.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+        
+        function showSuccess(message) {
+            const successEl = document.getElementById('successMessage');
+            successEl.textContent = '✅ ' + message;
+            successEl.style.display = 'block';
+            setTimeout(() => {
+                successEl.style.display = 'none';
+            }, 3000);
+        }
+        
+        function hideSuccess() {
+            document.getElementById('successMessage').style.display = 'none';
+        }
+        
+        function clearData() {
+            document.getElementById('dataContainer').innerHTML = '<div class="no-data">Data cleared. Click "Refresh" to reload.</div>';
+            document.getElementById('totalStudents').textContent = '-';
+            document.getElementById('totalEntries').textContent = '-';
+            document.getElementById('totalExpected').textContent = '-';
+            document.getElementById('completionRate').textContent = '-';
+            currentData = null;
+            showSuccess('Data cleared successfully!');
+        }
+    </script>
+</body>
+</html>

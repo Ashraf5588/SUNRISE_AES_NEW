@@ -359,7 +359,7 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
       if (subjectResult) {
         // Get the percentage from the subject result
         const percentage = subjectResult.percentage || 0;
-        
+        console.log(`Reg: ${reg}, Subject: ${currentSubject}, Found percentage: ${percentage}%`);
         // Check if percentage is valid (greater than 0)
         if (percentage > 0) {
           hasValidPercentage = true;

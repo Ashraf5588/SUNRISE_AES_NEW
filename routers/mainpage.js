@@ -417,7 +417,8 @@ student.get('/uploadolddata',verifytoken,authorized,isAdmin,examdashboardcontrol
 student.post('/uploadCSV',verifytoken,authorized,isAdmin,upload.single('marksFile'),examcontroller.uploadOldDataPost)
 // attendance system routes
 student.post('/updateanalysistheorymarks',verifytoken,authorized,examcontroller.updateAnalysisTheoryMarks);
-
+student.get('/theoryentrycounter',verifytoken,authorized,isAdmin,examcontroller.theoryEntryCounter);
+student.get('/entry-counter',verifytoken,authorized,isAdmin,examcontroller.entryCounter);
 student.get('/addchapterselect', verifytoken, authorized, controller.addChapterSelect);
 student.get('/addchapter', verifytoken, authorized, controller.addChapterForm);
 student.post('/addchapter/single', verifytoken, authorized, controller.addSingleChapter);
