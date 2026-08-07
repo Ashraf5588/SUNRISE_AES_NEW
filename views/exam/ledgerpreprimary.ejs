@@ -294,6 +294,9 @@
 <body>
   
   <% 
+    // Subjects that should NOT have worksheets
+    const NO_WORKSHEET_SUBJECTS = ['ORAL', 'HYGIENE'];
+    
     // Build subject info with their worksheet counts
     const subjectInfo = {};
     let maxTotalColumns = 0;
@@ -301,17 +304,23 @@
       ledgerData.forEach(student => {
         if (student.subjects) {
           student.subjects.forEach(sub => {
-            if (!subjectInfo[sub.subject]) {
-              subjectInfo[sub.subject] = {
-                worksheetCount: sub.totalWorksheet || 0
+            const subjectName = sub.subject;
+            const isNoWorksheet = NO_WORKSHEET_SUBJECTS.includes(subjectName.toUpperCase());
+            
+            if (!subjectInfo[subjectName]) {
+              subjectInfo[subjectName] = {
+                worksheetCount: isNoWorksheet ? 0 : (sub.totalWorksheet || 0),
+                isNoWorksheet: isNoWorksheet
               };
             }
-            // Update with max worksheet count for this subject
-            if (sub.worksheetGrades && sub.worksheetGrades.length > subjectInfo[sub.subject].worksheetCount) {
-              subjectInfo[sub.subject].worksheetCount = sub.worksheetGrades.length;
-            }
-            if (sub.totalWorksheet > subjectInfo[sub.subject].worksheetCount) {
-              subjectInfo[sub.subject].worksheetCount = sub.totalWorksheet;
+            // Update with max worksheet count for this subject (only if not no-worksheet)
+            if (!isNoWorksheet) {
+              if (sub.worksheetGrades && sub.worksheetGrades.length > subjectInfo[subjectName].worksheetCount) {
+                subjectInfo[subjectName].worksheetCount = sub.worksheetGrades.length;
+              }
+              if (sub.totalWorksheet > subjectInfo[subjectName].worksheetCount) {
+                subjectInfo[subjectName].worksheetCount = sub.totalWorksheet;
+              }
             }
           });
         }
@@ -320,7 +329,10 @@
     
     const uniqueSubjects = Object.keys(subjectInfo);
     uniqueSubjects.forEach(sub => {
-      maxTotalColumns += (subjectInfo[sub].worksheetCount || 0) + 2;
+      const info = subjectInfo[sub];
+      // For no-worksheet subjects, only TH and GP columns (2 columns)
+      // For regular subjects: TH + W1..Wn + GP (worksheetCount + 2 columns)
+      maxTotalColumns += info.isNoWorksheet ? 2 : (info.worksheetCount + 2);
     });
   %>
 
@@ -404,9 +416,11 @@
             <th rowspan="2" class="fixed-column fixed-column-roll">Roll</th>
             <th rowspan="2" class="fixed-column fixed-column-name">Name</th>
             <% uniqueSubjects.forEach((sub, index) => { 
-              const wsCount = subjectInfo[sub].worksheetCount || 0;
+              const info = subjectInfo[sub];
+              const wsCount = info.isNoWorksheet ? 0 : (info.worksheetCount || 0);
+              const colCount = wsCount + 2; // TH + GP + worksheets
             %>
-              <th colspan="<%= wsCount + 2 %>" class="subject-header subject-<%= index %>" data-subject="<%= sub %>" data-subject-index="<%= index %>"><%= sub %></th>
+              <th colspan="<%= colCount %>" class="subject-header subject-<%= index %>" data-subject="<%= sub %>" data-subject-index="<%= index %>"><%= sub %></th>
             <% }) %>
             <th rowspan="2" class="col-gpa" data-coltype="gpa">GPA</th>
             <th rowspan="2" class="col-rank" data-coltype="rank">Rank</th>
@@ -415,11 +429,14 @@
           </tr>
           <tr>
             <% uniqueSubjects.forEach((sub, index) => { 
-              const wsCount = subjectInfo[sub].worksheetCount || 0;
+              const info = subjectInfo[sub];
+              const wsCount = info.isNoWorksheet ? 0 : (info.worksheetCount || 0);
             %>
               <th class="subject-subheader subject-<%= index %> col-type-th" data-subject="<%= sub %>" data-coltype="th">TH</th>
-              <% for (let i = 1; i <= wsCount; i++) { %>
-                <th class="subject-subheader subject-<%= index %> col-type-ws" data-subject="<%= sub %>" data-coltype="ws">W<%= i %></th>
+              <% if (!info.isNoWorksheet) { %>
+                <% for (let i = 1; i <= wsCount; i++) { %>
+                  <th class="subject-subheader subject-<%= index %> col-type-ws" data-subject="<%= sub %>" data-coltype="ws">W<%= i %></th>
+                <% } %>
               <% } %>
               <th class="subject-subheader subject-<%= index %> col-type-gp" data-subject="<%= sub %>" data-coltype="gp">GP</th>
             <% }) %>
@@ -434,7 +451,9 @@
                 <td class="fixed-column fixed-column-name"><%= data.name %></td>
                 <% uniqueSubjects.forEach((sub, index) => { 
                   const subjectData = data.subjectMap && data.subjectMap[sub];
-                  const wsCount = subjectInfo[sub].worksheetCount || 0;
+                  const info = subjectInfo[sub];
+                  const wsCount = info.isNoWorksheet ? 0 : (info.worksheetCount || 0);
+                  const isNoWorksheet = info.isNoWorksheet;
                 %>
                   <!-- Theory Grade Column -->
                   <td class="subject-column subject-<%= index %> col-type-th <%= (subjectData && subjectData.theoryGP === 0) ? 'status-fail' : '' %>" data-subject="<%= sub %>" data-coltype="th">
@@ -450,8 +469,8 @@
                     %>
                   </td>
                   
-                  <!-- Worksheet Columns -->
-                  <% if (subjectData && subjectData.worksheetGrades) { 
+                  <!-- Worksheet Columns - ONLY for subjects that have worksheets -->
+                  <% if (!isNoWorksheet && subjectData && subjectData.worksheetGrades) { 
                     for (let i = 0; i < wsCount; i++) { 
                       const grade = subjectData.worksheetGrades[i] || '';
                       const isNG = grade === 'NG' || grade === '' || grade === 'D';
@@ -460,14 +479,19 @@
                         <%= grade || 'NG' %>
                       </td>
                     <% }
-                  } else { 
+                  } else if (!isNoWorksheet) { 
                     for (let i = 0; i < wsCount; i++) { %>
                       <td class="subject-column subject-<%= index %> col-type-ws" data-subject="<%= sub %>" data-coltype="ws">-</td>
                     <% }
                   } %>
                   
                   <!-- GP Column -->
-                  <td class="subject-column subject-<%= index %> col-type-gp" data-subject="<%= sub %>" data-coltype="gp"><%= subjectData ? subjectData.avgGP.toFixed(2) : '-' %></td>
+                  <td class="subject-column subject-<%= index %> col-type-gp" data-subject="<%= sub %>" data-coltype="gp">
+                    <%= subjectData ? 
+                      (isNoWorksheet ? subjectData.theoryGP.toFixed(2) : subjectData.avgGP.toFixed(2)) 
+                      : '-' 
+                    %>
+                  </td>
                 <% }) %>
                 
                 <!-- Overall GPA -->
@@ -498,9 +522,11 @@
           <tr>
             <th colspan="2" style="text-align:right; font-weight:bold;">Section Highest:</th>
             <% uniqueSubjects.forEach((sub, index) => { 
-              const wsCount = subjectInfo[sub].worksheetCount || 0;
+              const info = subjectInfo[sub];
+              const wsCount = info.isNoWorksheet ? 0 : (info.worksheetCount || 0);
+              const colCount = wsCount + 2;
             %>
-              <td colspan="<%= wsCount + 2 %>" class="subject-column subject-<%= index %>" data-subject="<%= sub %>"><%= ledgerAnalysisLookup && ledgerAnalysisLookup[sub] ? ledgerAnalysisLookup[sub].highestMarks : '-' %></td>
+              <td colspan="<%= colCount %>" class="subject-column subject-<%= index %>" data-subject="<%= sub %>"><%= ledgerAnalysisLookup && ledgerAnalysisLookup[sub] ? ledgerAnalysisLookup[sub].highestMarks : '-' %></td>
             <% }) %>
             <td colspan="4"></td>
           </tr>
@@ -508,9 +534,11 @@
           <tr>
             <th colspan="2" style="text-align:right; font-weight:bold;">Section Lowest:</th>
             <% uniqueSubjects.forEach((sub, index) => { 
-              const wsCount = subjectInfo[sub].worksheetCount || 0;
+              const info = subjectInfo[sub];
+              const wsCount = info.isNoWorksheet ? 0 : (info.worksheetCount || 0);
+              const colCount = wsCount + 2;
             %>
-              <td colspan="<%= wsCount + 2 %>" class="subject-column subject-<%= index %>" data-subject="<%= sub %>"><%= ledgerAnalysisLookup && ledgerAnalysisLookup[sub] ? ledgerAnalysisLookup[sub].lowestMarks : '-' %></td>
+              <td colspan="<%= colCount %>" class="subject-column subject-<%= index %>" data-subject="<%= sub %>"><%= ledgerAnalysisLookup && ledgerAnalysisLookup[sub] ? ledgerAnalysisLookup[sub].lowestMarks : '-' %></td>
             <% }) %>
             <td colspan="4"></td>
           </tr>
@@ -519,9 +547,11 @@
             <th colspan="2" style="text-align:right; font-weight:bold;">Section Average:</th>
             <% uniqueSubjects.forEach((sub, index) => { 
               const d = ledgerAnalysisLookup && ledgerAnalysisLookup[sub];
-              const wsCount = subjectInfo[sub].worksheetCount || 0;
+              const info = subjectInfo[sub];
+              const wsCount = info.isNoWorksheet ? 0 : (info.worksheetCount || 0);
+              const colCount = wsCount + 2;
             %>
-              <td colspan="<%= wsCount + 2 %>" class="subject-column subject-<%= index %>" data-subject="<%= sub %>"><%= d && d.avgMarks !== undefined ? d.avgMarks.toFixed(2) : '-' %></td>
+              <td colspan="<%= colCount %>" class="subject-column subject-<%= index %>" data-subject="<%= sub %>"><%= d && d.avgMarks !== undefined ? d.avgMarks.toFixed(2) : '-' %></td>
             <% }) %>
             <td colspan="4"></td>
           </tr>
@@ -530,9 +560,11 @@
             <th colspan="2" style="text-align:right; font-weight:bold;">Male Average:</th>
             <% uniqueSubjects.forEach((sub, index) => { 
               const d = ledgerAnalysisLookup && ledgerAnalysisLookup[sub];
-              const wsCount = subjectInfo[sub].worksheetCount || 0;
+              const info = subjectInfo[sub];
+              const wsCount = info.isNoWorksheet ? 0 : (info.worksheetCount || 0);
+              const colCount = wsCount + 2;
             %>
-              <td colspan="<%= wsCount + 2 %>" class="subject-column subject-<%= index %>" data-subject="<%= sub %>"><%= d && d.maleavg !== undefined ? d.maleavg.toFixed(2) : '-' %></td>
+              <td colspan="<%= colCount %>" class="subject-column subject-<%= index %>" data-subject="<%= sub %>"><%= d && d.maleavg !== undefined ? d.maleavg.toFixed(2) : '-' %></td>
             <% }) %>
             <td colspan="4"></td>
           </tr>
@@ -541,9 +573,11 @@
             <th colspan="2" style="text-align:right; font-weight:bold;">Female Average:</th>
             <% uniqueSubjects.forEach((sub, index) => { 
               const d = ledgerAnalysisLookup && ledgerAnalysisLookup[sub];
-              const wsCount = subjectInfo[sub].worksheetCount || 0;
+              const info = subjectInfo[sub];
+              const wsCount = info.isNoWorksheet ? 0 : (info.worksheetCount || 0);
+              const colCount = wsCount + 2;
             %>
-              <td colspan="<%= wsCount + 2 %>" class="subject-column subject-<%= index %>" data-subject="<%= sub %>"><%= d && d.femaleavg !== undefined ? d.femaleavg.toFixed(2) : '-' %></td>
+              <td colspan="<%= colCount %>" class="subject-column subject-<%= index %>" data-subject="<%= sub %>"><%= d && d.femaleavg !== undefined ? d.femaleavg.toFixed(2) : '-' %></td>
             <% }) %>
             <td colspan="4"></td>
           </tr>
@@ -551,9 +585,11 @@
           <tr>
             <th colspan="2" style="text-align:right; font-weight:bold;">Pass Count:</th>
             <% uniqueSubjects.forEach((sub, index) => { 
-              const wsCount = subjectInfo[sub].worksheetCount || 0;
+              const info = subjectInfo[sub];
+              const wsCount = info.isNoWorksheet ? 0 : (info.worksheetCount || 0);
+              const colCount = wsCount + 2;
             %>
-              <td colspan="<%= wsCount + 2 %>" class="subject-column subject-<%= index %>" data-subject="<%= sub %>"><%= ledgerAnalysisLookup && ledgerAnalysisLookup[sub] ? ledgerAnalysisLookup[sub].passCount : '-' %></td>
+              <td colspan="<%= colCount %>" class="subject-column subject-<%= index %>" data-subject="<%= sub %>"><%= ledgerAnalysisLookup && ledgerAnalysisLookup[sub] ? ledgerAnalysisLookup[sub].passCount : '-' %></td>
             <% }) %>
             <td colspan="4"></td>
           </tr>
@@ -561,9 +597,11 @@
           <tr>
             <th colspan="2" style="text-align:right; font-weight:bold;">Fail Count:</th>
             <% uniqueSubjects.forEach((sub, index) => { 
-              const wsCount = subjectInfo[sub].worksheetCount || 0;
+              const info = subjectInfo[sub];
+              const wsCount = info.isNoWorksheet ? 0 : (info.worksheetCount || 0);
+              const colCount = wsCount + 2;
             %>
-              <td colspan="<%= wsCount + 2 %>" class="subject-column subject-<%= index %>" data-subject="<%= sub %>"><%= ledgerAnalysisLookup && ledgerAnalysisLookup[sub] ? ledgerAnalysisLookup[sub].failCount : '-' %></td>
+              <td colspan="<%= colCount %>" class="subject-column subject-<%= index %>" data-subject="<%= sub %>"><%= ledgerAnalysisLookup && ledgerAnalysisLookup[sub] ? ledgerAnalysisLookup[sub].failCount : '-' %></td>
             <% }) %>
             <td colspan="4"></td>
           </tr>
@@ -575,9 +613,11 @@
               const pct = d && d.totalStudents > 0
                 ? ((d.passCount / d.totalStudents) * 100).toFixed(2)
                 : '-';
-              const wsCount = subjectInfo[sub].worksheetCount || 0;
+              const info = subjectInfo[sub];
+              const wsCount = info.isNoWorksheet ? 0 : (info.worksheetCount || 0);
+              const colCount = wsCount + 2;
             %>
-              <td colspan="<%= wsCount + 2 %>" class="subject-column subject-<%= index %>" data-subject="<%= sub %>"><%= pct %>%</td>
+              <td colspan="<%= colCount %>" class="subject-column subject-<%= index %>" data-subject="<%= sub %>"><%= pct %>%</td>
             <% }) %>
             <td colspan="4"></td>
           </tr>
@@ -589,9 +629,11 @@
               const pct = d && d.totalStudents > 0
                 ? ((d.failCount / d.totalStudents) * 100).toFixed(2)
                 : '-';
-              const wsCount = subjectInfo[sub].worksheetCount || 0;
+              const info = subjectInfo[sub];
+              const wsCount = info.isNoWorksheet ? 0 : (info.worksheetCount || 0);
+              const colCount = wsCount + 2;
             %>
-              <td colspan="<%= wsCount + 2 %>" class="subject-column subject-<%= index %>" data-subject="<%= sub %>"><%= pct %>%</td>
+              <td colspan="<%= colCount %>" class="subject-column subject-<%= index %>" data-subject="<%= sub %>"><%= pct %>%</td>
             <% }) %>
             <td colspan="4"></td>
           </tr>
@@ -601,6 +643,9 @@
   </div>
 
   <script>
+    // Subjects that should NOT have worksheets (same as backend)
+    const NO_WORKSHEET_SUBJECTS = ['ORAL', 'HYGIENE'];
+
     document.addEventListener('DOMContentLoaded', function() {
       // Function to update subject group header colspan
       function updateSubjectGroupHeaderColspan() {

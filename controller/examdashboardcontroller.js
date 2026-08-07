@@ -1203,9 +1203,12 @@ exports.ledger = async (req, res, next) => {
     // Check if it's pre-primary class
     const isPrePrimary = ['UKG', 'LKG', 'NURSERY'].includes(normalizedClass);
     
-    // Check if it's primary (classes 1-3) - handles "1", "One", "ONE", "one", "I", etc.
+    // Check if it's primary (classes 1-3)
     const primaryClasses = ['1', 'ONE', 'I', '2', 'TWO', 'II', '3', 'THREE', 'III'];
     const isPrimary = primaryClasses.includes(normalizedClass);
+
+    // Subjects that should NOT have worksheets
+    const NO_WORKSHEET_SUBJECTS = ['HYGIENE', 'ORAL'];
 
     let ledgerData = [];
 
@@ -1251,6 +1254,11 @@ exports.ledger = async (req, res, next) => {
       return "NG";
     }
 
+    // Helper function to check if subject should have worksheets
+    function shouldHaveWorksheets(subjectName) {
+      return !NO_WORKSHEET_SUBJECTS.includes(subjectName.toUpperCase());
+    }
+
     if (isPrePrimary) {
       console.log("=== Processing PRE-PRIMARY LEDGER ===");
       // Get subject credit hours from marksheetSetups
@@ -1260,7 +1268,6 @@ exports.ledger = async (req, res, next) => {
           subjectCreditHours[sub.name] = sub.creditHour || 1;
         });
       }
-      console.log("[PrePrimary] Subject Credit Hours:", subjectCreditHours);
 
       ledgerData = await model.aggregate([
         {
@@ -1344,33 +1351,48 @@ exports.ledger = async (req, res, next) => {
                 in: {
                   subject: "$$sgp.subject",
                   avgGP: {
-                    $avg: {
-                      $concatArrays: [
-                        ["$$sgp.theoryGP"],
-                        { $map: {
-                          input: "$$sgp.worksheetGrades",
-                          as: "wg",
-                          in: {
-                            $switch: {
-                              branches: [
-                                { case: { $eq: ["$$wg", "A+"] }, then: 4.0 },
-                                { case: { $eq: ["$$wg", "A"] }, then: 3.6 },
-                                { case: { $eq: ["$$wg", "B+"] }, then: 3.2 },
-                                { case: { $eq: ["$$wg", "B"] }, then: 2.8 },
-                                { case: { $eq: ["$$wg", "C+"] }, then: 2.4 },
-                                { case: { $eq: ["$$wg", "C"] }, then: 2.0 },
-                                { case: { $eq: ["$$wg", "D"] }, then: 1.6 },
-                                { case: { $eq: ["$$wg", "NG"] }, then: 0.0 },
-                              ],
-                              default: 0.0
-                            }
-                          }
-                        }}
-                      ]
+                    $cond: {
+                      // If subject is HYGIENE or ORAL, use only theoryGP
+                      if: { $in: ["$$sgp.subject", NO_WORKSHEET_SUBJECTS] },
+                      then: "$$sgp.theoryGP",
+                      else: {
+                        $avg: {
+                          $concatArrays: [
+                            ["$$sgp.theoryGP"],
+                            { $map: {
+                              input: "$$sgp.worksheetGrades",
+                              as: "wg",
+                              in: {
+                                $switch: {
+                                  branches: [
+                                    { case: { $eq: ["$$wg", "A+"] }, then: 4.0 },
+                                    { case: { $eq: ["$$wg", "A"] }, then: 3.6 },
+                                    { case: { $eq: ["$$wg", "B+"] }, then: 3.2 },
+                                    { case: { $eq: ["$$wg", "B"] }, then: 2.8 },
+                                    { case: { $eq: ["$$wg", "C+"] }, then: 2.4 },
+                                    { case: { $eq: ["$$wg", "C"] }, then: 2.0 },
+                                    { case: { $eq: ["$$wg", "D"] }, then: 1.6 },
+                                    { case: { $eq: ["$$wg", "NG"] }, then: 0.0 },
+                                  ],
+                                  default: 0.0
+                                }
+                              }
+                            }}
+                          ]
+                        }
+                      }
                     }
                   },
                   worksheetGrades: "$$sgp.worksheetGrades",
-                  theoryGP: "$$sgp.theoryGP"
+                  theoryGP: "$$sgp.theoryGP",
+                  // Add flag for worksheet visibility
+                  hasWorksheets: {
+                    $cond: {
+                      if: { $in: ["$$sgp.subject", NO_WORKSHEET_SUBJECTS] },
+                      then: false,
+                      else: true
+                    }
+                  }
                 }
               }
             }
@@ -1489,11 +1511,16 @@ exports.ledger = async (req, res, next) => {
                 creditHour = subjectConfig.creditHour || 1;
               }
             }
+            
+            // For HYGIENE and ORAL, only store theoryGP, no worksheetGrades
+            const isNoWorksheetSubject = NO_WORKSHEET_SUBJECTS.includes(item.subject);
+            
             subjectMap[item.subject] = {
               theoryGP: item.theoryGP,
-              worksheetGrades: item.worksheetGrades || [],
+              worksheetGrades: isNoWorksheetSubject ? [] : (item.worksheetGrades || []),
               avgGP: item.avgGP,
-              creditHour: creditHour
+              creditHour: creditHour,
+              hasWorksheets: item.hasWorksheets !== undefined ? item.hasWorksheets : !isNoWorksheetSubject
             };
           });
         }
@@ -1507,25 +1534,16 @@ exports.ledger = async (req, res, next) => {
       
       // Get credit hour data from newsubject model
       const creditHourData = await newsubject.find({}).lean();
-      console.log("[Primary] Full Credit Hour Data from DB:", JSON.stringify(creditHourData, null, 2));
-      
-      // Create a map for quick lookup by subject name AND class
       const creditHourMap = {};
       creditHourData.forEach(item => {
-        // Create a composite key: subjectName + class
         const key = `${item.newsubject}_${item.forClass}`;
         creditHourMap[key] = {
           theoryCredit: item.theoryCreditHour || 0,
           practicalCredit: item.practicalCreditHour || 0,
           forClass: item.forClass
         };
-        console.log(`[Primary] Mapped ${item.newsubject} for class ${item.forClass}: Theory=${item.theoryCreditHour}, Practical=${item.practicalCreditHour}`);
       });
-      console.log("[Primary] Final Credit Hour Map:", JSON.stringify(creditHourMap, null, 2));
 
-      // First get all the data from MongoDB
-      console.log("[Primary] Fetching data with match criteria:", { terminal, academicYear, studentClass, section });
-      
       const rawData = await model.aggregate([
         {
           $match: {
@@ -1565,28 +1583,14 @@ exports.ledger = async (req, res, next) => {
         { $sort: { rollNumber: 1 } }
       ]);
 
-      console.log(`[Primary] Raw data count: ${rawData.length}`);
-      if (rawData.length > 0) {
-        console.log("[Primary] First student raw data:", JSON.stringify(rawData[0], null, 2));
-      }
-
       // Process the data in JavaScript
-      ledgerData = rawData.map((student, index) => {
-        console.log(`\n${'='.repeat(60)}`);
-        console.log(`Processing Student ${index + 1}: ${student.name} (Roll: ${student.roll})`);
-        console.log(`Current Class: ${studentClass}`);
-        console.log(`${'='.repeat(60)}`);
-        
+      ledgerData = rawData.map((student) => {
         const subjectMap = {};
         let totalWeightedGP = 0;
         let totalCredits = 0;
 
-        student.subjects.forEach((subject, subIndex) => {
+        student.subjects.forEach((subject) => {
           const subjectName = subject.subject;
-          console.log(`\n${'-'.repeat(40)}`);
-          console.log(`Subject ${subIndex + 1}: ${subjectName}`);
-          console.log(`${'-'.repeat(40)}`);
-          
           const theoryMarks = subject.theorymarks || 0;
           const theoryFullMarks = subject.theoryfullmarks || 100;
           const practicalMarks = subject.practicalmarks || 0;
@@ -1594,78 +1598,60 @@ exports.ledger = async (req, res, next) => {
           const worksheetGrades = subject.worksheetGrades || [];
           const totalWorksheet = subject.totalWorksheet || worksheetGrades.length;
 
-          console.log(`  📝 Theory Marks: ${theoryMarks}/${theoryFullMarks}`);
-          console.log(`  📝 Practical Marks: ${practicalMarks}/${practicalFullMarks}`);
-          console.log(`  📝 Worksheet Grades: ${JSON.stringify(worksheetGrades)}`);
-          console.log(`  📝 Total Worksheet Count: ${totalWorksheet}`);
+          // Check if this subject should have worksheets
+          const hasWorksheets = shouldHaveWorksheets(subjectName);
 
           // Calculate theory percentage and GP
           const theoryPercentage = theoryFullMarks > 0 ? (theoryMarks / theoryFullMarks) * 100 : 0;
-          console.log(`  📊 Theory Percentage: ${theoryPercentage.toFixed(2)}%`);
           const theoryGP = getGP(theoryPercentage);
-          console.log(`  📊 Theory GP: ${theoryGP}`);
 
-          // Calculate practical GP from worksheet grades
+          // For HYGIENE and ORAL, GP is just the theory GP
+          let finalGP = theoryGP;
           let practicalGP = 0;
           let practicalPercentage = 0;
 
-          if (worksheetGrades.length > 0) {
-            console.log(`  📊 Calculating Practical GP from ${worksheetGrades.length} worksheets:`);
-            let totalWorksheetGP = 0;
-            worksheetGrades.forEach((grade, idx) => {
-              const gp = getWorksheetGP(grade);
-              console.log(`    Worksheet ${idx + 1}: ${grade} -> GP: ${gp}`);
-              totalWorksheetGP += gp;
-            });
-            practicalGP = totalWorksheetGP / worksheetGrades.length;
-            console.log(`  📊 Total Worksheet GP: ${totalWorksheetGP}, Count: ${worksheetGrades.length}, Average: ${practicalGP.toFixed(4)}`);
-            practicalPercentage = practicalGP * 25;
-          } else if (practicalFullMarks > 0) {
-            practicalPercentage = (practicalMarks / practicalFullMarks) * 100;
-            practicalGP = getGP(practicalPercentage);
-            console.log(`  📊 Practical Percentage: ${practicalPercentage.toFixed(2)}%`);
-            console.log(`  📊 Practical GP: ${practicalGP}`);
-          } else {
+          if (!hasWorksheets) {
+            // No worksheets - final GP is theory GP
+            finalGP = theoryGP;
             practicalGP = theoryGP;
             practicalPercentage = theoryPercentage;
-            console.log(`  📊 No practical data, using theory GP: ${practicalGP}`);
-          }
-
-          // Get credit hours from the map - USING BOTH SUBJECT NAME AND CLASS
-          const compositeKey = `${subjectName}_${studentClass}`;
-          console.log(`\n  🔍 Looking up credit hours for "${subjectName}" in class "${studentClass}"`);
-          console.log(`  🔍 Composite Key: "${compositeKey}"`);
-          
-          const credits = creditHourMap[compositeKey] || { theoryCredit: 0, practicalCredit: 0 };
-          console.log(`  🔍 Found credits:`, JSON.stringify(credits));
-          
-          const theoryCredit = credits.theoryCredit || 0;
-          const practicalCredit = credits.practicalCredit || 0;
-          const totalCredit = theoryCredit + practicalCredit;
-          
-          console.log(`  📚 Theory Credit: ${theoryCredit}`);
-          console.log(`  📚 Practical Credit: ${practicalCredit}`);
-          console.log(`  📚 Total Credit: ${totalCredit}`);
-
-          // Calculate final GP using the formula:
-          // finalGP = (theoryGP * theoryCredit + practicalGP * practicalCredit) / (theoryCredit + practicalCredit)
-          let finalGP = 0;
-          if (totalCredit > 0) {
-            const weightedSum = (theoryGP * theoryCredit) + (practicalGP * practicalCredit);
-            console.log(`\n  🧮 Final GP Calculation:`);
-            console.log(`     Weighted Sum = (${theoryGP.toFixed(2)} × ${theoryCredit}) + (${practicalGP.toFixed(2)} × ${practicalCredit})`);
-            console.log(`     Weighted Sum = ${(theoryGP * theoryCredit).toFixed(2)} + ${(practicalGP * practicalCredit).toFixed(2)} = ${weightedSum.toFixed(4)}`);
-            finalGP = weightedSum / totalCredit;
-            console.log(`     Final GP = ${weightedSum.toFixed(4)} / ${totalCredit} = ${finalGP.toFixed(4)}`);
+            console.log(`  ${subjectName}: No worksheets, GP = Theory GP = ${finalGP.toFixed(2)}`);
           } else {
-            finalGP = (theoryGP + practicalGP) / 2;
-            console.log(`\n  🧮 No credit hours, using average:`);
-            console.log(`     Final GP = (${theoryGP.toFixed(2)} + ${practicalGP.toFixed(2)}) / 2 = ${finalGP.toFixed(4)}`);
+            // Regular subjects with worksheets
+            if (worksheetGrades.length > 0) {
+              let totalWorksheetGP = 0;
+              worksheetGrades.forEach((grade) => {
+                const gp = getWorksheetGP(grade);
+                totalWorksheetGP += gp;
+              });
+              practicalGP = totalWorksheetGP / worksheetGrades.length;
+              practicalPercentage = practicalGP * 25;
+            } else if (practicalFullMarks > 0) {
+              practicalPercentage = (practicalMarks / practicalFullMarks) * 100;
+              practicalGP = getGP(practicalPercentage);
+            } else {
+              practicalGP = theoryGP;
+              practicalPercentage = theoryPercentage;
+            }
+
+            // Get credit hours
+            const compositeKey = `${subjectName}_${studentClass}`;
+            const credits = creditHourMap[compositeKey] || { theoryCredit: 0, practicalCredit: 0 };
+            const theoryCredit = credits.theoryCredit || 0;
+            const practicalCredit = credits.practicalCredit || 0;
+            const totalCredit = theoryCredit + practicalCredit;
+
+            // Calculate final GP
+            if (totalCredit > 0) {
+              const weightedSum = (theoryGP * theoryCredit) + (practicalGP * practicalCredit);
+              finalGP = weightedSum / totalCredit;
+            } else {
+              finalGP = (theoryGP + practicalGP) / 2;
+            }
           }
 
           // Round to 2 decimal places
           const roundedFinalGP = Math.round(finalGP * 100) / 100;
-          console.log(`  ✅ Rounded Final GP: ${roundedFinalGP.toFixed(2)}`);
 
           // Store in subject map
           subjectMap[subjectName] = {
@@ -1674,21 +1660,18 @@ exports.ledger = async (req, res, next) => {
             finalGP: roundedFinalGP,
             theoryMarks: theoryMarks,
             practicalMarks: practicalMarks,
-            worksheetGrades: worksheetGrades,
-            totalWorksheet: totalWorksheet,
+            worksheetGrades: hasWorksheets ? worksheetGrades : [],
+            totalWorksheet: hasWorksheets ? totalWorksheet : 0,
             theoryPercentage: Math.round(theoryPercentage * 100) / 100,
             practicalPercentage: Math.round(practicalPercentage * 100) / 100,
-            theoryCredit: theoryCredit,
-            practicalCredit: practicalCredit,
-            totalCredit: totalCredit,
-            forClass: studentClass // Store the class used for credit lookup
+            hasWorksheets: hasWorksheets
           };
 
           // Add to weighted total for overall GPA
+          const totalCredit = (subjectMap[subjectName].theoryCredit || 0) + (subjectMap[subjectName].practicalCredit || 0);
           if (totalCredit > 0) {
             totalWeightedGP += roundedFinalGP * totalCredit;
             totalCredits += totalCredit;
-            console.log(`  📊 Added to GPA: ${roundedFinalGP.toFixed(2)} × ${totalCredit} = ${(roundedFinalGP * totalCredit).toFixed(2)}`);
           }
         });
 
@@ -1696,17 +1679,8 @@ exports.ledger = async (req, res, next) => {
         let gpa = 0;
         if (totalCredits > 0) {
           gpa = totalWeightedGP / totalCredits;
-          console.log(`\n${'='.repeat(40)}`);
-          console.log(`📊 OVERALL GPA CALCULATION:`);
-          console.log(`  Total Weighted GP: ${totalWeightedGP.toFixed(4)}`);
-          console.log(`  Total Credits: ${totalCredits}`);
-          console.log(`  GPA = ${totalWeightedGP.toFixed(4)} / ${totalCredits} = ${gpa.toFixed(4)}`);
-        } else {
-          console.log(`\n⚠️ No credits found, GPA set to 0`);
         }
         gpa = Math.round(gpa * 100) / 100;
-        console.log(`  ✅ Final Rounded GPA: ${gpa.toFixed(2)}`);
-        console.log(`${'='.repeat(40)}`);
 
         return {
           _id: student._id,
@@ -1723,46 +1697,22 @@ exports.ledger = async (req, res, next) => {
       });
 
       // Calculate ranks based on GPA
-      console.log(`\n${'='.repeat(60)}`);
-      console.log("📊 CALCULATING RANKS");
-      console.log(`${'='.repeat(60)}`);
-      
       const sortedStudents = [...ledgerData].sort((a, b) => b.gpa - a.gpa);
       let currentRank = 1;
       let previousGPA = null;
       let rankCounter = 1;
 
-      sortedStudents.forEach((student, index) => {
+      sortedStudents.forEach((student) => {
         if (previousGPA !== null && student.gpa < previousGPA) {
           currentRank = rankCounter;
         }
         student.rank = currentRank;
-        console.log(`  ${student.rank}. ${student.name} (Roll: ${student.roll}) - GPA: ${student.gpa.toFixed(2)}`);
         previousGPA = student.gpa;
         rankCounter++;
       });
 
       // Sort back by roll number
       ledgerData.sort((a, b) => a.rollNumber - b.rollNumber);
-      
-      console.log(`\n${'='.repeat(60)}`);
-      console.log("📊 FINAL LEDGER DATA SUMMARY");
-      console.log(`${'='.repeat(60)}`);
-      ledgerData.forEach((student, idx) => {
-        console.log(`\nStudent ${idx + 1}: ${student.name} (Roll: ${student.roll})`);
-        console.log(`  GPA: ${student.gpa.toFixed(2)}`);
-        console.log(`  Rank: ${student.rank}`);
-        console.log(`  Subjects:`);
-        Object.keys(student.subjectMap).forEach(subject => {
-          const data = student.subjectMap[subject];
-          console.log(`    ${subject}:`);
-          console.log(`      Theory GP: ${data.theoryGP.toFixed(2)} (${data.theoryMarks}/${data.theoryFullMarks || 100})`);
-          console.log(`      Practical GP: ${data.practicalGP.toFixed(2)}`);
-          console.log(`      Final GP: ${data.finalGP.toFixed(2)}`);
-          console.log(`      Credits: Theory=${data.theoryCredit}, Practical=${data.practicalCredit}, Total=${data.totalCredit}`);
-          console.log(`      Class Used for Credits: ${data.forClass}`);
-        });
-      });
 
     } else {
       console.log("=== Processing REGULAR LEDGER (Classes 4+) ===");
@@ -1889,12 +1839,17 @@ exports.ledger = async (req, res, next) => {
         { $sort: { rollNumber: 1 } }
       ]);
 
-      // Process regular data
+      // Process regular data - set hasWorksheets flag
       ledgerData.forEach((student) => {
         let lookupmap = {};
         if (student.subjects) {
           student.subjects.forEach((sub) => {
-            lookupmap[sub.subject] = sub;
+            const hasWorksheets = shouldHaveWorksheets(sub.subject);
+            lookupmap[sub.subject] = {
+              ...sub,
+              hasWorksheets: hasWorksheets,
+              worksheetGrades: hasWorksheets ? (sub.worksheetGrades || []) : []
+            };
           });
         }
         student.subjectMap = lookupmap;
@@ -1913,7 +1868,6 @@ exports.ledger = async (req, res, next) => {
           });
         }
       });
-      console.log("[Analysis] Unique Subjects:", Array.from(uniqueSubjects));
 
       const subjectAnalysisPromises = Array.from(uniqueSubjects).map(async (subject) => {
         const matchQuery = {
@@ -1993,7 +1947,6 @@ exports.ledger = async (req, res, next) => {
       });
 
       ledgerAnalysis = await Promise.all(subjectAnalysisPromises);
-      console.log("[Analysis] Analysis Results:", JSON.stringify(ledgerAnalysis, null, 2));
     }
 
     const ledgerAnalysisLookup = {};
@@ -2003,11 +1956,6 @@ exports.ledger = async (req, res, next) => {
       }
     });
 
-    console.log("\n=== Final Summary ===");
-    console.log("Is Pre-Primary:", isPrePrimary);
-    console.log("Is Primary:", isPrimary);
-    console.log("Ledger Data Count:", ledgerData.length);
-    
     // Render based on class type
     if (isPrePrimary) {
       res.render("./exam/ledgerpreprimary", {
@@ -2023,7 +1971,8 @@ exports.ledger = async (req, res, next) => {
         ledgerData,
         ledgerAnalysisLookup,
         noData: ledgerData.length === 0,
-        isPrePrimary: isPrePrimary
+        isPrePrimary: isPrePrimary,
+        NO_WORKSHEET_SUBJECTS: NO_WORKSHEET_SUBJECTS
       });
       return;
     } else if (isPrimary) {
@@ -2042,7 +1991,8 @@ exports.ledger = async (req, res, next) => {
         noData: ledgerData.length === 0,
         isPrimary: isPrimary,
         getGP: getGP,
-        getGrade: getGrade
+        getGrade: getGrade,
+        NO_WORKSHEET_SUBJECTS: NO_WORKSHEET_SUBJECTS
       });
       return;
     } else {
@@ -2059,7 +2009,8 @@ exports.ledger = async (req, res, next) => {
         ledgerData,
         ledgerAnalysisLookup,
         noData: ledgerData.length === 0,
-        isPrePrimary: isPrePrimary
+        isPrePrimary: isPrePrimary,
+        NO_WORKSHEET_SUBJECTS: NO_WORKSHEET_SUBJECTS
       });
     }
     

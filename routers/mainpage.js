@@ -306,6 +306,26 @@ student.post('/studentportfolio/record',verifytoken,authorized,examdashboardcont
 student.post('/studentportfolio/call-log',verifytoken,authorized,attendancecontroller.saveFrontdeskCallLog)
 
 student.get('/healthrecord',verifytoken,nursecontroller.showHealthRecordForm)
+
+//render summary page of attendance
+student.get('/attendance-summary', attendancecontroller.renderAttendanceSummary);
+
+// Main API endpoints
+student.get('/api/attendance/filter-options', attendancecontroller.getFilterOptions);
+student.get('/api/attendance/summary', attendancecontroller.getAttendanceSummaryclassWise);
+
+// Additional API endpoints
+student.get('/api/attendance/student', attendancecontroller.getStudentAttendance);
+student.get('/api/attendance/month', attendancecontroller.getMonthAttendance);
+student.get('/api/attendance/stats', attendancecontroller.getAttendanceStats);
+student.post('/api/attendance/add', attendancecontroller.addAttendance);
+student.get('/api/attendance/export', attendancecontroller.exportAttendanceCSV);
+
+// Original function
+student.get('/api/attendance/data', attendancecontroller.getAttendanceData);
+
+
+
 student.get('/healthrecord/students',verifytoken,nursecontroller.searchStudents)
 student.get('/healthrecord/records',verifytoken,nursecontroller.getHealthRecordsFiltered)
 student.post('/healthrecord',verifytoken,nursecontroller.createHealthRecord)

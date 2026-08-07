@@ -162,13 +162,13 @@ const BS_MONTH_NAMES = {
 };
 
 const BS_MONTH_LENGTHS = {
-  Baisakh: 30,
+  Baisakh: 31,
   Jestha: 31,
-  Asar: 31,
+  Asar: 32,
   Shrawan: 31,
-  Bhadra: 30,
-  Ashwin: 30,
-  Kartik: 29,
+  Bhadra: 31,
+  Ashwin: 31,
+  Kartik: 30,
   Mangsir: 29,
   Poush: 30,
   Magh: 29,
@@ -512,7 +512,7 @@ exports.getAttendanceData= async (req,res,next)=>
       const reg = String(onlineDoc?.reg || "").trim();
       const attendanceEntries = Array.isArray(onlineDoc?.attendance) ? onlineDoc.attendance : [];
 
-      let absentDays = 0;
+      const absentDayKeys = new Set();
       attendanceEntries.forEach((entry) => {
         const entryAcademicYear = String(entry?.academicYear || "").trim();
         if (entryAcademicYear !== normalizedAcademicYear) {
@@ -541,10 +541,12 @@ exports.getAttendanceData= async (req,res,next)=>
         }
 
         if (getStatusIsAbsent(entry?.status)) {
-          absentDays += 1;
+          const canonicalMonthName = getCanonicalMonthName(entryMonthName);
+          absentDayKeys.add(`${canonicalMonthName}-${entryDay}`);
         }
       });
 
+      const absentDays = absentDayKeys.size;
       const presentDays = Math.max(totalWorkingDaysUptoToday - absentDays, 0);
 
       return {

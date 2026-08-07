@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Summary</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            font-size: 24px;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .filter-form {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            flex: 1;
+            min-width: 150px;
+        }
+        
+        .filter-group label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .filter-group select {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+            width: 100%;
+        }
+        
+        .filter-group select:focus {
+            outline: none;
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+        }
+        
+        .btn {
+            padding: 8px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.3s;
+            height: 38px;
+            min-width: 120px;
+        }
+        
+        .btn:hover {
+            background: #0056b3;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        
+        .btn-success {
+            background: #28a745;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+        }
+        
+        .summary-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            color: white;
+        }
+        
+        .summary-header h2 {
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+        
+        .summary-header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .summary-stats {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-item {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 15px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        
+        .table-wrapper {
+            overflow-x: auto;
+            margin-top: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            position: relative;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            min-width: 800px;
+        }
+        
+        thead {
+            background: #f8f9fa;
+        }
+        
+        th {
+            padding: 10px 6px;
+            text-align: center;
+            font-weight: 600;
+            color: #495057;
+            border-bottom: 2px solid #dee2e6;
+            border-right: 1px solid #dee2e6;
+            white-space: nowrap;
+            position: sticky;
+            top: 0;
+            background: #f8f9fa;
+            z-index: 10;
+        }
+        
+        th:last-child {
+            border-right: none;
+        }
+        
+        td {
+            padding: 8px 6px;
+            border-bottom: 1px solid #dee2e6;
+            border-right: 1px solid #dee2e6;
+            text-align: center;
+            vertical-align: middle;
+        }
+        
+        td:last-child {
+            border-right: none;
+        }
+        
+        td:first-child {
+            text-align: left;
+            background: #f8f9fa;
+            position: sticky;
+            left: 0;
+            z-index: 5;
+            min-width: 160px;
+            border-right: 2px solid #dee2e6;
+        }
+        
+        .student-info {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .student-name {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 13px;
+        }
+        
+        .roll-info {
+            color: #6c757d;
+            font-size: 11px;
+        }
+        
+        .status-present {
+            color: #28a745;
+            font-weight: 700;
+            background: #d4edda;
+            border-radius: 3px;
+            padding: 2px 6px;
+            display: inline-block;
+            min-width: 24px;
+        }
+        
+        .status-absent {
+            color: #dc3545;
+            font-weight: 700;
+            background: #f8d7da;
+            border-radius: 3px;
+            padding: 2px 6px;
+            display: inline-block;
+            min-width: 24px;
+        }
+        
+        .status-holiday {
+            color: #856404;
+            font-weight: 700;
+            background: #fff3cd;
+            border-radius: 3px;
+            padding: 2px 6px;
+            display: inline-block;
+            min-width: 24px;
+        }
+        
+        .status-none {
+            color: #6c757d;
+        }
+        
+        .month-header {
+            background: #e9ecef;
+            font-weight: 700;
+            color: #2c3e50;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .day-header {
+            background: #f8f9fa;
+            font-weight: 600;
+            font-size: 12px;
+            min-width: 35px;
+        }
+        
+        .day-header.holiday {
+            color: #856404;
+            background: #fff3cd;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #6c757d;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 50px;
+            color: #6c757d;
+            font-size: 16px;
+        }
+        
+        .no-data-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            display: block;
+        }
+        
+        .footer-actions {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+        
+        .legend {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+        
+        .legend-color {
+            width: 24px;
+            height: 24px;
+            border-radius: 3px;
+            display: inline-block;
+            text-align: center;
+            line-height: 24px;
+            font-weight: 700;
+            font-size: 12px;
+        }
+        
+        .legend-color.present {
+            background: #d4edda;
+            color: #28a745;
+        }
+        
+        .legend-color.absent {
+            background: #f8d7da;
+            color: #dc3545;
+        }
+        
+        .legend-color.holiday {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .legend-color.none {
+            background: #e9ecef;
+            color: #6c757d;
+        }
+        
+        @media print {
+            .filter-form, .btn, .footer-actions, .header-actions {
+                display: none !important;
+            }
+            
+            .table-wrapper {
+                border: 1px solid #dee2e6 !important;
+            }
+            
+            td:first-child {
+                background: white !important;
+            }
+            
+            thead {
+                background: #f8f9fa !important;
+            }
+            
+            .summary-header {
+                background: #667eea !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            
+            .status-present, .status-absent, .status-holiday {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .filter-form {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .filter-group {
+                min-width: auto;
+            }
+            
+            td:first-child {
+                min-width: 120px;
+            }
+            
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .header-actions {
+                width: 100%;
+            }
+            
+            .header-actions .btn {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Attendance Summary</h1>
+            <div class="header-actions">
+                <button onclick="window.print()" class="btn btn-secondary">🖨️ Print</button>
+                <button onclick="exportToCSV()" class="btn btn-success">📥 Export CSV</button>
+            </div>
+        </div>
+
+        <!-- Filter Form -->
+        <form id="filterForm" class="filter-form">
+            <div class="filter-group">
+                <label for="classSelect">Class</label>
+                <select id="classSelect" name="class">
+                    <option value="">All Classes</option>
+                    <% classes.forEach(cls => { %>
+                        <option value="<%= cls %>" <%= selectedClass === cls ? 'selected' : '' %>>
+                            <%= cls %>
+                        </option>
+                    <% }); %>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="sectionSelect">Section</label>
+                <select id="sectionSelect" name="section">
+                    <option value="">All Sections</option>
+                    <% sections.forEach(section => { %>
+                        <option value="<%= section %>" <%= selectedSection === section ? 'selected' : '' %>>
+                            <%= section %>
+                        </option>
+                    <% }); %>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="yearSelect">Academic Year</label>
+                <select id="yearSelect" name="year">
+                    <option value="">All Years</option>
+                    <% academicYears.forEach(year => { %>
+                        <option value="<%= year %>" <%= selectedYear === year ? 'selected' : '' %>>
+                            <%= year %>
+                        </option>
+                    <% }); %>
+                </select>
+            </div>
+            
+            <button type="submit" class="btn">📋 View Summary</button>
+        </form>
+
+        <!-- Summary Results -->
+        <div id="summaryResults">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <div>Select filters and click "View Summary"</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentData = null;
+
+        document.getElementById('filterForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const classVal = document.getElementById('classSelect').value;
+            const sectionVal = document.getElementById('sectionSelect').value;
+            const yearVal = document.getElementById('yearSelect').value;
+            
+            // Update URL with selected filters
+            const url = new URL(window.location.href);
+            url.searchParams.set('class', classVal);
+            url.searchParams.set('section', sectionVal);
+            url.searchParams.set('year', yearVal);
+            window.history.pushState({}, '', url);
+            
+            // Show loading
+            document.getElementById('summaryResults').innerHTML = `
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <div>Loading attendance data...</div>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch(`/api/attendance/summary?class=${encodeURIComponent(classVal)}&section=${encodeURIComponent(sectionVal)}&academicYear=${encodeURIComponent(yearVal)}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentData = result.data;
+                    renderSummary(result.data);
+                } else {
+                    document.getElementById('summaryResults').innerHTML = `
+                        <div class="no-data">
+                            <span class="no-data-icon">📭</span>
+                            ${result.message || 'No data found'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('summaryResults').innerHTML = `
+                    <div class="no-data">
+                        <span class="no-data-icon">❌</span>
+                        Error loading data: ${error.message}
+                    </div>
+                `;
+            }
+        });
+
+        function renderSummary(data) {
+            const { students, months, monthDays, holidayLookup, filters, totalStudents } = data;
+            
+            if (!students || students.length === 0) {
+                document.getElementById('summaryResults').innerHTML = 
+                    '<div class="no-data"><span class="no-data-icon">📭</span>No attendance records found</div>';
+                return;
+            }
+            
+            // Calculate total present/absent for each student
+            const studentStats = students.map(student => {
+                let present = 0;
+                let absent = 0;
+                let total = 0;
+                
+                Object.keys(student.attendanceMap).forEach(key => {
+                    const record = student.attendanceMap[key];
+                    const [month, day] = key.split('-');
+                    const isHoliday = holidayLookup[key];
+                    
+                    if (!isHoliday) {
+                        total++;
+                        if (record.status === 'present') {
+                            present++;
+                        } else if (record.status === 'absent') {
+                            absent++;
+                        }
+                    }
+                });
+                
+                return { present, absent, total };
+            });
+            
+            // Build summary header
+            const headerHTML = `
+                <div class="summary-header">
+                    <h2>Attendance Summary Report</h2>
+                    <p>
+                        Class: ${filters.studentClass || 'All'} | 
+                        Section: ${filters.section || 'All'} | 
+                        Academic Year: ${filters.academicYear || 'All'}
+                    </p>
+                    <div class="summary-stats">
+                        <span class="stat-item">👥 Total Students: ${totalStudents}</span>
+                        <span class="stat-item">📅 Total Months: ${months.length}</span>
+                    </div>
+                </div>
+            `;
+            
+            // Build table
+            let tableHTML = `
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="min-width: 160px;">Student (Roll)</th>
+                    `;
+            
+            // Add month-day headers
+            months.forEach(month => {
+                const days = monthDays[month] || [];
+                if (days.length > 0) {
+                    tableHTML += `<th colspan="${days.length}" class="month-header">${month}</th>`;
+                }
+            });
+            
+            tableHTML += `
+                                <th style="min-width: 80px;">Present</th>
+                                <th style="min-width: 80px;">Absent</th>
+                                <th style="min-width: 80px;">Total</th>
+                            </tr>
+                            <tr>
+                                <th></th>
+                    `;
+            
+            // Add day headers
+            months.forEach(month => {
+                const days = monthDays[month] || [];
+                days.forEach(day => {
+                    const key = `${month}-${day}`;
+                    const isHoliday = holidayLookup[key];
+                    tableHTML += `<th class="day-header ${isHoliday ? 'holiday' : ''}">${day}</th>`;
+                });
+            });
+            
+            tableHTML += `
+                                <th>P</th>
+                                <th>AB</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                    `;
+            
+            // Add student rows
+            students.forEach((student, index) => {
+                const stats = studentStats[index];
+                
+                tableHTML += `
+                    <tr>
+                        <td>
+                            <div class="student-info">
+                                <span class="student-name">${student.name}</span>
+                                <span class="roll-info">Roll: ${student.roll} | Reg: ${student.reg}</span>
+                            </div>
+                        </td>
+                `;
+                
+                months.forEach(month => {
+                    const days = monthDays[month] || [];
+                    days.forEach(day => {
+                        const key = `${month}-${day}`;
+                        const isHoliday = holidayLookup[key];
+                        const record = student.attendanceMap[key];
+                        
+                        if (isHoliday) {
+                            tableHTML += `<td><span class="status-holiday">H</span></td>`;
+                        } else if (record) {
+                            if (record.status === 'present') {
+                                tableHTML += `<td><span class="status-present">P</span></td>`;
+                            } else if (record.status === 'absent') {
+                                tableHTML += `<td><span class="status-absent">AB</span></td>`;
+                            } else {
+                                tableHTML += `<td><span class="status-none">-</span></td>`;
+                            }
+                        } else {
+                            tableHTML += `<td><span class="status-none">-</span></td>`;
+                        }
+                    });
+                });
+                
+                // Add statistics
+                tableHTML += `
+                                <td><strong style="color: #28a745;">${stats.present}</strong></td>
+                                <td><strong style="color: #dc3545;">${stats.absent}</strong></td>
+                                <td><strong>${stats.total}</strong></td>
+                            </tr>
+                `;
+            });
+            
+            tableHTML += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            // Legend
+            const legendHTML = `
+                <div class="legend">
+                    <div class="legend-item">
+                        <span class="legend-color present">P</span>
+                        Present
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color absent">AB</span>
+                        Absent
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color holiday">H</span>
+                        Holiday
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color none">-</span>
+                        No Record
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('summaryResults').innerHTML = headerHTML + tableHTML + legendHTML;
+        }
+
+        function exportToCSV() {
+            if (!currentData) {
+                alert('No data to export. Please load attendance summary first.');
+                return;
+            }
+            
+            const { students, months, monthDays, holidayLookup } = currentData;
+            
+            // Create CSV content
+            let csv = 'Student,Roll,Reg,';
+            
+            // Add headers for each day
+            months.forEach(month => {
+                const days = monthDays[month] || [];
+                days.forEach(day => {
+                    const key = `${month}-${day}`;
+                    const isHoliday = holidayLookup[key];
+                    csv += `${month} ${day}${isHoliday ? ' (H)' : ''},`;
+                });
+            });
+            
+            csv += 'Present,Absent,Total\n';
+            
+            // Add student data
+            students.forEach(student => {
+                let present = 0;
+                let absent = 0;
+                let total = 0;
+                
+                csv += `"${student.name}",${student.roll},${student.reg},`;
+                
+                months.forEach(month => {
+                    const days = monthDays[month] || [];
+                    days.forEach(day => {
+                        const key = `${month}-${day}`;
+                        const isHoliday = holidayLookup[key];
+                        const record = student.attendanceMap[key];
+                        
+                        if (isHoliday) {
+                            csv += 'H,';
+                        } else if (record) {
+                            if (record.status === 'present') {
+                                csv += 'P,';
+                                present++;
+                                total++;
+                            } else if (record.status === 'absent') {
+                                csv += 'AB,';
+                                absent++;
+                                total++;
+                            } else {
+                                csv += '-,';
+                            }
+                        } else {
+                            csv += '-,';
+                        }
+                    });
+                });
+                
+                csv += `${present},${absent},${total}\n`;
+            });
+            
+            // Download CSV
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `attendance_summary_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        // Auto-load on page load if filters are present
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const hasFilters = urlParams.has('class') || urlParams.has('section') || urlParams.has('year');
+            
+            if (hasFilters) {
+                document.getElementById('filterForm').dispatchEvent(new Event('submit'));
+            }
+        });
+    </script>
+</body>
+</html>

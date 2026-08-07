@@ -457,6 +457,10 @@
         let prGP = practicalmarks;
         let theoryCreditHour = creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.theoryCreditHour || 0;
         let practicalCreditHour = creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.practicalCreditHour || 0;
+        if(subject == "ORAL" || subject == "HYGIENE")
+        {
+           let finalGP =  sub.theorymarks || 0;
+        }
         let finalGP =  ((sub.theorymarks+practicalmarks))/((worksheetMarks.length+1)) || 0;
 
 

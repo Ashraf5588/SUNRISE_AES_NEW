@@ -1370,4 +1370,862 @@ exports.savesetHoliday = async (req, res) => {
   }
 }
 
+    // controllers/attendanceController.js - 
+
+// Nepali calendar month mapping with max days
+
+
+// Nepali calendar month mapping with max days
+const NEPALI_MONTHS = {
+  'Baisakh': { maxDays: 31, index: 0 },
+  'Jestha': { maxDays: 31, index: 1 },
+  'Ashadh': { maxDays: 32, index: 2 },
+  'Asar': { maxDays: 32, index: 2 },
+  'Shrawan': { maxDays: 31, index: 3 },
+  'Bhadra': { maxDays: 31, index: 4 },
+  'Ashwin': { maxDays: 31, index: 5 },
+  'Kartik': { maxDays: 30, index: 6 },
+  'Mangsir': { maxDays: 29, index: 7 },
+  'Poush': { maxDays: 30, index: 8 },
+  'Magh': { maxDays: 29, index: 9 },
+  'Falgun': { maxDays: 30, index: 10 },
+  'Chaitra': { maxDays: 30, index: 11 }
+};
+
+
+
+// Helper functions
+function getBsMonthNumber(monthName) {
+  for (const [key, value] of Object.entries(BS_MONTH_NAMES)) {
+    if (value === monthName) return parseInt(key);
+  }
+  return null;
+}
+
+function getBsMonthLength(monthName) {
+  return NEPALI_MONTHS[monthName]?.maxDays || 32;
+}
+
+function getCanonicalMonthName(monthName) {
+  if (!monthName) return '';
+  const normalized = normalizeText(monthName);
+  const monthIndex = getBsMonthOrder(normalized);
+  if (monthIndex) {
+    return BS_MONTH_NAMES[monthIndex];
+  }
+
+  const trimmed = monthName.trim();
+  for (const [key, value] of Object.entries(BS_MONTH_NAMES)) {
+    if (value.toLowerCase() === trimmed.toLowerCase()) {
+      return value;
+    }
+  }
+
+  return trimmed;
+}
+
+function getStatusIsAbsent(status) {
+  if (!status) return false;
+  const normalized = normalizeText(status);
+  return normalized === 'absent' || normalized === 'ab' || normalized === 'a' || normalized === 'false';
+}
+
+// Function to get current BS date
+function getCurrentBSDate() {
+  try {
+    if (typeof bs.toBS === 'function') {
+      const result = bs.toBS(new Date());
+      if (typeof result === 'string') {
+        const parts = result.split('-');
+        if (parts.length === 3) {
+          return {
+            year: parseInt(parts[0]),
+            month: parseInt(parts[1]),
+            day: parseInt(parts[2])
+          };
+        }
+      }
+      if (result && typeof result === 'object') {
+        return {
+          year: result.bsYear || result.year || 2083,
+          month: result.bsMonth || result.month || 2,
+          day: result.bsDay || result.day || 15
+        };
+      }
+    }
     
+    if (typeof bs.ADToBS === 'function') {
+      const result = bs.ADToBS(new Date());
+      if (typeof result === 'string') {
+        const parts = result.split('-');
+        if (parts.length === 3) {
+          return {
+            year: parseInt(parts[0]),
+            month: parseInt(parts[1]),
+            day: parseInt(parts[2])
+          };
+        }
+      }
+    }
+    
+    // Fallback
+    const now = new Date();
+    const startOfBS = new Date(2024, 3, 14);
+    const diffDays = Math.floor((now - startOfBS) / (1000 * 60 * 60 * 24));
+    let bsYear = 2081;
+    let bsMonth = 1;
+    let bsDay = 1;
+    let remainingDays = diffDays;
+    
+    const monthNames = ['Baisakh', 'Jestha', 'Ashadh', 'Shrawan', 'Bhadra', 'Ashwin', 'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'];
+    for (let i = 0; i < monthNames.length; i++) {
+      const maxDays = NEPALI_MONTHS[monthNames[i]].maxDays;
+      if (remainingDays >= maxDays) {
+        remainingDays -= maxDays;
+      } else {
+        bsMonth = i + 1;
+        bsDay = remainingDays + 1;
+        break;
+      }
+    }
+    
+    return {
+      year: bsYear,
+      month: bsMonth,
+      day: bsDay
+    };
+  } catch (error) {
+    console.error('Error converting to BS date:', error);
+    return {
+      year: 2083,
+      month: 2,
+      day: 15
+    };
+  }
+}
+
+/**
+ * Get attendance summary with class-wise filtering
+ * Now shows P for all non-holiday days by default, AB only for explicit absent records
+ */
+exports.getAttendanceSummaryclassWise = async (req, res) => {
+  try {
+    const { class: studentClass, section, academicYear } = req.query;
+    
+    console.log('Received filters:', { studentClass, section, academicYear });
+    
+    if (!studentClass || !section || !academicYear) {
+      return res.json({
+        success: true,
+        data: {
+          students: [],
+          months: [],
+          monthDays: {},
+          holidayLookup: {},
+          totalStudents: 0,
+          filters: { studentClass, section, academicYear }
+        }
+      });
+    }
+
+    const filter = {};
+    if (studentClass && studentClass.trim() !== '') filter.studentClass = studentClass;
+    if (section && section.trim() !== '') filter.section = section;
+    if (academicYear && academicYear.trim() !== '') filter.academicYear = academicYear;
+    
+    const students = await onlineAttendance.find(filter)
+      .sort({ roll: 1 })
+      .lean();
+    
+    console.log(`Found ${students.length} students`);
+    
+    if (!students || students.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          students: [],
+          months: [],
+          monthDays: {},
+          holidayLookup: {},
+          totalStudents: 0,
+          filters: { studentClass, section, academicYear }
+        }
+      });
+    }
+
+    // Get current date in BS
+    const bsDate = getCurrentBSDate();
+    const currentMonth = BS_MONTH_NAMES[bsDate.month] || "";
+    const currentDay = bsDate.day || 0;
+    const currentMonthNumber = bsDate.month || 0;
+
+    // Get holidays
+    const holidayDoc = await holiday.findOne({ academicYear: String(academicYear).trim() }).lean();
+    const holidayMonthMap = new Map(
+      Array.isArray(holidayDoc?.month)
+        ? holidayDoc.month.map((monthItem) => [
+            getCanonicalMonthName(monthItem?.monthName), 
+            Array.isArray(monthItem?.holidayDays) ? monthItem.holidayDays.map((dayValue) => Number(dayValue)) : []
+          ])
+        : []
+    );
+
+    // Get all months from Baisakh to current month
+    const monthOrder = ['Baisakh', 'Jestha', 'Asar', 'Shrawan', 'Bhadra', 'Ashwin', 'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'];
+    const months = [];
+    for (let i = 0; i < currentMonthNumber; i++) {
+      months.push(monthOrder[i]);
+    }
+
+    // Calculate total working days up to today for each month
+    const monthWorkingDays = {};
+    months.forEach(monthName => {
+      const monthNumber = getBsMonthNumber(monthName);
+      if (!monthNumber) return;
+      
+      const isCurrentMonth = monthNumber === currentMonthNumber;
+      const monthDayLimit = isCurrentMonth ? currentDay : getBsMonthLength(monthName);
+      const holidayDays = holidayMonthMap.get(getCanonicalMonthName(monthName)) || [];
+      const holidayDaysUntilLimit = holidayDays.filter(day => Number.isFinite(day) && day <= monthDayLimit);
+      
+      monthWorkingDays[monthName] = Math.max(monthDayLimit - holidayDaysUntilLimit.length, 0);
+    });
+
+    // Process attendance data with monthly breakdown
+    const attendanceData = students.map(student => {
+      const attendanceMap = {};
+      const monthlyTotals = {};
+      
+      months.forEach(month => {
+        monthlyTotals[month] = { present: 0, absent: 0, total: 0 };
+      });
+      
+      // Build attendance map from records
+      if (student.attendance && student.attendance.length > 0) {
+        student.attendance.forEach(record => {
+          const monthName = getCanonicalMonthName(record.month);
+          const day = Number.parseInt(record.day);
+          if (!monthName || !Number.isFinite(day) || day <= 0) return;
+
+          const key = `${monthName}-${day}`;
+          attendanceMap[key] = {
+            status: normalizeText(record.status),
+            reason: record.reason || ''
+          };
+        });
+      }
+      
+      // Now calculate monthly totals based on the new logic:
+      // - Holiday days are not counted
+      // - All non-holiday days are considered Present by default
+      // - Only explicit Absent records override to Absent
+      months.forEach(monthName => {
+        const monthNumber = getBsMonthNumber(monthName);
+        const isCurrentMonth = monthNumber === currentMonthNumber;
+        const maxDays = getBsMonthLength(monthName);
+        const monthDayLimit = isCurrentMonth ? Math.min(currentDay, maxDays) : maxDays;
+        const holidayDays = holidayMonthMap.get(getCanonicalMonthName(monthName)) || [];
+        
+        let present = 0;
+        let absent = 0;
+        let total = 0;
+        
+        for (let day = 1; day <= monthDayLimit; day++) {
+          const key = `${monthName}-${day}`;
+          const isHoliday = holidayDays.includes(day);
+          
+          if (isHoliday) {
+            // Holiday - not counted in totals
+            continue;
+          }
+          
+          total++;
+          const record = attendanceMap[key];
+          const isAbsent = record && getStatusIsAbsent(record.status);
+          
+          if (isAbsent) {
+            absent++;
+          } else {
+            present++;
+          }
+        }
+        
+        monthlyTotals[monthName] = { present, absent, total };
+      });
+      
+      return {
+        name: student.name,
+        roll: student.roll,
+        reg: student.reg,
+        gender: student.gender,
+        attendanceMap: attendanceMap,
+        monthlyTotals: monthlyTotals
+      };
+    });
+
+    // Create dynamic days for each month, limiting current month to today
+    const monthDays = {};
+    months.forEach(month => {
+      const maxDays = NEPALI_MONTHS[month]?.maxDays || 32;
+      const monthNumber = getBsMonthNumber(month);
+      const isCurrentMonth = monthNumber === currentMonthNumber;
+      const dayLimit = isCurrentMonth ? Math.min(currentDay, maxDays) : maxDays;
+      const days = [];
+      for (let i = 1; i <= dayLimit; i++) {
+        days.push(i);
+      }
+      monthDays[month] = days;
+    });
+
+    // Create holiday lookup for UI
+    const holidayLookup = {};
+    months.forEach(month => {
+      const holidayDays = holidayMonthMap.get(getCanonicalMonthName(month)) || [];
+      holidayDays.forEach(day => {
+        const key = `${month}-${day}`;
+        holidayLookup[key] = true;
+      });
+    });
+
+    const sortedAttendanceData = attendanceData.sort((a, b) => {
+      const aRoll = Number.isFinite(Number(a.roll)) ? Number(a.roll) : Number.POSITIVE_INFINITY;
+      const bRoll = Number.isFinite(Number(b.roll)) ? Number(b.roll) : Number.POSITIVE_INFINITY;
+      if (aRoll !== bRoll) {
+        return aRoll - bRoll;
+      }
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    });
+
+    res.json({
+      success: true,
+      data: {
+        filters: { 
+          studentClass: studentClass || 'All', 
+          section: section || 'All', 
+          academicYear: academicYear || 'All' 
+        },
+        students: sortedAttendanceData,
+        months: months,
+        monthDays: monthDays,
+        holidayLookup: holidayLookup,
+        monthWorkingDays: monthWorkingDays,
+        totalStudents: sortedAttendanceData.length,
+        currentMonth: currentMonth,
+        currentDay: currentDay,
+        currentMonthNumber: currentMonthNumber
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in getAttendanceSummary:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+};
+
+
+/**
+ * Get filter options for dropdowns
+ */
+exports.getFilterOptions = async (req, res) => {
+  try {
+    const classList = await studentClass.find({}, { studentClass: 1, section: 1 }).lean();
+    const academicYears = await onlineAttendance.distinct('academicYear');
+
+    const classSections = classList
+      .filter(item => item.studentClass && item.studentClass.trim() !== '' && item.section && item.section.trim() !== '')
+      .map(item => ({
+        studentClass: item.studentClass.trim(),
+        section: item.section.trim()
+      }));
+
+    const uniqueClassSections = Array.from(new Map(
+      classSections.map(item => [`${item.studentClass}|${item.section}`, item])
+    ).values());
+
+    uniqueClassSections.sort((a, b) => {
+      if (a.studentClass === b.studentClass) {
+        return a.section.localeCompare(b.section);
+      }
+      return a.studentClass.localeCompare(b.studentClass, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    const classes = [...new Set(uniqueClassSections.map(item => item.studentClass))].sort();
+    const sections = [...new Set(uniqueClassSections.map(item => item.section))].sort();
+
+    res.json({
+      success: true,
+      data: {
+        classSections: uniqueClassSections,
+        classes,
+        sections,
+        academicYears: academicYears.filter(y => y && y.trim() !== '').sort()
+      }
+    });
+  } catch (error) {
+    console.error('Error in getFilterOptions:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+};
+
+/**
+ * Render attendance summary page
+ */
+exports.renderAttendanceSummary = async (req, res) => {
+  try {
+    const classList = await studentClass.find({}, { studentClass: 1, section: 1 }).lean();
+    const academicYears = await onlineAttendance.distinct('academicYear');
+
+    const classSections = classList
+      .filter(item => item.studentClass && item.studentClass.trim() !== '' && item.section && item.section.trim() !== '')
+      .map(item => ({
+        studentClass: item.studentClass.trim(),
+        section: item.section.trim()
+      }));
+
+    const uniqueClassSections = Array.from(new Map(
+      classSections.map(item => [`${item.studentClass}|${item.section}`, item])
+    ).values());
+
+    uniqueClassSections.sort((a, b) => {
+      if (a.studentClass === b.studentClass) {
+        return a.section.localeCompare(b.section);
+      }
+      return a.studentClass.localeCompare(b.studentClass, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    const selectedClass = req.query.class || '';
+    const selectedSection = req.query.section || '';
+    const selectedYear = req.query.year || '';
+
+    res.render('attendance/attendance-summary', {
+      classSections: uniqueClassSections,
+      academicYears: academicYears.filter(y => y && y.trim() !== '').sort(),
+      selectedClass,
+      selectedSection,
+      selectedYear
+    });
+  } catch (error) {
+    console.error('Error rendering attendance summary:', error);
+    res.status(500).render('error', { 
+      error: error.message,
+      message: 'Failed to load attendance summary page'
+    });
+  }
+};
+
+/**
+ * Get attendance for a specific student
+ */
+exports.getStudentAttendance = async (req, res) => {
+  try {
+    const { reg, academicYear } = req.query;
+    
+    if (!reg) {
+      return res.status(400).json({
+        success: false,
+        error: 'Registration number is required'
+      });
+    }
+    
+    const filter = { reg };
+    if (academicYear) filter.academicYear = academicYear;
+    
+    const student = await onlineAttendance.findOne(filter).lean();
+    
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        error: 'Student not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: student
+    });
+    
+  } catch (error) {
+    console.error('Error in getStudentAttendance:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+};
+
+/**
+ * Get attendance for a specific month
+ */
+exports.getMonthAttendance = async (req, res) => {
+  try {
+    const { class: studentClass, section, academicYear, month } = req.query;
+    
+    if (!month) {
+      return res.status(400).json({
+        success: false,
+        error: 'Month is required'
+      });
+    }
+    
+    const filter = {};
+    if (studentClass && studentClass.trim() !== '') filter.studentClass = studentClass;
+    if (section && section.trim() !== '') filter.section = section;
+    if (academicYear && academicYear.trim() !== '') filter.academicYear = academicYear;
+    
+    const students = await onlineAttendance.find(filter).lean();
+    
+    if (!students || students.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          students: [],
+          month: month,
+          attendance: []
+        },
+        message: 'No students found'
+      });
+    }
+    
+    const monthAttendance = students.map(student => {
+      const attendanceRecords = [];
+      
+      if (student.attendance && student.attendance.length > 0) {
+        student.attendance
+          .filter(record => record.month === month)
+          .forEach(record => {
+            attendanceRecords.push({
+              day: record.day,
+              status: record.status,
+              reason: record.reason || ''
+            });
+          });
+      }
+      
+      return {
+        name: student.name,
+        roll: student.roll,
+        reg: student.reg,
+        gender: student.gender,
+        attendance: attendanceRecords
+      };
+    });
+    
+    res.json({
+      success: true,
+      data: {
+        month: month,
+        students: monthAttendance,
+        totalStudents: students.length
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in getMonthAttendance:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+};
+
+/**
+ * Add or update attendance record
+ */
+exports.addAttendance = async (req, res) => {
+  try {
+    const { reg, academicYear, month, day, status, reason } = req.body;
+    
+    if (!reg || !academicYear || !month || !day || !status) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: reg, academicYear, month, day, status'
+      });
+    }
+    
+    const student = await onlineAttendance.findOne({ reg, academicYear });
+    
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        error: 'Student not found'
+      });
+    }
+    
+    const existingRecordIndex = student.attendance.findIndex(
+      record => record.month === month && record.day === day
+    );
+    
+    if (existingRecordIndex !== -1) {
+      student.attendance[existingRecordIndex].status = status;
+      if (reason) student.attendance[existingRecordIndex].reason = reason;
+    } else {
+      student.attendance.push({
+        academicYear,
+        month,
+        day,
+        status,
+        reason: reason || ''
+      });
+    }
+    
+    await student.save();
+    
+    res.json({
+      success: true,
+      message: 'Attendance updated successfully',
+      data: student
+    });
+    
+  } catch (error) {
+    console.error('Error in addAttendance:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+};
+
+/**
+ * Get attendance statistics
+ */
+exports.getAttendanceStats = async (req, res) => {
+  try {
+    const { class: studentClass, section, academicYear } = req.query;
+    
+    const filter = {};
+    if (studentClass && studentClass.trim() !== '') filter.studentClass = studentClass;
+    if (section && section.trim() !== '') filter.section = section;
+    if (academicYear && academicYear.trim() !== '') filter.academicYear = academicYear;
+    
+    const students = await onlineAttendance.find(filter).lean();
+    
+    if (!students || students.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          totalStudents: 0,
+          totalPresent: 0,
+          totalAbsent: 0,
+          attendanceRate: 0
+        }
+      });
+    }
+    
+    let totalPresent = 0;
+    let totalAbsent = 0;
+    let totalRecords = 0;
+    
+    students.forEach(student => {
+      if (student.attendance) {
+        student.attendance.forEach(record => {
+          if (record.status === 'present') {
+            totalPresent++;
+          } else if (record.status === 'absent') {
+            totalAbsent++;
+          }
+          totalRecords++;
+        });
+      }
+    });
+    
+    const attendanceRate = totalRecords > 0 ? (totalPresent / totalRecords) * 100 : 0;
+    
+    res.json({
+      success: true,
+      data: {
+        totalStudents: students.length,
+        totalPresent,
+        totalAbsent,
+        totalRecords,
+        attendanceRate: Math.round(attendanceRate * 100) / 100,
+        studentStats: students.map(student => {
+          let present = 0;
+          let absent = 0;
+          
+          if (student.attendance) {
+            student.attendance.forEach(record => {
+              if (record.status === 'present') present++;
+              else if (record.status === 'absent') absent++;
+            });
+          }
+          
+          return {
+            name: student.name,
+            roll: student.roll,
+            reg: student.reg,
+            present,
+            absent,
+            total: present + absent
+          };
+        })
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in getAttendanceStats:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+};
+
+/**
+ * Export attendance data as CSV
+ */
+exports.exportAttendanceCSV = async (req, res) => {
+  try {
+    const { class: studentClass, section, academicYear } = req.query;
+    
+    const filter = {};
+    if (studentClass && studentClass.trim() !== '') filter.studentClass = studentClass;
+    if (section && section.trim() !== '') filter.section = section;
+    if (academicYear && academicYear.trim() !== '') filter.academicYear = academicYear;
+    
+    const students = await onlineAttendance.find(filter)
+      .sort({ roll: 1 })
+      .lean();
+    
+    if (!students || students.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No data found to export'
+      });
+    }
+    
+    let csv = 'Name,Roll,Reg,Gender,Academic Year,Section,Class\n';
+    
+    students.forEach(student => {
+      csv += `"${student.name}",${student.roll},${student.reg},${student.gender || ''},${student.academicYear || ''},${student.section || ''},${student.studentClass || ''}\n`;
+      
+      if (student.attendance && student.attendance.length > 0) {
+        student.attendance.forEach(record => {
+          csv += `,,,,"${record.month} ${record.day}",${record.status},${record.reason || ''}\n`;
+        });
+      }
+      
+      csv += '\n';
+    });
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=attendance_${Date.now()}.csv`);
+    res.send(csv);
+    
+  } catch (error) {
+    console.error('Error in exportAttendanceCSV:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+};
+
+/**
+ * Get attendance data with total working days
+ */
+exports.getAttendanceData = async (req, res) => {
+  try {
+    const { studentClass, section, academicYear } = req.query;
+
+    if (!studentClass || !section || !academicYear) {
+      return res.json([]);
+    }
+
+    const normalizedAcademicYear = String(academicYear).trim();
+    
+    // Get current BS date using the fixed function
+    const bsDate = getCurrentBSDate();
+    const currentNepaliMonth = BS_MONTH_NAMES[bsDate.month] || "";
+    const currentDay = bsDate.day || 0;
+    const currentMonthNumber = bsDate.month || 0;
+
+    const holidayDoc = await holiday.findOne({ academicYear: normalizedAcademicYear }).lean();
+    const holidayMonthMap = new Map(
+      Array.isArray(holidayDoc?.month)
+        ? holidayDoc.month.map((monthItem) => [getCanonicalMonthName(monthItem?.monthName), Array.isArray(monthItem?.holidayDays) ? monthItem.holidayDays.map((dayValue) => Number(dayValue)) : []])
+        : []
+    );
+
+    let totalWorkingDaysUptoToday = 0;
+    for (let monthIndex = 1; monthIndex <= currentMonthNumber; monthIndex += 1) {
+      const monthName = BS_MONTH_NAMES[monthIndex];
+      const monthLength = getBsMonthLength(monthName);
+      const monthDayLimit = monthIndex === currentMonthNumber ? currentDay : monthLength;
+      const holidayDaysForMonth = holidayMonthMap.get(getCanonicalMonthName(monthName)) || [];
+      const holidayDaysUntilLimit = holidayDaysForMonth.filter((dayValue) => Number.isFinite(dayValue) && dayValue <= monthDayLimit);
+
+      totalWorkingDaysUptoToday += Math.max(monthDayLimit - holidayDaysUntilLimit.length, 0);
+    }
+
+    const onlineAttendanceDocs = await onlineAttendance
+      .find({ studentClass: String(studentClass).trim(), section: String(section).trim(), academicYear: normalizedAcademicYear })
+      .lean();
+
+    const calculatedAttendance = onlineAttendanceDocs.map((onlineDoc) => {
+      const reg = String(onlineDoc?.reg || "").trim();
+      const attendanceEntries = Array.isArray(onlineDoc?.attendance) ? onlineDoc.attendance : [];
+
+      const absentDayKeys = new Set();
+      attendanceEntries.forEach((entry) => {
+        const entryAcademicYear = String(entry?.academicYear || "").trim();
+        if (entryAcademicYear !== normalizedAcademicYear) {
+          return;
+        }
+
+        const entryMonthName = String(entry?.month || "").trim();
+        const canonicalMonthName = getCanonicalMonthName(entryMonthName);
+        const entryMonthNumber = getBsMonthNumber(canonicalMonthName);
+        if (!entryMonthNumber || entryMonthNumber > currentMonthNumber) {
+          return;
+        }
+
+        const entryDay = Number.parseInt(entry?.day, 10);
+        if (!Number.isFinite(entryDay) || entryDay <= 0) {
+          return;
+        }
+
+        const monthDayLimit = entryMonthNumber === currentMonthNumber ? Math.min(currentDay, getBsMonthLength(BS_MONTH_NAMES[entryMonthNumber])) : getBsMonthLength(BS_MONTH_NAMES[entryMonthNumber]);
+        if (entryDay > monthDayLimit) {
+          return;
+        }
+
+        const holidayDaysForMonth = holidayMonthMap.get(canonicalMonthName) || [];
+        if (holidayDaysForMonth.includes(entryDay)) {
+          return;
+        }
+
+        if (getStatusIsAbsent(entry?.status)) {
+          absentDayKeys.add(`${canonicalMonthName}-${entryDay}`);
+        }
+      });
+
+      const absentDays = absentDayKeys.size;
+      const presentDays = Math.max(totalWorkingDaysUptoToday - absentDays, 0);
+
+      return {
+        reg,
+        roll: onlineDoc?.roll || "",
+        name: onlineDoc?.name || "",
+        gender: onlineDoc?.gender || "",
+        attendance: presentDays,
+        totalWorkingDaysUptoToday,
+        holidayDaysInAcademicYear: (holidayDoc?.month || []).reduce((count, monthItem) => count + (Array.isArray(monthItem?.holidayDays) ? monthItem.holidayDays.length : 0), 0),
+        absentDays,
+        currentMonth: currentNepaliMonth,
+        currentDay,
+        currentAcademicYear: normalizedAcademicYear,
+      };
+    });
+
+    res.json(calculatedAttendance);
+  } catch (err) {
+    console.error("Error fetching attendance data:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
