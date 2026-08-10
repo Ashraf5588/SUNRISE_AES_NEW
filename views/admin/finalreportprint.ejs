@@ -73,6 +73,8 @@ table thead
       .buttons-print {
         display: none !important;
       }
+      table { table-layout: auto !important; width: 100% !important; }
+      th, td { font-size: 12px !important; padding: 6px !important; }
     }
   </style>
 
@@ -113,8 +115,40 @@ table thead
       return questionNum * 100 + subQuestionNum;
     };
 
+    // store DataTable APIs for each subject table
+    window._dtTables = [];
+
     function printAllReports() {
-      window.print();
+      try {
+        // Expand all DataTables to show all rows before print
+        const restore = [];
+        window._dtTables.forEach(function(dt) {
+          try {
+            const api = dt; // already DataTable API instance
+            restore.push({ api: api, len: api.page.len(), page: api.page() });
+            api.page.len(-1).draw();
+          } catch (e) { console.warn('dt expand failed', e); }
+        });
+
+        // ensure layout adjusts
+        document.body.style.webkitPrintColorAdjust = 'exact';
+
+        // after print restore pagination
+        function restoreAfterPrint() {
+          setTimeout(function() {
+            restore.forEach(function(r) {
+              try { r.api.page.len(r.len).draw(false); r.api.page(r.page).draw(false);} catch(e){}
+            });
+            window.removeEventListener('afterprint', restoreAfterPrint);
+          }, 500);
+        }
+
+        window.addEventListener('afterprint', restoreAfterPrint);
+        window.print();
+      } catch (err) {
+        console.error(err);
+        window.print();
+      }
     }
 
     function printSingleSubject(subjectIndex) {
@@ -164,7 +198,8 @@ table thead
     <% reportofClass.forEach(function(subjectReport, subjectIndex) { %>
     <div class="subject-section" id="subject-<%= subjectIndex %>">
       <div class="subject-header">
-        <h3 class="mb-0"><%= subjectReport.subject %> Analysis</h3>
+          <h3 class="mb-0"><%= subjectReport.subject %> Analysis</h3>
+          <div style="font-size:13px;color:#444;margin-top:6px;">Class: <%= studentClass %> - <%= section %> &nbsp; | &nbsp; Terminal: <%= terminal %></div>
       </div>
 
       <div class="row mb-4">
@@ -183,6 +218,29 @@ table thead
         </div>
       </div>
 
+      <% if (subjectReport.chapterAnalysis && subjectReport.chapterAnalysis.length) { %>
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header py-2" style="background-color:#f1f5f9;">
+              <h6 class="mb-0">Chapter-wise Weakness - <%= subjectReport.subject %></h6>
+            </div>
+            <div class="card-body">
+              <% subjectReport.chapterAnalysis.forEach(function(ch){ %>
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                  <div style="width:220px;font-size:13px;color:#111;"><%= ch.chapterName || ch.name || 'Chapter' %></div>
+                  <div style="flex:1;background:#e6eef6;border-radius:8px;height:16px;overflow:hidden;">
+                    <div style="height:100%;width:<%= Math.min(100, Math.round((ch.errorRate||ch.error||0)*100)) %>%;background:linear-gradient(90deg,#ff7a7a,#ff4949);"></div>
+                  </div>
+                  <div style="width:48px;text-align:right;font-size:12px;color:#222;"><%= Math.min(100, Math.round((ch.errorRate||ch.error||0)*100)) %>%</div>
+                </div>
+              <% }) %>
+            </div>
+          </div>
+        </div>
+      </div>
+      <% } %>
+
       <script>
         document.addEventListener("DOMContentLoaded", function () {
           var persons = <%- JSON.stringify(subjectReport.results || []) %>;
@@ -200,7 +258,7 @@ table thead
                           "Subject: <%= subjectReport.subject %>\n" +
                           "Total Student: <%= subjectReport.totalStudents %>";
 
-            $("#example<%= subjectIndex %>").DataTable({
+            var dtInstance = $("#example<%= subjectIndex %>").DataTable({
               data: persons,
               responsive: true,
               columns: [
@@ -245,34 +303,81 @@ table thead
                   extend: "copy",
                   className: "btn btn-outline-primary",
                   messageTop: classInfo,
-                  exportOptions: { columns: ':visible' }
+                  exportOptions: { columns: ':visible', modifier: { page: 'all' } }
                 },
                 {
                   extend: "csv",
                   className: "btn btn-outline-primary",
                   messageTop: classInfo,
-                  exportOptions: { columns: ':visible' }
+                  exportOptions: { columns: ':visible', modifier: { page: 'all' } }
                 },
                 {
                   extend: "excel",
                   className: "btn btn-outline-primary",
                   messageTop: classInfo,
-                  exportOptions: { columns: ':visible' }
+                  exportOptions: { columns: ':visible', modifier: { page: 'all' } }
                 },
                 {
                   extend: "pdf",
                   className: "btn btn-outline-primary",
                   messageTop: classInfo,
-                  exportOptions: { columns: ':visible' }
+                  exportOptions: { columns: ':visible', modifier: { page: 'all' } }
                 },
                 {
                   extend: "print",
                   className: "btn btn-outline-primary",
                   messageTop: classInfo,
-                  exportOptions: { columns: ':visible' }
+                  exportOptions: { columns: ':visible', modifier: { page: 'all' } }
                 }
               ]
             });
+            // store API for printAll control
+            try { window._dtTables = window._dtTables || []; window._dtTables.push(dtInstance); } catch(e){}
+            // If server didn't provide chapterAnalysis, compute it client-side and render
+            try {
+              const subjectContainer = document.getElementById('subject-<%= subjectIndex %>');
+              if (subjectContainer && !subjectContainer.querySelector('.chapter-analysis-block')) {
+                // compute chapter stats from `persons`
+                const totalStudent = <%= subjectReport.totalStudents %> || 0;
+                const chapterMap = {};
+                persons.forEach(function(r){
+                  const ch = (r.chapterName || 'Uncategorized') + '';
+                  if (!chapterMap[ch]) chapterMap[ch] = { chapterName: ch, questionCount: 0, totalWrong: 0 };
+                  chapterMap[ch].questionCount += 1;
+                  chapterMap[ch].totalWrong += (Number(r.wrong) || 0);
+                });
+
+                const chapterArr = Object.keys(chapterMap).map(function(k){
+                  const s = chapterMap[k];
+                  const maxPossibleWrong = s.questionCount * totalStudent;
+                  const errorRate = maxPossibleWrong > 0 ? (s.totalWrong / maxPossibleWrong) : 0;
+                  return { chapterName: s.chapterName, errorRate: errorRate };
+                }).sort(function(a,b){ return b.errorRate - a.errorRate; });
+
+                if (chapterArr.length) {
+                  const card = document.createElement('div');
+                  card.className = 'row mb-4 chapter-analysis-block';
+                  card.innerHTML = "\n                    <div class=\"col-12\">\n                      <div class=\"card\">\n                        <div class=\"card-header py-2\" style=\"background-color:#f1f5f9;\">\n                          <h6 class=\"mb-0\">Chapter-wise Weakness - <%= subjectReport.subject %></h6>\n                        </div>\n                        <div class=\"card-body\">\n                        </div>\n                      </div>\n                    </div>";
+                  const body = card.querySelector('.card-body');
+                  chapterArr.forEach(function(ch){
+                    const pct = Math.min(100, Math.round(ch.errorRate * 100));
+                    const row = document.createElement('div');
+                    row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.gap = '10px'; row.style.marginBottom = '8px';
+                    row.innerHTML = `<div style="width:220px;font-size:13px;color:#111;">${ch.chapterName}</div>`;
+                    const barWrap = document.createElement('div');
+                    barWrap.style.flex = '1'; barWrap.style.background = '#e6eef6'; barWrap.style.borderRadius = '8px'; barWrap.style.height = '16px'; barWrap.style.overflow = 'hidden';
+                    const bar = document.createElement('div'); bar.style.height = '100%'; bar.style.width = pct + '%'; bar.style.background = 'linear-gradient(90deg,#ff7a7a,#ff4949)'; bar.style.borderRadius = '8px';
+                    barWrap.appendChild(bar);
+                    const percent = document.createElement('div'); percent.style.width = '48px'; percent.style.textAlign = 'right'; percent.style.fontSize = '12px'; percent.style.color = '#222'; percent.textContent = pct + '%';
+                    row.appendChild(barWrap); row.appendChild(percent);
+                    body.appendChild(row);
+                  });
+                  // insert after the card element that contains the table
+                  const tableCard = subjectContainer.querySelector('.card');
+                  if (tableCard && tableCard.parentNode) tableCard.parentNode.parentNode.parentNode.insertBefore(card, tableCard.parentNode.parentNode.nextSibling);
+                }
+              }
+            } catch(e) { console.warn('chapter analysis render failed', e); }
           } else {
             console.warn('No data available for subject:', '<%= subjectReport.subject %>');
             $("#example<%= subjectIndex %>").parent().prepend(

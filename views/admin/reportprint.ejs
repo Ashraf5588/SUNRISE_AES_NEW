@@ -648,10 +648,16 @@
             <% } %>
           </select>
         </div>
-        <button id="printButton" onclick="generate()" class="print-button">
-          <i class="fas fa-print"></i>
-          Generate Report
-        </button>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin-top:16px;">
+          <button id="printButton" onclick="generate()" class="print-button">
+            <i class="fas fa-print"></i>
+            Generate Report
+          </button>
+          <button id="printAllButton" onclick="printAll()" class="print-button" style="background:linear-gradient(135deg,#10b981,#059669);min-width:200px;">
+            <i class="fas fa-print"></i>
+            Print All
+          </button>
+        </div>
 
         <style>
           .print-button {
@@ -741,4 +747,109 @@
   
         
       
+// Print helpers: prepare sections, inject chapter bars, and trigger printing
+function preparePrintableSections() {
+  document.querySelectorAll('.entry-section').forEach((sec) => {
+    sec.classList.add('subject-section');
+
+    // ensure a printable meta header exists
+    if (!sec.querySelector('.print-meta')) {
+      const hdr = sec.querySelector('.entry-header') || sec.querySelector('.entry-title') || sec;
+      const meta = document.createElement('div');
+      meta.className = 'print-meta';
+      const subj = sec.getAttribute('data-subject') || (sec.querySelector('.subject-name') ? sec.querySelector('.subject-name').innerText : '');
+      const classInfo = (document.getElementById('classSelector') && document.getElementById('classSelector').value) || '';
+      const terminal = (document.getElementById('terminal') && document.getElementById('terminal').value) || '';
+      meta.style.margin = '8px 0 12px 0';
+      meta.style.fontSize = '13px';
+      meta.innerHTML = `<strong>${subj}</strong> &nbsp; | &nbsp; Class/Section: ${classInfo.replace('/',' - ')} &nbsp; | &nbsp; Terminal: ${terminal}`;
+      hdr.parentNode.insertBefore(meta, hdr.nextSibling);
+    }
+
+    // inject chapter bars if data available in global `chapterAnalysis`
+    const subjectKey = sec.getAttribute('data-subject') || (sec.querySelector('.subject-name') ? sec.querySelector('.subject-name').innerText : '');
+    if (window.chapterAnalysis && window.chapterAnalysis[subjectKey]) {
+      if (!sec.querySelector('.chapter-bars')) {
+        const container = document.createElement('div');
+        container.className = 'chapter-bars';
+        const classInfo = (document.getElementById('classSelector') && document.getElementById('classSelector').value) || '';
+        const terminal = (document.getElementById('terminal') && document.getElementById('terminal').value) || '';
+        renderChapterBars(container, window.chapterAnalysis[subjectKey], subjectKey, classInfo, terminal);
+        const body = sec.querySelector('.entry-body') || sec;
+        body.appendChild(container);
+      }
+    }
+  });
+}
+
+function renderChapterBars(container, chapterData, subject, classInfo, terminal) {
+  const title = document.createElement('div');
+  title.innerHTML = `<h4 style="margin:0 0 8px 0;">Chapter-wise Weakness - ${subject} (${classInfo.replace('/',' - ')}) - ${terminal}</h4>`;
+  container.appendChild(title);
+  const list = document.createElement('div');
+  list.style.display = 'flex';
+  list.style.flexDirection = 'column';
+  list.style.gap = '6px';
+  chapterData.forEach(ch => {
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.alignItems = 'center';
+    row.style.gap = '8px';
+    const label = document.createElement('div');
+    label.style.width = '220px';
+    label.style.fontSize = '13px';
+    label.textContent = ch.chapterName || ch.name || 'Chapter';
+    const barWrap = document.createElement('div');
+    barWrap.style.flex = '1';
+    barWrap.style.background = '#e6eef6';
+    barWrap.style.borderRadius = '8px';
+    barWrap.style.height = '16px';
+    const bar = document.createElement('div');
+    bar.style.height = '100%';
+    const pct = Math.min(100, Math.round((ch.errorRate || ch.error || 0) * 100));
+    bar.style.width = pct + '%';
+    bar.style.background = 'linear-gradient(90deg,#ff7a7a,#ff4949)';
+    bar.style.borderRadius = '8px';
+    barWrap.appendChild(bar);
+    const percent = document.createElement('div');
+    percent.style.width = '48px';
+    percent.style.textAlign = 'right';
+    percent.style.fontSize = '12px';
+    percent.textContent = pct + '%';
+    row.appendChild(label);
+    row.appendChild(barWrap);
+    row.appendChild(percent);
+    list.appendChild(row);
+  });
+  container.appendChild(list);
+}
+
+function printAll() {
+  try {
+    // hide UI elements not required in print
+    document.querySelectorAll('.selection-card, .page-header, #printButton, #printAllButton').forEach(el => el && (el.style.display = 'none'));
+    preparePrintableSections();
+
+    // inject print styles
+    if (!document.getElementById('printAllStyles')) {
+      const style = document.createElement('style');
+      style.id = 'printAllStyles';
+      style.innerHTML = `@media print { .subject-section{page-break-after:always;break-inside:avoid; } table{table-layout:auto!important;width:100%!important;} .print-meta{display:block!important;margin-top:6px;} .chapter-bars{margin-top:12px;} }`;
+      document.head.appendChild(style);
+    }
+
+    setTimeout(() => {
+      window.print();
+      // restore UI after printing
+      setTimeout(() => {
+        document.querySelectorAll('.selection-card, .page-header, #printButton, #printAllButton').forEach(el => el && (el.style.display = ''));
+        const s = document.getElementById('printAllStyles');
+        if (s) s.parentNode.removeChild(s);
+      }, 500);
+    }, 300);
+  } catch (err) {
+    console.error('Print All failed', err);
+    window.print();
+  }
+}
 </script>
