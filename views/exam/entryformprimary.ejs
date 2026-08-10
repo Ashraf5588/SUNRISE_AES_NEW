@@ -318,9 +318,27 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
     }
     console.log(`📋 Will create ${maxTotalWorksheet} columns in UI`);
 
+    // Set the total worksheet value
     document.getElementById('totalWorksheet').value = maxTotalWorksheet;
-    // Don't save to DB during initial load - just build UI
-    await buildWorksheetOptions(maxTotalWorksheet, false);
+    
+    // Build worksheet options without saving
+    maxWorksheetNumber = maxTotalWorksheet;
+    if (worksheetCountSelect) {
+      worksheetCountSelect.innerHTML = '';
+      for (let i = 1; i <= maxWorksheetNumber; i++) {
+        const option = document.createElement('option');
+        option.value = i;
+        option.textContent = `Worksheet ${i}`;
+        worksheetCountSelect.appendChild(option);
+      }
+      if (currentWorksheetNumber > maxWorksheetNumber) {
+        currentWorksheetNumber = maxWorksheetNumber;
+      }
+      worksheetCountSelect.value = String(currentWorksheetNumber);
+    }
+    if (totalWorksheetInput) {
+      totalWorksheetInput.value = maxWorksheetNumber;
+    }
     
     await new Promise(resolve => setTimeout(resolve, 300));
     console.log("✓ Columns recreated, waiting for DOM update");
@@ -333,7 +351,46 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
         let attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
 
         if(!theoryInput || !attendanceInput) {
-          console.warn(`    ⚠️ Marks inputs not found for reg ${reg}, skipping marks population`);
+          console.warn(`    ⚠️ Marks inputs not found for reg ${reg}, creating row dynamically`);
+          try {
+            const table = document.getElementById('markstable');
+            const tr = document.createElement('tr');
+            tr.id = 'dataEntryRow';
+
+            // Build hidden inputs and cells to match server-side template
+            tr.innerHTML = `
+              <input type="hidden" name="gender[${reg}]" value="${(item.gender||'')}" readonly>
+              <input type="hidden" name="reg[${reg}]" value="${reg}" readonly>
+              <input type="hidden" name="name[${reg}]" value="${(item.name||'')}" readonly>
+              <input type="hidden" name="roll[${reg}]" value="${(item.roll||'')}" readonly>
+              <td data-column="student">
+                <div class="student-cell">
+                  <span class="student-roll">${item.roll || ''}.</span>
+                  <span class="student-name">${item.name || ''}</span>
+                </div>
+              </td>
+              <td data-column="worksheet" data-reg="${reg}"></td>
+              <td data-column="theory"><input type="number" id="theorymarks" name="theorymarks[${reg}]" value="${item.theorymarks || ''}" data-reg="${reg}" min="0" data-max="${(subjectData && subjectData[0] ? subjectData[0].theory : '')}" oninput="checkMax(this)"></td>
+              <td data-column="attendance"><input type="number" id="attendance" name="attendance[${reg}]" value="${item.attendance || ''}" data-reg="${reg}" oninput="autoSave(this)"></td>
+            `;
+
+            // Append row and allow DOM to settle
+            table.appendChild(tr);
+
+            // Ensure the new inputs are wired and trigger input events so autosave runs
+            const newTheory = document.querySelector(`input[name="theorymarks[${reg}]"]`);
+            const newAttendance = document.querySelector(`input[name="attendance[${reg}]"]`);
+            if (newTheory) {
+              newTheory.dispatchEvent(new Event('input'));
+            }
+            if (newAttendance) {
+              newAttendance.dispatchEvent(new Event('input'));
+            }
+
+            console.log(`    ✓ Dynamically created row for reg ${reg}`);
+          } catch (err) {
+            console.error('Error creating dynamic student row:', err);
+          }
         } else {
           theoryInput.value = item.theorymarks || 0;
           attendanceInput.value = '';
@@ -381,6 +438,9 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
       });
       console.log("✓ Attendance data populated");
     }
+
+    // Render the worksheet cells
+    renderWorksheetCells(currentWorksheetNumber);
 
     // Allow saving after initial load is complete
     setTimeout(() => {
@@ -443,11 +503,11 @@ async function initializeStudentRecords(subject, studentClass, section, academic
   const urlParams = new URLSearchParams(window.location.search);
 
   // Fetch each parameter
-  const studentClass = urlParams.get('studentClass');   // "7"
-  const section = urlParams.get('section');             // "x"
-  const subject = urlParams.get('subject');             // "COMPUTER"
-  const terminal = urlParams.get('terminal');           // "THIRD-2082"
-  const academicYear = urlParams.get('academicYear');   // "" (empty string in your example)
+  const studentClass = urlParams.get('studentClass');
+  const section = urlParams.get('section');
+  const subject = urlParams.get('subject');
+  const terminal = urlParams.get('terminal');
+  const academicYear = urlParams.get('academicYear');
   
   console.log("[Page Load] ===== WINDOW ONLOAD STARTED =====");
   console.log(`[Page Load] URL Params: subject=${subject}, class=${studentClass}, section=${section}, terminal=${terminal}, year=${academicYear}`);
@@ -458,7 +518,7 @@ async function initializeStudentRecords(subject, studentClass, section, academic
   // Also trigger autosave for theory marks that are already populated
   document.querySelectorAll('#theorymarks').forEach(input => {
     if (input.value) {
-      autoSave(input);  // trigger autosave for backend populated values
+      autoSave(input);
     }
   });
   
@@ -614,112 +674,6 @@ async function initializeStudentRecords(subject, studentClass, section, academic
     }
   }
 
-  async function buildWorksheetOptions(count, saveToDB = true) {
-    maxWorksheetNumber = Math.max(1, Number(count) || 1);
-    if (worksheetCountSelect) {
-      worksheetCountSelect.innerHTML = '';
-      for (let i = 1; i <= maxWorksheetNumber; i++) {
-        const option = document.createElement('option');
-        option.value = i;
-        option.textContent = `Worksheet ${i}`;
-        worksheetCountSelect.appendChild(option);
-      }
-      if (currentWorksheetNumber > maxWorksheetNumber) {
-        currentWorksheetNumber = maxWorksheetNumber;
-      }
-      worksheetCountSelect.value = String(currentWorksheetNumber);
-    }
-    if (totalWorksheetInput) {
-      totalWorksheetInput.value = maxWorksheetNumber;
-    }
-    
-    // Save to DB if not during initial page load
-    if (!isPageLoading && saveToDB) {
-      await saveTotalWorksheetToDB(maxWorksheetNumber);
-    }
-  }
-
-  async function saveTotalWorksheetToDB(total) {
-    if (!totalWorksheetInput) return;
-    totalWorksheetInput.style.backgroundColor = '#fef3c7';
-    totalWorksheetInput.style.borderColor = '#f59e0b';
-
-    const param = new URLSearchParams(window.location.search);
-    const studentClass = param.get('studentClass');
-    const section = param.get('section');
-    const subject = param.get('subject');
-    const academicYear = param.get('academicYear');
-    const terminal = param.get('terminal');
-
-    try {
-        const savePromises = studentData.map((student) => {
-        const reg = student.reg;
-        const totalCount = Number(total);
-        // Use stored grades as the base
-        const stored = worksheetGradeStore.get(reg) || [];
-        const gradesBase = Array.from({ length: totalCount }, (_, i) => stored[i] || '');
-        // If a select for this reg exists in the DOM, make sure its runtime value is included
-        const visible = Array.from(document.querySelectorAll(`select[name="worksheetGrades[${reg}][]"]`));
-        visible.forEach((s) => {
-          const idx = Number(s.dataset.worksheetIndex) || currentWorksheetNumber;
-          if (idx >= 1 && idx <= totalCount) gradesBase[idx - 1] = s.value || '';
-        });
-        const worksheetGrades = gradesBase;
-        const theorymarks = document.querySelector(`input[name="theorymarks[${reg}]"]`)?.value || 0;
-        const attendance = document.querySelector(`input[name="attendance[${reg}]"]`)?.value || 0;
-        const name = document.querySelector(`input[name="name[${reg}]"]`)?.value || '';
-        const roll = document.querySelector(`input[name="roll[${reg}]"]`)?.value || '';
-        const gender = document.querySelector(`input[name="gender[${reg}]"]`)?.value || '';
-        const passMarks = document.getElementById('passMarks')?.value || 0;
-        const practicalfullmarks = document.getElementById('practicalfullmarks')?.value || 0;
-        const theoryfullmarks = document.getElementById('fullMarks')?.value || 0;
-
-        const saveData = {
-          reg,
-          theorymarks: Number(theorymarks),
-          attendance: Number(attendance),
-          studentClass,
-          section,
-          subject,
-          academicYear,
-          terminal,
-          name,
-          roll,
-          totalWorksheet: Number(totalCount),
-          worksheetGrades,
-          gender,
-          passMarks: Number(passMarks),
-          practicalfullmarks: Number(practicalfullmarks),
-          theoryfullmarks: Number(theoryfullmarks),
-        };
-
-        return fetch(`/entryform?studentClass=${studentClass}&section=${section}&subject=${subject}&academicYear=${academicYear}&terminal=${terminal}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(saveData)
-        });
-      });
-
-      const responses = await Promise.all(savePromises);
-      const allSuccess = responses.every(r => r.ok);
-      if (allSuccess) {
-        totalWorksheetInput.style.backgroundColor = '#e0f2fe';
-        totalWorksheetInput.style.borderColor = '#7dd3fc';
-        console.log(`✅ Worksheet count saved to DB: ${total}`);
-      } else {
-        totalWorksheetInput.style.backgroundColor = '#fee2e2';
-        totalWorksheetInput.style.borderColor = '#f87171';
-        console.error('❌ Failed to save worksheet count to DB');
-      }
-    } catch (err) {
-      console.error('Failed to save totalWorksheet:', err);
-      totalWorksheetInput.style.backgroundColor = '#fee2e2';
-      totalWorksheetInput.style.borderColor = '#f87171';
-    } finally {
-      setTimeout(() => { totalWorksheetInput.style.backgroundColor = ''; totalWorksheetInput.style.borderColor = ''; }, 1200);
-    }
-  }
-
   function getWorksheetGrade(reg, worksheetNumber) {
     const grades = worksheetGradeStore.get(reg) || [];
     return grades[worksheetNumber - 1] || '';
@@ -811,7 +765,7 @@ async function initializeStudentRecords(subject, studentClass, section, academic
       target = 1;
     }
     if (target > maxWorksheetNumber) {
-      buildWorksheetOptions(target, false);
+      target = maxWorksheetNumber;
     }
     currentWorksheetNumber = target;
     if (worksheetCountSelect) {
@@ -826,48 +780,238 @@ async function initializeStudentRecords(subject, studentClass, section, academic
     });
   }
 
+  // ============================================================
+  // CRITICAL FIX: Save worksheet count for ALL students
+  // Using studentData array to ensure ALL students are updated
+  // ============================================================
+  async function saveWorksheetCountForAllStudents(newCount) {
+    const param = new URLSearchParams(window.location.search);
+    const studentClass = param.get('studentClass');
+    const section = param.get('section');
+    const subject = param.get('subject');
+    const academicYear = param.get('academicYear');
+    const terminal = param.get('terminal');
+
+    console.log(`💾 Saving worksheet count ${newCount} for ALL students in ${studentClass}-${section}...`);
+
+    // Use studentData array (from EJS) instead of DOM query
+    // This ensures ALL students are included, even those without worksheet inputs
+    const allStudents = studentData;
+    console.log(`Found ${allStudents.length} students in studentData`);
+
+    if (allStudents.length === 0) {
+      console.warn('No students found in studentData');
+      return false;
+    }
+
+    // Normalize and update the hidden input value BEFORE saving
+    const totalCount = Number(newCount) || 0;
+    document.getElementById('totalWorksheet').value = totalCount;
+    console.log(`📝 Updated hidden totalWorksheet to: ${totalCount}`);
+
+    // Persist totalWorksheet for the entire class in one call (covers DB records not present in studentData)
+    try {
+      const resp = await fetch(`/entryform/setTotalWorksheet?studentClass=${studentClass}&section=${section}&subject=${subject}&academicYear=${academicYear}&terminal=${terminal}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ totalWorksheet: totalCount })
+      });
+      if (!resp.ok) {
+        console.warn('Warning: class-wide totalWorksheet update failed', resp.status);
+      } else {
+        console.log('✅ Class-wide totalWorksheet updated successfully');
+      }
+    } catch (err) {
+      console.error('Error calling setTotalWorksheet endpoint:', err);
+    }
+
+    const savePromises = allStudents.map((student) => {
+      const reg = student.reg;
+      // Update worksheetGradeStore for this student
+      const grades = worksheetGradeStore.get(reg) || [];
+      
+      // Ensure grades array matches the new count
+      if (grades.length > newCount) {
+        grades.length = newCount; // Truncate
+      } else if (grades.length < newCount) {
+        // Add empty grades if increasing
+        while (grades.length < newCount) {
+          grades.push('');
+        }
+      }
+      worksheetGradeStore.set(reg, grades);
+
+      // Get all data for this student
+      const theorymarks = document.querySelector(`input[name="theorymarks[${reg}]"]`)?.value || 0;
+      const attendance = document.querySelector(`input[name="attendance[${reg}]"]`)?.value || 0;
+      const name = student.name || '';
+      const roll = student.roll || '';
+      const gender = student.gender || '';
+      const passMarks = document.getElementById('passMarks')?.value || 0;
+      const practicalfullmarks = document.getElementById('practicalfullmarks')?.value || 0;
+      const theoryfullmarks = document.getElementById('fullMarks')?.value || 0;
+
+      const saveData = {
+        reg,
+        theorymarks: Number(theorymarks),
+        attendance: Number(attendance),
+        studentClass,
+        section,
+        subject,
+        academicYear,
+        terminal,
+        name,
+        roll,
+        totalWorksheet: newCount,
+        worksheetGrades: grades,
+        gender,
+        passMarks: Number(passMarks),
+        practicalfullmarks: Number(practicalfullmarks),
+        theoryfullmarks: Number(theoryfullmarks),
+      };
+
+      console.log(`Saving reg ${reg} with totalWorksheet: ${saveData.totalWorksheet}`);
+
+      return fetch(`/entryform?studentClass=${studentClass}&section=${section}&subject=${subject}&academicYear=${academicYear}&terminal=${terminal}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(saveData)
+      });
+    });
+
+    try {
+      const responses = await Promise.all(savePromises);
+      const allSuccess = responses.every(r => r.ok);
+      
+      if (allSuccess) {
+        console.log(`✅ All ${allStudents.length} students updated to ${newCount} worksheets`);
+        totalWorksheetInput.style.backgroundColor = '#e0f2fe';
+        totalWorksheetInput.style.borderColor = '#7dd3fc';
+        setTimeout(() => {
+          totalWorksheetInput.style.backgroundColor = '';
+          totalWorksheetInput.style.borderColor = '';
+        }, 1200);
+        return true;
+      } else {
+        console.error('❌ Failed to save worksheet count for some students');
+        responses.forEach((r, index) => {
+          if (!r.ok) {
+            console.error(`Student ${allStudents[index].reg} failed with status: ${r.status}`);
+          }
+        });
+        totalWorksheetInput.style.backgroundColor = '#fee2e2';
+        totalWorksheetInput.style.borderColor = '#f87171';
+        return false;
+      }
+    } catch (err) {
+      console.error('Failed to save totalWorksheet:', err);
+      totalWorksheetInput.style.backgroundColor = '#fee2e2';
+      totalWorksheetInput.style.borderColor = '#f87171';
+      return false;
+    }
+  }
+
   if (increaseWorksheetBtn) {
     increaseWorksheetBtn.addEventListener('click', async function () {
       const newCount = maxWorksheetNumber + 1;
-      await buildWorksheetOptions(newCount, true); // Save to DB
-      // Keep current worksheet number if within range
-      if (currentWorksheetNumber > maxWorksheetNumber) {
-        syncWorksheetSelection(maxWorksheetNumber);
+      console.log(`➕ Increasing worksheet count to ${newCount}`);
+      
+      // Update UI
+      maxWorksheetNumber = newCount;
+      if (worksheetCountSelect) {
+        const option = document.createElement('option');
+        option.value = newCount;
+        option.textContent = `Worksheet ${newCount}`;
+        worksheetCountSelect.appendChild(option);
+        worksheetCountSelect.value = String(currentWorksheetNumber);
+      }
+      if (totalWorksheetInput) {
+        totalWorksheetInput.value = maxWorksheetNumber;
+      }
+      
+      // Re-render current worksheet
+      renderWorksheetCells(currentWorksheetNumber);
+      
+      // Save to DB for ALL students
+      const saved = await saveWorksheetCountForAllStudents(newCount);
+      
+      if (!saved) {
+        alert('Failed to save worksheet count. Please try again.');
+        window.location.reload();
       }
     });
   }
 
   if (decreaseWorksheetBtn) {
     decreaseWorksheetBtn.addEventListener('click', async function () {
-      if (maxWorksheetNumber <= 1) return;
+      if (maxWorksheetNumber <= 1) {
+        alert('Minimum 1 worksheet is required.');
+        return;
+      }
       if (!confirm('Reduce available worksheet options? This will remove the highest worksheet option. Continue?')) {
         return;
       }
+      
       const newCount = maxWorksheetNumber - 1;
-      // Clean up grades for removed worksheet
-      studentData.forEach((student) => {
-        const reg = student.reg;
-        const grades = worksheetGradeStore.get(reg) || [];
-        if (grades.length > newCount) {
-          grades.splice(newCount); // Remove grades beyond new count
-          worksheetGradeStore.set(reg, grades);
+      console.log(`➖ Decreasing worksheet count to ${newCount}`);
+      
+      // Update UI
+      maxWorksheetNumber = newCount;
+      document.getElementById('totalWorksheet').value = newCount;
+      console.log(`📝 Updated hidden totalWorksheet to: ${newCount}`);
+      
+      if (worksheetCountSelect) {
+        // Remove the last option
+        const lastOption = worksheetCountSelect.lastElementChild;
+        if (lastOption) {
+          worksheetCountSelect.removeChild(lastOption);
         }
-      });
+        // Ensure current selection is valid
+        if (currentWorksheetNumber > maxWorksheetNumber) {
+          currentWorksheetNumber = maxWorksheetNumber;
+        }
+        worksheetCountSelect.value = String(currentWorksheetNumber);
+      }
+      if (totalWorksheetInput) {
+        totalWorksheetInput.value = maxWorksheetNumber;
+      }
       
-      await buildWorksheetOptions(newCount, true); // Save to DB
+      // Update header and re-render current worksheet
+      renderWorksheetCells(currentWorksheetNumber);
       
-      if (currentWorksheetNumber > maxWorksheetNumber) {
-        currentWorksheetNumber = maxWorksheetNumber;
-        renderWorksheetCells(currentWorksheetNumber);
+      // Save to DB for ALL students
+      const saved = await saveWorksheetCountForAllStudents(newCount);
+      
+      if (!saved) {
+        alert('Failed to save worksheet count. Please try again.');
+        window.location.reload();
       }
     });
   }
 
   if (totalWorksheetInput) {
     totalWorksheetInput.addEventListener('input', function () {
-      buildWorksheetOptions(this.value, true);
-      if (currentWorksheetNumber > maxWorksheetNumber) {
-        syncWorksheetSelection(maxWorksheetNumber);
+      const newCount = Number(this.value);
+      if (newCount > 0 && newCount !== maxWorksheetNumber) {
+        console.log(`📝 Manual input: changing worksheet count to ${newCount}`);
+        maxWorksheetNumber = newCount;
+        // Rebuild options
+        if (worksheetCountSelect) {
+          worksheetCountSelect.innerHTML = '';
+          for (let i = 1; i <= maxWorksheetNumber; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = `Worksheet ${i}`;
+            worksheetCountSelect.appendChild(option);
+          }
+          if (currentWorksheetNumber > maxWorksheetNumber) {
+            currentWorksheetNumber = maxWorksheetNumber;
+          }
+          worksheetCountSelect.value = String(currentWorksheetNumber);
+        }
+        renderWorksheetCells(currentWorksheetNumber);
+        // Save to DB for ALL students
+        saveWorksheetCountForAllStudents(newCount);
       }
     });
   }
@@ -875,8 +1019,8 @@ async function initializeStudentRecords(subject, studentClass, section, academic
   syncMobileColumnToggles();
 
   // Start with a single worksheet option by default
-  buildWorksheetOptions(1, false);
-  syncWorksheetSelection(currentWorksheetNumber);
+  maxWorksheetNumber = 1;
+  syncWorksheetSelection(1);
 </script>
 
 <!-- script to check max max exceeds -->

@@ -249,6 +249,12 @@
       }
     }
 
+    /* Ab (Absent) styling */
+    .text-ab {
+      color: #dc3545;
+      font-weight: 700;
+    }
+
 </style>
 
 </head>
@@ -394,13 +400,52 @@
             if (gp >= 1.6) return "D";
             return "NG";
         }
+
+        // Function to check if theorymarks is Ab (sentinel value 0.000001)
+        function isAb(value) {
+            // Check if value is 0.000001 (sentinel for Ab)
+            if (value === 0.000001 || value === '0.000001') {
+                return true;
+            }
+            // Also check if it's a string representation
+            if (typeof value === 'string' && value === '0.000001') {
+                return true;
+            }
+            return false;
+        }
+
+        // Function to get display value for theorymarks
+        function getTheoryMarksDisplay(value) {
+            if (isAb(value)) {
+                return 'Ab';
+            }
+            // If it's null or undefined, return 0
+            if (value === null || value === undefined) {
+                return 0;
+            }
+            return value;
+        }
+
+        // Function to get numeric value for calculations
+        function getTheoryMarksNumeric(value) {
+            if (isAb(value)) {
+                return 0; // Treat as 0 for calculations
+            }
+            if (value === null || value === undefined) {
+                return 0;
+            }
+            return Number(value) || 0;
+        }
         %>
 
         <% data.subjects.forEach((sub, index) => { %>
 
         <% 
       let worksheetMarks=[];
-        let thP = (sub.theorymarks)
+        // Get theory marks - handle Ab (0.000001)
+        let theoryMarksValue = getTheoryMarksNumeric(sub.theorymarks);
+        let theoryMarksDisplay = getTheoryMarksDisplay(sub.theorymarks);
+        
        if (sub.worksheetGrades && Array.isArray(sub.worksheetGrades)) {
        sub.worksheetGrades.forEach((worksheetgrade)=>{
         let grade = String(worksheetgrade).trim();
@@ -449,23 +494,24 @@
        %>
        
   
-        <% let finalP = ((sub.theorymarks + practicalmarks) /
+        <% let finalP = ((theoryMarksValue + practicalmarks) /
                       ( sub.practicalfullmarks)) * 100;
 
-        let thGP = sub.theorymarks || 0;
+        let thGP = theoryMarksValue || 0;
 
         let prGP = practicalmarks;
         let theoryCreditHour = creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.theoryCreditHour || 0;
         let practicalCreditHour = creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.practicalCreditHour || 0;
-        if(subject == "ORAL" || subject == "HYGIENE")
+        if(sub.subject == "ORAL" || sub.subject == "HYGIENE" || sub.subject == "ECA")
         {
-           let finalGP =  sub.theorymarks || 0;
+           let finalGP =  theoryMarksValue || 0;
         }
-        let finalGP =  ((sub.theorymarks+practicalmarks))/((worksheetMarks.length+1)) || 0;
+        let finalGP =  ((theoryMarksValue + practicalmarks))/((worksheetMarks.length+1)) || 0;
 
-
-
-   
+        // If the student is Ab, finalGP should be 0
+        if (isAb(sub.theorymarks)) {
+            finalGP = 0;
+        }
        
         %>
 
@@ -474,7 +520,13 @@
             <td><%= index + 1 %></td>
             <td><%= sub.subject %></td>
             <td><% m =  creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.theoryCreditHour + creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.practicalCreditHour  || 'N/A' %><%= m %></td>
-            <td class="col-theorymarks"><%= sub.theorymarks %> </td>
+            <td class="col-theorymarks">
+                <% if (isAb(sub.theorymarks)) { %>
+                    <span class="text-ab">Ab</span>
+                <% } else { %>
+                    <%= theoryMarksDisplay %>
+                <% } %>
+            </td>
             
            
             <td class="col-prgp"><%= (prGP/worksheetMarks.length).toFixed(2) %></td>

@@ -210,6 +210,7 @@ res.render("./exam/primarytheorypr", {
             academicYear,
             creditHourData,
             marksheetSetups,
+
       user: req.user
     });
   }
@@ -1208,7 +1209,7 @@ exports.ledger = async (req, res, next) => {
     const isPrimary = primaryClasses.includes(normalizedClass);
 
     // Subjects that should NOT have worksheets
-    const NO_WORKSHEET_SUBJECTS = ['HYGIENE', 'ORAL'];
+    const NO_WORKSHEET_SUBJECTS = ['HYGIENE', 'ORAL', 'ECA'];
 
     let ledgerData = [];
 
@@ -1229,6 +1230,8 @@ exports.ledger = async (req, res, next) => {
     // Helper function to get GP from worksheet grade
     function getWorksheetGP(grade) {
       if (!grade) return 0;
+      // Check if grade is Ab (sentinel value or string)
+      if (grade === 'Ab' || grade === '0.000001') return 0;
       const gradeMap = {
         'A+': 4.0,
         'A': 3.6,
@@ -1259,8 +1262,29 @@ exports.ledger = async (req, res, next) => {
       return !NO_WORKSHEET_SUBJECTS.includes(subjectName.toUpperCase());
     }
 
+    // Helper function to check if value is Ab (sentinel 0.000001)
+    function isAbValue(value) {
+      if (value === null || value === undefined) return false;
+      // Check for exact match
+      if (value === 0.000001 || value === '0.000001') return true;
+      // Check for number with epsilon
+      if (typeof value === 'number') {
+        const epsilon = 0.0000001;
+        if (Math.abs(value - 0.000001) < epsilon) return true;
+      }
+      // Check if it's a string representation
+      if (typeof value === 'string') {
+        const cleanValue = value.trim().toLowerCase();
+        if (cleanValue === '0.000001' || cleanValue === 'ab' || cleanValue === 'absent') {
+          return true;
+        }
+      }
+      return false;
+    }
+
     if (isPrePrimary) {
       console.log("=== Processing PRE-PRIMARY LEDGER ===");
+      
       // Get subject credit hours from marksheetSetups
       const subjectCreditHours = {};
       if (marksheetSetups && marksheetSetups.length > 0 && marksheetSetups[0].subjects) {
@@ -1269,410 +1293,172 @@ exports.ledger = async (req, res, next) => {
         });
       }
 
-      ledgerData = await model.aggregate([
-        {
-          $match: {
-            terminal: terminal,
-            academicYear: academicYear,
-            studentClass: studentClass,
-            section: section
-          },
-        },
-        {
-          $addFields: {
-            rollNumber: { $toInt: "$roll" }
-          }
-        },
-        {
-          $group: {
-            _id: "$reg",
-            name: { $first: "$name" },
-            roll: { $first: "$roll" },
-            rollNumber: { $first: "$rollNumber" },
-            gender: { $first: "$gender" },
-            attendance: { $first: "$attendance" },
-            totalWorksheet: { $first: "$totalWorksheet" },
-            subjects: {
-              $push: {
-                subject: "$subject",
-                theorymarks: "$theorymarks",
-                practicalmarks: "$practicalmarks",
-                passMarks: "$passMarks",
-                worksheetGrades: "$worksheetGrades",
-                totalWorksheet: "$totalWorksheet"
-              }
-            }
-          }
-        },
-        {
-          $addFields: {
-            failcount: {
-              $size: {
-                $filter: {
-                  input: "$subjects",
-                  as: "sub",
-                  cond: { $lt: ["$$sub.theorymarks", "$$sub.passMarks"] }
-                }
-              }
-            },
-            subjectGP: {
-              $map: {
-                input: "$subjects",
-                as: "sub",
-                in: {
-                  subject: "$$sub.subject",
-                  theoryGP: {
-                    $switch: {
-                      branches: [
-                        { case: { $gte: ["$$sub.theorymarks", 3.61] }, then: 4.0 },
-                        { case: { $and: [{ $gte: ["$$sub.theorymarks", 3.21] }, { $lte: ["$$sub.theorymarks", 3.6] }] }, then: 3.6 },
-                        { case: { $and: [{ $gte: ["$$sub.theorymarks", 2.81] }, { $lte: ["$$sub.theorymarks", 3.2] }] }, then: 3.2 },
-                        { case: { $and: [{ $gte: ["$$sub.theorymarks", 2.41] }, { $lte: ["$$sub.theorymarks", 2.8] }] }, then: 2.8 },
-                        { case: { $and: [{ $gte: ["$$sub.theorymarks", 2.01] }, { $lte: ["$$sub.theorymarks", 2.4] }] }, then: 2.4 },
-                        { case: { $and: [{ $gte: ["$$sub.theorymarks", 1.61] }, { $lte: ["$$sub.theorymarks", 2.0] }] }, then: 2.0 },
-                        { case: { $eq: ["$$sub.theorymarks", 1.6] }, then: 1.6 },
-                      ],
-                      default: 0.0
-                    }
-                  },
-                  worksheetGrades: "$$sub.worksheetGrades",
-                  totalWorksheet: "$$sub.totalWorksheet"
-                }
-              }
-            }
-          }
-        },
-        {
-          $addFields: {
-            subjectAvgGP: {
-              $map: {
-                input: "$subjectGP",
-                as: "sgp",
-                in: {
-                  subject: "$$sgp.subject",
-                  avgGP: {
-                    $cond: {
-                      // If subject is HYGIENE or ORAL, use only theoryGP
-                      if: { $in: ["$$sgp.subject", NO_WORKSHEET_SUBJECTS] },
-                      then: "$$sgp.theoryGP",
-                      else: {
-                        $avg: {
-                          $concatArrays: [
-                            ["$$sgp.theoryGP"],
-                            { $map: {
-                              input: "$$sgp.worksheetGrades",
-                              as: "wg",
-                              in: {
-                                $switch: {
-                                  branches: [
-                                    { case: { $eq: ["$$wg", "A+"] }, then: 4.0 },
-                                    { case: { $eq: ["$$wg", "A"] }, then: 3.6 },
-                                    { case: { $eq: ["$$wg", "B+"] }, then: 3.2 },
-                                    { case: { $eq: ["$$wg", "B"] }, then: 2.8 },
-                                    { case: { $eq: ["$$wg", "C+"] }, then: 2.4 },
-                                    { case: { $eq: ["$$wg", "C"] }, then: 2.0 },
-                                    { case: { $eq: ["$$wg", "D"] }, then: 1.6 },
-                                    { case: { $eq: ["$$wg", "NG"] }, then: 0.0 },
-                                  ],
-                                  default: 0.0
-                                }
-                              }
-                            }}
-                          ]
-                        }
-                      }
-                    }
-                  },
-                  worksheetGrades: "$$sgp.worksheetGrades",
-                  theoryGP: "$$sgp.theoryGP",
-                  // Add flag for worksheet visibility
-                  hasWorksheets: {
-                    $cond: {
-                      if: { $in: ["$$sgp.subject", NO_WORKSHEET_SUBJECTS] },
-                      then: false,
-                      else: true
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        {
-          $addFields: {
-            gpa: {
-              $let: {
-                vars: {
-                  weightedSum: {
-                    $sum: {
-                      $map: {
-                        input: "$subjectAvgGP",
-                        as: "sub",
-                        in: {
-                          $multiply: [
-                            "$$sub.avgGP",
-                            {
-                              $cond: {
-                                if: { $eq: ["$$sub.subject", "ENGLISH"] },
-                                then: subjectCreditHours["ENGLISH"] || 4,
-                                else: {
-                                  $cond: {
-                                    if: { $eq: ["$$sub.subject", "MATHEMATICS"] },
-                                    then: subjectCreditHours["MATHEMATICS"] || 4,
-                                    else: {
-                                      $cond: {
-                                        if: { $eq: ["$$sub.subject", "NEPALI"] },
-                                        then: subjectCreditHours["NEPALI"] || 5,
-                                        else: {
-                                          $cond: {
-                                            if: { $eq: ["$$sub.subject", "THEME"] },
-                                            then: subjectCreditHours["THEME"] || 4,
-                                            else: 1
-                                          }
-                                        }
-                                      }
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                          ]
-                        }
-                      }
-                    }
-                  },
-                  totalCreditHours: {
-                    $sum: {
-                      $map: {
-                        input: "$subjectAvgGP",
-                        as: "sub",
-                        in: {
-                          $cond: {
-                            if: { $eq: ["$$sub.subject", "ENGLISH"] },
-                            then: subjectCreditHours["ENGLISH"] || 4,
-                            else: {
-                              $cond: {
-                                if: { $eq: ["$$sub.subject", "MATHEMATICS"] },
-                                then: subjectCreditHours["MATHEMATICS"] || 4,
-                                else: {
-                                  $cond: {
-                                    if: { $eq: ["$$sub.subject", "NEPALI"] },
-                                    then: subjectCreditHours["NEPALI"] || 5,
-                                    else: {
-                                      $cond: {
-                                        if: { $eq: ["$$sub.subject", "THEME"] },
-                                        then: subjectCreditHours["THEME"] || 4,
-                                        else: 1
-                                      }
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                },
-                in: {
-                  $cond: {
-                    if: { $eq: ["$$totalCreditHours", 0] },
-                    then: 0,
-                    else: { $divide: ["$$weightedSum", "$$totalCreditHours"] }
-                  }
-                }
-              }
-            }
-          }
-        },
-        {
-          $setWindowFields: {
-            sortBy: { gpa: -1 },
-            output: {
-              rank: {
-                $rank: {}
-              }
-            }
-          }
-        },
-        { $sort: { rollNumber: 1 } }
-      ]);
+      // First, get raw data without aggregation to preserve the 0.000001 value
+      const rawData = await model.find({
+        terminal: terminal,
+        academicYear: academicYear,
+        studentClass: studentClass,
+        section: section
+      }).lean();
 
-      // Process pre-primary data
-      ledgerData = ledgerData.map(student => {
-        const subjectMap = {};
-        if (student.subjectAvgGP) {
-          student.subjectAvgGP.forEach(item => {
-            let creditHour = 1;
-            if (marksheetSetups && marksheetSetups.length > 0 && marksheetSetups[0].subjects) {
-              const subjectConfig = marksheetSetups[0].subjects.find(s => s.name === item.subject);
-              if (subjectConfig) {
-                creditHour = subjectConfig.creditHour || 1;
-              }
-            }
-            
-            // For HYGIENE and ORAL, only store theoryGP, no worksheetGrades
-            const isNoWorksheetSubject = NO_WORKSHEET_SUBJECTS.includes(item.subject);
-            
-            subjectMap[item.subject] = {
-              theoryGP: item.theoryGP,
-              worksheetGrades: isNoWorksheetSubject ? [] : (item.worksheetGrades || []),
-              avgGP: item.avgGP,
-              creditHour: creditHour,
-              hasWorksheets: item.hasWorksheets !== undefined ? item.hasWorksheets : !isNoWorksheetSubject
-            };
+      console.log(`Found ${rawData.length} raw records`);
+
+      // Process data in JavaScript to preserve the raw theorymarks value
+      const studentMap = new Map();
+      
+      rawData.forEach(record => {
+        const reg = record.reg;
+        if (!studentMap.has(reg)) {
+          studentMap.set(reg, {
+            _id: reg,
+            reg: reg,
+            name: record.name,
+            roll: record.roll,
+            rollNumber: parseInt(record.roll) || 0,
+            gender: record.gender,
+            attendance: record.attendance,
+            subjects: [],
+            rawSubjects: {}
           });
         }
-        student.subjectMap = subjectMap;
-        student.gpa = student.gpa || 0;
-        return student;
-      });
-
-    } else if (isPrimary) {
-      console.log("=== Processing PRIMARY LEDGER (Classes 1-3) ===");
-      
-      // Get credit hour data from newsubject model
-      const creditHourData = await newsubject.find({}).lean();
-      const creditHourMap = {};
-      creditHourData.forEach(item => {
-        const key = `${item.newsubject}_${item.forClass}`;
-        creditHourMap[key] = {
-          theoryCredit: item.theoryCreditHour || 0,
-          practicalCredit: item.practicalCreditHour || 0,
-          forClass: item.forClass
+        
+        const student = studentMap.get(reg);
+        // Store raw theorymarks without modification
+        student.subjects.push({
+          subject: record.subject,
+          theorymarks: record.theorymarks, // Keep raw value (0.000001 preserved)
+          practicalmarks: record.practicalmarks,
+          theoryfullmarks: record.theoryfullmarks,
+          practicalfullmarks: record.practicalfullmarks,
+          passMarks: record.passMarks,
+          worksheetGrades: record.worksheetGrades || [],
+          totalWorksheet: record.totalWorksheet || 0
+        });
+        
+        // Store in rawSubjects for easy access
+        student.rawSubjects[record.subject] = {
+          theorymarks: record.theorymarks,
+          worksheetGrades: record.worksheetGrades || [],
+          totalWorksheet: record.totalWorksheet || 0
         };
       });
 
-      const rawData = await model.aggregate([
-        {
-          $match: {
-            terminal: terminal,
-            academicYear: academicYear,
-            studentClass: studentClass,
-            section: section
-          },
-        },
-        {
-          $addFields: {
-            rollNumber: { $toInt: "$roll" }
-          }
-        },
-        {
-          $group: {
-            _id: "$reg",
-            name: { $first: "$name" },
-            roll: { $first: "$roll" },
-            rollNumber: { $first: "$rollNumber" },
-            gender: { $first: "$gender" },
-            attendance: { $first: "$attendance" },
-            subjects: {
-              $push: {
-                subject: "$subject",
-                theorymarks: "$theorymarks",
-                practicalmarks: "$practicalmarks",
-                theoryfullmarks: "$theoryfullmarks",
-                practicalfullmarks: "$practicalfullmarks",
-                passMarks: "$passMarks",
-                worksheetGrades: "$worksheetGrades",
-                totalWorksheet: "$totalWorksheet"
-              }
-            }
-          }
-        },
-        { $sort: { rollNumber: 1 } }
-      ]);
-
-      // Process the data in JavaScript
-      ledgerData = rawData.map((student) => {
+      // Process each student's data
+      ledgerData = Array.from(studentMap.values()).map(student => {
         const subjectMap = {};
         let totalWeightedGP = 0;
         let totalCredits = 0;
 
-        student.subjects.forEach((subject) => {
+        student.subjects.forEach(subject => {
           const subjectName = subject.subject;
-          const theoryMarks = subject.theorymarks || 0;
-          const theoryFullMarks = subject.theoryfullmarks || 100;
-          const practicalMarks = subject.practicalmarks || 0;
-          const practicalFullMarks = subject.practicalfullmarks || 100;
+          const rawTheoryMarks = subject.theorymarks;
           const worksheetGrades = subject.worksheetGrades || [];
           const totalWorksheet = subject.totalWorksheet || worksheetGrades.length;
-
+          
           // Check if this subject should have worksheets
           const hasWorksheets = shouldHaveWorksheets(subjectName);
-
-          // Calculate theory percentage and GP
-          const theoryPercentage = theoryFullMarks > 0 ? (theoryMarks / theoryFullMarks) * 100 : 0;
-          const theoryGP = getGP(theoryPercentage);
-
-          // For HYGIENE and ORAL, GP is just the theory GP
-          let finalGP = theoryGP;
+          
+          // Check if theory marks is Ab
+          const isAb = isAbValue(rawTheoryMarks);
+          
+          // Calculate theory GP
+          let theoryGP = 0;
+          let finalGP = 0;
           let practicalGP = 0;
-          let practicalPercentage = 0;
-
+          let totalWorksheetGP = 0;
+          let worksheetCount = 0;
+          
+          // For HYGIENE, ORAL, ECA - no worksheets, theory is final GP
           if (!hasWorksheets) {
-            // No worksheets - final GP is theory GP
-            finalGP = theoryGP;
-            practicalGP = theoryGP;
-            practicalPercentage = theoryPercentage;
-            console.log(`  ${subjectName}: No worksheets, GP = Theory GP = ${finalGP.toFixed(2)}`);
+            // These subjects have no worksheets, theory marks is the final GP
+            if (isAb) {
+              finalGP = 0; // Ab = 0
+              theoryGP = 0;
+            } else {
+              // Theory marks is already a GP value (e.g., 4.0, 3.6, etc.)
+              theoryGP = Number(rawTheoryMarks) || 0;
+              finalGP = theoryGP;
+            }
           } else {
             // Regular subjects with worksheets
-            if (worksheetGrades.length > 0) {
-              let totalWorksheetGP = 0;
-              worksheetGrades.forEach((grade) => {
+            // First, get theory GP
+            if (isAb) {
+              theoryGP = 0;
+            } else {
+              // Theory marks is already a GP value
+              theoryGP = Number(rawTheoryMarks) || 0;
+            }
+            
+            // Calculate worksheet GPs
+            if (worksheetGrades && worksheetGrades.length > 0) {
+              worksheetGrades.forEach(grade => {
                 const gp = getWorksheetGP(grade);
                 totalWorksheetGP += gp;
+                worksheetCount++;
               });
-              practicalGP = totalWorksheetGP / worksheetGrades.length;
-              practicalPercentage = practicalGP * 25;
-            } else if (practicalFullMarks > 0) {
-              practicalPercentage = (practicalMarks / practicalFullMarks) * 100;
-              practicalGP = getGP(practicalPercentage);
-            } else {
-              practicalGP = theoryGP;
-              practicalPercentage = theoryPercentage;
             }
-
-            // Get credit hours
-            const compositeKey = `${subjectName}_${studentClass}`;
-            const credits = creditHourMap[compositeKey] || { theoryCredit: 0, practicalCredit: 0 };
-            const theoryCredit = credits.theoryCredit || 0;
-            const practicalCredit = credits.practicalCredit || 0;
-            const totalCredit = theoryCredit + practicalCredit;
-
-            // Calculate final GP
-            if (totalCredit > 0) {
-              const weightedSum = (theoryGP * theoryCredit) + (practicalGP * practicalCredit);
-              finalGP = weightedSum / totalCredit;
+            
+            // Final GP = (Theory + All Worksheet GPs) / (Number of Worksheets + 1)
+            if (worksheetCount > 0) {
+              finalGP = (theoryGP + totalWorksheetGP) / (worksheetCount + 1);
             } else {
-              finalGP = (theoryGP + practicalGP) / 2;
+              finalGP = theoryGP;
             }
+            
+            practicalGP = worksheetCount > 0 ? (totalWorksheetGP / worksheetCount) : 0;
           }
-
+          
           // Round to 2 decimal places
           const roundedFinalGP = Math.round(finalGP * 100) / 100;
+          
+          // Get theory display value
+          let theoryDisplay = '-';
+          if (isAb) {
+            theoryDisplay = 'Ab';
+          } else if (hasWorksheets) {
+            // For regular subjects, theory is a GP value
+            const gp = theoryGP;
+            if (gp === 4.0) theoryDisplay = 'A+';
+            else if (gp >= 3.6) theoryDisplay = 'A';
+            else if (gp >= 3.2) theoryDisplay = 'B+';
+            else if (gp >= 2.8) theoryDisplay = 'B';
+            else if (gp >= 2.4) theoryDisplay = 'C+';
+            else if (gp >= 2.0) theoryDisplay = 'C';
+            else if (gp >= 1.6) theoryDisplay = 'D';
+            else theoryDisplay = 'NG';
+          } else {
+            // For no-worksheet subjects, theory is already a grade
+            const gp = theoryGP;
+            if (gp === 4.0) theoryDisplay = 'A+';
+            else if (gp >= 3.6) theoryDisplay = 'A';
+            else if (gp >= 3.2) theoryDisplay = 'B+';
+            else if (gp >= 2.8) theoryDisplay = 'B';
+            else if (gp >= 2.4) theoryDisplay = 'C+';
+            else if (gp >= 2.0) theoryDisplay = 'C';
+            else if (gp >= 1.6) theoryDisplay = 'D';
+            else theoryDisplay = 'NG';
+          }
 
-          // Store in subject map
+          // Store in subject map with raw theory marks preserved
           subjectMap[subjectName] = {
-            theoryGP: Math.round(theoryGP * 100) / 100,
-            practicalGP: Math.round(practicalGP * 100) / 100,
+            theoryGP: rawTheoryMarks, // Store RAW value (0.000001)
+            theoryGPDisplay: isAb ? 'Ab' : theoryDisplay,
+            theoryGPValue: theoryGP,
+            practicalGP: practicalGP,
             finalGP: roundedFinalGP,
-            theoryMarks: theoryMarks,
-            practicalMarks: practicalMarks,
             worksheetGrades: hasWorksheets ? worksheetGrades : [],
             totalWorksheet: hasWorksheets ? totalWorksheet : 0,
-            theoryPercentage: Math.round(theoryPercentage * 100) / 100,
-            practicalPercentage: Math.round(practicalPercentage * 100) / 100,
-            hasWorksheets: hasWorksheets
+            hasWorksheets: hasWorksheets,
+            isAb: isAb,
+            worksheetCount: worksheetCount,
+            totalWorksheetGP: totalWorksheetGP || 0,
+            theoryDisplay: theoryDisplay
           };
 
           // Add to weighted total for overall GPA
-          const totalCredit = (subjectMap[subjectName].theoryCredit || 0) + (subjectMap[subjectName].practicalCredit || 0);
-          if (totalCredit > 0) {
-            totalWeightedGP += roundedFinalGP * totalCredit;
-            totalCredits += totalCredit;
-          }
+          const creditHour = subjectCreditHours[subjectName] || 1;
+          totalWeightedGP += roundedFinalGP * creditHour;
+          totalCredits += creditHour;
         });
 
         // Calculate overall GPA
@@ -1691,6 +1477,7 @@ exports.ledger = async (req, res, next) => {
           attendance: student.attendance,
           subjects: student.subjects,
           subjectMap: subjectMap,
+          rawSubjects: student.rawSubjects,
           gpa: gpa,
           rank: 0
         };
@@ -1714,7 +1501,233 @@ exports.ledger = async (req, res, next) => {
       // Sort back by roll number
       ledgerData.sort((a, b) => a.rollNumber - b.rollNumber);
 
-    } else {
+    } 
+     else if (isPrimary) {
+  console.log("=== Processing PRIMARY LEDGER (Classes 1-3) ===");
+  
+  // Get credit hour data from newsubject model
+  const creditHourData = await newsubject.find({}).lean();
+  const creditHourMap = {};
+  creditHourData.forEach(item => {
+    const key = `${item.newsubject}_${item.forClass}`;
+    creditHourMap[key] = {
+      theoryCredit: item.theoryCreditHour || 0,
+      practicalCredit: item.practicalCreditHour || 0,
+      forClass: item.forClass
+    };
+  });
+
+  const rawData = await model.aggregate([
+    {
+      $match: {
+        terminal: terminal,
+        academicYear: academicYear,
+        studentClass: studentClass,
+        section: section
+      },
+    },
+    {
+      $addFields: {
+        rollNumber: { $toInt: "$roll" }
+      }
+    },
+    {
+      $group: {
+        _id: "$reg",
+        name: { $first: "$name" },
+        roll: { $first: "$roll" },
+        rollNumber: { $first: "$rollNumber" },
+        gender: { $first: "$gender" },
+        attendance: { $first: "$attendance" },
+        subjects: {
+          $push: {
+            subject: "$subject",
+            theorymarks: "$theorymarks",
+            practicalmarks: "$practicalmarks",
+            theoryfullmarks: "$theoryfullmarks",
+            practicalfullmarks: "$practicalfullmarks",
+            passMarks: "$passMarks",
+            worksheetGrades: "$worksheetGrades",
+            totalWorksheet: "$totalWorksheet"
+          }
+        }
+      }
+    },
+    { $sort: { rollNumber: 1 } }
+  ]);
+
+  // Process the data in JavaScript
+  ledgerData = rawData.map((student) => {
+    const subjectMap = {};
+    let totalWeightedGP = 0;
+    let totalCredits = 0;
+
+    student.subjects.forEach((subject) => {
+      const subjectName = subject.subject;
+      const theoryMarks = subject.theorymarks || 0;
+      const theoryFullMarks = subject.theoryfullmarks || 100;
+      const practicalMarks = subject.practicalmarks || 0;
+      const practicalFullMarks = subject.practicalfullmarks || 100;
+      const worksheetGrades = subject.worksheetGrades || [];
+      const totalWorksheet = subject.totalWorksheet || worksheetGrades.length;
+
+      // Check if this subject should have worksheets
+      const hasWorksheets = shouldHaveWorksheets(subjectName);
+      
+      // Check if theory marks is Ab
+      const isAb = isAbValue(theoryMarks);
+
+      // Calculate theory percentage and GP
+      let theoryGP = 0;
+      if (isAb) {
+        theoryGP = 0;
+      } else {
+        const theoryPercentage = theoryFullMarks > 0 ? (theoryMarks / theoryFullMarks) * 100 : 0;
+        theoryGP = getGP(theoryPercentage);
+      }
+
+      // For HYGIENE, ORAL, ECA - no worksheets, theory is final GP
+      let finalGP = 0;
+      let practicalGP = 0;
+      let totalWorksheetGP = 0;
+      let worksheetCount = 0;
+
+      if (!hasWorksheets) {
+        // No worksheets - final GP is theory GP
+        finalGP = theoryGP;
+        practicalGP = theoryGP;
+      } else {
+        // Regular subjects with worksheets
+        // Calculate worksheet GPs
+        if (worksheetGrades && worksheetGrades.length > 0) {
+          worksheetGrades.forEach((grade) => {
+            const gp = getWorksheetGP(grade);
+            totalWorksheetGP += gp;
+            worksheetCount++;
+          });
+        }
+        
+        // Practical GP = Average of worksheet grades
+        practicalGP = worksheetCount > 0 ? (totalWorksheetGP / worksheetCount) : 0;
+        
+        // Get credit hours for this subject
+        const compositeKey = `${subjectName}_${studentClass}`;
+        const credits = creditHourMap[compositeKey] || { theoryCredit: 0, practicalCredit: 0 };
+        const theoryCredit = credits.theoryCredit || 0;
+        const practicalCredit = credits.practicalCredit || 0;
+        const totalCredit = theoryCredit + practicalCredit;
+        
+        // Calculate final GP using weighted formula
+        if (totalCredit > 0) {
+          finalGP = ((theoryGP * theoryCredit) + (practicalGP * practicalCredit)) / totalCredit;
+        } else {
+          // If no credit hours defined, use simple average
+          finalGP = (theoryGP + practicalGP) / 2;
+        }
+      }
+
+      // Round to 2 decimal places
+      const roundedFinalGP = Math.round(finalGP * 100) / 100;
+
+      // Get theory display value
+      let theoryDisplay = '-';
+      if (isAb) {
+        theoryDisplay = 'Ab';
+      } else {
+        const gp = theoryGP;
+        if (gp === 4.0) theoryDisplay = 'A+';
+        else if (gp >= 3.6) theoryDisplay = 'A';
+        else if (gp >= 3.2) theoryDisplay = 'B+';
+        else if (gp >= 2.8) theoryDisplay = 'B';
+        else if (gp >= 2.4) theoryDisplay = 'C+';
+        else if (gp >= 2.0) theoryDisplay = 'C';
+        else if (gp >= 1.6) theoryDisplay = 'D';
+        else theoryDisplay = 'NG';
+      }
+
+      // Get credit hours for the subject (re-fetch for the map)
+      const compositeKey = `${subjectName}_${studentClass}`;
+      const credits = creditHourMap[compositeKey] || { theoryCredit: 0, practicalCredit: 0 };
+      const theoryCredit = credits.theoryCredit || 0;
+      const practicalCredit = credits.practicalCredit || 0;
+      const totalCredit = theoryCredit + practicalCredit;
+
+      // Store in subject map
+      subjectMap[subjectName] = {
+        theoryGP: isAb ? 0.000001 : Math.round(theoryGP * 100) / 100,
+        theoryGPDisplay: theoryDisplay,
+        theoryGPValue: theoryGP,
+        isAb: isAb,
+        practicalGP: Math.round(practicalGP * 100) / 100,
+        finalGP: roundedFinalGP,
+        theoryMarks: theoryMarks,
+        practicalMarks: practicalMarks,
+        worksheetGrades: hasWorksheets ? worksheetGrades : [],
+        totalWorksheet: hasWorksheets ? totalWorksheet : 0,
+        theoryPercentage: Math.round((theoryFullMarks > 0 ? (theoryMarks / theoryFullMarks) * 100 : 0) * 100) / 100,
+        practicalPercentage: Math.round(practicalGP * 25 * 100) / 100,
+        hasWorksheets: hasWorksheets,
+        worksheetCount: worksheetCount || 0,
+        totalWorksheetGP: totalWorksheetGP || 0,
+        theoryDisplay: theoryDisplay,
+        theoryCredit: theoryCredit,
+        practicalCredit: practicalCredit,
+        totalCredit: totalCredit
+      };
+
+      // Add to weighted total for overall GPA
+      if (totalCredit > 0) {
+        totalWeightedGP += roundedFinalGP * totalCredit;
+        totalCredits += totalCredit;
+      } else {
+        // If no credit hours defined, use 1
+        totalWeightedGP += roundedFinalGP * 1;
+        totalCredits += 1;
+      }
+    });
+
+    // Calculate overall GPA
+    let gpa = 0;
+    if (totalCredits > 0) {
+      gpa = totalWeightedGP / totalCredits;
+    }
+    gpa = Math.round(gpa * 100) / 100;
+
+    return {
+      _id: student._id,
+      name: student.name,
+      roll: student.roll,
+      rollNumber: student.rollNumber,
+      gender: student.gender,
+      attendance: student.attendance,
+      subjects: student.subjects,
+      subjectMap: subjectMap,
+      gpa: gpa,
+      rank: 0
+    };
+  });
+
+  // Calculate ranks based on GPA
+  const sortedStudents = [...ledgerData].sort((a, b) => b.gpa - a.gpa);
+  let currentRank = 1;
+  let previousGPA = null;
+  let rankCounter = 1;
+
+  sortedStudents.forEach((student) => {
+    if (previousGPA !== null && student.gpa < previousGPA) {
+      currentRank = rankCounter;
+    }
+    student.rank = currentRank;
+    previousGPA = student.gpa;
+    rankCounter++;
+  });
+
+  // Sort back by roll number
+  ledgerData.sort((a, b) => a.rollNumber - b.rollNumber);
+
+} // End of isPrimary
+    
+    else {
       console.log("=== Processing REGULAR LEDGER (Classes 4+) ===");
       // Regular ledger for other classes (Classes 4+)
       ledgerData = await model.aggregate([
@@ -1839,16 +1852,20 @@ exports.ledger = async (req, res, next) => {
         { $sort: { rollNumber: 1 } }
       ]);
 
-      // Process regular data - set hasWorksheets flag
+      // Process regular data - set hasWorksheets flag and preserve Ab values
       ledgerData.forEach((student) => {
         let lookupmap = {};
         if (student.subjects) {
           student.subjects.forEach((sub) => {
             const hasWorksheets = shouldHaveWorksheets(sub.subject);
+            const isAb = isAbValue(sub.theorymarks);
             lookupmap[sub.subject] = {
               ...sub,
               hasWorksheets: hasWorksheets,
-              worksheetGrades: hasWorksheets ? (sub.worksheetGrades || []) : []
+              worksheetGrades: hasWorksheets ? (sub.worksheetGrades || []) : [],
+              isAb: isAb,
+              theoryGP: isAb ? 0.000001 : sub.theorymarks, // Preserve Ab sentinel
+              theoryDisplay: isAb ? 'Ab' : sub.theorymarks
             };
           });
         }

@@ -281,6 +281,8 @@ student.post('/newsadmin/update', verifytoken, authorized, isnewsAdmin, upload.f
 student.get('/examform',verifytoken,authorized,examcontroller.loadForm)
 student.get('/entryform',verifytoken,authorized,examcontroller.entryform)
 student.post('/entryform',verifytoken,authorized,examcontroller.saveEntryform)
+// Persist totalWorksheet for entire class/section/subject
+student.post('/entryform/setTotalWorksheet',verifytoken,authorized,examcontroller.setTotalWorksheetForClass)
 student.get('/getPreviousmarks',verifytoken,authorized,examcontroller.getPreviousmarks)
 student.get('/getAttendanceData',verifytoken,authorized,examcontroller.getAttendanceData)
 student.get('/exammanagement',verifytoken,authorized,isAdmin,examdashboardcontroller.examManagement)

@@ -215,6 +215,8 @@
     .status-fail { background-color: #fee2e2 !important; color: #991b1b; }
     .status-pass { background-color: #dcfce7 !important; color: #166534; }
     .status-ng { background-color: #fee2e2 !important; color: #991b1b; }
+    .status-ab { background-color: #fef3c7 !important; color: #92400e; font-weight: 700; }
+    .text-ab { color: #dc3545; font-weight: 700; }
 
     .hidden-column {
       display: none !important;
@@ -295,8 +297,78 @@
   
   <% 
     // Subjects that should NOT have worksheets
-    const NO_WORKSHEET_SUBJECTS = ['ORAL', 'HYGIENE'];
+    const NO_WORKSHEET_SUBJECTS = ['ORAL', 'HYGIENE', 'ECA'];
     
+    // Function to check if a value is Ab (sentinel 0.000001)
+    function isAb(value) {
+      // Check if value is null or undefined
+      if (value === null || value === undefined) {
+        return false;
+      }
+      
+      // Convert to string for comparison
+      const strValue = String(value).trim();
+      
+      // Check for exact match
+      if (strValue === '0.000001') {
+        return true;
+      }
+      
+      // Check for number comparison (handle floating point precision)
+      if (typeof value === 'number') {
+        // Use a small epsilon for floating point comparison
+        const epsilon = 0.0000001;
+        if (Math.abs(value - 0.000001) < epsilon) {
+          return true;
+        }
+      }
+      
+      // Check if it's a string representation
+      if (typeof value === 'string') {
+        const cleanValue = value.trim().toLowerCase();
+        if (cleanValue === '0.000001' || cleanValue === 'ab' || cleanValue === 'absent') {
+          return true;
+        }
+      }
+      
+      return false;
+    }
+
+    // Function to get numeric value for calculations
+    function getNumericValue(value) {
+      if (isAb(value)) {
+        return 0;
+      }
+      if (value === null || value === undefined) {
+        return 0;
+      }
+      const num = Number(value);
+      return isNaN(num) ? 0 : num;
+    }
+
+    // Function to get display value
+    function getDisplayValue(value) {
+      if (isAb(value)) {
+        return 'Ab';
+      }
+      if (value === null || value === undefined) {
+        return '-';
+      }
+      return value;
+    }
+
+    // Function to get grade from GP
+    function getGrade(gp) {
+      if (gp === 4.0) return "A+";
+      if (gp >= 3.6) return "A";
+      if (gp >= 3.2) return "B+";
+      if (gp >= 2.8) return "B";
+      if (gp >= 2.4) return "C+";
+      if (gp >= 2.0) return "C";
+      if (gp >= 1.6) return "D";
+      return "NG";
+    }
+
     // Build subject info with their worksheet counts
     const subjectInfo = {};
     let maxTotalColumns = 0;
@@ -454,19 +526,68 @@
                   const info = subjectInfo[sub];
                   const wsCount = info.isNoWorksheet ? 0 : (info.worksheetCount || 0);
                   const isNoWorksheet = info.isNoWorksheet;
+                  
+                  // Get the raw theorymarks value
+                  let rawTheoryMarks = subjectData ? subjectData.theoryGP : null;
+                  
+                  // Check if theory marks is Ab
+                  const isAbValue = isAb(rawTheoryMarks);
+                  
+                  // Get numeric value for GP calculation
+                  const theoryNumeric = getNumericValue(rawTheoryMarks);
+                  
+                  // For display, use the raw value directly
+                  let theoryDisplay = '-';
+                  if (isAbValue) {
+                    theoryDisplay = 'Ab';
+                  } else if (subjectData) {
+                    // Check if subjectData has theoryGPDisplay
+                    if (subjectData.theoryGPDisplay !== undefined && subjectData.theoryGPDisplay !== null) {
+                      theoryDisplay = subjectData.theoryGPDisplay;
+                    } else {
+                      // Fallback: convert from numeric value
+                      const gp = theoryNumeric;
+                      if (gp >= 3.61) theoryDisplay = 'A+';
+                      else if (gp >= 3.21) theoryDisplay = 'A';
+                      else if (gp >= 2.81) theoryDisplay = 'B+';
+                      else if (gp >= 2.41) theoryDisplay = 'B';
+                      else if (gp >= 2.01) theoryDisplay = 'C+';
+                      else if (gp >= 1.61) theoryDisplay = 'C';
+                      else if (gp === 1.6) theoryDisplay = 'D';
+                      else theoryDisplay = 'NG';
+                    }
+                  }
+                  
+                  // Get avgGP safely
+                  let avgGP = 0;
+                  if (subjectData) {
+                    if (isNoWorksheet) {
+                      avgGP = theoryNumeric;
+                    } else {
+                      // Check if avgGP exists and is a number
+                      if (subjectData.avgGP !== undefined && subjectData.avgGP !== null && !isNaN(subjectData.avgGP)) {
+                        avgGP = subjectData.avgGP;
+                      } else if (subjectData.finalGP !== undefined && subjectData.finalGP !== null && !isNaN(subjectData.finalGP)) {
+                        avgGP = subjectData.finalGP;
+                      } else {
+                        // Calculate average of theory and practical
+                        let practicalGP = 0;
+                        if (subjectData.worksheetGrades && subjectData.worksheetGrades.length > 0) {
+                          let totalWorksheetGP = 0;
+                          subjectData.worksheetGrades.forEach(grade => {
+                            const gp = getWorksheetGP(grade);
+                            totalWorksheetGP += gp;
+                          });
+                          practicalGP = totalWorksheetGP / subjectData.worksheetGrades.length;
+                        }
+                        avgGP = (theoryNumeric + practicalGP) / 2;
+                      }
+                    }
+                  }
                 %>
                   <!-- Theory Grade Column -->
-                  <td class="subject-column subject-<%= index %> col-type-th <%= (subjectData && subjectData.theoryGP === 0) ? 'status-fail' : '' %>" data-subject="<%= sub %>" data-coltype="th">
-                    <%= subjectData ? 
-                      (subjectData.theoryGP >= 3.61 ? 'A+' : 
-                       subjectData.theoryGP >= 3.21 ? 'A' :
-                       subjectData.theoryGP >= 2.81 ? 'B+' :
-                       subjectData.theoryGP >= 2.41 ? 'B' :
-                       subjectData.theoryGP >= 2.01 ? 'C+' :
-                       subjectData.theoryGP >= 1.61 ? 'C' :
-                       subjectData.theoryGP === 1.6 ? 'D' : 'NG') 
-                      : '-' 
-                    %>
+                  <td class="subject-column subject-<%= index %> col-type-th <%= isAbValue ? 'status-ab' : (theoryNumeric === 0 && !isAbValue ? 'status-fail' : '') %>" data-subject="<%= sub %>" data-coltype="th">
+                    <%= theoryDisplay %>
                   </td>
                   
                   <!-- Worksheet Columns - ONLY for subjects that have worksheets -->
@@ -474,9 +595,10 @@
                     for (let i = 0; i < wsCount; i++) { 
                       const grade = subjectData.worksheetGrades[i] || '';
                       const isNG = grade === 'NG' || grade === '' || grade === 'D';
+                      const isAbWS = isAb(grade);
                     %>
-                      <td class="subject-column subject-<%= index %> col-type-ws <%= isNG ? 'status-fail' : '' %>" data-subject="<%= sub %>" data-coltype="ws">
-                        <%= grade || 'NG' %>
+                      <td class="subject-column subject-<%= index %> col-type-ws <%= isNG ? 'status-fail' : (isAbWS ? 'status-ab' : '') %>" data-subject="<%= sub %>" data-coltype="ws">
+                        <%= isAbWS ? 'Ab' : (grade || 'NG') %>
                       </td>
                     <% }
                   } else if (!isNoWorksheet) { 
@@ -487,10 +609,7 @@
                   
                   <!-- GP Column -->
                   <td class="subject-column subject-<%= index %> col-type-gp" data-subject="<%= sub %>" data-coltype="gp">
-                    <%= subjectData ? 
-                      (isNoWorksheet ? subjectData.theoryGP.toFixed(2) : subjectData.avgGP.toFixed(2)) 
-                      : '-' 
-                    %>
+                    <%= (typeof avgGP === 'number' && !isNaN(avgGP)) ? avgGP.toFixed(2) : '0.00' %>
                   </td>
                 <% }) %>
                 
@@ -645,6 +764,70 @@
   <script>
     // Subjects that should NOT have worksheets (same as backend)
     const NO_WORKSHEET_SUBJECTS = ['ORAL', 'HYGIENE'];
+
+    // Function to check if a value is Ab (sentinel 0.000001)
+    function isAb(value) {
+      // Check if value is null or undefined
+      if (value === null || value === undefined) {
+        return false;
+      }
+      
+      // Convert to string for comparison
+      const strValue = String(value).trim();
+      
+      // Check for exact match
+      if (strValue === '0.000001') {
+        return true;
+      }
+      
+      // Check for number comparison (handle floating point precision)
+      if (typeof value === 'number') {
+        // Use a small epsilon for floating point comparison
+        const epsilon = 0.0000001;
+        if (Math.abs(value - 0.000001) < epsilon) {
+          return true;
+        }
+      }
+      
+      // Check if it's a string representation
+      if (typeof value === 'string') {
+        const cleanValue = value.trim().toLowerCase();
+        if (cleanValue === '0.000001' || cleanValue === 'ab' || cleanValue === 'absent') {
+          return true;
+        }
+      }
+      
+      return false;
+    }
+
+    // Function to get numeric value for calculations
+    function getNumericValue(value) {
+      if (isAb(value)) {
+        return 0;
+      }
+      if (value === null || value === undefined) {
+        return 0;
+      }
+      const num = Number(value);
+      return isNaN(num) ? 0 : num;
+    }
+
+    // Function to get worksheet GP
+    function getWorksheetGP(grade) {
+      if (!grade) return 0;
+      if (isAb(grade)) return 0;
+      const gradeMap = {
+        'A+': 4.0,
+        'A': 3.6,
+        'B+': 3.2,
+        'B': 2.8,
+        'C+': 2.4,
+        'C': 2.0,
+        'D': 1.6,
+        'NG': 0.0
+      };
+      return gradeMap[grade] || 0;
+    }
 
     document.addEventListener('DOMContentLoaded', function() {
       // Function to update subject group header colspan
@@ -928,6 +1111,11 @@
             .fail {
               background-color: #fee2e2;
             }
+            .ab {
+              background-color: #fef3c7;
+              color: #92400e;
+              font-weight: bold;
+            }
             .footer-bg {
               background-color: #f1f5f9;
               font-weight: bold;
@@ -986,6 +1174,7 @@
             let cls = '';
             if (text === 'Pass') cls = 'pass';
             else if (text === 'NG' || text === 'Fail') cls = 'fail';
+            else if (text === 'Ab') cls = 'ab';
             html += `<td class="${cls}">${escapeHtml(text)}</td>`;
           });
         });

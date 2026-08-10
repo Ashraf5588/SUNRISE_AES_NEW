@@ -87,6 +87,33 @@
       border-color: var(--primary);
     }
 
+    /* Worksheet select inner styling */
+    .worksheet-select-inner {
+      width: 100%;
+      padding: 7px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 13px;
+      text-align: center;
+      background: #fff;
+      cursor: pointer;
+      transition: border 0.2s;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a3a52' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 6px center;
+      background-size: 14px;
+      padding-right: 28px;
+    }
+    .worksheet-select-inner:focus {
+      outline: 0;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(255,140,66,.1);
+    }
+    .worksheet-select-inner:hover {
+      border-color: var(--primary);
+    }
+
     #markstable.hide-attendance th[data-column="attendance"],
     #markstable.hide-attendance td[data-column="attendance"]{display:none}
     #markstable.hide-theory th[data-column="theory"],
@@ -269,7 +296,7 @@
           <td data-column="worksheet" data-reg="<%=student.reg%>"></td>
           <td data-column="theory">
             <select class="grade-select" name="theoryGrade[<%=student.reg%>]" data-reg="<%= student.reg %>" onchange="handleGradeChange(this)">
-              <option value="0">Select Grade</option>
+              <option value="null" disabled selected>Select Grade</option>
               <option value="4.0">A+</option>
               <option value="3.6">A</option>
               <option value="3.2">B+</option>
@@ -278,9 +305,9 @@
               <option value="2.0">C</option>
               <option value="1.6">D</option>
               <option value="0.0">NG</option>
-              <option value="0">Ab</option>
+              <option value="0.000001">Ab</option>
             </select>
-            <input type="hidden" name="theorymarks[<%=student.reg%>]" value="0" data-reg="<%= student.reg %>">
+            <input type="hidden" name="theorymarks[<%=student.reg%>]" value="null" data-reg="<%= student.reg %>">
           </td>
           <td data-column="attendance"><input type="number" id="attendance" name="attendance[<%=student.reg%>]" value="" data-reg="<%= student.reg %>" oninput="autoSave(this)"></td>
         </tr>
@@ -326,7 +353,7 @@ else if (terminal == "FINAL")
 <script>
 // Grade mapping for display
 const gradeMap = {
-  '0': 'Select Grade',
+  'null': 'Select Grade',
   '4.0': 'A+',
   '3.6': 'A',
   '3.2': 'B+',
@@ -335,7 +362,7 @@ const gradeMap = {
   '2.0': 'C',
   '1.6': 'D',
   '0.0': 'NG',
-  'Ab': 'Ab'
+  '0.000001': 'Ab'
 };
 
 // Store for grade data from DB
@@ -351,7 +378,8 @@ function getGradeValue(grade) {
     'C+': 2.4,
     'C': 2.0,
     'D': 1.6,
-    'NG': 0.0
+    'NG': 0.0,
+    'Ab': 0
   };
   return map[grade] || 0;
 }
@@ -363,7 +391,7 @@ function handleGradeChange(select) {
   const selectedValue = select.value;
   
   if (hiddenInput) {
-    hiddenInput.value = selectedValue;
+    hiddenInput.value = selectedValue === 'null' ? null : selectedValue;
   }
   
   // Auto-save when grade changes
@@ -372,7 +400,7 @@ function handleGradeChange(select) {
   }
 }
 
-// Populate grade select from saved numeric value - FIXED VERSION
+// Populate grade select from saved numeric value
 function setGradeFromValue(reg, value) {
   const select = document.querySelector(`select[name="theoryGrade[${reg}]"]`);
   const hiddenInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
@@ -382,52 +410,54 @@ function setGradeFromValue(reg, value) {
     return;
   }
   
-  // Convert value to proper format (e.g., 4 -> 4.0, 3.8 -> 3.8)
-  let formattedValue = '0';
-  if (value && value !== 0) {
-    // Check if it's a whole number (like 4)
-    if (Number.isInteger(Number(value))) {
-      formattedValue = Number(value).toFixed(1);
-    } else {
-      formattedValue = value.toString();
+  // If value is null or undefined, set to null
+  if (value === null || value === undefined || value === 'null') {
+    select.value = 'null';
+    if (hiddenInput) {
+      hiddenInput.value = null;
     }
+    return;
   }
   
-  console.log(`Setting grade for reg ${reg}: raw value=${value}, formatted=${formattedValue}`);
+  // Convert value to string for comparison
+  const valueStr = value.toString();
   
-  // Find and select matching option
+  // Find matching option
   let found = false;
   for (let i = 0; i < select.options.length; i++) {
-    if (select.options[i].value === formattedValue) {
-      select.value = formattedValue;
+    if (select.options[i].value === valueStr) {
+      select.value = valueStr;
       found = true;
-      console.log(`Found matching option: ${select.options[i].text} (${formattedValue})`);
+      console.log(`Found matching option: ${select.options[i].text} (${valueStr})`);
       break;
     }
   }
   
   if (!found) {
-    // Try without formatting (direct match)
-    const valueStr = value ? value.toString() : '0';
+    // Try formatting for decimal values (4.0, 3.6, etc.)
+    let formattedValue = valueStr;
+    if (!valueStr.includes('.') && !isNaN(valueStr) && valueStr !== '0') {
+      formattedValue = Number(value).toFixed(1);
+    }
+    
     for (let i = 0; i < select.options.length; i++) {
-      if (select.options[i].value === valueStr) {
-        select.value = valueStr;
+      if (select.options[i].value === formattedValue) {
+        select.value = formattedValue;
         found = true;
-        console.log(`Found matching option (direct): ${select.options[i].text} (${valueStr})`);
+        console.log(`Found matching option (formatted): ${select.options[i].text} (${formattedValue})`);
         break;
       }
     }
   }
   
   if (!found) {
-    // If value not found, default to 0 (Select Grade)
-    select.value = '0';
-    console.log(`No matching option found for ${value}, defaulting to 0`);
+    select.value = 'null';
+    console.log(`No matching option for value ${value}, defaulting to null`);
   }
   
-  // Update hidden input to match
+  // Update hidden input
   if (hiddenInput) {
-    hiddenInput.value = select.value;
+    hiddenInput.value = select.value === 'null' ? null : select.value;
   }
   
   // Store in global for later reference
@@ -446,54 +476,87 @@ function populateAllGradesAfterRender() {
   gradeSelects.forEach(select => {
     const reg = select.dataset.reg;
     if (reg && gradeDataFromDB[reg] !== undefined) {
-      const value = gradeDataFromDB[reg];
-      console.log(`Populating grade for reg ${reg} from stored data: ${value}`);
+      let value = gradeDataFromDB[reg];
+      console.log(`Populating grade for reg ${reg} from stored data: ${value} (type: ${typeof value})`);
       
-      // Format the value for comparison
-      let formattedValue = '0';
-      if (value && value !== 0) {
-        if (Number.isInteger(Number(value))) {
-          formattedValue = Number(value).toFixed(1);
-        } else {
-          formattedValue = value.toString();
+      // If value is null or undefined, set to null
+      if (value === null || value === undefined || value === 'null') {
+        select.value = 'null';
+        const hiddenInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
+        if (hiddenInput) {
+          hiddenInput.value = null;
         }
+        return;
+      }
+      
+      // Convert to string for comparison
+      const valueStr = value.toString();
+      
+      // Special handling for Ab sentinel value (0.000001)
+      if (valueStr === '0.000001') {
+        select.value = '0.000001'; // Ab
+        const hiddenInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
+        if (hiddenInput) {
+          hiddenInput.value = '0.000001';
+        }
+        return;
       }
       
       let found = false;
+      
+      // First try exact match
       for (let i = 0; i < select.options.length; i++) {
-        if (select.options[i].value === formattedValue) {
-          select.value = formattedValue;
+        const optionValue = select.options[i].value;
+        if (optionValue === valueStr) {
+          select.value = optionValue;
           found = true;
-          console.log(`Set reg ${reg} to ${select.options[i].text} (${formattedValue})`);
+          console.log(`Set reg ${reg} to ${select.options[i].text} (${optionValue}) - exact match`);
           break;
         }
       }
       
+      // If not found, try formatting for decimal values (4.0, 3.6, etc.)
       if (!found) {
-        // Try direct match
-        const valueStr = value ? value.toString() : '0';
+        let formattedValue = valueStr;
+        if (!valueStr.includes('.') && !isNaN(valueStr) && valueStr !== '0') {
+          formattedValue = Number(value).toFixed(1);
+        }
+        
         for (let i = 0; i < select.options.length; i++) {
-          if (select.options[i].value === valueStr) {
-            select.value = valueStr;
+          if (select.options[i].value === formattedValue) {
+            select.value = formattedValue;
             found = true;
-            console.log(`Set reg ${reg} to ${select.options[i].text} (${valueStr}) - direct match`);
+            console.log(`Set reg ${reg} to ${select.options[i].text} (${formattedValue}) - formatted`);
             break;
           }
         }
       }
       
+      // FIX: Handle '0' value - treat as NG (0.0)
+      if (!found && valueStr === '0') {
+        // This is NG - Not Graded (0.0)
+        select.value = '0.0'; // NG
+        found = true;
+        console.log(`Set reg ${reg} to NG (0.0) - value was 0`);
+      }
+      
       if (!found) {
-        select.value = '0';
-        console.log(`No matching option for reg ${reg} value ${value}, defaulting to 0`);
+        select.value = 'null';
+        console.log(`No matching option for reg ${reg} value ${value}, defaulting to null`);
       }
       
       // Update hidden input
       const hiddenInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
       if (hiddenInput) {
-        hiddenInput.value = select.value;
+        hiddenInput.value = select.value === 'null' ? null : select.value;
       }
     } else {
       console.log(`No data for reg ${reg}, keeping default`);
+      select.value = 'null';
+      const hiddenInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
+      if (hiddenInput) {
+        hiddenInput.value = null;
+      }
     }
   });
   
@@ -557,62 +620,67 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
     if (totalWorksheetInput) {
       totalWorksheetInput.value = maxWorksheetNumber;
     }
-	
+    
     await new Promise(resolve => setTimeout(resolve, 300));
     console.log("✓ Columns recreated, waiting for DOM update");
 
-    // STORE GRADE DATA FIRST
+    // STORE GRADE DATA FIRST - Preserve null values
     if(result.length > 0) {
       console.log("Storing grade data from DB...");
       result.forEach((item) => {
         const reg = item.reg;
-        const dbValue = item.theorymarks || 0;
+        let dbValue = item.theorymarks;
+        
+        // Check if this is Ab (Absent) - sentinel value or string
+        if (dbValue === 'Ab' || dbValue === '0.000001') {
+          dbValue = 0.000001; // Sentinel for Ab
+        } else if (dbValue === undefined || dbValue === null) {
+          dbValue = null;
+        }
+        // Keep 0 as 0 (will be treated as NG)
+        // Keep 0.0 as 0.0 (will be treated as NG)
+        
         gradeDataFromDB[reg] = dbValue;
-        console.log(`Stored grade for reg ${reg}: ${dbValue}`);
+        console.log(`Stored theory grade for reg ${reg}: ${dbValue} (type: ${typeof dbValue})`);
       });
     }
 
-    // Populate attendance and worksheet data
+    // STORE WORKSHEET GRADES
     if(result.length > 0) {
-      console.log("Populating attendance and worksheet data...");
+      console.log("Storing worksheet grade data from DB...");
       result.forEach((item) => {
         const reg = item.reg;
-        let theoryHiddenInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
-        let attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
-
-        if(!theoryHiddenInput || !attendanceInput) {
-          console.warn(`    ⚠️ Inputs not found for reg ${reg}, skipping`);
-        } else {
-          // Don't set grade here - we'll do it after worksheet render
-          attendanceInput.value = item.attendance || 0;
-        }
-
-        // Handle worksheet data
-        const worksheetSelects = document.querySelectorAll(`select[name="worksheetGrades[${reg}][]"]`);
         let worksheetGrades = item.worksheetGrades;
         if (typeof worksheetGrades === 'string') {
           worksheetGrades = worksheetGrades.split(',').map(g => g.trim()).filter(g => g !== '');
         } else if (!Array.isArray(worksheetGrades)) {
           worksheetGrades = [];
         }
-
+        // Filter out empty grades
+        worksheetGrades = worksheetGrades.filter(grade => grade !== '');
+        
+        // Store the grades
         if (worksheetGrades.length > 0) {
           worksheetGradeStore.set(reg, worksheetGrades);
+          console.log(`Stored worksheet grades for reg ${reg}:`, worksheetGrades);
         } else {
           worksheetGradeStore.set(reg, []);
         }
+      });
+      console.log("✓ Worksheet grades stored");
+    }
 
-        if (worksheetSelects.length > 0) {
-          worksheetSelects.forEach((select) => {
-            const selectedWorksheet = Number(worksheetCountSelect?.value || 1);
-            select.value = worksheetGrades[selectedWorksheet - 1] || '';
-          });
+    // Populate attendance data
+    if(result.length > 0) {
+      console.log("Populating attendance data...");
+      result.forEach((item) => {
+        const reg = item.reg;
+        let attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
+        if(attendanceInput) {
+          attendanceInput.value = item.attendance || 0;
         }
       });
-      console.log("✓ Attendance and worksheet data populated");
-    } else {
-      console.log("No previous data found - initializing with zero values");
-      await initializeStudentRecords(subject, studentClass, section, academicYear, terminal);
+      console.log("✓ Attendance data populated");
     }
 
     if(attendanceResult.length > 0) {
@@ -627,11 +695,15 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
       console.log("✓ Additional attendance data populated");
     }
 
-    // CRITICAL: Populate grades AFTER worksheet rendering is complete
-    console.log("Waiting for worksheet rendering to complete...");
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // CRITICAL: Now render the worksheet cells with the stored data
+    console.log("Rendering worksheet cells with stored data...");
+    renderWorksheetCells(currentWorksheetNumber);
+
+    // Also populate theory grades
+    console.log("Waiting for theory grades population...");
+    await new Promise(resolve => setTimeout(resolve, 200));
     
-    // Now populate all grades
+    // Now populate all theory grades
     populateAllGradesAfterRender();
 
     isPageLoading = false;
@@ -652,7 +724,7 @@ async function initializeStudentRecords(subject, studentClass, section, academic
     const reg = student.reg;
     const saveData = {
       reg,
-      theorymarks: 0,
+      theorymarks: null, // Use null for "no grade selected"
       attendance: 0,
       studentClass,
       section,
@@ -729,7 +801,14 @@ window.onload = function() {
     const timer = setTimeout(async () => {
       // Get theory grade from select
       const gradeSelect = document.querySelector(`select[name="theoryGrade[${reg}]"]`);
-      const theorymarks = gradeSelect ? gradeSelect.value : 0;
+      let theorymarks = gradeSelect ? gradeSelect.value : null;
+      
+      // If the value is 'null' string, convert to actual null
+      if (theorymarks === 'null') {
+        theorymarks = null;
+      }
+      // IMPORTANT: Keep '0.000001' as sentinel for Ab
+      // The backend will convert it to 0
       
       // Update hidden input
       const theoryHidden = document.querySelector(`input[name="theorymarks[${reg}]"]`);
@@ -751,23 +830,16 @@ window.onload = function() {
       const practicalfullmarks = document.getElementById('practicalfullmarks')?.value || 0;
       const theoryfullmarks = document.getElementById('fullMarks')?.value || 0;
       const totalWorksheet = Number(document.getElementById('totalWorksheet')?.value || 1);
-      // Merge visible value(s) with the in-memory store so unseen worksheet grades are preserved.
-      const baseGrades = Array.from({ length: totalWorksheet }, (_, i) => {
-        const stored = worksheetGradeStore.get(reg) || [];
-        return stored[i] || '';
-      });
-      const visibleSelects = Array.from(document.querySelectorAll(`select[name="worksheetGrades[${reg}][]"]`));
-      visibleSelects.forEach((vis) => {
-        const idx = Number(vis.dataset.worksheetIndex) || currentWorksheetNumber;
-        if (idx >= 1 && idx <= totalWorksheet) {
-          baseGrades[idx - 1] = vis.value || '';
-        }
-      });
-      const worksheetGrades = baseGrades;
+      
+      // Get worksheet grades from store (which already filters empties)
+      const storedGrades = worksheetGradeStore.get(reg) || [];
+      
+      // Ensure we have the correct number of grades, but only include non-empty ones
+      const worksheetGrades = storedGrades.filter(grade => grade && grade !== '');
 
       const saveData = {
         reg,
-        theorymarks: Number(theorymarks),
+        theorymarks: theorymarks, // Can be null, '0.000001', '0.0', or any other value
         attendance: Number(attendance),
         studentClass,
         section,
@@ -783,6 +855,8 @@ window.onload = function() {
         practicalfullmarks: Number(practicalfullmarks),
         theoryfullmarks: Number(theoryfullmarks),
       };
+
+      console.log(`Saving theorymarks for reg ${reg}:`, theorymarks);
 
       try {
         const response = await fetch(`/entryform?studentClass=${studentClass}&section=${section}&subject=${subject}&academicYear=${academicYear}&terminal=${terminal}`, {
@@ -894,18 +968,23 @@ window.onload = function() {
         const savePromises = studentData.map((student) => {
         const reg = student.reg;
         const totalCount = Number(total);
-        // Use stored grades as the base so reducing/persisting doesn't wipe unseen grades.
+        // Use stored grades as the base so reducing/persisting doesn't wipe unseen grades
         const stored = worksheetGradeStore.get(reg) || [];
         const gradesBase = Array.from({ length: totalCount }, (_, i) => stored[i] || '');
-        // If a select for this reg exists in the DOM, make sure its runtime value is included.
+        // If a select for this reg exists in the DOM, make sure its runtime value is included
         const visible = Array.from(document.querySelectorAll(`select[name="worksheetGrades[${reg}][]"]`));
         visible.forEach((s) => {
           const idx = Number(s.dataset.worksheetIndex) || currentWorksheetNumber;
           if (idx >= 1 && idx <= totalCount) gradesBase[idx - 1] = s.value || '';
         });
-        const worksheetGrades = gradesBase;
+        // FILTER OUT EMPTY GRADES BEFORE SAVING
+        const worksheetGrades = gradesBase.filter(grade => grade !== '');
         const theoryHidden = document.querySelector(`input[name="theorymarks[${reg}]"]`);
-        const theorymarks = theoryHidden ? theoryHidden.value : 0;
+        let theorymarks = theoryHidden ? theoryHidden.value : null;
+        // Keep null as is, don't convert to 0
+        if (theorymarks === 'null' || theorymarks === undefined || theorymarks === '') {
+          theorymarks = null;
+        }
         const attendance = document.querySelector(`input[name="attendance[${reg}]"]`)?.value || 0;
         const name = document.querySelector(`input[name="name[${reg}]"]`)?.value || '';
         const roll = document.querySelector(`input[name="roll[${reg}]"]`)?.value || '';
@@ -916,7 +995,7 @@ window.onload = function() {
 
         const saveData = {
           reg,
-          theorymarks: Number(theorymarks),
+          theorymarks: theorymarks, // Keep null as null, sentinel as 0.000001
           attendance: Number(attendance),
           studentClass,
           section,
@@ -965,8 +1044,15 @@ window.onload = function() {
 
   function setWorksheetGrade(reg, worksheetNumber, grade) {
     const grades = worksheetGradeStore.get(reg) || [];
-    grades[worksheetNumber - 1] = grade;
-    worksheetGradeStore.set(reg, grades);
+    // Only store if grade is not empty
+    if (grade && grade !== '') {
+      grades[worksheetNumber - 1] = grade;
+    } else {
+      // Remove empty grades
+      delete grades[worksheetNumber - 1];
+    }
+    // Clean up undefined values and filter out empties
+    worksheetGradeStore.set(reg, grades.filter(g => g !== undefined && g !== ''));
   }
 
   function buildWorksheetSelect(reg, worksheetNumber) {
@@ -986,19 +1072,47 @@ window.onload = function() {
     select.dataset.reg = reg;
     select.dataset.worksheetIndex = worksheetNumber;
 
-    const grades = ['', 'A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'NG'];
+    // Add disabled default option first
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Select Grade';
+    defaultOption.disabled = true;
+    defaultOption.selected = true;
+    select.appendChild(defaultOption);
+
+    // Add actual grade options
+    const grades = ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'NG', 'Ab'];
     grades.forEach((grade) => {
       const option = document.createElement('option');
       option.value = grade;
-      option.textContent = grade || 'Select Grade';
+      option.textContent = grade;
       select.appendChild(option);
     });
 
-    select.value = getWorksheetGrade(reg, worksheetNumber);
+    // Set the value from stored data (if any)
+    const storedGrades = worksheetGradeStore.get(reg) || [];
+    const storedValue = storedGrades[worksheetNumber - 1] || '';
+    
+    // Only set the value if there's a valid grade
+    if (storedValue && grades.includes(storedValue)) {
+      select.value = storedValue;
+      console.log(`Set worksheet ${worksheetNumber} for reg ${reg} to: ${storedValue}`);
+    } else {
+      console.log(`No stored grade for reg ${reg} worksheet ${worksheetNumber}, keeping default`);
+    }
+    // If no valid grade, keep the disabled default option selected
 
     select.addEventListener('change', function () {
-      setWorksheetGrade(reg, worksheetNumber, this.value);
-      if (typeof autoSave === 'function') autoSave(select); // ensure source select is saved immediately
+      // Only store non-empty values
+      if (this.value && this.value !== '') {
+        setWorksheetGrade(reg, worksheetNumber, this.value);
+      } else {
+        // If empty string is selected (shouldn't happen with disabled default), remove from store
+        const grades = worksheetGradeStore.get(reg) || [];
+        delete grades[worksheetNumber - 1];
+        worksheetGradeStore.set(reg, grades.filter(g => g !== undefined));
+      }
+      if (typeof autoSave === 'function') autoSave(select);
 
       const applyAll = document.getElementById('worksheetApplyAll');
       const checkedBoxes = Array.from(document.querySelectorAll(`#markstable input.row-worksheet-checkbox[data-worksheet-index="${worksheetNumber}"]:checked`));
@@ -1008,7 +1122,14 @@ window.onload = function() {
         document.querySelectorAll(`#markstable select[data-worksheet-index="${worksheetNumber}"]`).forEach((s) => {
           if (s !== select) {
             s.value = select.value;
-            setWorksheetGrade(s.dataset.reg, worksheetNumber, select.value);
+            // Only store non-empty values
+            if (select.value && select.value !== '') {
+              setWorksheetGrade(s.dataset.reg, worksheetNumber, select.value);
+            } else {
+              const grades = worksheetGradeStore.get(s.dataset.reg) || [];
+              delete grades[worksheetNumber - 1];
+              worksheetGradeStore.set(s.dataset.reg, grades.filter(g => g !== undefined));
+            }
             if (typeof autoSave === 'function') autoSave(s);
           }
         });
@@ -1019,7 +1140,14 @@ window.onload = function() {
           const s = document.querySelector(`#markstable select[data-worksheet-index="${worksheetNumber}"][data-reg="${regKey}"]`);
           if (s && s !== select) {
             s.value = select.value;
-            setWorksheetGrade(regKey, worksheetNumber, select.value);
+            // Only store non-empty values
+            if (select.value && select.value !== '') {
+              setWorksheetGrade(regKey, worksheetNumber, select.value);
+            } else {
+              const grades = worksheetGradeStore.get(regKey) || [];
+              delete grades[worksheetNumber - 1];
+              worksheetGradeStore.set(regKey, grades.filter(g => g !== undefined));
+            }
             if (typeof autoSave === 'function') autoSave(s);
           }
         });
@@ -1045,11 +1173,21 @@ window.onload = function() {
       td.appendChild(buildWorksheetSelect(reg, worksheetNumber));
     });
     
-    // After rendering worksheet cells, populate grades if we have data
-    if (Object.keys(gradeDataFromDB).length > 0) {
-      console.log("Worksheet rendered, populating grades...");
-      setTimeout(populateAllGradesAfterRender, 100);
-    }
+    // After rendering worksheet cells, populate worksheet grades from the store
+    console.log("Populating worksheet grades in rendered cells...");
+    document.querySelectorAll('#markstable td[data-column="worksheet"] select').forEach((select) => {
+      const reg = select.dataset.reg;
+      const worksheetIndex = Number(select.dataset.worksheetIndex);
+      const storedGrades = worksheetGradeStore.get(reg) || [];
+      const storedValue = storedGrades[worksheetIndex - 1] || '';
+      
+      console.log(`Setting worksheet grade for reg ${reg}, worksheet ${worksheetIndex}: "${storedValue}"`);
+      
+      // Only set if there's a valid grade
+      if (storedValue && storedValue !== '') {
+        select.value = storedValue;
+      }
+    });
   }
 
   function syncWorksheetSelection(desiredWorksheetNumber) {

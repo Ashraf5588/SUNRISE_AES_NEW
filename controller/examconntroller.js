@@ -296,10 +296,18 @@ exports.entryform = async (req,res,next)=>
    
   const {studentClass,section,subject,academicYear,terminal}= req.query;
   const model = getSubjectModel(subject, studentClass, section, terminal);
-const theoryData = await model.find({}).lean();
+  const theoryData = await model.find({}).lean();
 
+  // Normalize query params and use case-insensitive matching to ensure all students are returned
+  const normalizedClass = String(studentClass || '').trim();
+  const normalizedSection = String(section || '').trim();
 
-  const studentData = await studentRecord.find({studentClass:studentClass,section:section})
+  const studentData = await studentRecord.find({
+    studentClass: { $regex: `^${normalizedClass}$`, $options: 'i' },
+    section: { $regex: `^${normalizedSection}$`, $options: 'i' }
+  }).lean();
+
+  console.log(`[Backend] entryform: requested class='${studentClass}', section='${section}' -> found ${studentData.length} student records`);
      const marksheetSetups = await marksheetSetup.find({}).lean();
      
   const subjectData = await newsubject.find({forClass:studentClass,newsubject:subject}).lean();
@@ -366,6 +374,7 @@ exports.saveEntryform = async (req, res, next) => {
     console.log("[Backend] ====== SAVE ENTRYFORM ======");
     console.log("[Backend] Query params:", { studentClass, section, subject, academicYear, terminal });
     console.log("[Backend] Body - reg:", req.body.reg, "totalWorksheet:", req.body.totalWorksheet);
+    console.log("[Backend] Body - theorymarks:", req.body.theorymarks, "type:", typeof req.body.theorymarks);
 
     const model = getSlipModel();
     
@@ -378,12 +387,29 @@ exports.saveEntryform = async (req, res, next) => {
       section: section,
     };
     
+    // Handle theorymarks properly - preserve the sentinel value
+    let theorymarks = req.body.theorymarks;
+    
+    // If theorymarks is 'null' string or undefined or null, set to null
+    if (theorymarks === 'null' || theorymarks === undefined || theorymarks === '' || theorymarks === null) {
+      theorymarks = null;
+    } else if (theorymarks === '0.000001') {
+      // Keep the sentinel value as is for Ab
+      theorymarks = 0.000001; // Store as number
+      console.log("[Backend] Keeping sentinel value for Ab: 0.000001");
+    } else {
+      // Convert to number for other values (4.0, 3.6, 0.0, etc.)
+      theorymarks = Number(theorymarks);
+    }
+    
+    console.log("[Backend] Processed theorymarks:", theorymarks, "type:", typeof theorymarks);
+    
     const updateData = {
       $set: {
         reg: req.body.reg,
-        roll:  req.body.roll,
+        roll: req.body.roll,
         name: req.body.name,
-        theorymarks: Number(req.body.theorymarks) || 0,
+        theorymarks: theorymarks, // This can be null, 0.000001, 0.0, 4.0, etc.
         practicalmarks: Number(req.body.practicalmarks) || 0,
         totalpracticalmarks: Number(req.body.totalpracticalmarks) || 0,
         attendance: Number(req.body.attendance) || 0,
@@ -404,12 +430,13 @@ exports.saveEntryform = async (req, res, next) => {
     };
     
     console.log("[Backend] Updating doc with query:", JSON.stringify(updateQuery));
+    console.log("[Backend] Setting theorymarks to:", theorymarks);
     console.log("[Backend] Setting totalWorksheet to:", updateData.$set.totalWorksheet);
 
-    const result = await model.updateOne(updateQuery, updateData, { upsert: true });
+    const result = await model.updateMany(updateQuery, updateData, { upsert: true });
     
     console.log("[Backend] Update result:", result);
-    console.log("[Backend] ✓ Data saved successfully (matched:", result.matchedCount, ", upserted:", result.upsertedCount, ")");
+    console.log("[Backend] ✓ Data saved successfully (matched:", result.matchedCount, ", modified:", result.modifiedCount, ", upserted:", result.upsertedCount, ")");
     console.log("[Backend] ====== END SAVE ======");
     
     res.json({ success: true, result: result });
@@ -418,6 +445,108 @@ exports.saveEntryform = async (req, res, next) => {
   catch (err) {
     console.error("[Backend] ✗ Error saving entry form:", err);
     res.status(500).json({success: false, error: err.message});
+  }
+};
+
+// Endpoint to set totalWorksheet for all students matching the class/section/subject/terminal/year
+exports.setTotalWorksheetForClass = async (req, res, next) => {
+  try {
+    let { studentClass, section, subject, academicYear, terminal } = req.query;
+    if (!studentClass) studentClass = req.body.studentClass;
+    if (!section) section = req.body.section;
+    if (!subject) subject = req.body.subject;
+    if (!academicYear) academicYear = req.body.academicYear;
+    if (!terminal) terminal = req.body.terminal;
+
+    const total = Number(req.body.totalWorksheet) || 0;
+    if (!Number.isFinite(total) || total < 0) {
+      return res.status(400).json({ success: false, error: 'Invalid totalWorksheet' });
+    }
+
+    const model = getSlipModel();
+    const findQuery = {
+      subject: subject,
+      terminal: terminal,
+      studentClass: studentClass,
+      section: section,
+      academicYear: academicYear,
+    };
+
+    console.log('[Backend] setTotalWorksheetForClass - query:', JSON.stringify(findQuery), 'total:', total);
+
+    const updateData = { $set: { totalWorksheet: total } };
+
+    const result = await model.updateMany(findQuery, updateData);
+    console.log('[Backend] setTotalWorksheetForClass result:', result);
+    return res.json({ success: true, result });
+  } catch (err) {
+    console.error('[Backend] ✗ Error in setTotalWorksheetForClass:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+exports.getPreviousmarks = async (req, res, next) => {
+  try {
+    const { subject, studentClass, section, academicYear, terminal } = req.query;
+    
+    console.log("\n[Backend] ====== GET PREVIOUSMARKS ======");
+    console.log("[Backend] Query params received:");
+    console.log(`  - subject: "${subject}"`);
+    console.log(`  - studentClass: "${studentClass}"`);
+    console.log(`  - section: "${section}"`);
+    console.log(`  - academicYear: "${academicYear}"`);
+    console.log(`  - terminal: "${terminal}"`);
+    
+    // Query exam_marks collection
+    const model = getSlipModel();
+    console.log(`[Backend] Using collection: exam_marks`);
+    
+    const findQuery = {
+      subject: subject,
+      terminal: terminal,
+      studentClass: studentClass,
+      section: section,
+      academicYear: academicYear
+    };
+    
+    console.log(`[Backend] Find query: ${JSON.stringify(findQuery)}`);
+    
+    const previousMarks = await model.find(findQuery).lean();
+    
+    console.log(`[Backend] ✓ Found ${previousMarks.length} records`);
+    
+    // Process the data to ensure proper values
+    previousMarks.forEach((record, index) => {
+      console.log(`[Backend] Record ${index + 1}:`);
+      console.log(`  - reg: ${record.reg}`);
+      console.log(`  - theorymarks: ${record.theorymarks} (type: ${typeof record.theorymarks})`);
+      console.log(`  - totalWorksheet: ${record.totalWorksheet}`);
+      console.log(`  - worksheetGrades: ${JSON.stringify(record.worksheetGrades)}`);
+      
+      // Ensure theorymarks is properly set
+      if (record.theorymarks === undefined || record.theorymarks === null) {
+        record.theorymarks = null;
+      }
+      // Keep 0.000001 as is (Ab sentinel)
+      // Keep 0.0 as is (NG)
+      // Keep 0 as is (if any legacy data)
+    });
+    
+    if (previousMarks.length > 0) {
+      console.log("[Backend] 📊 First record data:");
+      console.log(`  - reg: ${previousMarks[0].reg}`);
+      console.log(`  - totalWorksheet: ${previousMarks[0].totalWorksheet}`);
+      console.log(`  - theorymarks: ${previousMarks[0].theorymarks}`);
+      console.log(`  - worksheetGrades: ${JSON.stringify(previousMarks[0].worksheetGrades)}`);
+    } else {
+      console.warn("[Backend] ⚠️ No records found in exam_marks collection");
+    }
+    console.log("[Backend] ====== END GET PREVIOUSMARKS ======\n");
+
+    res.json(previousMarks);
+  } catch (err) {
+    console.error("[Backend] ✗ Error fetching previous marks:", err);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
