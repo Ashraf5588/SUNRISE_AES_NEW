@@ -20,10 +20,6 @@
   <title>Student Ledger</title>
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <!-- DataTables CSS -->
-  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
-  <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
-  <link rel="stylesheet" href="https://cdn.datatables.net/fixedcolumns/4.3.0/css/fixedColumns.dataTables.min.css">
   
   <style>
     :root {
@@ -65,6 +61,38 @@
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 1rem;
       margin-bottom: 1rem;
+    }
+
+    .hide-controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .hide-group {
+      display: grid;
+      gap: 0.4rem;
+    }
+
+    .hide-group-title {
+      font-weight: 700;
+      color: var(--secondary);
+      margin-bottom: 0.25rem;
+    }
+
+    .hide-group label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.92rem;
+      cursor: pointer;
+    }
+
+    .hide-group input {
+      margin: 0;
     }
 
     select {
@@ -157,13 +185,15 @@
     }
 
     /* Table Styling */
-    table.dataTable {
-      width: 100% !important;
+    table#ledgerTable {
+      width: 100%;
       border-collapse: collapse;
       font-size: 0.85rem;
     }
 
-    table.dataTable thead th {
+    table#ledgerTable thead th,
+    table#ledgerTable tfoot th,
+    table#ledgerTable tfoot td {
       background-color: #153b71;
       color: white;
       font-weight: 600;
@@ -173,7 +203,7 @@
       vertical-align: middle;
     }
 
-    table.dataTable tbody td {
+    table#ledgerTable tbody td {
       padding: 8px;
       border: 1px solid var(--border);
       text-align: center;
@@ -181,12 +211,12 @@
     }
 
     /* Zebra Striping */
-    table.dataTable tbody tr:nth-child(odd) { background-color: #ffffff; }
-    table.dataTable tbody tr:nth-child(even) { background-color: #f1f5f9; }
-    table.dataTable tbody tr:hover { background-color: #e2e8f0 !important; }
+    table#ledgerTable tbody tr:nth-child(odd) { background-color: #ffffff; }
+    table#ledgerTable tbody tr:nth-child(even) { background-color: #f1f5f9; }
+    table#ledgerTable tbody tr:hover { background-color: #e2e8f0 !important; }
 
-    /* Analysis Rows (Footer) */
-    table.dataTable tfoot th, table.dataTable tfoot td {
+    table#ledgerTable tfoot th,
+    table#ledgerTable tfoot td {
       background-color: #f1f5f9;
       font-weight: 600;
       border: 1px solid var(--border);
@@ -197,18 +227,10 @@
     /* Status Colors */
     .status-fail { background-color: #fee2e2 !important; color: #991b1b; }
     .status-pass { background-color: #dcfce7 !important; color: #166534; }
-    
-    /* DataTables Buttons */
-    .dt-buttons .dt-button {
-      background: white !important;
-      border: 1px solid var(--border) !important;
-      border-radius: 6px !important;
-      color: var(--secondary) !important;
-      font-size: 0.85rem !important;
-      padding: 0.5rem 1rem !important;
-      margin-right: 0.5rem !important;
+
+    .hidden-column {
+      display: none !important;
     }
-    .dt-buttons .dt-button:hover { background: #f8fafc !important; border-color: var(--primary) !important; }
 
     @media print {
       .no-print { display: none; }
@@ -243,6 +265,28 @@
         </select>
       </div>
       <button onclick="loadform()">Load Ledger</button>
+      <div class="form-selector-grid hide-controls">
+        <div class="hide-group">
+          <div class="hide-group-title">Show / Hide Columns</div>
+          <label><input type="checkbox" class="column-toggle" data-coltype="th" checked> TH</label>
+          <label><input type="checkbox" class="column-toggle" data-coltype="pr" checked> PR</label>
+          <label><input type="checkbox" class="column-toggle" data-coltype="tot" checked> Tot</label>
+          <label><input type="checkbox" class="column-toggle" data-coltype="total-th" checked> Total Th</label>
+          <label><input type="checkbox" class="column-toggle" data-coltype="total-pr" checked> Total Pr</label>
+          <label><input type="checkbox" class="column-toggle" data-coltype="per" checked> Per%</label>
+          <label><input type="checkbox" class="column-toggle" data-coltype="result" checked> Result</label>
+          <label><input type="checkbox" class="column-toggle" data-coltype="rank" checked> Rank</label>
+          <label><input type="checkbox" class="column-toggle" data-coltype="att" checked> Att.</label>
+          <label><input type="checkbox" class="column-toggle" data-coltype="failcount" checked> Fail Count</label>
+        </div>
+        <div class="hide-group">
+          <div class="hide-group-title">Hide Subjects</div>
+          <% uniqueSubjects = new Set(ledgerData.map(item => item.subjects.map(sub => sub.subject)).flat()); %>
+          <% Array.from(uniqueSubjects).forEach((sub, index) => { %>
+            <label><input type="checkbox" class="subject-toggle" data-subject-index="<%= index %>" checked> <%= sub %></label>
+          <% }) %>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -272,23 +316,23 @@
           <th rowspan="2">Roll</th>
           <th rowspan="2">Name</th>
           <% uniqueSubjects = new Set(ledgerData.map(item => item.subjects.map(sub => sub.subject)).flat()); %>
-          <% uniqueSubjects.forEach((sub) => { %>
-            <th colspan="3"><%= sub %></th>
+          <% Array.from(uniqueSubjects).forEach((sub, index) => { %>
+            <th colspan="3" class="subject-header subject-<%= index %>" data-subject-index="<%= index %>"><%= sub %></th>
           <% }) %>
-          <th rowspan="2">Total Th</th>
-          <th rowspan="2">Total Pr</th>
-          <th rowspan="2">Per%</th>
-          <th rowspan="2">Result</th>
-          <th rowspan="2">Rank</th>
-          <th rowspan="2">Att.</th>
-          <th rowspan="2">Fail Count</th>
+          <th rowspan="2" class="col-total-th">Total Th</th>
+          <th rowspan="2" class="col-total-pr">Total Pr</th>
+          <th rowspan="2" class="col-per">Per%</th>
+          <th rowspan="2" class="col-result">Result</th>
+          <th rowspan="2" class="col-rank">Rank</th>
+          <th rowspan="2" class="col-att">Att.</th>
+          <th rowspan="2" class="col-failcount">Fail Count</th>
         </tr>
         <tr>
-         <% for (let i = 0; i < uniqueSubjects.size; i++) { %>
-            <th>TH</th>
-            <th>PR</th>
-            <th>Tot</th>
-          <% } %>
+          <% Array.from(uniqueSubjects).forEach((sub, index) => { %>
+            <th class="subject-subheader subject-<%= index %> col-th" data-subject-index="<%= index %>">TH</th>
+            <th class="subject-subheader subject-<%= index %> col-pr" data-subject-index="<%= index %>">PR</th>
+            <th class="subject-subheader subject-<%= index %> col-tot" data-subject-index="<%= index %>">Tot</th>
+          <% }) %>
         </tr>
       </thead>
       
@@ -297,25 +341,25 @@
           <tr>
             <td><%= data.roll %></td>
             <td><%= data.name %></td>
-            <% uniqueSubjects.forEach((sub) => { %>
+            <% Array.from(uniqueSubjects).forEach((sub, index) => { %>
                 <% const subjectData = data.subjectMap[sub]; %>
             <% if(subjectData){ %>
-            <td class="<%= subjectData.theorymarks < subjectData.passMarks ? 'status-fail' : '' %>"><%= subjectData.theorymarks %></td>
-            <td><%= subjectData.practicalmarks %></td>
-            <td><%= subjectData.totalmarks %></td>
+            <td class="subject-<%= index %> col-th <%= subjectData.theorymarks < subjectData.passMarks ? 'status-fail' : '' %>"><%= subjectData.theorymarks %></td>
+            <td class="subject-<%= index %> col-pr"><%= subjectData.practicalmarks %></td>
+            <td class="subject-<%= index %> col-tot"><%= subjectData.totalmarks %></td>
             <% } else { %>
-            <td>-</td>
-            <td>-</td>
-            <td>-</td>
+            <td class="subject-<%= index %> col-th">-</td>
+            <td class="subject-<%= index %> col-pr">-</td>
+            <td class="subject-<%= index %> col-tot">-</td>
             <% } %>
            <% }) %>
-            <td><%= data.totalTh %></td>
-            <td><%= data.totalPr %></td>
-            <td><%= data.theorypercentage ? data.theorypercentage.toFixed(2) : '-' %></td>
-            <td class="<%= data.failcount > 0 ? 'status-fail' : 'status-pass' %>"><% if (data.failcount>0) { %>Fail<% } else { %>Pass<% } %></td>
-            <td><%= data.rank %></td>
-            <td><%=data.attendance%></td>
-            <td><%= data.failcount %></td>
+            <td class="col-total-th"><%= data.totalTh %></td>
+            <td class="col-total-pr"><%= data.totalPr %></td>
+            <td class="col-per"><%= data.theorypercentage ? data.theorypercentage.toFixed(2) : '-' %></td>
+            <td class="col-result <%= data.failcount > 0 ? 'status-fail' : 'status-pass' %>"><% if (data.failcount>0) { %>Fail<% } else { %>Pass<% } %></td>
+            <td class="col-rank"><%= data.rank %></td>
+            <td class="col-att"><%=data.attendance%></td>
+            <td class="col-failcount"><%= data.failcount %></td>
           </tr>
         <% }) %>
       </tbody>
@@ -415,205 +459,64 @@
   </div>
 
   <!-- Scripts -->
-  <script src="https://code.jquery.com/jquery-3.7.0.js"></script>
-  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-  <script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/pdfmake.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.53/vfs_fonts.js"></script>
-  <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
-  <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
-  <script src="https://cdn.datatables.net/fixedcolumns/4.3.0/js/dataTables.fixedColumns.min.js"></script>
-
   <script>
-    $(document).ready(function() {
-      const fileName = "Class <%= studentClass %>-<%= section %> <%= terminal %> <%= academicYear %> Ledger";
-      const numSubjects = <%= uniqueSubjects.size %>;
+    document.addEventListener('DOMContentLoaded', function() {
+      function refreshSubjectHeaders() {
+        document.querySelectorAll('.subject-header').forEach(header => {
+          const index = header.dataset.subjectIndex;
+          const visibleChildCols = Array.from(document.querySelectorAll(`.subject-subheader.subject-${index}`))
+            .filter(el => !el.classList.contains('hidden-column'));
+          const visibleChildCount = visibleChildCols.length;
+          if (visibleChildCount === 0) {
+            header.classList.add('hidden-column');
+            header.removeAttribute('colspan');
+          } else {
+            header.classList.remove('hidden-column');
+            header.setAttribute('colspan', visibleChildCount);
+          }
+        });
+      }
 
-      $('#ledgerTable').DataTable({
-        dom: 'Bfrtip',
-        buttons: [
-            { extend: 'copy', footer: true },
-            { extend: 'csv', footer: true, filename: fileName },
-            { 
-                extend: 'excel', 
-                footer: false, 
-                header: false,
-                filename: fileName, 
-                title: fileName,
-                customize: function(xlsx) {
-                    var sheet = xlsx.xl.worksheets['sheet1.xml'];
-                    var sheetData = $('sheetData', sheet);
-                    var mergeCells = $('mergeCells', sheet);
-                    if (mergeCells.length === 0) {
-                        mergeCells = $('<mergeCells/>');
-                        $('worksheet', sheet).append(mergeCells);
-                    }
-                    
-                    function toCol(n) {
-                        var s = "";
-                        while(n >= 0) {
-                            s = String.fromCharCode(n % 26 + 65) + s;
-                            n = Math.floor(n / 26) - 1;
-                        }
-                        return s;
-                    }
+      function toggleColumns(type, visible) {
+        document.querySelectorAll(`.col-${type}, .col-type-${type}`).forEach(el => {
+          el.classList.toggle('hidden-column', !visible);
+        });
+        refreshSubjectHeaders();
+      }
 
-                    // 1. Shift existing data rows down by 2 to make room for header
-                    var headerRowsCount = 2;
-                    
-                    $('row', sheetData).each(function () {
-                        var row = $(this);
-                        var r = parseInt(row.attr('r'));
-                        if (r > 1) { // Skip title row (1)
-                            var newR = r + headerRowsCount;
-                            row.attr('r', newR);
-                            row.children('c').each(function() {
-                                var c = $(this);
-                                var ref = c.attr('r');
-                                var colPart = ref.replace(/\d+/, '');
-                                c.attr('r', colPart + newR);
-                            });
-                        }
-                    });
+      function toggleSubject(index, visible) {
+        document.querySelectorAll(`.subject-${index}`).forEach(el => {
+          el.classList.toggle('hidden-column', !visible);
+        });
+        refreshSubjectHeaders();
+      }
 
-                    // 2. Insert Header Rows
-                    var thead = $('.dataTables_scrollHeadInner table thead').length > 0 
-                        ? $('.dataTables_scrollHeadInner table thead') 
-                        : $('#ledgerTable thead');
-                    
-                    var headerStartRow = 2;
-                    var titleRow = $('row[r="1"]', sheetData);
-                    
-                    thead.find('tr').each(function(trIdx, tr) {
-                        var currentRow = headerStartRow + trIdx;
-                        var rowXML = '<row r="' + currentRow + '">';
-                        var colIdx = 0;
-                        
-                        $(tr).children('th, td').each(function(tdIdx, td) {
-                            var $td = $(td);
-                            var text = $td.text();
-                            var colspan = parseInt($td.attr('colspan')) || 1;
-                            var rowspan = parseInt($td.attr('rowspan')) || 1;
-                            
-                            rowXML += '<c t="inlineStr" r="' + toCol(colIdx) + currentRow + '" s="2">';
-                            rowXML += '<is><t>' + text + '</t></is>';
-                            rowXML += '</c>';
-                            
-                            if (colspan > 1 || rowspan > 1) {
-                                var startCol = toCol(colIdx);
-                                var endCol = toCol(colIdx + colspan - 1);
-                                var startRow = currentRow;
-                                var endRow = currentRow + rowspan - 1;
-                                var mergeEntry = '<mergeCell ref="' + startCol + startRow + ':' + endCol + endRow + '"/>';
-                                mergeCells.append(mergeEntry);
-                            }
-                            
-                            colIdx += colspan;
-                        });
-                        
-                        rowXML += '</row>';
-                        
-                        if (titleRow.length > 0 && trIdx === 0) {
-                            $(rowXML).insertAfter(titleRow);
-                            titleRow = $('row[r="' + currentRow + '"]', sheetData);
-                        } else if (trIdx > 0) {
-                             var prevRow = $('row[r="' + (currentRow - 1) + '"]', sheetData);
-                             $(rowXML).insertAfter(prevRow);
-                        } else {
-                            sheetData.prepend(rowXML);
-                            titleRow = $('row[r="' + currentRow + '"]', sheetData);
-                        }
-                    });
+      function updateVisibility() {
+        document.querySelectorAll('.subject-toggle').forEach(checkbox => {
+          const idx = checkbox.dataset.subjectIndex;
+          toggleSubject(idx, checkbox.checked);
+        });
 
-                    // 3. Footer (Manual Injection)
-                    var table = $('#ledgerTable').DataTable();
-                    var dtDataCount = table.rows({ search: 'applied' }).count();
-                    var footerStartRow = 1 + headerRowsCount + dtDataCount + 1; 
+        document.querySelectorAll('.column-toggle').forEach(checkbox => {
+          const type = checkbox.dataset.coltype.replace('col-', '');
+          toggleColumns(type, checkbox.checked);
+        });
+      }
 
-                    var tfoot = table.table().footer();
-                    var footerRows = $(tfoot).find('tr');
-                    if (footerRows.length === 0) {
-                         footerRows = $('.dataTables_scrollFootInner tfoot tr');
-                    }
-
-                    footerRows.each(function(index, tr) {
-                        var $tr = $(tr);
-                        var currentRow = footerStartRow + index;
-                        var rowXML = '<row r="' + currentRow + '">';
-                        var colIdx = 0;
-
-                        $tr.children().each(function(i, td) {
-                            var $td = $(td);
-                            var text = $td.text();
-                            var colspan = parseInt($td.attr('colspan')) || 1;
-                            
-                            rowXML += '<c t="inlineStr" r="' + toCol(colIdx) + currentRow + '" s="2">';
-                            rowXML += '<is><t>' + text + '</t></is>';
-                            rowXML += '</c>';
-
-                            if (colspan > 1) {
-                                var startCol = toCol(colIdx);
-                                var endCol = toCol(colIdx + colspan - 1);
-                                var mergeEntry = '<mergeCell ref="' + startCol + currentRow + ':' + endCol + currentRow + '"/>';
-                                mergeCells.append(mergeEntry);
-                            }
-
-                            colIdx += colspan;
-                        });
-
-                        rowXML += '</row>';
-                        sheetData.append(rowXML);
-                    });
-                    
-                    mergeCells.attr( 'count', mergeCells.children().length );
-                }
-            },
-            { extend: 'pdf', footer: true, filename: fileName, title: fileName, orientation: 'landscape', pageSize: 'A3' },
-            { 
-                extend: 'print', 
-                footer: true, 
-                title: fileName,
-                customize: function(win) {
-                    // Force landscape mode
-                    var css = '@page { size: landscape; }',
-                        head = win.document.head || win.document.getElementsByTagName('head')[0],
-                        style = win.document.createElement('style');
-         
-                    style.type = 'text/css';
-                    style.media = 'print';
-         
-                    if (style.styleSheet) {
-                      style.styleSheet.cssText = css;
-                    } else {
-                      style.appendChild(win.document.createTextNode(css));
-                    }
-                    head.appendChild(style);
-
-                    // Header Fix
-                    var thead = $('.dataTables_scrollHeadInner table thead').length > 0 
-                        ? $('.dataTables_scrollHeadInner table thead').clone() 
-                        : $('#ledgerTable thead').clone();
-                    $(win.document.body).find('table thead').remove();
-                    $(win.document.body).find('table').prepend(thead);
-
-                    // Footer Fix
-                    var tfoot = $('.dataTables_scrollFootInner table tfoot').length > 0 
-                        ? $('.dataTables_scrollFootInner table tfoot').clone() 
-                        : $('#ledgerTable tfoot').clone();
-                    
-                    $(win.document.body).find('table tfoot').remove();
-                    $(win.document.body).find('table').append(tfoot);
-                }
-            }
-        ],
-        scrollX: true,
-        paging: false,
-        fixedColumns: {
-            left: 2
-        },
-        ordering: false
+      document.querySelectorAll('.column-toggle').forEach(toggle => {
+        toggle.addEventListener('change', function() {
+          const type = this.dataset.coltype.replace('col-', '');
+          toggleColumns(type, this.checked);
+        });
       });
+
+      document.querySelectorAll('.subject-toggle').forEach(toggle => {
+        toggle.addEventListener('change', function() {
+          toggleSubject(this.dataset.subjectIndex, this.checked);
+        });
+      });
+
+      updateVisibility();
     });
 
     function loadform() {
@@ -670,52 +573,58 @@
     function exportToExcel() {
       const table = document.getElementById('ledgerTable');
       
-      // Get the DataTable instance
-      const dataTable = $('#ledgerTable').DataTable();
-      
-      // Get all data including headers
+      // Get all visible header cells and compute adjusted colspan for subject groups
       const headers = [];
       const headerRows = table.querySelectorAll('thead tr');
-      headerRows.forEach(row => {
+      headerRows.forEach((row, rowIndex) => {
         const rowData = [];
         row.querySelectorAll('th').forEach(th => {
-          const text = th.textContent.trim();
-          const colspan = parseInt(th.getAttribute('colspan')) || 1;
+          if (th.classList.contains('hidden-column')) return;
+
+          let colspan = parseInt(th.getAttribute('colspan')) || 1;
           const rowspan = parseInt(th.getAttribute('rowspan')) || 1;
+
+          if (th.classList.contains('subject-header')) {
+            const index = th.dataset.subjectIndex;
+            colspan = Array.from(document.querySelectorAll(`.subject-subheader.subject-${index}`))
+              .filter(el => !el.classList.contains('hidden-column')).length;
+            if (colspan === 0) return;
+          }
+
           rowData.push({
-            text: text,
+            text: th.textContent.trim(),
             colspan: colspan,
             rowspan: rowspan
           });
         });
-        headers.push(rowData);
+        if (rowData.length) headers.push(rowData);
       });
 
-      // Get data rows
+      // Get visible data rows
       const dataRows = [];
-      const rows = table.querySelectorAll('tbody tr');
-      rows.forEach(row => {
+      table.querySelectorAll('tbody tr').forEach(row => {
         const rowData = [];
         row.querySelectorAll('td').forEach(td => {
-          rowData.push(td.textContent.trim());
+          if (!td.classList.contains('hidden-column')) {
+            rowData.push(td.textContent.trim());
+          }
         });
-        dataRows.push(rowData);
+        if (rowData.length) dataRows.push(rowData);
       });
 
-      // Get footer rows
+      // Get visible footer rows
       const footerRows = [];
-      const tfootRows = table.querySelectorAll('tfoot tr');
-      tfootRows.forEach(row => {
+      table.querySelectorAll('tfoot tr').forEach(row => {
         const rowData = [];
         row.querySelectorAll('th, td').forEach(cell => {
-          const text = cell.textContent.trim();
+          if (cell.classList.contains('hidden-column')) return;
           const colspan = parseInt(cell.getAttribute('colspan')) || 1;
           rowData.push({
-            text: text,
+            text: cell.textContent.trim(),
             colspan: colspan
           });
         });
-        footerRows.push(rowData);
+        if (rowData.length) footerRows.push(rowData);
       });
 
       // Build HTML for Excel

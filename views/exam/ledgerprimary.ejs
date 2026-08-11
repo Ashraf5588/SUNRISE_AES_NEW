@@ -350,10 +350,11 @@
           <% if (marksheetSetups && marksheetSetups.length > 0) { %>
             <% const currentYear = Number(marksheetSetups[0].academicYear); %>
             <% for (let i = 0; i < 5; i++) { %>
-              <option value="<%= currentYear - i %>"><%= currentYear - i %></option>
+              <option value="<%= currentYear - i %>" ><%= currentYear - i %></option>
             <% } %>
           <% } %>
         </select>
+        <button onclick="loadform()">Load Ledger</button>
       </div>
       <div class="form-selector-grid hide-controls">
         <div class="hide-group">
@@ -373,7 +374,7 @@
           <% }) %>
         </div>
       </div>
-      <button onclick="loadform()">Load Ledger</button>
+      
     </div>
   </div>
 

@@ -384,7 +384,7 @@
            <%}else{%>
 <% totalPracticalproject = ((((totalObtainedAllPractical/18)*36) )/ lessonData[0].units.length) %>
             <%}%>
-          <td><%= totalPracticalproject %></td>
+          <td><%= totalPracticalproject/lessonData[0].units.length %></td>
 
            <td><%= student.terminalMarks %></td>
            <%if(studentClass>8 ||    studentClass=="nine" || studentClass=="NINE" || studentClass=="9" || studentClass=="Nine"
