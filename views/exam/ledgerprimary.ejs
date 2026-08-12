@@ -898,6 +898,11 @@
           <table>
       `;
 
+      const totalCols = 2 + subjectGroups.reduce((sum, group) => sum + group.count, 0) + remainingCols.length;
+      html += `<tr><th colspan="${totalCols}" style="text-align:left; font-weight:700; font-size:12px; padding:8px 10px;">`;
+      html += `Class/Section: ${escapeHtml('<%= studentClass %> - <%= section %>')} | Terminal: ${escapeHtml('<%= terminal %>')} | Academic Year: ${escapeHtml('<%= academicYear %>')}`;
+      html += `</th></tr>`;
+
       // FIRST HEADER ROW: Roll, Name, Subject names (merged), remaining headers
       html += `<tr>`;
       html += `<th rowspan="2">Roll</th>`;

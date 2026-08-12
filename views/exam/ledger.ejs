@@ -731,6 +731,12 @@
           <table>
       `;
 
+      // Add ledger metadata row (class/section/terminal/year)
+      const totalCols = headers[0].reduce((sum, header) => sum + (header.colspan || 1), 0);
+      html += `<tr><th colspan="${totalCols}" style="text-align:left; font-weight:700; font-size:12px; padding:8px 10px;">`;
+      html += `Class/Section: ${escapeHtml('<%= studentClass %> - <%= section %>')} | Terminal: ${escapeHtml('<%= terminal %>')} | Academic Year: ${escapeHtml('<%= academicYear %>')}`;
+      html += `</th></tr>`;
+
       // First header row with colspan
       html += `<tr>`;
       headers[0].forEach(header => {

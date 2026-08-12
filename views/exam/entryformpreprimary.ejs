@@ -56,10 +56,6 @@
     .mobile-column-toggle label{display:flex;align-items:center;gap:6px;font-weight:700;color:var(--secondary);cursor:pointer;background:#fff;padding:6px 10px;border-radius:999px;border:1px solid var(--border)}
     .mobile-column-toggle input[type="checkbox"]{width:16px !important;height:16px !important;cursor:pointer;accent-color:var(--primary)}
     
-    /* Worksheet checkbox styling */
-    table input[type="checkbox"]{width:18px !important;height:18px !important;cursor:pointer;accent-color:var(--primary);flex-shrink:0}
-    table input[type="checkbox"]:hover{transform:scale(1.1)}
-
     /* Grade select styling */
     .grade-select {
       width: 100%;
@@ -241,6 +237,7 @@
     <button type="button" id="increaseWorksheetBtn" class="worksheet-btn" aria-label="Increase worksheet number">+</button>
     <input type="hidden" name="totalWorksheet" id="totalWorksheet" value="1">
   </div>
+
   <div class="mobile-column-toggle" aria-label="Mobile column visibility controls">
     <label><input type="checkbox" id="hideAttendanceToggle">Hide Attendance</label>
     <label><input type="checkbox" id="hideMarksToggle">Hide Marks</label>
@@ -1059,13 +1056,6 @@ window.onload = function() {
     const container = document.createElement('div');
     container.className = 'worksheet-cell';
 
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.className = 'row-worksheet-checkbox';
-    checkbox.dataset.reg = reg;
-    checkbox.dataset.worksheetIndex = worksheetNumber;
-    checkbox.title = 'Select student to apply grade to';
-
     const select = document.createElement('select');
     select.className = 'worksheet-select-inner';
     select.name = `worksheetGrades[${reg}][]`;
@@ -1113,50 +1103,8 @@ window.onload = function() {
         worksheetGradeStore.set(reg, grades.filter(g => g !== undefined));
       }
       if (typeof autoSave === 'function') autoSave(select);
-
-      const applyAll = document.getElementById('worksheetApplyAll');
-      const checkedBoxes = Array.from(document.querySelectorAll(`#markstable input.row-worksheet-checkbox[data-worksheet-index="${worksheetNumber}"]:checked`));
-
-      if (applyAll && applyAll.checked) {
-        // apply to all rows in this worksheet
-        document.querySelectorAll(`#markstable select[data-worksheet-index="${worksheetNumber}"]`).forEach((s) => {
-          if (s !== select) {
-            s.value = select.value;
-            // Only store non-empty values
-            if (select.value && select.value !== '') {
-              setWorksheetGrade(s.dataset.reg, worksheetNumber, select.value);
-            } else {
-              const grades = worksheetGradeStore.get(s.dataset.reg) || [];
-              delete grades[worksheetNumber - 1];
-              worksheetGradeStore.set(s.dataset.reg, grades.filter(g => g !== undefined));
-            }
-            if (typeof autoSave === 'function') autoSave(s);
-          }
-        });
-      } else if (checkedBoxes.length > 0) {
-        // apply to selected rows only
-        checkedBoxes.forEach((cb) => {
-          const regKey = cb.dataset.reg;
-          const s = document.querySelector(`#markstable select[data-worksheet-index="${worksheetNumber}"][data-reg="${regKey}"]`);
-          if (s && s !== select) {
-            s.value = select.value;
-            // Only store non-empty values
-            if (select.value && select.value !== '') {
-              setWorksheetGrade(regKey, worksheetNumber, select.value);
-            } else {
-              const grades = worksheetGradeStore.get(regKey) || [];
-              delete grades[worksheetNumber - 1];
-              worksheetGradeStore.set(regKey, grades.filter(g => g !== undefined));
-            }
-            if (typeof autoSave === 'function') autoSave(s);
-          }
-        });
-        // uncheck the boxes after applying to selected
-        checkedBoxes.forEach(cb => cb.checked = false);
-      }
     });
 
-    container.appendChild(checkbox);
     container.appendChild(select);
     return container;
   }

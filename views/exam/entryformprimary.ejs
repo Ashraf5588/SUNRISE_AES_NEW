@@ -56,9 +56,9 @@
     .mobile-column-toggle label{display:flex;align-items:center;gap:6px;font-weight:700;color:var(--secondary);cursor:pointer;background:#fff;padding:6px 10px;border-radius:999px;border:1px solid var(--border)}
     .mobile-column-toggle input[type="checkbox"]{width:16px !important;height:16px !important;cursor:pointer;accent-color:var(--primary)}
     
-    /* Worksheet checkbox styling */
-    table input[type="checkbox"]{width:18px !important;height:18px !important;cursor:pointer;accent-color:var(--primary);flex-shrink:0}
-    table input[type="checkbox"]:hover{transform:scale(1.1)}
+    /* Worksheet select styling */
+    .worksheet-select-inner{width:100%;padding:7px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px;transition:border .2s;text-align:center;background:#fff;cursor:pointer}
+    .worksheet-select-inner:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 2px rgba(255,140,66,.1)}
 
     #markstable.hide-attendance th[data-column="attendance"],
     #markstable.hide-attendance td[data-column="attendance"]{display:none}
@@ -66,7 +66,7 @@
     #markstable.hide-theory td[data-column="theory"]{display:none}
     
     @media(max-width:1024px){.entry-container{padding:15px}table{font-size:12px}table th,table td{padding:7px 5px}}
-    @media(max-width:768px){body{padding:10px}.selector-panel,.entry-container{padding:15px;border-radius:8px}.selector-title,.entry-title{font-size:16px}.selector-grid{grid-template-columns:1fr}.entry-container{overflow-x:visible;-webkit-overflow-scrolling:touch}table{min-width:0;width:100%;table-layout:fixed}table th,table td{font-size:12px;padding:6px 4px}table td[data-column="student"]{min-width:0;width:36%}table td[data-column="worksheet"]{min-width:0;width:32%}table td[data-column="theory"]{min-width:0;width:16%}table td[data-column="attendance"]{min-width:0;width:16%}table input{font-size:12px;padding:6px}table input[type="number"]{min-width:0}input[type="submit"],.load-btn{width:100%;max-width:100%;padding:11px 20px}.entry-container::after{content:'';display:block;text-align:center;color:var(--primary);font-size:11px;margin-top:8px;font-weight:600}}
+    @media(max-width:768px){body{padding:10px}.selector-panel,.entry-container{padding:15px;border-radius:8px}.selector-title,.entry-title{font-size:16px}.selector-grid{grid-template-columns:1fr}.entry-container{overflow-x:visible;-webkit-overflow-scrolling:touch}table{min-width:0;width:100%;table-layout:fixed}table th,table td{font-size:12px;padding:6px 4px}table td[data-column="student"]{min-width:0;width:36%}table td[data-column="worksheet"]{min-width:0;width:32%}table td[data-column="theory"]{min-width:0;width:16%}table td[data-column="attendance"]{min-width:0;width:16%}table input{font-size:12px;padding:6px}table input[type="number"]{min-width:0}input[type="submit"],.load-btn{width:100%;max-width:100%;padding:11px 20px}}
     @media(max-width:480px){.selector-title,.entry-title{font-size:15px}.worksheet-controls{grid-template-columns:44px minmax(0,1fr) 44px;gap:6px;max-width:100%}.worksheet-btn{width:44px;height:38px;font-size:20px}.worksheet-select{font-size:13px}.mobile-column-toggle{gap:8px}.mobile-column-toggle label{font-size:12px;padding:5px 8px}.table th,table td{font-size:11px;padding:5px 3px}table img{width:32px;height:32px}.student-name{font-size:12px}.student-roll{font-size:12px}}
   </style>
 </head>
@@ -187,6 +187,7 @@
     <button type="button" id="increaseWorksheetBtn" class="worksheet-btn" aria-label="Increase worksheet number">+</button>
     <input type="hidden" name="totalWorksheet" id="totalWorksheet" value="1">
   </div>
+
   <div class="mobile-column-toggle" aria-label="Mobile column visibility controls">
     <label><input type="checkbox" id="hideAttendanceToggle">Hide Attendance</label>
     <label><input type="checkbox" id="hideMarksToggle">Hide Marks</label>
@@ -688,19 +689,23 @@ async function initializeStudentRecords(subject, studentClass, section, academic
   function buildWorksheetSelect(reg, worksheetNumber) {
     const container = document.createElement('div');
     container.className = 'worksheet-cell';
-
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.className = 'row-worksheet-checkbox';
-    checkbox.dataset.reg = reg;
-    checkbox.dataset.worksheetIndex = worksheetNumber;
-    checkbox.title = 'Select student to apply grade to';
+    container.style.display = 'flex';
+    container.style.alignItems = 'center';
+    container.style.justifyContent = 'center';
+    container.style.width = '100%';
 
     const select = document.createElement('select');
     select.className = 'worksheet-select-inner';
     select.name = `worksheetGrades[${reg}][]`;
     select.dataset.reg = reg;
     select.dataset.worksheetIndex = worksheetNumber;
+    select.style.width = '100%';
+    select.style.padding = '7px 8px';
+    select.style.border = '1px solid var(--border)';
+    select.style.borderRadius = '4px';
+    select.style.fontSize = '13px';
+    select.style.backgroundColor = '#fff';
+    select.style.cursor = 'pointer';
 
     const grades = ['', 'A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'NG'];
     grades.forEach((grade) => {
@@ -714,34 +719,9 @@ async function initializeStudentRecords(subject, studentClass, section, academic
 
     select.addEventListener('change', function () {
       setWorksheetGrade(reg, worksheetNumber, this.value);
-      if (typeof autoSave === 'function') autoSave(select);
-
-      const applyAll = document.getElementById('worksheetApplyAll');
-      const checkedBoxes = Array.from(document.querySelectorAll(`#markstable input.row-worksheet-checkbox[data-worksheet-index="${worksheetNumber}"]:checked`));
-
-      if (applyAll && applyAll.checked) {
-        document.querySelectorAll(`#markstable select[data-worksheet-index="${worksheetNumber}"]`).forEach((s) => {
-          if (s !== select) {
-            s.value = select.value;
-            setWorksheetGrade(s.dataset.reg, worksheetNumber, select.value);
-            if (typeof autoSave === 'function') autoSave(s);
-          }
-        });
-      } else if (checkedBoxes.length > 0) {
-        checkedBoxes.forEach((cb) => {
-          const regKey = cb.dataset.reg;
-          const s = document.querySelector(`#markstable select[data-worksheet-index="${worksheetNumber}"][data-reg="${regKey}"]`);
-          if (s && s !== select) {
-            s.value = select.value;
-            setWorksheetGrade(regKey, worksheetNumber, select.value);
-            if (typeof autoSave === 'function') autoSave(s);
-          }
-        });
-        checkedBoxes.forEach(cb => cb.checked = false);
-      }
+      if (typeof autoSave === 'function') autoSave(this);
     });
 
-    container.appendChild(checkbox);
     container.appendChild(select);
     return container;
   }
@@ -781,7 +761,7 @@ async function initializeStudentRecords(subject, studentClass, section, academic
   }
 
   // ============================================================
-  // CRITICAL FIX: Save worksheet count for ALL students
+  // Save worksheet count for ALL students
   // Using studentData array to ensure ALL students are updated
   // ============================================================
   async function saveWorksheetCountForAllStudents(newCount) {
