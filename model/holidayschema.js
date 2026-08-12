@@ -9,5 +9,5 @@ const holidaySchema = new mongoose.Schema({
     ]
    
 });
-
-module.exports = { holidaySchema };
+const holiday = mongoose.model("holiday",holidaySchema,"holiday")
+module.exports = { holidaySchema,holiday};

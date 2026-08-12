@@ -612,7 +612,8 @@ exports.getAttendanceData= async (req,res,next)=>
     const currentBsDate = String(bs.ADToBS(new Date()) || "").trim();
     const [currentNepaliYear, currentNepaliMonthNumber, currentNepaliDayNumber] = currentBsDate.split("-");
     const currentNepaliMonth = BS_MONTH_NAMES[Number.parseInt(currentNepaliMonthNumber, 10)] || "";
-    const currentDay = Number.parseInt(currentNepaliDayNumber, 10) || 0;
+    // const currentDay = Number.parseInt(currentNepaliDayNumber, 10) || 0;
+    const currentDay = 14
     const currentMonthNumber = Number.parseInt(currentNepaliMonthNumber, 10) || 0;
 
     const holidayDoc = await holiday.findOne({ academicYear: normalizedAcademicYear }).lean();

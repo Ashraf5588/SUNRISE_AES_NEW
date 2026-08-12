@@ -296,8 +296,12 @@
 <body>
   
   <% 
+  
     // Subjects that should NOT have worksheets
     const NO_WORKSHEET_SUBJECTS = ['ORAL', 'HYGIENE', 'ECA'];
+    if (studentClass && studentClass.toUpperCase() === 'LKG') {
+  NO_WORKSHEET_SUBJECTS.push('THEME');
+}
     
     // Function to check if a value is Ab (sentinel 0.000001)
     function isAb(value) {
@@ -413,9 +417,27 @@
     <div class="form-selector-container">
       <div class="form-selector-title">Marksheet Ledger Configuration</div>
       <div class="form-selector-grid">
+        <%
+          const classSortOrder = {
+            nursery: 1, lkg: 2, ukg: 3, one: 4, two: 5, three: 6,
+            four: 7, five: 8, six: 9, seven: 10, eight: 11, nine: 12, ten: 13
+          };
+          const numericClassMap = { '1': 'one', '2': 'two', '3': 'three', '4': 'four', '5': 'five', '6': 'six', '7': 'seven', '8': 'eight', '9': 'nine', '10': 'ten' };
+          const getClassSortRank = (value) => {
+            const normalized = String(value || '').trim().toLowerCase().replace(/^class\s+/, '').replace(/\s+section$/, '');
+            const key = numericClassMap[normalized] || normalized;
+            return classSortOrder[key] || 999;
+          };
+          const sortedClassSectionData = [...(studentClassdata || [])].sort((a, b) => {
+            const classRankA = getClassSortRank(a && a.studentClass);
+            const classRankB = getClassSortRank(b && b.studentClass);
+            if (classRankA !== classRankB) return classRankA - classRankB;
+            return String(a && a.section || '').localeCompare(String(b && b.section || ''), undefined, { numeric: true, sensitivity: 'base' });
+          });
+        %>
         <select name="classSection" id="classSection">
           <option selected disabled>Choose Class & Section</option>
-          <% studentClassdata.forEach((data)=> { %>
+          <% sortedClassSectionData.forEach((data)=> { %>
             <option value="<%= data.studentClass %>-<%= data.section %>"><%= data.studentClass %> - <%= data.section %></option>
           <% }) %>
         </select>
@@ -519,7 +541,7 @@
         <tbody>
           <% if (ledgerData && ledgerData.length > 0) { %>
             <% ledgerData.forEach((data) => { %>
-              <tr>
+              <tr data-reg="<%= data._id || data.reg || '' %>">
                 <td class="fixed-column fixed-column-roll"><%= data.roll %></td>
                 <td class="fixed-column fixed-column-name"><%= data.name %></td>
                 <% uniqueSubjects.forEach((sub, index) => { 
@@ -918,8 +940,38 @@
       }
 
       // Initialize after a small delay to ensure DOM is ready
-      setTimeout(initializeVisibility, 100);
+      setTimeout(() => {
+        initializeVisibility();
+        loadAttendanceTotals();
+      }, 100);
     });
+
+    async function loadAttendanceTotals() {
+      try {
+        const studentClass = "<%= typeof studentClass !== 'undefined' ? studentClass : '' %>";
+        const section = "<%= typeof section !== 'undefined' ? section : '' %>";
+        const academicYear = "<%= typeof academicYear !== 'undefined' ? academicYear : '' %>";
+        if (!studentClass || !section || !academicYear) return;
+
+        const response = await fetch(`/getAttendanceData?studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}`);
+        if (!response.ok) return;
+
+        const attendanceList = await response.json();
+        const attendanceMap = new Map(attendanceList.map(item => [String(item.reg).trim(), item]));
+
+        document.querySelectorAll('#ledgerTable tbody tr').forEach(row => {
+          const reg = String(row.dataset.reg || '').trim();
+          const cell = row.querySelector('td.col-att');
+          if (!cell || !reg) return;
+          const attendanceRecord = attendanceMap.get(reg);
+          if (attendanceRecord && attendanceRecord.attendance != null) {
+            cell.textContent = attendanceRecord.attendance;
+          }
+        });
+      } catch (error) {
+        console.error('Error loading attendance totals:', error);
+      }
+    }
 
     function loadform() {
       const classSection = document.getElementById('classSection').value;

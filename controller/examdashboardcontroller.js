@@ -16,7 +16,9 @@ const subjectlist = mongoose.model("subjectlist", subjectSchema, "subjectlist");
 const studentClass = mongoose.model("studentClass", classSchema, "classlist");
 const studentClassModel = mongoose.model("studentClass", classSchema, "classlist");
 const studentRecord = mongoose.model("studentRecord", studentrecordschema, "studentrecord");
+
 const bcrypt = require("bcrypt");
+const {holiday} = require('../model/holidayschema')
 const terminal = mongoose.model("terminal", terminalSchema, "terminal");
 const terminalModel = mongoose.model("terminal", terminalSchema, "terminal");
 const { marksheetsetupschemaForAdmin ,routineSchema} = require("../model/marksheetschema");
@@ -40,6 +42,190 @@ const getSlipModel = () => {
 };
 
 const issuedNepaliDate = String(bs.ADToBS(new Date()) || '').trim() || new Date().toLocaleDateString('en-GB');
+
+const BS_MONTH_NAMES = {
+  1: 'Baisakh',
+  2: 'Jestha',
+  3: 'Ashadh',
+  4: 'Shrawan',
+  5: 'Bhadra',
+  6: 'Ashwin',
+  7: 'Kartik',
+  8: 'Mangsir',
+  9: 'Poush',
+  10: 'Magh',
+  11: 'Falgun',
+  12: 'Chaitra'
+};
+
+const NEPALI_MONTHS = {
+  Baisakh: { maxDays: 31 },
+  Jestha: { maxDays: 31 },
+  Ashadh: { maxDays: 32 },
+  Shrawan: { maxDays: 31 },
+  Bhadra: { maxDays: 31 },
+  Ashwin: { maxDays: 31 },
+  Kartik: { maxDays: 30 },
+  Mangsir: { maxDays: 29 },
+  Poush: { maxDays: 30 },
+  Magh: { maxDays: 29 },
+  Falgun: { maxDays: 30 },
+  Chaitra: { maxDays: 30 }
+};
+
+function normalizeText(value) {
+  if (!value) return '';
+  return String(value).trim().toLowerCase();
+}
+
+function getBsMonthNumber(monthName) {
+  const normalized = normalizeText(monthName);
+  for (const [key, value] of Object.entries(BS_MONTH_NAMES)) {
+    if (normalizeText(value) === normalized) {
+      return Number.parseInt(key, 10);
+    }
+  }
+  return null;
+}
+
+function getBsMonthLength(monthName) {
+  return NEPALI_MONTHS[monthName]?.maxDays || 32;
+}
+
+function getCanonicalMonthName(monthName) {
+  if (!monthName) return '';
+  const normalized = normalizeText(monthName);
+  for (const [, value] of Object.entries(BS_MONTH_NAMES)) {
+    if (normalizeText(value) === normalized) {
+      return value;
+    }
+  }
+  return String(monthName).trim();
+}
+
+function getStatusIsAbsent(status) {
+  if (!status) return false;
+  const normalized = normalizeText(status);
+  return ['absent', 'ab', 'a', 'false'].includes(normalized);
+}
+
+function parseBsDate(bsDateString) {
+  if (!bsDateString) return null;
+  const parts = String(bsDateString).split('-').map((part) => Number.parseInt(part, 10));
+  if (parts.length !== 3 || parts.some((part) => !Number.isFinite(part))) {
+    return null;
+  }
+  return { year: parts[0], month: parts[1], day: parts[2] };
+}
+
+function getCurrentBSDate() {
+  try {
+    if (typeof bs.ADToBS === 'function') {
+      const result = bs.ADToBS(new Date());
+      const parsed = parseBsDate(result);
+      if (parsed) return parsed;
+    }
+    if (typeof bs.toBS === 'function') {
+      const result = bs.toBS(new Date());
+      const parsed = parseBsDate(result);
+      if (parsed) return parsed;
+    }
+  } catch (err) {
+    console.error('Error converting current date to BS:', err);
+  }
+  return { year: 2083, month: 2, day: 15 };
+}
+
+async function getAttendanceDataFromApi(studentClass, section, academicYear) {
+  const normalizedAcademicYear = String(academicYear || '').trim();
+  const bsDate = getCurrentBSDate();
+  const currentDay = 14
+  const currentMonthNumber = Number.isFinite(bsDate.month) ? bsDate.month : 0;
+
+  const holidayDoc = await holiday.findOne({ academicYear: normalizedAcademicYear }).lean();
+  const holidayMonthMap = new Map(
+    Array.isArray(holidayDoc?.month)
+      ? holidayDoc.month.map((monthItem) => [
+          getCanonicalMonthName(monthItem?.monthName),
+          Array.isArray(monthItem?.holidayDays)
+            ? monthItem.holidayDays.map((dayValue) => Number(dayValue))
+            : []
+        ])
+      : []
+  );
+
+  let totalWorkingDaysUptoToday = 0;
+  for (let monthIndex = 1; monthIndex <= currentMonthNumber; monthIndex += 1) {
+    const monthName = BS_MONTH_NAMES[monthIndex];
+    const monthLength = getBsMonthLength(monthName);
+    const monthDayLimit = monthIndex === currentMonthNumber ? currentDay : monthLength;
+    const holidayDaysForMonth = holidayMonthMap.get(getCanonicalMonthName(monthName)) || [];
+    const holidayDaysUntilLimit = holidayDaysForMonth.filter(
+      (dayValue) => Number.isFinite(dayValue) && dayValue <= monthDayLimit
+    );
+    totalWorkingDaysUptoToday += Math.max(monthDayLimit - holidayDaysUntilLimit.length, 0);
+  }
+
+  const onlineAttendanceDocs = await onlineAttendance
+    .find({
+      studentClass: String(studentClass).trim(),
+      section: String(section).trim(),
+      academicYear: normalizedAcademicYear
+    })
+    .lean();
+
+  return onlineAttendanceDocs.map((onlineDoc) => {
+    const reg = String(onlineDoc?.reg || '').trim();
+    const attendanceEntries = Array.isArray(onlineDoc?.attendance) ? onlineDoc.attendance : [];
+    const absentDayKeys = new Set();
+
+    attendanceEntries.forEach((entry) => {
+      const entryAcademicYear = String(entry?.academicYear || '').trim();
+      if (entryAcademicYear !== normalizedAcademicYear) return;
+
+      const entryMonthName = String(entry?.month || '').trim();
+      const entryMonthNumber = getBsMonthNumber(entryMonthName);
+      if (!entryMonthNumber || entryMonthNumber > currentMonthNumber) return;
+
+      const entryDay = Number.parseInt(entry?.day, 10);
+      if (!Number.isFinite(entryDay) || entryDay <= 0) return;
+
+      const monthDayLimit =
+        entryMonthNumber === currentMonthNumber
+          ? Math.min(currentDay, getBsMonthLength(BS_MONTH_NAMES[entryMonthNumber]))
+          : getBsMonthLength(BS_MONTH_NAMES[entryMonthNumber]);
+      if (entryDay > monthDayLimit) return;
+
+      const holidayDaysForMonth = holidayMonthMap.get(getCanonicalMonthName(entryMonthName)) || [];
+      if (holidayDaysForMonth.includes(entryDay)) return;
+
+      if (getStatusIsAbsent(entry?.status)) {
+        const canonicalMonthName = getCanonicalMonthName(entryMonthName);
+        absentDayKeys.add(`${canonicalMonthName}-${entryDay}`);
+      }
+    });
+
+    const absentDays = absentDayKeys.size;
+    const presentDays = Math.max(totalWorkingDaysUptoToday - absentDays, 0);
+
+    return {
+      reg,
+      roll: onlineDoc?.roll || '',
+      name: onlineDoc?.name || '',
+      gender: onlineDoc?.gender || '',
+      attendance: presentDays,
+      totalWorkingDaysUptoToday,
+      holidayDaysInAcademicYear: (holidayDoc?.month || []).reduce(
+        (count, monthItem) => count + (Array.isArray(monthItem?.holidayDays) ? monthItem.holidayDays.length : 0),
+        0
+      ),
+      absentDays,
+      currentMonth: BS_MONTH_NAMES[bsDate.month] || '',
+      currentDay,
+      currentAcademicYear: normalizedAcademicYear
+    };
+  });
+}
 
 
 exports.examManagement = async (req, res, next) => {
@@ -66,253 +252,199 @@ exports.formatChoose = async (req, res, next) => {
 }
 exports.generateMarksheet = async (req, res, next) => {
   try {
-   const {studentClass,section,terminal,academicYear,format} = req.query;
+    const { studentClass, section, terminal, academicYear, format } = req.query;
     const studentClassdata = await studentClassModel.find({}).lean();
     const terminals = await terminalModel.find({}).lean();
-     const user = req.user;
+    const user = req.user;
     creditHourData = await newsubject.find({ forClass: studentClass }).lean();
-       const marksheetSetups = await marksheetSetup.find({}).lean();
-    console.log("credit hour data",creditHourData);
-   
-   
+    const marksheetSetups = await marksheetSetup.find({}).lean();
+    console.log("credit hour data", creditHourData);
 
     const model = getSlipModel();
 
-  
-  const studentWisedata = await model.aggregate([
-  {
-    $match: {
-      terminal: terminal, academicYear:academicYear, studentClass: studentClass, section: section  // ← filter by terminal
-    },
-  },
-  {
-    $setWindowFields:{
-      partitionBy: "$subject",
-      output:{
-        highestMarks: {$max:"$theorymarks"}
-      }
-    }
-  },
-  
-  {
-    $group: {
-      _id: "$reg",
-      name: { $first: "$name" },
-      roll: { $first: "$roll" },
-      terminal: { $first: "$terminal" }, // optional
-      subjects: {
-        $push: {
-          subject: "$subject",
-          attendance: "$attendance",
-          theorymarks: "$theorymarks",
-          practicalmarks: "$practicalmarks",
-          theoryfullmarks: "$theoryfullmarks",
-          passMarks: "$passMarks",
-          practicalfullmarks: "$practicalfullmarks",
-          creditHour: "$creditHour",
-          worksheetGrades: "$worksheetGrades",
-          highestmarks: "$highestMarks",
-          terminalmarks: "$terminalmarks"
-         
-        }
-      }
-    }
-  },
-  {
-    $sort: { roll: 1 }  // optional: sort students by roll
-  },
-
-])
-
-
-
-   if(format=="theorypractical")
-   {
-    console.log("grouped data",studentWisedata);
-    if(studentClass<=3 || studentClass.toLowerCase() === "nursery" || studentClass.toLowerCase() === "playgroup" || studentClass.toLowerCase() === "lkg" || studentClass.toLowerCase() === "ukg"|| studentClass.toLowerCase() === "one" || studentClass.toLowerCase() === "two" || studentClass.toLowerCase() === "three")
-    {
-res.render("./exam/primarytheorypr", {
-        currentPage: "exammanagement",
-
-            studentClassdata:studentClassdata,
-            terminals,
-            format,
-            studentWisedata,
-            studentClass,
-            section,
-            terminal,
-            academicYear,
-            creditHourData,
-            marksheetSetups,
-           
-      user: req.user
-    });
-    }
-    else
-    { 
-      if(studentClass.toLowerCase() === "four" || studentClass.toLowerCase() === "five" || studentClass=="4" || studentClass=="5")
+    const studentWisedata = await model.aggregate([
       {
-         res.render("./exam/marksheetfourfive", {
-        currentPage: "exammanagement",
+        $match: {
+          terminal: terminal,
+          academicYear: academicYear,
+          studentClass: studentClass,
+          section: section
+        },
+      },
+      {
+        $setWindowFields: {
+          partitionBy: "$subject",
+          output: {
+            highestMarks: { $max: "$theorymarks" }
+          }
+        }
+      },
+      {
+        $group: {
+          _id: "$reg",
+          name: { $first: "$name" },
+          roll: { $first: "$roll" },
+          terminal: { $first: "$terminal" },
+          subjects: {
+            $push: {
+              subject: "$subject",
+              attendance: "$attendance",
+              theorymarks: "$theorymarks",
+              practicalmarks: "$practicalmarks",
+              theoryfullmarks: "$theoryfullmarks",
+              passMarks: "$passMarks",
+              practicalfullmarks: "$practicalfullmarks",
+              creditHour: "$creditHour",
+              worksheetGrades: "$worksheetGrades",
+              highestmarks: "$highestMarks",
+              terminalmarks: "$terminalmarks"
+            }
+          }
+        }
+      },
+      {
+        $sort: { roll: 1 }
+      },
+    ]);
 
-            studentClassdata:studentClassdata,
-            terminals,
-            format,
-            studentWisedata,
-            studentClass:studentClass,
-            section,
-            terminal,
-            academicYear,
-            creditHourData,
-            marksheetSetups,
-            issuedNepaliDate,
-           
-      user: req.user
-    });
-      }else{
+    const attendanceData = await getAttendanceDataFromApi(studentClass, section, academicYear);
+    const attendanceMap = new Map(attendanceData.map(item => [String(item.reg).trim(), item]));
+    const attendanceWorkingDays = attendanceData?.[0]?.totalWorkingDaysUptoToday || marksheetSetups?.[0]?.terminals?.[0]?.workingDays || 0;
 
-            
-      res.render("./exam/generatemarksheettheorypr", {
-        currentPage: "exammanagement",
+    studentWisedata.forEach((student) => {
+      const reg = String(student._id || '').trim();
+      const record = attendanceMap.get(reg);
+      const attendanceValue = record?.attendance ?? (student.subjects?.[0]?.attendance ?? 0);
+      student.subjects = student.subjects.map((sub) => ({ ...sub, attendance: attendanceValue }));
+    });
 
-            studentClassdata:studentClassdata,
-            terminals,
-            format,
-            studentWisedata,
-            studentClass:studentClass,
-            section,
-            terminal,
-            academicYear,
-            creditHourData,
-            marksheetSetups,
-            issuedNepaliDate,
-           
-      user: req.user
-    });
-  }
-  }
-  }
-  
-
- if(format=="practicalonly")
-  {
-    if(studentClass<1 || studentClass.toLowerCase() === "nursery" || studentClass.toLowerCase() === "playgroup" || studentClass.toLowerCase() === "lkg" || studentClass.toLowerCase() === "ukg")
-    {
-      res.render("./exam/preprimarypr", {
-        currentPage: "exammanagement",
-            studentClassdata:studentClassdata,
-            terminals,
-            format,
-            studentWisedata,
-            studentClass,
-            section,
-            terminal,
-            academicYear,
-            creditHourData,
-            marksheetSetups,
-
-      user: req.user
-    });
-  }
-  else
-  {
-    res.render("./exam/generatemarksheetpronly", {
-      currentPage: "exammanagement",
-           studentClassdata:studentClassdata,
-            terminals,
-            format,
-            studentWisedata,
-            studentClass,
-            section,
-            terminal,
-            academicYear,
-            creditHourData,
-            marksheetSetups,
-    });
-  }
-} 
- if(format=="internalexternal")
-  {
-    res.render("./exam/generatemarksheetinternalexternal", {
-      currentPage: "exammanagement",
-      studentClassdata:studentClassdata,
-      terminals,
-      format,
-      user: req.user,
-      marksheetSetups,
-      studentClass,
-      section,
-      academicYear,
-      terminal,
-      studentWisedata,
-      creditHourData,
-      
-      
-    });
-  }
- if(format=="theoryonly")
-   {
-    res.render("./exam/generatemarksheettheoryonly", {
-      currentPage: "exammanagement",
-
-            studentClassdata:studentClassdata,
-            terminals,
-            format,
-            studentWisedata,
-            studentClass,
-            section,
-            terminal,
-            academicYear,
-            creditHourData,
-            marksheetSetups,
-            issuedNepaliDate,
-           
-      user: req.user
-    });
-  }
-if(format=="cdcterminal")
-   {
-    if(studentClass<1 || studentClass.toLowerCase() === "nursery" || studentClass.toLowerCase() === "playgroup" || studentClass.toLowerCase() === "lkg" || studentClass.toLowerCase() === "ukg"|| studentClass.toLowerCase() === "one" || studentClass.toLowerCase() === "two" || studentClass.toLowerCase() === "three")
-    {
-      res.render("./exam/generatemarksheetcdcterminalprimary", {
-      currentPage: "exammanagement",
-
-            studentClassdata:studentClassdata,
-            terminals,
-            format,
-            studentWisedata,
-            studentClass,
-            section,
-            terminal,
-            academicYear,
-            creditHourData,
-            marksheetSetups,
-           
-      user: req.user
-    });
+    if (Array.isArray(marksheetSetups)) {
+      marksheetSetups.forEach((setup) => {
+        if (Array.isArray(setup.terminals)) {
+          setup.terminals.forEach((term) => {
+            term.workingDays = attendanceWorkingDays;
+          });
+        }
+      });
     }
 
-    res.render("./exam/generatemarksheetcdcterminal", {
-      currentPage: "exammanagement",
-
-            studentClassdata:studentClassdata,
-            terminals,
-            format,
-            studentWisedata,
-            studentClass,
-            section,
-            terminal,
-            academicYear,
-            creditHourData,
-            marksheetSetups,
-           
-      user: req.user
-    });
-  }
-  }
-  catch (error) {
+    // Use if-else if-else structure to prevent multiple renders
+    if (format == "practicalonly") {
+      if (studentClass < 1 || studentClass.toLowerCase() === "nursery" || studentClass.toLowerCase() === "playgroup" || studentClass.toLowerCase() === "lkg" || studentClass.toLowerCase() === "ukg") {
+        return res.render("./exam/preprimarypr", {
+          currentPage: "exammanagement",
+          studentClassdata: studentClassdata,
+          terminals,
+          format,
+          studentWisedata,
+          studentClass,
+          section,
+          terminal,
+          academicYear,
+          creditHourData,
+          marksheetSetups,
+          user: req.user
+        });
+      } else {
+        return res.render("./exam/generatemarksheetpronly", {
+          currentPage: "exammanagement",
+          studentClassdata: studentClassdata,
+          terminals,
+          format,
+          studentWisedata,
+          studentClass,
+          section,
+          terminal,
+          academicYear,
+          creditHourData,
+          marksheetSetups,
+        });
+      }
+    } else if (format == "internalexternal") {
+      return res.render("./exam/generatemarksheetinternalexternal", {
+        currentPage: "exammanagement",
+        studentClassdata: studentClassdata,
+        terminals,
+        format,
+        user: req.user,
+        marksheetSetups,
+        studentClass,
+        section,
+        academicYear,
+        terminal,
+        studentWisedata,
+        creditHourData,
+        attendanceWorkingDays,
+      });
+    } else if (format == "theoryonly") {
+      return res.render("./exam/generatemarksheettheoryonly", {
+        currentPage: "exammanagement",
+        studentClassdata: studentClassdata,
+        terminals,
+        format,
+        studentWisedata,
+        studentClass,
+        section,
+        terminal,
+        academicYear,
+        creditHourData,
+        marksheetSetups,
+        issuedNepaliDate,
+        user: req.user
+      });
+    } else if (format == "cdcterminal") {
+      if (studentClass < 1 || studentClass.toLowerCase() === "nursery" || studentClass.toLowerCase() === "playgroup" || studentClass.toLowerCase() === "lkg" || studentClass.toLowerCase() === "ukg" || studentClass.toLowerCase() === "one" || studentClass.toLowerCase() === "two" || studentClass.toLowerCase() === "three") {
+        return res.render("./exam/generatemarksheetcdcterminalprimary", {
+          currentPage: "exammanagement",
+          studentClassdata: studentClassdata,
+          terminals,
+          format,
+          studentWisedata,
+          studentClass,
+          section,
+          terminal,
+          academicYear,
+          creditHourData,
+          marksheetSetups,
+          user: req.user
+        });
+      } else {
+        return res.render("./exam/generatemarksheetcdcterminal", {
+          currentPage: "exammanagement",
+          studentClassdata: studentClassdata,
+          terminals,
+          format,
+          studentWisedata,
+          studentClass,
+          section,
+          terminal,
+          academicYear,
+          creditHourData,
+          marksheetSetups,
+          user: req.user
+        });
+      }
+    } else {
+      // Default case - theory practical
+      return res.render("./exam/generatemarksheettheorypr", {
+        currentPage: "exammanagement",
+        studentClassdata: studentClassdata,
+        terminals,
+        format,
+        studentWisedata,
+        studentClass: studentClass,
+        section,
+        terminal,
+        academicYear,
+        creditHourData,
+        marksheetSetups,
+        issuedNepaliDate,
+        user: req.user
+      });
+    }
+  } catch (error) {
     console.error("Error loading generate marksheet page:", error);
-    res.status(500).send("Internal Server Error");
+    return res.status(500).send("Internal Server Error");
   }
 }
 exports.generateMarksheetStudent = async (req, res, next) => {
@@ -1210,7 +1342,9 @@ exports.ledger = async (req, res, next) => {
 
     // Subjects that should NOT have worksheets
     const NO_WORKSHEET_SUBJECTS = ['HYGIENE', 'ORAL', 'ECA'];
-
+if (studentClass && studentClass.toUpperCase() === 'LKG') {
+  NO_WORKSHEET_SUBJECTS.push('THEME');
+}
     let ledgerData = [];
 
     // Helper function to get GP from percentage
