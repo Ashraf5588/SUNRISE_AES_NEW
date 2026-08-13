@@ -295,13 +295,10 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
   console.log(`  - terminal: "${terminal}"`);
 
   const fetchUrl = `/getPreviousmarks?subject=${encodeURIComponent(subject)}&studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}&terminal=${encodeURIComponent(terminal)}`;
-  const attendanceDataUrl = `/getAttendanceData?studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}`;
 
   try {
     const data = await fetch(fetchUrl);
     const result = await data.json();
-    const attendanceResponse = await fetch(attendanceDataUrl);
-    const attendanceResult = await attendanceResponse.json();
 
     console.log("✓ Fetched Previous Marks - Full Response:", JSON.stringify(result, null, 2));
     console.log(`Found ${result.length} records in DB`);
@@ -373,9 +370,9 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
       console.log("✓ Worksheet grades stored with preserved indices");
     }
 
-    // Populate theory marks
+    // Populate theory marks and attendance
     if(result.length > 0) {
-      console.log("Populating marks data...");
+      console.log("Populating marks and attendance data...");
       result.forEach((item) => {
         const reg = item.reg;
         let theoryInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
@@ -388,7 +385,6 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
             const tr = document.createElement('tr');
             tr.id = 'dataEntryRow';
 
-            // Build hidden inputs and cells to match server-side template
             tr.innerHTML = `
               <input type="hidden" name="gender[${reg}]" value="${(item.gender||'')}" readonly>
               <input type="hidden" name="reg[${reg}]" value="${reg}" readonly>
@@ -405,10 +401,8 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
               <td data-column="attendance"><input type="number" id="attendance" name="attendance[${reg}]" value="${item.attendance || ''}" data-reg="${reg}" oninput="autoSave(this)"></td>
             `;
 
-            // Append row and allow DOM to settle
             table.appendChild(tr);
 
-            // Ensure the new inputs are wired and trigger input events so autosave runs
             const newTheory = document.querySelector(`input[name="theorymarks[${reg}]"]`);
             const newAttendance = document.querySelector(`input[name="attendance[${reg}]"]`);
             if (newTheory) {
@@ -423,29 +417,21 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
             console.error('Error creating dynamic student row:', err);
           }
         } else {
+          // Populate theory marks
           theoryInput.value = item.theorymarks || 0;
           theoryInput.dispatchEvent(new Event('input'));
-          console.log(`    ✓ Marks populated: theory=${item.theorymarks}`);
+          
+          // Populate attendance from the exam_marks collection
+          attendanceInput.value = item.attendance || 0;
+          attendanceInput.dispatchEvent(new Event('input'));
+          
+          console.log(`    ✓ Marks populated: theory=${item.theorymarks}, attendance=${item.attendance}`);
         }
       });
       console.log("✓ All student data populated");
     } else {
       console.log("No previous data found - initializing with zero values");
       await initializeStudentRecords(subject, studentClass, section, academicYear, terminal);
-    }
-
-    // Populate attendance data from API
-    if(attendanceResult.length > 0) {
-      console.log("Populating attendance data from API...");
-      attendanceResult.forEach((item) => {
-        const reg = item.reg;
-        const attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
-        if(attendanceInput) {
-          attendanceInput.value = Number(item.attendance) || 0;
-          attendanceInput.dispatchEvent(new Event('input'));
-        }
-      });
-      console.log("✓ Attendance data populated");
     }
 
     // Render the worksheet cells
