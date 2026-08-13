@@ -8,155 +8,389 @@
 <meta charset="UTF-8">
 <title>Grade Sheet</title>
 
-<style>
+ <style>
     /* Clean, professional marksheet styling for A4 printing */
-    :root{
-      --accent:#1f6fb3;
-      --muted:#666;
-      --border:#222;
+    :root {
+      --accent: #1f6fb3;
+      --muted: #666;
+      --border: #222;
     }
 
-    html,body{
-      height:100%;
-      margin:0;
-      padding:0;
-      background:#f3f4f6;
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: #f3f4f6;
       font-family: 'Inter', 'Segoe UI', Roboto, Arial, sans-serif;
-      color:#111;
+      color: #111;
     }
 
-    .no-print{padding:18px;text-align:left}
+    .no-print {
+      padding: 18px;
+      text-align: left;
+    }
 
-    .control-panel{max-width:1100px;margin:12px auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .control-panel button{padding:8px 14px;border-radius:6px;border:0;background:var(--accent);color:#fff;cursor:pointer}
-    .control-panel button.secondary{background:#6c757d}
-    .control-panel .hint{color:var(--muted);font-size:13px;margin-left:8px}
-    .column-toggle-group{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-right:8px}
-    .column-toggle-item{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:#222;background:#f8f9fa;border:1px solid #d6d8db;padding:6px 10px;border-radius:999px}
-    .column-toggle-item input{accent-color:#1f6fb3}
-    .hidden-column{display:none !important}
+    .control-panel {
+      max-width: 1100px;
+      margin: 12px auto;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
 
-    .sheet{
-      width:210mm;
-      min-height:0;
-      margin:8mm auto;
-      background:#fff;
-      box-shadow:0 6px 18px rgba(0,0,0,0.08);
-      padding:8mm;
-      position:relative;
-      box-sizing:border-box;
-      page-break-after:auto;
-      page-break-inside:avoid;
+    .control-panel button {
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 0;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .control-panel button.secondary {
+      background: #6c757d;
+    }
+
+    .control-panel .hint {
+      color: var(--muted);
+      font-size: 13px;
+      margin-left: 8px;
+    }
+
+    .column-toggle-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-right: 8px;
+    }
+
+    .column-toggle-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 13px;
+      color: #222;
+      background: #f8f9fa;
+      border: 1px solid #d6d8db;
+      padding: 6px 10px;
+      border-radius: 999px;
+    }
+
+    .column-toggle-item input {
+      accent-color: #1f6fb3;
+    }
+
+    .hidden-column {
+      display: none !important;
+    }
+
+    .sheets-container {
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 0 10px;
+    }
+
+    .sheet {
+      width: 100%;
+      max-width: 210mm;
+      min-height: 297mm;
+      margin: 18mm auto;
+      background: #fff;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+      padding: 10mm;
+      position: relative;
+      box-sizing: border-box;
+      page-break-after: always;
+      page-break-inside: avoid;
     }
 
     .border-frame {
-        border: 3px double #000;
-        height: 100%;
-        padding: 15px;
-        box-sizing: border-box;
-        position: relative;
-        display: flex;
-        flex-direction: column;
+      border: 5px double #000;
+      height: 100%;
+      padding: 15px;
+      box-sizing: border-box;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
     }
 
-    /* Watermark centered */
-    .watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:0;opacity:0.06;pointer-events:none;display:flex;align-items:center;justify-content:center}
-    .watermark img{max-width:400px;max-height:400px;opacity:0.08;filter:grayscale(100%)}
-
-    .content{position:relative;z-index:1; flex: 1;}
-
-    .header{
-        display:flex;
-        gap:15px;
-        align-items:center;
-        border-bottom:2px solid #000;
-        padding-bottom:15px;
-        margin-bottom: 15px;
-    }
-    .logo{width:80px;height:80px;flex:0 0 80px;border-radius:0;overflow:hidden;display:flex;align-items:center;justify-content:center}
-    .logo img{max-width:100%;max-height:100%;display:block}
-    
-    .head-text{flex:1; text-align: center;}
-    .school-name{
-        font-size:28px; /* Adjusted to fit one line */
-        font-weight:900;
-        letter-spacing:0.5px;
-        font-family: 'Times New Roman', Times, serif; /* Professional Serif */
-        text-transform: uppercase;
-        color: #000;
-        margin-bottom: 5px;
-        white-space: nowrap;
-    }
-    .school-meta{font-size:14px;color:#333;font-weight: 500;}
-    
-    .report-title{
-        text-align:center;
-        font-weight:800;
-        color:#000;
-        margin-top: 10px;
-        text-transform: uppercase;
-        font-size: 18px;
-        border: 1px solid #000;
-        display: inline-block;
-        padding: 5px 15px;
-        border-radius: 20px;
+    .watermark {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 0;
+      opacity: 0.06;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
-    .student-info{
-        display:grid;
-        grid-template-columns:1fr 1fr;
-        margin-top:10px;
-        gap:8px;
-        font-size:14px;
-        border: 1px solid #000;
-        padding: 10px;
-    }
-    .info-label{font-weight:700;color:#000;min-width:120px}
-    .info-value{font-weight:600; color: #000;}
-
-    table{width:100%;border-collapse:collapse;margin-top:15px;font-size:13px; border: 1px solid #000;}
-    table th, table td{border:1px solid #000;padding:6px 8px;text-align:center}
-    table th{background:#f0f0f0;color:#000;font-weight:800;font-size:13px; text-transform: uppercase;}
-    tr:nth-child(even) td{background:#fff} /* Removed stripe for cleaner print */
-    .subject{text-align:left;padding-left:10px; font-weight: 600;}
-
-    .summary{display:flex;justify-content:space-between;margin-top:15px;font-weight:700; border: 1px solid #000; padding: 10px;}
-
-    .remark-box{margin-top:15px;padding:10px;border:1px solid #000;background:#fff; min-height: 40px;}
-
-    .sign-row{display:flex;justify-content:space-between;margin-top:40px; padding: 0 20px;}
-    .sign{width:25%;text-align:center}
-    .sign .line{margin-top:40px;border-top:1px solid #000;padding-top:6px;font-weight:700; font-size: 14px;}
-
-    .grading-scale{margin-top:20px;font-size:11px; width: 100%;}
-    .grading-scale td{padding:4px; border: none; text-align: left;}
-
-    /* Print rules */
-    @media print{
-      body,html{background:#fff;margin:0;padding:0;-webkit-print-color-adjust: exact}
-      .no-print{display:none !important}
-      .sheet{
-          box-shadow:none;
-          margin:0 auto 8mm;
-          padding:6mm;
-          width:210mm;
-          min-height:0;
-          height:auto;
-          page-break-after:auto;
-          page-break-inside:avoid;
-      }
-      .border-frame {
-          height:auto;
-          min-height:0;
-          border: 3px double #000;
-      }
-      .sheet:last-child{page-break-after:auto}
-      .sheet .watermark{opacity:0.06}
+    .watermark img {
+      max-width: 400px;
+      max-height: 400px;
+      opacity: 0.08;
+      filter: grayscale(100%);
     }
 
-    @page{size:A4;margin:8mm}
+    .content {
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
 
-    /* Form Selector Styling */
+    .header {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      border-bottom: 2px solid #000;
+      padding-bottom: 15px;
+      margin-bottom: 15px;
+    }
+
+    .logo {
+      width: 80px;
+      height: 80px;
+      flex: 0 0 80px;
+      border-radius: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo img {
+      max-width: 100%;
+      max-height: 100%;
+      display: block;
+    }
+
+    .head-text {
+      flex: 1;
+      text-align: center;
+    }
+
+    .school-name {
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      font-family: 'Times New Roman', Times, serif;
+      text-transform: uppercase;
+      color: #000;
+      margin-bottom: 5px;
+      white-space: nowrap;
+    }
+
+    .school-meta {
+      font-size: 13px;
+      color: #000000;
+      font-weight: 500;
+    }
+
+    .report-title {
+      text-align: center;
+      font-weight: 800;
+      color: #000;
+      margin-top: 10px;
+      text-transform: uppercase;
+      font-size: 16px;
+      border: 1px solid #000;
+      display: inline-block;
+      padding: 5px 15px;
+      border-radius: 20px;
+    }
+
+    .student-info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      margin-top: 10px;
+      gap: 8px;
+      font-size: 14px;
+      border: 1px solid #000;
+      padding: 10px;
+    }
+
+    .info-label {
+      font-weight: 700;
+      color: #000;
+      min-width: 120px;
+    }
+
+    .info-value {
+      font-weight: 600;
+      color: #000;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+      font-size: 12px;
+      border: 2px solid #000;
+    }
+
+    table th, table td {
+      border: 2px solid #000;
+      padding: 6px 7px;
+      text-align: center;
+      word-wrap: break-word;
+      font-size: 14px;
+    }
+
+    table th {
+      background: #f0f0f0;
+      color: #000;
+      font-weight: 800;
+      font-size: 14px;
+      text-transform: uppercase;
+    }
+
+    tr:nth-child(even) td {
+      background: #fff;
+    }
+
+    .subject {
+      text-align: left;
+      padding-left: 10px;
+      font-weight: 600;
+    }
+
+    .summary {
+      display: flex ;
+      justify-content: space-between;
+      margin-top: 12px;
+      font-weight: 700;
+      border: 2px solid #000;
+      padding: 10px;
+      font-size: 13px;
+    }
+
+    .remark-box {
+      margin-top: 12px;
+      padding: 10px;
+      border: 1px solid #000;
+      background: #fff;
+      min-height: 40px;
+      flex: 1;
+    }
+
+    .notes-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+      align-items: stretch;
+    }
+
+    .notes-row .remark-box {
+      margin-top: 0;
+      flex: 1;
+    }
+
+    .issued-box {
+      flex: 0 0 180px;
+      border: 1px solid #000;
+      border-radius: 4px;
+      background: #fff;
+      padding: 10px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .sign-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-top: 30px;
+      padding: 0 10px;
+      gap: 16px;
+    }
+
+    .sign {
+      width: 33.333%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      min-height: 100px;
+      gap: 8px;
+      text-align: center;
+    }
+
+    .sign .sign-img,
+    .sign .sign-placeholder {
+      display: block;
+      max-width: 90px;
+      max-height: 48px;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      margin: 0 auto;
+    }
+
+    .sign .sign-placeholder {
+      width: 90px;
+      height: 48px;
+      border: 1px dashed #cbd5e1;
+      background: #f8fafc;
+    }
+
+    .sign .line {
+      margin-top: 0;
+      border-top: 1px solid #000;
+      padding-top: 6px;
+      font-weight: 700;
+      font-size: 13px;
+      width: 100%;
+    }
+
+    hr {
+      margin: 15px 0 10px 0;
+      border: 1px solid #ddd;
+    }
+
+    .grading-scale {
+      margin-top: 10px;
+      font-size: 10px;
+      width: 100%;
+    }
+
+    .grading-scale table {
+      border: 1px solid #000;
+      margin-top: 0;
+    }
+
+    .grading-scale td {
+      padding: 3px 8px;
+      border: 1px solid #000;
+      text-align: left;
+      font-size: 10px;
+    }
+.summary-box {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 12px;
+      font-weight: 700;
+     
+      padding: 10px;
+      font-size: 15px;
+    }
+    /* Form Selector Styles */
     .form-selector-panel {
       background: linear-gradient(135deg, #ff9d41 0%, #e7b170 100%);
       padding: 25px;
@@ -245,13 +479,137 @@
       transform: translateY(0);
     }
 
+    /* Print Styles */
     @media print {
+      body, html {
+        background: #fff;
+        margin: 0;
+        padding: 0;
+      }
+
+      .no-print {
+        display: none !important;
+      }
+
+      .sheets-container {
+        max-width: 100%;
+        padding: 0;
+        margin: 0;
+      }
+
+      .sheet {
+        box-shadow: none;
+        margin: 0;
+        padding: 8mm;
+        width: 210mm;
+        height: 297mm;
+        page-break-after: always;
+        page-break-inside: avoid;
+        max-width: 210mm;
+      }
+
+      .border-frame {
+        height: calc(100% - 2mm);
+        border: 3px double #000;
+        padding: 12px;
+      }
+
+      .sheet:last-child {
+        page-break-after: auto;
+      }
+
+      .sheet .watermark {
+        opacity: 0.06;
+      }
+
+      .school-name {
+        font-size: 24px;
+      }
+
+      table {
+        font-size: 14px;
+      }
+
+      table th, table td {
+        padding: 4px 5px;
+      }
+
+      .student-info {
+        font-size: 13px;
+        padding: 8px;
+      }
+
+      .summary {
+        font-size: 11px;
+        padding: 8px;
+      }
+
+      .sign .line {
+        font-size: 11px;
+      }
+
       .form-selector-panel {
         display: none !important;
       }
     }
 
-</style>
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    /* Responsive */
+    @media screen and (max-width: 768px) {
+      .sheet {
+        margin: 10px auto;
+        padding: 8px;
+        min-height: auto;
+      }
+
+      .border-frame {
+        padding: 10px;
+      }
+
+      .header {
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .school-name {
+        font-size: 18px;
+        white-space: normal;
+      }
+
+      .student-info {
+        grid-template-columns: 1fr;
+      }
+
+      table {
+        font-size: 10px;
+      }
+
+      table th, table td {
+        padding: 3px 4px;
+      }
+
+      .notes-row {
+        flex-direction: column;
+      }
+
+      .issued-box {
+        flex: 1;
+      }
+
+      .sign-row {
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .sign {
+        min-width: 100px;
+      }
+    }
+  </style>
 
 </head>
 <body>
