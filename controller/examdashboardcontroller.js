@@ -1923,9 +1923,10 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
                 practicalmarks: "$practicalmarks",
                 theoryfullmarks: "$theoryfullmarks",
                 practicalfullmarks: "$practicalfullmarks",
+                totalpracticalmarks:"$totalpracticalmarks",
                 passMarks: "$passMarks",
                 terminalmarks: "$terminalmarks",
-                totalmarks: { $add: ["$theorymarks", "$practicalmarks"] },
+                totalmarks: { $add: ["$theorymarks", "$totalpracticalmarks"] },
               }
             }
           }
@@ -1952,7 +1953,7 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
               $reduce: {
                 input: "$subjects",
                 initialValue: 0,
-                in: { $add: ["$$value", "$$this.practicalmarks"] }
+                in: { $add: ["$$value", "$$this.totalpracticalmarks"] }
               }
             },
             totalTheoryFullMarks: {

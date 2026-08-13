@@ -287,7 +287,7 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
     
     // Determine multiplier based on subject
     let multiplier = 1;
-    if (subject && subject.toUpperCase() === "SCIENCE" || subject.toUpperCase() === "SOCIAL") {
+    if ( subject.toUpperCase() === "SOCIAL") {
       multiplier = 2;
     }
     console.log(`Multiplier for ${subject}: ${multiplier}`);
@@ -454,15 +454,35 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
     }
     
     let attendanceMarks = 0;
-    const isMainSubject = ['NEPALI', 'ENGLISH', 'MATHEMATICS', 'SCIENCE', 'SOCIAL', 'HEALTH'].includes(subject.toUpperCase());
+    const isMainSubject = ['NEPALI', 'ENGLISH', 'MATHEMATICS', 'SOCIAL', 'HEALTH'].includes(subject.toUpperCase());
     
     if (attendancePercent >= 90) {
+      if(subject.toUpperCase()==="SCIENCE" && fullMarks > 25){
+        attendanceMarks = 4;
+      } else {
+        attendanceMarks = isMainSubject ? 2 : (fullMarks <= 25 ? 2 : 4);
+      }
       attendanceMarks = isMainSubject ? 2 : (fullMarks <= 25 ? 2 : 4);
     } else if (attendancePercent >= 80) {
+      if(subject.toUpperCase()==="SCIENCE" && fullMarks > 25){
+        attendanceMarks = 3;
+      } else {
+        attendanceMarks = isMainSubject ? 1.5 : (fullMarks <= 25 ? 1.5 : 3);
+      }
       attendanceMarks = isMainSubject ? 1.5 : (fullMarks <= 25 ? 1.5 : 3);
     } else if (attendancePercent >= 70) {
+      if(subject.toUpperCase()==="SCIENCE" && fullMarks > 25){
+        attendanceMarks = 2;
+      } else {
+        attendanceMarks = isMainSubject ? 1 : (fullMarks <= 25 ? 1 : 2);
+      }
       attendanceMarks = isMainSubject ? 1 : (fullMarks <= 25 ? 1 : 2);
     } else if (attendancePercent >= 60) {
+      if(subject.toUpperCase()==="SCIENCE" && fullMarks > 25){
+        attendanceMarks = 1;
+      } else {
+        attendanceMarks = isMainSubject ? 0.5 : (fullMarks <= 25 ? 0.5 : 1);
+      }
       attendanceMarks = isMainSubject ? 0.5 : (fullMarks <= 25 ? 0.5 : 1);
     }
     
@@ -663,7 +683,7 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
     const attendanceResult = await attendanceResponse.json();
 
     // Determine if subject should get practical marks from API
-    const subjectsWithPracticalSlips = ['SCIENCE', 'SOCIAL', 'NEPALI', 'ENGLISH', 'MATHEMATICS', 'HEALTH'];
+    const subjectsWithPracticalSlips = [ 'SOCIAL', 'NEPALI', 'ENGLISH', 'MATHEMATICS', 'HEALTH'];
     const shouldFetchPracticalSlips = subjectsWithPracticalSlips.includes(subject.toUpperCase());
 
     // Fetch practical slips ONLY for specific subjects

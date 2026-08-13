@@ -1015,9 +1015,9 @@ exports.getPracticalSlipData = async (req, res, next) => {
         } else {
           // Lower classes: Each practical worth 18 marks, doubled to 36
           // Calculate total (sum of all practicals doubled) - matches template: ((totalObtainedAllPractical/18)*36)
-          const totalDoubled = (totalObtainedAllPractical / 18) * 36;
+          totalObtainedAllPractical = (totalObtainedAllPractical / totalDoneAllPractical ); // Double the marks for lower classes
           // Average across units - matches template display: totalPracticalproject/unitsCount
-          totalPracticalproject = totalDoubled / unitsCount;
+        
           
           // Total = Attendance+Participation (4) + Practical/Project + Terminal (10)
           totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 50 * 100;

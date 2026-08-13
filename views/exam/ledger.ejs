@@ -363,7 +363,7 @@
                 <% const subjectData = data.subjectMap[sub]; %>
             <% if(subjectData){ %>
             <td class="subject-<%= index %> col-th <%= subjectData.theorymarks < subjectData.passMarks ? 'status-fail' : '' %>"><%= subjectData.theorymarks %></td>
-            <td class="subject-<%= index %> col-pr"><%= subjectData.practicalmarks %></td>
+            <td class="subject-<%= index %> col-pr"><%= subjectData.totalpracticalmarks %></td>
             <td class="subject-<%= index %> col-tot"><%= subjectData.totalmarks %></td>
             <% } else { %>
             <td class="subject-<%= index %> col-th">-</td>
@@ -372,7 +372,7 @@
             <% } %>
            <% }) %>
             <td class="col-total-th"><%= data.totalTh %></td>
-            <td class="col-total-pr"><%= data.totalPr %></td>
+            <td class="col-total-pr"><%= data.totalPr ? data.totalPr.toFixed(2) : '-' %></td>
             <td class="col-per"><%= data.theorypercentage ? data.theorypercentage.toFixed(2) : '-' %></td>
             <td class="col-result <%= data.failcount > 0 ? 'status-fail' : 'status-pass' %>"><% if (data.failcount>0) { %>Fail<% } else { %>Pass<% } %></td>
             <td class="col-rank"><%= data.rank %></td>
