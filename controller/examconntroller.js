@@ -954,14 +954,106 @@ exports.getPracticalSlipData = async (req, res, next) => {
         });
       });
 
-      const isHigherClass = studentClass > 8 || ["Nine", "Ten", "TEN", "9", "10", "nine", "ten"].includes(studentClass);
+      const isHigherClass = studentClass > 8 || ["Nine", "Ten", "TEN", "9", "10", "nine", "ten"].includes(String(studentClass).toLowerCase());
+      const unitsCount = lessonData[0]?.units?.length || 1;
       
-      if (isHigherClass) {
-        totalPracticalproject = (((((totalObtainedAllPractical / 10) * 10) + (((totalObtainedAllProject) / 6) * 6))) / lessonData[0]?.units?.length || 1);
-        totalPractical = ((student.attendanceMarks + student.participationMarks + totalPracticalproject + student.terminalMarks) / 25 * 100);
+      // Subject-specific calculations
+      if (subject === "HEALTH" || subject === "Health" || subject === "health") {
+        // Health subject: Attendance & Participation (4) + Project Work & Practical Work (36) + Terminal (10) = 50
+        // For Health, we use portion-wise calculation
+        let portionWise = {};
+        
+        if (student.unit && Array.isArray(student.unit)) {
+          student.unit.forEach(u => {
+            const portion = u.portion;
+            if (!portionWise[portion]) {
+              portionWise[portion] = [];
+            }
+            
+            // Add project work marks from this unit
+            if (u.projectWorks && u.projectWorks.length > 0) {
+              u.projectWorks.forEach(p => {
+                portionWise[portion].push(p.projectMarks || 0);
+              });
+            }
+            
+            // Add practical marks from this unit
+            if (u.practicals && u.practicals.length > 0) {
+              u.practicals.forEach(p => {
+                portionWise[portion].push(p.practicalMarks || 0);
+              });
+            }
+          });
+        }
+
+        // Calculate average for each portion and sum them up
+        let practicalProjectMarks = 0;
+        for (let portion in portionWise) {
+          if (portionWise[portion].length > 0) {
+            let portionAverage = portionWise[portion].reduce((a, b) => a + b, 0) / portionWise[portion].length;
+            practicalProjectMarks += portionAverage;
+          }
+        }
+
+        totalPracticalproject = practicalProjectMarks;
+        // Total = Attendance+Participation (4) + Practical/Project + Terminal (10)
+        const totalMarks = (student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0);
+        totalPractical = (totalMarks / 50) * 100;
+
+      } else if (subject === "MATHEMATICS" || subject === "Mathematics" || subject === "mathematics") {
+        // Mathematics: Attendance & Participation (4) + Project Work & Practical Work (36) + Terminal (10) = 50
+        // Practical: 20 marks, Project: 16 marks (total 36)
+        totalPracticalproject = (((((totalObtainedAllPractical / 20) * 20) + (((totalObtainedAllProject) / 12) * 16))) / unitsCount);
+        totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 50 * 100;
+
+      } else if (subject === "SOCIAL" || subject === "Social" || subject === "social") {
+        // SOCIAL: Matching template logic
+        if (isHigherClass) {
+          // Higher classes: Each unit has 16 marks for practical
+          totalPracticalproject = totalObtainedAllPractical / unitsCount;
+          totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 25 * 100;
+        } else {
+          // Lower classes: Each practical worth 18 marks, doubled to 36
+          // Calculate total (sum of all practicals doubled) - matches template: ((totalObtainedAllPractical/18)*36)
+          const totalDoubled = (totalObtainedAllPractical / 18) * 36;
+          // Average across units - matches template display: totalPracticalproject/unitsCount
+          totalPracticalproject = totalDoubled / unitsCount;
+          
+          // Total = Attendance+Participation (4) + Practical/Project + Terminal (10)
+          totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 50 * 100;
+        }
+
+      } else if (subject === "NEPALI" || subject === "Nepali" || subject === "nepali") {
+        // Nepali subject
+        if (isHigherClass) {
+          // Class 9-10: सुनाइ, बोलाइ र पढाइ (१२) + सिर्जनात्मक कार्य र परियोजना कार्य तथा प्रस्तुति (४)
+          totalPracticalproject = (((((totalObtainedAllPractical / 12) * 12) + (((totalObtainedAllProject) / 4) * 4))) / unitsCount);
+          totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 25 * 100;
+        } else {
+          // Class 1-8: सुनाइ र बोलाइ(२०) + पढाइ र लेखाइ(१६)
+          totalPracticalproject = (((((totalObtainedAllPractical / 20) * 20) + (((totalObtainedAllProject) / 16) * 16))) / unitsCount);
+          totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 50 * 100;
+        }
+
+      } else if (subject === "ENGLISH" || subject === "English" || subject === "english") {
+        // English subject - same as Nepali calculation
+        if (isHigherClass) {
+          totalPracticalproject = (((((totalObtainedAllPractical / 12) * 12) + (((totalObtainedAllProject) / 4) * 4))) / unitsCount);
+          totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 25 * 100;
+        } else {
+          totalPracticalproject = (((((totalObtainedAllPractical / 20) * 20) + (((totalObtainedAllProject) / 16) * 16))) / unitsCount);
+          totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 50 * 100;
+        }
+
       } else {
-        totalPracticalproject = (((((totalObtainedAllPractical / 10) * 20) + (((totalObtainedAllProject) / 8) * 16))) / lessonData[0]?.units?.length || 1);
-        totalPractical = ((student.attendanceMarks + student.participationMarks + totalPracticalproject + student.terminalMarks) / 50 * 100);
+        // Default/Science subject calculation
+        if (isHigherClass) {
+          totalPracticalproject = (((((totalObtainedAllPractical / 10) * 10) + (((totalObtainedAllProject) / 6) * 6))) / unitsCount);
+          totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 25 * 100;
+        } else {
+          totalPracticalproject = (((((totalObtainedAllPractical / 10) * 20) + (((totalObtainedAllProject) / 8) * 16))) / unitsCount);
+          totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 50 * 100;
+        }
       }
 
       return {
@@ -969,7 +1061,7 @@ exports.getPracticalSlipData = async (req, res, next) => {
         attendanceMarks: student.attendanceMarks || 0,
         participationMarks: student.participationMarks || 0,
         terminalMarks: student.terminalMarks || 0,
-        totalMarks: student.attendanceMarks + student.participationMarks + totalPracticalproject + (student.terminalMarks || 0),
+        totalMarks: (student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0),
         totalPercentage: totalPractical,
         totalObtainedAllPractical: totalObtainedAllPractical,
         totalObtainedAllProject: totalObtainedAllProject,
@@ -1034,14 +1126,36 @@ exports.getPracticalSlipData = async (req, res, next) => {
         // Average practical marks across terminals
         const avgPracticalProject = terminalCount > 0 ? totalPracticalProjectAllTerminals / terminalCount : 0;
         
-        // Calculate final marks
-        const isHigherClass = studentClass > 8 || ["Nine", "Ten", "TEN", "9", "10", "nine", "ten"].includes(studentClass);
+        // Calculate final marks based on subject
+        const isHigherClass = studentClass > 8 || ["Nine", "Ten", "TEN", "9", "10", "nine", "ten"].includes(String(studentClass).toLowerCase());
         let totalPractical;
         
-        if (isHigherClass) {
-          totalPractical = ((totalAttendance + totalParticipation + avgPracticalProject) / 25 * 100);
-        } else {
+        if (subject === "HEALTH" || subject === "Health" || subject === "health") {
+          // Health: Total out of 50
           totalPractical = ((totalAttendance + totalParticipation + avgPracticalProject) / 50 * 100);
+        } else if (subject === "MATHEMATICS" || subject === "Mathematics" || subject === "mathematics") {
+          // Mathematics: Total out of 50
+          totalPractical = ((totalAttendance + totalParticipation + avgPracticalProject) / 50 * 100);
+        } else if (subject === "SOCIAL" || subject === "Social" || subject === "social") {
+          if (isHigherClass) {
+            totalPractical = ((totalAttendance + totalParticipation + avgPracticalProject) / 25 * 100);
+          } else {
+            totalPractical = ((totalAttendance + totalParticipation + avgPracticalProject) / 50 * 100);
+          }
+        } else if (subject === "NEPALI" || subject === "Nepali" || subject === "nepali" || 
+                   subject === "ENGLISH" || subject === "English" || subject === "english") {
+          if (isHigherClass) {
+            totalPractical = ((totalAttendance + totalParticipation + avgPracticalProject) / 25 * 100);
+          } else {
+            totalPractical = ((totalAttendance + totalParticipation + avgPracticalProject) / 50 * 100);
+          }
+        } else {
+          // Default/Science
+          if (isHigherClass) {
+            totalPractical = ((totalAttendance + totalParticipation + avgPracticalProject) / 25 * 100);
+          } else {
+            totalPractical = ((totalAttendance + totalParticipation + avgPracticalProject) / 50 * 100);
+          }
         }
 
         marksMap[firstEntry.reg] = {

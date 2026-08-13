@@ -307,6 +307,7 @@ exports.generateMarksheet = async (req, res, next) => {
       },
     ]);
 
+   
     const attendanceData = await getAttendanceDataFromApi(studentClass, section, academicYear);
     const attendanceMap = new Map(attendanceData.map(item => [String(item.reg).trim(), item]));
     const attendanceWorkingDays = attendanceData?.[0]?.totalWorkingDaysUptoToday || marksheetSetups?.[0]?.terminals?.[0]?.workingDays || 0;
@@ -315,8 +316,17 @@ exports.generateMarksheet = async (req, res, next) => {
       const reg = String(student._id || '').trim();
       const record = attendanceMap.get(reg);
       const attendanceValue = record?.attendance ?? (student.subjects?.[0]?.attendance ?? 0);
-      student.subjects = student.subjects.map((sub) => ({ ...sub, attendance: attendanceValue }));
+      student.subjects = student.subjects.map((sub) => ({ ...sub, attendance:sub.attendance}));
     });
+    if(studentClass >3 || studentClass.toLowerCase() === "four" || studentClass.toLowerCase() === "five" || studentClass.toLowerCase() === "six" || studentClass.toLowerCase() === "seven" || studentClass.toLowerCase() === "eight" || studentClass.toLowerCase() === "nine" || studentClass.toLowerCase() === "ten")
+    {
+      studentWisedata.forEach((student) => {
+      const reg = String(student._id || '').trim();
+      const record = attendanceMap.get(reg);
+      const attendanceValue = record?.attendance ?? (student.subjects?.[0]?.attendance ?? 0);
+      student.subjects = student.subjects.map((sub) => ({ ...sub, attendance:attendanceValue }));
+    });
+    }
 
     if (Array.isArray(marksheetSetups)) {
       marksheetSetups.forEach((setup) => {
@@ -426,6 +436,26 @@ exports.generateMarksheet = async (req, res, next) => {
       }
     } else {
       // Default case - theory practical
+      if(studentClass<=3 || studentClass.toLowerCase() === "one" || studentClass.toLowerCase() === "two" || studentClass.toLowerCase() === "three")
+      {
+        return res.render("./exam/primarytheorypr", {
+          currentPage: "exammanagement",
+          studentClassdata: studentClassdata,
+        terminals,
+        format,
+        studentWisedata,
+        studentClass: studentClass,
+        section,
+        terminal,
+        academicYear,
+        creditHourData,
+        marksheetSetups,
+        issuedNepaliDate,
+        user: req.user
+        });
+
+
+      }
       return res.render("./exam/generatemarksheettheorypr", {
         currentPage: "exammanagement",
         studentClassdata: studentClassdata,
@@ -516,7 +546,7 @@ exports.generateMarksheetStudent = async (req, res, next) => {
 
    if(format=="theorypractical")
    {
-    console.log("grouped data",studentWisedata);
+  
     if(studentClass<=3 || studentClass.toLowerCase() === "one" || studentClass.toLowerCase() === "two" || studentClass.toLowerCase() === "three")
     {
 res.render("./exam/primarytheorypr", {
@@ -1894,6 +1924,7 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
                 theoryfullmarks: "$theoryfullmarks",
                 practicalfullmarks: "$practicalfullmarks",
                 passMarks: "$passMarks",
+                terminalmarks: "$terminalmarks",
                 totalmarks: { $add: ["$theorymarks", "$practicalmarks"] },
               }
             }
@@ -2147,6 +2178,27 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
       });
       return;
     } else {
+      if(studentClass == "Four" || studentClass == "4" || studentClass == "FOUR" || studentClass == "four" || studentClass == "Five" || studentClass == "5" || studentClass == "FIVE" || studentClass == "five" )
+      {
+        res.render("./exam/ledgerfourfive", {
+        fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
+        currentPage: "exammanagement",
+        studentClassdata,
+        user: req.user,
+        academicYear,
+        studentClass,
+        section,
+        terminal,
+        marksheetSetups,
+        ledgerData,
+        ledgerAnalysisLookup,
+        noData: ledgerData.length === 0,
+        isPrePrimary: isPrePrimary,
+        NO_WORKSHEET_SUBJECTS: NO_WORKSHEET_SUBJECTS
+      });
+      }
+      else
+      {
       res.render("./exam/ledger", {
         fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
         currentPage: "exammanagement",
@@ -2163,6 +2215,7 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
         isPrePrimary: isPrePrimary,
         NO_WORKSHEET_SUBJECTS: NO_WORKSHEET_SUBJECTS
       });
+    }
     }
     
   } catch (err) {

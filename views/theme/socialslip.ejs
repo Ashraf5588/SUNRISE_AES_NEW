@@ -360,7 +360,7 @@
           // Practical counts & marks
           const totalPracticalGiven = unit.practicals?.length || 0;
           const totalPracticalDone = studentUnit.practicals?.length || 0;
-          const obtainedPracticalMarks = studentUnit.practicals?.reduce((sum, p) => sum + (p.practicalMarks || 0), 0);
+          const obtainedPracticalMarks = (studentUnit.practicals?.reduce((sum, p) => sum + (p.practicalMarks || 0), 0))/totalPracticalDone || 0;
 
           // Project counts & marks
           const totalProjectGiven = unit.projectworks?.length || 0;
@@ -382,7 +382,7 @@
           ){%>
            <% totalPracticalproject = ((((totalObtainedAllPractical/16)*16) )/ lessonData[0].units.length) %>
            <%}else{%>
-<% totalPracticalproject = ((((totalObtainedAllPractical/18)*36) )/ lessonData[0].units.length) %>
+<% totalPracticalproject = (((totalObtainedAllPractical/18)*36) ) %>
             <%}%>
           <td><%= totalPracticalproject/lessonData[0].units.length %></td>
 

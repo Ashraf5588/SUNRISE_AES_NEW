@@ -306,7 +306,7 @@
             </select>
             <input type="hidden" name="theorymarks[<%=student.reg%>]" value="null" data-reg="<%= student.reg %>">
           </td>
-          <td data-column="attendance"><input type="number" id="attendance" name="attendance[<%=student.reg%>]" value="" data-reg="<%= student.reg %>" oninput="autoSave(this)"></td>
+          <td data-column="attendance"><input type="number" id="attendance[<%=student.reg%>]" name="attendance[<%=student.reg%>]" value="" data-reg="<%= student.reg %>" oninput="autoSave(this)"></td>
         </tr>
       <%})%>
     </table>
@@ -576,12 +576,10 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
   try {
     const data = await fetch(fetchUrl);
     const result = await data.json();
-    const attendanceResponse = await fetch(attendanceDataUrl);
-    const attendanceResult = await attendanceResponse.json();
+   
+   
 
-    console.log("✓ Fetched Previous Marks - Full Response:", JSON.stringify(result, null, 2));
-    console.log(`Found ${result.length} records in DB`);
-
+ 
     if (result.length > 0) {
       console.log("📋 First record details:", result[0]);
     } else {
@@ -668,29 +666,18 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
     }
 
     // Populate attendance data
-    if(result.length > 0) {
-      console.log("Populating attendance data...");
-      result.forEach((item) => {
-        const reg = item.reg;
-        let attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
-        if(attendanceInput) {
-          attendanceInput.value = item.attendance || 0;
-        }
-      });
-      console.log("✓ Attendance data populated");
-    }
+    result.forEach((item) => {
+      const reg = item.reg;
+      const attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
+      if (attendanceInput) {
+        const attendanceValue = item.attendance || 0;
+       attendanceInput.value = attendanceValue
+      }
+    });
+  
 
-    if(attendanceResult.length > 0) {
-      console.log("Populating additional attendance data...");
-      attendanceResult.forEach((item) => {
-        const reg = item.reg;
-        const attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
-        if(attendanceInput) {
-          attendanceInput.value = Number(item.attendance) || 0;
-        }
-      });
-      console.log("✓ Additional attendance data populated");
-    }
+    
+   
 
     // CRITICAL: Now render the worksheet cells with the stored data
     console.log("Rendering worksheet cells with stored data...");

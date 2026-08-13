@@ -665,32 +665,7 @@
       }, 100);
     });
 
-    async function loadAttendanceTotals() {
-      try {
-        const studentClass = "<%= typeof studentClass !== 'undefined' ? studentClass : '' %>";
-        const section = "<%= typeof section !== 'undefined' ? section : '' %>";
-        const academicYear = "<%= typeof academicYear !== 'undefined' ? academicYear : '' %>";
-        if (!studentClass || !section || !academicYear) return;
-
-        const response = await fetch(`/getAttendanceData?studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}`);
-        if (!response.ok) return;
-
-        const attendanceList = await response.json();
-        const attendanceMap = new Map(attendanceList.map(item => [String(item.reg).trim(), item]));
-
-        document.querySelectorAll('#ledgerTable tbody tr').forEach(row => {
-          const reg = String(row.dataset.reg || '').trim();
-          const cell = row.querySelector('td.col-att');
-          if (!cell || !reg) return;
-          const attendanceRecord = attendanceMap.get(reg);
-          if (attendanceRecord && attendanceRecord.attendance != null) {
-            cell.textContent = attendanceRecord.attendance;
-          }
-        });
-      } catch (error) {
-        console.error('Error loading attendance totals:', error);
-      }
-    }
+   
 
     function loadform() {
       const classSection = document.getElementById('classSection').value;

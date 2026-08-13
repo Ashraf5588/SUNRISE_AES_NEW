@@ -299,9 +299,6 @@
     </div>
   </div>
 
-
-
-
   <script>
     function loadform()
     {
@@ -449,19 +446,33 @@ if(attendancePercent >= 90){
   if(sub.theoryfullmarks<=25) {
     attendanceMarks = 0.5;
   } else {
-    attendanceMarks = 0.;
+    attendanceMarks = 0.5;
   }
 } else { 
   attendanceMarks = 0; 
 } 
+
+// Check if subject is LOCAL/COMPUTER subject (add attendance + terminal to practical)
+const localSubjects = ['COMPUTER', 'DELIGHT', 'COMPUTER', 'LOCAL', 'LOCAL SUBJECT', 'COMPUTER SCIENCE'];
+const isLocalSubject = localSubjects.some(local => sub.subject.toUpperCase().includes(local));
+
+// Calculate practical marks based on subject type
+let practicalTotal = sub.practicalmarks || 0;
+if (isLocalSubject) {
+    // For local subjects: practical + attendance + terminal + participation
+    practicalTotal = (sub.practicalmarks || 0) + attendanceMarks + (sub.terminalmarks || 0) + (sub.participationMarks || 0);
+} else {
+    // For other subjects: only practical marks (no attendance, no terminal)
+    practicalTotal = sub.practicalmarks || 0;
+}
 %>
 
         <% 
 
       
         let thP = (sub.theorymarks / sub.theoryfullmarks) * 100;
-        let prP = (sub.practicalmarks+sub.terminalmarks+attendanceMarks+(sub.participationMarks || 0)) / sub.practicalfullmarks * 100;
-        let finalP = ((sub.theorymarks + sub.practicalmarks+sub.terminalmarks+attendanceMarks+(sub.participationMarks || 0)) /
+        let prP = (practicalTotal / sub.practicalfullmarks) * 100;
+        let finalP = ((sub.theorymarks + practicalTotal) /
                       (sub.theoryfullmarks + sub.practicalfullmarks)) * 100;
 
         let thGP = getGP(thP);
@@ -480,10 +491,10 @@ if(attendancePercent >= 90){
             <td><%= sub.subject %></td>
             <td><% m =  creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.theoryCreditHour + creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.practicalCreditHour  || 'N/A' %><%= m %></td>
             <td class="col-theorymarks"><%= sub.theorymarks %> <%= sub.theorymarks<sub.passMarks?'*':'' %></td>
-            <td class="col-prmarks"><%= sub.practicalmarks+attendanceMarks+sub.terminalmarks %> <%= sub.practicalmarks+attendanceMarks+sub.terminalmarks+(sub.participationMarks || 0)<sub.passMarks?'*':'' %></td>
-            <td class="col-thgp"><%= thGP %></td>
-            <td class="col-prgp"><%= prGP %></td>
-            <td class="col-finalgp"><%= finalGP %></td>
+            <td class="col-prmarks"><%= practicalTotal %> <%= practicalTotal<sub.passMarks?'*':'' %></td>
+            <td class="col-thgp"><%= thGP.toFixed(2) %></td>
+            <td class="col-prgp"><%= prGP.toFixed(2) %></td>
+            <td class="col-finalgp"><%= finalGP.toFixed(2) %></td>
                  <% totalCredit += m; 
                   totalGradePoints += (thGP*theoryCreditHour + prGP*practicalCreditHour);%>
             <td class="col-finalgrade"><%= getGrade(finalGP) %></td>

@@ -342,8 +342,10 @@
 
     <div class="sheets-container">
 
-    <% studentWisedata.forEach((data) => { %>
-
+    <% studentWisedata.forEach((data) => { 
+// Get attendance from the first subject (all subjects have same attendance)
+    const studentAttendance = data.subjects && data.subjects.length > 0 ? data.subjects[0].attendance : 0;
+    %>
     <div class="sheet">
         <div class="watermark"><img src="/image.png" alt="Watermark"></div>
         <div class="border-frame">
@@ -505,7 +507,7 @@
                 else return "Excellent Performance";
             }%><%= getRemarks(getGrade(finalGP)) %></td>
         </tr>
-<% totalAttendance = sub.attendance %> 
+
         <% }) %>
 
         </tbody>
@@ -514,7 +516,7 @@
         <!-- SUMMARY -->
         <div class="summary">
             <div>Total Credit Hours: <%= totalCredit %></div>
-               <div><span class="info-label">Attendance:</span> <span class="info-value"><%= totalAttendance || 'N/A' %></span></div>
+               <div><span class="info-label">Attendance:</span> <span class="info-value"><%= studentAttendance || 'N/A' %></span></div>
             <div>GPA: <%= (totalGradePoints / totalCredit).toFixed(2) %></div>
         </div>
 

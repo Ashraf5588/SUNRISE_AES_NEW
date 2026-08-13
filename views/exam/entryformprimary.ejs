@@ -426,19 +426,15 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
       console.log("No previous data found - initializing with zero values");
       await initializeStudentRecords(subject, studentClass, section, academicYear, terminal);
     }
+//populate attendance data
+    result.forEach((item)=>{
+const attendanceInput = document.querySelector(`input[name="attendance[${item.reg}]"]`);
+if(attendanceInput) {
+  attendanceInput.value = item.attendance || 0;
+  attendanceInput.dispatchEvent(new Event('input'));
 
-    if(attendanceResult.length > 0) {
-      console.log("Populating additional attendance data...");
-      attendanceResult.forEach((item) => {
-        const reg = item.reg;
-        const attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
-        if(attendanceInput) {
-          attendanceInput.value = Number(item.attendance) || 0;
-          attendanceInput.dispatchEvent(new Event('input'));
-        }
-      });
-      console.log("✓ Attendance data populated");
     }
+  });
 
     // Render the worksheet cells
     renderWorksheetCells(currentWorksheetNumber);
