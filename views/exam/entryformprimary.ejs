@@ -344,8 +344,38 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
     await new Promise(resolve => setTimeout(resolve, 300));
     console.log("✓ Columns recreated, waiting for DOM update");
 
+    // STORE WORKSHEET GRADES - PRESERVE THE EXACT ARRAY WITH EMPTY STRINGS
     if(result.length > 0) {
-      console.log("Populating marks and worksheet data...");
+      console.log("Storing worksheet grade data from DB...");
+      result.forEach((item) => {
+        const reg = item.reg;
+        let worksheetGrades = item.worksheetGrades;
+        
+        // If it's a string, try to parse it
+        if (typeof worksheetGrades === 'string') {
+          try {
+            worksheetGrades = JSON.parse(worksheetGrades);
+          } catch (e) {
+            worksheetGrades = worksheetGrades.split(',').map(g => g.trim());
+          }
+        }
+        
+        // Ensure it's an array
+        if (!Array.isArray(worksheetGrades)) {
+          worksheetGrades = [];
+        }
+        
+        // PRESERVE THE EXACT ARRAY - keep empty strings
+        // Don't filter out empty strings - we need to maintain index positions
+        console.log(`Stored worksheet grades for reg ${reg}:`, worksheetGrades);
+        worksheetGradeStore.set(reg, worksheetGrades);
+      });
+      console.log("✓ Worksheet grades stored with preserved indices");
+    }
+
+    // Populate theory marks
+    if(result.length > 0) {
+      console.log("Populating marks data...");
       result.forEach((item) => {
         const reg = item.reg;
         let theoryInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
@@ -394,31 +424,8 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
           }
         } else {
           theoryInput.value = item.theorymarks || 0;
-          attendanceInput.value = '';
-
           theoryInput.dispatchEvent(new Event('input'));
           console.log(`    ✓ Marks populated: theory=${item.theorymarks}`);
-        }
-
-        const worksheetSelects = document.querySelectorAll(`select[name="worksheetGrades[${reg}][]"]`);
-        let worksheetGrades = item.worksheetGrades;
-        if (typeof worksheetGrades === 'string') {
-          worksheetGrades = worksheetGrades.split(',').map(g => g.trim()).filter(g => g !== '');
-        } else if (!Array.isArray(worksheetGrades)) {
-          worksheetGrades = [];
-        }
-
-        if (worksheetGrades.length > 0) {
-          worksheetGradeStore.set(reg, worksheetGrades);
-        } else {
-          worksheetGradeStore.set(reg, []);
-        }
-
-        if (worksheetSelects.length > 0) {
-          worksheetSelects.forEach((select) => {
-            const selectedWorksheet = Number(worksheetCountSelect?.value || 1);
-            select.value = worksheetGrades[selectedWorksheet - 1] || '';
-          });
         }
       });
       console.log("✓ All student data populated");
@@ -426,15 +433,20 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
       console.log("No previous data found - initializing with zero values");
       await initializeStudentRecords(subject, studentClass, section, academicYear, terminal);
     }
-//populate attendance data
-    result.forEach((item)=>{
-const attendanceInput = document.querySelector(`input[name="attendance[${item.reg}]"]`);
-if(attendanceInput) {
-  attendanceInput.value = item.attendance || 0;
-  attendanceInput.dispatchEvent(new Event('input'));
 
+    // Populate attendance data from API
+    if(attendanceResult.length > 0) {
+      console.log("Populating attendance data from API...");
+      attendanceResult.forEach((item) => {
+        const reg = item.reg;
+        const attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
+        if(attendanceInput) {
+          attendanceInput.value = Number(item.attendance) || 0;
+          attendanceInput.dispatchEvent(new Event('input'));
+        }
+      });
+      console.log("✓ Attendance data populated");
     }
-  });
 
     // Render the worksheet cells
     renderWorksheetCells(currentWorksheetNumber);
@@ -678,7 +690,8 @@ async function initializeStudentRecords(subject, studentClass, section, academic
 
   function setWorksheetGrade(reg, worksheetNumber, grade) {
     const grades = worksheetGradeStore.get(reg) || [];
-    grades[worksheetNumber - 1] = grade;
+    // Store the value (including empty string to maintain index)
+    grades[worksheetNumber - 1] = grade || '';
     worksheetGradeStore.set(reg, grades);
   }
 
@@ -703,18 +716,43 @@ async function initializeStudentRecords(subject, studentClass, section, academic
     select.style.backgroundColor = '#fff';
     select.style.cursor = 'pointer';
 
-    const grades = ['', 'A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'NG'];
+    // Add disabled default option first
+    const defaultOption = document.createElement('option');
+    defaultOption.value = '';
+    defaultOption.textContent = 'Select Grade';
+    defaultOption.disabled = true;
+    defaultOption.selected = true;
+    select.appendChild(defaultOption);
+
+    // Add actual grade options
+    const grades = ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'NG'];
     grades.forEach((grade) => {
       const option = document.createElement('option');
       option.value = grade;
-      option.textContent = grade || 'Select Grade';
+      option.textContent = grade;
       select.appendChild(option);
     });
 
-    select.value = getWorksheetGrade(reg, worksheetNumber);
+    // Set the value from stored data (preserving empty strings)
+    const storedGrades = worksheetGradeStore.get(reg) || [];
+    const storedValue = storedGrades[worksheetNumber - 1] || '';
+    
+    // Set the value (including empty string)
+    select.value = storedValue;
+    
+    // If the value is empty, select the disabled default option
+    if (!storedValue || storedValue === '') {
+      defaultOption.selected = true;
+    } else {
+      console.log(`Set worksheet ${worksheetNumber} for reg ${reg} to: ${storedValue}`);
+    }
 
     select.addEventListener('change', function () {
-      setWorksheetGrade(reg, worksheetNumber, this.value);
+      // Store the value (including empty string to maintain index)
+      const grades = worksheetGradeStore.get(reg) || [];
+      grades[worksheetNumber - 1] = this.value || '';
+      worksheetGradeStore.set(reg, grades);
+      
       if (typeof autoSave === 'function') autoSave(this);
     });
 
@@ -732,6 +770,32 @@ async function initializeStudentRecords(subject, studentClass, section, academic
         return;
       }
       td.appendChild(buildWorksheetSelect(reg, worksheetNumber));
+    });
+    
+    // After rendering worksheet cells, populate worksheet grades from the store
+    console.log("Populating worksheet grades in rendered cells...");
+    document.querySelectorAll('#markstable td[data-column="worksheet"] select').forEach((select) => {
+      const reg = select.dataset.reg;
+      const worksheetIndex = Number(select.dataset.worksheetIndex);
+      
+      // Get the stored grades array (PRESERVING empty strings)
+      const storedGrades = worksheetGradeStore.get(reg) || [];
+      
+      // Get the value at the specific index (could be empty string)
+      const storedValue = storedGrades[worksheetIndex - 1] || '';
+      
+      console.log(`Setting worksheet grade for reg ${reg}, worksheet ${worksheetIndex}: "${storedValue}"`);
+      
+      // Set the value (including empty string - which will show as "Select Grade")
+      select.value = storedValue;
+      
+      // If the value is empty, select the disabled default option
+      if (!storedValue || storedValue === '') {
+        const defaultOption = select.querySelector('option[value=""]');
+        if (defaultOption) {
+          defaultOption.selected = true;
+        }
+      }
     });
   }
 

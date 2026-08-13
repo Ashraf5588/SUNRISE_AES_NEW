@@ -571,15 +571,11 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
   console.log(`  - terminal: "${terminal}"`);
 
   const fetchUrl = `/getPreviousmarks?subject=${encodeURIComponent(subject)}&studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}&terminal=${encodeURIComponent(terminal)}`;
-  const attendanceDataUrl = `/getAttendanceData?studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}`;
 
   try {
     const data = await fetch(fetchUrl);
     const result = await data.json();
-   
-   
 
- 
     if (result.length > 0) {
       console.log("📋 First record details:", result[0]);
     } else {
@@ -640,29 +636,33 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
       });
     }
 
-    // STORE WORKSHEET GRADES
+    // STORE WORKSHEET GRADES - PRESERVE THE EXACT ARRAY WITH EMPTY STRINGS
     if(result.length > 0) {
       console.log("Storing worksheet grade data from DB...");
       result.forEach((item) => {
         const reg = item.reg;
         let worksheetGrades = item.worksheetGrades;
+        
+        // If it's a string, try to parse it
         if (typeof worksheetGrades === 'string') {
-          worksheetGrades = worksheetGrades.split(',').map(g => g.trim()).filter(g => g !== '');
-        } else if (!Array.isArray(worksheetGrades)) {
+          try {
+            worksheetGrades = JSON.parse(worksheetGrades);
+          } catch (e) {
+            worksheetGrades = worksheetGrades.split(',').map(g => g.trim());
+          }
+        }
+        
+        // Ensure it's an array
+        if (!Array.isArray(worksheetGrades)) {
           worksheetGrades = [];
         }
-        // Filter out empty grades
-        worksheetGrades = worksheetGrades.filter(grade => grade !== '');
         
-        // Store the grades
-        if (worksheetGrades.length > 0) {
-          worksheetGradeStore.set(reg, worksheetGrades);
-          console.log(`Stored worksheet grades for reg ${reg}:`, worksheetGrades);
-        } else {
-          worksheetGradeStore.set(reg, []);
-        }
+        // PRESERVE THE EXACT ARRAY - keep empty strings
+        // Don't filter out empty strings - we need to maintain index positions
+        console.log(`Stored worksheet grades for reg ${reg}:`, worksheetGrades);
+        worksheetGradeStore.set(reg, worksheetGrades);
       });
-      console.log("✓ Worksheet grades stored");
+      console.log("✓ Worksheet grades stored with preserved indices");
     }
 
     // Populate attendance data
@@ -675,10 +675,6 @@ async function populateData(subject,studentClass,section,academicYear,terminal)
       }
     });
   
-
-    
-   
-
     // CRITICAL: Now render the worksheet cells with the stored data
     console.log("Rendering worksheet cells with stored data...");
     renderWorksheetCells(currentWorksheetNumber);
@@ -815,11 +811,16 @@ window.onload = function() {
       const theoryfullmarks = document.getElementById('fullMarks')?.value || 0;
       const totalWorksheet = Number(document.getElementById('totalWorksheet')?.value || 1);
       
-      // Get worksheet grades from store (which already filters empties)
+      // Get worksheet grades from store (preserving empty strings for indices)
       const storedGrades = worksheetGradeStore.get(reg) || [];
       
-      // Ensure we have the correct number of grades, but only include non-empty ones
-      const worksheetGrades = storedGrades.filter(grade => grade && grade !== '');
+      // Ensure the array has the correct length (totalWorksheet)
+      while (storedGrades.length < totalWorksheet) {
+        storedGrades.push('');
+      }
+      
+      // Keep empty strings to maintain indices
+      const worksheetGrades = storedGrades.slice(0, totalWorksheet);
 
       const saveData = {
         reg,
@@ -961,8 +962,8 @@ window.onload = function() {
           const idx = Number(s.dataset.worksheetIndex) || currentWorksheetNumber;
           if (idx >= 1 && idx <= totalCount) gradesBase[idx - 1] = s.value || '';
         });
-        // FILTER OUT EMPTY GRADES BEFORE SAVING
-        const worksheetGrades = gradesBase.filter(grade => grade !== '');
+        // KEEP EMPTY STRINGS TO MAINTAIN INDICES
+        const worksheetGrades = gradesBase;
         const theoryHidden = document.querySelector(`input[name="theorymarks[${reg}]"]`);
         let theorymarks = theoryHidden ? theoryHidden.value : null;
         // Keep null as is, don't convert to 0
@@ -1028,15 +1029,9 @@ window.onload = function() {
 
   function setWorksheetGrade(reg, worksheetNumber, grade) {
     const grades = worksheetGradeStore.get(reg) || [];
-    // Only store if grade is not empty
-    if (grade && grade !== '') {
-      grades[worksheetNumber - 1] = grade;
-    } else {
-      // Remove empty grades
-      delete grades[worksheetNumber - 1];
-    }
-    // Clean up undefined values and filter out empties
-    worksheetGradeStore.set(reg, grades.filter(g => g !== undefined && g !== ''));
+    // Store the value (including empty string to maintain index)
+    grades[worksheetNumber - 1] = grade || '';
+    worksheetGradeStore.set(reg, grades);
   }
 
   function buildWorksheetSelect(reg, worksheetNumber) {
@@ -1066,29 +1061,26 @@ window.onload = function() {
       select.appendChild(option);
     });
 
-    // Set the value from stored data (if any)
+    // Set the value from stored data (preserving empty strings)
     const storedGrades = worksheetGradeStore.get(reg) || [];
     const storedValue = storedGrades[worksheetNumber - 1] || '';
     
-    // Only set the value if there's a valid grade
-    if (storedValue && grades.includes(storedValue)) {
-      select.value = storedValue;
-      console.log(`Set worksheet ${worksheetNumber} for reg ${reg} to: ${storedValue}`);
+    // Set the value (including empty string)
+    select.value = storedValue;
+    
+    // If the value is empty, select the disabled default option
+    if (!storedValue || storedValue === '') {
+      defaultOption.selected = true;
     } else {
-      console.log(`No stored grade for reg ${reg} worksheet ${worksheetNumber}, keeping default`);
+      console.log(`Set worksheet ${worksheetNumber} for reg ${reg} to: ${storedValue}`);
     }
-    // If no valid grade, keep the disabled default option selected
 
     select.addEventListener('change', function () {
-      // Only store non-empty values
-      if (this.value && this.value !== '') {
-        setWorksheetGrade(reg, worksheetNumber, this.value);
-      } else {
-        // If empty string is selected (shouldn't happen with disabled default), remove from store
-        const grades = worksheetGradeStore.get(reg) || [];
-        delete grades[worksheetNumber - 1];
-        worksheetGradeStore.set(reg, grades.filter(g => g !== undefined));
-      }
+      // Store the value (including empty string to maintain index)
+      const grades = worksheetGradeStore.get(reg) || [];
+      grades[worksheetNumber - 1] = this.value || '';
+      worksheetGradeStore.set(reg, grades);
+      
       if (typeof autoSave === 'function') autoSave(select);
     });
 
@@ -1113,14 +1105,24 @@ window.onload = function() {
     document.querySelectorAll('#markstable td[data-column="worksheet"] select').forEach((select) => {
       const reg = select.dataset.reg;
       const worksheetIndex = Number(select.dataset.worksheetIndex);
+      
+      // Get the stored grades array (PRESERVING empty strings)
       const storedGrades = worksheetGradeStore.get(reg) || [];
+      
+      // Get the value at the specific index (could be empty string)
       const storedValue = storedGrades[worksheetIndex - 1] || '';
       
       console.log(`Setting worksheet grade for reg ${reg}, worksheet ${worksheetIndex}: "${storedValue}"`);
       
-      // Only set if there's a valid grade
-      if (storedValue && storedValue !== '') {
-        select.value = storedValue;
+      // Set the value (including empty string - which will show as "Select Grade")
+      select.value = storedValue;
+      
+      // If the value is empty, select the disabled default option
+      if (!storedValue || storedValue === '') {
+        const defaultOption = select.querySelector('option[value=""]');
+        if (defaultOption) {
+          defaultOption.selected = true;
+        }
       }
     });
   }
