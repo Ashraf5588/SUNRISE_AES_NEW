@@ -733,10 +733,11 @@
     }
     %>
 
-    <% studentWisedata.forEach((data) => { 
-// Get attendance from the first subject (all subjects have same attendance)
-    const studentAttendance = data.subjects && data.subjects.length > 0 ? data.subjects[0].attendance : 0;
-    
+     <% const sortedStudentData = [...studentWisedata].sort((a, b) => {
+    return Number(a.roll) - Number(b.roll);
+  });
+  sortedStudentData.forEach((data) => { 
+
     // Sort subjects by the defined order
     const sortedSubjects = [...data.subjects].sort((a, b) => {
         return getSubjectOrder(a.subject) - getSubjectOrder(b.subject);
@@ -929,6 +930,10 @@
         <!-- SUMMARY -->
         <div class="summary">
             <div>Total Credit Hours: <%= totalCredit %></div>
+ <%
+  const nepaliSubject = data.subjects.find(sub => sub.subject === 'NEPALI');
+  const studentAttendance = nepaliSubject ? nepaliSubject.attendance : 0;
+%>
                <div><span class="info-label">Attendance:</span> <span class="info-value"><%= studentAttendance || 'N/A' %></span></div>
             <div>GPA: <%= (totalGradePoints / totalCredit).toFixed(2) %></div>
         </div>

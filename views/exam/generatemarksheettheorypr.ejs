@@ -269,14 +269,14 @@
       font-weight: 600;
     }
 
-    .summary {
-      display: flex ;
+    .summary-box {
+      display: flex;
       justify-content: space-between;
       margin-top: 12px;
       font-weight: 700;
       border: 2px solid #000;
       padding: 10px;
-      font-size: 13px;
+      font-size: 15px;
     }
 
     .remark-box {
@@ -382,15 +382,7 @@
       text-align: left;
       font-size: 10px;
     }
-.summary-box {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 12px;
-      font-weight: 700;
-     
-      padding: 10px;
-      font-size: 15px;
-    }
+
     /* Form Selector Styles */
     .form-selector-panel {
       background: linear-gradient(135deg, #ff9d41 0%, #e7b170 100%);
@@ -540,7 +532,7 @@
         padding: 8px;
       }
 
-      .summary {
+      .summary-box {
         font-size: 11px;
         padding: 8px;
       }
@@ -618,10 +610,89 @@
     <div class="form-selector-container">
       <div class="form-selector-title">Choose Class, Section and Terminal for Marksheet</div>
       <div class="form-selector-grid">
+        <%
+          // ========== CLASS ORDERING ==========
+          const classSortOrder = {
+            'nursery': 1,
+            'lkg': 2,
+            'ukg': 3,
+            'one': 4,
+            'two': 5,
+            'three': 6,
+            'four': 7,
+            'five': 8,
+            'six': 9,
+            'seven': 10,
+            'eight': 11,
+            'nine': 12,
+            'ten': 13
+          };
+          
+          // Map numeric to text for sorting
+          const numericClassMap = { 
+            '1': 'one', '2': 'two', '3': 'three', '4': 'four', 
+            '5': 'five', '6': 'six', '7': 'seven', '8': 'eight', 
+            '9': 'nine', '10': 'ten' 
+          };
+          
+          function getClassSortRank(value) {
+            const normalized = String(value || '').trim().toLowerCase()
+              .replace(/^class\s+/, '')
+              .replace(/\s+section$/, '');
+            const key = numericClassMap[normalized] || normalized;
+            return classSortOrder[key] || 999;
+          }
+          
+          // Sort class-section data
+          const sortedClassSectionData = [...(studentClassdata || [])].sort((a, b) => {
+            const classRankA = getClassSortRank(a && a.studentClass);
+            const classRankB = getClassSortRank(b && b.studentClass);
+            if (classRankA !== classRankB) return classRankA - classRankB;
+            return String(a && a.section || '').localeCompare(String(b && b.section || ''), undefined, { numeric: true, sensitivity: 'base' });
+          });
+
+          // ========== SUBJECT ORDERING AND DISPLAY NAMES ==========
+          // Define display order - change numbers to reorder subjects
+          const subjectOrder = {
+            'NEPALI': 2,
+            'ENGLISH': 1,
+            'MATHEMATICS': 3,
+            'SCIENCE': 4,
+            'COMPUTER': 5,
+            'SOCIAL': 6,
+            'HEALTH': 7,
+            'DELIGHT': 8,
+            'ORAL': 9,
+            'HYGIENE': 10,
+            'THEME': 11,
+            'ECA': 12
+          };
+          
+          // Subject name mapping - what to display
+          const subjectDisplayNames = {
+            'SCIENCE': 'SCIENCE & TECHNOLOGY',
+            'COMPUTER': 'COMPUTER SCIENCE',
+            'HEALTH': 'HEALTH PHYSICAL AND CREATIVE ARTS',
+            'SOCIAL': 'SOCIAL STUDIES AND HUMAN VALUE EDUCATION',
+            'DELIGHT': 'ENGLISH-II'
+          };
+          
+          // Function to get display name
+          function getDisplaySubjectName(subjectName) {
+            const upperName = subjectName.toUpperCase().trim();
+            return subjectDisplayNames[upperName] || subjectName;
+          }
+          
+          // Function to get sort order
+          function getSubjectOrder(subjectName) {
+            const upperName = subjectName.toUpperCase().trim();
+            return subjectOrder[upperName] || 999; // Unknown subjects go to the end
+          }
+        %>
         <select name="classSection" id="classSection">
           <option value="" selected disabled>Choose Class & Section</option>
-          <% studentClassdata.forEach((data)=>{%>
-            <option value="<%=data.studentClass%>-<%=data.section%>"><%=data.studentClass%>-<%=data.section%></option>
+          <% sortedClassSectionData.forEach((data)=>{%>
+            <option value="<%=data.studentClass%>-<%=data.section%>"><%=data.studentClass%> - <%=data.section%></option>
           <%})%>
         </select>
         <select name="terminals" id="terminal">
@@ -661,6 +732,7 @@
       <label class="column-toggle-item"><input type="checkbox" data-column-toggle="prgp"> Pr GP</label>
       <label class="column-toggle-item"><input type="checkbox" data-column-toggle="finalgp"> Final GP</label>
       <label class="column-toggle-item"><input type="checkbox" data-column-toggle="finalgrade"> Final Grade</label>
+      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="obtainedgp"> Obtained GP</label>
       <label class="column-toggle-item"><input type="checkbox" data-column-toggle="remarks"> Remarks</label>
     </div>
     <button onclick="window.print()">Print All</button>
@@ -674,8 +746,22 @@
   <input type="hidden" id="pageTerminal" value="<%= terminal %>">
 
   <div class="sheets-container">
-    <% let attendanceMarks = 0; %>
-    <% studentWisedata.forEach((data) => { %>
+    <% 
+      let attendanceMarks = 0;
+      
+      // Check if studentWisedata exists and has data
+      if (typeof studentWisedata !== 'undefined' && studentWisedata && studentWisedata.length > 0) {
+        // Sort students by roll number (numeric sorting)
+        const sortedStudentData = [...studentWisedata].sort((a, b) => {
+          return Number(a.roll) - Number(b.roll);
+        });
+        
+        sortedStudentData.forEach((data) => { 
+          // Sort subjects by the defined order
+          const sortedSubjects = [...data.subjects].sort((a, b) => {
+            return getSubjectOrder(a.subject) - getSubjectOrder(b.subject);
+          });
+    %>
 
     <div class="sheet">
       <div class="watermark"><img src="/image.png" alt="Watermark"></div>
@@ -697,10 +783,10 @@
         <!-- Student Info -->
         <div class="student-info-container">
           <div class="student-info">
-            <div class="info-row"><span class="info-label">Student Name:</span> <span class="info-value"><%= data.name %></span></div>
-            <div class="info-row"><span class="info-label">Roll No:</span> <span class="info-value"><%= data.roll %></span></div>
-            <div class="info-row"><span class="info-label">Class:</span> <span class="info-value"><%= studentClass %></span></div>
-            <div class="info-row"><span class="info-label">Section:</span> <span class="info-value"><%= section %></span></div>
+            <div><span class="info-label">Student Name:</span> <span class="info-value"><%= data.name %></span></div>
+            <div><span class="info-label">Roll No:</span> <span class="info-value"><%= data.roll %></span></div>
+            <div><span class="info-label">Class:</span> <span class="info-value"><%= studentClass %></span></div>
+            <div><span class="info-label">Section:</span> <span class="info-value"><%= section %></span></div>
           </div>
         </div>
 
@@ -713,11 +799,10 @@
               <th style="width:7%">Credit Hr</th>
               <th class="col-theorymarks" style="width:8%">Th Marks</th>
               <th class="col-prmarks" style="width:8%">Pr Marks</th>
-              <th class="col-thgp" style="width:7%">Th GP</th>
-              <th class="col-prgp" style="width:7%">Pr GP</th>
               <th class="col-finalgp" style="width:8%">Final GP</th>
               <th class="col-finalgrade" style="width:8%">Final Grade</th>
-              <th class="col-remarks" style="width:28%">Remarks</th>
+              <th class="col-obtainedgp" style="width:8%">Grade Point</th>
+              <th class="col-remarks" style="width:20%">Remarks</th>
             </tr>
           </thead>
 
@@ -726,6 +811,7 @@
               let totalCredit = 0;
               let m;
               let totalGradePoints = 0;
+              let totalAttendance = 0;
 
               function getGP(percent) {
                 if (percent >= 90) return 4.0;
@@ -749,6 +835,17 @@
                 return "NG";
               }
 
+              function getObtainedGP(grade) {
+                if (grade === 'A+') return 4.0;
+                if (grade === 'A') return 3.6;
+                if (grade === 'B+') return 3.2;
+                if (grade === 'B') return 2.8;
+                if (grade === 'C+') return 2.4;
+                if (grade === 'C') return 2.0;
+                if (grade === 'D') return 1.6;
+                return 0.0;
+              }
+
               function getRemarks(finalgrade) {
                 if (finalgrade === "NG") return "Needs Improvement";
                 else if(finalgrade === "D") return "Satisfactory";
@@ -763,9 +860,12 @@
               const workingDays = terminalData ? terminalData.workingDays : 0;
             %>
 
-            <% data.subjects.forEach((sub, index) => { %>
+            <% sortedSubjects.forEach((sub, index) => { 
+              // Get display name for subject
+              const displaySubjectName = getDisplaySubjectName(sub.subject);
+            %>
               <% 
-                attendancePercent = (sub.attendance / workingDays) * 100; 
+                let attendancePercent = (sub.attendance / workingDays) * 100; 
                 
                 if(attendancePercent >= 90){ 
                   attendanceMarks = 2;
@@ -793,7 +893,6 @@
 
                 let thP = (sub.theorymarks / sub.theoryfullmarks) * 100;
                 let prP = (practicalTotal / sub.practicalfullmarks) * 100;
-                let finalP = ((sub.theorymarks + practicalTotal) / (sub.theoryfullmarks + sub.practicalfullmarks)) * 100;
 
                 let thGP = getGP(thP);
                 let prGP = getGP(prP);
@@ -802,19 +901,20 @@
                 let finalGP = (thGP*theoryCreditHour + prGP*practicalCreditHour) / (theoryCreditHour + practicalCreditHour);
 
                 let totalCreditHour = theoryCreditHour + practicalCreditHour;
+                let finalGrade = getGrade(finalGP);
+                let obtainedGP = getObtainedGP(finalGrade);
               %>
 
               <tr>
                 <td><%= index + 1 %></td>
-                <td class="subject"><%= sub.subject %></td>
+                <td class="subject"><%= displaySubjectName %></td>
                 <td><%= totalCreditHour || 'N/A' %></td>
                 <td class="col-theorymarks"><%= sub.theorymarks %> <%= sub.theorymarks < sub.passMarks ? '*' : '' %></td>
-                <td class="col-prmarks"><%= practicalTotal %> <%= practicalTotal < sub.passMarks ? '*' : '' %></td>
-                <td class="col-thgp"><%= thGP.toFixed(2) %></td>
-                <td class="col-prgp"><%= prGP.toFixed(2) %></td>
+                <td class="col-prmarks"><%= practicalTotal.toFixed(2) %> <%= practicalTotal < sub.passMarks ? '*' : '' %></td>
                 <td class="col-finalgp"><%= finalGP.toFixed(2) %></td>
-                <td class="col-finalgrade"><%= getGrade(finalGP) %></td>
-                <td class="col-remarks"><%= getRemarks(getGrade(finalGP)) %></td>
+                <td class="col-finalgrade"><%= finalGrade %></td>
+                <td class="col-obtainedgp"><%= obtainedGP %></td>
+                <td class="col-remarks"><%= getRemarks(finalGrade) %></td>
               </tr>
               <% 
                 totalCredit += totalCreditHour; 
@@ -883,7 +983,15 @@
         </div>
       </div>
     </div>
-    <% }) %>
+    <% 
+        }); // end of sortedStudentData.forEach
+      } else { 
+    %>
+    <div style="text-align:center; padding:50px; font-size:18px; color:#666; background:#fff; border-radius:12px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+      <h3>No Student Data Available</h3>
+      <p style="margin-top:10px;">Please load marksheet data using the form above.</p>
+    </div>
+    <% } %>
   </div>
 
   <!-- Include html2pdf from CDN for client-side PDF export -->
@@ -968,7 +1076,7 @@
                           .school-name { font-size: 22px; font-weight: bold; }
                           .report-title { font-size: 16px; font-weight: bold; }
                           .student-info { margin: 8px 0; }
-                          .summary { margin: 8px 0; font-weight: bold; }
+                          .summary-box { margin: 8px 0; font-weight: bold; }
                           .sign-row { display: flex; justify-content: space-between; margin-top: 20px; }
                           .sign { text-align: center; flex: 1; }
                           .line { border-top: 1px solid #000; padding-top: 4px; margin-top: 4px; }

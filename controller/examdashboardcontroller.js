@@ -282,8 +282,8 @@ exports.generateMarksheet = async (req, res, next) => {
       {
         $group: {
           _id: "$reg",
-          name: { $first: "$name" },
-          roll: { $first: "$roll" },
+          name: { $max: "$name" },
+          roll: { $max: "$roll" },
           terminal: { $first: "$terminal" },
           subjects: {
             $push: {
@@ -518,7 +518,16 @@ exports.generateMarksheetStudent = async (req, res, next) => {
       _id: "$reg",
       name: { $first: "$name" },
       roll: { $first: "$roll" },
-      terminal: { $first: "$terminal" }, // optional
+      terminal: { $first: "$terminal" }, 
+       attendance: {
+        $max: {
+          $cond: [
+            { $eq: ["$subject", "NEPALI"] },
+            "$attendance",
+            null
+          ]
+        }
+      },// optional
       subjects: {
         $push: {
           subject: "$subject",
@@ -2690,8 +2699,6 @@ exports.uploadOldData = async (req, res, next) => {
 }
 exports.schoolanalysis = async (req, res, next) => {
   try{
-
-
 
     
   }catch(err){
