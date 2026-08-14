@@ -687,8 +687,8 @@
     // ========== SUBJECT DISPLAY ORDER AND NAME MAPPING ==========
     // Define the display order - change numbers to reorder subjects
     const subjectOrder = {
-        'NEPALI': 1,
-        'ENGLISH': 2,
+        'NEPALI': 2,
+        'ENGLISH': 1,
         'MATHEMATICS': 3,
         'THEME': 4,
         'HYGIENE': 5,
@@ -1000,7 +1000,7 @@
             else if(finalgrade === "D") return "Satisfactory";
             else if(finalgrade === "C" || finalgrade === "C+") return "Good";
             else if(finalgrade === "B" || finalgrade === "B+") return "Very Good";
-            else return "Excellent Performance";
+            else return "Excellent";
           } %><%= getRemarks(getGrade(finalGP)) %></td>
       </tr>
       <% }) %>
