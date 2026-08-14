@@ -2,25 +2,23 @@
 <html lang="en">
 <head>
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-<link rel="manifest" href="/site.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="manifest" href="/site.webmanifest">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta property="og:title" content="Result Published : <%=studentClass%>-<%=section%>-<%=terminal%>-<%=academicYear%>">
-<meta property="og:description" content="Click here to open see result...">
-<meta property="og:url" content="<%= fullUrl %>">
-<meta property="og:image" content="/result.webp">
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="Result">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Result">
-<meta name="twitter:description" content="Click here to open see result...">
-<meta name="twitter:image" content="https://example.com/png">
+  <meta property="og:description" content="Click here to open see result...">
+  <meta property="og:url" content="<%= fullUrl %>">
+  <meta property="og:image" content="/result.webp">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Result">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Result">
+  <meta name="twitter:description" content="Click here to open see result...">
+  <meta name="twitter:image" content="https://example.com/png">
   <title>Student Ledger</title>
-  <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  
   <style>
     :root {
       --primary: #4f46e5;
@@ -29,6 +27,10 @@
       --surface: #ffffff;
       --text-main: #0f172a;
       --border: #e2e8f0;
+    }
+
+    * {
+      box-sizing: border-box;
     }
 
     body {
@@ -188,39 +190,39 @@
     table#ledgerTable {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.85rem;
+      font-size: 0.75rem;
     }
 
     table#ledgerTable thead th,
     table#ledgerTable tfoot th,
     table#ledgerTable tfoot td {
-      background-color: #153b71;
-      color: white;
-      font-weight: 600;
-      padding: 10px;
-      border: 1px solid #1d3d69;
-      text-align: center;
-      vertical-align: middle;
+       background-color: #000000;  /* Changed to black */
+  color: white;
+  font-weight: 600;
+  padding: 10px;
+  border: 1px solid #000000;  /* Optional: change border to black too */
+  text-align: center;
+  vertical-align: middle;
     }
 
     table#ledgerTable tbody td {
-      padding: 8px;
+      padding: 5px 4px;
       border: 1px solid var(--border);
       text-align: center;
       vertical-align: middle;
     }
 
-    /* Zebra Striping */
     table#ledgerTable tbody tr:nth-child(odd) { background-color: #ffffff; }
     table#ledgerTable tbody tr:nth-child(even) { background-color: #f1f5f9; }
     table#ledgerTable tbody tr:hover { background-color: #e2e8f0 !important; }
 
+    /* tfoot styling - but we hide it in print */
     table#ledgerTable tfoot th,
     table#ledgerTable tfoot td {
       background-color: #f1f5f9;
       font-weight: 600;
       border: 1px solid var(--border);
-      padding: 8px;
+      padding: 6px 4px;
       text-align: center;
     }
 
@@ -232,14 +234,103 @@
       display: none !important;
     }
 
+    /* ----- PRINT STYLES (Landscape A4, fit table, hide controls & tfoot) ----- */
     @media print {
-      .no-print { display: none; }
-      .ledger-container { box-shadow: none; padding: 0; }
+      /* Hide UI controls, buttons, selector panel */
+      .no-print {
+        display: none !important;
+      }
+
+      /* Force landscape, A4, no margins */
+      @page {
+        size: A4 landscape;
+        margin: 8mm 6mm 8mm 6mm;
+      }
+
+      body {
+        background: white;
+        padding: 0;
+        margin: 0;
+        font-size: 10px;
+      }
+
+      .ledger-container {
+        box-shadow: none;
+        padding: 0;
+        border-radius: 0;
+        background: white;
+        overflow-x: visible;
+        max-width: 100%;
+      }
+
+      /* Hide the analysis tfoot section entirely in print */
+      table#ledgerTable tfoot {
+        display: none !important;
+      }
+
+      /* Ensure table fits within page width */
+      table#ledgerTable {
+        font-size: 0.7rem;
+        width: 100%;
+        table-layout: auto;
+        word-break: break-word;
+      }
+
+      table#ledgerTable thead th,
+      table#ledgerTable tbody td {
+        padding: 3px 2px;
+        color:#000000 !important;
+        border: 1px solid #ccc;
+      }
+
+      /* Keep school header, but shrink a bit */
+      .ledger-school-header .school-logo {
+        display:none;
+      }
+      .ledger-school-header .school-info h1 {
+       display:none;
+      }
+      .ledger-school-header .school-info h3 {
+       display:none;
+      }
+
+      .ledger-header-info {
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.3rem;
+      }
+      .ledger-header-info h2 {
+        font-size: 1rem;
+        margin: 0.2rem 0;
+      }
+      .ledger-header-info p {
+        font-size: 0.75rem;
+        margin: 0.1rem 0;
+      }
+
+      /* Ensure hidden columns stay hidden in print */
+      .hidden-column {
+        display: none !important;
+      }
+
+      /* Avoid page breaks inside rows */
+      table#ledgerTable tbody tr {
+        page-break-inside: avoid;
+      }
+    }
+
+    /* small screen tweaks */
+    @media screen and (max-width: 700px) {
+      .form-selector-grid {
+        grid-template-columns: 1fr;
+      }
+      .hide-controls {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
 <body>
-  <!-- Selector Panel -->
+  <!-- Selector Panel (hidden in print) -->
   <div class="form-selector-panel no-print">
     <div class="form-selector-container">
       <div class="form-selector-title">Marksheet Ledger Configuration</div>
@@ -308,10 +399,13 @@
     </div>
   </div>
 
-  <div class="ledger-container">
+  <!-- Ledger Container -->
+  <div class="ledger-container" id="ledgerContainer">
     <div class="btn-group no-print">
       <button type="button" onclick="shareToWhatsapp()" class="btn-success">Share To Whatsapp</button>
       <button type="button" onclick="exportToExcel()" class="btn-excel">Export to Excel</button>
+      <!-- NEW PRINT BUTTON -->
+      <button type="button" onclick="printLedger()" style="background:#1e293b;">🖨️ Print (Landscape)</button>
     </div>
     
     <div class="ledger-school-header">
@@ -491,6 +585,7 @@
         <% }) %>
       </tbody>
 
+     <!-- TFOOT: Analysis section (hidden in print via CSS) -->
      <tfoot>
   <tr>
     <th colspan="2" style="text-align:right; font-weight:bold;">Section Highest:</th>
@@ -913,6 +1008,11 @@
                         .replace(/>/g, '&gt;')
                         .replace(/"/g, '&quot;')
                         .replace(/'/g, '&#39;');
+    }
+
+    // ----- PRINT FUNCTION (Landscape, hides tfoot, only table + header) -----
+    function printLedger() {
+      window.print();
     }
   </script>
 </body>
