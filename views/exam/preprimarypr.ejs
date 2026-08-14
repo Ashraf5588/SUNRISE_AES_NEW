@@ -684,6 +684,35 @@
       NO_WORKSHEET_SUBJECTS.push('THEME');
     }
 
+    // ========== SUBJECT DISPLAY ORDER AND NAME MAPPING ==========
+    // Define the display order - change numbers to reorder subjects
+    const subjectOrder = {
+        'NEPALI': 1,
+        'ENGLISH': 2,
+        'MATHEMATICS': 3,
+        'THEME': 4,
+        'HYGIENE': 5,
+        'ORAL': 6
+    };
+    
+    // Subject name mapping - what to display
+    const subjectDisplayNames = {
+        // Add any subject name mappings here if needed
+        // Example: 'SCIENCE': 'SCIENCE & TECHNOLOGY'
+    };
+    
+    // Function to get display name
+    function getDisplaySubjectName(subjectName) {
+        const upperName = subjectName.toUpperCase().trim();
+        return subjectDisplayNames[upperName] || subjectName;
+    }
+    
+    // Function to get sort order
+    function getSubjectOrder(subjectName) {
+        const upperName = subjectName.toUpperCase().trim();
+        return subjectOrder[upperName] || 999; // Unknown subjects go to the end
+    }
+
     // Function to check if a value is Ab (sentinel 0.000001)
     function isAb(value) {
       if (value === null || value === undefined) {
@@ -771,10 +800,11 @@
 
   <div class="no-print control-panel">
     <div class="column-toggle-group">
-      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="theorymarks"> Hide Th Marks</label>
-      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="prgp"> Hide GP</label>
-      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="finalgp"> Hide Final GP</label>
+      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="theorymarks"> Hide Th GP</label>
+      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="prgp"> Hide W.S GP</label>
+      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="finalgp"> Hide Avg GP</label>
       <label class="column-toggle-item"><input type="checkbox" data-column-toggle="finalgrade"> Hide Final Grade</label>
+      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="obtainedgp"> Hide Obtained GP</label>
       <label class="column-toggle-item"><input type="checkbox" data-column-toggle="highestmarks"> Hide Highest Marks</label>
       <label class="column-toggle-item"><input type="checkbox" data-column-toggle="remarks"> Hide Remarks</label>
     </div>
@@ -794,6 +824,11 @@
   <% studentWisedata.forEach((data) => { 
     // Get attendance from the first subject (all subjects have same attendance)
     const studentAttendance = data.subjects && data.subjects.length > 0 ? data.subjects[0].attendance : 0;
+    
+    // Sort subjects by the defined order
+    const sortedSubjects = [...data.subjects].sort((a, b) => {
+        return getSubjectOrder(a.subject) - getSubjectOrder(b.subject);
+    });
   %>
 
   <div class="sheet">
@@ -829,10 +864,10 @@
               <th>S.N</th>
               <th>Subject</th>
               <th>Credit Hour</th>
-              <th class="col-theorymarks">Th Marks</th>
-              <th class="col-prgp">GP</th>
-              <th class="col-finalgp">Final GP</th>
-              <th class="col-finalgrade">Final Grade</th>
+              
+              <th class="col-finalgp">Avg GP</th>
+              <th class="col-finalgrade">Grade</th>
+              <th class="col-obtainedgp">Grade Point</th>
               <th class="col-highestmarks">Highest Marks</th>
               <th class="col-remarks">Remarks</th>
           </tr>
@@ -846,7 +881,10 @@
       let totalGradePoints = 0;
       %>
 
-      <% data.subjects.forEach((sub, index) => { %>
+      <% sortedSubjects.forEach((sub, index) => { 
+        // Get display name for subject
+        const displaySubjectName = getDisplaySubjectName(sub.subject);
+      %>
 
       <% 
         // ========== FIXED BACKEND CALCULATIONS ==========
@@ -934,19 +972,28 @@
 
       <tr>
         <td><%= index + 1 %></td>
-        <td><%= sub.subject %></td>
+        <td><%= displaySubjectName %></td>
         <td><%= m %></td>
-        <td class="col-theorymarks">
-          <% if (isAb(sub.theorymarks)) { %>
-            <span class="text-ab">Ab</span>
-          <% } else { %>
-            <%= theoryMarksDisplay %>
-          <% } %>
-        </td>
+     
         
-        <td class="col-prgp"><%= prGPDisplay %></td>
+        
         <td class="col-finalgp"><%= finalGP.toFixed(2) %></td>
         <td class="col-finalgrade"><%= getGrade(finalGP) %></td>
+        <td class="col-obtainedgp">
+          <% 
+            const grade = getGrade(finalGP);
+            let obtainedGP = 0;
+            if (grade === 'A+') obtainedGP = 4.0;
+            else if (grade === 'A') obtainedGP = 3.6;
+            else if (grade === 'B+') obtainedGP = 3.2;
+            else if (grade === 'B') obtainedGP = 2.8;
+            else if (grade === 'C+') obtainedGP = 2.4;
+            else if (grade === 'C') obtainedGP = 2.0;
+            else if (grade === 'D') obtainedGP = 1.6;
+            else obtainedGP = 'NG';
+          %>
+          <%= obtainedGP %>
+        </td>
         <td class="col-highestmarks"><%= sub.highestmarks || '-' %></td>
         <td class="col-remarks"><% function getRemarks(finalgrade) {
             if (finalgrade === "NG") return "Needs Improvement";
@@ -978,25 +1025,27 @@
       <% } else if (gpa >= 2.0) { %> Satisfactory
       <% } else { %> Needs Improvement <% } %>
   </div>
-
-  <p><b>Issued Date:</b> <%= new Date().toLocaleDateString() %></p>
+<!-- nepali date should be here -->
+  <p><b>Issued Date:</b> 2083-4-31</p>
 
   <!-- SIGNATURES -->
   <div class="sign-row">
-      <div>
-          <br><br>________________________<br>
-            &ensp;&ensp; &ensp;  Class Teacher
-      </div>
-      <div>
-          <br><br>______________________<br>
-              &ensp; Exam Coordinator
-      </div>
-      <div>
-          <br><br>____________________<br>
-                   &ensp;&ensp; &ensp;      Principal
-      </div>
-  </div>
-      <hr>
+          <div class="sign">
+            <div class="sign-placeholder"></div>
+            <div class="line">Class Teacher</div>
+          </div>
+          <div class="sign">
+            <img class="sign-img" src="/examcoordinator.webp" alt="Exam Coordinator Signature" onerror="this.style.display='none'">
+            <div class="line">Exam Coordinator</div>
+          </div>
+          <div class="sign">
+            <img class="sign-img" src="/principalsign.webp" alt="Principal Signature" onerror="this.style.display='none'">
+            <div class="line">Principal</div>
+          </div>
+        </div>
+
+        <hr>
+      
 
       <!-- GRADING SCALE -->
       <div class="grading-scale">

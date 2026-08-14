@@ -684,7 +684,8 @@
             <label class="column-toggle-item"><input type="checkbox" data-column-toggle="theorymarks"> Hide Th Marks</label>
             <label class="column-toggle-item"><input type="checkbox" data-column-toggle="prgp"> Hide Pr GP</label>
             <label class="column-toggle-item"><input type="checkbox" data-column-toggle="finalgp"> Hide Final GP</label>
-            <label class="column-toggle-item"><input type="checkbox" data-column-toggle="finalgrade"> Hide Final Grade</label>
+            <label class="column-toggle-item"><input type="checkbox" data-column-toggle="finalgrade"> Hide  Grade</label>
+            <label class="column-toggle-item"><input type="checkbox" data-column-toggle="obtainedgp"> Hide Obtained GP</label>
             <label class="column-toggle-item"><input type="checkbox" data-column-toggle="highestmarks"> Hide Highest Marks</label>
             <label class="column-toggle-item"><input type="checkbox" data-column-toggle="remarks"> Hide Remarks</label>
         </div>
@@ -700,9 +701,46 @@
 
     <div class="sheets-container">
 
+    <%
+    // ========== SUBJECT DISPLAY ORDER AND NAME MAPPING ==========
+    // Define the display order - change numbers to reorder subjects
+    const subjectOrder = {
+        'NEPALI': 1,
+        'ENGLISH': 2,
+        'MATHEMATICS': 3,
+        'SCIENCE': 4,
+        'SCIENCE & TECHNOLOGY': 4,  // For display name mapping
+        'HAMRO SEROPHERO': 5,
+        'GRAMMAR': 6
+    };
+    
+    // Subject name mapping - what to display
+    const subjectDisplayNames = {
+        'SCIENCE': 'SCIENCE & TECHNOLOGY',
+        'SCIENCE & TECHNOLOGY': 'SCIENCE & TECHNOLOGY'
+    };
+    
+    // Function to get display name
+    function getDisplaySubjectName(subjectName) {
+        const upperName = subjectName.toUpperCase().trim();
+        return subjectDisplayNames[upperName] || subjectName;
+    }
+    
+    // Function to get sort order
+    function getSubjectOrder(subjectName) {
+        const upperName = subjectName.toUpperCase().trim();
+        return subjectOrder[upperName] || 999; // Unknown subjects go to the end
+    }
+    %>
+
     <% studentWisedata.forEach((data) => { 
 // Get attendance from the first subject (all subjects have same attendance)
     const studentAttendance = data.subjects && data.subjects.length > 0 ? data.subjects[0].attendance : 0;
+    
+    // Sort subjects by the defined order
+    const sortedSubjects = [...data.subjects].sort((a, b) => {
+        return getSubjectOrder(a.subject) - getSubjectOrder(b.subject);
+    });
     %>
     <div class="sheet">
         <div class="watermark"><img src="/image.png" alt="Watermark"></div>
@@ -738,9 +776,10 @@
                 <th>Subject</th>
                 <th>Credit Hour</th>
                 <th class="col-theorymarks">Th Marks</th>
-                <th class="col-prgp">Pr GP</th>
+                
                 <th class="col-finalgp">Final GP</th>
-                <th class="col-finalgrade">Final Grade</th>
+                <th class="col-finalgrade">Grade</th>
+                <th class="col-obtainedgp">Grade Point</th>
                 <th class="col-highestmarks">Highest Marks</th>
                 <th class="col-remarks">Remarks</th>
             </tr>
@@ -774,9 +813,23 @@
             if (gp >= 1.6) return "D";
             return "NG";
         }
+
+        function getObtainedGP(grade) {
+            if (grade === 'A+') return 4.0;
+            if (grade === 'A') return 3.6;
+            if (grade === 'B+') return 3.2;
+            if (grade === 'B') return 2.8;
+            if (grade === 'C+') return 2.4;
+            if (grade === 'C') return 2.0;
+            if (grade === 'D') return 1.6;
+            return 'NG';
+        }
         %>
 
-        <% data.subjects.forEach((sub, index) => { %>
+        <% sortedSubjects.forEach((sub, index) => { 
+            // Get display name for subject
+            const displaySubjectName = getDisplaySubjectName(sub.subject);
+        %>
 
         <% 
       let worksheetMarks=[];
@@ -838,23 +891,25 @@
         let practicalCreditHour = creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.practicalCreditHour || 0;
         let finalGP = (thGP*theoryCreditHour + prGP*practicalCreditHour) / (theoryCreditHour + practicalCreditHour);
 
-   
+        let finalGrade = getGrade(finalGP);
+        let obtainedGP = getObtainedGP(finalGrade);
        
         %>
 
         <tr>
           
             <td><%= index + 1 %></td>
-            <td><%= sub.subject %></td>
+            <td><%= displaySubjectName %></td>
             <td><% m =  creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.theoryCreditHour + creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.practicalCreditHour  || 'N/A' %><%= m %></td>
             <td class="col-theorymarks"> <%= sub.theorymarks%></td>
             
            
-            <td class="col-prgp"><%= prGP.toFixed(2) %></td>
+           
             <td class="col-finalgp"><%= finalGP.toFixed(2) %></td>
                  <% totalCredit += m; 
                   totalGradePoints += (thGP*theoryCreditHour + prGP*practicalCreditHour);%>
-            <td class="col-finalgrade"><%= getGrade(finalGP) %></td>
+            <td class="col-finalgrade"><%= finalGrade %></td>
+            <td class="col-obtainedgp"><%= obtainedGP %></td>
             <td class="col-highestmarks"><%= sub.highestmarks %></td>
             <td class="col-remarks"><% function getRemarks(finalgrade)
             {
@@ -863,7 +918,7 @@
                 else if(finalgrade === "C" || finalgrade === "C+") return "Good";
                 else if(finalgrade === "B" || finalgrade === "B+") return "Very Good";
                 else return "Excellent Performance";
-            }%><%= getRemarks(getGrade(finalGP)) %></td>
+            }%><%= getRemarks(finalGrade) %></td>
         </tr>
 
         <% }) %>
@@ -889,23 +944,23 @@
         <% } else { %> Needs Improvement <% } %>
     </div>
 
-    <p><b>Issued Date:</b> <%= new Date().toLocaleDateString() %></p>
+    <p><b>Issued Date:</b> 2083-4-31</p>
 
-    <!-- SIGNATURES -->
     <div class="sign-row">
-        <div>
-            <br><br>________________________<br>
-              &ensp;&ensp; &ensp;  Class Teacher
+          <div class="sign">
+            <div class="sign-placeholder"></div>
+            <div class="line">Class Teacher</div>
+          </div>
+          <div class="sign">
+            <img class="sign-img" src="/examcoordinator.webp" alt="Exam Coordinator Signature" onerror="this.style.display='none'">
+            <div class="line">Exam Coordinator</div>
+          </div>
+          <div class="sign">
+            <img class="sign-img" src="/principalsign.webp" alt="Principal Signature" onerror="this.style.display='none'">
+            <div class="line">Principal</div>
+          </div>
         </div>
-        <div>
-            <br><br>______________________<br>
-                &ensp; Exam Coordinator
-        </div>
-        <div>
-            <br><br>____________________<br>
-                     &ensp;&ensp; &ensp;      Principal
-        </div>
-    </div>
+
         <hr>
 
         <!-- GRADING SCALE -->

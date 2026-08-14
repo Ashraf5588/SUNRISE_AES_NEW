@@ -2688,3 +2688,15 @@ exports.uploadOldData = async (req, res, next) => {
     res.status(500).send("Internal Server Error");
   }
 }
+exports.schoolanalysis = async (req, res, next) => {
+  try{
+
+
+
+    
+  }catch(err){
+    console.error("Error loading school analysis page:", err);
+    res.status(500).send("Internal Server Error: " + err.message);
+  }
+
+}
