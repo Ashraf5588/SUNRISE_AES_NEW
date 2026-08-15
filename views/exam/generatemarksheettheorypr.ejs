@@ -9,7 +9,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Grade Sheet</title>
 
-   <style>
+  <style>
     /* Clean, professional marksheet styling for A4 printing */
     :root {
       --accent: #1f6fb3;
@@ -688,6 +688,80 @@
             const upperName = subjectName.toUpperCase().trim();
             return subjectOrder[upperName] || 999; // Unknown subjects go to the end
           }
+
+          // ========== GRADE FUNCTIONS ==========
+          // Function to round to 2 decimal places
+          function roundToTwo(num) {
+            if (isNaN(num) || num === null || num === undefined) return 0;
+            return Math.round(num * 100) / 100;
+          }
+
+          // Function to get grade from GP
+          function getGrade(gp) {
+            const roundedGp = roundToTwo(gp);
+            if (roundedGp >= 3.61 && roundedGp <= 4.0) return "A+";
+            if (roundedGp >= 3.21 && roundedGp <= 3.60) return "A";
+            if (roundedGp >= 2.81 && roundedGp <= 3.20) return "B+";
+            if (roundedGp >= 2.41 && roundedGp <= 2.80) return "B";
+            if (roundedGp >= 2.01 && roundedGp <= 2.40) return "C+";
+            if (roundedGp >= 1.61 && roundedGp <= 2.00) return "C";
+            if (roundedGp === 1.6) return "D";
+            if (roundedGp < 1.6) return "NG";
+            return "NG";
+          }
+
+          // Function to get obtained GP from grade
+          function getObtainedGPFromGrade(grade) {
+            if (grade === 'A+') return 4.0;
+            if (grade === 'A') return 3.6;
+            if (grade === 'B+') return 3.2;
+            if (grade === 'B') return 2.8;
+            if (grade === 'C+') return 2.4;
+            if (grade === 'C') return 2.0;
+            if (grade === 'D') return 1.6;
+            return 'NG';
+          }
+
+          // Function to get subject remark based on GRADE
+          function getSubjectRemark(grade) {
+            if (grade === 'NG') return 'Not Graded';
+            if (grade === 'A+') return 'Outstanding';
+            if (grade === 'A') return 'Excellent';
+            if (grade === 'B+') return 'Very Good';
+            if (grade === 'B') return 'Good';
+            if (grade === 'C+') return 'Satisfactory';
+            if (grade === 'C') return 'Acceptable';
+            if (grade === 'D') return 'Basic';
+            return 'Not Graded';
+          }
+
+          // Function to get overall remark from GPA
+          function getOverallRemark(gpa, hasNG) {
+            const roundedGpa = roundToTwo(gpa);
+            if (hasNG) return 'Needs Improvement';
+            if (roundedGpa >= 3.61 && roundedGpa <= 4.0) return 'Outstanding';
+            if (roundedGpa >= 3.21 && roundedGpa <= 3.6) return 'Excellent';
+            if (roundedGpa >= 2.81 && roundedGpa <= 3.2) return 'Very Good';
+            if (roundedGpa >= 2.41 && roundedGpa <= 2.8) return 'Good';
+            if (roundedGpa >= 2.01 && roundedGpa <= 2.4) return 'Satisfactory';
+            if (roundedGpa >= 1.61 && roundedGpa <= 2.0) return 'Acceptable';
+            if (roundedGpa >= 1.6 && roundedGpa <= 1.6) return 'Basic';
+            if (roundedGpa < 1.6) return 'Not Graded';
+            return 'Not Graded';
+          }
+
+          // Function to get GP from percentage
+          function getGP(percent) {
+            const roundedPercent = roundToTwo(percent);
+            if (roundedPercent >= 90) return 4.0;
+            if (roundedPercent >= 80) return 3.6;
+            if (roundedPercent >= 70) return 3.2;
+            if (roundedPercent >= 60) return 2.8;
+            if (roundedPercent >= 50) return 2.4;
+            if (roundedPercent >= 40) return 2.0;
+            if (roundedPercent >= 35) return 1.6;
+            return 0.0;
+          }
         %>
         <select name="classSection" id="classSection">
           <option value="" selected disabled>Choose Class & Section</option>
@@ -757,8 +831,18 @@
         });
         
         sortedStudentData.forEach((data) => { 
+          // ========== FIX: Remove duplicate subjects ==========
+          const uniqueSubjects = [];
+          const subjectSet = new Set();
+          data.subjects.forEach(sub => {
+            const key = sub.subject.toUpperCase().trim();
+            if (!subjectSet.has(key)) {
+              subjectSet.add(key);
+              uniqueSubjects.push(sub);
+            }
+          });
           // Sort subjects by the defined order
-          const sortedSubjects = [...data.subjects].sort((a, b) => {
+          const sortedSubjects = uniqueSubjects.sort((a, b) => {
             return getSubjectOrder(a.subject) - getSubjectOrder(b.subject);
           });
     %>
@@ -781,13 +865,11 @@
         </div>
 
         <!-- Student Info -->
-        <div class="student-info-container">
-          <div class="student-info">
-            <div><span class="info-label">Student Name:</span> <span class="info-value"><%= data.name %></span></div>
-            <div><span class="info-label">Roll No:</span> <span class="info-value"><%= data.roll %></span></div>
-            <div><span class="info-label">Class:</span> <span class="info-value"><%= studentClass %></span></div>
-            <div><span class="info-label">Section:</span> <span class="info-value"><%= section %></span></div>
-          </div>
+        <div class="student-info">
+          <div><span class="info-label">Student Name:</span> <span class="info-value"><%= data.name %></span></div>
+          <div><span class="info-label">Roll No:</span> <span class="info-value"><%= data.roll %></span></div>
+          <div><span class="info-label">Class:</span> <span class="info-value"><%= studentClass %></span></div>
+          <div><span class="info-label">Section:</span> <span class="info-value"><%= section %></span></div>
         </div>
 
         <!-- SUBJECT TABLE -->
@@ -812,47 +894,7 @@
               let m;
               let totalGradePoints = 0;
               let totalAttendance = 0;
-
-              function getGP(percent) {
-                if (percent >= 90) return 4.0;
-                if (percent >= 80) return 3.6;
-                if (percent >= 70) return 3.2;
-                if (percent >= 60) return 2.8;
-                if (percent >= 50) return 2.4;
-                if (percent >= 40) return 2.0;
-                if (percent >= 35) return 1.6;
-                return 0.0;
-              }
-
-              function getGrade(gp) {
-                if (gp === 4.0) return "A+";
-                if (gp >= 3.6) return "A";
-                if (gp >= 3.2) return "B+";
-                if (gp >= 2.8) return "B";
-                if (gp >= 2.4) return "C+";
-                if (gp >= 2.0) return "C";
-                if (gp >= 1.6) return "D";
-                return "NG";
-              }
-
-              function getObtainedGP(grade) {
-                if (grade === 'A+') return 4.0;
-                if (grade === 'A') return 3.6;
-                if (grade === 'B+') return 3.2;
-                if (grade === 'B') return 2.8;
-                if (grade === 'C+') return 2.4;
-                if (grade === 'C') return 2.0;
-                if (grade === 'D') return 1.6;
-                return 0.0;
-              }
-
-              function getRemarks(finalgrade) {
-                if (finalgrade === "NG") return "Needs Improvement";
-                else if(finalgrade === "D") return "Satisfactory";
-                else if(finalgrade === "C" || finalgrade === "C+") return "Good";
-                else if(finalgrade === "B" || finalgrade === "B+") return "Very Good";
-                else return "Excellent";
-              }
+              let hasActualNG = false;
             %>
 
             <%
@@ -863,6 +905,9 @@
             <% sortedSubjects.forEach((sub, index) => { 
               // Get display name for subject
               const displaySubjectName = getDisplaySubjectName(sub.subject);
+              
+              // Check if student has passed
+              let isPassed = true;
             %>
               <% 
                 let attendancePercent = (sub.attendance / workingDays) * 100; 
@@ -899,10 +944,19 @@
                 let theoryCreditHour = creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.theoryCreditHour || 0;
                 let practicalCreditHour = creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.practicalCreditHour || 0;
                 let finalGP = (thGP*theoryCreditHour + prGP*practicalCreditHour) / (theoryCreditHour + practicalCreditHour);
-
+                
+                // Round finalGP
+                finalGP = roundToTwo(finalGP);
+                
                 let totalCreditHour = theoryCreditHour + practicalCreditHour;
                 let finalGrade = getGrade(finalGP);
-                let obtainedGP = getObtainedGP(finalGrade);
+                
+                // Check if this subject has actual NG grade
+                if (finalGrade === 'NG') {
+                  hasActualNG = true;
+                }
+                
+                let obtainedGP = getObtainedGPFromGrade(finalGrade);
               %>
 
               <tr>
@@ -914,7 +968,7 @@
                 <td class="col-finalgp"><%= finalGP.toFixed(2) %></td>
                 <td class="col-finalgrade"><%= finalGrade %></td>
                 <td class="col-obtainedgp"><%= obtainedGP %></td>
-                <td class="col-remarks"><%= getRemarks(finalGrade) %></td>
+                <td class="col-remarks"><%= getSubjectRemark(finalGrade) %></td>
               </tr>
               <% 
                 totalCredit += totalCreditHour; 
@@ -929,19 +983,33 @@
         <div class="summary-box">
           <div>Total Credit Hours: <%= totalCredit %></div>
           <div><span class="info-label">Attendance:</span> <span class="info-value"><%= totalAttendance || 'N/A' %>/<%= workingDays %></span></div>
-          <div>GPA: <%= totalCredit > 0 ? (totalGradePoints / totalCredit).toFixed(2) : 'N/A' %></div>
+          <div>
+            GPA: 
+            <% 
+              let gpaForDisplay = totalCredit > 0 ? (totalGradePoints / totalCredit) : 0;
+              gpaForDisplay = roundToTwo(gpaForDisplay);
+              if (hasActualNG) { 
+            %>
+            NG
+            <% 
+              } else { 
+            %>
+            <%= gpaForDisplay.toFixed(2) %>
+            <% 
+              } 
+            %>
+          </div>
         </div>
 
         <!-- REMARKS -->
         <div class="notes-row">
           <div class="remark-box">
             <b>Remarks:</b><br>
-            <% let gpa = totalCredit > 0 ? (totalGradePoints / totalCredit) : 0; %>
-            <% if (gpa >= 3.6) { %> Excellent Performance
-            <% } else if (gpa >= 3.2) { %> Very Good
-            <% } else if (gpa >= 2.4) { %> Good
-            <% } else if (gpa >= 2.0) { %> Satisfactory
-            <% } else { %> Needs Improvement <% } %>
+            <% 
+              let gpaForRemark = totalCredit > 0 ? (totalGradePoints / totalCredit) : 0;
+              let overallRemark = getOverallRemark(gpaForRemark, hasActualNG);
+            %>
+            <%= overallRemark %>
           </div>
           <div class="issued-box"><b>Issued Date:</b>&nbsp;<%= issuedNepaliDate %></div>
         </div>
