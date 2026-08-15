@@ -747,13 +747,20 @@
       return false;
     }
 
-    // Function to get numeric value for calculations
+    // Function to get numeric value for calculations - FIXED
     function getNumericValue(value) {
       if (isAb(value)) {
         return 0;
       }
       if (value === null || value === undefined) {
         return 0;
+      }
+      // Handle string numbers like "3.20"
+      if (typeof value === 'string') {
+        const cleaned = value.trim();
+        if (cleaned === '') return 0;
+        const num = parseFloat(cleaned);
+        return isNaN(num) ? 0 : num;
       }
       const num = Number(value);
       return isNaN(num) ? 0 : num;
@@ -903,13 +910,13 @@
         let theoryMarksValue = getNumericValue(sub.theorymarks);
         let theoryMarksDisplay = getDisplayValue(sub.theorymarks);
         
-        // Process worksheet grades
+        // Process worksheet grades - FIXED: Only process if worksheetGrades exists and has data
         let worksheetMarks = [];
-        if (!isNoWorksheet && sub.worksheetGrades && Array.isArray(sub.worksheetGrades)) {
+        if (!isNoWorksheet && sub.worksheetGrades && Array.isArray(sub.worksheetGrades) && sub.worksheetGrades.length > 0) {
           sub.worksheetGrades.forEach((worksheetgrade) => {
             let grade = String(worksheetgrade).trim();
             // Check for Ab in worksheet grades
-            if (grade === '0.000001' || grade === 'Ab' || grade === 'ab') {
+            if (grade === '0.000001' || grade === 'Ab' || grade === 'ab' || grade === '') {
               worksheetMarks.push(0);
             } else if (grade == "A+") {
               worksheetMarks.push(4);
@@ -946,13 +953,21 @@
           // Regular subjects with worksheets
           finalGP = ((theoryMarksValue + practicalmarks)) / ((worksheetMarks.length + 1)) || 0;
         } else {
-          // No worksheets available
+          // No worksheets available - use theory marks
           finalGP = theoryMarksValue;
         }
         
         // If the student is Ab, finalGP should be 0
         if (isAb(sub.theorymarks)) {
           finalGP = 0;
+        }
+        
+        // FIXED: Ensure finalGP is a valid number between 0 and 4
+        if (isNaN(finalGP) || finalGP < 0) {
+          finalGP = 0;
+        }
+        if (finalGP > 4) {
+          finalGP = 4;
         }
         
         // Check if this subject has NG grade
@@ -1051,9 +1066,8 @@
         <% 
           let gpaForDisplay = totalCredit > 0 ? (totalGradePoints / totalCredit) : 0;
           if (hasAnyNG) { 
-            // Use this syntax for EJS
         %>
-        -
+        NG
         <% 
           } else { 
         %>

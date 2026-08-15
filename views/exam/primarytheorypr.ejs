@@ -836,6 +836,19 @@
           if (grade === 'D') return 'Basic';
           return 'Not Graded';
         }
+
+        // Function to get numeric value - FIXED
+        function getNumericValue(value) {
+          if (value === null || value === undefined) return 0;
+          if (typeof value === 'string') {
+            const cleaned = value.trim();
+            if (cleaned === '') return 0;
+            const num = parseFloat(cleaned);
+            return isNaN(num) ? 0 : num;
+          }
+          const num = Number(value);
+          return isNaN(num) ? 0 : num;
+        }
         %>
 
         <% sortedSubjects.forEach((sub, index) => { 
@@ -845,8 +858,15 @@
 
         <% 
         let worksheetMarks=[];
-        let thP = (sub.theorymarks / sub.theoryfullmarks) * 100;
-        if (sub.worksheetGrades && Array.isArray(sub.worksheetGrades)) {
+        // FIXED: Get numeric theory marks
+        let theoryMarks = getNumericValue(sub.theorymarks);
+        let theoryFullMarks = getNumericValue(sub.theoryfullmarks);
+        let practicalFullMarks = getNumericValue(sub.practicalfullmarks);
+        
+        let thP = theoryFullMarks > 0 ? (theoryMarks / theoryFullMarks) * 100 : 0;
+        
+        // Process worksheet grades - FIXED: Only if data exists
+        if (sub.worksheetGrades && Array.isArray(sub.worksheetGrades) && sub.worksheetGrades.length > 0) {
           sub.worksheetGrades.forEach((worksheetgrade)=>{
             let grade = String(worksheetgrade).trim();
             if(grade=="A+") { worksheetMarks.push(4); }
@@ -869,12 +889,17 @@
         %>
 
         <% 
-        let finalP = ((sub.theorymarks + practicalmarks) / (sub.theoryfullmarks + sub.practicalfullmarks)) * 100;
         let thGP = getGP(thP);
         let prGP = practicalmarks;
         let theoryCreditHour = creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.theoryCreditHour || 0;
         let practicalCreditHour = creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.practicalCreditHour || 0;
-        let finalGP = (thGP*theoryCreditHour + prGP*practicalCreditHour) / (theoryCreditHour + practicalCreditHour);
+        let totalCreditHour = theoryCreditHour + practicalCreditHour;
+        let finalGP = totalCreditHour > 0 ? (thGP*theoryCreditHour + prGP*practicalCreditHour) / totalCreditHour : 0;
+        
+        // FIXED: Ensure finalGP is a valid number between 0 and 4
+        if (isNaN(finalGP) || finalGP < 0) finalGP = 0;
+        if (finalGP > 4) finalGP = 4;
+        
         let finalGrade = getGrade(finalGP);
         let obtainedGP = getObtainedGP(finalGrade);
         
@@ -887,14 +912,14 @@
         <tr>
           <td><%= index + 1 %></td>
           <td><%= displaySubjectName %></td>
-          <td><% m = creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.theoryCreditHour + creditHourData.filter(ch => ch.newsubject === sub.subject)[0]?.practicalCreditHour || 'N/A' %><%= m %></td>
-          <td class="col-theorymarks"><%= sub.theorymarks%></td>
+          <td><%= totalCreditHour || 'N/A' %></td>
+          <td class="col-theorymarks"><%= sub.theorymarks %></td>
           <td class="col-finalgp"><%= finalGP.toFixed(2) %></td>
-          <% totalCredit += m; 
+          <% totalCredit += totalCreditHour; 
              totalGradePoints += (thGP*theoryCreditHour + prGP*practicalCreditHour);%>
           <td class="col-finalgrade"><%= finalGrade %></td>
           <td class="col-obtainedgp"><%= obtainedGP %></td>
-          <td class="col-highestmarks"><%= sub.highestmarks %></td>
+          <td class="col-highestmarks"><%= sub.highestmarks || '-' %></td>
           <td class="col-remarks"><%= getSubjectRemark(finalGrade) %></td>
         </tr>
 
@@ -911,7 +936,7 @@
                   let gpaForDisplay = totalCredit > 0 ? (totalGradePoints / totalCredit) : 0;
                   if (hasAnyNG) { 
                 %>
-                -
+                NG
                 <% 
                   } else { 
                 %>
