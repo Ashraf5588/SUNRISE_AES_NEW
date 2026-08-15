@@ -163,9 +163,9 @@
     }
 
     .logo {
-      width: 80px;
-      height: 80px;
-      flex: 0 0 80px;
+      width: 100px;
+      height: 100px;
+      flex: 0 0 100px;
       border-radius: 0;
       overflow: hidden;
       display: flex;
@@ -207,7 +207,7 @@
       color: #000;
       margin-top: 10px;
       text-transform: uppercase;
-      font-size: 16px;
+      font-size: 18px;
       border: 1px solid #000;
       display: inline-block;
       padding: 5px 15px;
@@ -248,14 +248,14 @@
       padding: 6px 7px;
       text-align: center;
       word-wrap: break-word;
-      font-size: 14px;
+      font-size: 15px;
     }
 
     table th {
       background: #f0f0f0;
       color: #000;
       font-weight: 800;
-      font-size: 14px;
+      font-size: 15px;
       text-transform: uppercase;
     }
 
@@ -857,8 +857,8 @@
             <div class="school-name"><%= marksheetSetups[0].schoolName %></div>
             <div class="school-meta"><%= marksheetSetups[0].address %> &nbsp; | &nbsp; Phone: <%= marksheetSetups[0].phone %></div>
             <div class="report-title">
-              <div>ACADEMIC PROGRESS REPORT</div>
-              <div style="font-size:11px; margin-top:2px; font-weight:600"><%= terminal %> Terminal - <%= academicYear %></div>
+              <div>Grade Sheet</div>
+              <div style="font-size:18px; margin-top:2px; font-weight:600"><%= terminal %> Terminal - Examination <%= academicYear %></div>
             </div>
           </div>
           <div class="logo" style="border:none; visibility:hidden"></div>
@@ -878,11 +878,11 @@
             <tr>
               <th style="width:3%">S.N</th>
               <th style="width:16%">Subject</th>
-              <th style="width:7%">Credit Hr</th>
+              <th style="width:7%">Credit Hour</th>
               <th class="col-theorymarks" style="width:8%">Th Marks</th>
               <th class="col-prmarks" style="width:8%">Pr Marks</th>
               <th class="col-finalgp" style="width:8%">Final GP</th>
-              <th class="col-finalgrade" style="width:8%">Final Grade</th>
+              <th class="col-finalgrade" style="width:8%"> Grade</th>
               <th class="col-obtainedgp" style="width:8%">Grade Point</th>
               <th class="col-remarks" style="width:20%">Remarks</th>
             </tr>
@@ -1011,7 +1011,7 @@
             %>
             <%= overallRemark %>
           </div>
-          <div class="issued-box"><b>Issued Date:</b>&nbsp;<%= issuedNepaliDate %></div>
+          <div class="issued-box"><b>Issued Date:</b>&nbsp;2083-4-31</div>
         </div>
 
         <!-- SIGNATURES -->
