@@ -1381,9 +1381,9 @@ exports.ledger = async (req, res, next) => {
 
     // Subjects that should NOT have worksheets
     const NO_WORKSHEET_SUBJECTS = ['HYGIENE', 'ORAL', 'ECA'];
-if (studentClass && studentClass.toUpperCase() === 'LKG') {
-  NO_WORKSHEET_SUBJECTS.push('THEME');
-}
+    if (studentClass && studentClass.toUpperCase() === 'LKG') {
+      NO_WORKSHEET_SUBJECTS.push('THEME');
+    }
     let ledgerData = [];
 
     // Helper function to get GP from percentage
@@ -1403,7 +1403,6 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
     // Helper function to get GP from worksheet grade
     function getWorksheetGP(grade) {
       if (!grade) return 0;
-      // Check if grade is Ab (sentinel value or string)
       if (grade === 'Ab' || grade === '0.000001') return 0;
       const gradeMap = {
         'A+': 4.0,
@@ -1438,14 +1437,11 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
     // Helper function to check if value is Ab (sentinel 0.000001)
     function isAbValue(value) {
       if (value === null || value === undefined) return false;
-      // Check for exact match
       if (value === 0.000001 || value === '0.000001') return true;
-      // Check for number with epsilon
       if (typeof value === 'number') {
         const epsilon = 0.0000001;
         if (Math.abs(value - 0.000001) < epsilon) return true;
       }
-      // Check if it's a string representation
       if (typeof value === 'string') {
         const cleanValue = value.trim().toLowerCase();
         if (cleanValue === '0.000001' || cleanValue === 'ab' || cleanValue === 'absent') {
@@ -1455,10 +1451,12 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
       return false;
     }
 
+    // ============================================
+    // PRE-PRIMARY LEDGER (UKG, LKG, NURSERY)
+    // ============================================
     if (isPrePrimary) {
       console.log("=== Processing PRE-PRIMARY LEDGER ===");
       
-      // Get subject credit hours from marksheetSetups
       const subjectCreditHours = {};
       if (marksheetSetups && marksheetSetups.length > 0 && marksheetSetups[0].subjects) {
         marksheetSetups[0].subjects.forEach(sub => {
@@ -1466,7 +1464,6 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
         });
       }
 
-      // First, get raw data without aggregation to preserve the 0.000001 value
       const rawData = await model.find({
         terminal: terminal,
         academicYear: academicYear,
@@ -1476,7 +1473,6 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
 
       console.log(`Found ${rawData.length} raw records`);
 
-      // Process data in JavaScript to preserve the raw theorymarks value
       const studentMap = new Map();
       
       rawData.forEach(record => {
@@ -1489,38 +1485,49 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
             roll: record.roll,
             rollNumber: parseInt(record.roll) || 0,
             gender: record.gender,
-            attendance: record.attendance,
+            attendance: 0,
             subjects: [],
             rawSubjects: {}
           });
         }
         
         const student = studentMap.get(reg);
-        // Store raw theorymarks without modification
         student.subjects.push({
           subject: record.subject,
-          theorymarks: record.theorymarks, // Keep raw value (0.000001 preserved)
+          theorymarks: record.theorymarks,
           practicalmarks: record.practicalmarks,
           theoryfullmarks: record.theoryfullmarks,
           practicalfullmarks: record.practicalfullmarks,
           passMarks: record.passMarks,
           worksheetGrades: record.worksheetGrades || [],
-          totalWorksheet: record.totalWorksheet || 0
+          totalWorksheet: record.totalWorksheet || 0,
+          attendance: record.attendance || 0
         });
         
-        // Store in rawSubjects for easy access
         student.rawSubjects[record.subject] = {
           theorymarks: record.theorymarks,
           worksheetGrades: record.worksheetGrades || [],
-          totalWorksheet: record.totalWorksheet || 0
+          totalWorksheet: record.totalWorksheet || 0,
+          attendance: record.attendance || 0
         };
       });
 
-      // Process each student's data
       ledgerData = Array.from(studentMap.values()).map(student => {
         const subjectMap = {};
         let totalWeightedGP = 0;
         let totalCredits = 0;
+
+        // Get attendance from NEPALI subject
+        let attendanceFromNepali = 0;
+        const nepaliSubject = student.subjects.find(sub => sub.subject.toUpperCase() === 'NEPALI');
+        if (nepaliSubject && nepaliSubject.attendance !== undefined && nepaliSubject.attendance !== null) {
+          attendanceFromNepali = nepaliSubject.attendance;
+        } else {
+          const anySubject = student.subjects.find(sub => sub.attendance !== undefined && sub.attendance !== null);
+          if (anySubject) {
+            attendanceFromNepali = anySubject.attendance;
+          }
+        }
 
         student.subjects.forEach(subject => {
           const subjectName = subject.subject;
@@ -1528,41 +1535,30 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
           const worksheetGrades = subject.worksheetGrades || [];
           const totalWorksheet = subject.totalWorksheet || worksheetGrades.length;
           
-          // Check if this subject should have worksheets
           const hasWorksheets = shouldHaveWorksheets(subjectName);
-          
-          // Check if theory marks is Ab
           const isAb = isAbValue(rawTheoryMarks);
           
-          // Calculate theory GP
           let theoryGP = 0;
           let finalGP = 0;
           let practicalGP = 0;
           let totalWorksheetGP = 0;
           let worksheetCount = 0;
           
-          // For HYGIENE, ORAL, ECA - no worksheets, theory is final GP
           if (!hasWorksheets) {
-            // These subjects have no worksheets, theory marks is the final GP
             if (isAb) {
-              finalGP = 0; // Ab = 0
+              finalGP = 0;
               theoryGP = 0;
             } else {
-              // Theory marks is already a GP value (e.g., 4.0, 3.6, etc.)
               theoryGP = Number(rawTheoryMarks) || 0;
               finalGP = theoryGP;
             }
           } else {
-            // Regular subjects with worksheets
-            // First, get theory GP
             if (isAb) {
               theoryGP = 0;
             } else {
-              // Theory marks is already a GP value
               theoryGP = Number(rawTheoryMarks) || 0;
             }
             
-            // Calculate worksheet GPs
             if (worksheetGrades && worksheetGrades.length > 0) {
               worksheetGrades.forEach(grade => {
                 const gp = getWorksheetGP(grade);
@@ -1571,7 +1567,6 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
               });
             }
             
-            // Final GP = (Theory + All Worksheet GPs) / (Number of Worksheets + 1)
             if (worksheetCount > 0) {
               finalGP = (theoryGP + totalWorksheetGP) / (worksheetCount + 1);
             } else {
@@ -1581,26 +1576,12 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
             practicalGP = worksheetCount > 0 ? (totalWorksheetGP / worksheetCount) : 0;
           }
           
-          // Round to 2 decimal places
           const roundedFinalGP = Math.round(finalGP * 100) / 100;
           
-          // Get theory display value
           let theoryDisplay = '-';
           if (isAb) {
             theoryDisplay = 'Ab';
-          } else if (hasWorksheets) {
-            // For regular subjects, theory is a GP value
-            const gp = theoryGP;
-            if (gp === 4.0) theoryDisplay = 'A+';
-            else if (gp >= 3.6) theoryDisplay = 'A';
-            else if (gp >= 3.2) theoryDisplay = 'B+';
-            else if (gp >= 2.8) theoryDisplay = 'B';
-            else if (gp >= 2.4) theoryDisplay = 'C+';
-            else if (gp >= 2.0) theoryDisplay = 'C';
-            else if (gp >= 1.6) theoryDisplay = 'D';
-            else theoryDisplay = 'NG';
           } else {
-            // For no-worksheet subjects, theory is already a grade
             const gp = theoryGP;
             if (gp === 4.0) theoryDisplay = 'A+';
             else if (gp >= 3.6) theoryDisplay = 'A';
@@ -1612,9 +1593,8 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
             else theoryDisplay = 'NG';
           }
 
-          // Store in subject map with raw theory marks preserved
           subjectMap[subjectName] = {
-            theoryGP: rawTheoryMarks, // Store RAW value (0.000001)
+            theoryGP: rawTheoryMarks,
             theoryGPDisplay: isAb ? 'Ab' : theoryDisplay,
             theoryGPValue: theoryGP,
             practicalGP: practicalGP,
@@ -1625,16 +1605,15 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
             isAb: isAb,
             worksheetCount: worksheetCount,
             totalWorksheetGP: totalWorksheetGP || 0,
-            theoryDisplay: theoryDisplay
+            theoryDisplay: theoryDisplay,
+            attendance: subject.attendance || 0
           };
 
-          // Add to weighted total for overall GPA
           const creditHour = subjectCreditHours[subjectName] || 1;
           totalWeightedGP += roundedFinalGP * creditHour;
           totalCredits += creditHour;
         });
 
-        // Calculate overall GPA
         let gpa = 0;
         if (totalCredits > 0) {
           gpa = totalWeightedGP / totalCredits;
@@ -1647,7 +1626,7 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
           roll: student.roll,
           rollNumber: student.rollNumber,
           gender: student.gender,
-          attendance: student.attendance,
+          attendance: attendanceFromNepali,
           subjects: student.subjects,
           subjectMap: subjectMap,
           rawSubjects: student.rawSubjects,
@@ -1671,238 +1650,237 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
         rankCounter++;
       });
 
-      // Sort back by roll number
       ledgerData.sort((a, b) => a.rollNumber - b.rollNumber);
-
     } 
-     else if (isPrimary) {
-  console.log("=== Processing PRIMARY LEDGER (Classes 1-3) ===");
-  
-  // Get credit hour data from newsubject model
-  const creditHourData = await newsubject.find({}).lean();
-  const creditHourMap = {};
-  creditHourData.forEach(item => {
-    const key = `${item.newsubject}_${item.forClass}`;
-    creditHourMap[key] = {
-      theoryCredit: item.theoryCreditHour || 0,
-      practicalCredit: item.practicalCreditHour || 0,
-      forClass: item.forClass
-    };
-  });
+    // ============================================
+    // PRIMARY LEDGER (Classes 1-3)
+    // ============================================
+    else if (isPrimary) {
+      console.log("=== Processing PRIMARY LEDGER (Classes 1-3) ===");
+      
+      const creditHourData = await newsubject.find({}).lean();
+      const creditHourMap = {};
+      creditHourData.forEach(item => {
+        const key = `${item.newsubject}_${item.forClass}`;
+        creditHourMap[key] = {
+          theoryCredit: item.theoryCreditHour || 0,
+          practicalCredit: item.practicalCreditHour || 0,
+          forClass: item.forClass
+        };
+      });
 
-  const rawData = await model.aggregate([
-    {
-      $match: {
-        terminal: terminal,
-        academicYear: academicYear,
-        studentClass: studentClass,
-        section: section
-      },
-    },
-    {
-      $addFields: {
-        rollNumber: { $toInt: "$roll" }
-      }
-    },
-    {
-      $group: {
-        _id: "$reg",
-        name: { $first: "$name" },
-        roll: { $first: "$roll" },
-        rollNumber: { $first: "$rollNumber" },
-        gender: { $first: "$gender" },
-        attendance: { $first: "$attendance" },
-        subjects: {
-          $push: {
-            subject: "$subject",
-            theorymarks: "$theorymarks",
-            practicalmarks: "$practicalmarks",
-            theoryfullmarks: "$theoryfullmarks",
-            practicalfullmarks: "$practicalfullmarks",
-            passMarks: "$passMarks",
-            worksheetGrades: "$worksheetGrades",
-            totalWorksheet: "$totalWorksheet"
+      const rawData = await model.aggregate([
+        {
+          $match: {
+            terminal: terminal,
+            academicYear: academicYear,
+            studentClass: studentClass,
+            section: section
+          },
+        },
+        {
+          $addFields: {
+            rollNumber: { $toInt: "$roll" }
+          }
+        },
+        {
+          $group: {
+            _id: "$reg",
+            name: { $first: "$name" },
+            roll: { $first: "$roll" },
+            rollNumber: { $first: "$rollNumber" },
+            gender: { $first: "$gender" },
+            attendance: {
+              $first: {
+                $cond: [
+                  { $eq: ["$subject", "NEPALI"] },
+                  "$attendance",
+                  null
+                ]
+              }
+            },
+            subjects: {
+              $push: {
+                subject: "$subject",
+                theorymarks: "$theorymarks",
+                practicalmarks: "$practicalmarks",
+                theoryfullmarks: "$theoryfullmarks",
+                practicalfullmarks: "$practicalfullmarks",
+                passMarks: "$passMarks",
+                worksheetGrades: "$worksheetGrades",
+                totalWorksheet: "$totalWorksheet",
+                attendance: "$attendance"
+              }
+            }
+          }
+        },
+        { $sort: { rollNumber: 1 } }
+      ]);
+
+      ledgerData = rawData.map((student) => {
+        const subjectMap = {};
+        let totalWeightedGP = 0;
+        let totalCredits = 0;
+
+        // Get attendance from NEPALI subject (fallback if aggregation didn't get it)
+        let attendance = student.attendance || 0;
+        if (!attendance) {
+          const nepaliSubject = student.subjects.find(sub => sub.subject.toUpperCase() === 'NEPALI');
+          if (nepaliSubject && nepaliSubject.attendance) {
+            attendance = nepaliSubject.attendance;
           }
         }
-      }
-    },
-    { $sort: { rollNumber: 1 } }
-  ]);
 
-  // Process the data in JavaScript
-  ledgerData = rawData.map((student) => {
-    const subjectMap = {};
-    let totalWeightedGP = 0;
-    let totalCredits = 0;
+        student.subjects.forEach((subject) => {
+          const subjectName = subject.subject;
+          const theoryMarks = subject.theorymarks || 0;
+          const theoryFullMarks = subject.theoryfullmarks || 100;
+          const practicalMarks = subject.practicalmarks || 0;
+          const practicalFullMarks = subject.practicalfullmarks || 100;
+          const worksheetGrades = subject.worksheetGrades || [];
+          const totalWorksheet = subject.totalWorksheet || worksheetGrades.length;
 
-    student.subjects.forEach((subject) => {
-      const subjectName = subject.subject;
-      const theoryMarks = subject.theorymarks || 0;
-      const theoryFullMarks = subject.theoryfullmarks || 100;
-      const practicalMarks = subject.practicalmarks || 0;
-      const practicalFullMarks = subject.practicalfullmarks || 100;
-      const worksheetGrades = subject.worksheetGrades || [];
-      const totalWorksheet = subject.totalWorksheet || worksheetGrades.length;
+          const hasWorksheets = shouldHaveWorksheets(subjectName);
+          const isAb = isAbValue(theoryMarks);
 
-      // Check if this subject should have worksheets
-      const hasWorksheets = shouldHaveWorksheets(subjectName);
-      
-      // Check if theory marks is Ab
-      const isAb = isAbValue(theoryMarks);
+          let theoryGP = 0;
+          if (isAb) {
+            theoryGP = 0;
+          } else {
+            const theoryPercentage = theoryFullMarks > 0 ? (theoryMarks / theoryFullMarks) * 100 : 0;
+            theoryGP = getGP(theoryPercentage);
+          }
 
-      // Calculate theory percentage and GP
-      let theoryGP = 0;
-      if (isAb) {
-        theoryGP = 0;
-      } else {
-        const theoryPercentage = theoryFullMarks > 0 ? (theoryMarks / theoryFullMarks) * 100 : 0;
-        theoryGP = getGP(theoryPercentage);
-      }
+          let finalGP = 0;
+          let practicalGP = 0;
+          let totalWorksheetGP = 0;
+          let worksheetCount = 0;
 
-      // For HYGIENE, ORAL, ECA - no worksheets, theory is final GP
-      let finalGP = 0;
-      let practicalGP = 0;
-      let totalWorksheetGP = 0;
-      let worksheetCount = 0;
+          if (!hasWorksheets) {
+            finalGP = theoryGP;
+            practicalGP = theoryGP;
+          } else {
+            if (worksheetGrades && worksheetGrades.length > 0) {
+              worksheetGrades.forEach((grade) => {
+                const gp = getWorksheetGP(grade);
+                totalWorksheetGP += gp;
+                worksheetCount++;
+              });
+            }
+            
+            practicalGP = worksheetCount > 0 ? (totalWorksheetGP / worksheetCount) : 0;
+            
+            const compositeKey = `${subjectName}_${studentClass}`;
+            const credits = creditHourMap[compositeKey] || { theoryCredit: 0, practicalCredit: 0 };
+            const theoryCredit = credits.theoryCredit || 0;
+            const practicalCredit = credits.practicalCredit || 0;
+            const totalCredit = theoryCredit + practicalCredit;
+            
+            if (totalCredit > 0) {
+              finalGP = ((theoryGP * theoryCredit) + (practicalGP * practicalCredit)) / totalCredit;
+            } else {
+              finalGP = (theoryGP + practicalGP) / 2;
+            }
+          }
 
-      if (!hasWorksheets) {
-        // No worksheets - final GP is theory GP
-        finalGP = theoryGP;
-        practicalGP = theoryGP;
-      } else {
-        // Regular subjects with worksheets
-        // Calculate worksheet GPs
-        if (worksheetGrades && worksheetGrades.length > 0) {
-          worksheetGrades.forEach((grade) => {
-            const gp = getWorksheetGP(grade);
-            totalWorksheetGP += gp;
-            worksheetCount++;
-          });
+          const roundedFinalGP = Math.round(finalGP * 100) / 100;
+
+          let theoryDisplay = '-';
+          if (isAb) {
+            theoryDisplay = 'Ab';
+          } else {
+            const gp = theoryGP;
+            if (gp === 4.0) theoryDisplay = 'A+';
+            else if (gp >= 3.6) theoryDisplay = 'A';
+            else if (gp >= 3.2) theoryDisplay = 'B+';
+            else if (gp >= 2.8) theoryDisplay = 'B';
+            else if (gp >= 2.4) theoryDisplay = 'C+';
+            else if (gp >= 2.0) theoryDisplay = 'C';
+            else if (gp >= 1.6) theoryDisplay = 'D';
+            else theoryDisplay = 'NG';
+          }
+
+          const compositeKey = `${subjectName}_${studentClass}`;
+          const credits = creditHourMap[compositeKey] || { theoryCredit: 0, practicalCredit: 0 };
+          const theoryCredit = credits.theoryCredit || 0;
+          const practicalCredit = credits.practicalCredit || 0;
+          const totalCredit = theoryCredit + practicalCredit;
+
+          subjectMap[subjectName] = {
+            theoryGP: isAb ? 0.000001 : Math.round(theoryGP * 100) / 100,
+            theoryGPDisplay: theoryDisplay,
+            theoryGPValue: theoryGP,
+            isAb: isAb,
+            practicalGP: Math.round(practicalGP * 100) / 100,
+            finalGP: roundedFinalGP,
+            theoryMarks: theoryMarks,
+            practicalMarks: practicalMarks,
+            worksheetGrades: hasWorksheets ? worksheetGrades : [],
+            totalWorksheet: hasWorksheets ? totalWorksheet : 0,
+            theoryPercentage: Math.round((theoryFullMarks > 0 ? (theoryMarks / theoryFullMarks) * 100 : 0) * 100) / 100,
+            practicalPercentage: Math.round(practicalGP * 25 * 100) / 100,
+            hasWorksheets: hasWorksheets,
+            worksheetCount: worksheetCount || 0,
+            totalWorksheetGP: totalWorksheetGP || 0,
+            theoryDisplay: theoryDisplay,
+            theoryCredit: theoryCredit,
+            practicalCredit: practicalCredit,
+            totalCredit: totalCredit,
+            attendance: subject.attendance || 0
+          };
+
+          if (totalCredit > 0) {
+            totalWeightedGP += roundedFinalGP * totalCredit;
+            totalCredits += totalCredit;
+          } else {
+            totalWeightedGP += roundedFinalGP * 1;
+            totalCredits += 1;
+          }
+        });
+
+        let gpa = 0;
+        if (totalCredits > 0) {
+          gpa = totalWeightedGP / totalCredits;
         }
-        
-        // Practical GP = Average of worksheet grades
-        practicalGP = worksheetCount > 0 ? (totalWorksheetGP / worksheetCount) : 0;
-        
-        // Get credit hours for this subject
-        const compositeKey = `${subjectName}_${studentClass}`;
-        const credits = creditHourMap[compositeKey] || { theoryCredit: 0, practicalCredit: 0 };
-        const theoryCredit = credits.theoryCredit || 0;
-        const practicalCredit = credits.practicalCredit || 0;
-        const totalCredit = theoryCredit + practicalCredit;
-        
-        // Calculate final GP using weighted formula
-        if (totalCredit > 0) {
-          finalGP = ((theoryGP * theoryCredit) + (practicalGP * practicalCredit)) / totalCredit;
-        } else {
-          // If no credit hours defined, use simple average
-          finalGP = (theoryGP + practicalGP) / 2;
+        gpa = Math.round(gpa * 100) / 100;
+
+        return {
+          _id: student._id,
+          name: student.name,
+          roll: student.roll,
+          rollNumber: student.rollNumber,
+          gender: student.gender,
+          attendance: attendance,
+          subjects: student.subjects,
+          subjectMap: subjectMap,
+          gpa: gpa,
+          rank: 0
+        };
+      });
+
+      // Calculate ranks based on GPA
+      const sortedStudents = [...ledgerData].sort((a, b) => b.gpa - a.gpa);
+      let currentRank = 1;
+      let previousGPA = null;
+      let rankCounter = 1;
+
+      sortedStudents.forEach((student) => {
+        if (previousGPA !== null && student.gpa < previousGPA) {
+          currentRank = rankCounter;
         }
-      }
+        student.rank = currentRank;
+        previousGPA = student.gpa;
+        rankCounter++;
+      });
 
-      // Round to 2 decimal places
-      const roundedFinalGP = Math.round(finalGP * 100) / 100;
-
-      // Get theory display value
-      let theoryDisplay = '-';
-      if (isAb) {
-        theoryDisplay = 'Ab';
-      } else {
-        const gp = theoryGP;
-        if (gp === 4.0) theoryDisplay = 'A+';
-        else if (gp >= 3.6) theoryDisplay = 'A';
-        else if (gp >= 3.2) theoryDisplay = 'B+';
-        else if (gp >= 2.8) theoryDisplay = 'B';
-        else if (gp >= 2.4) theoryDisplay = 'C+';
-        else if (gp >= 2.0) theoryDisplay = 'C';
-        else if (gp >= 1.6) theoryDisplay = 'D';
-        else theoryDisplay = 'NG';
-      }
-
-      // Get credit hours for the subject (re-fetch for the map)
-      const compositeKey = `${subjectName}_${studentClass}`;
-      const credits = creditHourMap[compositeKey] || { theoryCredit: 0, practicalCredit: 0 };
-      const theoryCredit = credits.theoryCredit || 0;
-      const practicalCredit = credits.practicalCredit || 0;
-      const totalCredit = theoryCredit + practicalCredit;
-
-      // Store in subject map
-      subjectMap[subjectName] = {
-        theoryGP: isAb ? 0.000001 : Math.round(theoryGP * 100) / 100,
-        theoryGPDisplay: theoryDisplay,
-        theoryGPValue: theoryGP,
-        isAb: isAb,
-        practicalGP: Math.round(practicalGP * 100) / 100,
-        finalGP: roundedFinalGP,
-        theoryMarks: theoryMarks,
-        practicalMarks: practicalMarks,
-        worksheetGrades: hasWorksheets ? worksheetGrades : [],
-        totalWorksheet: hasWorksheets ? totalWorksheet : 0,
-        theoryPercentage: Math.round((theoryFullMarks > 0 ? (theoryMarks / theoryFullMarks) * 100 : 0) * 100) / 100,
-        practicalPercentage: Math.round(practicalGP * 25 * 100) / 100,
-        hasWorksheets: hasWorksheets,
-        worksheetCount: worksheetCount || 0,
-        totalWorksheetGP: totalWorksheetGP || 0,
-        theoryDisplay: theoryDisplay,
-        theoryCredit: theoryCredit,
-        practicalCredit: practicalCredit,
-        totalCredit: totalCredit
-      };
-
-      // Add to weighted total for overall GPA
-      if (totalCredit > 0) {
-        totalWeightedGP += roundedFinalGP * totalCredit;
-        totalCredits += totalCredit;
-      } else {
-        // If no credit hours defined, use 1
-        totalWeightedGP += roundedFinalGP * 1;
-        totalCredits += 1;
-      }
-    });
-
-    // Calculate overall GPA
-    let gpa = 0;
-    if (totalCredits > 0) {
-      gpa = totalWeightedGP / totalCredits;
-    }
-    gpa = Math.round(gpa * 100) / 100;
-
-    return {
-      _id: student._id,
-      name: student.name,
-      roll: student.roll,
-      rollNumber: student.rollNumber,
-      gender: student.gender,
-      attendance: student.attendance,
-      subjects: student.subjects,
-      subjectMap: subjectMap,
-      gpa: gpa,
-      rank: 0
-    };
-  });
-
-  // Calculate ranks based on GPA
-  const sortedStudents = [...ledgerData].sort((a, b) => b.gpa - a.gpa);
-  let currentRank = 1;
-  let previousGPA = null;
-  let rankCounter = 1;
-
-  sortedStudents.forEach((student) => {
-    if (previousGPA !== null && student.gpa < previousGPA) {
-      currentRank = rankCounter;
-    }
-    student.rank = currentRank;
-    previousGPA = student.gpa;
-    rankCounter++;
-  });
-
-  // Sort back by roll number
-  ledgerData.sort((a, b) => a.rollNumber - b.rollNumber);
-
-} // End of isPrimary
-    
+      ledgerData.sort((a, b) => a.rollNumber - b.rollNumber);
+    } 
+    // ============================================
+    // REGULAR LEDGER (Classes 4+)
+    // ============================================
     else {
       console.log("=== Processing REGULAR LEDGER (Classes 4+) ===");
-      // Regular ledger for other classes (Classes 4+)
+      
       ledgerData = await model.aggregate([
         {
           $match: {
@@ -1932,7 +1910,7 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
                 practicalmarks: "$practicalmarks",
                 theoryfullmarks: "$theoryfullmarks",
                 practicalfullmarks: "$practicalfullmarks",
-                totalpracticalmarks:"$totalpracticalmarks",
+                totalpracticalmarks: "$totalpracticalmarks",
                 passMarks: "$passMarks",
                 terminalmarks: "$terminalmarks",
                 totalmarks: { $add: ["$theorymarks", "$totalpracticalmarks"] },
@@ -2039,7 +2017,7 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
               hasWorksheets: hasWorksheets,
               worksheetGrades: hasWorksheets ? (sub.worksheetGrades || []) : [],
               isAb: isAb,
-              theoryGP: isAb ? 0.000001 : sub.theorymarks, // Preserve Ab sentinel
+              theoryGP: isAb ? 0.000001 : sub.theorymarks,
               theoryDisplay: isAb ? 'Ab' : sub.theorymarks
             };
           });
@@ -2048,7 +2026,9 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
       });
     }
 
-    // Calculate analysis data
+    // ============================================
+    // CALCULATE ANALYSIS DATA
+    // ============================================
     console.log("\n=== Calculating Analysis Data ===");
     let ledgerAnalysis = [];
     if (ledgerData.length > 0) {
@@ -2148,7 +2128,9 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
       }
     });
 
-    // Render based on class type
+    // ============================================
+    // RENDER BASED ON CLASS TYPE
+    // ============================================
     if (isPrePrimary) {
       res.render("./exam/ledgerpreprimary", {
         fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
@@ -2188,44 +2170,42 @@ if (studentClass && studentClass.toUpperCase() === 'LKG') {
       });
       return;
     } else {
-      if(studentClass == "Four" || studentClass == "4" || studentClass == "FOUR" || studentClass == "four" || studentClass == "Five" || studentClass == "5" || studentClass == "FIVE" || studentClass == "five" )
-      {
+      if (studentClass == "Four" || studentClass == "4" || studentClass == "FOUR" || studentClass == "four" || 
+          studentClass == "Five" || studentClass == "5" || studentClass == "FIVE" || studentClass == "five") {
         res.render("./exam/ledgerfourfive", {
-        fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
-        currentPage: "exammanagement",
-        studentClassdata,
-        user: req.user,
-        academicYear,
-        studentClass,
-        section,
-        terminal,
-        marksheetSetups,
-        ledgerData,
-        ledgerAnalysisLookup,
-        noData: ledgerData.length === 0,
-        isPrePrimary: isPrePrimary,
-        NO_WORKSHEET_SUBJECTS: NO_WORKSHEET_SUBJECTS
-      });
+          fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
+          currentPage: "exammanagement",
+          studentClassdata,
+          user: req.user,
+          academicYear,
+          studentClass,
+          section,
+          terminal,
+          marksheetSetups,
+          ledgerData,
+          ledgerAnalysisLookup,
+          noData: ledgerData.length === 0,
+          isPrePrimary: isPrePrimary,
+          NO_WORKSHEET_SUBJECTS: NO_WORKSHEET_SUBJECTS
+        });
+      } else {
+        res.render("./exam/ledger", {
+          fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
+          currentPage: "exammanagement",
+          studentClassdata,
+          user: req.user,
+          academicYear,
+          studentClass,
+          section,
+          terminal,
+          marksheetSetups,
+          ledgerData,
+          ledgerAnalysisLookup,
+          noData: ledgerData.length === 0,
+          isPrePrimary: isPrePrimary,
+          NO_WORKSHEET_SUBJECTS: NO_WORKSHEET_SUBJECTS
+        });
       }
-      else
-      {
-      res.render("./exam/ledger", {
-        fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
-        currentPage: "exammanagement",
-        studentClassdata,
-        user: req.user,
-        academicYear,
-        studentClass,
-        section,
-        terminal,
-        marksheetSetups,
-        ledgerData,
-        ledgerAnalysisLookup,
-        noData: ledgerData.length === 0,
-        isPrePrimary: isPrePrimary,
-        NO_WORKSHEET_SUBJECTS: NO_WORKSHEET_SUBJECTS
-      });
-    }
     }
     
   } catch (err) {
