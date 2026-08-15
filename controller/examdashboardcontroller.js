@@ -295,6 +295,7 @@ exports.generateMarksheet = async (req, res, next) => {
               passMarks: "$passMarks",
               practicalfullmarks: "$practicalfullmarks",
               creditHour: "$creditHour",
+              totalpracticalmarks: "$totalpracticalmarks",
               worksheetGrades: "$worksheetGrades",
               highestmarks: "$highestMarks",
               terminalmarks: "$terminalmarks"

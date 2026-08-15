@@ -719,7 +719,7 @@
             if (grade === 'C+') return 2.4;
             if (grade === 'C') return 2.0;
             if (grade === 'D') return 1.6;
-            return 'NG';
+            return '0.0';
           }
 
           // Function to get subject remark based on GRADE
@@ -929,11 +929,11 @@
                 const isLocalSubject = localSubjects.some(local => sub.subject.toUpperCase().includes(local));
 
                 // Calculate practical marks based on subject type
-                let practicalTotal = sub.practicalmarks || 0;
+                let practicalTotal = sub.totalpracticalmarks;
                 if (isLocalSubject) {
-                  practicalTotal = (sub.practicalmarks || 0) + attendanceMarks + (sub.terminalmarks || 0) + (sub.participationMarks || 0);
+                  practicalTotal = sub.totalpracticalmarks;
                 } else {
-                  practicalTotal = sub.practicalmarks || 0;
+                  practicalTotal = sub.totalpracticalmarks
                 }
 
                 let thP = (sub.theorymarks / sub.theoryfullmarks) * 100;
@@ -976,6 +976,27 @@
                 totalAttendance = sub.attendance;
               %>
             <% }) %>
+            <tr>
+              <td></td>
+              <td></td>
+              <td colspan="7"><div>
+           <b> Grade Average Point (GPA): 
+            <% 
+              let gpaForDisplay = totalCredit > 0 ? (totalGradePoints / totalCredit) : 0;
+              gpaForDisplay = roundToTwo(gpaForDisplay);
+              if (hasActualNG) { 
+            %>
+           -
+            <% 
+              } else { 
+            %>
+            <%= gpaForDisplay.toFixed(2) %>
+            <% 
+              } 
+            %></b>
+          </div></td>
+              </td>
+            </tr>
           </tbody>
         </table>
 
@@ -983,22 +1004,7 @@
         <div class="summary-box">
           <div>Total Credit Hours: <%= totalCredit %></div>
           <div><span class="info-label">Attendance:</span> <span class="info-value"><%= totalAttendance || 'N/A' %>/<%= workingDays %></span></div>
-          <div>
-            GPA: 
-            <% 
-              let gpaForDisplay = totalCredit > 0 ? (totalGradePoints / totalCredit) : 0;
-              gpaForDisplay = roundToTwo(gpaForDisplay);
-              if (hasActualNG) { 
-            %>
-            NG
-            <% 
-              } else { 
-            %>
-            <%= gpaForDisplay.toFixed(2) %>
-            <% 
-              } 
-            %>
-          </div>
+          
         </div>
 
         <!-- REMARKS -->
