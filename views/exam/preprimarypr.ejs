@@ -1010,35 +1010,35 @@
     <%= obtainedGP %>
   </td>
           <td class="col-highestmarks"><%= sub.highestmarks || '-' %></td>
-  <td class="col-remarks">
-    <% 
-      // Get the final grade for this subject
-      const finalGrade = getGrade(finalGP);
-      let subjectRemark = '';
-      
-      // Use GPA ranges for remarks
-      if (finalGrade === 'NG') {
-        subjectRemark = 'Not Graded';
-      } else if (finalGP >= 3.61 && finalGP <= 4.0) {
-        subjectRemark = 'Outstanding';
-      } else if (finalGP >= 3.21 && finalGP <= 3.6) {
-        subjectRemark = 'Excellent';
-      } else if (finalGP >= 2.81 && finalGP <= 3.2) {
-        subjectRemark = 'Very Good';
-      } else if (finalGP >= 2.41 && finalGP <= 2.8) {
-        subjectRemark = 'Good';
-      } else if (finalGP >= 2.01 && finalGP <= 2.4) {
-        subjectRemark = 'Satisfactory';
-      } else if (finalGP >= 1.61 && finalGP <= 2.0) {
-        subjectRemark = 'Acceptable';
-      } else if (finalGP >= 1.6 && finalGP <= 1.6) {
-        subjectRemark = 'Basic';
-      } else {
-        subjectRemark = 'Not Graded';
-      }
-    %>
-    <%= subjectRemark %>
-  </td>
+          <td class="col-remarks">
+            <% 
+              // Get the final grade for this subject
+              const finalGrade = getGrade(finalGP);
+              let subjectRemark = '';
+              
+              // Use GRADE for remarks (not GPA ranges)
+              if (finalGrade === 'NG') {
+                subjectRemark = 'Not Graded';
+              } else if (finalGrade === 'A+') {
+                subjectRemark = 'Outstanding';
+              } else if (finalGrade === 'A') {
+                subjectRemark = 'Excellent';
+              } else if (finalGrade === 'B+') {
+                subjectRemark = 'Very Good';
+              } else if (finalGrade === 'B') {
+                subjectRemark = 'Good';
+              } else if (finalGrade === 'C+') {
+                subjectRemark = 'Satisfactory';
+              } else if (finalGrade === 'C') {
+                subjectRemark = 'Acceptable';
+              } else if (finalGrade === 'D') {
+                subjectRemark = 'Basic';
+              } else {
+                subjectRemark = 'Not Graded';
+              }
+            %>
+            <%= subjectRemark %>
+          </td>
 </tr>
 
       <% }) %>

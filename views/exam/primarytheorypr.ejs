@@ -824,16 +824,16 @@
           return 'NG';
         }
 
-        // Function to get subject remark based on GPA
-        function getSubjectRemark(gp, grade) {
+        // Function to get subject remark based on GRADE
+        function getSubjectRemark(grade) {
           if (grade === 'NG') return 'Not Graded';
-          if (gp >= 3.61 && gp <= 4.0) return 'Outstanding';
-          if (gp >= 3.21 && gp <= 3.6) return 'Excellent';
-          if (gp >= 2.81 && gp <= 3.2) return 'Very Good';
-          if (gp >= 2.41 && gp <= 2.8) return 'Good';
-          if (gp >= 2.01 && gp <= 2.4) return 'Satisfactory';
-          if (gp >= 1.61 && gp <= 2.0) return 'Acceptable';
-          if (gp >= 1.6 && gp <= 1.6) return 'Basic';
+          if (grade === 'A+') return 'Outstanding';
+          if (grade === 'A') return 'Excellent';
+          if (grade === 'B+') return 'Very Good';
+          if (grade === 'B') return 'Good';
+          if (grade === 'C+') return 'Satisfactory';
+          if (grade === 'C') return 'Acceptable';
+          if (grade === 'D') return 'Basic';
           return 'Not Graded';
         }
         %>
@@ -895,23 +895,7 @@
           <td class="col-finalgrade"><%= finalGrade %></td>
           <td class="col-obtainedgp"><%= obtainedGP %></td>
           <td class="col-highestmarks"><%= sub.highestmarks %></td>
-         <td class="col-remarks">
-  <% 
-    // Get subject remark based on grade
-    function getSubjectRemark(grade) {
-      if (grade === 'NG') return 'Not Graded';
-      if (grade === 'A+') return 'Outstanding';
-      if (grade === 'A') return 'Excellent';
-      if (grade === 'B+') return 'Very Good';
-      if (grade === 'B') return 'Good';
-      if (grade === 'C+') return 'Satisfactory';
-      if (grade === 'C') return 'Acceptable';
-      if (grade === 'D') return 'Basic';
-      return 'Not Graded';
-    }
-  %>
-  <%= getSubjectRemark(finalGrade) %>
-</td>
+          <td class="col-remarks"><%= getSubjectRemark(finalGrade) %></td>
         </tr>
 
         <% }) %>
@@ -927,7 +911,7 @@
                   let gpaForDisplay = totalCredit > 0 ? (totalGradePoints / totalCredit) : 0;
                   if (hasAnyNG) { 
                 %>
-              -
+                -
                 <% 
                   } else { 
                 %>
@@ -982,7 +966,9 @@
         %>
         <%= overallRemark %>
       </div>
-<div class="grading-scale">
+
+      <!-- GRADING SCALE -->
+      <div class="grading-scale">
         <table border="1" cellspacing="0" cellpadding="6" style="width:100%; border-collapse:collapse; text-align:center; font-family:Arial, sans-serif;">
           <thead>
             <tr>
@@ -1061,8 +1047,8 @@
           </tbody>
         </table>
       </div>
-    
 
+      <!-- SIGNATURES -->
       <div class="sign-row">
         <div class="sign">
           <div class="sign-placeholder"></div>
@@ -1077,18 +1063,14 @@
           <div class="line">Principal</div>
         </div>
       </div>
-   <div style="display: flex;justify-content: space-between;"> 
-          <div>Note: Ab = absent</div>
-          <div>W - withheld</div>
-          <div>* - failed</div>
-        </div>
+
+      <div style="display: flex;justify-content: space-between;"> 
+        <div>Note: Ab = absent</div>
+        <div>W - withheld</div>
+        <div>* - failed</div>
+      </div>
       
       <center> <p style="margin-top: 5px;"> <b>Issued Date:</b> 2083-4-31</p></center>
-  </div>
-    
-
-      <!-- GRADING SCALE -->
-      
     </div>
   </div>
 
