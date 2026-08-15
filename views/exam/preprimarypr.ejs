@@ -774,17 +774,17 @@
     }
 
     // Function to get grade from GP
-    function getGrade(gp) {
-      if (gp === 4.0) return "A+";
-      if (gp >= 3.6) return "A";
-      if (gp >= 3.2) return "B+";
-      if (gp >= 2.8) return "B";
-      if (gp >= 2.4) return "C+";
-      if (gp >= 2.0) return "C";
-      if (gp >= 1.6) return "D";
+    function getGrade(finalgp) {
+      if (finalgp >=3.61 && finalgp <= 4.0) return "A+";
+      if (finalgp >=3.21 && finalgp <= 3.6) return "A";
+      if (finalgp >= 2.81 && finalgp <= 3.2) return "B+";
+      if (finalgp >= 2.41 && finalgp <= 2.8) return "B";
+      if (finalgp >= 2.01 && finalgp <= 2.4) return "C+";
+      if (finalgp >= 1.61 && finalgp <= 2.0) return "C";
+      if(finalgp == 1.6) return "D";
+      
       return "NG";
     }
-
     // Function to get worksheet GP
     function getWorksheetGP(grade) {
       if (!grade) return 0;
