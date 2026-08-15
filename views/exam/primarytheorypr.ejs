@@ -772,7 +772,7 @@
     if (gp >= 2.01 && gp <= 2.40) return "C+";
     if (gp >= 1.61 && gp <= 2.00) return "C";
     if (gp === 1.6) return "D";
-   if(gp<1.6) return "NG";
+    if (gp < 1.6) return "NG";
     return "NG";
   }
 
@@ -836,7 +836,33 @@
 
   <div class="sheets-container">
 
-  <% const sortedStudentData = [...studentWisedata].sort((a, b) => {
+  <%
+  // ========== FIX: Remove duplicate subjects from data ==========
+  // First, create a map to deduplicate subjects per student
+  const studentMap = new Map();
+  studentWisedata.forEach(student => {
+    const key = student.roll; // Use roll as unique identifier
+    if (!studentMap.has(key)) {
+      // Create a new object with unique subjects
+      const uniqueSubjects = [];
+      const subjectSet = new Set();
+      student.subjects.forEach(sub => {
+        const subKey = sub.subject.toUpperCase().trim();
+        if (!subjectSet.has(subKey)) {
+          subjectSet.add(subKey);
+          uniqueSubjects.push(sub);
+        }
+      });
+      studentMap.set(key, {
+        ...student,
+        subjects: uniqueSubjects
+      });
+    }
+  });
+  const uniqueStudentData = Array.from(studentMap.values());
+  %>
+
+  <% const sortedStudentData = uniqueStudentData.sort((a, b) => {
     return Number(a.roll) - Number(b.roll);
   });
   sortedStudentData.forEach((data) => { 
@@ -1024,7 +1050,7 @@
           const nepaliSubject = data.subjects.find(sub => sub.subject === 'NEPALI');
           const studentAttendance = nepaliSubject ? nepaliSubject.attendance : 0;
         %>
-        <div><span class="info-label">Attendance:</span> <span class="info-value"><%= studentAttendance || 'N/A' %></span></div>
+        <div><span class="info-label">Attendance:</span> <span class="info-value"><%= studentAttendance || 'N/A' %>/69</span></div>
        
       </div>
 
