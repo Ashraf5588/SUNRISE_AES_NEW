@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-<link rel="manifest" href="/site.webmanifest">
-<meta charset="UTF-8">
-<title>Grade Sheet</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta charset="UTF-8">
+  <title>Grade Sheet</title>
 
- <style>
+  <style>
     /* Clean, professional marksheet styling for A4 printing */
     :root {
       --accent: #1f6fb3;
@@ -162,8 +162,8 @@
     }
 
     .logo {
-      width: 80px;
-      height: 80px;
+      width: 100px;
+      height: 100px;
       flex: 0 0 80px;
       border-radius: 0;
       overflow: hidden;
@@ -217,8 +217,8 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       margin-top: 10px;
-      gap: 8px;
-      font-size: 14px;
+      gap: 10px;
+      font-size: 18px;
       border: 1px solid #000;
       padding: 10px;
     }
@@ -245,7 +245,7 @@
     table th, table td {
       border: 2px solid #000;
       padding: 6px 7px;
-      text-align: center;
+      text-align: left;
       word-wrap: break-word;
       font-size: 14px;
     }
@@ -269,7 +269,7 @@
     }
 
     .summary {
-      display: flex ;
+      display: flex;
       justify-content: space-between;
       margin-top: 12px;
       font-weight: 700;
@@ -285,7 +285,7 @@
       background: #fff;
       min-height: 40px;
       flex: 1;
-      
+      max-height: 60px;
     }
 
     .notes-row {
@@ -367,7 +367,8 @@
 
     .grading-scale {
       margin-top: 10px;
-      font-size: 10px;
+      
+      font-size: 18px;
       width: 100%;
     }
 
@@ -380,17 +381,18 @@
       padding: 3px 8px;
       border: 1px solid #000;
       text-align: left;
-      font-size: 10px;
+      font-size: 14px;
     }
-.summary-box {
+
+    .summary-box {
       display: flex;
       justify-content: space-between;
       margin-top: 12px;
       font-weight: 700;
-     
       padding: 10px;
       font-size: 15px;
     }
+
     /* Form Selector Styles */
     .form-selector-panel {
       background: linear-gradient(135deg, #ff9d41 0%, #e7b170 100%);
@@ -511,7 +513,7 @@
 
       .border-frame {
         height: calc(100% - 2mm);
-        border: 3px double #000;
+        border: 5px double #000;
         padding: 12px;
       }
 
@@ -520,15 +522,15 @@
       }
 
       .sheet .watermark {
-        opacity: 0.06;
+        opacity: 0.09;
       }
 
       .school-name {
-        font-size: 24px;
+        font-size: 28px;
       }
 
       table {
-        font-size: 14px;
+        font-size: 18px;
       }
 
       table th, table td {
@@ -536,17 +538,17 @@
       }
 
       .student-info {
-        font-size: 13px;
+        font-size: 18px;
         padding: 8px;
       }
 
       .summary {
-        font-size: 11px;
+        font-size: 14px;
         padding: 8px;
       }
 
       .sign .line {
-        font-size: 11px;
+        font-size: 14px;
       }
 
       .form-selector-panel {
@@ -840,11 +842,15 @@
       <div class="header">
           <div class="logo"><img src="/image.png" onerror="this.style.display='none'"></div>
           <div class="head-text">
+           
+            
               <div class="school-name">United English Boarding School</div>
-              <div class="school-meta">Manahari-8, Simpani &nbsp; | &nbsp; Phone: +057-414040</div>
+              <div class="school-meta">Manahari-8, Makawanpur &nbsp; | &nbsp; Phone: +057-414040</div> 
+              <div class="school-meta">Estd : 2057</div>
+              
               <div class="report-title">
-                  <div>ACADEMIC PROGRESS REPORT</div>
-                  <div style="font-size:14px; margin-top:5px; font-weight:600"><%= terminal %> Terminal - <%= academicYear %></div>
+                  <div>Grade Sheet</div>
+                  <div style="font-size:18px; margin-top:5px; font-weight:600";  ><%= terminal %> Terminal Examination - <%= academicYear %></div>
               </div>
           </div>
           <div class="logo" style="border:none; visibility:hidden"></div>
@@ -881,6 +887,7 @@
       let totalCredit = 0;
       let m;
       let totalGradePoints = 0;
+      let hasAnyNG = false;
       %>
 
       <% sortedSubjects.forEach((sub, index) => { 
@@ -948,6 +955,12 @@
           finalGP = 0;
         }
         
+        // Check if this subject has NG grade
+        const subjectGrade = getGrade(finalGP);
+        if (subjectGrade === 'NG') {
+          hasAnyNG = true;
+        }
+        
         // GP display for practical column
         let prGPDisplay = '-';
         if (!isNoWorksheet && worksheetMarks.length > 0) {
@@ -981,62 +994,203 @@
         
         <td class="col-finalgp"><%= finalGP.toFixed(2) %></td>
         <td class="col-finalgrade"><%= getGrade(finalGP) %></td>
-        <td class="col-obtainedgp">
-          <% 
-            const grade = getGrade(finalGP);
-            let obtainedGP = 0;
-            if (grade === 'A+') obtainedGP = 4.0;
-            else if (grade === 'A') obtainedGP = 3.6;
-            else if (grade === 'B+') obtainedGP = 3.2;
-            else if (grade === 'B') obtainedGP = 2.8;
-            else if (grade === 'C+') obtainedGP = 2.4;
-            else if (grade === 'C') obtainedGP = 2.0;
-            else if (grade === 'D') obtainedGP = 1.6;
-            else obtainedGP = 'NG';
-          %>
-          <%= obtainedGP %>
-        </td>
-        <td class="col-highestmarks"><%= sub.highestmarks || '-' %></td>
-        <td class="col-remarks"><% function getRemarks(finalgrade) {
-            if (finalgrade === "NG") return "Needs Improvement";
-            else if(finalgrade === "D") return "Satisfactory";
-            else if(finalgrade === "C" || finalgrade === "C+") return "Good";
-            else if(finalgrade === "B" || finalgrade === "B+") return "Very Good";
-            else return "Excellent";
-          } %><%= getRemarks(getGrade(finalGP)) %></td>
-      </tr>
-      <% }) %>
+         <td class="col-obtainedgp">
+    <% 
+      const grade = getGrade(finalGP);
+      let obtainedGP = 0;
+      if (grade === 'A+') obtainedGP = 4.0;
+      else if (grade === 'A') obtainedGP = 3.6;
+      else if (grade === 'B+') obtainedGP = 3.2;
+      else if (grade === 'B') obtainedGP = 2.8;
+      else if (grade === 'C+') obtainedGP = 2.4;
+      else if (grade === 'C') obtainedGP = 2.0;
+      else if (grade === 'D') obtainedGP = 1.6;
+      else obtainedGP = 'NG';
+    %>
+    <%= obtainedGP %>
+  </td>
+          <td class="col-highestmarks"><%= sub.highestmarks || '-' %></td>
+  <td class="col-remarks">
+    <% 
+      // Get the final grade for this subject
+      const finalGrade = getGrade(finalGP);
+      let subjectRemark = '';
+      
+      // Use GPA ranges for remarks
+      if (finalGrade === 'NG') {
+        subjectRemark = 'Not Graded';
+      } else if (finalGP >= 3.61 && finalGP <= 4.0) {
+        subjectRemark = 'Outstanding';
+      } else if (finalGP >= 3.21 && finalGP <= 3.6) {
+        subjectRemark = 'Excellent';
+      } else if (finalGP >= 2.81 && finalGP <= 3.2) {
+        subjectRemark = 'Very Good';
+      } else if (finalGP >= 2.41 && finalGP <= 2.8) {
+        subjectRemark = 'Good';
+      } else if (finalGP >= 2.01 && finalGP <= 2.4) {
+        subjectRemark = 'Satisfactory';
+      } else if (finalGP >= 1.61 && finalGP <= 2.0) {
+        subjectRemark = 'Acceptable';
+      } else if (finalGP >= 1.6 && finalGP <= 1.6) {
+        subjectRemark = 'Basic';
+      } else {
+        subjectRemark = 'Not Graded';
+      }
+    %>
+    <%= subjectRemark %>
+  </td>
+</tr>
 
+      <% }) %>
+      <tr colspan="7">
+        <td></td>
+        <td></td>
+        <center>
+          <td colspan="6">
+           <b>Grade Average Point (GPA) = 
+        <% 
+          let gpaForDisplay = totalCredit > 0 ? (totalGradePoints / totalCredit) : 0;
+          if (hasAnyNG) { 
+            // Use this syntax for EJS
+        %>
+        NG
+        <% 
+          } else { 
+        %>
+        <%= gpaForDisplay.toFixed(2) %>
+        <% 
+          } 
+        %>
+      </b>
+          </td>
+        </center>
+      </tr>
       </tbody>
   </table>
 
-      <!-- SUMMARY -->
-      <div class="summary">
-          <div>Total Credit Hours: <%= totalCredit %></div>
-          <div>
-      
-          <!-- taking attendance from nepali subject -->
-        
- <%
-  const nepaliSubject = data.subjects.find(sub => sub.subject === 'NEPALI');
-  const studentAttendance = nepaliSubject ? nepaliSubject.attendance : 0;
-%>
-            <span class="info-label">Attendance:</span> <span class="info-value"><%= studentAttendance  %></span></div>
-          <div>GPA: <%= totalCredit > 0 ? (totalGradePoints / totalCredit).toFixed(2) : '0.00' %></div>
-      </div>
-
-  <!-- REMARKS -->
-  <div class="remark-box">
-      <b>Remarks:</b><br>
-      <% let gpa = totalCredit > 0 ? (totalGradePoints / totalCredit) : 0; %>
-      <% if (gpa >= 3.6) { %> Excellent Performance
-      <% } else if (gpa >= 3.2) { %> Very Good
-      <% } else if (gpa >= 2.4) { %> Good
-      <% } else if (gpa >= 2.0) { %> Satisfactory
-      <% } else { %> Needs Improvement <% } %>
+  <!-- SUMMARY -->
+  <div class="summary">
+    <div>Total Credit Hours: <%= totalCredit %></div>
+    <div>
+      <% 
+        // Get attendance from Nepali subject
+        const nepaliSubject = data.subjects.find(sub => sub.subject === 'NEPALI');
+        const studentAttendance = nepaliSubject ? nepaliSubject.attendance : 0;
+      %>
+      <span class="info-label">Attendance:</span> <span class="info-value"><%= studentAttendance %>/69</span>
+    </div>
   </div>
-<!-- nepali date should be here -->
-  <p><b>Issued Date:</b> 2083-4-31</p>
+
+  <!-- FIXED REMARKS BOX -->
+  <div class="remark-box">
+    <b>Remarks:</b>
+    <% 
+      let gpaForRemark = totalCredit > 0 ? (totalGradePoints / totalCredit) : 0;
+      let remark = '';
+      if (hasAnyNG) {
+        remark = 'Needs Improvement';
+      } else if (gpaForRemark >= 3.61 && gpaForRemark <= 4.0) {
+        remark = 'Outstanding';
+      } else if (gpaForRemark >= 3.21 && gpaForRemark <= 3.6) {
+        remark = 'Excellent';
+      } else if (gpaForRemark >= 2.81 && gpaForRemark <= 3.2) {
+        remark = 'Very Good';
+      } else if (gpaForRemark >= 2.41 && gpaForRemark <= 2.8) {
+        remark = 'Good';
+      } else if (gpaForRemark >= 2.01 && gpaForRemark <= 2.4) {
+        remark = 'Satisfactory';
+      } else if (gpaForRemark >= 1.61 && gpaForRemark <= 2.0) {
+        remark = 'Acceptable';
+      } else if (gpaForRemark >= 1.6 && gpaForRemark <= 1.6) {
+        remark = 'Basic';
+      } else {
+        remark = 'Not Graded';
+      }
+    %>
+    <%= remark %>
+  </div>
+
+  <!-- nepali date should be here -->
+  <div class="grading-scale">
+     <table border="1" cellspacing="0" cellpadding="6" style="width:100%; border-collapse:collapse; text-align:center; font-family:Arial, sans-serif;scale: 1.01;">
+  <thead>
+    <tr>
+      <th>S.N</th>
+      <th>Learning %</th>
+      <th>GP</th>
+      <th>Grade</th>
+      <th>Grade Explanation</th>
+    </tr>
+  </thead>
+
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>90% – 100%</td>
+      <td>4.0</td>
+      <td>A+</td>
+      <td>Outstanding</td>
+    </tr>
+
+    <tr>
+      <td>2</td>
+      <td>80% – 89%</td>
+      <td>3.6</td>
+      <td>A</td>
+      <td>Excellent</td>
+    </tr>
+
+    <tr>
+      <td>3</td>
+      <td>70% – 79%</td>
+      <td>3.2</td>
+      <td>B+</td>
+      <td>Very Good</td>
+    </tr>
+
+    <tr>
+      <td>4</td>
+      <td>60% – 69%</td>
+      <td>2.8</td>
+      <td>B</td>
+      <td>Good</td>
+    </tr>
+
+    <tr>
+      <td>5</td>
+      <td>50% – 59%</td>
+      <td>2.4</td>
+      <td>C+</td>
+      <td>Satisfactory</td>
+    </tr>
+
+    <tr>
+      <td>6</td>
+      <td>40% – 49%</td>
+      <td>2.0</td>
+      <td>C</td>
+      <td>Acceptable</td>
+    </tr>
+
+    <tr>
+      <td>7</td>
+      <td>35% – 39%</td>
+      <td>1.6</td>
+      <td>D</td>
+      <td>Basic</td>
+    </tr>
+
+    <tr>
+      <td>8</td>
+      <td>Below 35%</td>
+      <td>NG</td>
+      <td>NG</td>
+      <td>Not Graded</td>
+    </tr>
+  </tbody>
+</table>
+
+      </div> 
 
   <!-- SIGNATURES -->
   <div class="sign-row">
@@ -1054,26 +1208,14 @@
           </div>
         </div>
 
-        <hr>
+     
+        <div style="display: flex;justify-content: space-between;"> 
+          <div>Note: Ab = absent</div>
+          <div>W - withheld</div>
+          <div>* - failed</div>
+        </div>
       
-
-      <!-- GRADING SCALE -->
-      <div class="grading-scale">
-          <table>
-              <tr>
-                  <td>90% and above : A+</td>
-                  <td>80% and above : A</td>
-                  <td>70% and above : B+</td>
-                  <td>60% and above : B</td>
-              </tr>
-              <tr>
-                  <td>50% and above: C+</td>
-                  <td>40% and above: C</td>
-                  <td>35% and above: D</td>
-                  <td>Below 35% : NG</td>
-              </tr>
-          </table>
-      </div>
+      <center> <p style="margin-top: 5px;"> <b>Issued Date:</b> 2083-4-31</p></center>
   </div>
 </div>
 
