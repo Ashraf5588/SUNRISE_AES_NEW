@@ -715,12 +715,13 @@
         return subjectOrder[upperName] || 999; // Unknown subjects go to the end
     }
 
-    // Function to check if a value is Ab (sentinel 0.000001)
+    // Function to check if a value is Ab (absent) - FIXED
     function isAb(value) {
       if (value === null || value === undefined) {
         return false;
       }
       
+      // Convert to string for checking
       const strValue = String(value).trim();
       
       // Check for exact match
@@ -736,7 +737,7 @@
         }
       }
       
-      // Check if it's a string representation
+      // Check if it's a string representation - FIXED: Check for "Ab" as well
       if (typeof value === 'string') {
         const cleanValue = value.trim().toLowerCase();
         if (cleanValue === '0.000001' || cleanValue === 'ab' || cleanValue === 'absent') {
@@ -894,7 +895,7 @@
       let totalCredit = 0;
       let m;
       let totalGradePoints = 0;
-      let hasAnyNG = false;
+      let hasActualNG = false; // Track only actual NG grades, not Absent
       %>
 
       <% sortedSubjects.forEach((sub, index) => { 
@@ -906,13 +907,16 @@
         // ========== FIXED BACKEND CALCULATIONS ==========
         const isNoWorksheet = NO_WORKSHEET_SUBJECTS.includes(sub.subject.toUpperCase());
         
+        // Check if student is Absent in this subject
+        const isAbsent = isAb(sub.theorymarks);
+        
         // Get theory marks - handle Ab
         let theoryMarksValue = getNumericValue(sub.theorymarks);
         let theoryMarksDisplay = getDisplayValue(sub.theorymarks);
         
-        // Process worksheet grades - FIXED: Only process if worksheetGrades exists and has data
+        // Process worksheet grades - FIXED: Only if not absent and has data
         let worksheetMarks = [];
-        if (!isNoWorksheet && sub.worksheetGrades && Array.isArray(sub.worksheetGrades) && sub.worksheetGrades.length > 0) {
+        if (!isNoWorksheet && !isAbsent && sub.worksheetGrades && Array.isArray(sub.worksheetGrades) && sub.worksheetGrades.length > 0) {
           sub.worksheetGrades.forEach((worksheetgrade) => {
             let grade = String(worksheetgrade).trim();
             // Check for Ab in worksheet grades
@@ -958,7 +962,7 @@
         }
         
         // If the student is Ab, finalGP should be 0
-        if (isAb(sub.theorymarks)) {
+        if (isAbsent) {
           finalGP = 0;
         }
         
@@ -970,10 +974,10 @@
           finalGP = 4;
         }
         
-        // Check if this subject has NG grade
+        // Check if this subject has actual NG grade (not caused by Absent)
         const subjectGrade = getGrade(finalGP);
-        if (subjectGrade === 'NG') {
-          hasAnyNG = true;
+        if (subjectGrade === 'NG' && !isAbsent) {
+          hasActualNG = true;
         }
         
         // GP display for practical column
@@ -994,9 +998,11 @@
         }
         m = creditHour || 'N/A';
         
-        // Calculate total grade points
+        // Calculate total grade points (only if not absent)
         let practicalCreditHour = chData ? (chData.practicalCreditHour || 0) : 0;
-        totalGradePoints += (finalGP * practicalCreditHour);
+        if (!isAbsent) {
+          totalGradePoints += (finalGP * practicalCreditHour);
+        }
         totalCredit += creditHour;
       %>
 
@@ -1004,57 +1010,59 @@
         <td><%= index + 1 %></td>
         <td><%= displaySubjectName %></td>
         <td><%= m %></td>
-     
-        
-        
-        <td class="col-finalgp"><%= finalGP.toFixed(2) %></td>
-        <td class="col-finalgrade"><%= getGrade(finalGP) %></td>
-         <td class="col-obtainedgp">
-    <% 
-      const grade = getGrade(finalGP);
-      let obtainedGP = 0;
-      if (grade === 'A+') obtainedGP = 4.0;
-      else if (grade === 'A') obtainedGP = 3.6;
-      else if (grade === 'B+') obtainedGP = 3.2;
-      else if (grade === 'B') obtainedGP = 2.8;
-      else if (grade === 'C+') obtainedGP = 2.4;
-      else if (grade === 'C') obtainedGP = 2.0;
-      else if (grade === 'D') obtainedGP = 1.6;
-      else obtainedGP = 'NG';
-    %>
-    <%= obtainedGP %>
-  </td>
-          <td class="col-highestmarks"><%= sub.highestmarks || '-' %></td>
-          <td class="col-remarks">
-            <% 
-              // Get the final grade for this subject
-              const finalGrade = getGrade(finalGP);
-              let subjectRemark = '';
-              
-              // Use GRADE for remarks (not GPA ranges)
-              if (finalGrade === 'NG') {
-                subjectRemark = 'Not Graded';
-              } else if (finalGrade === 'A+') {
-                subjectRemark = 'Outstanding';
-              } else if (finalGrade === 'A') {
-                subjectRemark = 'Excellent';
-              } else if (finalGrade === 'B+') {
-                subjectRemark = 'Very Good';
-              } else if (finalGrade === 'B') {
-                subjectRemark = 'Good';
-              } else if (finalGrade === 'C+') {
-                subjectRemark = 'Satisfactory';
-              } else if (finalGrade === 'C') {
-                subjectRemark = 'Acceptable';
-              } else if (finalGrade === 'D') {
-                subjectRemark = 'Basic';
-              } else {
-                subjectRemark = 'Not Graded';
-              }
-            %>
-            <%= subjectRemark %>
-          </td>
-</tr>
+        <td class="col-finalgp"><%= isAbsent ? 'Ab' : finalGP.toFixed(2) %></td>
+        <td class="col-finalgrade"><%= isAbsent ? 'Ab' : getGrade(finalGP) %></td>
+        <td class="col-obtainedgp">
+          <% 
+            let obtainedGP = 0; // Declare outside the if block
+            if (isAbsent) {
+              obtainedGP = 'Ab';
+            } else {
+              const grade = getGrade(finalGP);
+              if (grade === 'A+') obtainedGP = 4.0;
+              else if (grade === 'A') obtainedGP = 3.6;
+              else if (grade === 'B+') obtainedGP = 3.2;
+              else if (grade === 'B') obtainedGP = 2.8;
+              else if (grade === 'C+') obtainedGP = 2.4;
+              else if (grade === 'C') obtainedGP = 2.0;
+              else if (grade === 'D') obtainedGP = 1.6;
+              else obtainedGP = 'NG';
+            }
+          %>
+          <%= obtainedGP %>
+        </td>
+        <td class="col-highestmarks"><%= sub.highestmarks || '-' %></td>
+        <td class="col-remarks">
+          <% 
+            // Get the final grade for this subject
+            const finalGrade = getGrade(finalGP);
+            let subjectRemark = '';
+            
+            if (isAbsent) {
+              subjectRemark = 'Absent';
+            } else if (finalGrade === 'NG') {
+              subjectRemark = 'Not Graded';
+            } else if (finalGrade === 'A+') {
+              subjectRemark = 'Outstanding';
+            } else if (finalGrade === 'A') {
+              subjectRemark = 'Excellent';
+            } else if (finalGrade === 'B+') {
+              subjectRemark = 'Very Good';
+            } else if (finalGrade === 'B') {
+              subjectRemark = 'Good';
+            } else if (finalGrade === 'C+') {
+              subjectRemark = 'Satisfactory';
+            } else if (finalGrade === 'C') {
+              subjectRemark = 'Acceptable';
+            } else if (finalGrade === 'D') {
+              subjectRemark = 'Basic';
+            } else {
+              subjectRemark = 'Not Graded';
+            }
+          %>
+          <%= subjectRemark %>
+        </td>
+      </tr>
 
       <% }) %>
       <tr colspan="7">
@@ -1065,7 +1073,7 @@
            <b>Grade Average Point (GPA) = 
         <% 
           let gpaForDisplay = totalCredit > 0 ? (totalGradePoints / totalCredit) : 0;
-          if (hasAnyNG) { 
+          if (hasActualNG) { 
         %>
         NG
         <% 
@@ -1101,7 +1109,7 @@
     <% 
       let gpaForRemark = totalCredit > 0 ? (totalGradePoints / totalCredit) : 0;
       let remark = '';
-      if (hasAnyNG) {
+      if (hasActualNG) {
         remark = 'Needs Improvement';
       } else if (gpaForRemark >= 3.61 && gpaForRemark <= 4.0) {
         remark = 'Outstanding';
