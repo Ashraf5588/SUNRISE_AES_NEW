@@ -677,28 +677,6 @@
     }
   </script>
 
-  <div class="no-print control-panel">
-    <div class="column-toggle-group">
-      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="theorymarks"> Hide Th Marks</label>
-      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="prgp"> Hide Pr GP</label>
-      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="finalgp"> Hide Final GP</label>
-      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="finalgrade"> Hide Grade</label>
-      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="obtainedgp"> Hide Obtained GP</label>
-      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="highestmarks"> Hide Highest Marks</label>
-      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="remarks"> Hide Remarks</label>
-    </div>
-    <button onclick="window.print()">Print All</button>
-    <button onclick="downloadPdf()">Download PDF</button>
-    <button onclick="exportToWord()" class="secondary">Download Word</button>
-  </div>
-
-  <input type="hidden" id="pageClass" value="<%= studentClass %>">
-  <input type="hidden" id="pageSection" value="<%= section %>">
-  <input type="hidden" id="pageYear" value="<%= academicYear %>">
-  <input type="hidden" id="pageTerminal" value="<%= terminal %>">
-
-  <div class="sheets-container">
-
   <%
   // ========== SUBJECT DISPLAY ORDER AND NAME MAPPING ==========
   // Define the display order - change numbers to reorder subjects
@@ -729,7 +707,134 @@
       const upperName = subjectName.toUpperCase().trim();
       return subjectOrder[upperName] || 999;
   }
+
+  // Function to check if a value is Ab (absent)
+  function isAb(value) {
+    if (value === null || value === undefined) {
+      return false;
+    }
+    
+    const strValue = String(value).trim();
+    
+    if (strValue === '0.000001') {
+      return true;
+    }
+    
+    if (typeof value === 'number') {
+      const epsilon = 0.0000001;
+      if (Math.abs(value - 0.000001) < epsilon) {
+        return true;
+      }
+    }
+    
+    if (typeof value === 'string') {
+      const cleanValue = value.trim().toLowerCase();
+      if (cleanValue === '0.000001' || cleanValue === 'ab' || cleanValue === 'absent') {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  // Function to get numeric value
+  function getNumericValue(value) {
+    if (isAb(value)) {
+      return 0;
+    }
+    if (value === null || value === undefined) {
+      return 0;
+    }
+    if (typeof value === 'string') {
+      const cleaned = value.trim();
+      if (cleaned === '') return 0;
+      const num = parseFloat(cleaned);
+      return isNaN(num) ? 0 : num;
+    }
+    const num = Number(value);
+    return isNaN(num) ? 0 : num;
+  }
+
+  // Function to round to 2 decimal places
+  function roundToTwo(num) {
+    return Math.round(num * 100) / 100;
+  }
+
+  // Function to get grade from GP - FIXED with rounding
+  function getGrade(finalgp) {
+    // Round to 2 decimal places to avoid floating point issues
+    const gp = roundToTwo(finalgp);
+    
+    if (gp >= 3.61 && gp <= 4.0) return "A+";
+    if (gp >= 3.21 && gp <= 3.60) return "A";
+    if (gp >= 2.81 && gp <= 3.20) return "B+";
+    if (gp >= 2.41 && gp <= 2.80) return "B";
+    if (gp >= 2.01 && gp <= 2.40) return "C+";
+    if (gp >= 1.61 && gp <= 2.00) return "C";
+    if (gp === 1.6) return "D";
+   if(gp<1.6) return "NG";
+    return "NG";
+  }
+
+  // Function to get obtained GP from grade
+  function getObtainedGPFromGrade(grade) {
+    if (grade === 'A+') return 4.0;
+    if (grade === 'A') return 3.6;
+    if (grade === 'B+') return 3.2;
+    if (grade === 'B') return 2.8;
+    if (grade === 'C+') return 2.4;
+    if (grade === 'C') return 2.0;
+    if (grade === 'D') return 1.6;
+    return 'NG';
+  }
+
+  // Function to get subject remark based on GRADE
+  function getSubjectRemark(grade) {
+    if (grade === 'NG') return 'Not Graded';
+    if (grade === 'A+') return 'Outstanding';
+    if (grade === 'A') return 'Excellent';
+    if (grade === 'B+') return 'Very Good';
+    if (grade === 'B') return 'Good';
+    if (grade === 'C+') return 'Satisfactory';
+    if (grade === 'C') return 'Acceptable';
+    if (grade === 'D') return 'Basic';
+    return 'Not Graded';
+  }
+
+  // Function to get GP from percentage
+  function getGP(percent) {
+    if (percent >= 90) return 4.0;
+    if (percent >= 80) return 3.6;
+    if (percent >= 70) return 3.2;
+    if (percent >= 60) return 2.8;
+    if (percent >= 50) return 2.4;
+    if (percent >= 40) return 2.0;
+    if (percent >= 35) return 1.6;
+    return 0.0;
+  }
   %>
+
+  <div class="no-print control-panel">
+    <div class="column-toggle-group">
+      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="theorymarks"> Hide Th Marks</label>
+      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="prgp"> Hide Pr GP</label>
+      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="finalgp"> Hide Final GP</label>
+      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="finalgrade"> Hide Grade</label>
+      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="obtainedgp"> Hide Obtained GP</label>
+      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="highestmarks"> Hide Highest Marks</label>
+      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="remarks"> Hide Remarks</label>
+    </div>
+    <button onclick="window.print()">Print All</button>
+    <button onclick="downloadPdf()">Download PDF</button>
+    <button onclick="exportToWord()" class="secondary">Download Word</button>
+  </div>
+
+  <input type="hidden" id="pageClass" value="<%= studentClass %>">
+  <input type="hidden" id="pageSection" value="<%= section %>">
+  <input type="hidden" id="pageYear" value="<%= academicYear %>">
+  <input type="hidden" id="pageTerminal" value="<%= terminal %>">
+
+  <div class="sheets-container">
 
   <% const sortedStudentData = [...studentWisedata].sort((a, b) => {
     return Number(a.roll) - Number(b.roll);
@@ -789,84 +894,26 @@
         let totalCredit = 0;
         let m;
         let totalGradePoints = 0;
-        let hasAnyNG = false;
-
-        function getGP(percent) {
-          if (percent >= 90) return 4.0;
-          if (percent >= 80) return 3.6;
-          if (percent >= 70) return 3.2;
-          if (percent >= 60) return 2.8;
-          if (percent >= 50) return 2.4;
-          if (percent >= 40) return 2.0;
-          if (percent >= 35) return 1.6;
-          return 0.0;
-        }
-
-        function getGrade(gp) {
-          if (gp === 4.0) return "A+";
-          if (gp >= 3.6) return "A";
-          if (gp >= 3.2) return "B+";
-          if (gp >= 2.8) return "B";
-          if (gp >= 2.4) return "C+";
-          if (gp >= 2.0) return "C";
-          if (gp >= 1.6) return "D";
-          return "NG";
-        }
-
-        function getObtainedGP(grade) {
-          if (grade === 'A+') return 4.0;
-          if (grade === 'A') return 3.6;
-          if (grade === 'B+') return 3.2;
-          if (grade === 'B') return 2.8;
-          if (grade === 'C+') return 2.4;
-          if (grade === 'C') return 2.0;
-          if (grade === 'D') return 1.6;
-          return 'NG';
-        }
-
-        // Function to get subject remark based on GRADE
-        function getSubjectRemark(grade) {
-          if (grade === 'NG') return 'Not Graded';
-          if (grade === 'A+') return 'Outstanding';
-          if (grade === 'A') return 'Excellent';
-          if (grade === 'B+') return 'Very Good';
-          if (grade === 'B') return 'Good';
-          if (grade === 'C+') return 'Satisfactory';
-          if (grade === 'C') return 'Acceptable';
-          if (grade === 'D') return 'Basic';
-          return 'Not Graded';
-        }
-
-        // Function to get numeric value - FIXED
-        function getNumericValue(value) {
-          if (value === null || value === undefined) return 0;
-          if (typeof value === 'string') {
-            const cleaned = value.trim();
-            if (cleaned === '') return 0;
-            const num = parseFloat(cleaned);
-            return isNaN(num) ? 0 : num;
-          }
-          const num = Number(value);
-          return isNaN(num) ? 0 : num;
-        }
+        let hasActualNG = false; // Track only actual NG grades
         %>
 
         <% sortedSubjects.forEach((sub, index) => { 
           // Get display name for subject
           const displaySubjectName = getDisplaySubjectName(sub.subject);
+          // Check if student is Absent
+          const isAbsent = isAb(sub.theorymarks);
         %>
 
         <% 
         let worksheetMarks=[];
-        // FIXED: Get numeric theory marks
         let theoryMarks = getNumericValue(sub.theorymarks);
         let theoryFullMarks = getNumericValue(sub.theoryfullmarks);
         let practicalFullMarks = getNumericValue(sub.practicalfullmarks);
         
         let thP = theoryFullMarks > 0 ? (theoryMarks / theoryFullMarks) * 100 : 0;
         
-        // Process worksheet grades - FIXED: Only if data exists
-        if (sub.worksheetGrades && Array.isArray(sub.worksheetGrades) && sub.worksheetGrades.length > 0) {
+        // Process worksheet grades - Only if not absent and data exists
+        if (!isAbsent && sub.worksheetGrades && Array.isArray(sub.worksheetGrades) && sub.worksheetGrades.length > 0) {
           sub.worksheetGrades.forEach((worksheetgrade)=>{
             let grade = String(worksheetgrade).trim();
             if(grade=="A+") { worksheetMarks.push(4); }
@@ -896,16 +943,28 @@
         let totalCreditHour = theoryCreditHour + practicalCreditHour;
         let finalGP = totalCreditHour > 0 ? (thGP*theoryCreditHour + prGP*practicalCreditHour) / totalCreditHour : 0;
         
-        // FIXED: Ensure finalGP is a valid number between 0 and 4
+        // If absent, set finalGP to 0
+        if (isAbsent) {
+          finalGP = 0;
+        }
+        
+        // Ensure finalGP is a valid number between 0 and 4
         if (isNaN(finalGP) || finalGP < 0) finalGP = 0;
         if (finalGP > 4) finalGP = 4;
         
-        let finalGrade = getGrade(finalGP);
-        let obtainedGP = getObtainedGP(finalGrade);
+        // Round finalGP to 2 decimal places
+        finalGP = roundToTwo(finalGP);
         
-        // Check if this subject has NG grade
-        if (finalGrade === 'NG') {
-          hasAnyNG = true;
+        let finalGrade = getGrade(finalGP);
+        
+        // Only count actual NG grades (not Absent)
+        if (finalGrade === 'NG' && !isAbsent) {
+          hasActualNG = true;
+        }
+        
+        let obtainedGP = 'Ab';
+        if (!isAbsent) {
+          obtainedGP = getObtainedGPFromGrade(finalGrade);
         }
         %>
 
@@ -913,14 +972,18 @@
           <td><%= index + 1 %></td>
           <td><%= displaySubjectName %></td>
           <td><%= totalCreditHour || 'N/A' %></td>
-          <td class="col-theorymarks"><%= sub.theorymarks %></td>
-          <td class="col-finalgp"><%= finalGP.toFixed(2) %></td>
-          <% totalCredit += totalCreditHour; 
-             totalGradePoints += (thGP*theoryCreditHour + prGP*practicalCreditHour);%>
-          <td class="col-finalgrade"><%= finalGrade %></td>
+          <td class="col-theorymarks"><%= isAbsent ? 'Ab' : sub.theorymarks %></td>
+          <td class="col-finalgp"><%= isAbsent ? 'Ab' : finalGP.toFixed(2) %></td>
+          <% 
+            if (!isAbsent) {
+              totalCredit += totalCreditHour; 
+              totalGradePoints += (thGP*theoryCreditHour + prGP*practicalCreditHour);
+            }
+          %>
+          <td class="col-finalgrade"><%= isAbsent ? 'Ab' : finalGrade %></td>
           <td class="col-obtainedgp"><%= obtainedGP %></td>
           <td class="col-highestmarks"><%= sub.highestmarks || '-' %></td>
-          <td class="col-remarks"><%= getSubjectRemark(finalGrade) %></td>
+          <td class="col-remarks"><%= isAbsent ? 'Absent' : getSubjectRemark(finalGrade) %></td>
         </tr>
 
         <% }) %>
@@ -934,7 +997,9 @@
               <b>Grade Average Point (GPA) = 
                 <% 
                   let gpaForDisplay = totalCredit > 0 ? (totalGradePoints / totalCredit) : 0;
-                  if (hasAnyNG) { 
+                  // Round GPA to 2 decimal places
+                  gpaForDisplay = roundToTwo(gpaForDisplay);
+                  if (hasActualNG) { 
                 %>
                 NG
                 <% 
@@ -968,8 +1033,11 @@
         <b>Remarks:</b><br>
         <% 
           let gpaForRemark = totalCredit > 0 ? (totalGradePoints / totalCredit) : 0;
+          // Round to 2 decimal places to avoid floating point issues
+          gpaForRemark = roundToTwo(gpaForRemark);
+          
           let overallRemark = '';
-          if (hasAnyNG) {
+          if (hasActualNG) {
             overallRemark = 'Needs Improvement';
           } else if (gpaForRemark >= 3.61 && gpaForRemark <= 4.0) {
             overallRemark = 'Outstanding';
@@ -985,6 +1053,8 @@
             overallRemark = 'Acceptable';
           } else if (gpaForRemark >= 1.6 && gpaForRemark <= 1.6) {
             overallRemark = 'Basic';
+          } else if (gpaForRemark < 1.6) {
+            overallRemark = 'Not Graded';
           } else {
             overallRemark = 'Not Graded';
           }
@@ -1092,7 +1162,7 @@
       <div style="display: flex;justify-content: space-between;"> 
         <div>Note: Ab = absent</div>
         <div>W - withheld</div>
-        <div>* - failed</div>
+       
       </div>
       
       <center> <p style="margin-top: 5px;"> <b>Issued Date:</b> 2083-4-31</p></center>
