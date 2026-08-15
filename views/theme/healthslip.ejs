@@ -333,7 +333,9 @@
         <th>Grade</th>
       </tr>
 
-      <% sciencepracticaldata.forEach((student, index) => { %>
+  <% sciencepracticaldata
+  .sort((a, b) => Number(a.roll) - Number(b.roll))
+  .forEach((student, index) => {%>
         <% 
           // Attendance + Participation
           const attendanceParticipation = (student.attendanceMarks || 0) + (student.participationMarks || 0);

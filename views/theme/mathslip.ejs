@@ -332,7 +332,9 @@
        <th>Total</th>
        <th>Grade</th>
       </tr>
-  <% sciencepracticaldata.forEach((student, index) => { %>
+  <% sciencepracticaldata
+  .sort((a, b) => Number(a.roll) - Number(b.roll))
+  .forEach((student, index) => {%>
        <% let totalGivenAllPractical = 0; %>
       <% let totalGivenAllProject = 0; %>
       <% let totalObtainedAllPractical = 0; %>
