@@ -610,10 +610,243 @@
     <div class="form-selector-container">
       <div class="form-selector-title">Choose Class, Section and Terminal for Marksheet</div>
       <div class="form-selector-grid">
+        <%
+          // ========== CLASS ORDERING ==========
+          const classSortOrder = {
+            'nursery': 1,
+            'lkg': 2,
+            'ukg': 3,
+            'one': 4,
+            'two': 5,
+            'three': 6,
+            'four': 7,
+            'five': 8,
+            'six': 9,
+            'seven': 10,
+            'eight': 11,
+            'nine': 12,
+            'ten': 13
+          };
+          
+          const numericClassMap = { 
+            '1': 'one', '2': 'two', '3': 'three', '4': 'four', 
+            '5': 'five', '6': 'six', '7': 'seven', '8': 'eight', 
+            '9': 'nine', '10': 'ten' 
+          };
+          
+          function getClassSortRank(value) {
+            const normalized = String(value || '').trim().toLowerCase()
+              .replace(/^class\s+/, '')
+              .replace(/\s+section$/, '');
+            const key = numericClassMap[normalized] || normalized;
+            return classSortOrder[key] || 999;
+          }
+          
+          const sortedClassSectionData = [...(studentClassdata || [])].sort((a, b) => {
+            const classRankA = getClassSortRank(a && a.studentClass);
+            const classRankB = getClassSortRank(b && b.studentClass);
+            if (classRankA !== classRankB) return classRankA - classRankB;
+            return String(a && a.section || '').localeCompare(String(b && b.section || ''), undefined, { numeric: true, sensitivity: 'base' });
+          });
+
+          // ========== SUBJECT ORDERING AND DISPLAY NAMES ==========
+          const subjectOrder = {
+            'NEPALI': 2,
+            'ENGLISH': 1,
+            'MATHEMATICS': 3,
+            'SCIENCE': 4,
+            'SCIENCE & TECHNOLOGY': 4,
+            'COMPUTER': 5,
+            'COMPUTER SCIENCE': 5,
+            'SOCIAL': 6,
+            'SOCIAL STUDIES': 6,
+            'SOCIAL STUDIES AND HUMAN VALUE EDUCATION': 6,
+            'HEALTH': 7,
+            'HEALTH PHYSICAL AND CREATIVE ARTS': 7,
+            'DELIGHT': 8,
+            'OPTIONAL-II': 9,
+            'ORAL': 10,
+            'HYGIENE': 11,
+            'THEME': 12,
+            'ECA': 13
+          };
+          
+          const subjectDisplayNames = {
+            'SCIENCE': 'SCIENCE & TECHNOLOGY',
+            'SCIENCE & TECHNOLOGY': 'SCIENCE & TECHNOLOGY',
+            'COMPUTER': 'COMPUTER SCIENCE',
+            'COMPUTER SCIENCE': 'COMPUTER SCIENCE',
+            'SOCIAL': 'SOCIAL STUDIES AND HUMAN VALUE EDUCATION',
+            'SOCIAL STUDIES': 'SOCIAL STUDIES AND HUMAN VALUE EDUCATION',
+            'HEALTH': 'HEALTH PHYSICAL AND CREATIVE ARTS',
+            'DELIGHT': 'ENGLISH-II',
+            'ENV.SCIENCE': 'Optional-II',
+            'OPT.MATH': 'Optional-II'
+          };
+          
+          function getDisplaySubjectName(subjectName) {
+            const upperName = subjectName.toUpperCase().trim();
+            if (upperName === 'ENV.SCIENCE' || upperName === 'ENV SCIENCE' || 
+                upperName === 'OPT.MATH' || upperName === 'OPT MATH' || upperName === 'OPTIONAL MATH') {
+              return 'Optional-II';
+            }
+            return subjectDisplayNames[upperName] || subjectName;
+          }
+          
+          function getSubjectOrder(subjectName) {
+            const upperName = subjectName.toUpperCase().trim();
+            if (upperName === 'ENV.SCIENCE' || upperName === 'ENV SCIENCE' || 
+                upperName === 'OPT.MATH' || upperName === 'OPT MATH' || upperName === 'OPTIONAL MATH') {
+              return 9;
+            }
+            return subjectOrder[upperName] || 999;
+          }
+
+          // ========== GRADE FUNCTIONS ==========
+          function roundToTwo(num) {
+            if (isNaN(num) || num === null || num === undefined) return 0;
+            return Math.round(num * 100) / 100;
+          }
+
+          function getGrade(gp) {
+            const roundedGp = roundToTwo(gp);
+            if (roundedGp >= 3.61 && roundedGp <= 4.0) return "A+";
+            if (roundedGp >= 3.21 && roundedGp <= 3.60) return "A";
+            if (roundedGp >= 2.81 && roundedGp <= 3.20) return "B+";
+            if (roundedGp >= 2.41 && roundedGp <= 2.80) return "B";
+            if (roundedGp >= 2.01 && roundedGp <= 2.40) return "C+";
+            if (roundedGp >= 1.61 && roundedGp <= 2.00) return "C";
+            if (roundedGp === 1.6) return "D";
+            if (roundedGp < 1.6) return "NG";
+            return "NG";
+          }
+
+          function getObtainedGPFromGrade(grade) {
+            if (grade === 'A+') return 4.0;
+            if (grade === 'A') return 3.6;
+            if (grade === 'B+') return 3.2;
+            if (grade === 'B') return 2.8;
+            if (grade === 'C+') return 2.4;
+            if (grade === 'C') return 2.0;
+            if (grade === 'D') return 1.6;
+            return 'NG';
+          }
+
+          function getSubjectRemark(grade) {
+            if (grade === 'NG') return 'Not Graded';
+            if (grade === 'A+') return 'Outstanding';
+            if (grade === 'A') return 'Excellent';
+            if (grade === 'B+') return 'Very Good';
+            if (grade === 'B') return 'Good';
+            if (grade === 'C+') return 'Satisfactory';
+            if (grade === 'C') return 'Acceptable';
+            if (grade === 'D') return 'Basic';
+            return 'Not Graded';
+          }
+
+          function getOverallRemark(gpa, hasNG) {
+            const roundedGpa = roundToTwo(gpa);
+            if (hasNG) return 'Needs Improvement';
+            if (roundedGpa >= 3.61 && roundedGpa <= 4.0) return 'Outstanding';
+            if (roundedGpa >= 3.21 && roundedGpa <= 3.6) return 'Excellent';
+            if (roundedGpa >= 2.81 && roundedGpa <= 3.2) return 'Very Good';
+            if (roundedGpa >= 2.41 && roundedGpa <= 2.8) return 'Good';
+            if (roundedGpa >= 2.01 && roundedGpa <= 2.4) return 'Satisfactory';
+            if (roundedGpa >= 1.61 && roundedGpa <= 2.0) return 'Acceptable';
+            if (roundedGpa >= 1.6 && roundedGpa <= 1.6) return 'Basic';
+            if (roundedGpa < 1.6) return 'Not Graded';
+            return 'Not Graded';
+          }
+
+          function getGP(percent) {
+            const roundedPercent = roundToTwo(percent);
+            if (roundedPercent >= 90) return 4.0;
+            if (roundedPercent >= 80) return 3.6;
+            if (roundedPercent >= 70) return 3.2;
+            if (roundedPercent >= 60) return 2.8;
+            if (roundedPercent >= 50) return 2.4;
+            if (roundedPercent >= 40) return 2.0;
+            if (roundedPercent >= 35) return 1.6;
+            return 0.0;
+          }
+
+          // ========== FUNCTION TO GET OPTIONAL-II SUBJECT DATA ==========
+          function getOptionalSubjectData(subjects) {
+            let envScience = null;
+            let optMath = null;
+            let selectedSubject = null;
+            let selectedMarks = 0;
+            let selectedFullMarks = 0;
+            let selectedPassMarks = 0;
+            let selectedAttendance = 0;
+            let selectedCreditHour = 0;
+            
+            subjects.forEach(sub => {
+              const upperName = sub.subject.toUpperCase().trim();
+              if (upperName === 'ENV.SCIENCE' || upperName === 'ENV SCIENCE') {
+                envScience = sub;
+              }
+              if (upperName === 'OPT.MATH' || upperName === 'OPT MATH' || upperName === 'OPTIONAL MATH') {
+                optMath = sub;
+              }
+            });
+            
+            // Check if ENV.SCIENCE has theorymarks > 0
+            if (envScience && envScience.theorymarks !== null && envScience.theorymarks > 0) {
+              selectedSubject = envScience;
+              selectedMarks = envScience.theorymarks;
+              selectedFullMarks = envScience.theoryfullmarks || 0;
+              selectedPassMarks = envScience.passMarks || 0;
+              selectedAttendance = envScience.attendance || 0;
+            } 
+            // Check if OPT.MATH has theorymarks > 0
+            else if (optMath && optMath.theorymarks !== null && optMath.theorymarks > 0) {
+              selectedSubject = optMath;
+              selectedMarks = optMath.theorymarks;
+              selectedFullMarks = optMath.theoryfullmarks || 0;
+              selectedPassMarks = optMath.passMarks || 0;
+              selectedAttendance = optMath.attendance || 0;
+            }
+            // If both have 0 or null, use ENV.SCIENCE as default (shows 0)
+            else if (envScience) {
+              selectedSubject = envScience;
+              selectedMarks = 0;
+              selectedFullMarks = envScience.theoryfullmarks || 0;
+              selectedPassMarks = envScience.passMarks || 0;
+              selectedAttendance = envScience.attendance || 0;
+            }
+            // If only OPT.MATH exists with 0 or null
+            else if (optMath) {
+              selectedSubject = optMath;
+              selectedMarks = 0;
+              selectedFullMarks = optMath.theoryfullmarks || 0;
+              selectedPassMarks = optMath.passMarks || 0;
+              selectedAttendance = optMath.attendance || 0;
+            }
+            
+            // Get credit hour for the selected subject
+            if (selectedSubject) {
+              let creditMatch = creditHourData.filter(ch => ch.newsubject === selectedSubject.subject)[0];
+              if (creditMatch) {
+                selectedCreditHour = creditMatch.theoryCreditHour || 0;
+              }
+            }
+            
+            return {
+              subject: selectedSubject,
+              marks: selectedMarks,
+              fullMarks: selectedFullMarks,
+              passMarks: selectedPassMarks,
+              attendance: selectedAttendance,
+              creditHour: selectedCreditHour,
+              hasData: selectedSubject !== null
+            };
+          }
+        %>
         <select name="classSection" id="classSection">
           <option value="" selected disabled>Choose Class & Section</option>
-          <% studentClassdata.forEach((data)=>{%>
-            <option value="<%=data.studentClass%>-<%=data.section%>"><%=data.studentClass%>-<%=data.section%></option>
+          <% sortedClassSectionData.forEach((data)=>{%>
+            <option value="<%=data.studentClass%>-<%=data.section%>"><%=data.studentClass%> - <%=data.section%></option>
           <%})%>
         </select>
         <select name="terminals" id="terminal">
@@ -663,181 +896,265 @@
   <input type="hidden" id="pageTerminal" value="<%= terminal %>">
 
   <div class="sheets-container">
-    <% studentWisedata.forEach((data) => { %>
-      <div class="sheet">
-        <div class="watermark"><img src="/image.png" alt="Watermark"></div>
-        <div class="border-frame">
-          <!-- HEADER -->
-          <div class="header">
-            <div class="logo"><img src="/image.png" onerror="this.style.display='none'"></div>
-            <div class="head-text">
-              <div class="school-name"><%= marksheetSetups[0].schoolName %></div>
-              <div class="school-meta"><%= marksheetSetups[0].address %> &nbsp; | &nbsp; Phone: <%= marksheetSetups[0].phone %></div>
-              <div class="report-title">
-                <div>ACADEMIC PROGRESS REPORT</div>
-                <div style="font-size:13px; margin-top:3px; font-weight:600"><%= terminal %> Terminal - <%= academicYear %></div>
-              </div>
+    <% 
+      // Check if studentWisedata exists and has data
+      if (typeof studentWisedata !== 'undefined' && studentWisedata && studentWisedata.length > 0) {
+        // Sort students by roll number
+        const sortedStudentData = [...studentWisedata].sort((a, b) => {
+          return Number(a.roll) - Number(b.roll);
+        });
+        
+        sortedStudentData.forEach((data) => { 
+          // ========== FIX: Handle Optional-II subjects ==========
+          const uniqueSubjects = [];
+          const subjectSet = new Set();
+          let optionalData = null;
+          let hasEnvScience = false;
+          let hasOptMath = false;
+          
+          if (data.subjects && Array.isArray(data.subjects)) {
+            // Check if ENV.SCIENCE and OPT.MATH exist
+            data.subjects.forEach(sub => {
+              const upperName = sub.subject.toUpperCase().trim();
+              if (upperName === 'ENV.SCIENCE' || upperName === 'ENV SCIENCE') {
+                hasEnvScience = true;
+              }
+              if (upperName === 'OPT.MATH' || upperName === 'OPT MATH' || upperName === 'OPTIONAL MATH') {
+                hasOptMath = true;
+              }
+            });
+            
+            // Get the optional subject data
+            optionalData = getOptionalSubjectData(data.subjects);
+            
+            data.subjects.forEach(sub => {
+              const upperName = sub.subject.toUpperCase().trim();
+              // Skip ENV.SCIENCE and OPT.MATH - we handle them separately
+              if (upperName === 'ENV.SCIENCE' || upperName === 'ENV SCIENCE' || 
+                  upperName === 'OPT.MATH' || upperName === 'OPT MATH' || upperName === 'OPTIONAL MATH') {
+                return; // Skip these, we'll add Optional-II separately
+              }
+              
+              const key = upperName;
+              if (!subjectSet.has(key)) {
+                subjectSet.add(key);
+                uniqueSubjects.push(sub);
+              }
+            });
+            
+            // Add Optional-II if ENV.SCIENCE or OPT.MATH exists
+            if (hasEnvScience || hasOptMath) {
+              // Create a synthetic subject for Optional-II using the selected data
+              const optionalSubject = {
+                subject: 'Optional-II',
+                theorymarks: optionalData.marks,
+                theoryfullmarks: optionalData.fullMarks,
+                passMarks: optionalData.passMarks,
+                attendance: optionalData.attendance,
+                // Copy other fields from the actual subject
+                ...optionalData.subject
+              };
+              // Override the subject name to "Optional-II"
+              optionalSubject.subject = 'Optional-II';
+              uniqueSubjects.push(optionalSubject);
+            }
+          }
+          
+          // Sort subjects by the defined order
+          const sortedSubjects = uniqueSubjects.sort((a, b) => {
+            return getSubjectOrder(a.subject) - getSubjectOrder(b.subject);
+          });
+    %>
+
+    <div class="sheet">
+      <div class="watermark"><img src="/image.png" alt="Watermark"></div>
+      <div class="border-frame">
+        <!-- HEADER -->
+        <div class="header">
+          <div class="logo"><img src="/image.png" onerror="this.style.display='none'"></div>
+          <div class="head-text">
+            <div class="school-name"><%= marksheetSetups[0].schoolName %></div>
+            <div class="school-meta"><%= marksheetSetups[0].address %> &nbsp; | &nbsp; Phone: <%= marksheetSetups[0].phone %></div>
+            <div class="report-title">
+              <div>ACADEMIC PROGRESS REPORT</div>
+              <div style="font-size:13px; margin-top:3px; font-weight:600"><%= terminal %> Terminal - <%= academicYear %></div>
             </div>
-            <div class="logo" style="border:none; visibility:hidden"></div>
           </div>
+          <div class="logo" style="border:none; visibility:hidden"></div>
+        </div>
 
-          <!-- Student Info -->
-          <div class="student-info">
-            <div><span class="info-label">Student Name:</span> <span class="info-value"><%= data.name %></span></div>
-            <div><span class="info-label">Roll No:</span> <span class="info-value"><%= data.roll %></span></div>
-            <div><span class="info-label">Class:</span> <span class="info-value"><%= studentClass %></span></div>
-            <div><span class="info-label">Section:</span> <span class="info-value"><%= section %></span></div>
-          </div>
+        <!-- Student Info -->
+        <div class="student-info">
+          <div><span class="info-label">Student Name:</span> <span class="info-value"><%= data.name %></span></div>
+          <div><span class="info-label">Roll No:</span> <span class="info-value"><%= data.roll %></span></div>
+          <div><span class="info-label">Class:</span> <span class="info-value"><%= studentClass %></span></div>
+          <div><span class="info-label">Section:</span> <span class="info-value"><%= section %></span></div>
+        </div>
 
-          <!-- SUBJECT TABLE -->
-          <table>
-            <thead>
-              <tr>
-                <th style="width:5%">S.N</th>
-                <th style="width:25%">Subject</th>
-                <th style="width:12%">Credit Hour</th>
-                <th class="col-theorymarks" style="width:15%">Obtained Th Marks</th>
-                <th>GP</th>
-                <th class="col-grade" style="width:12%">Obtained Grade</th>
-                <th class="col-finalgrade" style="width:12%">Final Grade</th>
-                <th class="col-remarks" style="width:19%">Remarks</th>
-              </tr>
-            </thead>
-            <tbody>
+        <!-- SUBJECT TABLE -->
+        <table>
+          <thead>
+            <tr>
+              <th style="width:5%">S.N</th>
+              <th style="width:25%">Subject</th>
+              <th style="width:12%">Credit Hour</th>
+              <th class="col-theorymarks" style="width:15%">Obtained Th Marks</th>
+              <th>GP</th>
+              <th class="col-grade" style="width:12%">Obtained Grade</th>
+              <th class="col-finalgrade" style="width:12%">Final Grade</th>
+              <th class="col-remarks" style="width:19%">Remarks</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% 
+              let totalCredit = 0;
+              let totalGradePoints = 0;
+              let totalAttendance = 0;
+              let hasActualNG = false;
+            %>
+
+            <% sortedSubjects.forEach((sub, index) => { 
+              // Get display name for subject
+              const displaySubjectName = getDisplaySubjectName(sub.subject);
+            %>
               <% 
-                let totalCredit = 0;
-                let totalGradePoints = 0;
-                let totalAttendance = 0;
-
-                function getGP(percent) {
-                  if (percent >= 90) return 4.0;
-                  if (percent >= 80) return 3.6;
-                  if (percent >= 70) return 3.2;
-                  if (percent >= 60) return 2.8;
-                  if (percent >= 50) return 2.4;
-                  if (percent >= 40) return 2.0;
-                  if (percent >= 35) return 1.6;
-                  return 0.0;
+                let thP = (sub.theorymarks / sub.theoryfullmarks) * 100;
+                let thGP = getGP(thP);
+                let theoryCreditHour = 0;
+                
+                // Find credit hour for this subject
+                let creditMatch = creditHourData.filter(ch => ch.newsubject === sub.subject)[0];
+                if (!creditMatch) {
+                  // If not found, try matching by display name
+                  creditMatch = creditHourData.filter(ch => ch.newsubject === displaySubjectName)[0];
                 }
-
-                function getGrade(gp) {
-                  if (gp === 4.0) return "A+";
-                  if (gp >= 3.6) return "A";
-                  if (gp >= 3.2) return "B+";
-                  if (gp >= 2.8) return "B";
-                  if (gp >= 2.4) return "C+";
-                  if (gp >= 2.0) return "C";
-                  if (gp >= 1.6) return "D";
-                  return "NG";
+                // For Optional-II, use the credit hour from the selected subject
+                if (!creditMatch && sub.subject === 'Optional-II' && optionalData && optionalData.hasData) {
+                  theoryCreditHour = optionalData.creditHour || 0;
                 }
-
-                function getRemarks(finalgrade) {
-                  if (finalgrade === "NG") return "Needs Improvement";
-                  else if(finalgrade === "D") return "Satisfactory";
-                  else if(finalgrade === "C" || finalgrade === "C+") return "Good";
-                  else if(finalgrade === "B" || finalgrade === "B+") return "Very Good";
-                  else return "Excellent Performance";
+                if (creditMatch) {
+                  theoryCreditHour = creditMatch.theoryCreditHour || 0;
+                }
+                
+                // Round thGP
+                thGP = roundToTwo(thGP);
+                
+                let finalGrade = getGrade(thGP);
+                
+                // Check if this subject has actual NG grade
+                if (finalGrade === 'NG') {
+                  hasActualNG = true;
+                }
+                
+                let obtainedGP = getObtainedGPFromGrade(finalGrade);
+                
+                // Accumulate totals
+                if (theoryCreditHour > 0) {
+                  totalCredit += theoryCreditHour;
+                  totalGradePoints += thGP * theoryCreditHour;
+                }
+                
+                // Store attendance if available
+                if (sub.attendance) {
+                  totalAttendance = sub.attendance;
                 }
               %>
 
-              <% data.subjects.forEach((sub, index) => { %>
-                <% 
-                  let thP = (sub.theorymarks / sub.theoryfullmarks) * 100;
-                  let thGP = getGP(thP);
-                  let theoryCreditHour = 0;
-                  
-                  // Find credit hour for this subject
-                  let creditMatch = creditHourData.filter(ch => ch.newsubject === sub.subject)[0];
-                  if (creditMatch) {
-                    theoryCreditHour = creditMatch.theoryCreditHour || 0;
-                  }
-                  
-                  // Accumulate totals
-                  if (theoryCreditHour > 0) {
-                    totalCredit += theoryCreditHour;
-                    totalGradePoints += thGP * theoryCreditHour;
-                  }
-                  
-                  // Store attendance if available
-                  if (sub.attendance) {
-                    totalAttendance = sub.attendance;
-                  }
-                %>
-
-                <tr>
-                  <td><%= index + 1 %></td>
-                  <td class="subject"><%= sub.subject %></td>
-                  <td><%= theoryCreditHour || 'N/A' %></td>
-                  <td class="col-theorymarks"><%= sub.theorymarks %> <%= sub.theorymarks < sub.passMarks ? '*' : '' %></td>
-                  <td class="col-gp"><%= thGP.toFixed(2) %></td>
-                  <td class="col-grade"><%= getGrade(thGP) %></td>
-                  
-                  <td class="col-finalgrade"><%= getGrade(thGP) %></td>
-                  <td class="col-remarks"><%= getRemarks(getGrade(thGP)) %></td>
-                </tr>
-              <% }) %>
-            </tbody>
-          </table>
-
-          <!-- SUMMARY -->
-          <div class="summary">
-            <div>Total Credit Hours: <%= totalCredit %></div>
-            <div><span class="info-label">Attendance:</span> <span class="info-value"><%= totalAttendance || 'N/A' %></span></div>
-            <div>GPA: <%= totalCredit > 0 ? (totalGradePoints / totalCredit).toFixed(2) : 'N/A' %></div>
-          </div>
-
-          <!-- REMARKS -->
-          <div class="notes-row">
-            <div class="remark-box">
-              <b>Remarks:</b><br>
-              <% let gpa = totalCredit > 0 ? (totalGradePoints / totalCredit) : 0; %>
-              <% if (gpa >= 3.6) { %> Excellent Performance
-              <% } else if (gpa >= 3.2) { %> Very Good
-              <% } else if (gpa >= 2.4) { %> Good
-              <% } else if (gpa >= 2.0) { %> Satisfactory
-              <% } else { %> Needs Improvement <% } %>
-            </div>
-            <div class="issued-box"><b>Issued Date:</b>&nbsp;<%= issuedNepaliDate %></div>
-          </div>
-
-          <!-- SIGNATURES -->
-          <div class="sign-row">
-            <div class="sign">
-              <div class="sign-placeholder"></div>
-              <div class="line">Class Teacher</div>
-            </div>
-            <div class="sign">
-              <img class="sign-img" src="/examcoordinator.webp" alt="Exam Coordinator Signature" onerror="this.style.display='none'">
-              <div class="line">Exam Coordinator</div>
-            </div>
-            <div class="sign">
-              <img class="sign-img" src="/principalsign.webp" alt="Principal Signature" onerror="this.style.display='none'">
-              <div class="line">Principal</div>
-            </div>
-          </div>
-
-          <hr>
-
-          <!-- GRADING SCALE -->
-          <div class="grading-scale">
-            <table>
               <tr>
-                <td>90% and above : A+</td>
-                <td>80% and above : A</td>
-                <td>70% and above : B+</td>
-                <td>60% and above : B</td>
+                <td><%= index + 1 %></td>
+                <td class="subject"><%= displaySubjectName %></td>
+                <td><%= theoryCreditHour || 'N/A' %></td>
+                <td class="col-theorymarks"><%= sub.theorymarks %> <%= sub.theorymarks < sub.passMarks ? '*' : '' %></td>
+                <td class="col-gp"><%= thGP.toFixed(2) %></td>
+                <td class="col-grade"><%= finalGrade %></td>
+                <td class="col-finalgrade"><%= finalGrade %></td>
+                <td class="col-remarks"><%= getSubjectRemark(finalGrade) %></td>
               </tr>
-              <tr>
-                <td>50% and above: C+</td>
-                <td>40% and above: C</td>
-                <td>35% and above: D</td>
-                <td>Below 35% : NG</td>
-              </tr>
-            </table>
+            <% }) %>
+          </tbody>
+        </table>
+
+        <!-- SUMMARY -->
+        <div class="summary">
+          <div>Total Credit Hours: <%= totalCredit %></div>
+          <div><span class="info-label">Attendance:</span> <span class="info-value"><%= totalAttendance || 'N/A' %></span></div>
+          <div>
+            GPA: 
+            <% 
+              let gpaForDisplay = totalCredit > 0 ? (totalGradePoints / totalCredit) : 0;
+              gpaForDisplay = roundToTwo(gpaForDisplay);
+              if (hasActualNG) { 
+            %>
+            NG
+            <% 
+              } else { 
+            %>
+            <%= gpaForDisplay.toFixed(2) %>
+            <% 
+              } 
+            %>
           </div>
         </div>
+
+        <!-- REMARKS -->
+        <div class="notes-row">
+          <div class="remark-box">
+            <b>Remarks:</b><br>
+            <% 
+              let gpaForRemark = totalCredit > 0 ? (totalGradePoints / totalCredit) : 0;
+              let overallRemark = getOverallRemark(gpaForRemark, hasActualNG);
+            %>
+            <%= overallRemark %>
+          </div>
+          <div class="issued-box"><b>Issued Date:</b>&nbsp;<%= issuedNepaliDate %></div>
+        </div>
+
+        <!-- SIGNATURES -->
+        <div class="sign-row">
+          <div class="sign">
+            <div class="sign-placeholder"></div>
+            <div class="line">Class Teacher</div>
+          </div>
+          <div class="sign">
+            <img class="sign-img" src="/examcoordinator.webp" alt="Exam Coordinator Signature" onerror="this.style.display='none'">
+            <div class="line">Exam Coordinator</div>
+          </div>
+          <div class="sign">
+            <img class="sign-img" src="/principalsign.webp" alt="Principal Signature" onerror="this.style.display='none'">
+            <div class="line">Principal</div>
+          </div>
+        </div>
+
+        <hr>
+
+        <!-- GRADING SCALE -->
+        <div class="grading-scale">
+          <table>
+            <tr>
+              <td>90% and above : A+</td>
+              <td>80% and above : A</td>
+              <td>70% and above : B+</td>
+              <td>60% and above : B</td>
+            </tr>
+            <tr>
+              <td>50% and above: C+</td>
+              <td>40% and above: C</td>
+              <td>35% and above: D</td>
+              <td>Below 35% : NG</td>
+            </tr>
+          </table>
+        </div>
       </div>
-    <% }) %>
+    </div>
+    <% 
+        }); // end of sortedStudentData.forEach
+      } else { 
+    %>
+    <div style="text-align:center; padding:50px; font-size:18px; color:#666; background:#fff; border-radius:12px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+      <h3>No Student Data Available</h3>
+      <p style="margin-top:10px;">Please load marksheet data using the form above.</p>
+    </div>
+    <% } %>
   </div>
 
   <!-- Include html2pdf from CDN for client-side PDF export -->
@@ -879,7 +1196,7 @@
           useCORS: true, 
           letterRendering: true, 
           logging: false,
-          width: 210 * 3.7795275591 // Convert mm to px
+          width: 210 * 3.7795275591
         },
         jsPDF: { 
           unit: 'mm', 
@@ -889,7 +1206,6 @@
         pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
       };
       
-      // Hide controls while creating pdf
       const controls = document.querySelectorAll('.no-print');
       controls.forEach(c => c.style.display = 'none');
       
@@ -931,9 +1247,7 @@
       let content = '';
       document.querySelectorAll('.sheet').forEach(function(s) {
         const clone = s.cloneNode(true);
-        // Remove watermark images for word export
         clone.querySelectorAll('.watermark').forEach(w => w.parentNode.removeChild(w));
-        // Remove sign placeholders for cleaner word export
         clone.querySelectorAll('.sign-placeholder').forEach(w => w.parentNode.removeChild(w));
         content += clone.innerHTML + '<div style="page-break-after:always"></div>';
       });
