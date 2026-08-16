@@ -929,11 +929,11 @@
                 const isLocalSubject = localSubjects.some(local => sub.subject.toUpperCase().includes(local));
 
                 // Calculate practical marks based on subject type
-                let practicalTotal = sub.totalpracticalmarks;
+                let practicalTotal = sub.totalpracticalmarks || 0;
                 if (isLocalSubject) {
-                  practicalTotal = sub.totalpracticalmarks;
+                  practicalTotal = sub.totalpracticalmarks || 0; // Ensure it's a number
                 } else {
-                  practicalTotal = sub.totalpracticalmarks
+                  practicalTotal = sub.totalpracticalmarks || 0;
                 }
 
                 let thP = (sub.theorymarks / sub.theoryfullmarks) * 100;
