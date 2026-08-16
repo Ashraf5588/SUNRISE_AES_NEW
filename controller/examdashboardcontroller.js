@@ -2755,6 +2755,21 @@ exports.schoolanalysis = async (req, res, next) => {
             };
         }
 
+        // Check if a value is empty/blank
+        function isEmpty(value) {
+            if (value === null || value === undefined) return true;
+            if (typeof value === 'string') {
+                const trimmed = value.trim();
+                return trimmed === '' || trimmed === '—' || trimmed === 'N/A' || trimmed === '-' || trimmed === 'null';
+            }
+            return false;
+        }
+
+        // Check if student has valid data (not blank name/reg)
+        function hasValidStudentData(student) {
+            return !isEmpty(student.name) && !isEmpty(student.reg);
+        }
+
         // Get all students for a specific class, terminal, and academic year (ALL SECTIONS)
         async function getStudentsForClass(classNumber, terminal, academicYear, includePractical = true) {
             // Convert class number to both formats for matching
@@ -2778,7 +2793,10 @@ exports.schoolanalysis = async (req, res, next) => {
                     $match: {
                         studentClass: { $in: classValues },
                         terminal: terminal,
-                        academicYear: academicYear
+                        academicYear: academicYear,
+                        // Don't count students with blank name or reg
+                        name: { $nin: ['', null, 'N/A', '—', '-', 'null'] },
+                        reg: { $nin: ['', null, 'N/A', '—', '-', 'null'] }
                     }
                 },
                 {
@@ -2816,7 +2834,71 @@ exports.schoolanalysis = async (req, res, next) => {
                 }
             ];
             
-            return await ExamMark.aggregate(pipeline);
+            const results = await ExamMark.aggregate(pipeline);
+            
+            // Additional filter for blank values in results
+            return results.filter(student => hasValidStudentData(student));
+        }
+
+        // Remove duplicate students by reg, keep the one with most subjects
+        function removeDuplicateStudents(students) {
+            const studentMap = new Map();
+            
+            students.forEach(student => {
+                const reg = student.reg;
+                
+                // Count valid subjects (subjects with actual data)
+                const validSubjectCount = student.subjects.filter(sub => {
+                    const hasTheory = sub.theoryMarks !== undefined && sub.theoryMarks !== null && !isNaN(sub.theoryMarks);
+                    const hasPractical = sub.practicalMarks !== undefined && sub.practicalMarks !== null && !isNaN(sub.practicalMarks);
+                    return hasTheory || hasPractical;
+                }).length;
+                
+                if (!studentMap.has(reg)) {
+                    studentMap.set(reg, {
+                        student: student,
+                        subjectCount: validSubjectCount
+                    });
+                } else {
+                    // If this student has more subjects, replace the existing one
+                    const existing = studentMap.get(reg);
+                    if (validSubjectCount > existing.subjectCount) {
+                        studentMap.set(reg, {
+                            student: student,
+                            subjectCount: validSubjectCount
+                        });
+                    }
+                }
+            });
+            
+            // Return only the unique students
+            return Array.from(studentMap.values()).map(item => item.student);
+        }
+
+        // Check if student is absent (all subjects have 0 marks or no valid subjects)
+        function isStudentAbsent(student, includePractical = true) {
+            let totalMarks = 0;
+            let hasValidSubject = false;
+            
+            student.subjects.forEach(subject => {
+                // Check if subject has valid data (not blank)
+                const hasTheory = subject.theoryMarks !== undefined && subject.theoryMarks !== null && !isNaN(subject.theoryMarks);
+                const hasPractical = subject.practicalMarks !== undefined && subject.practicalMarks !== null && !isNaN(subject.practicalMarks);
+                
+                if (hasTheory) {
+                    totalMarks += subject.theoryMarks || 0;
+                    hasValidSubject = true;
+                }
+                if (includePractical && hasPractical) {
+                    totalMarks += subject.practicalMarks || 0;
+                    hasValidSubject = true;
+                }
+            });
+            
+            // If no valid subjects, consider as absent
+            if (!hasValidSubject) return true;
+            
+            return totalMarks === 0;
         }
 
         // Calculate student result with optional subject handling
@@ -2835,69 +2917,92 @@ exports.schoolanalysis = async (req, res, next) => {
             const isOptionalClass = studentClass === '9' || studentClass === '10' || 
                                    studentClass === 'Nine' || studentClass === 'Ten';
             
-            // Track which optional subjects exist
-            const hasOptMath = allSubjects.some(s => s.subject === 'OPT.MATH');
-            const hasEnvScience = allSubjects.some(s => s.subject === 'ENV.SCIENCE');
-            
-            // Filter subjects for evaluation
+            // Filter subjects for evaluation - only include subjects with valid data
             let subjectsToEvaluate = [];
             
             if (isOptionalClass) {
                 // For class 9 & 10: Include all subjects but handle optional subjects specially
                 subjectsToEvaluate = allSubjects.map(subject => {
+                    // Check if subject has valid marks
+                    const hasTheoryMarks = subject.theoryMarks !== undefined && subject.theoryMarks !== null && !isNaN(subject.theoryMarks);
+                    const hasPracticalMarks = subject.practicalMarks !== undefined && subject.practicalMarks !== null && !isNaN(subject.practicalMarks);
+                    const hasMarks = hasTheoryMarks || (includePractical && hasPracticalMarks);
+                    
                     // Check if this is an optional subject
                     const isOptional = subject.subject === 'OPT.MATH' || subject.subject === 'ENV.SCIENCE';
                     
-                    // If it's an optional subject, check if student actually has this subject
-                    if (isOptional) {
-                        // If student has this optional subject (has any marks), include it
-                        const hasMarks = (subject.theoryMarks || 0) > 0 || (subject.practicalMarks || 0) > 0;
-                        if (!hasMarks) {
-                            // If no marks, mark as optional and not counted
-                            return {
-                                ...subject,
-                                isOptional: true,
-                                hasData: false,
-                                isCounted: false
-                            };
-                        }
+                    // If it's an optional subject and has no marks, mark as not counted
+                    if (isOptional && !hasMarks) {
                         return {
                             ...subject,
                             isOptional: true,
-                            hasData: true,
-                            isCounted: true
+                            hasData: false,
+                            isCounted: false,
+                            theoryMarks: 0,
+                            practicalMarks: 0
                         };
                     }
                     
-                    // Regular subject
+                    // If subject has no marks at all, don't count it
+                    if (!hasMarks) {
+                        return {
+                            ...subject,
+                            isOptional: false,
+                            hasData: false,
+                            isCounted: false,
+                            theoryMarks: 0,
+                            practicalMarks: 0
+                        };
+                    }
+                    
+                    return {
+                        ...subject,
+                        isOptional: isOptional || false,
+                        hasData: true,
+                        isCounted: true,
+                        theoryMarks: subject.theoryMarks || 0,
+                        practicalMarks: subject.practicalMarks || 0
+                    };
+                });
+            } else {
+                // For classes 1-8: Only include subjects with valid data
+                subjectsToEvaluate = allSubjects.map(subject => {
+                    const hasTheoryMarks = subject.theoryMarks !== undefined && subject.theoryMarks !== null && !isNaN(subject.theoryMarks);
+                    const hasPracticalMarks = subject.practicalMarks !== undefined && subject.practicalMarks !== null && !isNaN(subject.practicalMarks);
+                    const hasMarks = hasTheoryMarks || (includePractical && hasPracticalMarks);
+                    
+                    if (!hasMarks) {
+                        return {
+                            ...subject,
+                            isOptional: false,
+                            hasData: false,
+                            isCounted: false,
+                            theoryMarks: 0,
+                            practicalMarks: 0
+                        };
+                    }
+                    
                     return {
                         ...subject,
                         isOptional: false,
                         hasData: true,
-                        isCounted: true
+                        isCounted: true,
+                        theoryMarks: subject.theoryMarks || 0,
+                        practicalMarks: subject.practicalMarks || 0
                     };
                 });
-            } else {
-                // For classes 1-8: All subjects are mandatory
-                subjectsToEvaluate = allSubjects.map(subject => ({
-                    ...subject,
-                    isOptional: false,
-                    hasData: true,
-                    isCounted: true
-                }));
             }
             
             // Evaluate subjects
             subjectsToEvaluate.forEach(subject => {
-                // Skip subjects that are not counted (optional subjects with no data)
+                // Skip subjects that are not counted (optional subjects with no data or no marks)
                 if (!subject.isCounted) {
-                    // Add to subjectResults but mark as not applicable
                     subjectResults.push({
                         subject: subject.subject,
                         isOptional: subject.isOptional,
                         hasData: false,
                         isCounted: false,
-                        isPassed: true, // Treat as passed for overall calculation
+                        isPassed: true,
                         totalMarks: 0,
                         totalFullMarks: 0,
                         percentage: 0,
@@ -2916,22 +3021,20 @@ exports.schoolanalysis = async (req, res, next) => {
                     includePractical
                 );
                 
-                // For optional subjects, if marks are 0, check if it's truly failed or just not taken
-                let isPassed = result.isPassed;
-                if (subject.isOptional && subject.hasData === false) {
-                    isPassed = true; // Not taken, so not a fail
-                }
+                // Check if subject has valid pass marks
+                const hasValidPassMarks = subject.passMarks !== undefined && subject.passMarks !== null && !isNaN(subject.passMarks);
+                const isPassed = hasValidPassMarks ? result.isPassed : true;
                 
                 subjectResults.push({
                     subject: subject.subject,
-                    isOptional: subject.isOptional,
-                    hasData: subject.hasData,
-                    isCounted: subject.isCounted,
+                    isOptional: subject.isOptional || false,
+                    hasData: true,
+                    isCounted: true,
                     ...result,
                     isPassed: isPassed
                 });
                 
-                // Count only if subject is counted
+                // Count only if subject is counted and has valid data
                 if (subject.isCounted) {
                     totalSubjects++;
                     if (isPassed) {
@@ -2942,14 +3045,6 @@ exports.schoolanalysis = async (req, res, next) => {
                     }
                 }
             });
-            
-            // For optional classes, ensure we count correctly
-            if (isOptionalClass) {
-                // If student has OPT.MATH, ENV.SCIENCE should not be counted if no data
-                // If student has ENV.SCIENCE, OPT.MATH should not be counted if no data
-                // If student has both, both are counted
-                // If student has neither, it's a problem (should have at least one)
-            }
             
             const overallGPA = totalSubjects > 0 ? totalGPA / totalSubjects : 0;
             const isPassedAll = failedSubjects === 0 && totalSubjects > 0;
@@ -2980,6 +3075,7 @@ exports.schoolanalysis = async (req, res, next) => {
                 totalSubjects,
                 isPassedAll,
                 hasFailedAny,
+                isAbsent: false,
                 overallGPA: overallGPA.toFixed(2),
                 overallGrade
             };
@@ -3008,7 +3104,7 @@ exports.schoolanalysis = async (req, res, next) => {
         // If no parameters provided, render empty state or show filters
         if (!terminal || !academicYear) {
             return res.render('./exam/schoolanalysis', {
-                overallData: { totalStudents: 0, passedAll: 0, failedAny: 0, passPercentage: 0, failPercentage: 0 },
+                overallData: { totalStudents: 0, passedAll: 0, failedAny: 0, absent: 0, passPercentage: 0, failPercentage: 0 },
                 groupAnalytics: [],
                 classAnalytics: [],
                 analysisType: 'both',
@@ -3027,9 +3123,9 @@ exports.schoolanalysis = async (req, res, next) => {
         // Process each class
         const classAnalytics = [];
         const classGroups = {
-            '1-3': { classes: ['1', '2', '3'], students: [], totalPassed: 0, totalFailed: 0, totalStudents: 0 },
-            '4-7': { classes: ['4', '5', '6', '7'], students: [], totalPassed: 0, totalFailed: 0, totalStudents: 0 },
-            '8-10': { classes: ['8', '9', '10'], students: [], totalPassed: 0, totalFailed: 0, totalStudents: 0 }
+            '1-3': { classes: ['1', '2', '3'], students: [], totalPassed: 0, totalFailed: 0, totalAbsent: 0, totalStudents: 0 },
+            '4-7': { classes: ['4', '5', '6', '7'], students: [], totalPassed: 0, totalFailed: 0, totalAbsent: 0, totalStudents: 0 },
+            '8-10': { classes: ['8', '9', '10'], students: [], totalPassed: 0, totalFailed: 0, totalAbsent: 0, totalStudents: 0 }
         };
         
         for (const classNum of classes) {
@@ -3037,21 +3133,64 @@ exports.schoolanalysis = async (req, res, next) => {
             
             if (students.length === 0) continue;
             
+            // Remove duplicate students (keep the one with most subjects)
+            const uniqueStudents = removeDuplicateStudents(students);
+            
+            if (uniqueStudents.length === 0) continue;
+            
             // Add class info to each student
-            const studentsWithClass = students.map(student => ({
+            const studentsWithClass = uniqueStudents.map(student => ({
                 ...student,
                 class: classNum
             }));
             
-            // Calculate results for each student
-            const studentResults = studentsWithClass.map(student => calculateStudentResult(student, includePractical));
+            // Filter out absent students (all subjects have 0 marks or no valid subjects)
+            const activeStudents = studentsWithClass.filter(student => {
+                return !isStudentAbsent(student, includePractical);
+            });
+            
+            const absentStudents = studentsWithClass.length - activeStudents.length;
+            
+            if (activeStudents.length === 0) {
+                // Only absent students, add to analytics with absent count
+                const classData = {
+                    class: classNum,
+                    className: getClassName(classNum),
+                    totalStudents: 0,
+                    passedAll: 0,
+                    failedAny: 0,
+                    absent: absentStudents,
+                    passPercentage: 0,
+                    failPercentage: 0,
+                    sections: [],
+                    studentResults: []
+                };
+                classAnalytics.push(classData);
+                
+                // Add to group
+                const groupKey = Object.keys(classGroups).find(key => 
+                    classGroups[key].classes.includes(classNum)
+                );
+                if (groupKey) {
+                    classGroups[groupKey].totalAbsent += absentStudents;
+                    classGroups[groupKey].totalStudents += 0;
+                }
+                continue;
+            }
+            
+            // Calculate results for each student (only active students)
+            const studentResults = activeStudents.map(student => {
+                const result = calculateStudentResult(student, includePractical);
+                result.isAbsent = false;
+                return result;
+            });
             
             const passedAll = studentResults.filter(s => s.isPassedAll).length;
             const failedAny = studentResults.filter(s => s.hasFailedAny).length;
             const totalStudents = studentResults.length;
             
             // Get unique sections for this class
-            const sections = [...new Set(studentResults.map(s => s.section))].filter(s => s);
+            const sections = [...new Set(studentResults.map(s => s.section))].filter(s => s && !isEmpty(s));
             
             const classData = {
                 class: classNum,
@@ -3059,6 +3198,7 @@ exports.schoolanalysis = async (req, res, next) => {
                 totalStudents,
                 passedAll,
                 failedAny,
+                absent: absentStudents,
                 passPercentage: totalStudents > 0 ? ((passedAll / totalStudents) * 100).toFixed(2) : 0,
                 failPercentage: totalStudents > 0 ? ((failedAny / totalStudents) * 100).toFixed(2) : 0,
                 sections: sections,
@@ -3076,6 +3216,7 @@ exports.schoolanalysis = async (req, res, next) => {
                 classGroups[groupKey].students = classGroups[groupKey].students.concat(studentResults);
                 classGroups[groupKey].totalPassed += passedAll;
                 classGroups[groupKey].totalFailed += failedAny;
+                classGroups[groupKey].totalAbsent += absentStudents;
                 classGroups[groupKey].totalStudents += totalStudents;
             }
         }
@@ -3088,6 +3229,7 @@ exports.schoolanalysis = async (req, res, next) => {
                 totalStudents,
                 passedAll: groupData.totalPassed,
                 failedAny: groupData.totalFailed,
+                absent: groupData.totalAbsent,
                 passPercentage: totalStudents > 0 ? ((groupData.totalPassed / totalStudents) * 100).toFixed(2) : 0,
                 failPercentage: totalStudents > 0 ? ((groupData.totalFailed / totalStudents) * 100).toFixed(2) : 0
             };
@@ -3097,11 +3239,13 @@ exports.schoolanalysis = async (req, res, next) => {
         const totalAllStudents = classAnalytics.reduce((sum, c) => sum + c.totalStudents, 0);
         const totalPassedAll = classAnalytics.reduce((sum, c) => sum + c.passedAll, 0);
         const totalFailedAny = classAnalytics.reduce((sum, c) => sum + c.failedAny, 0);
+        const totalAbsent = classAnalytics.reduce((sum, c) => sum + c.absent, 0);
         
         const overallData = {
             totalStudents: totalAllStudents,
             passedAll: totalPassedAll,
             failedAny: totalFailedAny,
+            absent: totalAbsent,
             passPercentage: totalAllStudents > 0 ? ((totalPassedAll / totalAllStudents) * 100).toFixed(2) : 0,
             failPercentage: totalAllStudents > 0 ? ((totalFailedAny / totalAllStudents) * 100).toFixed(2) : 0
         };
@@ -3121,7 +3265,7 @@ exports.schoolanalysis = async (req, res, next) => {
         console.error('Error generating analytics:', error);
         return res.status(500).render('./exam/schoolanalysis', {
             error: error.message || 'An error occurred while generating analytics',
-            overallData: { totalStudents: 0, passedAll: 0, failedAny: 0, passPercentage: 0, failPercentage: 0 },
+            overallData: { totalStudents: 0, passedAll: 0, failedAny: 0, absent: 0, passPercentage: 0, failPercentage: 0 },
             groupAnalytics: [],
             classAnalytics: [],
             analysisType: req.query.analysisType || 'both',
