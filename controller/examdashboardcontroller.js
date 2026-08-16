@@ -2822,7 +2822,7 @@ exports.schoolanalysis = async (req, res, next) => {
         }
 
         // Get all students for a specific class, terminal, and academic year (ALL SECTIONS)
-        async function getStudentsForClass(classNumber, terminal, academicYear, includePractical = true) {
+        async function getStudentsForClass(classNumber, terminal, academicYear) {
             // Convert class number to both formats for matching
             const classMap = {
                 '1': ['1', 'One'],
@@ -2839,53 +2839,71 @@ exports.schoolanalysis = async (req, res, next) => {
             
             const classValues = classMap[classNumber] || [classNumber];
             
-            const pipeline = [
-                {
-                    $match: {
-                        studentClass: { $in: classValues },
-                        terminal: terminal,
-                        academicYear: academicYear,
-                        // Don't count students with blank name or reg
-                        name: { $nin: ['', null, 'N/A', '—', '-', 'null'] },
-                        reg: { $nin: ['', null, 'N/A', '—', '-', 'null'] }
-                    }
-                },
-                {
-                    $group: {
-                        _id: {
-                            reg: '$reg',
-                            name: '$name',
-                            roll: '$roll',
-                            gender: '$gender',
-                            section: '$section'
-                        },
-                        subjects: {
-                            $addToSet: {
-                                subject: '$subject',
-                                theoryMarks: '$theorymarks',
-                                practicalMarks: '$practicalmarks',
-                                passMarks: '$passMarks',
-                                theoryFullMarks: '$theoryfullmarks',
-                                practicalFullMarks: '$practicalfullmarks',
-                                terminalMarks: '$terminalmarks'
-                            }
-                        }
-                    }
-                },
-                {
-                    $project: {
-                        _id: 0,
-                        reg: '$_id.reg',
-                        name: '$_id.name',
-                        roll: '$_id.roll',
-                        gender: '$_id.gender',
-                        section: '$_id.section',
-                        subjects: 1
-                    }
-                }
-            ];
+            // First get all documents for this class
+            const allDocs = await ExamMark.find({
+                studentClass: { $in: classValues },
+                terminal: terminal,
+                academicYear: academicYear,
+                name: { $nin: ['', null, 'N/A', '—', '-', 'null'] },
+                reg: { $nin: ['', null, 'N/A', '—', '-', 'null'] }
+            }).lean();
             
-            const results = await ExamMark.aggregate(pipeline);
+            // Group by reg and merge subjects
+            const studentMap = new Map();
+            
+            allDocs.forEach(doc => {
+                const reg = doc.reg;
+                if (!reg) return;
+                
+                // Get or create student entry
+                let studentEntry = studentMap.get(reg);
+                if (!studentEntry) {
+                    studentEntry = {
+                        reg: doc.reg,
+                        name: doc.name,
+                        roll: doc.roll,
+                        gender: doc.gender,
+                        section: doc.section,
+                        subjects: []
+                    };
+                    studentMap.set(reg, studentEntry);
+                }
+                
+                // Check if subject already exists for this student
+                const existingSubject = studentEntry.subjects.find(s => s.subject === doc.subject);
+                if (existingSubject) {
+                    // Update marks if existing subject has no marks but this one does
+                    if ((!existingSubject.theoryMarks || existingSubject.theoryMarks === 0) && doc.theorymarks > 0) {
+                        existingSubject.theoryMarks = doc.theorymarks;
+                    }
+                    if ((!existingSubject.practicalMarks || existingSubject.practicalMarks === 0) && doc.practicalmarks > 0) {
+                        existingSubject.practicalMarks = doc.practicalmarks;
+                    }
+                    if ((!existingSubject.passMarks || existingSubject.passMarks === 0) && doc.passMarks > 0) {
+                        existingSubject.passMarks = doc.passMarks;
+                    }
+                    if ((!existingSubject.theoryFullMarks || existingSubject.theoryFullMarks === 0) && doc.theoryfullmarks > 0) {
+                        existingSubject.theoryFullMarks = doc.theoryfullmarks;
+                    }
+                    if ((!existingSubject.practicalFullMarks || existingSubject.practicalFullMarks === 0) && doc.practicalfullmarks > 0) {
+                        existingSubject.practicalFullMarks = doc.practicalfullmarks;
+                    }
+                } else {
+                    // Add new subject
+                    studentEntry.subjects.push({
+                        subject: doc.subject,
+                        theoryMarks: doc.theorymarks || 0,
+                        practicalMarks: doc.practicalmarks || 0,
+                        passMarks: doc.passMarks || 0,
+                        theoryFullMarks: doc.theoryfullmarks || 25,
+                        practicalFullMarks: doc.practicalfullmarks || 25,
+                        terminalMarks: doc.terminalmarks || 0
+                    });
+                }
+            });
+            
+            // Convert map to array
+            const results = Array.from(studentMap.values());
             
             // Additional filter for blank values in results
             return results.filter(student => hasValidStudentData(student));
@@ -2899,39 +2917,20 @@ exports.schoolanalysis = async (req, res, next) => {
                 const reg = student.reg;
                 
                 // Count ALL subjects (including those with 0 marks)
-                // A subject is valid if it exists in the data (even with 0 marks)
-                const validSubjectCount = student.subjects.filter(sub => {
-                    // Check if subject has valid data (not blank/undefined)
-                    const hasTheory = sub.theoryMarks !== undefined && sub.theoryMarks !== null && !isNaN(sub.theoryMarks);
-                    const hasPractical = sub.practicalMarks !== undefined && sub.practicalMarks !== null && !isNaN(sub.practicalMarks);
-                    // Count if it has either theory or practical marks (even if 0)
-                    return hasTheory || hasPractical;
-                }).length;
-                
-                // Also check for subjects that might be in the data but without marks
-                // Some subjects might be stored with empty values
-                const subjectNames = student.subjects.map(s => s.subject);
-                const uniqueSubjects = new Set(subjectNames);
-                
-                // Use the count of unique subjects as the primary metric
-                const subjectCount = uniqueSubjects.size;
+                const subjectCount = student.subjects.length;
                 
                 if (!studentMap.has(reg)) {
                     studentMap.set(reg, {
                         student: student,
-                        subjectCount: subjectCount,
-                        validSubjectCount: validSubjectCount
+                        subjectCount: subjectCount
                     });
                 } else {
                     // If this student has more subjects, replace the existing one
                     const existing = studentMap.get(reg);
-                    // Prioritize by number of unique subjects, then by valid subjects count
-                    if (subjectCount > existing.subjectCount || 
-                        (subjectCount === existing.subjectCount && validSubjectCount > existing.validSubjectCount)) {
+                    if (subjectCount > existing.subjectCount) {
                         studentMap.set(reg, {
                             student: student,
-                            subjectCount: subjectCount,
-                            validSubjectCount: validSubjectCount
+                            subjectCount: subjectCount
                         });
                     }
                 }
@@ -2983,33 +2982,96 @@ exports.schoolanalysis = async (req, res, next) => {
             const isOptionalClass = studentClass === '9' || studentClass === '10' || 
                                    studentClass === 'Nine' || studentClass === 'Ten';
             
-            // Track which optional subjects exist in the data
-            const subjectNames = allSubjects.map(s => s.subject);
-            const hasOptMath = subjectNames.includes('OPT.MATH');
-            const hasEnvScience = subjectNames.includes('ENV.SCIENCE');
+            // For optional classes, determine which optional subject the student actually took
+            let selectedOptionalSubject = null;
             
-            // Filter subjects for evaluation - include ALL subjects from the data
+            if (isOptionalClass) {
+                // Find OPT.MATH and ENV.SCIENCE subjects
+                const optMath = allSubjects.find(s => s.subject === 'OPT.MATH');
+                const envScience = allSubjects.find(s => s.subject === 'ENV.SCIENCE');
+                
+                // Check which one has marks (theory or practical)
+                const hasOptMathMarks = optMath && (
+                    (optMath.theoryMarks && optMath.theoryMarks > 0) || 
+                    (optMath.practicalMarks && optMath.practicalMarks > 0)
+                );
+                
+                const hasEnvScienceMarks = envScience && (
+                    (envScience.theoryMarks && envScience.theoryMarks > 0) || 
+                    (envScience.practicalMarks && envScience.practicalMarks > 0)
+                );
+                
+                // Select the one with marks
+                if (hasOptMathMarks && hasEnvScienceMarks) {
+                    // Both have marks - this shouldn't happen, but if it does, keep both
+                    selectedOptionalSubject = 'both';
+                } else if (hasOptMathMarks) {
+                    selectedOptionalSubject = 'OPT.MATH';
+                } else if (hasEnvScienceMarks) {
+                    selectedOptionalSubject = 'ENV.SCIENCE';
+                }
+                // If neither has marks, the student has no optional subject
+            }
+            
+            // Filter subjects for evaluation
             let subjectsToEvaluate = [];
             
             if (isOptionalClass) {
-                // For class 9 & 10: Include all subjects but handle optional subjects specially
+                // For class 9 & 10: Include all subjects but handle optional subjects
                 subjectsToEvaluate = allSubjects.map(subject => {
+                    const isOptional = subject.subject === 'OPT.MATH' || subject.subject === 'ENV.SCIENCE';
+                    
                     // Check if subject has valid marks
                     const hasTheoryMarks = subject.theoryMarks !== undefined && subject.theoryMarks !== null && !isNaN(subject.theoryMarks);
                     const hasPracticalMarks = subject.practicalMarks !== undefined && subject.practicalMarks !== null && !isNaN(subject.practicalMarks);
                     const hasMarks = hasTheoryMarks || (includePractical && hasPracticalMarks);
                     
-                    // Check if this is an optional subject
-                    const isOptional = subject.subject === 'OPT.MATH' || subject.subject === 'ENV.SCIENCE';
+                    // If this is an optional subject
+                    if (isOptional) {
+                        // Check if this is the selected optional subject
+                        const isSelected = selectedOptionalSubject === 'both' || selectedOptionalSubject === subject.subject;
+                        
+                        if (isSelected && hasMarks) {
+                            // This is the student's actual optional subject with marks
+                            return {
+                                ...subject,
+                                isOptional: true,
+                                hasData: true,
+                                isCounted: true,
+                                theoryMarks: subject.theoryMarks || 0,
+                                practicalMarks: subject.practicalMarks || 0
+                            };
+                        } else if (isSelected && !hasMarks) {
+                            // This is the student's optional subject but no marks (shouldn't happen)
+                            return {
+                                ...subject,
+                                isOptional: true,
+                                hasData: false,
+                                isCounted: false,
+                                theoryMarks: 0,
+                                practicalMarks: 0
+                            };
+                        } else {
+                            // This is NOT the student's selected optional subject - ignore it
+                            return {
+                                ...subject,
+                                isOptional: true,
+                                hasData: false,
+                                isCounted: false,
+                                theoryMarks: 0,
+                                practicalMarks: 0,
+                                isIgnored: true
+                            };
+                        }
+                    }
                     
-                    // ALWAYS include the subject if it exists in the data
-                    // Even if it has no marks, we want to show it as N/A
+                    // Regular subject (not optional)
                     if (!hasMarks) {
                         return {
                             ...subject,
-                            isOptional: isOptional || false,
+                            isOptional: false,
                             hasData: false,
-                            isCounted: false, // Don't count towards GPA if no marks
+                            isCounted: false,
                             theoryMarks: 0,
                             practicalMarks: 0
                         };
@@ -3017,7 +3079,7 @@ exports.schoolanalysis = async (req, res, next) => {
                     
                     return {
                         ...subject,
-                        isOptional: isOptional || false,
+                        isOptional: false,
                         hasData: true,
                         isCounted: true,
                         theoryMarks: subject.theoryMarks || 0,
@@ -3055,14 +3117,32 @@ exports.schoolanalysis = async (req, res, next) => {
             
             // Evaluate subjects
             subjectsToEvaluate.forEach(subject => {
-                // Skip subjects that are not counted (optional subjects with no data or no marks)
+                // Skip ignored optional subjects
+                if (subject.isIgnored) {
+                    subjectResults.push({
+                        subject: subject.subject,
+                        isOptional: true,
+                        hasData: false,
+                        isCounted: false,
+                        isPassed: true,
+                        totalMarks: 0,
+                        totalFullMarks: 0,
+                        percentage: 0,
+                        gpa: 0,
+                        grade: 'IGNORED',
+                        isIgnored: true
+                    });
+                    return;
+                }
+                
+                // Skip subjects that are not counted
                 if (!subject.isCounted) {
                     subjectResults.push({
                         subject: subject.subject,
                         isOptional: subject.isOptional || false,
                         hasData: false,
                         isCounted: false,
-                        isPassed: true, // Treat as passed for overall calculation
+                        isPassed: true,
                         totalMarks: 0,
                         totalFullMarks: 0,
                         percentage: 0,
@@ -3189,7 +3269,7 @@ exports.schoolanalysis = async (req, res, next) => {
         };
         
         for (const classNum of classes) {
-            const students = await getStudentsForClass(classNum, terminal, academicYear, includePractical);
+            const students = await getStudentsForClass(classNum, terminal, academicYear);
             
             if (students.length === 0) continue;
             
