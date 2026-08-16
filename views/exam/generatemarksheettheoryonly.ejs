@@ -228,11 +228,13 @@
       font-weight: 700;
       color: #000;
       min-width: 120px;
+      font-size: 16px;
     }
 
     .info-value {
       font-weight: 600;
       color: #000;
+      font-size: 16px;
     }
 
     table {
@@ -946,7 +948,7 @@
             if (hasEnvScience || hasOptMath) {
               // Create a synthetic subject for Optional-II using the selected data
               const optionalSubject = {
-                subject: 'Optional-II',
+                subject: 'OPTIONAL-II',
                 theorymarks: optionalData.marks,
                 theoryfullmarks: optionalData.fullMarks,
                 passMarks: optionalData.passMarks,
@@ -955,7 +957,7 @@
                 ...optionalData.subject
               };
               // Override the subject name to "Optional-II"
-              optionalSubject.subject = 'Optional-II';
+              optionalSubject.subject = 'OPTIONAL-II';
               uniqueSubjects.push(optionalSubject);
             }
           }
@@ -1029,7 +1031,7 @@
                   creditMatch = creditHourData.filter(ch => ch.newsubject === displaySubjectName)[0];
                 }
                 // For Optional-II, use the credit hour from the selected subject
-                if (!creditMatch && sub.subject === 'Optional-II' && optionalData && optionalData.hasData) {
+                if (!creditMatch && sub.subject === 'OPTIONAL-II' && optionalData && optionalData.hasData) {
                   theoryCreditHour = optionalData.creditHour || 0;
                 }
                 if (creditMatch) {
