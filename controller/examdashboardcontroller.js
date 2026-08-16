@@ -2683,6 +2683,57 @@ exports.schoolanalysis = async (req, res, next) => {
         const mongoose = require('mongoose');
         const ExamMark = await getSlipModel(); // Your exam marks model
 
+        // Helper function to sort by roll number (handles string values)
+        function sortByRoll(students) {
+            return students.sort((a, b) => {
+                const rollA = a.roll || '';
+                const rollB = b.roll || '';
+                
+                // Try to parse as number first
+                const numA = parseInt(rollA);
+                const numB = parseInt(rollB);
+                
+                // If both are valid numbers, sort numerically
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    return numA - numB;
+                }
+                
+                // If one is a number and the other is not, numbers come first
+                if (!isNaN(numA) && isNaN(numB)) return -1;
+                if (isNaN(numA) && !isNaN(numB)) return 1;
+                
+                // Otherwise sort as strings
+                return rollA.localeCompare(rollB, undefined, { numeric: true, sensitivity: 'base' });
+            });
+        }
+
+        // Helper function to sort by section then roll
+        function sortBySectionAndRoll(students) {
+            // Group by section
+            const sectionGroups = {};
+            students.forEach(student => {
+                const section = student.section || 'No Section';
+                if (!sectionGroups[section]) {
+                    sectionGroups[section] = [];
+                }
+                sectionGroups[section].push(student);
+            });
+            
+            // Sort each section by roll
+            const sortedSections = {};
+            Object.keys(sectionGroups).sort().forEach(section => {
+                sortedSections[section] = sortByRoll(sectionGroups[section]);
+            });
+            
+            // Flatten back to array
+            const result = [];
+            Object.keys(sortedSections).sort().forEach(section => {
+                result.push(...sortedSections[section]);
+            });
+            
+            return result;
+        }
+
         // Helper function to calculate GPA and grade
         function calculateGPA(theoryMarks, practicalMarks, passMarks, theoryFullMarks, practicalFullMarks, includePractical = true) {
             let totalMarks = theoryMarks || 0;
@@ -3185,12 +3236,15 @@ exports.schoolanalysis = async (req, res, next) => {
                 return result;
             });
             
-            const passedAll = studentResults.filter(s => s.isPassedAll).length;
-            const failedAny = studentResults.filter(s => s.hasFailedAny).length;
-            const totalStudents = studentResults.length;
+            // Sort students by section and roll
+            const sortedStudentResults = sortBySectionAndRoll(studentResults);
+            
+            const passedAll = sortedStudentResults.filter(s => s.isPassedAll).length;
+            const failedAny = sortedStudentResults.filter(s => s.hasFailedAny).length;
+            const totalStudents = sortedStudentResults.length;
             
             // Get unique sections for this class
-            const sections = [...new Set(studentResults.map(s => s.section))].filter(s => s && !isEmpty(s));
+            const sections = [...new Set(sortedStudentResults.map(s => s.section))].filter(s => s && !isEmpty(s));
             
             const classData = {
                 class: classNum,
@@ -3202,7 +3256,7 @@ exports.schoolanalysis = async (req, res, next) => {
                 passPercentage: totalStudents > 0 ? ((passedAll / totalStudents) * 100).toFixed(2) : 0,
                 failPercentage: totalStudents > 0 ? ((failedAny / totalStudents) * 100).toFixed(2) : 0,
                 sections: sections,
-                studentResults
+                studentResults: sortedStudentResults
             };
             
             classAnalytics.push(classData);
@@ -3213,7 +3267,7 @@ exports.schoolanalysis = async (req, res, next) => {
             );
             
             if (groupKey) {
-                classGroups[groupKey].students = classGroups[groupKey].students.concat(studentResults);
+                classGroups[groupKey].students = classGroups[groupKey].students.concat(sortedStudentResults);
                 classGroups[groupKey].totalPassed += passedAll;
                 classGroups[groupKey].totalFailed += failedAny;
                 classGroups[groupKey].totalAbsent += absentStudents;

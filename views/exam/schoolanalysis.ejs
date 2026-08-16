@@ -256,11 +256,6 @@
             line-height: 1.2;
         }
         
-        .stat-card .stat-icon {
-            font-size: 1.25rem;
-            margin-right: 8px;
-        }
-        
         .stat-card .stat-number .stat-suffix {
             font-size: 0.9rem;
             font-weight: 500;
@@ -675,7 +670,7 @@
     <div class="container">
         <!-- Filter Section -->
         <div class="filter-section no-print">
-            <form action="/exam/schoolanalysis" method="GET">
+            <form action="/schoolanalysis" method="GET">
                 <div class="row g-3 align-items-end">
                     <div class="col-md-3">
                         <label class="form-label"><i class="bi bi-tag"></i> Terminal</label>
@@ -922,73 +917,96 @@
                             </h2>
                             <div id="collapse<%= index %>" class="accordion-collapse collapse <%= index === 0 ? 'show' : '' %>">
                                 <div class="accordion-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-sm" style="font-size:0.8rem;">
-                                            <thead>
-                                                <tr>
-                                                    <th>Roll</th>
-                                                    <th>Name</th>
-                                                    <th>Reg</th>
-                                                    <th>Section</th>
-                                                    <th>Gender</th>
-                                                    <th>Subjects</th>
-                                                    <th>Status</th>
-                                                    <th>GPA</th>
-                                                    <th>Grade</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <% classData.studentResults.forEach(student => { %>
-                                                    <tr>
-                                                        <td><strong><%= student.roll %></strong></td>
-                                                        <td><%= student.name %></td>
-                                                        <td><%= student.reg %></td>
-                                                        <td><span class="section-badge"><%= student.section || '—' %></span></td>
-                                                        <td>
-                                                            <% if (student.gender === 'Male') { %>
-                                                                <i class="bi bi-gender-male" style="color:#3b82f6;"></i>
-                                                            <% } else if (student.gender === 'Female') { %>
-                                                                <i class="bi bi-gender-female" style="color:#ec4899;"></i>
-                                                            <% } else { %>
-                                                                <%= student.gender || '—' %>
-                                                            <% } %>
-                                                        </td>
-                                                        <td>
-                                                            <% if (student.subjectResults) { %>
-                                                                <% student.subjectResults.forEach(sub => { %>
-                                                                    <% if (sub.isCounted !== false) { %>
-                                                                        <span class="<%= sub.isPassed ? 'badge-subject-pass' : 'badge-subject-fail' %>">
-                                                                            <%= sub.subject %>
-                                                                            <% if (sub.isOptional) { %>
-                                                                                <span class="badge-optional">OPT</span>
-                                                                            <% } %>
-                                                                        </span>
+                                    <% 
+                                        // Group students by section
+                                        const sectionGroups = {};
+                                        classData.studentResults.forEach(student => {
+                                            const section = student.section || 'No Section';
+                                            if (!sectionGroups[section]) {
+                                                sectionGroups[section] = [];
+                                            }
+                                            sectionGroups[section].push(student);
+                                        });
+                                        
+                                        // Sort sections
+                                        const sortedSections = Object.keys(sectionGroups).sort();
+                                    %>
+                                    
+                                    <% sortedSections.forEach(section => { %>
+                                        <div style="margin-bottom: 20px;">
+                                            <h6 style="font-weight: 600; color: #0f172a; margin-bottom: 10px; padding: 8px 12px; background: #f1f5f9; border-radius: 4px; border-left: 3px solid #3b82f6;">
+                                                <i class="bi bi-layers"></i> Section: <%= section %> 
+                                                <span class="text-muted-light" style="font-weight:400; font-size:0.8rem;">
+                                                    (<%= sectionGroups[section].length %> students)
+                                                </span>
+                                            </h6>
+                                            <div class="table-responsive">
+                                                <table class="table table-sm" style="font-size:0.8rem;">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="width: 60px;">Roll</th>
+                                                            <th>Name</th>
+                                                            <th>Reg</th>
+                                                            <th>Gender</th>
+                                                            <th>Subjects</th>
+                                                            <th>Status</th>
+                                                            <th>GPA</th>
+                                                            <th>Grade</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <% sectionGroups[section].forEach(student => { %>
+                                                            <tr>
+                                                                <td><strong><%= student.roll || '—' %></strong></td>
+                                                                <td><%= student.name || '—' %></td>
+                                                                <td><%= student.reg || '—' %></td>
+                                                                <td>
+                                                                    <% if (student.gender === 'Male') { %>
+                                                                        <i class="bi bi-gender-male" style="color:#3b82f6;"></i> M
+                                                                    <% } else if (student.gender === 'Female') { %>
+                                                                        <i class="bi bi-gender-female" style="color:#ec4899;"></i> F
                                                                     <% } else { %>
-                                                                        <span class="badge-subject-na">
-                                                                            <%= sub.subject %> <span class="badge-optional">N/A</span>
-                                                                        </span>
+                                                                        <%= student.gender || '—' %>
                                                                     <% } %>
-                                                                <% }); %>
-                                                            <% } %>
-                                                        </td>
-                                                        <td>
-                                                            <% if (student.isPassedAll) { %>
-                                                                <span class="badge-pass">Passed</span>
-                                                            <% } else { %>
-                                                                <span class="badge-fail">Failed</span>
-                                                            <% } %>
-                                                        </td>
-                                                        <td><%= student.overallGPA %></td>
-                                                        <td>
-                                                            <strong class="<%= student.overallGrade === 'F' ? 'text-danger' : 'text-success' %>">
-                                                                <%= student.overallGrade %>
-                                                            </strong>
-                                                        </td>
-                                                    </tr>
-                                                <% }); %>
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                                                </td>
+                                                                <td>
+                                                                    <% if (student.subjectResults) { %>
+                                                                        <% student.subjectResults.forEach(sub => { %>
+                                                                            <% if (sub.isCounted !== false) { %>
+                                                                                <span class="<%= sub.isPassed ? 'badge-subject-pass' : 'badge-subject-fail' %>">
+                                                                                    <%= sub.subject %>
+                                                                                    <% if (sub.isOptional) { %>
+                                                                                        <span class="badge-optional">OPT</span>
+                                                                                    <% } %>
+                                                                                </span>
+                                                                            <% } else { %>
+                                                                                <span class="badge-subject-na">
+                                                                                    <%= sub.subject %> <span class="badge-optional">N/A</span>
+                                                                                </span>
+                                                                            <% } %>
+                                                                        <% }); %>
+                                                                    <% } %>
+                                                                </td>
+                                                                <td>
+                                                                    <% if (student.isPassedAll) { %>
+                                                                        <span class="badge-pass">Passed</span>
+                                                                    <% } else { %>
+                                                                        <span class="badge-fail">Failed</span>
+                                                                    <% } %>
+                                                                </td>
+                                                                <td><%= student.overallGPA || '0.00' %></td>
+                                                                <td>
+                                                                    <strong class="<%= student.overallGrade === 'F' ? 'text-danger' : 'text-success' %>">
+                                                                        <%= student.overallGrade || 'F' %>
+                                                                    </strong>
+                                                                </td>
+                                                            </tr>
+                                                        <% }); %>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    <% }); %>
                                 </div>
                             </div>
                         </div>
