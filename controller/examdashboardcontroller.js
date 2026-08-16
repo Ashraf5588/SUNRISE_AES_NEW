@@ -2860,7 +2860,7 @@ exports.schoolanalysis = async (req, res, next) => {
                             section: '$section'
                         },
                         subjects: {
-                            $push: {
+                            $addToSet: {
                                 subject: '$subject',
                                 theoryMarks: '$theorymarks',
                                 practicalMarks: '$practicalmarks',
@@ -2898,25 +2898,40 @@ exports.schoolanalysis = async (req, res, next) => {
             students.forEach(student => {
                 const reg = student.reg;
                 
-                // Count valid subjects (subjects with actual data)
+                // Count ALL subjects (including those with 0 marks)
+                // A subject is valid if it exists in the data (even with 0 marks)
                 const validSubjectCount = student.subjects.filter(sub => {
+                    // Check if subject has valid data (not blank/undefined)
                     const hasTheory = sub.theoryMarks !== undefined && sub.theoryMarks !== null && !isNaN(sub.theoryMarks);
                     const hasPractical = sub.practicalMarks !== undefined && sub.practicalMarks !== null && !isNaN(sub.practicalMarks);
+                    // Count if it has either theory or practical marks (even if 0)
                     return hasTheory || hasPractical;
                 }).length;
+                
+                // Also check for subjects that might be in the data but without marks
+                // Some subjects might be stored with empty values
+                const subjectNames = student.subjects.map(s => s.subject);
+                const uniqueSubjects = new Set(subjectNames);
+                
+                // Use the count of unique subjects as the primary metric
+                const subjectCount = uniqueSubjects.size;
                 
                 if (!studentMap.has(reg)) {
                     studentMap.set(reg, {
                         student: student,
-                        subjectCount: validSubjectCount
+                        subjectCount: subjectCount,
+                        validSubjectCount: validSubjectCount
                     });
                 } else {
                     // If this student has more subjects, replace the existing one
                     const existing = studentMap.get(reg);
-                    if (validSubjectCount > existing.subjectCount) {
+                    // Prioritize by number of unique subjects, then by valid subjects count
+                    if (subjectCount > existing.subjectCount || 
+                        (subjectCount === existing.subjectCount && validSubjectCount > existing.validSubjectCount)) {
                         studentMap.set(reg, {
                             student: student,
-                            subjectCount: validSubjectCount
+                            subjectCount: subjectCount,
+                            validSubjectCount: validSubjectCount
                         });
                     }
                 }
@@ -2968,7 +2983,12 @@ exports.schoolanalysis = async (req, res, next) => {
             const isOptionalClass = studentClass === '9' || studentClass === '10' || 
                                    studentClass === 'Nine' || studentClass === 'Ten';
             
-            // Filter subjects for evaluation - only include subjects with valid data
+            // Track which optional subjects exist in the data
+            const subjectNames = allSubjects.map(s => s.subject);
+            const hasOptMath = subjectNames.includes('OPT.MATH');
+            const hasEnvScience = subjectNames.includes('ENV.SCIENCE');
+            
+            // Filter subjects for evaluation - include ALL subjects from the data
             let subjectsToEvaluate = [];
             
             if (isOptionalClass) {
@@ -2982,25 +3002,14 @@ exports.schoolanalysis = async (req, res, next) => {
                     // Check if this is an optional subject
                     const isOptional = subject.subject === 'OPT.MATH' || subject.subject === 'ENV.SCIENCE';
                     
-                    // If it's an optional subject and has no marks, mark as not counted
-                    if (isOptional && !hasMarks) {
-                        return {
-                            ...subject,
-                            isOptional: true,
-                            hasData: false,
-                            isCounted: false,
-                            theoryMarks: 0,
-                            practicalMarks: 0
-                        };
-                    }
-                    
-                    // If subject has no marks at all, don't count it
+                    // ALWAYS include the subject if it exists in the data
+                    // Even if it has no marks, we want to show it as N/A
                     if (!hasMarks) {
                         return {
                             ...subject,
-                            isOptional: false,
+                            isOptional: isOptional || false,
                             hasData: false,
-                            isCounted: false,
+                            isCounted: false, // Don't count towards GPA if no marks
                             theoryMarks: 0,
                             practicalMarks: 0
                         };
@@ -3016,7 +3025,7 @@ exports.schoolanalysis = async (req, res, next) => {
                     };
                 });
             } else {
-                // For classes 1-8: Only include subjects with valid data
+                // For classes 1-8: Include ALL subjects
                 subjectsToEvaluate = allSubjects.map(subject => {
                     const hasTheoryMarks = subject.theoryMarks !== undefined && subject.theoryMarks !== null && !isNaN(subject.theoryMarks);
                     const hasPracticalMarks = subject.practicalMarks !== undefined && subject.practicalMarks !== null && !isNaN(subject.practicalMarks);
@@ -3050,10 +3059,10 @@ exports.schoolanalysis = async (req, res, next) => {
                 if (!subject.isCounted) {
                     subjectResults.push({
                         subject: subject.subject,
-                        isOptional: subject.isOptional,
+                        isOptional: subject.isOptional || false,
                         hasData: false,
                         isCounted: false,
-                        isPassed: true,
+                        isPassed: true, // Treat as passed for overall calculation
                         totalMarks: 0,
                         totalFullMarks: 0,
                         percentage: 0,
