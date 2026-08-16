@@ -2679,12 +2679,455 @@ exports.uploadOldData = async (req, res, next) => {
   }
 }
 exports.schoolanalysis = async (req, res, next) => {
-  try{
+    try {
+        const mongoose = require('mongoose');
+        const ExamMark = await getSlipModel(); // Your exam marks model
 
-    
-  }catch(err){
-    console.error("Error loading school analysis page:", err);
-    res.status(500).send("Internal Server Error: " + err.message);
-  }
+        // Helper function to calculate GPA and grade
+        function calculateGPA(theoryMarks, practicalMarks, passMarks, theoryFullMarks, practicalFullMarks, includePractical = true) {
+            let totalMarks = theoryMarks || 0;
+            let totalFullMarks = theoryFullMarks || 0;
+            
+            if (includePractical) {
+                totalMarks += practicalMarks || 0;
+                totalFullMarks += practicalFullMarks || 0;
+            }
+            
+            const percentage = totalFullMarks > 0 ? (totalMarks / totalFullMarks) * 100 : 0;
+            let gpa = 0;
+            let grade = 'F';
+            let isPassed = false;
+            
+            // Check if passed in theory and practical separately
+            let theoryPassed = (theoryMarks || 0) >= (passMarks || 0);
+            let practicalPassed = true;
+            
+            if (includePractical && practicalFullMarks > 0) {
+                practicalPassed = (practicalMarks || 0) >= ((passMarks || 0) / 2);
+            }
+            
+            // Check overall pass status
+            if (includePractical) {
+                isPassed = theoryPassed && practicalPassed;
+            } else {
+                isPassed = theoryPassed;
+            }
+            
+            // Calculate GPA based on percentage
+            if (percentage >= 90) {
+                gpa = 4.0;
+                grade = 'A+';
+            } else if (percentage >= 80) {
+                gpa = 3.6;
+                grade = 'A';
+            } else if (percentage >= 70) {
+                gpa = 3.2;
+                grade = 'B+';
+            } else if (percentage >= 60) {
+                gpa = 2.8;
+                grade = 'B';
+            } else if (percentage >= 50) {
+                gpa = 2.4;
+                grade = 'C+';
+            } else if (percentage >= 40) {
+                gpa = 2.0;
+                grade = 'C';
+            } else if (percentage >= 30) {
+                gpa = 1.6;
+                grade = 'D+';
+            } else if (percentage >= 20) {
+                gpa = 1.2;
+                grade = 'D';
+            } else {
+                gpa = 0.0;
+                grade = 'F';
+            }
+            
+            return {
+                totalMarks,
+                totalFullMarks,
+                percentage,
+                gpa,
+                grade,
+                isPassed,
+                theoryPassed,
+                practicalPassed
+            };
+        }
 
-}
+        // Get all students for a specific class, terminal, and academic year (ALL SECTIONS)
+        async function getStudentsForClass(classNumber, terminal, academicYear, includePractical = true) {
+            // Convert class number to both formats for matching
+            const classMap = {
+                '1': ['1', 'One'],
+                '2': ['2', 'Two'],
+                '3': ['3', 'Three'],
+                '4': ['4', 'Four'],
+                '5': ['5', 'Five'],
+                '6': ['6', 'Six'],
+                '7': ['7', 'Seven'],
+                '8': ['8', 'Eight'],
+                '9': ['9', 'Nine'],
+                '10': ['10', 'Ten']
+            };
+            
+            const classValues = classMap[classNumber] || [classNumber];
+            
+            const pipeline = [
+                {
+                    $match: {
+                        studentClass: { $in: classValues },
+                        terminal: terminal,
+                        academicYear: academicYear
+                    }
+                },
+                {
+                    $group: {
+                        _id: {
+                            reg: '$reg',
+                            name: '$name',
+                            roll: '$roll',
+                            gender: '$gender',
+                            section: '$section'
+                        },
+                        subjects: {
+                            $push: {
+                                subject: '$subject',
+                                theoryMarks: '$theorymarks',
+                                practicalMarks: '$practicalmarks',
+                                passMarks: '$passMarks',
+                                theoryFullMarks: '$theoryfullmarks',
+                                practicalFullMarks: '$practicalfullmarks',
+                                terminalMarks: '$terminalmarks'
+                            }
+                        }
+                    }
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        reg: '$_id.reg',
+                        name: '$_id.name',
+                        roll: '$_id.roll',
+                        gender: '$_id.gender',
+                        section: '$_id.section',
+                        subjects: 1
+                    }
+                }
+            ];
+            
+            return await ExamMark.aggregate(pipeline);
+        }
+
+        // Calculate student result with optional subject handling
+        function calculateStudentResult(student, includePractical = true) {
+            const subjectResults = [];
+            let passedSubjects = 0;
+            let failedSubjects = 0;
+            let totalGPA = 0;
+            let totalSubjects = 0;
+            
+            // Get all subjects for this student
+            const allSubjects = student.subjects;
+            
+            // Check for optional subjects in class 9 and 10
+            const studentClass = student.class || '';
+            const isOptionalClass = studentClass === '9' || studentClass === '10' || 
+                                   studentClass === 'Nine' || studentClass === 'Ten';
+            
+            // Track which optional subjects exist
+            const hasOptMath = allSubjects.some(s => s.subject === 'OPT.MATH');
+            const hasEnvScience = allSubjects.some(s => s.subject === 'ENV.SCIENCE');
+            
+            // Filter subjects for evaluation
+            let subjectsToEvaluate = [];
+            
+            if (isOptionalClass) {
+                // For class 9 & 10: Include all subjects but handle optional subjects specially
+                subjectsToEvaluate = allSubjects.map(subject => {
+                    // Check if this is an optional subject
+                    const isOptional = subject.subject === 'OPT.MATH' || subject.subject === 'ENV.SCIENCE';
+                    
+                    // If it's an optional subject, check if student actually has this subject
+                    if (isOptional) {
+                        // If student has this optional subject (has any marks), include it
+                        const hasMarks = (subject.theoryMarks || 0) > 0 || (subject.practicalMarks || 0) > 0;
+                        if (!hasMarks) {
+                            // If no marks, mark as optional and not counted
+                            return {
+                                ...subject,
+                                isOptional: true,
+                                hasData: false,
+                                isCounted: false
+                            };
+                        }
+                        return {
+                            ...subject,
+                            isOptional: true,
+                            hasData: true,
+                            isCounted: true
+                        };
+                    }
+                    
+                    // Regular subject
+                    return {
+                        ...subject,
+                        isOptional: false,
+                        hasData: true,
+                        isCounted: true
+                    };
+                });
+            } else {
+                // For classes 1-8: All subjects are mandatory
+                subjectsToEvaluate = allSubjects.map(subject => ({
+                    ...subject,
+                    isOptional: false,
+                    hasData: true,
+                    isCounted: true
+                }));
+            }
+            
+            // Evaluate subjects
+            subjectsToEvaluate.forEach(subject => {
+                // Skip subjects that are not counted (optional subjects with no data)
+                if (!subject.isCounted) {
+                    // Add to subjectResults but mark as not applicable
+                    subjectResults.push({
+                        subject: subject.subject,
+                        isOptional: subject.isOptional,
+                        hasData: false,
+                        isCounted: false,
+                        isPassed: true, // Treat as passed for overall calculation
+                        totalMarks: 0,
+                        totalFullMarks: 0,
+                        percentage: 0,
+                        gpa: 0,
+                        grade: 'N/A'
+                    });
+                    return;
+                }
+                
+                const result = calculateGPA(
+                    subject.theoryMarks || 0,
+                    subject.practicalMarks || 0,
+                    subject.passMarks || 0,
+                    subject.theoryFullMarks || 25,
+                    subject.practicalFullMarks || 25,
+                    includePractical
+                );
+                
+                // For optional subjects, if marks are 0, check if it's truly failed or just not taken
+                let isPassed = result.isPassed;
+                if (subject.isOptional && subject.hasData === false) {
+                    isPassed = true; // Not taken, so not a fail
+                }
+                
+                subjectResults.push({
+                    subject: subject.subject,
+                    isOptional: subject.isOptional,
+                    hasData: subject.hasData,
+                    isCounted: subject.isCounted,
+                    ...result,
+                    isPassed: isPassed
+                });
+                
+                // Count only if subject is counted
+                if (subject.isCounted) {
+                    totalSubjects++;
+                    if (isPassed) {
+                        passedSubjects++;
+                        totalGPA += result.gpa;
+                    } else {
+                        failedSubjects++;
+                    }
+                }
+            });
+            
+            // For optional classes, ensure we count correctly
+            if (isOptionalClass) {
+                // If student has OPT.MATH, ENV.SCIENCE should not be counted if no data
+                // If student has ENV.SCIENCE, OPT.MATH should not be counted if no data
+                // If student has both, both are counted
+                // If student has neither, it's a problem (should have at least one)
+            }
+            
+            const overallGPA = totalSubjects > 0 ? totalGPA / totalSubjects : 0;
+            const isPassedAll = failedSubjects === 0 && totalSubjects > 0;
+            const hasFailedAny = failedSubjects > 0;
+            
+            // Determine overall grade
+            let overallGrade = 'F';
+            if (overallGPA >= 3.6) overallGrade = 'A+';
+            else if (overallGPA >= 3.2) overallGrade = 'A';
+            else if (overallGPA >= 2.8) overallGrade = 'B+';
+            else if (overallGPA >= 2.4) overallGrade = 'B';
+            else if (overallGPA >= 2.0) overallGrade = 'C+';
+            else if (overallGPA >= 1.6) overallGrade = 'C';
+            else if (overallGPA >= 1.2) overallGrade = 'D+';
+            else if (overallGPA >= 0.8) overallGrade = 'D';
+            else overallGrade = 'F';
+            
+            return {
+                reg: student.reg,
+                name: student.name,
+                roll: student.roll,
+                gender: student.gender,
+                section: student.section,
+                class: student.class || '',
+                subjectResults,
+                passedSubjects,
+                failedSubjects,
+                totalSubjects,
+                isPassedAll,
+                hasFailedAny,
+                overallGPA: overallGPA.toFixed(2),
+                overallGrade
+            };
+        }
+
+        // Helper function to get class name
+        function getClassName(classNum) {
+            const classNames = {
+                '1': 'One',
+                '2': 'Two',
+                '3': 'Three',
+                '4': 'Four',
+                '5': 'Five',
+                '6': 'Six',
+                '7': 'Seven',
+                '8': 'Eight',
+                '9': 'Nine',
+                '10': 'Ten'
+            };
+            return classNames[classNum] || classNum;
+        }
+
+        // Get query parameters with defaults
+        const { terminal, academicYear, analysisType = 'both' } = req.query;
+        
+        // If no parameters provided, render empty state or show filters
+        if (!terminal || !academicYear) {
+            return res.render('./exam/schoolanalysis', {
+                overallData: { totalStudents: 0, passedAll: 0, failedAny: 0, passPercentage: 0, failPercentage: 0 },
+                groupAnalytics: [],
+                classAnalytics: [],
+                analysisType: 'both',
+                terminal: terminal || '',
+                academicYear: academicYear || '',
+                hasData: false,
+                error: null
+            });
+        }
+
+        const includePractical = analysisType === 'both';
+        
+        // Get all classes from 1 to 10
+        const classes = Array.from({ length: 10 }, (_, i) => (i + 1).toString());
+        
+        // Process each class
+        const classAnalytics = [];
+        const classGroups = {
+            '1-3': { classes: ['1', '2', '3'], students: [], totalPassed: 0, totalFailed: 0, totalStudents: 0 },
+            '4-7': { classes: ['4', '5', '6', '7'], students: [], totalPassed: 0, totalFailed: 0, totalStudents: 0 },
+            '8-10': { classes: ['8', '9', '10'], students: [], totalPassed: 0, totalFailed: 0, totalStudents: 0 }
+        };
+        
+        for (const classNum of classes) {
+            const students = await getStudentsForClass(classNum, terminal, academicYear, includePractical);
+            
+            if (students.length === 0) continue;
+            
+            // Add class info to each student
+            const studentsWithClass = students.map(student => ({
+                ...student,
+                class: classNum
+            }));
+            
+            // Calculate results for each student
+            const studentResults = studentsWithClass.map(student => calculateStudentResult(student, includePractical));
+            
+            const passedAll = studentResults.filter(s => s.isPassedAll).length;
+            const failedAny = studentResults.filter(s => s.hasFailedAny).length;
+            const totalStudents = studentResults.length;
+            
+            // Get unique sections for this class
+            const sections = [...new Set(studentResults.map(s => s.section))].filter(s => s);
+            
+            const classData = {
+                class: classNum,
+                className: getClassName(classNum),
+                totalStudents,
+                passedAll,
+                failedAny,
+                passPercentage: totalStudents > 0 ? ((passedAll / totalStudents) * 100).toFixed(2) : 0,
+                failPercentage: totalStudents > 0 ? ((failedAny / totalStudents) * 100).toFixed(2) : 0,
+                sections: sections,
+                studentResults
+            };
+            
+            classAnalytics.push(classData);
+            
+            // Add to group
+            const groupKey = Object.keys(classGroups).find(key => 
+                classGroups[key].classes.includes(classNum)
+            );
+            
+            if (groupKey) {
+                classGroups[groupKey].students = classGroups[groupKey].students.concat(studentResults);
+                classGroups[groupKey].totalPassed += passedAll;
+                classGroups[groupKey].totalFailed += failedAny;
+                classGroups[groupKey].totalStudents += totalStudents;
+            }
+        }
+        
+        // Calculate group analytics
+        const groupAnalytics = Object.entries(classGroups).map(([groupName, groupData]) => {
+            const totalStudents = groupData.totalStudents;
+            return {
+                groupName,
+                totalStudents,
+                passedAll: groupData.totalPassed,
+                failedAny: groupData.totalFailed,
+                passPercentage: totalStudents > 0 ? ((groupData.totalPassed / totalStudents) * 100).toFixed(2) : 0,
+                failPercentage: totalStudents > 0 ? ((groupData.totalFailed / totalStudents) * 100).toFixed(2) : 0
+            };
+        });
+        
+        // Calculate overall totals
+        const totalAllStudents = classAnalytics.reduce((sum, c) => sum + c.totalStudents, 0);
+        const totalPassedAll = classAnalytics.reduce((sum, c) => sum + c.passedAll, 0);
+        const totalFailedAny = classAnalytics.reduce((sum, c) => sum + c.failedAny, 0);
+        
+        const overallData = {
+            totalStudents: totalAllStudents,
+            passedAll: totalPassedAll,
+            failedAny: totalFailedAny,
+            passPercentage: totalAllStudents > 0 ? ((totalPassedAll / totalAllStudents) * 100).toFixed(2) : 0,
+            failPercentage: totalAllStudents > 0 ? ((totalFailedAny / totalAllStudents) * 100).toFixed(2) : 0
+        };
+        
+        return res.render('./exam/schoolanalysis', {
+            overallData,
+            groupAnalytics,
+            classAnalytics,
+            analysisType,
+            terminal,
+            academicYear,
+            hasData: true,
+            error: null
+        });
+        
+    } catch (error) {
+        console.error('Error generating analytics:', error);
+        return res.status(500).render('./exam/schoolanalysis', {
+            error: error.message || 'An error occurred while generating analytics',
+            overallData: { totalStudents: 0, passedAll: 0, failedAny: 0, passPercentage: 0, failPercentage: 0 },
+            groupAnalytics: [],
+            classAnalytics: [],
+            analysisType: req.query.analysisType || 'both',
+            terminal: req.query.terminal || '',
+            academicYear: req.query.academicYear || '',
+            hasData: false
+        });
+    }
+};

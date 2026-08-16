@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>School Analysis Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #f0f4f8;
+            font-family: 'Poppins', sans-serif;
+            min-height: 100vh;
+        }
+        
+        /* Animated Gradient Header */
+        .dashboard-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+            background-size: 300% 300%;
+            animation: gradientShift 8s ease-in-out infinite;
+            color: white;
+            padding: 35px 0;
+            margin-bottom: 30px;
+            border-radius: 0 0 30px 30px;
+            box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .dashboard-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+            animation: pulseGlow 10s ease-in-out infinite;
+        }
+        
+        @keyframes pulseGlow {
+            0% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.5; }
+        }
+        
+        .dashboard-header .container {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .dashboard-header h1 {
+            font-weight: 700;
+            font-size: 2.5rem;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            letter-spacing: -0.5px;
+        }
+        
+        .dashboard-header h1 i {
+            margin-right: 15px;
+            animation: floatIcon 3s ease-in-out infinite;
+        }
+        
+        @keyframes floatIcon {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        
+        .dashboard-header .subtitle {
+            opacity: 0.95;
+            font-size: 1.1rem;
+            font-weight: 300;
+            background: rgba(255,255,255,0.15);
+            padding: 8px 20px;
+            border-radius: 20px;
+            display: inline-block;
+            backdrop-filter: blur(10px);
+        }
+        
+        .header-stats {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .header-stat-item {
+            background: rgba(255,255,255,0.15);
+            padding: 8px 18px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* Modern Cards */
+        .card {
+            border-radius: 20px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+            border: none;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            background: white;
+            overflow: hidden;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 45px rgba(0,0,0,0.1);
+        }
+        
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 20px 20px 0 0 !important;
+            padding: 18px 28px;
+            font-weight: 600;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .card-header i {
+            font-size: 1.3rem;
+        }
+        
+        .card-header h5 {
+            margin: 0;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+        
+        .card-body {
+            padding: 25px;
+        }
+        
+        /* Filter Section */
+        .filter-section {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+        
+        .filter-section .form-label {
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+        
+        .filter-section .form-label i {
+            color: #667eea;
+            margin-right: 6px;
+        }
+        
+        .filter-section .form-select,
+        .filter-section .form-control {
+            border-radius: 12px;
+            border: 2px solid #e2e8f0;
+            padding: 10px 15px;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            background: #f7fafc;
+        }
+        
+        .filter-section .form-select:focus,
+        .filter-section .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            background: white;
+        }
+        
+        .btn-analysis {
+            padding: 8px 22px;
+            border-radius: 25px;
+            font-weight: 600;
+            margin: 0 4px;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .btn-analysis:hover {
+            transform: scale(1.05);
+        }
+        
+        .btn-analysis.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 12px;
+            padding: 12px 40px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-light {
+            border-radius: 12px;
+            padding: 10px 25px;
+            font-weight: 500;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: white;
+        }
+        
+        .btn-light:hover {
+            background: rgba(255,255,255,0.3);
+            color: white;
+        }
+        
+        /* Stat Cards */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px 20px;
+            text-align: center;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(102, 126, 234, 0.08);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+        
+        .stat-card.success::before {
+            background: linear-gradient(90deg, #48bb78, #38a169);
+        }
+        
+        .stat-card.danger::before {
+            background: linear-gradient(90deg, #fc8181, #e53e3e);
+        }
+        
+        .stat-card.info::before {
+            background: linear-gradient(90deg, #63b3ed, #3182ce);
+        }
+        
+        .stat-card .stat-icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+        
+        .stat-number {
+            font-size: 2.8rem;
+            font-weight: 800;
+            color: #2d3748;
+            line-height: 1.2;
+        }
+        
+        .stat-card.success .stat-number {
+            color: #48bb78;
+        }
+        
+        .stat-card.danger .stat-number {
+            color: #fc8181;
+        }
+        
+        .stat-card.info .stat-number {
+            color: #63b3ed;
+        }
+        
+        .stat-label {
+            color: #718096;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-top: 5px;
+        }
+        
+        /* Tables */
+        .table {
+            margin-bottom: 0;
+            font-size: 0.95rem;
+        }
+        
+        .table th {
+            background: #f7fafc;
+            font-weight: 700;
+            color: #2d3748;
+            border-bottom: 2px solid #e2e8f0;
+            white-space: nowrap;
+            padding: 15px 15px;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .table td {
+            padding: 12px 15px;
+            vertical-align: middle;
+            border-bottom: 1px solid #edf2f7;
+        }
+        
+        .table tbody tr:hover {
+            background-color: #f7fafc;
+        }
+        
+        /* Badges */
+        .badge-pass {
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            color: white;
+            padding: 5px 18px;
+            border-radius: 20px;
+            font-weight: 600;
+            display: inline-block;
+            font-size: 0.85rem;
+        }
+        
+        .badge-fail {
+            background: linear-gradient(135deg, #fc8181, #e53e3e);
+            color: white;
+            padding: 5px 18px;
+            border-radius: 20px;
+            font-weight: 600;
+            display: inline-block;
+            font-size: 0.85rem;
+        }
+        
+        .badge-optional {
+            background: linear-gradient(135deg, #a0aec0, #718096);
+            color: white;
+            padding: 3px 12px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+        
+        .section-badge {
+            background: linear-gradient(135deg, #bee3f8, #90cdf4);
+            color: #2b6cb0;
+            padding: 3px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin: 2px;
+            display: inline-block;
+        }
+        
+        /* Group Header Rows */
+        .group-header-row {
+            background: linear-gradient(135deg, #edf2f7, #e2e8f0);
+            font-weight: 700;
+            border-bottom: 2px solid #cbd5e0;
+        }
+        
+        .group-header-row td {
+            padding: 15px 15px;
+            font-size: 0.95rem;
+        }
+        
+        .overall-total-row {
+            background: linear-gradient(135deg, #d5d5f5, #b8b8e8);
+            font-weight: 700;
+            border-top: 3px solid #667eea;
+        }
+        
+        .overall-total-row td {
+            padding: 15px 15px;
+            font-size: 1rem;
+        }
+        
+        /* Progress Bars */
+        .progress {
+            height: 22px;
+            border-radius: 12px;
+            background-color: #edf2f7;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+        }
+        
+        .progress-bar {
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            line-height: 22px;
+            transition: width 1s ease;
+        }
+        
+        .progress-bar-success {
+            background: linear-gradient(90deg, #48bb78, #38a169);
+        }
+        
+        .progress-bar-danger {
+            background: linear-gradient(90deg, #fc8181, #e53e3e);
+        }
+        
+        /* Accordion */
+        .accordion-item {
+            border: none;
+            border-bottom: 1px solid #edf2f7;
+        }
+        
+        .accordion-item:last-child {
+            border-bottom: none;
+        }
+        
+        .accordion-button {
+            padding: 18px 25px;
+            font-weight: 600;
+            background: white;
+            border: none;
+            box-shadow: none;
+        }
+        
+        .accordion-button:not(.collapsed) {
+            background: linear-gradient(135deg, #f7fafc, #edf2f7);
+            color: #2d3748;
+            box-shadow: none;
+        }
+        
+        .accordion-button:focus {
+            box-shadow: none;
+            border-color: transparent;
+        }
+        
+        .accordion-button:hover {
+            background: #f7fafc;
+        }
+        
+        .accordion-body {
+            padding: 0;
+            background: #fafbfc;
+        }
+        
+        /* No Data */
+        .no-data {
+            text-align: center;
+            padding: 60px 20px;
+            color: #718096;
+        }
+        
+        .no-data i {
+            font-size: 5rem;
+            margin-bottom: 20px;
+            color: #cbd5e0;
+            display: block;
+        }
+        
+        .no-data h3 {
+            color: #2d3748;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        
+        /* Alerts */
+        .alert-info {
+            background: linear-gradient(135deg, #ebf8ff, #bee3f8);
+            border: none;
+            border-radius: 15px;
+            color: #2b6cb0;
+            padding: 15px 25px;
+            font-weight: 500;
+        }
+        
+        .alert-danger {
+            background: linear-gradient(135deg, #fff5f5, #fed7d7);
+            border: none;
+            border-radius: 15px;
+            color: #c53030;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .dashboard-header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .stat-number {
+                font-size: 2rem;
+            }
+            
+            .stat-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .table-responsive {
+                font-size: 0.8rem;
+            }
+            
+            .dashboard-header .subtitle {
+                font-size: 0.9rem;
+                padding: 5px 15px;
+            }
+            
+            .header-stats {
+                gap: 10px;
+                margin-top: 10px;
+            }
+            
+            .header-stat-item {
+                font-size: 0.8rem;
+                padding: 5px 12px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .stat-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .dashboard-header h1 {
+                font-size: 1.5rem;
+            }
+        }
+        
+        /* Print Styles */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            
+            .dashboard-header {
+                background: #667eea !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                animation: none !important;
+            }
+            
+            .card {
+                box-shadow: none !important;
+                border: 1px solid #e2e8f0 !important;
+                transform: none !important;
+            }
+            
+            .card-header {
+                background: #667eea !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .badge-pass, .badge-fail {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .stat-card {
+                box-shadow: none !important;
+                border: 1px solid #e2e8f0 !important;
+            }
+            
+            .progress-bar {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+        
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .card {
+            animation: fadeInUp 0.6s ease;
+        }
+        
+        .card:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+        
+        .card:nth-child(3) {
+            animation-delay: 0.2s;
+        }
+        
+        .card:nth-child(4) {
+            animation-delay: 0.3s;
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f7fafc;
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #5a67d8, #6b46a1);
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-7">
+                    <h1><i class="bi bi-bar-chart-fill"></i> School Analysis Dashboard</h1>
+                    <div class="subtitle">
+                        <i class="bi bi-calendar3"></i> 
+                        <% if (terminal && academicYear) { %>
+                            Term: <strong><%= terminal %></strong> | 
+                            Year: <strong><%= academicYear %></strong>
+                        <% } else { %>
+                            Select filters to view analysis
+                        <% } %>
+                    </div>
+                </div>
+                <div class="col-md-5 text-md-end mt-3 mt-md-0">
+                    <div class="header-stats">
+                        <span class="header-stat-item">
+                            <i class="bi bi-people-fill"></i> 
+                            <% if (hasData) { %><%= overallData.totalStudents %><% } else { %>0<% } %> Students
+                        </span>
+                        <span class="header-stat-item">
+                            <i class="bi bi-check-circle-fill"></i>
+                            <% if (hasData) { %><%= overallData.passPercentage %>%<% } else { %>0%<% } %> Pass
+                        </span>
+                        <button onclick="window.print()" class="btn btn-light no-print">
+                            <i class="bi bi-printer"></i> Print
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Filter Section -->
+        <div class="filter-section no-print">
+            <form action="/exam/schoolanalysis" method="GET" class="row g-4">
+                <div class="col-md-4">
+                    <label class="form-label"><i class="bi bi-tag"></i> Terminal</label>
+                    <select name="terminal" class="form-select" required>
+                        <option value="">Select Terminal</option>
+                        <option value="FIRST" <%= terminal === 'FIRST' ? 'selected' : '' %>>First Terminal</option>
+                        <option value="SECOND" <%= terminal === 'SECOND' ? 'selected' : '' %>>Second Terminal</option>
+                        <option value="THIRD" <%= terminal === 'THIRD' ? 'selected' : '' %>>Third Terminal</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label"><i class="bi bi-calendar"></i> Academic Year</label>
+                    <select name="academicYear" class="form-select" required>
+                        <option value="">Select Year</option>
+                        <option value="2082" <%= academicYear === '2082' ? 'selected' : '' %>>2082</option>
+                        <option value="2083" <%= academicYear === '2083' ? 'selected' : '' %>>2083</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label"><i class="bi bi-graph-up"></i> Analysis Type</label>
+                    <div class="btn-group w-100" role="group">
+                        <input type="radio" class="btn-check" name="analysisType" id="theoryOnly" value="theory" 
+                            <%= analysisType === 'theory' ? 'checked' : '' %>>
+                        <label class="btn btn-outline-primary btn-analysis" for="theoryOnly">
+                            <i class="bi bi-book"></i> Theory
+                        </label>
+                        
+                        <input type="radio" class="btn-check" name="analysisType" id="both" value="both"
+                            <%= analysisType === 'both' ? 'checked' : '' %>>
+                        <label class="btn btn-outline-primary btn-analysis" for="both">
+                            <i class="bi bi-layers"></i> Theory + Practical
+                        </label>
+                    </div>
+                </div>
+                <div class="col-12 text-center">
+                    <button type="submit" class="btn btn-primary btn-lg px-5">
+                        <i class="bi bi-search"></i> Generate Analysis
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <% if (!hasData) { %>
+            <div class="card">
+                <div class="card-body">
+                    <div class="no-data">
+                        <i class="bi bi-clipboard-data"></i>
+                        <h3>No Data Available</h3>
+                        <p class="text-muted">Please select filters and click "Generate Analysis" to view results</p>
+                        <% if (typeof error !== 'undefined' && error) { %>
+                            <div class="alert alert-danger mt-3">
+                                <i class="bi bi-exclamation-triangle"></i> <%= error %>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        <% } else { %>
+
+        <!-- Overall Stats -->
+        <div class="stat-grid">
+            <div class="stat-card">
+                <span class="stat-icon"><i class="bi bi-people-fill" style="color: #667eea;"></i></span>
+                <div class="stat-number"><%= overallData.totalStudents %></div>
+                <div class="stat-label">Total Students (All Sections)</div>
+            </div>
+            <div class="stat-card success">
+                <span class="stat-icon"><i class="bi bi-check-circle-fill" style="color: #48bb78;"></i></span>
+                <div class="stat-number"><%= overallData.passedAll %></div>
+                <div class="stat-label">Passed in All Subjects</div>
+            </div>
+            <div class="stat-card danger">
+                <span class="stat-icon"><i class="bi bi-x-circle-fill" style="color: #fc8181;"></i></span>
+                <div class="stat-number"><%= overallData.failedAny %></div>
+                <div class="stat-label">Failed in Any Subject</div>
+            </div>
+            <div class="stat-card info">
+                <span class="stat-icon"><i class="bi bi-percent" style="color: #63b3ed;"></i></span>
+                <div class="stat-number"><%= overallData.passPercentage %>%</div>
+                <div class="stat-label">Overall Pass Percentage</div>
+            </div>
+        </div>
+
+        <!-- Overall Result Table with Group Rows -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-table"></i>
+                <h5>Overall Result Analysis (All Sections)</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0">
+                        <thead>
+                            <tr>
+                                <th style="min-width: 130px;">Class / Group</th>
+                                <th>Total Students</th>
+                                <th>Pass in All Subjects</th>
+                                <th>Fail in Any Subject</th>
+                                <th>Pass %</th>
+                                <th>Fail %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Class Groups -->
+                            <% groupAnalytics.forEach(group => { %>
+                                <tr class="group-header-row">
+                                    <td><strong><i class="bi bi-collection"></i> Class <%= group.groupName %></strong></td>
+                                    <td><strong><%= group.totalStudents %></strong></td>
+                                    <td><span class="badge-pass"><i class="bi bi-check-circle"></i> <%= group.passedAll %></span></td>
+                                    <td><span class="badge-fail"><i class="bi bi-x-circle"></i> <%= group.failedAny %></span></td>
+                                    <td>
+                                        <strong><%= group.passPercentage %>%</strong>
+                                        <div class="progress mt-1">
+                                            <div class="progress-bar progress-bar-success" role="progressbar" 
+                                                style="width: <%= group.passPercentage %>%">
+                                                <%= group.passPercentage %>%
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <strong><%= group.failPercentage %>%</strong>
+                                        <div class="progress mt-1">
+                                            <div class="progress-bar progress-bar-danger" role="progressbar" 
+                                                style="width: <%= group.failPercentage %>%">
+                                                <%= group.failPercentage %>%
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                            
+                            <!-- Overall Total Row -->
+                            <tr class="overall-total-row">
+                                <td><strong><i class="bi bi-trophy"></i> TOTAL</strong></td>
+                                <td><strong><%= overallData.totalStudents %></strong></td>
+                                <td><span class="badge-pass"><i class="bi bi-check-circle"></i> <%= overallData.passedAll %></span></td>
+                                <td><span class="badge-fail"><i class="bi bi-x-circle"></i> <%= overallData.failedAny %></span></td>
+                                <td>
+                                    <strong><%= overallData.passPercentage %>%</strong>
+                                    <div class="progress mt-1">
+                                        <div class="progress-bar progress-bar-success" role="progressbar" 
+                                            style="width: <%= overallData.passPercentage %>%">
+                                            <%= overallData.passPercentage %>%
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <strong><%= overallData.failPercentage %>%</strong>
+                                    <div class="progress mt-1">
+                                        <div class="progress-bar progress-bar-danger" role="progressbar" 
+                                            style="width: <%= overallData.failPercentage %>%">
+                                            <%= overallData.failPercentage %>%
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Class Wise Analysis -->
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-bar-chart"></i>
+                <h5>Class Wise Analysis (All Sections)</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-bordered mb-0">
+                        <thead>
+                            <tr>
+                                <th>Class</th>
+                                <th>Sections</th>
+                                <th>Total Students</th>
+                                <th>Pass in All Subjects</th>
+                                <th>Fail in Any Subject</th>
+                                <th>Pass %</th>
+                                <th>Fail %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% classAnalytics.forEach(classData => { %>
+                                <tr>
+                                    <td>
+                                        <strong>
+                                            <i class="bi bi-people"></i> 
+                                            Class <%= classData.className %> (<%= classData.class %>)
+                                        </strong>
+                                    </td>
+                                    <td>
+                                        <% if (classData.sections && classData.sections.length > 0) { %>
+                                            <% classData.sections.forEach(section => { %>
+                                                <span class="section-badge"><%= section %></span>
+                                            <% }); %>
+                                        <% } else { %>
+                                            <span class="text-muted">N/A</span>
+                                        <% } %>
+                                    </td>
+                                    <td><%= classData.totalStudents %></td>
+                                    <td><span class="badge-pass"><%= classData.passedAll %></span></td>
+                                    <td><span class="badge-fail"><%= classData.failedAny %></span></td>
+                                    <td>
+                                        <%= classData.passPercentage %>%
+                                        <div class="progress mt-1" style="height: 16px;">
+                                            <div class="progress-bar progress-bar-success" role="progressbar" 
+                                                style="width: <%= classData.passPercentage %>%">
+                                                <%= classData.passPercentage %>%
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <%= classData.failPercentage %>%
+                                        <div class="progress mt-1" style="height: 16px;">
+                                            <div class="progress-bar progress-bar-danger" role="progressbar" 
+                                                style="width: <%= classData.failPercentage %>%">
+                                                <%= classData.failPercentage %>%
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <% }); %>
+                            
+                            <% if (classAnalytics.length === 0) { %>
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">
+                                        <i class="bi bi-info-circle"></i> No data available for the selected filters
+                                    </td>
+                                </tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Student Results -->
+        <% if (classAnalytics.length > 0 && classAnalytics[0].studentResults) { %>
+        <div class="card">
+            <div class="card-header">
+                <i class="bi bi-people-fill"></i>
+                <h5>Detailed Student Results by Class (All Sections)</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="accordion" id="studentResultsAccordion">
+                    <% classAnalytics.forEach((classData, index) => { %>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading<%= index %>">
+                                <button class="accordion-button <%= index === 0 ? '' : 'collapsed' %>" type="button" 
+                                    data-bs-toggle="collapse" data-bs-target="#collapse<%= index %>" 
+                                    aria-expanded="<%= index === 0 ? 'true' : 'false' %>">
+                                    <div class="d-flex flex-wrap align-items-center w-100">
+                                        <strong class="me-3">
+                                            <i class="bi bi-people"></i> 
+                                            Class <%= classData.className %> (<%= classData.class %>)
+                                        </strong>
+                                        <span class="badge bg-secondary me-2">
+                                            <i class="bi bi-person"></i> <%= classData.totalStudents %> Students
+                                        </span>
+                                        <span class="badge-pass me-2">
+                                            <i class="bi bi-check-circle"></i> <%= classData.passedAll %> Passed All
+                                        </span>
+                                        <span class="badge-fail">
+                                            <i class="bi bi-x-circle"></i> <%= classData.failedAny %> Failed Any
+                                        </span>
+                                        <% if (classData.sections && classData.sections.length > 0) { %>
+                                            <span class="ms-2">
+                                                <% classData.sections.forEach(section => { %>
+                                                    <span class="section-badge"><%= section %></span>
+                                                <% }); %>
+                                            </span>
+                                        <% } %>
+                                    </div>
+                                </button>
+                            </h2>
+                            <div id="collapse<%= index %>" class="accordion-collapse collapse <%= index === 0 ? 'show' : '' %>" 
+                                 aria-labelledby="heading<%= index %>" data-bs-parent="#studentResultsAccordion">
+                                <div class="accordion-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-striped mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Roll</th>
+                                                    <th>Name</th>
+                                                    <th>Reg</th>
+                                                    <th>Section</th>
+                                                    <th>Gender</th>
+                                                    <th>Subjects</th>
+                                                    <th>Status</th>
+                                                    <th>GPA</th>
+                                                    <th>Grade</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <% classData.studentResults.forEach(student => { %>
+                                                    <tr>
+                                                        <td><strong><%= student.roll %></strong></td>
+                                                        <td><%= student.name %></td>
+                                                        <td><%= student.reg %></td>
+                                                        <td><span class="section-badge"><%= student.section || 'N/A' %></span></td>
+                                                        <td>
+                                                            <% if (student.gender === 'Male') { %>
+                                                                <i class="bi bi-gender-male" style="color: #4299e1;"></i>
+                                                            <% } else if (student.gender === 'Female') { %>
+                                                                <i class="bi bi-gender-female" style="color: #ed64a6;"></i>
+                                                            <% } else { %>
+                                                                <%= student.gender %>
+                                                            <% } %>
+                                                        </td>
+                                                        <td>
+                                                            <% if (student.subjectResults) { %>
+                                                                <% student.subjectResults.forEach(sub => { %>
+                                                                    <% if (sub.isCounted !== false) { %>
+                                                                        <span class="badge <%= sub.isPassed ? 'bg-success' : 'bg-danger' %> mb-1">
+                                                                            <%= sub.subject %>
+                                                                            <% if (sub.isOptional) { %>
+                                                                                <span class="badge-optional">OPT</span>
+                                                                            <% } %>
+                                                                        </span>
+                                                                    <% } else { %>
+                                                                        <span class="badge bg-secondary mb-1">
+                                                                            <%= sub.subject %> <span class="badge-optional">N/A</span>
+                                                                        </span>
+                                                                    <% } %>
+                                                                <% }); %>
+                                                            <% } %>
+                                                            <% if (student.class === '9' || student.class === '10' || 
+                                                                  student.class === 'Nine' || student.class === 'Ten') { %>
+                                                                <br><small class="text-muted"><i class="bi bi-info-circle"></i> * Optional subjects</small>
+                                                            <% } %>
+                                                        </td>
+                                                        <td>
+                                                            <% if (student.isPassedAll) { %>
+                                                                <span class="badge bg-success">
+                                                                    <i class="bi bi-check-circle"></i> Passed All
+                                                                </span>
+                                                            <% } else { %>
+                                                                <span class="badge bg-danger">
+                                                                    <i class="bi bi-x-circle"></i> Failed
+                                                                </span>
+                                                            <% } %>
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge bg-primary" style="font-size: 0.9rem;">
+                                                                <%= student.overallGPA %>
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <strong class="<%= student.overallGrade === 'F' ? 'text-danger' : 'text-success' %>" 
+                                                                    style="font-size: 1.1rem;">
+                                                                <%= student.overallGrade %>
+                                                            </strong>
+                                                        </td>
+                                                    </tr>
+                                                <% }); %>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <% }); %>
+                </div>
+            </div>
+        </div>
+        <% } %>
+
+        <!-- Analysis Type Indicator -->
+        <div class="alert alert-info no-print" role="alert">
+            <div class="d-flex align-items-center gap-3">
+                <i class="bi bi-info-circle" style="font-size: 1.5rem;"></i>
+                <div>
+                    <strong>Analysis Mode:</strong> 
+                    <%= analysisType === 'theory' ? 'Theory Only' : 'Theory + Practical' %>
+                    - GPA calculated based on <%= analysisType === 'theory' ? 'theory marks only' : 'combined theory and practical marks' %>
+                    <br>
+                    <i class="bi bi-layers"></i> <strong>Data includes ALL sections</strong>
+                    <span class="ms-3">
+                        <span class="badge bg-success"><i class="bi bi-check-circle"></i> Passed</span>
+                        <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Failed</span>
+                        <span class="badge bg-secondary"><i class="bi bi-dash-circle"></i> Optional (N/A)</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <% } // end if hasData %>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-submit form when analysis type changes
+            document.querySelectorAll('input[name="analysisType"]').forEach(function(radio) {
+                radio.addEventListener('change', function() {
+                    if (this.checked) {
+                        const form = this.closest('form');
+                        const terminal = form.querySelector('select[name="terminal"]').value;
+                        const academicYear = form.querySelector('select[name="academicYear"]').value;
+                        if (terminal && academicYear) {
+                            form.submit();
+                        }
+                    }
+                });
+            });
+
+            // Animate progress bars on load
+            document.querySelectorAll('.progress-bar').forEach(function(bar) {
+                const width = bar.style.width;
+                bar.style.width = '0%';
+                setTimeout(function() {
+                    bar.style.width = width;
+                }, 300);
+            });
+        });
+    </script>
+</body>
+</html>
