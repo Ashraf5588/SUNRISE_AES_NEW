@@ -163,9 +163,9 @@
     }
 
     .logo {
-      width: 80px;
-      height: 80px;
-      flex: 0 0 80px;
+      width: 100px;
+      height: 100px;
+      flex: 0 0 100px;
       border-radius: 0;
       overflow: hidden;
       display: flex;
@@ -185,7 +185,7 @@
     }
 
     .school-name {
-      font-size: 26px;
+      font-size: 28px;
       font-weight: 900;
       letter-spacing: 0.5px;
       font-family: 'Times New Roman', Times, serif;
@@ -207,7 +207,7 @@
       color: #000;
       margin-top: 10px;
       text-transform: uppercase;
-      font-size: 16px;
+      font-size: 20px;
       border: 1px solid #000;
       display: inline-block;
       padding: 5px 15px;
@@ -239,7 +239,7 @@
       width: 100%;
       border-collapse: collapse;
       margin-top: 12px;
-      font-size: 12px;
+      font-size: 14px;
       border: 2px solid #000;
     }
 
@@ -248,14 +248,14 @@
       padding: 6px 7px;
       text-align: center;
       word-wrap: break-word;
-      font-size: 14px;
+      font-size: 15px;
     }
 
     table th {
       background: #f0f0f0;
       color: #000;
       font-weight: 800;
-      font-size: 14px;
+      font-size: 15px;
       text-transform: uppercase;
     }
 
@@ -516,11 +516,11 @@
       }
 
       .school-name {
-        font-size: 24px;
+        font-size: 28px;
       }
 
       table {
-        font-size: 14px;
+        font-size: 15px;
       }
 
       table th, table td {
@@ -528,7 +528,7 @@
       }
 
       .student-info {
-        font-size: 13px;
+        font-size: 15px;
         padding: 8px;
       }
 
@@ -680,15 +680,15 @@
             'SOCIAL STUDIES': 'SOCIAL STUDIES AND HUMAN VALUE EDUCATION',
             'HEALTH': 'HEALTH PHYSICAL AND CREATIVE ARTS',
             'DELIGHT': 'ENGLISH-II',
-            'ENV.SCIENCE': 'Optional-II',
-            'OPT.MATH': 'Optional-II'
+            'ENV.SCIENCE': 'OPTIONAL-II',
+            'OPT.MATH': 'OPTIONAL-II'
           };
           
           function getDisplaySubjectName(subjectName) {
             const upperName = subjectName.toUpperCase().trim();
             if (upperName === 'ENV.SCIENCE' || upperName === 'ENV SCIENCE' || 
                 upperName === 'OPT.MATH' || upperName === 'OPT MATH' || upperName === 'OPTIONAL MATH') {
-              return 'Optional-II';
+              return 'OPTIONAL-II';
             }
             return subjectDisplayNames[upperName] || subjectName;
           }
@@ -729,7 +729,7 @@
             if (grade === 'C+') return 2.4;
             if (grade === 'C') return 2.0;
             if (grade === 'D') return 1.6;
-            return 'NG';
+            return '0.0';
           }
 
           function getSubjectRemark(grade) {
@@ -976,8 +976,8 @@
             <div class="school-name"><%= marksheetSetups[0].schoolName %></div>
             <div class="school-meta"><%= marksheetSetups[0].address %> &nbsp; | &nbsp; Phone: <%= marksheetSetups[0].phone %></div>
             <div class="report-title">
-              <div>ACADEMIC PROGRESS REPORT</div>
-              <div style="font-size:13px; margin-top:3px; font-weight:600"><%= terminal %> Terminal - <%= academicYear %></div>
+              <div>Grade Sheet</div>
+              <div style="font-size:13px; margin-top:3px; font-weight:600"><%= terminal %> Terminal Examination - <%= academicYear %></div>
             </div>
           </div>
           <div class="logo" style="border:none; visibility:hidden"></div>
@@ -999,8 +999,8 @@
               <th style="width:25%">Subject</th>
               <th style="width:12%">Credit Hour</th>
               <th class="col-theorymarks" style="width:15%">Obtained Th Marks</th>
-              <th>GP</th>
-              <th class="col-grade" style="width:12%">Obtained Grade</th>
+              <th>Grade Point</th>
+              <th class="col-grade" style="width:12%">Grade</th>
               <th class="col-finalgrade" style="width:12%">Final Grade</th>
               <th class="col-remarks" style="width:19%">Remarks</th>
             </tr>
@@ -1071,21 +1071,17 @@
                 <td class="col-remarks"><%= getSubjectRemark(finalGrade) %></td>
               </tr>
             <% }) %>
-          </tbody>
-        </table>
-
-        <!-- SUMMARY -->
-        <div class="summary">
-          <div>Total Credit Hours: <%= totalCredit %></div>
-          <div><span class="info-label">Attendance:</span> <span class="info-value"><%= totalAttendance || 'N/A' %></span></div>
-          <div>
-            GPA: 
+            <tr>
+              <td></td>
+              <td></td>
+              <td colspan="7"><div>
+           <b> Grade Average Point (GPA): 
             <% 
               let gpaForDisplay = totalCredit > 0 ? (totalGradePoints / totalCredit) : 0;
               gpaForDisplay = roundToTwo(gpaForDisplay);
               if (hasActualNG) { 
             %>
-            NG
+         -
             <% 
               } else { 
             %>
@@ -1093,7 +1089,16 @@
             <% 
               } 
             %>
-          </div>
+          </div></b></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- SUMMARY -->
+        <div class="summary">
+          <div>Total Credit Hours: <%= totalCredit %></div>
+          <div><span class="info-label">Attendance:</span> <span class="info-value"><%= totalAttendance || 'N/A' %></span></div>
+          
         </div>
 
         <!-- REMARKS -->
@@ -1106,7 +1111,7 @@
             %>
             <%= overallRemark %>
           </div>
-          <div class="issued-box"><b>Issued Date:</b>&nbsp;<%= issuedNepaliDate %></div>
+         
         </div>
 
         <!-- SIGNATURES -->
@@ -1143,9 +1148,11 @@
               <td>Below 35% : NG</td>
             </tr>
           </table>
+           <div class="issued-box"><b>Issued Date:</b>&nbsp;2083-04-31</div>
         </div>
       </div>
     </div>
+    
     <% 
         }); // end of sortedStudentData.forEach
       } else { 
@@ -1154,6 +1161,7 @@
       <h3>No Student Data Available</h3>
       <p style="margin-top:10px;">Please load marksheet data using the form above.</p>
     </div>
+    
     <% } %>
   </div>
 
