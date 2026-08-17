@@ -3418,3 +3418,376 @@ exports.schoolanalysis = async (req, res, next) => {
         });
     }
 };
+
+// analysisController.js
+
+
+// analysisController.js
+
+
+// analysisController.js
+ // Adjust according to your project structure
+
+// analysisController.js
+// Adjust according to your project structure
+
+// analysisController.js
+ // Adjust according to your project structure
+
+// analysisController.js
+
+
+// Class name normalization map
+// analysisController.js
+
+
+// Class name normalization map
+const CLASS_NORMALIZATION = {
+    'nursery': 'Nursery',
+    'lkg': 'LKG',
+    'ukg': 'UKG',
+    'one': 'One',
+    'two': 'Two',
+    'three': 'Three',
+    'four': 'Four',
+    'five': 'Five',
+    'six': 'Six',
+    'seven': 'Seven',
+    'eight': 'Eight',
+    'nine': 'Nine',
+    'ten': 'Ten',
+    '1': 'One',
+    '2': 'Two',
+    '3': 'Three',
+    '4': 'Four',
+    '5': 'Five',
+    '6': 'Six',
+    '7': 'Seven',
+    '8': 'Eight',
+    '9': 'Nine',
+    '10': 'Ten'
+};
+
+// Reverse map for display
+const DISPLAY_CLASS_MAP = {
+    'nursery': 'Nursery',
+    'lkg': 'LKG',
+    'ukg': 'UKG',
+    'one': 'One',
+    'two': 'Two',
+    'three': 'Three',
+    'four': 'Four',
+    'five': 'Five',
+    'six': 'Six',
+    'seven': 'Seven',
+    'eight': 'Eight',
+    'nine': 'Nine',
+    'ten': 'Ten',
+    '1': 'One',
+    '2': 'Two',
+    '3': 'Three',
+    '4': 'Four',
+    '5': 'Five',
+    '6': 'Six',
+    '7': 'Seven',
+    '8': 'Eight',
+    '9': 'Nine',
+    '10': 'Ten'
+};
+
+// Class order for sorting
+const CLASS_ORDER = {
+    'Nursery': 0,
+    'LKG': 1,
+    'UKG': 2,
+    'One': 3,
+    'Two': 4,
+    'Three': 5,
+    'Four': 6,
+    'Five': 7,
+    'Six': 8,
+    'Seven': 9,
+    'Eight': 10,
+    'Nine': 11,
+    'Ten': 12
+};
+
+function normalizeClassName(cls) {
+    if (!cls) return '';
+    const key = String(cls).toLowerCase().trim();
+    return CLASS_NORMALIZATION[key] || cls;
+}
+
+function getClassOrder(cls) {
+    if (!cls) return 999;
+    const normalized = normalizeClassName(cls);
+    return CLASS_ORDER[normalized] !== undefined ? CLASS_ORDER[normalized] : 999;
+}
+
+function displayClassName(cls) {
+    if (!cls) return '';
+    const key = String(cls).toLowerCase().trim();
+    return DISPLAY_CLASS_MAP[key] || cls;
+}
+
+function getIntervalSize(fullMarks) {
+    if (fullMarks <= 25) return 5;
+    if (fullMarks <= 50) return 10;
+    if (fullMarks <= 75) return 15;
+    if (fullMarks <= 100) return 20;
+    return 25;
+}
+
+// ============================================================
+// MAIN PROCESSING FUNCTION - ONLY ONE VERSION
+// ============================================================
+function processQuantumAnalysis(examMarks, subjectFullMarksMap) {
+    // Group by class
+    const classGroups = {};
+
+    examMarks.forEach(record => {
+        const cls = String(record.studentClass || '').trim();
+        if (!cls) return;
+
+        // Normalize class name for grouping
+        const normalizedCls = normalizeClassName(cls);
+        
+        if (!classGroups[normalizedCls]) {
+            classGroups[normalizedCls] = {
+                subjects: {},
+                totalStudents: new Set(),
+                originalNames: new Set()
+            };
+        }
+        
+        // Store original class name for display
+        classGroups[normalizedCls].originalNames.add(cls);
+
+        // Track unique students by reg
+        if (record.reg) {
+            classGroups[normalizedCls].totalStudents.add(record.reg);
+        }
+
+        // Process subject data
+        const subject = String(record.subject || '').trim();
+        if (!subject) return;
+
+        // Get full marks from subject config
+        let fullMarks = 0;
+        
+        // Try with normalized class name first
+        const key1 = (normalizedCls + '||' + subject).toUpperCase();
+        if (subjectFullMarksMap && subjectFullMarksMap[key1]) {
+            fullMarks = subjectFullMarksMap[key1].theory || 0;
+        }
+        
+        // If not found, try with original class name
+        if (fullMarks === 0) {
+            const key2 = (cls + '||' + subject).toUpperCase();
+            if (subjectFullMarksMap && subjectFullMarksMap[key2]) {
+                fullMarks = subjectFullMarksMap[key2].theory || 0;
+            }
+        }
+        
+        // If still not found, use from record
+        if (fullMarks === 0) {
+            fullMarks = record.theoryfullmarks || 0;
+        }
+
+        if (!classGroups[normalizedCls].subjects[subject]) {
+            classGroups[normalizedCls].subjects[subject] = {
+                marks: [],
+                passCount: 0,
+                failCount: 0,
+                passMarks: record.passMarks || 0,
+                fullMarks: fullMarks
+            };
+        }
+
+        // Get theory marks
+        const theoryMarks = parseFloat(record.theorymarks) || 0;
+        classGroups[normalizedCls].subjects[subject].marks.push(theoryMarks);
+
+        // Check pass/fail
+        const passMarks = parseFloat(record.passMarks) || 0;
+        if (theoryMarks >= passMarks) {
+            classGroups[normalizedCls].subjects[subject].passCount++;
+        } else {
+            classGroups[normalizedCls].subjects[subject].failCount++;
+        }
+    });
+
+    // Process each class to build distribution tables
+    const result = {};
+
+    Object.keys(classGroups).forEach(cls => {
+        const classData = classGroups[cls];
+        const subjects = classData.subjects;
+        const totalStudents = classData.totalStudents.size;
+
+        // Group subjects by full marks
+        const groupedSubjects = {};
+
+        Object.keys(subjects).forEach(sub => {
+            const data = subjects[sub];
+            const fullMarks = data.fullMarks || 50;
+
+            if (!groupedSubjects[fullMarks]) {
+                groupedSubjects[fullMarks] = {
+                    fullMarks: fullMarks,
+                    subjects: [],
+                    distributions: {}
+                };
+            }
+
+            groupedSubjects[fullMarks].subjects.push(sub);
+
+            // Build intervals based on full marks
+            const intervalSize = getIntervalSize(fullMarks);
+            const intervals = [];
+            let start = 0;
+            while (start < fullMarks) {
+                const end = Math.min(start + intervalSize, fullMarks);
+                intervals.push({
+                    start: start,
+                    end: end,
+                    count: 0,
+                    label: start + '-' + end
+                });
+                start = end;
+            }
+
+            // Count marks in each interval
+            data.marks.forEach(mark => {
+                for (let i = 0; i < intervals.length; i++) {
+                    if (mark >= intervals[i].start && mark < intervals[i].end) {
+                        intervals[i].count++;
+                        break;
+                    }
+                    if (mark === fullMarks && i === intervals.length - 1) {
+                        intervals[i].count++;
+                        break;
+                    }
+                }
+            });
+
+            // Calculate percentages
+            const total = data.marks.length || 1;
+            const passPercent = ((data.passCount / total) * 100).toFixed(2);
+            const failPercent = ((data.failCount / total) * 100).toFixed(2);
+
+            groupedSubjects[fullMarks].distributions[sub] = {
+                intervals: intervals,
+                total: data.marks.length,
+                passCount: data.passCount,
+                failCount: data.failCount,
+                passPercent: passPercent,
+                failPercent: failPercent,
+                fullMarks: fullMarks
+            };
+        });
+
+        result[cls] = {
+            groupedSubjects: groupedSubjects,
+            totalStudents: totalStudents,
+            displayName: displayClassName(cls)
+        };
+    });
+
+    return result;
+}
+
+// ============================================================
+// EXPORT CONTROLLER FUNCTION
+// ============================================================
+exports.quantamanalysis = async (req, res) => {
+    try {
+        const { terminal, academicYear, filterClass } = req.query;
+
+        // Build filter
+        let filter = {};
+        if (terminal) filter.terminal = terminal;
+        if (academicYear) filter.academicYear = academicYear;
+        
+        // Normalize filter class if provided
+        if (filterClass) {
+            filter.studentClass = filterClass;
+        }
+
+        console.log('Filter:', filter);
+
+        // Get the exam model
+        const Exammodel = await getSlipModel();
+        
+        // Fetch all exam marks
+        const examMarks = await Exammodel.find(filter).lean();
+        console.log('Exam Marks found:', examMarks.length);
+
+        // Fetch all subjects from newsubject collection
+        const subjectConfigs = await newsubject.find({}).lean();
+        console.log('Subject Configs found:', subjectConfigs.length);
+
+        // Build subject full marks map
+        const subjectFullMarksMap = {};
+        subjectConfigs.forEach(sub => {
+            const forClass = String(sub.forClass || '').trim();
+            const subjectName = String(sub.newsubject || '').trim();
+            
+            // Store with original class name
+            const key = (forClass + '||' + subjectName).toUpperCase();
+            subjectFullMarksMap[key] = {
+                theory: sub.theory || 0,
+                practical: sub.practical || 0,
+                total: sub.total || 0,
+                passingMarks: sub.passingMarks || 0,
+                theoryCreditHour: sub.theoryCreditHour || 0,
+                practicalCreditHour: sub.practicalCreditHour || 0
+            };
+            
+            // Also store with normalized class name
+            const normalizedClass = normalizeClassName(forClass);
+            if (normalizedClass !== forClass) {
+                const normalizedKey = (normalizedClass + '||' + subjectName).toUpperCase();
+                subjectFullMarksMap[normalizedKey] = {
+                    theory: sub.theory || 0,
+                    practical: sub.practical || 0,
+                    total: sub.total || 0,
+                    passingMarks: sub.passingMarks || 0,
+                    theoryCreditHour: sub.theoryCreditHour || 0,
+                    practicalCreditHour: sub.practicalCreditHour || 0
+                };
+            }
+        });
+
+        // Get unique classes for filter
+        const allClasses = await Exammodel.distinct('studentClass', filter);
+        const terminals = await Exammodel.distinct('terminal', filter);
+        const years = await Exammodel.distinct('academicYear', filter);
+
+        // Process data
+        const analysisData = processQuantumAnalysis(examMarks, subjectFullMarksMap);
+        console.log('Analysis Data Classes:', Object.keys(analysisData));
+
+        // Log first class structure for debugging
+        if (Object.keys(analysisData).length > 0) {
+            const firstClass = Object.keys(analysisData)[0];
+            console.log('First class:', firstClass);
+            console.log('First class groupedSubjects keys:', Object.keys(analysisData[firstClass].groupedSubjects || {}));
+        }
+
+        res.render('./exam/quantamanalysis', {
+            title: 'Quantum Analysis - Marks Distribution',
+            analysisData: analysisData,
+            classList: allClasses.sort(),
+            terminals: terminals.sort(),
+            years: years.sort(),
+            selectedTerminal: terminal || '',
+            selectedYear: academicYear || '',
+            filterClass: filterClass || ''
+        });
+
+    } catch (error) {
+        console.error('Error in quantamanalysis:', error);
+        res.status(500).send('Error loading analysis page: ' + error.message);
+    }
+};
