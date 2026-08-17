@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f1f5f9;
+            color: #0f172a;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+
+        .header {
+            background: #ffffff;
+            padding: 1.5rem 2rem;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .header h1 { font-size: 1.5rem; font-weight: 700; color: #4f46e5; }
+        .header-controls {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .header-controls select {
+            padding: 0.6rem 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: white;
+            font-size: 0.9rem;
+            min-width: 130px;
+        }
+        .header-controls button {
+            padding: 0.6rem 1.5rem;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .header-controls button:hover { background: #4338ca; }
+        .header-controls .btn-print { background: #64748b; }
+        .header-controls .btn-print:hover { background: #475569; }
+
+        .toggle-group {
+            display: flex;
+            gap: 0.3rem;
+            background: #f1f5f9;
+            padding: 0.3rem;
+            border-radius: 8px;
+            flex-wrap: wrap;
+        }
+        .toggle-group button {
+            padding: 0.4rem 1rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: transparent;
+            color: #0f172a;
+            font-size: 0.85rem;
+        }
+        .toggle-group button.active {
+            background: #4f46e5;
+            color: white;
+        }
+        .toggle-group button:hover:not(.active) {
+            background: #e2e8f0;
+        }
+
+        .subject-selector {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+        }
+        .subject-selector button {
+            padding: 0.4rem 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            background: #ffffff;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+        .subject-selector button.active {
+            border-color: #4f46e5;
+            background: #4f46e5;
+            color: white;
+        }
+        .subject-selector button:hover:not(.active) { background: #e2e8f0; }
+
+        .grade-section {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        .subject-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 3px solid #4f46e5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .subject-title .info {
+            font-size: 0.8rem;
+            font-weight: 400;
+            color: #64748b;
+        }
+
+        .table-wrapper { overflow-x: auto; margin-bottom: 1rem; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            min-width: 500px;
+        }
+        table th {
+            background: #153b71;
+            color: white;
+            padding: 10px 14px;
+            text-align: center;
+            border: 1px solid #1d3d69;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        table td {
+            padding: 8px 14px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+        table tr:nth-child(even) { background: #f8fafc; }
+        table tr:hover { background: #e2e8f0; }
+
+        .grade-Aplus { background: #d1fae5; }
+        .grade-A { background: #a7f3d0; }
+        .grade-Bplus { background: #6ee7b7; }
+        .grade-B { background: #34d399; }
+        .grade-Cplus { background: #fcd34d; }
+        .grade-C { background: #fbbf24; }
+        .grade-D { background: #f59e0b; }
+        .grade-NG { background: #fecaca; }
+
+        .total-row { font-weight: 700; background: #f1f5f9 !important; }
+        .subject-content { display: none; }
+        .subject-content.active { display: block; }
+
+        .no-data {
+            text-align: center;
+            padding: 3rem;
+            color: #94a3b8;
+            font-size: 1.1rem;
+        }
+
+        .calc-mode-label {
+            font-size: 0.8rem;
+            color: #64748b;
+            font-weight: 400;
+            margin-left: 1rem;
+        }
+
+        @media print {
+            .no-print { display: none !important; }
+            .grade-section { box-shadow: none; border: 1px solid #e2e8f0; break-inside: avoid; }
+            body { padding: 10px; background: white; }
+            table { font-size: 0.75rem; }
+        }
+
+        @media (max-width: 768px) {
+            .header { flex-direction: column; align-items: stretch; }
+            .header-controls { flex-direction: column; }
+            .toggle-group { justify-content: center; }
+            table { font-size: 0.75rem; min-width: 400px; }
+            table th, table td { padding: 4px 8px; }
+        }
+    </style>
+</head>
+<body>
+    <%
+    // Helper functions
+    function displayClassName(cls) {
+        if (!cls) return '';
+        const classMap = {
+            'nursery': 'Nursery', 'lkg': 'LKG', 'ukg': 'UKG',
+            'one': 'One', 'two': 'Two', 'three': 'Three',
+            'four': 'Four', 'five': 'Five', 'six': 'Six',
+            'seven': 'Seven', 'eight': 'Eight', 'nine': 'Nine', 'ten': 'Ten',
+            '1': 'One', '2': 'Two', '3': 'Three', '4': 'Four',
+            '5': 'Five', '6': 'Six', '7': 'Seven', '8': 'Eight',
+            '9': 'Nine', '10': 'Ten'
+        };
+        const key = String(cls).toLowerCase().trim();
+        return classMap[key] || cls;
+    }
+
+    function getClassOrder(cls) {
+        if (!cls) return 999;
+        const orderMap = {
+            'nursery': 0, 'lkg': 1, 'ukg': 2,
+            'one': 3, 'two': 4, 'three': 5,
+            'four': 6, 'five': 7, 'six': 8,
+            'seven': 9, 'eight': 10, 'nine': 11, 'ten': 12,
+            '1': 3, '2': 4, '3': 5, '4': 6,
+            '5': 7, '6': 8, '7': 9, '8': 10,
+            '9': 11, '10': 12
+        };
+        const key = String(cls).toLowerCase().trim();
+        return orderMap[key] !== undefined ? orderMap[key] : 999;
+    }
+
+    function getModeLabel(mode) {
+        if (mode === 'theory') return 'Theory Only';
+        if (mode === 'practical') return 'Practical Only';
+        return 'Theory + Practical (Credit Based)';
+    }
+
+    const grades = ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'NG'];
+    const hasData = gradeData && Object.keys(gradeData).length > 0;
+
+    // Sort subjects
+    const sortedSubjects = hasData ? Object.keys(gradeData).sort() : [];
+    const currentMode = calcMode || 'combined';
+    %>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="header no-print">
+            <h1>📊 Grade Counter - Subject Wise Analysis</h1>
+            <div class="header-controls">
+                <form method="GET" action="/gradecounter" style="display: contents;">
+                    <select name="terminal">
+                        <option value="">All Terminals</option>
+                        <% if (terminals && terminals.length > 0) { %>
+                            <% terminals.forEach(t => { %>
+                                <option value="<%= t %>" <%= selectedTerminal === t ? 'selected' : '' %>><%= t %></option>
+                            <% }) %>
+                        <% } %>
+                    </select>
+                    <select name="academicYear">
+                        <option value="">All Years</option>
+                        <% if (years && years.length > 0) { %>
+                            <% years.forEach(y => { %>
+                                <option value="<%= y %>" <%= selectedYear === y ? 'selected' : '' %>><%= y %></option>
+                            <% }) %>
+                        <% } %>
+                    </select>
+                    <select name="filterSubject">
+                        <option value="">All Subjects</option>
+                        <% if (subjectList && subjectList.length > 0) { %>
+                            <% subjectList.forEach(s => { %>
+                                <option value="<%= s %>" <%= filterSubject === s ? 'selected' : '' %>><%= s %></option>
+                            <% }) %>
+                        <% } %>
+                    </select>
+                    
+                    <div class="toggle-group">
+                        <button type="submit" name="calcMode" value="theory" class="<%= currentMode === 'theory' ? 'active' : '' %>">
+                            Theory Only
+                        </button>
+                        <button type="submit" name="calcMode" value="practical" class="<%= currentMode === 'practical' ? 'active' : '' %>">
+                            Practical Only
+                        </button>
+                        <button type="submit" name="calcMode" value="combined" class="<%= currentMode === 'combined' ? 'active' : '' %>">
+                            Theory + Practical
+                        </button>
+                    </div>
+                    
+                    <button type="submit">Filter</button>
+                    <button type="button" onclick="window.print()" class="btn-print">🖨️ Print</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Mode Info -->
+        <% if (hasData) { %>
+            <div style="background: #e0e7ff; padding: 0.5rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem; color: #3730a3;">
+                <strong>Calculation Mode:</strong> <%= getModeLabel(currentMode) %>
+                <span style="margin-left: 1rem; font-weight: 400; color: #4f46e5;">
+                    Formula: (Theory GP × Theory Credit + Practical GP × Practical Credit) / (Theory Credit + Practical Credit)
+                </span>
+            </div>
+        <% } %>
+
+        <!-- Subject Selector -->
+        <% if (hasData && sortedSubjects.length > 0) { %>
+            <div class="subject-selector no-print">
+                <button class="active" onclick="showAllSubjects()">All Subjects</button>
+                <% sortedSubjects.forEach(sub => { %>
+                    <button onclick="showSubject('<%= sub.replace(/'/g, "\\'") %>')"><%= sub %></button>
+                <% }) %>
+            </div>
+        <% } %>
+
+        <!-- Grade Data -->
+        <% if (hasData) { %>
+            <% 
+                // Filter subjects if filterSubject is set
+                let displaySubjects = sortedSubjects;
+                if (filterSubject) {
+                    displaySubjects = sortedSubjects.filter(s => s === filterSubject);
+                }
+                
+                displaySubjects.forEach(sub => {
+                    const classData = gradeData[sub];
+                    const classes = Object.keys(classData).sort((a, b) => getClassOrder(a) - getClassOrder(b));
+            %>
+                <div id="subject-<%= sub.replace(/'/g, "\\'") %>" class="grade-section subject-content <%= filterSubject ? 'active' : '' %>">
+                    <div class="subject-title">
+                        <%= sub %>
+                        <span class="info">
+                            Classes: <%= classes.length %> | 
+                            Mode: <%= getModeLabel(currentMode) %>
+                        </span>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Class</th>
+                                    <% grades.forEach(grade => { %>
+                                        <th class="grade-<%= grade.replace('+', 'plus') %>"><%= grade %></th>
+                                    <% }) %>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% 
+                                    let grandTotal = 0;
+                                    const grandTotals = {};
+                                    grades.forEach(g => grandTotals[g] = 0);
+                                    
+                                    classes.forEach(cls => {
+                                        const data = classData[cls];
+                                        const total = data.total || 0;
+                                        grandTotal += total;
+                                        grades.forEach(g => grandTotals[g] += (data.grades[g] || 0));
+                                %>
+                                    <tr>
+                                        <td><strong><%= displayClassName(cls) %></strong></td>
+                                        <% grades.forEach(grade => { %>
+                                            <td><%= data.grades[grade] || 0 %></td>
+                                        <% }) %>
+                                        <td><%= total %></td>
+                                    </tr>
+                                <% }) %>
+                                <!-- Grand Total Row -->
+                                <tr class="total-row">
+                                    <td><strong>Total</strong></td>
+                                    <% grades.forEach(grade => { %>
+                                        <td><%= grandTotals[grade] || 0 %></td>
+                                    <% }) %>
+                                    <td><%= grandTotal %></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            <% }) %>
+        <% } else { %>
+            <div class="no-data">
+                No data available for the selected criteria.
+                <br><br>
+                <small>Try changing the filters or check if data exists in the database.</small>
+            </div>
+        <% } %>
+    </div>
+
+    <script>
+        // Show all subjects
+        function showAllSubjects() {
+            document.querySelectorAll('.subject-content').forEach(el => {
+                el.classList.add('active');
+            });
+            document.querySelectorAll('.subject-selector button').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent.trim() === 'All Subjects') {
+                    btn.classList.add('active');
+                }
+            });
+        }
+
+        // Show specific subject
+        function showSubject(sub) {
+            document.querySelectorAll('.subject-content').forEach(el => {
+                el.classList.remove('active');
+            });
+            const target = document.getElementById('subject-' + sub.replace(/'/g, "\\'"));
+            if (target) {
+                target.classList.add('active');
+            }
+            document.querySelectorAll('.subject-selector button').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent.trim() === sub) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+
+        // Auto-submit form on select change
+        document.querySelectorAll('select').forEach(select => {
+            select.addEventListener('change', function() {
+                this.closest('form').submit();
+            });
+        });
+
+        // Initialize - show all subjects if no filter
+        document.addEventListener('DOMContentLoaded', function() {
+            const filterSubject = '<%= filterSubject %>';
+            if (!filterSubject) {
+                showAllSubjects();
+            } else {
+                showSubject(filterSubject);
+            }
+        });
+    </script>
+</body>
+</html>

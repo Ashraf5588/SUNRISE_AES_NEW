@@ -3791,3 +3791,398 @@ exports.quantamanalysis = async (req, res) => {
         res.status(500).send('Error loading analysis page: ' + error.message);
     }
 };
+// gradeCounterController.js
+
+
+// Class name normalization map
+
+
+function normalizeClassName(cls) {
+    if (!cls) return '';
+    const key = String(cls).toLowerCase().trim();
+    return CLASS_NORMALIZATION[key] || cls;
+}
+
+function getClassOrder(cls) {
+    if (!cls) return 999;
+    const normalized = normalizeClassName(cls);
+    return CLASS_ORDER[normalized] !== undefined ? CLASS_ORDER[normalized] : 999;
+}
+
+function displayClassName(cls) {
+    if (!cls) return '';
+    const key = String(cls).toLowerCase().trim();
+    return CLASS_NORMALIZATION[key] || cls;
+}
+
+function getGradeFromPercentage(percentage) {
+    if (percentage >= 90) return 'A+';
+    if (percentage >= 80) return 'A';
+    if (percentage >= 70) return 'B+';
+    if (percentage >= 60) return 'B';
+    if (percentage >= 50) return 'C+';
+    if (percentage >= 40) return 'C';
+    if (percentage >= 35) return 'D';
+    return 'NG';
+}
+
+function getGPFromPercentage(percentage) {
+    if (percentage >= 90) return 4.0;
+    if (percentage >= 80) return 3.6;
+    if (percentage >= 70) return 3.2;
+    if (percentage >= 60) return 2.8;
+    if (percentage >= 50) return 2.4;
+    if (percentage >= 40) return 2.0;
+    if (percentage >= 35) return 1.6;
+    return 0;
+}
+
+// Grade order for sorting
+const GRADE_ORDER = {
+    'A+': 0,
+    'A': 1,
+    'B+': 2,
+    'B': 3,
+    'C+': 4,
+    'C': 5,
+    'D': 6,
+    'NG': 7
+};
+
+
+
+// Class name normalization map
+
+
+function normalizeClassName(cls) {
+    if (!cls) return '';
+    const key = String(cls).toLowerCase().trim();
+    return CLASS_NORMALIZATION[key] || cls;
+}
+
+function getClassOrder(cls) {
+    if (!cls) return 999;
+    const normalized = normalizeClassName(cls);
+    return CLASS_ORDER[normalized] !== undefined ? CLASS_ORDER[normalized] : 999;
+}
+
+function displayClassName(cls) {
+    if (!cls) return '';
+    const key = String(cls).toLowerCase().trim();
+    return CLASS_NORMALIZATION[key] || cls;
+}
+
+function getGradeFromGP(gp) {
+    if (gp >= 3.61) return 'A+';
+    if (gp >= 3.21) return 'A';
+    if (gp >= 2.81) return 'B+';
+    if (gp >= 2.41) return 'B';
+    if (gp >= 2.01) return 'C+';
+    if (gp >= 1.61) return 'C';
+    if (gp >= 1.6) return 'D';
+    return 'NG';
+}
+
+function getGPFromPercentage(percentage) {
+    if (percentage >= 90) return 4.0;
+    if (percentage >= 80) return 3.6;
+    if (percentage >= 70) return 3.2;
+    if (percentage >= 60) return 2.8;
+    if (percentage >= 50) return 2.4;
+    if (percentage >= 40) return 2.0;
+    if (percentage >= 35) return 1.6;
+    return 0;
+}
+
+function calculateGP(theoryMarks, theoryFull, practicalMarks, practicalFull, theoryCredit, practicalCredit, calcMode) {
+    let theoryGP = 0;
+    let practicalGP = 0;
+    
+    // Calculate theory GP
+    if (theoryFull > 0) {
+        const theoryPercentage = (theoryMarks / theoryFull) * 100;
+        theoryGP = getGPFromPercentage(theoryPercentage);
+    }
+    
+    // Calculate practical GP
+    if (practicalFull > 0 && practicalMarks > 0) {
+        const practicalPercentage = (practicalMarks / practicalFull) * 100;
+        practicalGP = getGPFromPercentage(practicalPercentage);
+    }
+    
+    // If no practical marks, use theory only
+    if (practicalMarks === 0 || practicalFull === 0) {
+        return theoryGP;
+    }
+    
+    // If theory marks is 0, use practical only
+    if (theoryMarks === 0 || theoryFull === 0) {
+        return practicalGP;
+    }
+    
+    // Calculate based on mode
+    if (calcMode === 'theory') {
+        return theoryGP;
+    } else if (calcMode === 'practical') {
+        return practicalGP;
+    } else {
+        // Combined: (theoryGP * theoryCredit + practicalGP * practicalCredit) / (theoryCredit + practicalCredit)
+        const totalCredit = (theoryCredit || 1) + (practicalCredit || 1);
+        if (totalCredit > 0) {
+            const weightedGP = ((theoryGP * (theoryCredit || 1)) + (practicalGP * (practicalCredit || 1))) / totalCredit;
+            return weightedGP;
+        }
+        return theoryGP;
+    }
+}
+
+// Grade order for sorting
+
+
+// Check if class is pre-primary (Nursery, LKG, UKG)
+function isPrePrimary(cls) {
+    const normalized = normalizeClassName(cls);
+    return ['Nursery', 'LKG', 'UKG'].includes(normalized);
+}
+
+// Check if class is primary (1-3)
+function isPrimary(cls) {
+    const normalized = normalizeClassName(cls);
+    return ['One', 'Two', 'Three'].includes(normalized);
+}
+
+// Check if class is middle (4-7)
+function isMiddle(cls) {
+    const normalized = normalizeClassName(cls);
+    return ['Four', 'Five', 'Six', 'Seven'].includes(normalized);
+}
+
+// Check if class is secondary (8-10)
+function isSecondary(cls) {
+    const normalized = normalizeClassName(cls);
+    return ['Eight', 'Nine', 'Ten'].includes(normalized);
+}
+
+exports.getGradeCounter = async (req, res) => {
+    try {
+        const { terminal, academicYear, filterSubject, calcMode } = req.query;
+
+        // Build filter
+        let filter = {};
+        if (terminal) filter.terminal = terminal;
+        if (academicYear) filter.academicYear = academicYear;
+
+        // Get the exam model
+        const Exammodel = await getSlipModel();
+
+        // Fetch all exam marks
+        const examMarks = await Exammodel.find(filter).lean();
+        console.log('Exam Marks found:', examMarks.length);
+
+        // Fetch subject configurations for credit hours
+        const subjectConfigs = await newsubject.find({}).lean();
+        console.log('Subject Configs found:', subjectConfigs.length);
+
+        // Build subject config map
+        const subjectConfigMap = {};
+        subjectConfigs.forEach(config => {
+            const forClass = String(config.forClass || '').trim();
+            const subjectName = String(config.newsubject || '').trim();
+            const key = (forClass + '||' + subjectName).toUpperCase();
+            subjectConfigMap[key] = {
+                theoryCredit: config.theoryCreditHour || 1,
+                practicalCredit: config.practicalCreditHour || 1,
+                theoryFull: config.theory || 0,
+                practicalFull: config.practical || 0,
+                totalFull: config.total || 0
+            };
+        });
+
+        if (examMarks.length === 0) {
+            return res.render('exam/gradeCounter', {
+                title: 'Grade Counter - Subject Wise Analysis',
+                gradeData: {},
+                subjectList: [],
+                classList: [],
+                terminals: [],
+                years: [],
+                selectedTerminal: terminal || '',
+                selectedYear: academicYear || '',
+                filterSubject: filterSubject || '',
+                calcMode: calcMode || 'combined'
+            });
+        }
+
+        // Get all subjects for filter
+        const subjectList = await Exammodel.distinct('subject', filter);
+        const classList = await Exammodel.distinct('studentClass', filter);
+        const terminals = await Exammodel.distinct('terminal', filter);
+        const years = await Exammodel.distinct('academicYear', filter);
+
+        // Process grade data
+        const gradeData = processGradeCounter(examMarks, subjectConfigMap, calcMode);
+
+        res.render('./exam/gradeCounter', {
+            title: 'Grade Counter - Subject Wise Analysis',
+            gradeData: gradeData,
+            subjectList: subjectList.sort(),
+            classList: classList.sort(),
+            terminals: terminals.sort(),
+            years: years.sort(),
+            selectedTerminal: terminal || '',
+            selectedYear: academicYear || '',
+            filterSubject: filterSubject || '',
+            calcMode: calcMode || 'combined'
+        });
+
+    } catch (error) {
+        console.error('Error in getGradeCounter:', error);
+        res.status(500).send('Error loading grade counter page: ' + error.message);
+    }
+};
+
+function processGradeCounter(examMarks, subjectConfigMap, calcMode = 'combined') {
+    // Group by subject, then by class
+    const subjectClassData = {};
+
+    examMarks.forEach(record => {
+        const subject = String(record.subject || '').trim();
+        if (!subject) return;
+
+        const cls = String(record.studentClass || '').trim();
+        if (!cls) return;
+
+        const normalizedCls = normalizeClassName(cls);
+
+        // Get marks
+        const theoryMarks = parseFloat(record.theorymarks) || 0;
+        const practicalMarks = parseFloat(record.practicalmarks) || 0;
+        
+        // Get full marks from record
+        const theoryFull = parseFloat(record.theoryfullmarks) || 0;
+        const practicalFull = parseFloat(record.practicalfullmarks) || 0;
+
+        // Get credit hours from config
+        const configKey = (cls + '||' + subject).toUpperCase();
+        const config = subjectConfigMap[configKey] || {};
+        
+        // Also try normalized class name
+        const normalizedKey = (normalizedCls + '||' + subject).toUpperCase();
+        const normalizedConfig = subjectConfigMap[normalizedKey] || {};
+        
+        // Use config if available, otherwise fallback to record values
+        const theoryCredit = config.theoryCredit || normalizedConfig.theoryCredit || 1;
+        const practicalCredit = config.practicalCredit || normalizedConfig.practicalCredit || 1;
+        
+        let finalGP = 0;
+
+        // Calculate based on class level
+        if (isPrePrimary(cls)) {
+            // Pre-Primary: Only practical marks
+            if (practicalFull > 0) {
+                const percentage = (practicalMarks / practicalFull) * 100;
+                finalGP = getGPFromPercentage(percentage);
+            }
+        } else if (isPrimary(cls)) {
+            // Primary (1-3): Theory only
+            if (theoryFull > 0) {
+                const percentage = (theoryMarks / theoryFull) * 100;
+                finalGP = getGPFromPercentage(percentage);
+            }
+        } else {
+            // Class 4-10: Use credit-based calculation
+            finalGP = calculateGP(
+                theoryMarks, theoryFull,
+                practicalMarks, practicalFull,
+                theoryCredit, practicalCredit,
+                calcMode
+            );
+        }
+
+        // Get grade from GP
+        const grade = getGradeFromGP(finalGP);
+
+        // Initialize structure
+        if (!subjectClassData[subject]) {
+            subjectClassData[subject] = {};
+        }
+        if (!subjectClassData[subject][normalizedCls]) {
+            subjectClassData[subject][normalizedCls] = {
+                grades: {
+                    'A+': 0,
+                    'A': 0,
+                    'B+': 0,
+                    'B': 0,
+                    'C+': 0,
+                    'C': 0,
+                    'D': 0,
+                    'NG': 0
+                },
+                total: 0,
+                classNames: new Set()
+            };
+            subjectClassData[subject][normalizedCls].classNames.add(cls);
+        }
+
+        // Count grade
+        subjectClassData[subject][normalizedCls].grades[grade]++;
+        subjectClassData[subject][normalizedCls].total++;
+        subjectClassData[subject][normalizedCls].classNames.add(cls);
+    });
+
+    return subjectClassData;
+}
+
+function processGradeCounter(examMarks) {
+    // Group by subject, then by class
+    const subjectClassData = {};
+
+    examMarks.forEach(record => {
+        const subject = String(record.subject || '').trim();
+        if (!subject) return;
+
+        const cls = String(record.studentClass || '').trim();
+        if (!cls) return;
+
+        const normalizedCls = normalizeClassName(cls);
+
+        // Get marks
+        const theoryMarks = parseFloat(record.theorymarks) || 0;
+        const theoryFull = parseFloat(record.theoryfullmarks) || 0;
+        
+        // Calculate percentage
+        const percentage = theoryFull > 0 ? (theoryMarks / theoryFull) * 100 : 0;
+        
+        // Get grade
+        const grade = getGradeFromPercentage(percentage);
+
+        // Initialize structure
+        if (!subjectClassData[subject]) {
+            subjectClassData[subject] = {};
+        }
+        if (!subjectClassData[subject][normalizedCls]) {
+            subjectClassData[subject][normalizedCls] = {
+                grades: {
+                    'A+': 0,
+                    'A': 0,
+                    'B+': 0,
+                    'B': 0,
+                    'C+': 0,
+                    'C': 0,
+                    'D': 0,
+                    'NG': 0
+                },
+                total: 0,
+                classNames: new Set()
+            };
+            subjectClassData[subject][normalizedCls].classNames.add(cls);
+        }
+
+        // Count grade
+        subjectClassData[subject][normalizedCls].grades[grade]++;
+        subjectClassData[subject][normalizedCls].total++;
+        subjectClassData[subject][normalizedCls].classNames.add(cls);
+    });
+
+    return subjectClassData;
+}
