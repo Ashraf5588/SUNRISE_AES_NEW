@@ -292,7 +292,7 @@ student.get('/schoolanalysis',verifytoken,authorized,isAdmin,examdashboardcontro
 student.get('/quantamanalysis',verifytoken,authorized,isAdmin,examdashboardcontroller.quantamanalysis);
 student.get('/gradecounter',verifytoken,authorized,isAdmin,examdashboardcontroller.getGradeCounter);
 student.get('/subjectwiseanalysis',verifytoken,authorized,isAdmin,examdashboardcontroller.subjectWiseanalysis);
-
+student.get('/subjectwisefail',verifytoken,authorized,isAdmin,examdashboardcontroller.subjectWiseFailStudents);
 student.get('/admitcard',verifytoken,authorized,isAdmin,examdashboardcontroller.admitCard)
 student.get('/routineterminalchoose'  ,verifytoken,authorized,isAdmin,examdashboardcontroller.routineTerminalChoose)
 student.get('/examroutine',verifytoken,authorized,isAdmin,examdashboardcontroller.examRoutine)

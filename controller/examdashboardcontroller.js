@@ -4285,6 +4285,363 @@ function getClassDisplayName(className) {
     return displayMap[className] || className;
 }
 
+
+
+// Helper function to convert class names between formats
+function normalizeClassName(className) {
+    if (!className) return className;
+    
+    const classMap = {
+        'One': '1',
+        'Two': '2',
+        'Three': '3',
+        'Four': '4',
+        'Five': '5',
+        'Six': '6',
+        'Seven': '7',
+        'Eight': '8',
+        'Nine': '9',
+        'Ten': '10',
+        '1': '1',
+        '2': '2',
+        '3': '3',
+        '4': '4',
+        '5': '5',
+        '6': '6',
+        '7': '7',
+        '8': '8',
+        '9': '9',
+        '10': '10'
+    };
+    
+    const trimmed = className.toString().trim();
+    return classMap[trimmed] || trimmed;
+}
+
+function getClassDisplayName(className) {
+    const displayMap = {
+        '1': 'One',
+        '2': 'Two',
+        '3': 'Three',
+        '4': 'Four',
+        '5': 'Five',
+        '6': 'Six',
+        '7': 'Seven',
+        '8': 'Eight',
+        '9': 'Nine',
+        '10': 'Ten'
+    };
+    return displayMap[className] || className;
+}
+
+function getClassOrder(className) {
+    const orderMap = {
+        '1': 1,
+        '2': 2,
+        '3': 3,
+        '4': 4,
+        '5': 5,
+        '6': 6,
+        '7': 7,
+        '8': 8,
+        '9': 9,
+        '10': 10,
+        'One': 1,
+        'Two': 2,
+        'Three': 3,
+        'Four': 4,
+        'Five': 5,
+        'Six': 6,
+        'Seven': 7,
+        'Eight': 8,
+        'Nine': 9,
+        'Ten': 10
+    };
+    return orderMap[className] || 999;
+}
+
+// Helper function to check if a student is absent (0 in all subjects)
+function isStudentAbsent(studentMarks, allExamMarks) {
+    // Get all marks for this student
+    const studentReg = studentMarks.reg;
+    const studentClass = studentMarks.studentClass;
+    const section = studentMarks.section;
+    
+    // Get all records for this student
+    const allStudentRecords = allExamMarks.filter(mark => 
+        mark.reg === studentReg && 
+        mark.studentClass === studentClass &&
+        mark.section === section
+    );
+    
+    // Check if student has any marks > 0 in any subject
+    let hasAnyMarks = false;
+    for (const record of allStudentRecords) {
+        const theoryMarks = record.theorymarks || 0;
+        const practicalMarks = record.practicalmarks || 0;
+        if (theoryMarks > 0 || practicalMarks > 0) {
+            hasAnyMarks = true;
+            break;
+        }
+    }
+    
+    return !hasAnyMarks;
+}
+
+function calculateGP(percentage) {
+    if (percentage >= 90) return 4.0;
+    if (percentage >= 80) return 3.6;
+    if (percentage >= 70) return 3.2;
+    if (percentage >= 60) return 2.8;
+    if (percentage >= 50) return 2.4;
+    if (percentage >= 40) return 2.0;
+    if (percentage >= 30) return 1.6;
+    return 0.0;
+}
+
+function calculateMedian(arr) {
+    if (arr.length === 0) return 0;
+    const sorted = [...arr].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    if (sorted.length % 2 === 0) {
+        return (sorted[mid - 1] + sorted[mid]) / 2;
+    }
+    return sorted[mid];
+}
+
+function calculateOverallStats(subjectData) {
+    let totalStudents = 0;
+    let totalPass = 0;
+    let totalFail = 0;
+    
+    for (const className in subjectData.classes) {
+        const classData = subjectData.classes[className];
+        totalStudents += classData.totalStudents;
+        totalPass += classData.passCount;
+        totalFail += classData.failCount;
+    }
+    
+    return {
+        totalStudents,
+        passCount: totalPass,
+        failCount: totalFail,
+        passPercentage: totalStudents > 0 ? (totalPass / totalStudents) * 100 : 0,
+        failPercentage: totalStudents > 0 ? (totalFail / totalStudents) * 100 : 0,
+        avg: 0,
+        median: 0
+    };
+}
+
+async function processClassData(className, subjectName, classMarks, calculationType, sectionFilter, classConfig, isOptionalSubject = false, allExamMarks = []) {
+    const getSummary = (marksForSection) => {
+        // Filter out absent students (those with 0 in all subjects)
+        const activeStudents = marksForSection.filter(student => {
+            // If this is an optional subject and student has 0 marks, they might be in the other subject
+            if (isOptionalSubject) {
+                const theoryMarks = student.theorymarks || 0;
+                const practicalMarks = student.practicalmarks || 0;
+                if (theoryMarks === 0 && practicalMarks === 0) {
+                    return false; // Skip - they're not in this optional subject
+                }
+            }
+            
+            // Check if student is absent (0 in all subjects)
+            const isAbsent = isStudentAbsent(student, allExamMarks);
+            if (isAbsent) {
+                console.log(`  ⏭️ Excluding absent student: ${student.name || 'Unknown'} (Reg: ${student.reg})`);
+                return false;
+            }
+            return true;
+        });
+        
+        const totalStudents = activeStudents.length;
+        let passCount = 0;
+        let failCount = 0;
+        let totalMarks = 0;
+        let marksArray = [];
+        let minMarks = Infinity;
+        let maxMarks = -Infinity;
+
+        const theoryFullMarks = classConfig?.theory || 50;
+        const practicalFullMarks = classConfig?.practical || 50;
+        const passingMarks = classConfig?.passingMarks || 18;
+        const theoryCredit = classConfig?.theoryCreditHour || 2.5;
+        const practicalCredit = classConfig?.practicalCreditHour || 2.5;
+
+        console.log(`\n=== Processing ${subjectName} - Class ${className} ===`);
+        console.log(`Theory Pass Marks: ${passingMarks} (out of ${theoryFullMarks})`);
+        console.log(`Total active students (excluding absent): ${totalStudents}`);
+
+        let failDetails = [];
+
+        for (const student of activeStudents) {
+            let passed = false;
+            let gp = 0;
+            let marks = 0;
+
+            let theoryMarks = student.theorymarks || 0;
+            let practicalMarks = student.practicalmarks || 0;
+            let theoryFullMarksStudent = student.theoryfullmarks || theoryFullMarks;
+            let practicalFullMarksStudent = student.practicalfullmarks || practicalFullMarks;
+
+            // If marked as fail from optional subject processing
+            if (student._isFail === true) {
+                failCount++;
+                failDetails.push({
+                    name: student.name || 'Unknown',
+                    theory: theoryMarks,
+                    practical: practicalMarks,
+                    reason: 'Marked as fail from optional processing'
+                });
+                continue;
+            }
+
+            // For optional subjects, if student has 0 marks, skip
+            if (isOptionalSubject && theoryMarks === 0 && practicalMarks === 0) {
+                continue;
+            }
+
+            // Check if student has marks in this subject
+            if (theoryMarks === 0 && practicalMarks === 0) {
+                // For non-optional subjects, if they have 0 marks, they failed
+                failCount++;
+                failDetails.push({
+                    name: student.name || 'Unknown',
+                    theory: theoryMarks,
+                    practical: practicalMarks,
+                    reason: 'Zero marks in this subject'
+                });
+                continue;
+            }
+
+            // THEORY PASS MARKS: Compare theory marks against theory pass marks
+            if (calculationType === 'theory') {
+                // Theory only - direct comparison with theory pass marks
+                passed = theoryMarks >= passingMarks;
+                gp = passed ? 1.6 : 0;
+                marks = theoryMarks;
+            } else {
+                // Theory + Practical calculation
+                // First check if theory marks meet the theory pass marks
+                const theoryPassed = theoryMarks >= passingMarks;
+                
+                if (!theoryPassed) {
+                    // Fail immediately if theory marks are below pass marks
+                    passed = false;
+                    gp = 0;
+                    marks = theoryMarks;
+                } else {
+                    // Theory passed, now check practical with GP calculation
+                    const theoryPercentage = theoryFullMarksStudent > 0 ? (theoryMarks / theoryFullMarksStudent) * 100 : 0;
+                    const practicalPercentage = practicalFullMarksStudent > 0 ? (practicalMarks / practicalFullMarksStudent) * 100 : 0;
+
+                    const theoryGP = calculateGP(theoryPercentage);
+                    const practicalGP = calculateGP(practicalPercentage);
+
+                    const totalCredit = theoryCredit + practicalCredit;
+                    if (totalCredit > 0) {
+                        gp = (theoryCredit * theoryGP + practicalCredit * practicalGP) / totalCredit;
+                    } else {
+                        gp = theoryGP;
+                    }
+
+                    passed = gp >= 1.6;
+                    marks = theoryMarks;
+                }
+            }
+
+            // Log fail details
+            if (!passed) {
+                failDetails.push({
+                    name: student.name || 'Unknown',
+                    theory: theoryMarks,
+                    practical: practicalMarks,
+                    theoryPassMarks: passingMarks,
+                    reason: theoryMarks < passingMarks ? `Theory marks (${theoryMarks}) < Pass marks (${passingMarks})` : 'GP < 1.6'
+                });
+            }
+
+            totalMarks += marks;
+            marksArray.push(marks);
+            minMarks = Math.min(minMarks, marks);
+            maxMarks = Math.max(maxMarks, marks);
+
+            if (passed) {
+                passCount++;
+            } else {
+                failCount++;
+            }
+        }
+
+        // Log fail details for debugging
+        if (failDetails.length > 0) {
+            console.log(`\n--- FAIL DETAILS (${failDetails.length} students) ---`);
+            failDetails.forEach((detail, index) => {
+                console.log(`  ${index + 1}. ${detail.name} - Theory: ${detail.theory}, Practical: ${detail.practical}, Reason: ${detail.reason}`);
+            });
+        }
+
+        console.log(`\n--- Results for ${subjectName} - Class ${className} ---`);
+        console.log(`Total Active Students: ${totalStudents}`);
+        console.log(`Pass: ${passCount}`);
+        console.log(`Fail: ${failCount}`);
+        console.log(`Pass %: ${totalStudents > 0 ? ((passCount / totalStudents) * 100).toFixed(2) : 0}%`);
+        console.log('=====================================\n');
+
+        const avg = totalStudents > 0 ? totalMarks / totalStudents : 0;
+        const median = calculateMedian(marksArray);
+
+        return {
+            totalStudents,
+            passCount,
+            passPercentage: totalStudents > 0 ? (passCount / totalStudents) * 100 : 0,
+            failCount,
+            failPercentage: totalStudents > 0 ? (failCount / totalStudents) * 100 : 0,
+            avg,
+            median,
+            maxMarks: maxMarks === -Infinity ? 0 : maxMarks,
+            minMarks: minMarks === Infinity ? 0 : minMarks,
+            theoryFullMarks,
+            practicalFullMarks,
+            passingMarks,
+            theoryCredit,
+            practicalCredit
+        };
+    };
+
+    let filteredMarks = classMarks;
+    if (sectionFilter && sectionFilter !== 'all' && sectionFilter !== 'with-section') {
+        filteredMarks = filteredMarks.filter(mark => mark.section === sectionFilter);
+    }
+
+    const totalStudents = filteredMarks.length;
+    console.log(`    Processing ${totalStudents} total students for class ${className} (including absent)`);
+
+    if (sectionFilter === 'with-section') {
+        const sectionBreakdown = {};
+        const groupedBySection = {};
+
+        filteredMarks.forEach((mark) => {
+            const sectionName = String(mark.section || 'Unassigned').trim() || 'Unassigned';
+            if (!groupedBySection[sectionName]) groupedBySection[sectionName] = [];
+            groupedBySection[sectionName].push(mark);
+        });
+
+        Object.keys(groupedBySection).sort((a, b) => a.localeCompare(b)).forEach((sectionName) => {
+            sectionBreakdown[sectionName] = getSummary(groupedBySection[sectionName]);
+        });
+
+        const combinedSummary = getSummary(filteredMarks);
+
+        return {
+            ...combinedSummary,
+            sections: sectionBreakdown
+        };
+    }
+
+    return getSummary(filteredMarks);
+}
+
 exports.subjectWiseanalysis = async (req, res) => {
     try {
         const { classFilter, sectionFilter, calculationType, subjectFilter, terminalFilter } = req.query;
@@ -4572,7 +4929,7 @@ exports.subjectWiseanalysis = async (req, res) => {
                 // Get subject configuration
                 const classConfig = subjectClassMap[subjectName]?.[className];
                 
-                // Process class data
+                // Process class data - pass all exam marks for absent check
                 const classData = await processClassData(
                     className, 
                     subjectName, 
@@ -4580,7 +4937,8 @@ exports.subjectWiseanalysis = async (req, res) => {
                     calculationType || 'theory',
                     sectionFilter,
                     classConfig,
-                    isOptionalSubject
+                    isOptionalSubject,
+                    examMarks // Pass all exam marks for absent check
                 );
                 
                 subjectData.classes[className] = classData;
@@ -4634,128 +4992,106 @@ exports.subjectWiseanalysis = async (req, res) => {
     }
 };
 
-async function processClassData(className, subjectName, classMarks, calculationType, sectionFilter, classConfig, isOptionalSubject = false) {
-    const getSummary = (marksForSection) => {
-        const totalStudents = marksForSection.length;
-        let passCount = 0;
-        let failCount = 0;
-        let totalMarks = 0;
-        let marksArray = [];
-        let minMarks = Infinity;
-        let maxMarks = -Infinity;
 
-        const theoryFullMarks = classConfig?.theory || 50;
-        const practicalFullMarks = classConfig?.practical || 50;
-        const theoryCredit = classConfig?.theoryCreditHour || 2;
-        const practicalCredit = classConfig?.practicalCreditHour || 2;
 
-        for (const student of marksForSection) {
-            let passed = false;
-            let gp = 0;
-            let marks = 0;
+// controllers/subjectwisefailstudents.js
 
-            let theoryMarks = student.theorymarks || 0;
-            let practicalMarks = student.practicalmarks || 0;
-            let theoryFullMarksStudent = student.theoryfullmarks || theoryFullMarks;
-            let practicalFullMarksStudent = student.practicalfullmarks || practicalFullMarks;
-
-            if (student._isFail === true) {
-                failCount++;
-                continue;
-            }
-
-            if (theoryMarks === 0 && practicalMarks === 0) {
-                if (isOptionalSubject) {
-                    continue;
-                }
-            }
-
-            if (calculationType === 'theory') {
-                const theoryPercentage = theoryFullMarksStudent > 0 ? (theoryMarks / theoryFullMarksStudent) * 100 : 0;
-                gp = calculateGP(theoryPercentage);
-                passed = gp >= 1.6;
-                marks = theoryMarks;
-            } else {
-                const theoryPercentage = theoryFullMarksStudent > 0 ? (theoryMarks / theoryFullMarksStudent) * 100 : 0;
-                const practicalPercentage = practicalFullMarksStudent > 0 ? (practicalMarks / practicalFullMarksStudent) * 100 : 0;
-
-                const theoryGP = calculateGP(theoryPercentage);
-                const practicalGP = calculateGP(practicalPercentage);
-
-                const totalCredit = theoryCredit + practicalCredit;
-                if (totalCredit > 0) {
-                    gp = (theoryCredit * theoryGP + practicalCredit * practicalGP) / totalCredit;
-                } else {
-                    gp = theoryGP;
-                }
-
-                passed = gp >= 1.6;
-                marks = theoryMarks;
-            }
-
-            totalMarks += marks;
-            marksArray.push(marks);
-            minMarks = Math.min(minMarks, marks);
-            maxMarks = Math.max(maxMarks, marks);
-
-            if (passed) {
-                passCount++;
-            } else {
-                failCount++;
-            }
-        }
-
-        const avg = totalStudents > 0 ? totalMarks / totalStudents : 0;
-        const median = calculateMedian(marksArray);
-
-        return {
-            totalStudents,
-            passCount,
-            passPercentage: totalStudents > 0 ? (passCount / totalStudents) * 100 : 0,
-            failCount,
-            failPercentage: totalStudents > 0 ? (failCount / totalStudents) * 100 : 0,
-            avg,
-            median,
-            maxMarks: maxMarks === -Infinity ? 0 : maxMarks,
-            minMarks: minMarks === Infinity ? 0 : minMarks,
-            theoryFullMarks,
-            practicalFullMarks,
-            theoryCredit,
-            practicalCredit
-        };
+// Helper function to convert class names between formats
+function normalizeClassName(className) {
+    if (!className) return className;
+    
+    const classMap = {
+        'One': '1',
+        'Two': '2',
+        'Three': '3',
+        'Four': '4',
+        'Five': '5',
+        'Six': '6',
+        'Seven': '7',
+        'Eight': '8',
+        'Nine': '9',
+        'Ten': '10',
+        '1': '1',
+        '2': '2',
+        '3': '3',
+        '4': '4',
+        '5': '5',
+        '6': '6',
+        '7': '7',
+        '8': '8',
+        '9': '9',
+        '10': '10'
     };
+    
+    const trimmed = className.toString().trim();
+    return classMap[trimmed] || trimmed;
+}
 
-    let filteredMarks = classMarks;
-    if (sectionFilter && sectionFilter !== 'all' && sectionFilter !== 'with-section') {
-        filteredMarks = filteredMarks.filter(mark => mark.section === sectionFilter);
+function getClassDisplayName(className) {
+    const displayMap = {
+        '1': 'One',
+        '2': 'Two',
+        '3': 'Three',
+        '4': 'Four',
+        '5': 'Five',
+        '6': 'Six',
+        '7': 'Seven',
+        '8': 'Eight',
+        '9': 'Nine',
+        '10': 'Ten'
+    };
+    return displayMap[className] || className;
+}
+
+function getClassOrder(className) {
+    const orderMap = {
+        '1': 1,
+        '2': 2,
+        '3': 3,
+        '4': 4,
+        '5': 5,
+        '6': 6,
+        '7': 7,
+        '8': 8,
+        '9': 9,
+        '10': 10,
+        'One': 1,
+        'Two': 2,
+        'Three': 3,
+        'Four': 4,
+        'Five': 5,
+        'Six': 6,
+        'Seven': 7,
+        'Eight': 8,
+        'Nine': 9,
+        'Ten': 10
+    };
+    return orderMap[className] || 999;
+}
+
+// Helper function to check if a student is absent (0 in all subjects)
+function isStudentAbsent(studentMarks, allExamMarks) {
+    const studentReg = studentMarks.reg;
+    const studentClass = studentMarks.studentClass;
+    const section = studentMarks.section;
+    
+    const allStudentRecords = allExamMarks.filter(mark => 
+        mark.reg === studentReg && 
+        mark.studentClass === studentClass &&
+        mark.section === section
+    );
+    
+    let hasAnyMarks = false;
+    for (const record of allStudentRecords) {
+        const theoryMarks = record.theorymarks || 0;
+        const practicalMarks = record.practicalmarks || 0;
+        if (theoryMarks > 0 || practicalMarks > 0) {
+            hasAnyMarks = true;
+            break;
+        }
     }
-
-    const totalStudents = filteredMarks.length;
-    console.log(`    Processing ${totalStudents} students for class ${className}`);
-
-    if (sectionFilter === 'with-section') {
-        const sectionBreakdown = {};
-        const groupedBySection = {};
-
-        filteredMarks.forEach((mark) => {
-            const sectionName = String(mark.section || 'Unassigned').trim() || 'Unassigned';
-            if (!groupedBySection[sectionName]) groupedBySection[sectionName] = [];
-            groupedBySection[sectionName].push(mark);
-        });
-
-        Object.keys(groupedBySection).sort((a, b) => a.localeCompare(b)).forEach((sectionName) => {
-            sectionBreakdown[sectionName] = getSummary(groupedBySection[sectionName]);
-        });
-
-        const combinedSummary = getSummary(filteredMarks);
-
-        return {
-            ...combinedSummary,
-            sections: sectionBreakdown
-        };
-    }
-
-    return getSummary(filteredMarks);
+    
+    return !hasAnyMarks;
 }
 
 function calculateGP(percentage) {
@@ -4769,35 +5105,326 @@ function calculateGP(percentage) {
     return 0.0;
 }
 
-function calculateMedian(arr) {
-    if (arr.length === 0) return 0;
-    const sorted = [...arr].sort((a, b) => a - b);
-    const mid = Math.floor(sorted.length / 2);
-    if (sorted.length % 2 === 0) {
-        return (sorted[mid - 1] + sorted[mid]) / 2;
+// Sort function for roll numbers (handle string numbers like "1", "2", "10")
+function sortRollNumbers(a, b) {
+    const numA = parseInt(a);
+    const numB = parseInt(b);
+    if (!isNaN(numA) && !isNaN(numB)) {
+        return numA - numB;
     }
-    return sorted[mid];
+    return String(a).localeCompare(String(b));
 }
 
-function calculateOverallStats(subjectData) {
-    let totalStudents = 0;
-    let totalPass = 0;
-    let totalFail = 0;
+function normalizeClassName(className) {
+    if (!className) return className;
+    const classMap = {
+        'One': '1', 'Two': '2', 'Three': '3', 'Four': '4', 'Five': '5',
+        'Six': '6', 'Seven': '7', 'Eight': '8', 'Nine': '9', 'Ten': '10',
+        '1': '1', '2': '2', '3': '3', '4': '4', '5': '5',
+        '6': '6', '7': '7', '8': '8', '9': '9', '10': '10'
+    };
+    return classMap[className.toString().trim()] || className;
+}
+
+function getClassDisplayName(className) {
+    const displayMap = {
+        '1': 'One', '2': 'Two', '3': 'Three', '4': 'Four', '5': 'Five',
+        '6': 'Six', '7': 'Seven', '8': 'Eight', '9': 'Nine', '10': 'Ten'
+    };
+    return displayMap[className] || className;
+}
+
+function getClassOrder(className) {
+    const orderMap = {
+        '1': 1, '2': 2, '3': 3, '4': 4, '5': 5,
+        '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
+        'One': 1, 'Two': 2, 'Three': 3, 'Four': 4, 'Five': 5,
+        'Six': 6, 'Seven': 7, 'Eight': 8, 'Nine': 9, 'Ten': 10
+    };
+    return orderMap[className] || 999;
+}
+
+function calculateGP(percentage) {
+    if (percentage >= 90) return 4.0;
+    if (percentage >= 80) return 3.6;
+    if (percentage >= 70) return 3.2;
+    if (percentage >= 60) return 2.8;
+    if (percentage >= 50) return 2.4;
+    if (percentage >= 40) return 2.0;
+    if (percentage >= 30) return 1.6;
+    return 0.0;
+}
+
+function sortRollNumbers(a, b) {
+    const numA = parseInt(a);
+    const numB = parseInt(b);
+    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+    return String(a).localeCompare(String(b));
+}
+
+exports.subjectWiseFailStudents = async (req, res) => {
+    try {
+        const { classFilter, sectionFilter, subjectFilter, terminalFilter, calculationType } = req.query;
+        
+        console.log('=== Starting Subject Wise Fail Students ===');
+        
+        // Get all data in parallel
+        const [subjects, terminals, classSectionList, examMarks] = await Promise.all([
+            newsubject.find({}),
+            terminalModel.find({}).lean(),
+            studentClass.find({}, { studentClass: 1, section: 1 }).lean(),
+            getSlipModel().find(buildQuery(classFilter, sectionFilter, terminalFilter))
+        ]);
+        
+        console.log(`Found ${examMarks.length} exam marks`);
+        
+        if (examMarks.length === 0) {
+            return renderEmptyResponse(res, classFilter, sectionFilter, subjectFilter, terminalFilter, calculationType, subjects, terminals, classSectionList);
+        }
+
+        // Build maps for quick lookup
+        const subjectClassMap = buildSubjectClassMap(subjects);
+        const classSectionMap = buildClassSectionMap(classSectionList);
+        const availableClasses = getAvailableClasses(classSectionList);
+        const availableSubjects = getAvailableSubjects(subjects, examMarks);
+        const availableTerminals = getAvailableTerminals(terminals);
+
+        // Build student mark map for absent check (optimized)
+        const studentMarkMap = buildStudentMarkMap(examMarks);
+
+        // Process fail students
+        const failStudentsData = [];
+        const subjectList = subjectFilter && subjectFilter !== 'all' ? [subjectFilter] : [...new Set(examMarks.map(m => m.subject))];
+        
+        for (const subjectName of subjectList) {
+            const subjectMarks = examMarks.filter(m => m.subject === subjectName);
+            const classMap = groupMarksByClass(subjectMarks, subjectClassMap, subjectName, calculationType, studentMarkMap, sectionFilter);
+            
+            if (Object.keys(classMap).length > 0) {
+                const totalFail = Object.values(classMap).reduce((sum, sections) => {
+                    return sum + Object.values(sections).reduce((s, arr) => s + arr.length, 0);
+                }, 0);
+                
+                failStudentsData.push({
+                    subject: subjectName,
+                    classes: classMap,
+                    totalFail: totalFail
+                });
+            }
+        }
+
+        // Sort by class order
+        failStudentsData.sort((a, b) => {
+            const aClass = Object.keys(a.classes)[0] || '';
+            const bClass = Object.keys(b.classes)[0] || '';
+            return getClassOrder(aClass) - getClassOrder(bClass);
+        });
+
+        console.log(`Found ${failStudentsData.length} subjects with fail students`);
+        
+        res.render('./exam/subjectwisefailstudents', {
+            failStudentsData,
+            classFilter: classFilter || 'all',
+            sectionFilter: sectionFilter || 'all',
+            subjectFilter: subjectFilter || 'all',
+            terminalFilter: terminalFilter || 'all',
+            calculationType: calculationType || 'theory',
+            availableSubjects,
+            availableClasses,
+            availableTerminals,
+            classSectionMap,
+            getClassDisplayName,
+             getClassOrder: getClassOrder
+        });
+        
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).send('Error: ' + error.message);
+    }
+};
+
+// Helper functions
+function buildQuery(classFilter, sectionFilter, terminalFilter) {
+    const query = {};
+    if (classFilter && classFilter !== 'all') {
+        const normalized = normalizeClassName(classFilter);
+        query.studentClass = { $in: [normalized, getClassDisplayName(normalized)] };
+    }
+    if (sectionFilter && sectionFilter !== 'all') {
+        query.section = sectionFilter;
+    }
+    if (terminalFilter && terminalFilter !== 'all') {
+        query.terminal = { $in: [terminalFilter, terminalFilter.toLowerCase(), terminalFilter.toUpperCase()] };
+    }
+    return query;
+}
+
+function buildSubjectClassMap(subjects) {
+    const map = {};
+    subjects.forEach(sub => {
+        if (!map[sub.newsubject]) map[sub.newsubject] = {};
+        map[sub.newsubject][normalizeClassName(sub.forClass)] = sub;
+    });
+    return map;
+}
+
+function buildClassSectionMap(classSectionList) {
+    const map = {};
+    classSectionList.forEach(item => {
+        const rawClass = String(item.studentClass || '').trim();
+        const section = String(item.section || '').trim();
+        if (!rawClass || !section) return;
+        const normalized = normalizeClassName(rawClass);
+        if (!map[normalized]) map[normalized] = [];
+        if (!map[normalized].includes(section)) map[normalized].push(section);
+    });
+    Object.keys(map).forEach(key => map[key].sort());
+    return map;
+}
+
+function buildStudentMarkMap(examMarks) {
+    const map = {};
+    examMarks.forEach(mark => {
+        const key = `${mark.reg}_${mark.studentClass}_${mark.section || ''}`;
+        if (!map[key]) map[key] = { totalMarks: 0, hasMarks: false };
+        const theory = mark.theorymarks || 0;
+        const practical = mark.practicalmarks || 0;
+        map[key].totalMarks += theory + practical;
+        if (theory > 0 || practical > 0) map[key].hasMarks = true;
+    });
+    return map;
+}
+
+function isStudentAbsent(reg, studentClass, section, studentMarkMap) {
+    const key = `${reg}_${studentClass}_${section || ''}`;
+    const data = studentMarkMap[key];
+    return data ? !data.hasMarks : true;
+}
+
+function groupMarksByClass(subjectMarks, subjectClassMap, subjectName, calculationType, studentMarkMap, sectionFilter) {
+    const classMap = {};
     
-    for (const className in subjectData.classes) {
-        const classData = subjectData.classes[className];
-        totalStudents += classData.totalStudents;
-        totalPass += classData.passCount;
-        totalFail += classData.failCount;
+    for (const student of subjectMarks) {
+        const className = normalizeClassName(student.studentClass);
+        const section = student.section || 'Unassigned';
+        
+        // Skip if section filter doesn't match
+        if (sectionFilter && sectionFilter !== 'all' && section !== sectionFilter) continue;
+        
+        // Skip absent students
+        if (isStudentAbsent(student.reg, student.studentClass, student.section, studentMarkMap)) continue;
+        
+        const theoryMarks = student.theorymarks || 0;
+        const practicalMarks = student.practicalmarks || 0;
+        const classConfig = subjectClassMap[subjectName]?.[className];
+        const passingMarks = classConfig?.passingMarks || 18;
+        const theoryFull = classConfig?.theory || 50;
+        const practicalFull = classConfig?.practical || 50;
+        const theoryCredit = classConfig?.theoryCreditHour || 2.5;
+        const practicalCredit = classConfig?.practicalCreditHour || 2.5;
+        
+        // Check if failed
+        let failed = false;
+        let failReason = '';
+        
+        if (calculationType === 'theory') {
+            if (theoryMarks < passingMarks) {
+                failed = true;
+                failReason = `Theory (${theoryMarks}) < Pass (${passingMarks})`;
+            }
+        } else {
+            if (theoryMarks < passingMarks) {
+                failed = true;
+                failReason = `Theory (${theoryMarks}) < Pass (${passingMarks})`;
+            } else {
+                const theoryPct = theoryFull > 0 ? (theoryMarks / theoryFull) * 100 : 0;
+                const practicalPct = practicalFull > 0 ? (practicalMarks / practicalFull) * 100 : 0;
+                const gp = (theoryCredit * calculateGP(theoryPct) + practicalCredit * calculateGP(practicalPct)) / (theoryCredit + practicalCredit);
+                if (gp < 1.6) {
+                    failed = true;
+                    failReason = `GP (${gp.toFixed(2)}) < 1.6`;
+                }
+            }
+        }
+        
+        if (failed) {
+            if (!classMap[className]) classMap[className] = {};
+            if (!classMap[className][section]) classMap[className][section] = [];
+            
+            classMap[className][section].push({
+                name: student.name || 'Unknown',
+                roll: student.roll || '',
+                reg: student.reg || '',
+                theoryMarks,
+                practicalMarks,
+                theoryFull,
+                practicalFull,
+                totalPractical: student.totalpracticalmarks || 0,
+                terminalMarks: student.terminalmarks || 0,
+                attendance: student.attendance || 0,
+                passMarks: passingMarks,
+                failReason,
+                terminal: student.terminal || '',
+                academicYear: student.academicYear || ''
+            });
+        }
     }
     
-    return {
-        totalStudents,
-        passCount: totalPass,
-        failCount: totalFail,
-        passPercentage: totalStudents > 0 ? (totalPass / totalStudents) * 100 : 0,
-        failPercentage: totalStudents > 0 ? (totalFail / totalStudents) * 100 : 0,
-        avg: 0,
-        median: 0
-    };
+    // Sort students by roll number in each section
+    Object.keys(classMap).forEach(className => {
+        Object.keys(classMap[className]).forEach(section => {
+            classMap[className][section].sort((a, b) => sortRollNumbers(a.roll, b.roll));
+        });
+    });
+    
+    return classMap;
+}
+
+function getAvailableClasses(classSectionList) {
+    const classes = [...new Set(
+        classSectionList
+            .map(item => String(item.studentClass || '').trim())
+            .filter(Boolean)
+            .map(normalizeClassName)
+    )];
+    return classes.sort((a, b) => getClassOrder(a) - getClassOrder(b));
+}
+
+function getAvailableSubjects(subjects, examMarks) {
+    const subjectSet = new Set([
+        ...subjects.map(s => s.newsubject).filter(Boolean),
+        ...examMarks.map(m => m.subject).filter(Boolean)
+    ]);
+    return [...subjectSet].sort();
+}
+
+function getAvailableTerminals(terminals) {
+    const terminalSet = new Set();
+    terminals.forEach(item => {
+        [item.terminalName, item.name, item.terminal, item.term]
+            .filter(Boolean)
+            .forEach(v => terminalSet.add(String(v).trim()));
+    });
+    return [...terminalSet].sort();
+}
+
+function renderEmptyResponse(res, classFilter, sectionFilter, subjectFilter, terminalFilter, calculationType, subjects, terminals, classSectionList) {
+    const availableSubjects = [...new Set(subjects.map(s => s.newsubject).filter(Boolean))].sort();
+    const availableClasses = getAvailableClasses(classSectionList);
+    const availableTerminals = getAvailableTerminals(terminals);
+    const classSectionMap = buildClassSectionMap(classSectionList);
+    
+    res.render('./exam/subjectwisefailstudents', {
+        failStudentsData: [],
+        classFilter: classFilter || 'all',
+        sectionFilter: sectionFilter || 'all',
+        subjectFilter: subjectFilter || 'all',
+        terminalFilter: terminalFilter || 'all',
+        calculationType: calculationType || 'theory',
+        availableSubjects,
+        availableClasses,
+        availableTerminals,
+        classSectionMap,
+        getClassDisplayName
+    });
 }

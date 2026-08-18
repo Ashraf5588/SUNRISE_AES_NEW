@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subject Wise Fail Students</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+        .header h1 { font-size: 28px; color: #2c3e50; }
+        .filters { display: flex; gap: 15px; flex-wrap: wrap; margin: 20px 0; padding: 20px; background: #f8f9fa; border-radius: 8px; align-items: center; }
+        .filter-group { display: flex; align-items: center; gap: 8px; }
+        .filter-group label { font-weight: 600; color: #555; white-space: nowrap; font-size: 13px; }
+        .filter-group select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; background: white; min-width: 130px; }
+        .btn-group { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+        .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; transition: all 0.3s; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-print { background: #3498db; color: white; }
+        .btn-print:hover { background: #2980b9; }
+        .btn-print-all { background: #2c3e50; color: white; }
+        .btn-print-all:hover { background: #1a252f; }
+        .btn-excel { background: #27ae60; color: white; }
+        .btn-excel:hover { background: #229954; }
+        .subject-section { margin-bottom: 30px; page-break-inside: avoid; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
+        .subject-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: #ecf0f1; border-bottom: 2px solid #3498db; flex-wrap: wrap; gap: 10px; }
+        .subject-header .title { font-size: 20px; font-weight: bold; color: #2c3e50; }
+        .subject-header .info { font-size: 13px; color: #555; }
+        .subject-header .btn-print-subject { background: #3498db; color: white; padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .subject-header .btn-print-subject:hover { background: #2980b9; }
+        .class-section { padding: 12px 18px; border-bottom: 1px solid #eee; }
+        .class-section:last-child { border-bottom: none; }
+        .class-title { font-size: 16px; font-weight: 600; color: #34495e; margin-bottom: 8px; padding: 6px 10px; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #3498db; }
+        .fail-count { color: #e74c3c; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        table th { background: #2c3e50; color: white; padding: 10px 8px; text-align: center; font-weight: 700; font-size: 13px; }
+        table td { padding: 8px 6px; text-align: center; border: 1px solid #333; font-size: 13px; color: #111; }
+        table tr:nth-child(even) { background: #f8f9fa; }
+        .empty-state { text-align: center; padding: 40px; color: #7f8c8d; }
+        .calculation-info { font-size: 12px; color: #7f8c8d; margin-top: 5px; font-style: italic; }
+        .terminal-badge { display: inline-block; padding: 2px 10px; background: #3498db; color: white; border-radius: 12px; font-size: 11px; margin-left: 10px; }
+        
+        @media print {
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            body { background: white; padding: 0; font-size: 12px; color: #000 !important; }
+            .container { box-shadow: none; padding: 10px; max-width: 100%; }
+            .filters { background: #f8f9fa; border: 1px solid #ddd; padding: 8px; margin: 8px 0; break-inside: avoid; }
+            .btn-group, .btn-print, .btn-print-all, .btn-excel, .btn-print-subject { display: none !important; }
+            .subject-section { border: 1px solid #000; margin-bottom: 12px; page-break-inside: avoid; break-inside: avoid; }
+            .subject-header { background: #ffffff !important; color: #000 !important; border-bottom: 2px solid #000; padding: 8px 12px; }
+            .subject-header .title { font-size: 16px; color: #000 !important; }
+            .class-section { padding: 8px 12px; }
+            .class-title { font-size: 13px; background: #ffffff !important; color: #000 !important; border-left: 4px solid #000; }
+            table { font-size: 12px; page-break-inside: auto; border-collapse: collapse; }
+            table th { background: #ffffff !important; color: #000000 !important; padding: 6px 5px; font-size: 12px; border: 2px solid #000 !important; }
+            table td { padding: 5px 4px; font-size: 12px; color: #000 !important; border: 1px solid #000 !important; background: #fff !important; }
+            .terminal-badge { background: #000 !important; color: #fff !important; border: 1px solid #000; }
+            @page { size: landscape; margin: 6mm; }
+        }
+        
+        @media (max-width: 768px) {
+            .filters { flex-direction: column; align-items: stretch; }
+            .filter-group { flex-direction: column; align-items: stretch; }
+            .btn-group { margin-left: 0; flex-direction: column; }
+            .btn { width: 100%; justify-content: center; }
+            .subject-header { flex-direction: column; align-items: stretch; }
+            .subject-header .btn-print-subject { width: 100%; }
+            table { font-size: 10px; }
+            table th, table td { padding: 3px 2px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Subject Wise Fail Students Report</h1>
+            <p>Academic Year: 2083</p>
+            <p class="calculation-info"><%= calculationType === 'theory' ? '📘 Theory Only' : '📚 Theory + Practical' %></p>
+            <% if (terminalFilter && terminalFilter !== 'all') { %>
+                <p style="color:#555;font-size:13px;">Terminal: <strong><%= terminalFilter %></strong></p>
+            <% } %>
+            <% if (sectionFilter && sectionFilter !== 'all') { %>
+                <p style="color:#555;font-size:13px;">Section: <strong><%= sectionFilter %></strong></p>
+            <% } %>
+            <% if (classFilter && classFilter !== 'all') { %>
+                <p style="color:#555;font-size:13px;">Class: <strong><%= getClassDisplayName(classFilter) %></strong></p>
+            <% } %>
+            <% if (subjectFilter && subjectFilter !== 'all') { %>
+                <p style="color:#555;font-size:13px;">Subject: <strong><%= subjectFilter %></strong></p>
+            <% } %>
+        </div>
+        
+        <div class="filters">
+            <div class="filter-group">
+                <label for="classFilter">Class:</label>
+                <select id="classFilter" onchange="applyFilters()">
+                    <option value="all" <%= classFilter === 'all' ? 'selected' : '' %>>All Classes</option>
+                    <% if (availableClasses && availableClasses.length) { %>
+                        <% availableClasses.forEach((className) => { %>
+                            <option value="<%= className %>" <%= String(classFilter) === String(className) ? 'selected' : '' %>><%= getClassDisplayName(className) %> (<%= className %>)</option>
+                        <% }) %>
+                    <% } %>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="sectionFilter">Section:</label>
+                <select id="sectionFilter" onchange="applyFilters()">
+                    <option value="all" <%= sectionFilter === 'all' ? 'selected' : '' %>>All Sections</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="subjectFilter">Subject:</label>
+                <select id="subjectFilter" onchange="applyFilters()">
+                    <option value="all" <%= subjectFilter === 'all' ? 'selected' : '' %>>All Subjects</option>
+                    <% if (availableSubjects && availableSubjects.length) { %>
+                        <% availableSubjects.forEach((subject) => { %>
+                            <option value="<%= subject %>" <%= subjectFilter === subject ? 'selected' : '' %>><%= subject %></option>
+                        <% }) %>
+                    <% } %>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="terminalFilter">Terminal:</label>
+                <select id="terminalFilter" onchange="applyFilters()">
+                    <option value="all" <%= terminalFilter === 'all' ? 'selected' : '' %>>All Terminals</option>
+                    <% if (availableTerminals && availableTerminals.length) { %>
+                        <% availableTerminals.forEach((terminal) => { %>
+                            <option value="<%= terminal %>" <%= terminalFilter === terminal ? 'selected' : '' %>><%= terminal %></option>
+                        <% }) %>
+                    <% } %>
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label for="calculationType">Calc:</label>
+                <select id="calculationType" onchange="applyFilters()">
+                    <option value="theory" <%= calculationType === 'theory' ? 'selected' : '' %>>Theory</option>
+                    <option value="practical" <%= calculationType === 'practical' ? 'selected' : '' %>>Theory+Practical</option>
+                </select>
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn btn-excel" onclick="exportToExcel()">📊 Excel</button>
+                <button class="btn btn-print-all" onclick="printAll()">🖨️ All</button>
+            </div>
+        </div>
+        
+        <% if (failStudentsData && failStudentsData.length > 0) { %>
+            <% failStudentsData.forEach((subjectData) => { 
+                const subjectId = subjectData.subject.replace(/[^a-zA-Z0-9]/g, '_');
+                const classes = Object.keys(subjectData.classes).sort((a,b) => {
+                    const orderMap = {'1':1,'2':2,'3':3,'4':4,'5':5,'6':6,'7':7,'8':8,'9':9,'10':10};
+                    return (orderMap[a] || 999) - (orderMap[b] || 999);
+                });
+            %>
+                <div class="subject-section" id="subject-<%= subjectId %>">
+                    <div class="subject-header">
+                        <div>
+                            <span class="title"><%= subjectData.subject %></span>
+                            <span class="info">
+                                Total Fail: <span class="fail-count"><%= subjectData.totalFail %></span>
+                                <% if (subjectData.terminal) { %>
+                                    <span class="terminal-badge"><%= subjectData.terminal %></span>
+                                <% } %>
+                            </span>
+                        </div>
+                        <button class="btn-print-subject" onclick="printSubject('<%= subjectId %>')">🖨️ Print</button>
+                    </div>
+                    
+                    <% classes.forEach((className) => {
+                        const sections = Object.keys(subjectData.classes[className]).sort();
+                    %>
+                        <% sections.forEach((sectionName) => {
+                            const students = subjectData.classes[className][sectionName];
+                        %>
+                            <div class="class-section">
+                                <div class="class-title">
+                                    Class: <%= getClassDisplayName(className) %> | Section: <%= sectionName %>
+                                    <span style="color:#e74c3c;margin-left:10px;">(Fail: <%= students.length %>)</span>
+                                    <% if (students.length > 0 && students[0].terminal) { %>
+                                        <span class="terminal-badge"><%= students[0].terminal %></span>
+                                    <% } %>
+                                </div>
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Roll</th>
+                                            <th>Name</th>
+                                            <th>Theory</th>
+                                            <th>Total PR</th>
+                                            <th>Terminal</th>
+                                            <th>Att</th>
+                                            <th>Reason</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% students.forEach((student) => { %>
+                                            <tr>
+                                                <td><%= student.roll %></td>
+                                                <td style="text-align:left;"><%= student.name %></td>
+                                                <td><%= student.theoryMarks %>/<%= student.theoryFull %></td>
+                                                <td><%= student.totalPractical ? student.totalPractical.toFixed(1) : '0' %></td>
+                                                <td><%= student.terminal || '-' %></td>
+                                                <td><%= student.attendance || 0 %></td>
+                                                <td style="font-size:10px;color:#e74c3c;"><%= student.failReason %></td>
+                                            </tr>
+                                        <% }) %>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <% }) %>
+                    <% }) %>
+                </div>
+            <% }) %>
+        <% } else { %>
+            <div class="empty-state"><h3>No failing students found</h3><p>All students have passed or no data available.</p></div>
+        <% } %>
+    </div>
+
+    <script>
+        const classSectionMap = <%- JSON.stringify(classSectionMap || {}) %>;
+        
+        function getSectionsForClass(classValue) {
+            if (classValue === 'all') {
+                const allSections = new Set();
+                Object.values(classSectionMap).forEach(s => (s || []).forEach(sec => allSections.add(sec)));
+                return ['all', ...Array.from(allSections).sort()];
+            }
+            const raw = String(classValue || '').trim();
+            const keys = [raw, raw.toLowerCase(), raw.toUpperCase()];
+            const classNames = {'1':['1','One','one'],'2':['2','Two','two'],'3':['3','Three','three'],
+                '4':['4','Four','four'],'5':['5','Five','five'],'6':['6','Six','six'],
+                '7':['7','Seven','seven'],'8':['8','Eight','eight'],'9':['9','Nine','nine'],
+                '10':['10','Ten','ten']};
+            (classNames[raw] || []).forEach(k => keys.push(k));
+            const matched = [];
+            Object.keys(classSectionMap).forEach(k => {
+                if (keys.includes(k)) matched.push(...(classSectionMap[k] || []));
+            });
+            const unique = [...new Set(matched)].sort();
+            return ['all', ...unique];
+        }
+        
+        function populateSections() {
+            const classFilter = document.getElementById('classFilter').value;
+            const sectionSelect = document.getElementById('sectionFilter');
+            const current = '<%= sectionFilter || "all" %>';
+            const sections = getSectionsForClass(classFilter);
+            sectionSelect.innerHTML = '';
+            sections.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.textContent = s === 'all' ? 'All Sections' : s;
+                if (s === current || (s === 'all' && current === 'all')) opt.selected = true;
+                sectionSelect.appendChild(opt);
+            });
+            if (!Array.from(sectionSelect.options).some(o => o.value === current)) sectionSelect.value = 'all';
+        }
+        
+        function applyFilters() {
+            const params = new URLSearchParams({
+                classFilter: document.getElementById('classFilter').value,
+                sectionFilter: document.getElementById('sectionFilter').value,
+                subjectFilter: document.getElementById('subjectFilter').value,
+                terminalFilter: document.getElementById('terminalFilter').value,
+                calculationType: document.getElementById('calculationType').value
+            });
+            window.location.href = window.location.pathname + '?' + params.toString();
+        }
+        
+        function printAll() { window.print(); }
+        
+        function printSubject(subjectId) {
+            const el = document.getElementById('subject-' + subjectId);
+            if (!el) return;
+            const clone = el.cloneNode(true);
+            clone.querySelectorAll('.btn-print-subject').forEach(b => b.remove());
+            const printWindow = window.open('', '_blank', 'noopener,noreferrer');
+            if (!printWindow) {
+                alert('Popup blocked. Please allow popups and try again.');
+                return;
+            }
+            printWindow.document.write(`
+                <html><head><title>Fail Students</title>
+                <style>
+                    * { box-sizing: border-box; }
+                    body { font-family: Arial; padding: 20px; font-size: 12px; color: #000; }
+                    table { width: 100%; border-collapse: collapse; }
+                    table th { background: #fff; color: #000; padding: 6px 4px; text-align: center; font-size: 12px; border: 2px solid #000; }
+                    table td { padding: 5px 4px; text-align: center; border: 1px solid #000; font-size: 12px; color: #000; background: #fff; }
+                    .subject-header { background: #fff; padding: 10px 15px; border-bottom: 2px solid #000; }
+                    .subject-header .title { font-size: 18px; font-weight: bold; color: #000; }
+                    .class-section { padding: 8px 12px; border-bottom: 1px solid #000; }
+                    .class-title { font-size: 14px; font-weight: 600; padding: 4px 8px; background: #fff; color: #000; border-left: 4px solid #000; }
+                    .header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+                    .header h1 { font-size: 22px; color: #000; }
+                    .fail-count { color: #000; }
+                    .terminal-badge { display: inline-block; padding: 2px 10px; background: #000; color: #fff; border: 1px solid #000; border-radius: 12px; font-size: 10px; }
+                    @page { size: landscape; margin: 8mm; }
+                    @media print { body { padding: 0; } }
+                </style>
+                </head><body>
+                <div class="header"><h1>Subject Wise Fail Students</h1><p>${subjectId.replace(/_/g, ' ')} - Academic Year: 2083</p></div>
+                ${clone.innerHTML}
+                <p style="text-align:center;margin-top:15px;font-size:10px;color:#000;">Printed: ${new Date().toLocaleString()}</p>
+                </body></html>
+            `);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => printWindow.print(), 300);
+        }
+        
+        function getClassNameDisplay(value) {
+            const map = {'1':'One','2':'Two','3':'Three','4':'Four','5':'Five',
+                '6':'Six','7':'Seven','8':'Eight','9':'Nine','10':'Ten'};
+            return map[value] || value;
+        }
+        
+        function exportToExcel() {
+            const tables = document.querySelectorAll('table');
+            if (!tables.length) { alert('No data to export'); return; }
+            let csv = 'Subject Wise Fail Students Report\nAcademic Year: 2083\n\n';
+            document.querySelectorAll('.subject-section').forEach(section => {
+                const header = section.querySelector('.subject-header');
+                if (header) {
+                    const title = header.querySelector('.title')?.textContent || '';
+                    const info = header.querySelector('.info')?.textContent || '';
+                    csv += `\n${title} - ${info}\n`;
+                }
+                section.querySelectorAll('table').forEach(table => {
+                    const headers = [];
+                    table.querySelectorAll('thead th').forEach(th => headers.push(th.textContent.trim()));
+                    csv += headers.join(',') + '\n';
+                    table.querySelectorAll('tbody tr').forEach(row => {
+                        const data = [];
+                        row.querySelectorAll('td').forEach(cell => {
+                            let text = cell.textContent.trim();
+                            if (text.includes(',') || text.includes('"')) text = '"' + text.replace(/"/g, '""') + '"';
+                            data.push(text);
+                        });
+                        csv += data.join(',') + '\n';
+                    });
+                    csv += '\n';
+                });
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `fail_students_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            populateSections();
+            const classSelect = document.getElementById('classFilter');
+            if (classSelect) {
+                Array.from(classSelect.options).forEach(opt => {
+                    if (opt.value !== 'all') {
+                        opt.text = getClassNameDisplay(opt.value) + ` (${opt.value})`;
+                    }
+                });
+            }
+            classSelect.addEventListener('change', () => { populateSections(); applyFilters(); });
+            document.getElementById('sectionFilter').addEventListener('change', applyFilters);
+            document.getElementById('subjectFilter').addEventListener('change', applyFilters);
+            document.getElementById('terminalFilter').addEventListener('change', applyFilters);
+            document.getElementById('calculationType').addEventListener('change', applyFilters);
+        });
+    </script>
+</body>
+</html>
