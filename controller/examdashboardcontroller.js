@@ -4436,10 +4436,14 @@ async function processClassData(className, subjectName, classMarks, calculationT
     const getSummary = (marksForSection) => {
         // Filter out absent students (those with 0 in all subjects)
         const activeStudents = marksForSection.filter(student => {
+            if (!student || typeof student !== 'object') {
+                return false;
+            }
+
             // If this is an optional subject and student has 0 marks, they might be in the other subject
             if (isOptionalSubject) {
-                const theoryMarks = student.theorymarks || 0;
-                const practicalMarks = student.practicalmarks || 0;
+                const theoryMarks = Number(student.theorymarks || 0);
+                const practicalMarks = Number(student.practicalmarks || 0);
                 if (theoryMarks === 0 && practicalMarks === 0) {
                     return false; // Skip - they're not in this optional subject
                 }
@@ -4575,7 +4579,7 @@ async function processClassData(className, subjectName, classMarks, calculationT
 
         // Log fail details for debugging
         if (failDetails.length > 0) {
-            console.log(`\n--- FAIL DETAILS (${failDetails.length} students) ---`);
+           
             failDetails.forEach((detail, index) => {
                 console.log(`  ${index + 1}. ${detail.name} - Theory: ${detail.theory}, Practical: ${detail.practical}, Reason: ${detail.reason}`);
             });
@@ -4795,13 +4799,14 @@ exports.subjectWiseanalysis = async (req, res) => {
         const studentsWithOptionalSubjects = {};
         Object.keys(studentSubjectMap).forEach(key => {
             const student = studentSubjectMap[key];
-            const subjects = student.subjects;
+            const subjects = student?.subjects || {};
             
             // Check which subjects have marks > 0
             const subjectsWithMarks = [];
             Object.keys(subjects).forEach(subj => {
-                const theoryMarks = subjects[subj].theorymarks || 0;
-                const practicalMarks = subjects[subj].practicalmarks || 0;
+                const subjectValue = subjects[subj] || {};
+                const theoryMarks = subjectValue.theorymarks || 0;
+                const practicalMarks = subjectValue.practicalmarks || 0;
                 if (theoryMarks > 0 || practicalMarks > 0) {
                     subjectsWithMarks.push(subj);
                 }
@@ -4818,11 +4823,13 @@ exports.subjectWiseanalysis = async (req, res) => {
                     if (!studentsWithOptionalSubjects[key2]) {
                         studentsWithOptionalSubjects[key2] = [];
                     }
+                    const subjectValue = subjects[subj] || {};
+                    if (!subjectValue) return;
                     studentsWithOptionalSubjects[key2].push({
                         ...student,
                         subject: subj,
                         isFail: true,
-                        marks: subjects[subj]
+                        marks: subjectValue
                     });
                 });
             } else {
@@ -4832,11 +4839,13 @@ exports.subjectWiseanalysis = async (req, res) => {
                     if (!studentsWithOptionalSubjects[key2]) {
                         studentsWithOptionalSubjects[key2] = [];
                     }
+                    const subjectValue = subjects[subj] || {};
+                    if (!subjectValue) return;
                     studentsWithOptionalSubjects[key2].push({
                         ...student,
                         subject: subj,
                         isFail: false,
-                        marks: subjects[subj]
+                        marks: subjectValue
                     });
                 });
             }
@@ -4909,12 +4918,13 @@ exports.subjectWiseanalysis = async (req, res) => {
                     if (studentsWithOptionalSubjects[key]) {
                         // Convert processed data to exam mark format
                         studentsWithOptionalSubjects[key].forEach(studentData => {
-                            const mark = studentData.marks._doc;
+                            const mark = studentData?.marks?._doc || studentData?.marks || studentData;
+                            if (!mark) return;
                             // Mark as processed
                             classMarksForProcessing.push({
                                 ...mark,
                                 _isProcessed: true,
-                                _isFail: studentData.isFail
+                                _isFail: !!studentData.isFail
                             });
                         });
                     }
@@ -5071,20 +5081,31 @@ function getClassOrder(className) {
 
 // Helper function to check if a student is absent (0 in all subjects)
 function isStudentAbsent(studentMarks, allExamMarks) {
+    if (!studentMarks || typeof studentMarks !== 'object') {
+        return false;
+    }
+
     const studentReg = studentMarks.reg;
     const studentClass = studentMarks.studentClass;
     const section = studentMarks.section;
-    
-    const allStudentRecords = allExamMarks.filter(mark => 
-        mark.reg === studentReg && 
-        mark.studentClass === studentClass &&
-        mark.section === section
-    );
+
+    if (studentReg == null || studentClass == null) {
+        return false;
+    }
+
+    const allStudentRecords = Array.isArray(allExamMarks)
+        ? allExamMarks.filter(mark => {
+            if (!mark || typeof mark !== 'object') return false;
+            return String(mark.reg || '') === String(studentReg) &&
+                String(mark.studentClass || '') === String(studentClass) &&
+                String(mark.section || '') === String(section || '');
+        })
+        : [];
     
     let hasAnyMarks = false;
     for (const record of allStudentRecords) {
-        const theoryMarks = record.theorymarks || 0;
-        const practicalMarks = record.practicalmarks || 0;
+        const theoryMarks = Number(record.theorymarks || 0);
+        const practicalMarks = Number(record.practicalmarks || 0);
         if (theoryMarks > 0 || practicalMarks > 0) {
             hasAnyMarks = true;
             break;
@@ -5296,9 +5317,12 @@ function buildStudentMarkMap(examMarks) {
 }
 
 function isStudentAbsent(reg, studentClass, section, studentMarkMap) {
-    const key = `${reg}_${studentClass}_${section || ''}`;
+    if (studentMarkMap == null || typeof studentMarkMap !== 'object') return false;
+    if (reg == null || studentClass == null) return false;
+
+    const key = `${String(reg)}_${String(studentClass)}_${String(section || '')}`;
     const data = studentMarkMap[key];
-    return data ? !data.hasMarks : true;
+    return data ? !data.hasMarks : false;
 }
 
 function groupMarksByClass(subjectMarks, subjectClassMap, subjectName, calculationType, studentMarkMap, sectionFilter) {
