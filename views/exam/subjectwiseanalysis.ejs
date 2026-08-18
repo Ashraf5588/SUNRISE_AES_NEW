@@ -74,19 +74,46 @@
             border-color: #3498db;
         }
         
-        .btn-print {
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-left: auto;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
             padding: 10px 20px;
-            background: #3498db;
-            color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             font-size: 14px;
-            margin-left: auto;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .btn-print {
+            background: #3498db;
+            color: white;
         }
         
         .btn-print:hover {
             background: #2980b9;
+        }
+        
+        .btn-excel {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .btn-excel:hover {
+            background: #229954;
+        }
+        
+        .btn-excel i {
+            font-size: 16px;
         }
         
         .subject-section {
@@ -115,6 +142,13 @@
             padding: 8px;
             background: #f8f9fa;
             border-radius: 4px;
+        }
+        
+        .section-info {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-left: 10px;
+            font-weight: normal;
         }
         
         table {
@@ -219,24 +253,65 @@
             font-style: italic;
         }
         
+        /* Loading indicator */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Print Styles */
         @media print {
             body {
                 background: white;
                 padding: 0;
+                font-size: 10px;
             }
             
             .container {
                 box-shadow: none;
-                padding: 20px;
+                padding: 10px;
+                max-width: 100%;
             }
             
             .filters {
                 background: #f8f9fa;
                 border: 1px solid #ddd;
+                padding: 10px;
+                margin: 10px 0;
+                break-inside: avoid;
             }
             
-            .btn-print {
-                display: none;
+            .btn-group {
+                display: none !important;
+            }
+            
+            .btn-print, .btn-excel {
+                display: none !important;
+            }
+            
+            table {
+                font-size: 9px;
+                page-break-inside: auto;
             }
             
             table th {
@@ -244,6 +319,13 @@
                 color: white !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
+                padding: 6px 4px;
+                font-size: 9px;
+            }
+            
+            table td {
+                padding: 5px 4px;
+                font-size: 9px;
             }
             
             table tr:nth-child(even) {
@@ -256,12 +338,85 @@
                 background: #ecf0f1 !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
+                font-size: 16px;
+                padding: 5px 10px;
+                margin: 10px 0 5px 0;
             }
             
             .class-group h3 {
                 background: #f8f9fa !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
+                font-size: 12px;
+                padding: 4px 8px;
+                margin: 5px 0;
+            }
+            
+            .section-info {
+                font-size: 10px;
+            }
+            
+            .subject-section {
+                margin-bottom: 15px;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            
+            .class-group {
+                margin-bottom: 10px;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            
+            .overall-stats {
+                margin-top: 15px;
+                padding: 10px;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 10px;
+            }
+            
+            .stat-item {
+                padding: 5px 10px;
+            }
+            
+            .stat-item .value {
+                font-size: 14px;
+            }
+            
+            .double-border {
+                border-bottom: 2px double #2c3e50;
+            }
+            
+            .header h1 {
+                font-size: 20px;
+            }
+            
+            .header p {
+                font-size: 11px;
+            }
+            
+            .calculation-info {
+                font-size: 10px;
+            }
+            
+            /* Force landscape */
+            @page {
+                size: landscape;
+                margin: 10mm;
+            }
+            
+            /* Ensure tables don't break across pages */
+            table {
+                page-break-inside: avoid;
+            }
+            
+            tr {
+                page-break-inside: avoid;
             }
         }
         
@@ -276,8 +431,14 @@
                 align-items: stretch;
             }
             
-            .btn-print {
+            .btn-group {
                 margin-left: 0;
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
             }
             
             table {
@@ -298,6 +459,16 @@
             <p class="calculation-info">
                 <%= calculationType === 'theory' ? '📘 Theory Only Calculation' : '📚 Theory + Practical Calculation' %>
             </p>
+            <% if (sectionFilter && sectionFilter !== 'all') { %>
+                <p style="color: #555; margin-top: 5px; font-size: 14px;">
+                    Section: <strong><%= sectionFilter === 'with-section' ? 'With Section' : sectionFilter %></strong>
+                </p>
+            <% } %>
+            <% if (classFilter && classFilter !== 'all') { %>
+                <p style="color: #555; margin-top: 5px; font-size: 14px;">
+                    Class: <strong><%= getClassDisplayName(classFilter) %></strong>
+                </p>
+            <% } %>
         </div>
         
         <!-- Filters -->
@@ -305,28 +476,56 @@
             <div class="filter-group">
                 <label for="classFilter">Class:</label>
                 <select id="classFilter" onchange="applyFilters()">
-                    <option value="all">All Classes</option>
-                    <option value="1" <%= classFilter === '1' ? 'selected' : '' %>>One (1)</option>
-                    <option value="2" <%= classFilter === '2' ? 'selected' : '' %>>Two (2)</option>
-                    <option value="3" <%= classFilter === '3' ? 'selected' : '' %>>Three (3)</option>
-                    <option value="4" <%= classFilter === '4' ? 'selected' : '' %>>Four (4)</option>
-                    <option value="5" <%= classFilter === '5' ? 'selected' : '' %>>Five (5)</option>
-                    <option value="6" <%= classFilter === '6' ? 'selected' : '' %>>Six (6)</option>
-                    <option value="7" <%= classFilter === '7' ? 'selected' : '' %>>Seven (7)</option>
-                    <option value="8" <%= classFilter === '8' ? 'selected' : '' %>>Eight (8)</option>
-                    <option value="9" <%= classFilter === '9' ? 'selected' : '' %>>Nine (9)</option>
-                    <option value="10" <%= classFilter === '10' ? 'selected' : '' %>>Ten (10)</option>
+                    <option value="all" <%= classFilter === 'all' ? 'selected' : '' %>>All Classes</option>
+                    <% if (availableClasses && availableClasses.length) { %>
+                        <% availableClasses.forEach((className) => { %>
+                            <option value="<%= className %>" <%= String(classFilter || 'all') === String(className) ? 'selected' : '' %>><%= getClassDisplayName(className) %> (<%= className %>)</option>
+                        <% }) %>
+                    <% } else { %>
+                        <option value="1" <%= classFilter === '1' ? 'selected' : '' %>>One (1)</option>
+                        <option value="2" <%= classFilter === '2' ? 'selected' : '' %>>Two (2)</option>
+                        <option value="3" <%= classFilter === '3' ? 'selected' : '' %>>Three (3)</option>
+                        <option value="4" <%= classFilter === '4' ? 'selected' : '' %>>Four (4)</option>
+                        <option value="5" <%= classFilter === '5' ? 'selected' : '' %>>Five (5)</option>
+                        <option value="6" <%= classFilter === '6' ? 'selected' : '' %>>Six (6)</option>
+                        <option value="7" <%= classFilter === '7' ? 'selected' : '' %>>Seven (7)</option>
+                        <option value="8" <%= classFilter === '8' ? 'selected' : '' %>>Eight (8)</option>
+                        <option value="9" <%= classFilter === '9' ? 'selected' : '' %>>Nine (9)</option>
+                        <option value="10" <%= classFilter === '10' ? 'selected' : '' %>>Ten (10)</option>
+                    <% } %>
                 </select>
             </div>
             
             <div class="filter-group">
                 <label for="sectionFilter">Section:</label>
                 <select id="sectionFilter" onchange="applyFilters()">
-                    <option value="all">All Sections</option>
-                    <option value="AMSHUVERMA" <%= sectionFilter === 'AMSHUVERMA' ? 'selected' : '' %>>AMSHUVERMA</option>
-                    <option value="KANCHANJUNGA" <%= sectionFilter === 'KANCHANJUNGA' ? 'selected' : '' %>>KANCHANJUNGA</option>
-                    <option value="B" <%= sectionFilter === 'B' ? 'selected' : '' %>>B</option>
-                    <option value="C" <%= sectionFilter === 'C' ? 'selected' : '' %>>C</option>
+                    <option value="all">Without Section</option>
+                    <option value="with-section">With Section</option>
+                    <!-- Sections will be dynamically populated based on class selection -->
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="subjectFilter">Subject:</label>
+                <select id="subjectFilter" onchange="applyFilters()">
+                    <option value="all">All Subjects</option>
+                    <% if (availableSubjects && availableSubjects.length) { %>
+                        <% availableSubjects.forEach((subject) => { %>
+                            <option value="<%= subject %>" <%= subjectFilter === subject ? 'selected' : '' %>><%= subject %></option>
+                        <% }) %>
+                    <% } %>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="terminalFilter">Terminal:</label>
+                <select id="terminalFilter" onchange="applyFilters()">
+                    <option value="all">All Terminals</option>
+                    <% if (availableTerminals && availableTerminals.length) { %>
+                        <% availableTerminals.forEach((terminal) => { %>
+                            <option value="<%= terminal %>" <%= terminalFilter === terminal ? 'selected' : '' %>><%= terminal %></option>
+                        <% }) %>
+                    <% } %>
                 </select>
             </div>
             
@@ -338,117 +537,465 @@
                 </select>
             </div>
             
-            <button class="btn-print" onclick="window.print()">🖨️ Print Report</button>
+            <div class="btn-group">
+                <button class="btn btn-excel" onclick="exportToExcel()">
+                    📊 Export to Excel
+                </button>
+                <button class="btn btn-print" onclick="printReport()">
+                    🖨️ Print Report
+                </button>
+            </div>
+        </div>
+        
+        <!-- Loading Indicator -->
+        <div class="loading" id="loadingIndicator">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px; color: #555;">Loading data...</p>
         </div>
         
         <!-- Subject Analysis -->
-        <% if (subjectAnalysis && subjectAnalysis.length > 0) { %>
-            <% subjectAnalysis.forEach((subject, index) => { %>
-                <div class="subject-section">
-                    <div class="subject-title">
-                        <%= subject.subjectName %>
-                    </div>
-                    
-                    <!-- Class Groups -->
-                    <%
-                        const classes = Object.keys(subject.classes).sort((a, b) => parseInt(a) - parseInt(b));
-                        const group1 = classes.filter(c => parseInt(c) <= 3);
-                        const group2 = classes.filter(c => parseInt(c) >= 4 && parseInt(c) <= 7);
-                        const group3 = classes.filter(c => parseInt(c) >= 8 && parseInt(c) <= 10);
-                        const groups = [group1, group2, group3];
-                        const groupLabels = ['Lower Primary (1-3)', 'Upper Primary (4-7)', 'Secondary (8-10)'];
-                    %>
-                    
-                    <% groups.forEach((group, gIndex) => { %>
-                        <% if (group.length > 0) { %>
-                            <div class="class-group">
-                                <h3><%= groupLabels[gIndex] %></h3>
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Class</th>
-                                            <th>Total Students</th>
-                                            <th>Pass</th>
-                                            <th>Pass %</th>
-                                            <th>Fail</th>
-                                            <th>Fail %</th>
-                                            <th>Average</th>
-                                            <th>Median</th>
-                                            <th>Highest Marks</th>
-                                            <th>Lowest Marks</th>
-                                            <% if (calculationType === 'practical') { %>
-                                                <th>Config</th>
-                                            <% } %>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
+        <div id="reportData">
+            <% if (subjectAnalysis && subjectAnalysis.length > 0) { %>
+                <% subjectAnalysis.forEach((subject, index) => { %>
+                    <div class="subject-section">
+                        <div class="subject-title">
+                            <%= subject.subjectName %>
+                        </div>
+                        
+                        <!-- Class Groups -->
+                        <%
+                            const classes = Object.keys(subject.classes).sort((a, b) => parseInt(a) - parseInt(b));
+                            const group1 = classes.filter(c => parseInt(c) <= 3);
+                            const group2 = classes.filter(c => parseInt(c) >= 4 && parseInt(c) <= 7);
+                            const group3 = classes.filter(c => parseInt(c) >= 8 && parseInt(c) <= 10);
+                            const groups = [group1, group2, group3];
+                            const groupLabels = ['Lower Primary (1-3)', 'Upper Primary (4-7)', 'Secondary (8-10)'];
+                        %>
+                        
+                        <% if (sectionFilter === 'with-section') { %>
+                            <% groups.forEach((group, gIndex) => { %>
+                                <% if (group.length > 0) { %>
+                                    <div class="class-group">
+                                        <h3><%= groupLabels[gIndex] %></h3>
                                         <% group.forEach((className, cIndex) => { %>
                                             <% const classData = subject.classes[className]; %>
-                                            <tr class="<%= cIndex === group.length - 1 && gIndex < groups.length - 1 ? 'double-border' : '' %>">
-                                                <td><%= getClassDisplayName(className) %></td>
-                                                <td><%= classData.totalStudents %></td>
-                                                <td><%= classData.passCount %></td>
-                                                <td><%= classData.passPercentage.toFixed(2) %>%</td>
-                                                <td><%= classData.failCount %></td>
-                                                <td><%= classData.failPercentage.toFixed(2) %>%</td>
-                                                <td><%= classData.avg.toFixed(2) %></td>
-                                                <td><%= classData.median.toFixed(2) %></td>
-                                                <td><%= classData.maxMarks %></td>
-                                                <td><%= classData.minMarks %></td>
-                                                <% if (calculationType === 'practical') { %>
-                                                    <td style="font-size: 11px;">
-                                                        T:<%= classData.theoryFullMarks %>/P:<%= classData.practicalFullMarks %>
-                                                        <br>Cr:<%= classData.theoryCredit %>+<%= classData.practicalCredit %>
-                                                    </td>
-                                                <% } %>
-                                            </tr>
+                                            <% const sectionEntries = Object.entries(classData.sections || {}); %>
+                                            <% if (sectionEntries.length > 0) { %>
+                                                <div style="margin: 12px 0 18px; border: 1px solid #ddd; border-radius: 6px; overflow: hidden;">
+                                                    <div style="padding: 10px 12px; background: #eef5ff; font-weight: 700; color: #1f3a5f;">
+                                                        Class: <%= getClassDisplayName(className) %>
+                                                    </div>
+                                                    <% sectionEntries.forEach(([sectionName, sectionData]) => { %>
+                                                        <div style="padding: 12px 12px 6px;">
+                                                            <div style="font-weight: 600; color: #34495e; margin-bottom: 8px;">Section: <%= sectionName %></div>
+                                                            <table>
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th>Total Students</th>
+                                                                        <th>Pass</th>
+                                                                        <th>Pass %</th>
+                                                                        <th>Fail</th>
+                                                                        <th>Fail %</th>
+                                                                        <th>Average</th>
+                                                                        <th>Median</th>
+                                                                        <th>Highest Marks</th>
+                                                                        <th>Lowest Marks</th>
+                                                                        <% if (calculationType === 'practical') { %>
+                                                                            <th>Config</th>
+                                                                        <% } %>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    <tr>
+                                                                        <td><%= sectionData.totalStudents %></td>
+                                                                        <td><%= sectionData.passCount %></td>
+                                                                        <td><%= sectionData.passPercentage.toFixed(2) %>%</td>
+                                                                        <td><%= sectionData.failCount %></td>
+                                                                        <td><%= sectionData.failPercentage.toFixed(2) %>%</td>
+                                                                        <td><%= sectionData.avg.toFixed(2) %></td>
+                                                                        <td><%= sectionData.median.toFixed(2) %></td>
+                                                                        <td><%= sectionData.maxMarks %></td>
+                                                                        <td><%= sectionData.minMarks %></td>
+                                                                        <% if (calculationType === 'practical') { %>
+                                                                            <td style="font-size: 11px;">
+                                                                                T:<%= sectionData.theoryFullMarks %>/P:<%= sectionData.practicalFullMarks %>
+                                                                                <br>Cr:<%= sectionData.theoryCredit %>+<%= sectionData.practicalCredit %>
+                                                                            </td>
+                                                                        <% } %>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    <% }) %>
+                                                </div>
+                                            <% } %>
                                         <% }) %>
-                                    </tbody>
-                                </table>
-                            </div>
+                                    </div>
+                                <% } %>
+                            <% }) %>
+                        <% } else { %>
+                            <% groups.forEach((group, gIndex) => { %>
+                                <% if (group.length > 0) { %>
+                                    <div class="class-group">
+                                        <h3>
+                                            <%= groupLabels[gIndex] %>
+                                            <% if (sectionFilter && sectionFilter !== 'all') { %>
+                                                <span class="section-info">- Section: <%= sectionFilter %></span>
+                                            <% } %>
+                                        </h3>
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Class</th>
+                                                    <th>Total Students</th>
+                                                    <th>Pass</th>
+                                                    <th>Pass %</th>
+                                                    <th>Fail</th>
+                                                    <th>Fail %</th>
+                                                    <th>Average</th>
+                                                    <th>Median</th>
+                                                    <th>Highest Marks</th>
+                                                    <th>Lowest Marks</th>
+                                                    <% if (calculationType === 'practical') { %>
+                                                        <th>Config</th>
+                                                    <% } %>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <% group.forEach((className, cIndex) => { %>
+                                                    <% const classData = subject.classes[className]; %>
+                                                    <tr class="<%= cIndex === group.length - 1 && gIndex < groups.length - 1 ? 'double-border' : '' %>">
+                                                        <td><%= getClassDisplayName(className) %></td>
+                                                        <td><%= classData.totalStudents %></td>
+                                                        <td><%= classData.passCount %></td>
+                                                        <td><%= classData.passPercentage.toFixed(2) %>%</td>
+                                                        <td><%= classData.failCount %></td>
+                                                        <td><%= classData.failPercentage.toFixed(2) %>%</td>
+                                                        <td><%= classData.avg.toFixed(2) %></td>
+                                                        <td><%= classData.median.toFixed(2) %></td>
+                                                        <td><%= classData.maxMarks %></td>
+                                                        <td><%= classData.minMarks %></td>
+                                                        <% if (calculationType === 'practical') { %>
+                                                            <td style="font-size: 11px;">
+                                                                T:<%= classData.theoryFullMarks %>/P:<%= classData.practicalFullMarks %>
+                                                                <br>Cr:<%= classData.theoryCredit %>+<%= classData.practicalCredit %>
+                                                            </td>
+                                                        <% } %>
+                                                    </tr>
+                                                <% }) %>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                <% } %>
+                            <% }) %>
                         <% } %>
-                    <% }) %>
+                    </div>
+                <% }) %>
+                
+                <!-- Overall Statistics -->
+                <div class="overall-stats">
+                    <h2 style="margin-bottom: 15px; color: #2c3e50;">Subject Analysis Summary</h2>
+                    <div class="stats-grid">
+                        <div class="stat-item highlight">
+                            <label>Subject with Maximum Fail</label>
+                            <div class="value max-subject"><%= maxFailSubject || 'N/A' %></div>
+                        </div>
+                        <div class="stat-item highlight-success">
+                            <label>Subject with Maximum Pass</label>
+                            <div class="value min-subject"><%= maxPassSubject || 'N/A' %></div>
+                        </div>
+                        <div class="stat-item highlight-primary">
+                            <label>Subject with Highest Average</label>
+                            <div class="value"><%= highestAvgSubject || 'N/A' %></div>
+                        </div>
+                    </div>
                 </div>
-            <% }) %>
-            
-            <!-- Overall Statistics -->
-            <div class="overall-stats">
-                <h2 style="margin-bottom: 15px; color: #2c3e50;">Subject Analysis Summary</h2>
-                <div class="stats-grid">
-                    <div class="stat-item highlight">
-                        <label>Subject with Maximum Fail</label>
-                        <div class="value max-subject"><%= maxFailSubject || 'N/A' %></div>
-                    </div>
-                    <div class="stat-item highlight-success">
-                        <label>Subject with Maximum Pass</label>
-                        <div class="value min-subject"><%= maxPassSubject || 'N/A' %></div>
-                    </div>
-                    <div class="stat-item highlight-primary">
-                        <label>Subject with Highest Average</label>
-                        <div class="value"><%= highestAvgSubject || 'N/A' %></div>
-                    </div>
+            <% } else { %>
+                <div class="empty-state">
+                    <h3>No data available for the selected filters</h3>
+                    <p>Please try adjusting your filters or check if data exists in the system.</p>
                 </div>
-            </div>
-        <% } else { %>
-            <div class="empty-state">
-                <h3>No data available for the selected filters</h3>
-                <p>Please try adjusting your filters or check if data exists in the system.</p>
-            </div>
-        <% } %>
+            <% } %>
+        </div>
     </div>
     
+    <!-- Include SheetJS for Excel export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
     <script>
+        const classSectionMap = <%- JSON.stringify(classSectionMap || {}) %>;
+        
+        function getSectionsForClass(classValue) {
+            const specialOptions = ['all', 'with-section'];
+
+            if (classValue === 'all') {
+                const allSections = new Set();
+                Object.values(classSectionMap).forEach((sections) => {
+                    (sections || []).forEach((section) => allSections.add(section));
+                });
+                return [...specialOptions, ...Array.from(allSections).sort((a, b) => a.localeCompare(b))];
+            }
+
+            const rawClass = String(classValue || '').trim();
+            const lookupKeys = new Set([
+                rawClass,
+                rawClass.toLowerCase(),
+                rawClass.toUpperCase(),
+                rawClass.replace(/\s+/g, ''),
+                rawClass.replace(/\s+/g, '').toLowerCase()
+            ]);
+
+            const classNames = {
+                '1': ['1', 'One', 'one'],
+                '2': ['2', 'Two', 'two'],
+                '3': ['3', 'Three', 'three'],
+                '4': ['4', 'Four', 'four'],
+                '5': ['5', 'Five', 'five'],
+                '6': ['6', 'Six', 'six'],
+                '7': ['7', 'Seven', 'seven'],
+                '8': ['8', 'Eight', 'eight'],
+                '9': ['9', 'Nine', 'nine'],
+                '10': ['10', 'Ten', 'ten']
+            };
+
+            const aliasKeys = classNames[rawClass] || [];
+            aliasKeys.forEach((key) => lookupKeys.add(key));
+
+            const matchedSections = [];
+            Object.keys(classSectionMap).forEach((key) => {
+                if (lookupKeys.has(key)) {
+                    matchedSections.push(...(classSectionMap[key] || []));
+                }
+            });
+
+            const uniqueSections = [...new Set(matchedSections)].sort((a, b) => a.localeCompare(b));
+            return [...specialOptions, ...uniqueSections];
+        }
+        
+        // Function to apply filters
         function applyFilters() {
             const classFilter = document.getElementById('classFilter').value;
             const sectionFilter = document.getElementById('sectionFilter').value;
+            const subjectFilter = document.getElementById('subjectFilter').value;
+            const terminalFilter = document.getElementById('terminalFilter').value;
             const calculationType = document.getElementById('calculationType').value;
+            
+            // Show loading
+            document.getElementById('loadingIndicator').classList.add('active');
+            document.getElementById('reportData').style.display = 'none';
             
             const url = new URL(window.location.href);
             url.searchParams.set('classFilter', classFilter);
             url.searchParams.set('sectionFilter', sectionFilter);
+            url.searchParams.set('subjectFilter', subjectFilter);
+            url.searchParams.set('terminalFilter', terminalFilter);
             url.searchParams.set('calculationType', calculationType);
             window.location.href = url.toString();
         }
+        
+        // Populate section dropdown based on class selection
+        function populateSections() {
+            const classFilter = document.getElementById('classFilter').value;
+            const sectionSelect = document.getElementById('sectionFilter');
+            const currentSection = '<%= sectionFilter || "all" %>';
+            
+            // Get sections for the selected class
+            const sections = getSectionsForClass(classFilter);
+            
+            // Clear existing options
+            sectionSelect.innerHTML = '';
+            
+            // Add new options
+            sections.forEach(section => {
+                const option = document.createElement('option');
+                option.value = section;
+                if (section === 'all') option.textContent = 'Without Section';
+                else if (section === 'with-section') option.textContent = 'With Section';
+                else option.textContent = section;
+                if (section === currentSection || (section === 'all' && currentSection === 'all')) {
+                    option.selected = true;
+                }
+                sectionSelect.appendChild(option);
+            });
+
+            if (!Array.from(sectionSelect.options).some((option) => option.value === currentSection)) {
+                sectionSelect.value = 'all';
+            }
+        }
+        
+        // Function to print report (landscape)
+        function printReport() {
+            // Add a class to body for print styles
+            document.body.classList.add('printing');
+            window.print();
+            document.body.classList.remove('printing');
+        }
+        
+        // Function to export to Excel
+        function exportToExcel() {
+            // Show loading
+            document.getElementById('loadingIndicator').classList.add('active');
+            
+            setTimeout(() => {
+                try {
+                    // Get all tables
+                    const tables = document.querySelectorAll('table');
+                    const workbook = XLSX.utils.book_new();
+                    
+                    // Get subject sections
+                    const subjectTitles = document.querySelectorAll('.subject-title');
+                    const classGroupTitles = document.querySelectorAll('.class-group h3');
+                    
+                    let sheetData = [];
+                    
+                    // Add header
+                    const headerRow = ['Subject Wise Analysis Report'];
+                    sheetData.push(headerRow);
+                    sheetData.push(['Academic Year: 2083']);
+                    sheetData.push([]); // Empty row
+                    
+                    // Add filter info
+                    const classFilter = document.getElementById('classFilter');
+                    const sectionFilter = document.getElementById('sectionFilter');
+                    const calcType = document.getElementById('calculationType');
+                    
+                    sheetData.push(['Filters:']);
+                    sheetData.push([`Class: ${classFilter.options[classFilter.selectedIndex].text}`]);
+                    sheetData.push([`Section: ${sectionFilter.options[sectionFilter.selectedIndex].text}`]);
+                    sheetData.push([`Calculation: ${calcType.options[calcType.selectedIndex].text}`]);
+                    sheetData.push([]); // Empty row
+                    
+                    // Process each table
+                    tables.forEach((table, tableIndex) => {
+                        // Get the subject title and class group for this table
+                        const subjectSection = table.closest('.subject-section');
+                        const subjectTitle = subjectSection ? subjectSection.querySelector('.subject-title') : null;
+                        const classGroup = table.closest('.class-group');
+                        const groupTitle = classGroup ? classGroup.querySelector('h3') : null;
+                        
+                        // Add subject and group headers
+                        if (subjectTitle) {
+                            sheetData.push([subjectTitle.textContent.trim()]);
+                        }
+                        if (groupTitle) {
+                            sheetData.push([groupTitle.textContent.trim()]);
+                        }
+                        
+                        // Get table data
+                        const tableData = [];
+                        const headers = [];
+                        
+                        // Get headers
+                        const thElements = table.querySelectorAll('thead th');
+                        thElements.forEach(th => {
+                            headers.push(th.textContent.trim());
+                        });
+                        tableData.push(headers);
+                        
+                        // Get body data
+                        const rows = table.querySelectorAll('tbody tr');
+                        rows.forEach(row => {
+                            const rowData = [];
+                            const cells = row.querySelectorAll('td');
+                            cells.forEach(cell => {
+                                rowData.push(cell.textContent.trim());
+                            });
+                            tableData.push(rowData);
+                        });
+                        
+                        // Add to sheet data
+                        tableData.forEach(row => {
+                            sheetData.push(row);
+                        });
+                        
+                        // Add empty row between tables
+                        sheetData.push([]);
+                    });
+                    
+                    // Add summary
+                    const summarySection = document.querySelector('.overall-stats');
+                    if (summarySection) {
+                        sheetData.push(['Subject Analysis Summary']);
+                        const summaryItems = summarySection.querySelectorAll('.stat-item');
+                        summaryItems.forEach(item => {
+                            const label = item.querySelector('label')?.textContent || '';
+                            const value = item.querySelector('.value')?.textContent || '';
+                            sheetData.push([label, value]);
+                        });
+                    }
+                    
+                    // Create worksheet
+                    const ws = XLSX.utils.aoa_to_sheet(sheetData);
+                    
+                    // Auto-size columns
+                    const colWidths = [];
+                    sheetData.forEach(row => {
+                        row.forEach((cell, index) => {
+                            if (cell) {
+                                const width = String(cell).length;
+                                if (!colWidths[index] || width > colWidths[index]) {
+                                    colWidths[index] = Math.min(width + 2, 30);
+                                }
+                            }
+                        });
+                    });
+                    ws['!cols'] = colWidths.map(w => ({ wch: w || 15 }));
+                    
+                    // Add to workbook
+                    XLSX.utils.book_append_sheet(workbook, ws, 'Subject Analysis');
+                    
+                    // Generate filename
+                    const classFilterText = classFilter.options[classFilter.selectedIndex].text;
+                    const sectionFilterText = sectionFilter.options[sectionFilter.selectedIndex].text;
+                    const filename = `Subject_Wise_Analysis_${classFilterText}_${sectionFilterText}_2083.xlsx`;
+                    
+                    // Save file
+                    XLSX.writeFile(workbook, filename);
+                    
+                    // Hide loading
+                    document.getElementById('loadingIndicator').classList.remove('active');
+                    
+                } catch (error) {
+                    console.error('Error exporting to Excel:', error);
+                    alert('Error exporting to Excel. Please try again.');
+                    document.getElementById('loadingIndicator').classList.remove('active');
+                }
+            }, 500);
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Populate sections
+            populateSections();
+            
+            // Update class display names in dropdown
+            const classSelect = document.getElementById('classFilter');
+            if (classSelect) {
+                Array.from(classSelect.options).forEach(option => {
+                    if (option.value !== 'all') {
+                        const displayName = getClassNameDisplay(option.value);
+                        option.text = displayName + ` (${option.value})`;
+                    }
+                });
+            }
+            
+            // Add event listener for class change to update sections
+            classSelect.addEventListener('change', function() {
+                populateSections();
+                // Auto-submit when class changes
+                applyFilters();
+            });
+            
+            // Section change auto-submit
+            document.getElementById('sectionFilter').addEventListener('change', function() {
+                applyFilters();
+            });
+            
+            // Calculation type change auto-submit
+            document.getElementById('calculationType').addEventListener('change', function() {
+                applyFilters();
+            });
+        });
         
         function getClassNameDisplay(value) {
             const map = {
@@ -465,18 +1012,6 @@
             };
             return map[value] || value;
         }
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            const classSelect = document.getElementById('classFilter');
-            if (classSelect) {
-                Array.from(classSelect.options).forEach(option => {
-                    if (option.value !== 'all') {
-                        const displayName = getClassNameDisplay(option.value);
-                        option.text = displayName + ` (${option.value})`;
-                    }
-                });
-            }
-        });
     </script>
 </body>
 </html>
