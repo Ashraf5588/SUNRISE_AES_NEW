@@ -4186,3 +4186,522 @@ function processGradeCounter(examMarks) {
 
     return subjectClassData;
 }
+// controllers/subjectwiseanalysis.js
+
+
+// controllers/subjectwiseanalysis.js
+function normalizeClassName(className) {
+    if (!className) return className;
+    
+    const classMap = {
+        'One': '1',
+        'Two': '2',
+        'Three': '3',
+        'Four': '4',
+        'Five': '5',
+        'Six': '6',
+        'Seven': '7',
+        'Eight': '8',
+        'Nine': '9',
+        'Ten': '10',
+        '1': '1',
+        '2': '2',
+        '3': '3',
+        '4': '4',
+        '5': '5',
+        '6': '6',
+        '7': '7',
+        '8': '8',
+        '9': '9',
+        '10': '10'
+    };
+    
+    const trimmed = className.toString().trim();
+    return classMap[trimmed] || trimmed;
+}
+
+function getClassDisplayName(className) {
+    const displayMap = {
+        '1': 'One',
+        '2': 'Two',
+        '3': 'Three',
+        '4': 'Four',
+        '5': 'Five',
+        '6': 'Six',
+        '7': 'Seven',
+        '8': 'Eight',
+        '9': 'Nine',
+        '10': 'Ten'
+    };
+    return displayMap[className] || className;
+}
+
+
+
+// Helper function to convert class names between formats
+function normalizeClassName(className) {
+    if (!className) return className;
+    
+    const classMap = {
+        'One': '1',
+        'Two': '2',
+        'Three': '3',
+        'Four': '4',
+        'Five': '5',
+        'Six': '6',
+        'Seven': '7',
+        'Eight': '8',
+        'Nine': '9',
+        'Ten': '10',
+        '1': '1',
+        '2': '2',
+        '3': '3',
+        '4': '4',
+        '5': '5',
+        '6': '6',
+        '7': '7',
+        '8': '8',
+        '9': '9',
+        '10': '10'
+    };
+    
+    const trimmed = className.toString().trim();
+    return classMap[trimmed] || trimmed;
+}
+
+function getClassDisplayName(className) {
+    const displayMap = {
+        '1': 'One',
+        '2': 'Two',
+        '3': 'Three',
+        '4': 'Four',
+        '5': 'Five',
+        '6': 'Six',
+        '7': 'Seven',
+        '8': 'Eight',
+        '9': 'Nine',
+        '10': 'Ten'
+    };
+    return displayMap[className] || className;
+}
+
+exports.subjectWiseanalysis = async (req, res) => {
+    try {
+        const { classFilter, sectionFilter, calculationType } = req.query;
+        
+        console.log('=== Starting Subject Wise Analysis ===');
+        console.log('Filters:', { classFilter, sectionFilter, calculationType });
+        
+        // Get all subjects
+        const subjects = await newsubject.find({});
+        console.log('Subjects found:', subjects.length);
+        
+        // BUILD QUERY FOR EXAM MARKS
+        let examMarksQuery = {};
+        
+        // Handle class filter - search for both formats
+        if (classFilter && classFilter !== 'all') {
+            const normalizedClass = normalizeClassName(classFilter);
+            const displayClass = getClassDisplayName(normalizedClass);
+            examMarksQuery.studentClass = { $in: [normalizedClass, displayClass] };
+            console.log('Searching for classes:', [normalizedClass, displayClass]);
+        }
+        
+        // Handle section filter
+        if (sectionFilter && sectionFilter !== 'all') {
+            examMarksQuery.section = sectionFilter;
+        }
+        
+        console.log('Exam marks query:', JSON.stringify(examMarksQuery));
+        
+        // Get exam marks
+        const examMarks = await getSlipModel().find(examMarksQuery);
+        console.log('Total exam marks found:', examMarks.length);
+        
+        if (examMarks.length === 0) {
+            return res.render('./exam/subjectwiseanalysis', {
+                subjectAnalysis: [],
+                maxFailSubject: null,
+                maxPassSubject: null,
+                highestAvgSubject: null,
+                classFilter: classFilter || 'all',
+                sectionFilter: sectionFilter || 'all',
+                calculationType: calculationType || 'theory',
+                getClassDisplayName: getClassDisplayName
+            });
+        }
+        
+        // Special handling for Class 9 & 10: ENV.SCIENCE and OPT.MATH
+        // Group students by class and section to identify which subject they actually took
+        const studentSubjectMap = {};
+        const optionalSubjects = ['ENV.SCIENCE', 'OPT.MATH'];
+        
+        examMarks.forEach(mark => {
+            const classNum = normalizeClassName(mark.studentClass);
+            // Only apply for class 9 and 10
+            if (classNum === '9' || classNum === '10') {
+                const key = `${mark.studentClass}_${mark.section}_${mark.reg}`;
+                if (!studentSubjectMap[key]) {
+                    studentSubjectMap[key] = {
+                        class: mark.studentClass,
+                        section: mark.section,
+                        reg: mark.reg,
+                        subjects: {}
+                    };
+                }
+                // Store marks for each subject
+                studentSubjectMap[key].subjects[mark.subject] = {
+                    theorymarks: mark.theorymarks || 0,
+                    practicalmarks: mark.practicalmarks || 0,
+                    theoryfullmarks: mark.theoryfullmarks || 0,
+                    practicalfullmarks: mark.practicalfullmarks || 0,
+                    passMarks: mark.passMarks || 0,
+                    // Store the full document for later use
+                    _doc: mark
+                };
+            }
+        });
+        
+        // Determine which subject each student actually took
+        // If a student has marks > 0 in a subject, they took that subject
+        // If both are 0, they took neither (or data missing)
+        const studentsWithOptionalSubjects = {};
+        Object.keys(studentSubjectMap).forEach(key => {
+            const student = studentSubjectMap[key];
+            const subjects = student.subjects;
+            
+            // Check which subjects have marks > 0
+            const subjectsWithMarks = [];
+            Object.keys(subjects).forEach(subj => {
+                const theoryMarks = subjects[subj].theorymarks || 0;
+                const practicalMarks = subjects[subj].practicalmarks || 0;
+                if (theoryMarks > 0 || practicalMarks > 0) {
+                    subjectsWithMarks.push(subj);
+                }
+            });
+            
+            // If student has marks in both (shouldn't happen normally), take both
+            // If student has marks in one, that's their subject
+            // If student has marks in none, they failed both (or data missing)
+            if (subjectsWithMarks.length === 0) {
+                // Student has 0 in both - they failed both subjects
+                // But we need to count them in both subjects as fail
+                Object.keys(subjects).forEach(subj => {
+                    const key2 = `${student.class}_${subj}`;
+                    if (!studentsWithOptionalSubjects[key2]) {
+                        studentsWithOptionalSubjects[key2] = [];
+                    }
+                    studentsWithOptionalSubjects[key2].push({
+                        ...student,
+                        subject: subj,
+                        isFail: true,
+                        marks: subjects[subj]
+                    });
+                });
+            } else {
+                // Student took these subjects
+                subjectsWithMarks.forEach(subj => {
+                    const key2 = `${student.class}_${subj}`;
+                    if (!studentsWithOptionalSubjects[key2]) {
+                        studentsWithOptionalSubjects[key2] = [];
+                    }
+                    studentsWithOptionalSubjects[key2].push({
+                        ...student,
+                        subject: subj,
+                        isFail: false,
+                        marks: subjects[subj]
+                    });
+                });
+            }
+        });
+        
+        // Build subject-class mapping from newsubject
+        const subjectClassMap = {};
+        subjects.forEach(sub => {
+            if (!subjectClassMap[sub.newsubject]) {
+                subjectClassMap[sub.newsubject] = {};
+            }
+            const normalizedClass = normalizeClassName(sub.forClass);
+            subjectClassMap[sub.newsubject][normalizedClass] = sub;
+        });
+        
+        // Process each subject
+        const subjectAnalysis = [];
+        let maxFailSubject = null;
+        let maxPassSubject = null;
+        let highestAvgSubject = null;
+        let maxFailCount = -1;
+        let maxPassCount = -1;
+        let highestAvg = -1;
+        
+        // Get unique subjects from exam marks
+        const uniqueSubjects = [...new Set(examMarks.map(mark => mark.subject))];
+        console.log('Unique subjects:', uniqueSubjects);
+        
+        for (const subjectName of uniqueSubjects) {
+            console.log(`\n--- Processing subject: ${subjectName} ---`);
+            
+            const subjectData = {
+                subjectName: subjectName,
+                classes: {}
+            };
+            
+            // Get subject marks for this subject
+            let subjectMarks = examMarks.filter(mark => mark.subject === subjectName);
+            
+            // For ENV.SCIENCE and OPT.MATH in classes 9 & 10, use the processed data
+            if (optionalSubjects.includes(subjectName)) {
+                // For these subjects, we need to use the processed student data
+                const subjectKey = `${subjectName}`;
+                // We'll process classes separately
+            }
+            
+            // Get unique classes for this subject
+            const rawClasses = [...new Set(subjectMarks.map(mark => mark.studentClass))];
+            console.log(`Raw classes for ${subjectName}:`, rawClasses);
+            
+            const normalizedClasses = rawClasses.map(c => normalizeClassName(c));
+            const uniqueClasses = [...new Set(normalizedClasses)];
+            console.log(`Normalized classes for ${subjectName}:`, uniqueClasses);
+            
+            for (const className of uniqueClasses) {
+                console.log(`  Processing class: ${className}`);
+                
+                let classMarksForProcessing = [];
+                let isOptionalSubject = false;
+                
+                // Check if this is class 9 or 10 and subject is ENV.SCIENCE or OPT.MATH
+                if ((className === '9' || className === '10') && optionalSubjects.includes(subjectName)) {
+                    isOptionalSubject = true;
+                    // Use the processed student data
+                    const key = `${className}_${subjectName}`;
+                    if (studentsWithOptionalSubjects[key]) {
+                        // Convert processed data to exam mark format
+                        studentsWithOptionalSubjects[key].forEach(studentData => {
+                            const mark = studentData.marks._doc;
+                            // Mark as processed
+                            classMarksForProcessing.push({
+                                ...mark,
+                                _isProcessed: true,
+                                _isFail: studentData.isFail
+                            });
+                        });
+                    }
+                    console.log(`  Processed ${classMarksForProcessing.length} students for optional subject ${subjectName} in class ${className}`);
+                } else {
+                    // Normal filtering
+                    classMarksForProcessing = subjectMarks.filter(mark => 
+                        normalizeClassName(mark.studentClass) === className
+                    );
+                }
+                
+                // Get subject configuration
+                const classConfig = subjectClassMap[subjectName]?.[className];
+                
+                // Process class data
+                const classData = await processClassData(
+                    className, 
+                    subjectName, 
+                    classMarksForProcessing, 
+                    calculationType || 'theory',
+                    sectionFilter,
+                    classConfig,
+                    isOptionalSubject
+                );
+                
+                subjectData.classes[className] = classData;
+                console.log(`    Pass: ${classData.passCount}, Fail: ${classData.failCount}`);
+            }
+            
+            // Calculate overall subject statistics
+            const overallStats = calculateOverallStats(subjectData);
+            subjectData.overall = overallStats;
+            
+            // Track max/min subjects
+            if (overallStats.failCount > maxFailCount) {
+                maxFailCount = overallStats.failCount;
+                maxFailSubject = subjectName;
+            }
+            if (overallStats.passCount > maxPassCount) {
+                maxPassCount = overallStats.passCount;
+                maxPassSubject = subjectName;
+            }
+            if (overallStats.avg > highestAvg) {
+                highestAvg = overallStats.avg;
+                highestAvgSubject = subjectName;
+            }
+            
+            subjectAnalysis.push(subjectData);
+        }
+        
+        console.log('\n=== Analysis Complete ===');
+        console.log('Subjects processed:', subjectAnalysis.length);
+        
+        res.render('./exam/subjectwiseanalysis', {
+            subjectAnalysis,
+            maxFailSubject,
+            maxPassSubject,
+            highestAvgSubject,
+            classFilter: classFilter || 'all',
+            sectionFilter: sectionFilter || 'all',
+            calculationType: calculationType || 'theory',
+            getClassDisplayName: getClassDisplayName
+        });
+        
+    } catch (error) {
+        console.error('Error in subject wise analysis:', error);
+        res.status(500).send('Error generating subject wise analysis: ' + error.message);
+    }
+};
+
+async function processClassData(className, subjectName, classMarks, calculationType, sectionFilter, classConfig, isOptionalSubject = false) {
+    // Filter by section if needed
+    let filteredMarks = classMarks;
+    if (sectionFilter && sectionFilter !== 'all') {
+        filteredMarks = filteredMarks.filter(mark => mark.section === sectionFilter);
+    }
+    
+    const totalStudents = filteredMarks.length;
+    console.log(`    Processing ${totalStudents} students for class ${className}`);
+    
+    let passCount = 0;
+    let failCount = 0;
+    let totalMarks = 0;
+    let marksArray = [];
+    let minMarks = Infinity;
+    let maxMarks = -Infinity;
+    
+    // Get subject configuration
+    const theoryFullMarks = classConfig?.theory || 50;
+    const practicalFullMarks = classConfig?.practical || 50;
+    const theoryCredit = classConfig?.theoryCreditHour || 2;
+    const practicalCredit = classConfig?.practicalCreditHour || 2;
+    
+    for (const student of filteredMarks) {
+        let passed = false;
+        let gp = 0;
+        let marks = 0;
+        
+        // For optional subjects, check if student has marks
+        let theoryMarks = student.theorymarks || 0;
+        let practicalMarks = student.practicalmarks || 0;
+        let theoryFullMarksStudent = student.theoryfullmarks || theoryFullMarks;
+        let practicalFullMarksStudent = student.practicalfullmarks || practicalFullMarks;
+        
+        // If this is from processed data and marked as fail, student failed
+        if (student._isFail === true) {
+            failCount++;
+            continue;
+        }
+        
+        // If student has 0 marks in both theory and practical, they didn't take this subject
+        if (theoryMarks === 0 && practicalMarks === 0) {
+            // For optional subjects in class 9 & 10, skip this student (they took the other subject)
+            if (isOptionalSubject) {
+                continue; // Don't count in this subject
+            }
+        }
+        
+        if (calculationType === 'theory') {
+            // Theory only
+            const theoryPercentage = theoryFullMarksStudent > 0 ? 
+                (theoryMarks / theoryFullMarksStudent) * 100 : 0;
+            gp = calculateGP(theoryPercentage);
+            passed = gp >= 1.6;
+            marks = theoryMarks;
+        } else {
+            // Theory + Practical
+            const theoryPercentage = theoryFullMarksStudent > 0 ? 
+                (theoryMarks / theoryFullMarksStudent) * 100 : 0;
+            const practicalPercentage = practicalFullMarksStudent > 0 ? 
+                (practicalMarks / practicalFullMarksStudent) * 100 : 0;
+            
+            const theoryGP = calculateGP(theoryPercentage);
+            const practicalGP = calculateGP(practicalPercentage);
+            
+            const totalCredit = theoryCredit + practicalCredit;
+            if (totalCredit > 0) {
+                gp = (theoryCredit * theoryGP + practicalCredit * practicalGP) / totalCredit;
+            } else {
+                gp = theoryGP;
+            }
+            
+            passed = gp >= 1.6;
+            marks = theoryMarks;
+        }
+        
+        totalMarks += marks;
+        marksArray.push(marks);
+        minMarks = Math.min(minMarks, marks);
+        maxMarks = Math.max(maxMarks, marks);
+        
+        if (passed) {
+            passCount++;
+        } else {
+            failCount++;
+        }
+    }
+    
+    const avg = totalStudents > 0 ? totalMarks / totalStudents : 0;
+    const median = calculateMedian(marksArray);
+    
+    return {
+        totalStudents,
+        passCount,
+        passPercentage: totalStudents > 0 ? (passCount / totalStudents) * 100 : 0,
+        failCount,
+        failPercentage: totalStudents > 0 ? (failCount / totalStudents) * 100 : 0,
+        avg,
+        median,
+        maxMarks: maxMarks === -Infinity ? 0 : maxMarks,
+        minMarks: minMarks === Infinity ? 0 : minMarks,
+        theoryFullMarks,
+        practicalFullMarks,
+        theoryCredit,
+        practicalCredit
+    };
+}
+
+function calculateGP(percentage) {
+    if (percentage >= 90) return 4.0;
+    if (percentage >= 80) return 3.6;
+    if (percentage >= 70) return 3.2;
+    if (percentage >= 60) return 2.8;
+    if (percentage >= 50) return 2.4;
+    if (percentage >= 40) return 2.0;
+    if (percentage >= 30) return 1.6;
+    return 0.0;
+}
+
+function calculateMedian(arr) {
+    if (arr.length === 0) return 0;
+    const sorted = [...arr].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    if (sorted.length % 2 === 0) {
+        return (sorted[mid - 1] + sorted[mid]) / 2;
+    }
+    return sorted[mid];
+}
+
+function calculateOverallStats(subjectData) {
+    let totalStudents = 0;
+    let totalPass = 0;
+    let totalFail = 0;
+    
+    for (const className in subjectData.classes) {
+        const classData = subjectData.classes[className];
+        totalStudents += classData.totalStudents;
+        totalPass += classData.passCount;
+        totalFail += classData.failCount;
+    }
+    
+    return {
+        totalStudents,
+        passCount: totalPass,
+        failCount: totalFail,
+        passPercentage: totalStudents > 0 ? (totalPass / totalStudents) * 100 : 0,
+        failPercentage: totalStudents > 0 ? (totalFail / totalStudents) * 100 : 0,
+        avg: 0,
+        median: 0
+    };
+}

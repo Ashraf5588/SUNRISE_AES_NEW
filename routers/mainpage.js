@@ -291,6 +291,7 @@ student.get('/generatemarksheet',verifytoken,authorized,isAdmin,examdashboardcon
 student.get('/schoolanalysis',verifytoken,authorized,isAdmin,examdashboardcontroller.schoolanalysis);
 student.get('/quantamanalysis',verifytoken,authorized,isAdmin,examdashboardcontroller.quantamanalysis);
 student.get('/gradecounter',verifytoken,authorized,isAdmin,examdashboardcontroller.getGradeCounter);
+student.get('/subjectwiseanalysis',verifytoken,authorized,isAdmin,examdashboardcontroller.subjectWiseanalysis);
 
 student.get('/admitcard',verifytoken,authorized,isAdmin,examdashboardcontroller.admitCard)
 student.get('/routineterminalchoose'  ,verifytoken,authorized,isAdmin,examdashboardcontroller.routineTerminalChoose)
