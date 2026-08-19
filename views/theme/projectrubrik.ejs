@@ -891,7 +891,7 @@
     </div>
 
     <div class="form-card">
-      <form action="/projectrubrikscreatesave?studentClass=<%= typeof studentClass !== 'undefined' ? studentClass : '' %>&subject=<%= typeof subject !== 'undefined' ? subject : '' %>&terminal=<%= typeof terminal !== 'undefined' ? terminal : '' %>" method="POST" id="mainForm">
+      <form action="/projectrubrikscreatesave?studentClass=<%= typeof studentClass !== 'undefined' ? studentClass : '' %>&subject=<%= typeof subject !== 'undefined' ? subject : '' %>&terminal=<%= typeof terminal !== 'undefined' ? terminal : '' %>&section=<%= typeof section !== 'undefined' ? section : '' %>&editing=<%= typeof editing !== 'undefined' && editing ? 'true' : 'false' %>&projectId=<%= typeof existingData !== 'undefined' && existingData && existingData._id ? existingData._id : '' %>" method="POST" id="mainForm">
         <div class="form-row">
           <div class="form-group">
             <label for="studentClass">Student Class</label>
@@ -926,6 +926,8 @@
           </div>
         </div>
 
+        <input type="hidden" name="editing" value="<%= typeof editing !== 'undefined' && editing ? 'true' : 'false' %>">
+        <input type="hidden" name="projectId" value="<%= typeof existingData !== 'undefined' && existingData && existingData._id ? existingData._id : '' %>">
         <div id="themes-container"></div>
 
         <div class="btn-group" style="justify-content: center; margin-bottom: 2rem;">
@@ -1077,7 +1079,17 @@
         }, 0);
     }
 
-    const studentClass = <%= typeof studentClass !== 'undefined' ? studentClass : 'null' %>;
+    const studentClass = <%- JSON.stringify(typeof studentClass !== 'undefined' ? studentClass : null) %>;
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>'"]/g, character => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+      }[character]));
+    }
     
     console.log("Themes Data to load:", themesData);
     console.log("Editing mode:", editing);
@@ -1112,7 +1124,7 @@
           <textarea name="themes[${themeIndex}][themeName]" id="themeName_${themeIndex}" 
                  placeholder="<% if (isPrimaryClass) { %>Enter Theme Name<% } else { %>Enter मुल्याङ्कन आधारको नाम (Enter Evaluation Criteria Name)<% } %>" 
                  required rows="1" 
-                 oninput="autoResize(this); scheduleAutoSave();">${themeData ? themeData.themeName || '' : ''}</textarea>
+                 oninput="autoResize(this); scheduleAutoSave();">${escapeHtml(themeData ? themeData.themeName || '' : '')}</textarea>
         </div>
         <div class="outcomes-container" id="outcomes-${themeIndex}"></div>
         <div class="btn-group">
@@ -1160,7 +1172,7 @@
                id="outcomeName_${themeIdx}_${outcomeIndex}" 
                placeholder="<% if (isPrimaryClass) { %>Learning Outcome Name<% } else { %>परिक्षण पक्षको नाम (Examination Criteria Name)<% } %>" 
                   rows="1"
-                 oninput="autoResize(this); scheduleAutoSave();">${outcomeData ? outcomeData.learningOutcomeName || '' : ''}</textarea>
+                 oninput="autoResize(this); scheduleAutoSave();">${escapeHtml(outcomeData ? outcomeData.learningOutcomeName || '' : '')}</textarea>
         </div>
         <div class="indicators-container" id="indicators-${themeIdx}-${outcomeIndex}"></div>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
@@ -1169,10 +1181,10 @@
             <label>कुल अंक (Total Marks):</label>
             <input type="number" readonly id="totalMarks-${themeIdx}-${outcomeIndex}" 
                    style="border: none; background: transparent; text-align: center; font-weight: bold;"
-                   value="${outcomeData ? outcomeData.totalMarks || 0 : 0}">
+                   value="${escapeHtml(outcomeData ? outcomeData.totalMarks || 0 : 0)}">
             <input type="hidden" name="themes[${themeIdx}][learningOutcome][${outcomeIndex}][totalMarks]" 
                    id="totalMarksInput-${themeIdx}-${outcomeIndex}" 
-                   value="${outcomeData ? outcomeData.totalMarks || 0 : 0}">
+                   value="${escapeHtml(outcomeData ? outcomeData.totalMarks || 0 : 0)}">
           </div>
         </div>
       `;
@@ -1206,11 +1218,11 @@
       group.innerHTML = `
         <textarea name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][indicators][${indicatorIndex}][indicatorName]" 
                placeholder="Enter indicator name (सूचक)" required rows="1"
-               oninput="autoResize(this); scheduleAutoSave();">${indicatorData ? indicatorData.indicatorName || '' : ''}</textarea>
+               oninput="autoResize(this); scheduleAutoSave();">${escapeHtml(indicatorData ? indicatorData.indicatorName || '' : '')}</textarea>
         <input type="number" class="indicator-marks" 
                name="themes[${themeIdx}][learningOutcome][${outcomeIdx}][indicators][${indicatorIndex}][indicatorsMarks]" 
                placeholder="Marks" required min="0"
-               value="${indicatorData ? indicatorData.indicatorsMarks || '' : ''}"
+               value="${escapeHtml(indicatorData ? indicatorData.indicatorsMarks || '' : '')}"
                oninput="updateTotalMarks(${themeIdx}, ${outcomeIdx}); scheduleAutoSave();">
         <button type="button" class="btn btn-danger" onclick="removeIndicator(this, ${themeIdx}, ${outcomeIdx})">Remove</button>
       `;

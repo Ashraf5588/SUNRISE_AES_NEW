@@ -2218,11 +2218,23 @@ exports.projectrubrikscreatesave = async (req, res) => {
     // Get studentClass from query or body
     const studentClass = req.query.studentClass || req.body.studentClass;
     const {subject,section,terminal,editing,projectId} = req.query;
-    if(editing==='true'){
-
+    if(editing === 'true'){
       const projectModel = getProjectThemeFormat(studentClass);
-      // Update the existing record with new data
-      await projectModel.findByIdAndUpdate(projectId, req.body);
+      const update = {
+        studentClass,
+        subject: req.body.subject || subject,
+        credit: parseInt(req.body.credit, 10) || req.body.credit,
+        themes: req.body.themes || []
+      };
+      if (projectId) {
+        await projectModel.findByIdAndUpdate(projectId, update, { new: true });
+      } else {
+        await projectModel.findOneAndUpdate(
+          { studentClass, subject: update.subject },
+          { $set: update },
+          { upsert: true, new: true }
+        );
+      }
       return res.render("./theme/success", {link:"projectrubrikscreate",studentClass,subject,terminal,section,...await getSidenavData(req),section:"",});
 
     }
@@ -2361,11 +2373,11 @@ const uniqueClass = new Set(classList.map(c=>c.studentClass));
 
 exports.editprojectrubriks = async (req, res, next) => {
   try {
-    const { studentClass: classParam ,subject} = req.query;
+    const { studentClass: classParam, subject, section, terminal } = req.query;
     if (!classParam || !subject) {
       return res.status(400).send("Student class and subject are required");
     }
-      const {studentClass,section} = req.query;
+      const studentClass = classParam;
       const projectFormat = getProjectThemeFormat(studentClass)
     const projectFormatData = await projectFormat.find({
       studentClass: studentClass,
@@ -2388,7 +2400,8 @@ exports.editprojectrubriks = async (req, res, next) => {
       editing: true,
       existingData,
       section,
-      
+      terminal,
+      ...sidenavData
     });
   }catch (err) {
     console.error("Error fetching rubrik for editing:", err);

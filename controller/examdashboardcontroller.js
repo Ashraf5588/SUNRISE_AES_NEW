@@ -2765,34 +2765,31 @@ exports.schoolanalysis = async (req, res, next) => {
             }
             
             // Calculate GPA based on percentage
-            if (percentage >= 90) {
+            if (percentage >= 90 && percentage <= 100) {
                 gpa = 4.0;
                 grade = 'A+';
-            } else if (percentage >= 80) {
+            } else if (percentage >= 80 && percentage < 90) {
                 gpa = 3.6;
                 grade = 'A';
-            } else if (percentage >= 70) {
+            } else if (percentage >= 70 && percentage < 80) {
                 gpa = 3.2;
                 grade = 'B+';
-            } else if (percentage >= 60) {
+            } else if (percentage >= 60 && percentage < 70) {
                 gpa = 2.8;
                 grade = 'B';
-            } else if (percentage >= 50) {
+            } else if (percentage >= 50 && percentage < 60) {
                 gpa = 2.4;
                 grade = 'C+';
-            } else if (percentage >= 40) {
+            } else if (percentage >= 40 && percentage < 50) {
                 gpa = 2.0;
                 grade = 'C';
-            } else if (percentage >= 30) {
+            } else if (percentage >= 35 && percentage < 40  ) {
                 gpa = 1.6;
-                grade = 'D+';
-            } else if (percentage >= 20) {
-                gpa = 1.2;
                 grade = 'D';
-            } else {
+            } else if (percentage < 35 && percentage >= 0) {
                 gpa = 0.0;
-                grade = 'F';
-            }
+                grade = 'NG';
+            } 
             
             return {
                 totalMarks,
