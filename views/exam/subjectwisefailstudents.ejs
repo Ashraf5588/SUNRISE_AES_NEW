@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Subject Wise Fail Students</title>
+    <link rel="stylesheet" href="/exam-report-ui.css">
     <style>
         .exam-side-nav {
             position: fixed;
@@ -253,7 +254,7 @@
             </div>
             
             <div class="btn-group">
-                <button class="btn btn-excel" onclick="exportToExcel()">📊 Excel</button>
+                <button class="btn btn-excel" onclick="exportExamTablesToExcel()">📊 Excel</button>
                 <button class="btn btn-print-all" onclick="printAll()">🖨️ All</button>
             </div>
         </div>
@@ -330,6 +331,8 @@
         <% } %>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="/exam-report-ui.js"></script>
     <script>
         const classSectionMap = <%- JSON.stringify(classSectionMap || {}) %>;
         
@@ -432,36 +435,25 @@
         function exportToExcel() {
             const tables = document.querySelectorAll('table');
             if (!tables.length) { alert('No data to export'); return; }
-            let csv = 'Subject Wise Fail Students Report\nAcademic Year: 2083\n\n';
+            const sheetData = [['Subject Wise Fail Students Report'], ['Academic Year: 2083'], []];
             document.querySelectorAll('.subject-section').forEach(section => {
                 const header = section.querySelector('.subject-header');
                 if (header) {
                     const title = header.querySelector('.title')?.textContent || '';
                     const info = header.querySelector('.info')?.textContent || '';
-                    csv += `\n${title} - ${info}\n`;
+                    sheetData.push([`${title} - ${info}`]);
                 }
                 section.querySelectorAll('table').forEach(table => {
-                    const headers = [];
-                    table.querySelectorAll('thead th').forEach(th => headers.push(th.textContent.trim()));
-                    csv += headers.join(',') + '\n';
-                    table.querySelectorAll('tbody tr').forEach(row => {
-                        const data = [];
-                        row.querySelectorAll('td').forEach(cell => {
-                            let text = cell.textContent.trim();
-                            if (text.includes(',') || text.includes('"')) text = '"' + text.replace(/"/g, '""') + '"';
-                            data.push(text);
-                        });
-                        csv += data.join(',') + '\n';
+                    Array.from(table.rows).forEach(row => {
+                        sheetData.push(Array.from(row.cells).map(cell => cell.textContent.trim()));
                     });
-                    csv += '\n';
+                    sheetData.push([]);
                 });
             });
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `fail_students_${new Date().toISOString().split('T')[0]}.csv`;
-            link.click();
-            URL.revokeObjectURL(link.href);
+            const workbook = XLSX.utils.book_new();
+            const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Fail Students');
+            XLSX.writeFile(workbook, `fail_students_${new Date().toISOString().split('T')[0]}.xlsx`);
         }
         
         document.addEventListener('DOMContentLoaded', function() {

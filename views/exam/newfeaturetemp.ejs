@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🌟 New feature · coming soon</title>
+  <!-- Font Awesome Icons (free) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(145deg, #0b1120 0%, #19233c 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 1.5rem;
+      margin: 0;
+    }
+
+    .card {
+      background: rgba(18, 28, 50, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 56px;
+      padding: 3.5rem 3rem;
+      max-width: 720px;
+      width: 100%;
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+      text-align: center;
+      transition: transform 0.2s ease, box-shadow 0.3s ease;
+      border: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .card:hover {
+      transform: scale(1.01);
+      box-shadow: 0 40px 80px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 215, 100, 0.08) inset;
+    }
+
+    /* ---- icon ring ---- */
+    .icon-ring {
+      display: inline-block;
+      background: radial-gradient(circle at 30% 30%, #fbbf24, #f59e0b);
+      padding: 1.5rem;
+      border-radius: 9999px;
+      margin-bottom: 2rem;
+      box-shadow: 0 12px 30px rgba(245, 158, 11, 0.3), 0 0 0 1px rgba(255, 215, 0, 0.2);
+      transition: all 0.25s;
+    }
+
+    .icon-ring i {
+      font-size: 4.2rem;
+      color: #0b1120;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+      display: block;
+      line-height: 1;
+    }
+
+    /* ---- typography ---- */
+    h1 {
+      font-size: 2.8rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      background: linear-gradient(to right, #fcd34d, #fbbf24, #f59e0b);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      margin-bottom: 0.75rem;
+      text-shadow: 0 2px 10px rgba(245, 158, 11, 0.15);
+    }
+
+    .subhead {
+      font-size: 1.2rem;
+      font-weight: 400;
+      color: #b9c8e6;
+      letter-spacing: 0.3px;
+      background: rgba(255, 255, 255, 0.02);
+      display: inline-block;
+      padding: 0.3rem 1.2rem;
+      border-radius: 60px;
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      margin-bottom: 1.8rem;
+    }
+
+    .message {
+      font-size: 1.1rem;
+      line-height: 1.6;
+      color: #d3def5;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 1.2rem 1.8rem;
+      border-radius: 40px;
+      border-left: 3px solid #fbbf24;
+      border-right: 3px solid transparent;
+      backdrop-filter: blur(4px);
+      margin: 1.8rem 0 2.2rem 0;
+      font-weight: 350;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .message i {
+      color: #fbbf24;
+      margin: 0 6px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(251, 191, 36, 0.08);
+      padding: 0.6rem 1.6rem;
+      border-radius: 80px;
+      border: 1px solid rgba(251, 191, 36, 0.15);
+      margin-bottom: 1.2rem;
+      font-size: 0.95rem;
+      color: #fde68a;
+      letter-spacing: 0.3px;
+      backdrop-filter: blur(4px);
+    }
+
+    .status-badge .pulse {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      background: #fbbf24;
+      border-radius: 50%;
+      animation: pulse-anim 1.8s ease-in-out infinite;
+      box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.5);
+    }
+
+    @keyframes pulse-anim {
+      0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7); }
+      70% { transform: scale(1.2); box-shadow: 0 0 0 12px rgba(251, 191, 36, 0); }
+      100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+    }
+
+    /* ---- timer / countdown style (static) ---- */
+    .wait-info {
+      display: flex;
+      justify-content: center;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+      margin: 2.2rem 0 1.8rem;
+    }
+
+    .time-block {
+      background: rgba(0, 0, 0, 0.25);
+      backdrop-filter: blur(6px);
+      padding: 0.4rem 1.2rem;
+      border-radius: 60px;
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      font-size: 0.95rem;
+      color: #cbd9f5;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+
+    .time-block i {
+      color: #fbbf24;
+      font-size: 1rem;
+      opacity: 0.9;
+    }
+
+    .time-block strong {
+      font-weight: 600;
+      color: #fde68a;
+      letter-spacing: 0.5px;
+      background: rgba(251, 191, 36, 0.05);
+      padding: 0.1rem 0.6rem;
+      border-radius: 40px;
+    }
+
+    /* ---- cta / footer ---- */
+    .footnote {
+      margin-top: 2.8rem;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 1.2rem 2rem;
+      font-size: 0.9rem;
+      color: #8fa1c9;
+      border-top: 1px solid rgba(255, 255, 255, 0.03);
+      padding-top: 2rem;
+    }
+
+    .footnote span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.15);
+      padding: 0.3rem 1rem;
+      border-radius: 60px;
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255,255,255,0.02);
+    }
+
+    .footnote i {
+      color: #fbbf24;
+      font-size: 0.9rem;
+    }
+
+    /* small screens */
+    @media (max-width: 500px) {
+      .card {
+        padding: 2.5rem 1.5rem;
+        border-radius: 36px;
+      }
+      h1 {
+        font-size: 2.2rem;
+      }
+      .icon-ring i {
+        font-size: 3.2rem;
+      }
+      .icon-ring {
+        padding: 1.2rem;
+      }
+      .message {
+        font-size: 1rem;
+        padding: 1rem 1.2rem;
+      }
+      .wait-info {
+        flex-direction: column;
+        align-items: center;
+        gap: 0.8rem;
+      }
+    }
+
+    /* extra polished touch */
+    .glow-text {
+      display: inline-block;
+      animation: glow-pulse 2.4s ease-in-out infinite;
+    }
+
+    @keyframes glow-pulse {
+      0% { opacity: 0.8; text-shadow: 0 0 2px rgba(251, 191, 36, 0.1); }
+      50% { opacity: 1; text-shadow: 0 0 12px rgba(251, 191, 36, 0.3); }
+      100% { opacity: 0.8; text-shadow: 0 0 2px rgba(251, 191, 36, 0.1); }
+    }
+
+    /* small decorative */
+    .sparkle {
+      color: #fbbf24;
+      margin: 0 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <!-- icon / sparkle -->
+    <div class="icon-ring">
+      <i class="fas fa-wand-magic-sparkles"></i>
+    </div>
+
+    <!-- main headline -->
+    <h1>New feature <br class="mobile-break" style="display: none;">is coming</h1>
+    <div class="subhead">
+      <i class="fas fa-clock" style="margin-right: 6px; opacity: 0.7;"></i> 
+      <span class="glow-text">please wait until then</span>
+    </div>
+
+    <!-- status indicator -->
+    <div class="status-badge">
+      <span class="pulse"></span>
+      <span>temporary shutdown · under renovation</span>
+    </div>
+
+    <!-- main message -->
+    <div class="message">
+      <i class="fas fa-code"></i> 
+      We're crafting something <strong style="color: #fcd34d; font-weight: 500;">magical</strong> 
+      <i class="fas fa-star" style="color: #fcd34d;"></i><br>
+      Our platform is currently <span style="color: #fde68a; font-weight: 450;">paused</span> for a major upgrade.
+      <span style="display: inline-block; margin-top: 8px; font-size: 0.95rem; opacity: 0.9;">
+        <i class="fas fa-arrow-right" style="margin-right: 4px;"></i> Back soon, better than ever.
+      </span>
+    </div>
+
+    <!-- static timer / wait info (just for aesthetics) -->
+    <div class="wait-info">
+      <div class="time-block">
+        <i class="fas fa-hourglass-half"></i> 
+        <span>expected <strong>~ 10 D</strong></span>
+      </div>
+      <div class="time-block">
+        <i class="fas fa-calendar-day"></i> 
+        <span>ETA <strong>Aug 22</strong></span>
+      </div>
+      <div class="time-block">
+        <i class="fas fa-bell"></i> 
+        <span>notify <strong>soon</strong></span>
+      </div>
+    </div>
+
+    <!-- footer with details -->
+    <div class="footnote">
+      <span><i class="fas fa-circle-check"></i> maintenance in progress</span>
+      <span><i class="fas fa-rotate-right"></i> auto-resume</span>
+      <span><i class="fas fa-heart" style="color: #f87171;"></i> stay tuned</span>
+    </div>
+
+    <!-- tiny extra note (hidden on mobile) -->
+    <div style="margin-top: 1.8rem; font-size: 0.8rem; color: #62749e; letter-spacing: 0.3px; border-top: 1px dashed rgba(255,255,255,0.02); padding-top: 1.2rem; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+      <span><i class="fas fa-cloud" style="margin-right: 4px;"></i> temporary shutdown</span>
+      <span>✨ new feature ✨</span>
+      <span><i class="fas fa-rocket"></i> coming soon</span>
+    </div>
+  </div>
+</body>
+</html>
