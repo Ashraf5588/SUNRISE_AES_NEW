@@ -1755,3 +1755,242 @@ exports.deleteAnalysis = async (req, res) => {
     });
   }
 };
+
+// Add this to your controller file
+exports.studentAnalysis = async (req, res) => {
+  try {
+    const { subjectinput, studentClass, section, terminal, roll } = req.params;
+
+    // Get subject data
+    const subjectData = await getSubjectData(subjectinput, studentClass, section, terminal);
+    
+    // Get question key values
+    const keyValues = {};
+    const roman = ['i','ii','iii','iv','v','vi','vii','viii','ix','x'];
+    const questionToChapter = {};
+    
+    if (subjectData && subjectData.chapter && Array.isArray(subjectData.chapter)) {
+      subjectData.chapter.forEach(chap => {
+        if (chap.questions && Array.isArray(chap.questions)) {
+          chap.questions.forEach(q => {
+            questionToChapter[q] = chap.chapterName;
+          });
+        }
+      });
+    }
+
+    for (const key in subjectData) {
+      if (/^q\d+[a-z]$/.test(key)) {
+        const hasSubparts = subjectData[`${key}_has_subparts`] === "on" || subjectData[`${key}_has_subparts`] === true;
+        const subpartsCount = parseInt(subjectData[`${key}_subparts_count`] || 0);
+        const marksPerSubpart = parseFloat(subjectData[`${key}_marks_per_subpart`] || 0);
+        const marks = parseFloat(subjectData[key] || 0);
+
+        if (hasSubparts && subpartsCount > 0 && !isNaN(marksPerSubpart) && marksPerSubpart > 0) {
+          for (let i = 0; i < subpartsCount; i++) {
+            const subKey = `${key}_${roman[i]}`;
+            keyValues[subKey] = marksPerSubpart;
+          }
+        } else if (!hasSubparts && !isNaN(marks) && marks > 0) {
+          keyValues[key] = marks;
+        }
+      }
+    }
+
+    // Get model
+    const model = getSubjectModel(subjectinput, studentClass, section, terminal);
+
+    // Find the student
+    const studentData = await model.findOne({
+      subject: subjectinput,
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal,
+      roll: parseInt(roll)
+    }).lean();
+
+    if (!studentData) {
+      return res.status(404).render('404', {
+        errorMessage: `Student with Roll Number ${roll} not found in Class ${studentClass} ${section}`,
+        currentPage: 'teacher'
+      });
+    }
+
+    // Get total students count
+    const totalstudent = await model.aggregate([
+      {
+        $match: {
+          $and: [{ section: `${section}` }, { terminal: `${terminal}` }, { studentClass: `${studentClass}` }]
+        }
+      },
+      { $count: "count" }
+    ]);
+    const totalStudent = totalstudent.length > 0 && totalstudent[0].count ? totalstudent[0].count : 0;
+
+    // Analyze each question for this student
+    let questionAnalysis = [];
+    let chapterPerformance = {};
+    let totalObtained = 0;
+    let totalPossible = 0;
+
+    for (const key in keyValues) {
+      const fullMarks = keyValues[key];
+      if (isNaN(fullMarks) || fullMarks <= 0) continue;
+
+      const obtainedMarks = studentData[key] !== undefined ? parseFloat(studentData[key]) : 0;
+      const chapterName = questionToChapter[key] || 'Uncategorized';
+      
+      totalObtained += obtainedMarks;
+      totalPossible += fullMarks;
+
+      // Calculate percentage for this question
+      const percentage = fullMarks > 0 ? (obtainedMarks / fullMarks) * 100 : 0;
+      const isCorrect = obtainedMarks === fullMarks;
+      const isIncorrect = obtainedMarks === 0;
+      const isPartial = !isCorrect && !isIncorrect && obtainedMarks > 0;
+
+      // Track chapter performance
+      if (!chapterPerformance[chapterName]) {
+        chapterPerformance[chapterName] = {
+          name: chapterName,
+          totalQuestions: 0,
+          correctQuestions: 0,
+          incorrectQuestions: 0,
+          partialQuestions: 0,
+          totalObtained: 0,
+          totalPossible: 0,
+          questions: []
+        };
+      }
+
+      chapterPerformance[chapterName].totalQuestions++;
+      chapterPerformance[chapterName].totalObtained += obtainedMarks;
+      chapterPerformance[chapterName].totalPossible += fullMarks;
+      chapterPerformance[chapterName].questions.push({
+        questionNo: key,
+        obtained: obtainedMarks,
+        fullMarks: fullMarks,
+        percentage: percentage,
+        status: isCorrect ? 'correct' : isIncorrect ? 'incorrect' : 'partial'
+      });
+
+      if (isCorrect) chapterPerformance[chapterName].correctQuestions++;
+      else if (isIncorrect) chapterPerformance[chapterName].incorrectQuestions++;
+      else chapterPerformance[chapterName].partialQuestions++;
+
+      questionAnalysis.push({
+        questionNo: key,
+        chapterName: chapterName,
+        obtainedMarks: obtainedMarks,
+        fullMarks: fullMarks,
+        percentage: percentage.toFixed(2),
+        status: isCorrect ? 'correct' : isIncorrect ? 'incorrect' : 'partial'
+      });
+    }
+
+    // Sort questions by obtained marks (ascending - worst first)
+    questionAnalysis.sort((a, b) => a.obtainedMarks - b.obtainedMarks);
+
+    // Calculate chapter error rates
+    let chapterAnalysis = Object.values(chapterPerformance).map(chap => {
+      const errorRate = chap.totalPossible > 0 
+        ? ((chap.totalPossible - chap.totalObtained) / chap.totalPossible) * 100 
+        : 0;
+      const successRate = chap.totalPossible > 0 
+        ? (chap.totalObtained / chap.totalPossible) * 100 
+        : 0;
+      
+      // Sort questions in this chapter by obtained marks (ascending)
+      chap.questions.sort((a, b) => a.obtained - b.obtained);
+      
+      return {
+        ...chap,
+        errorRate: errorRate,
+        successRate: successRate,
+        averageMarks: chap.totalPossible > 0 ? (chap.totalObtained / chap.totalQuestions) : 0
+      };
+    });
+
+    // Sort chapters by error rate (highest first - weakest chapters)
+    chapterAnalysis.sort((a, b) => b.errorRate - a.errorRate);
+
+    // Find weakest questions (where student got 0)
+    const weakestQuestions = questionAnalysis.filter(q => q.obtainedMarks === 0);
+    const partiallyCorrectQuestions = questionAnalysis.filter(q => q.obtainedMarks > 0 && q.obtainedMarks < q.fullMarks);
+    const fullyCorrectQuestions = questionAnalysis.filter(q => q.obtainedMarks === q.fullMarks);
+
+    // Calculate overall performance
+    const overallPercentage = totalPossible > 0 ? (totalObtained / totalPossible) * 100 : 0;
+    const marksObtained = totalObtained;
+    const marksFull = totalPossible;
+
+    // Get question paper info
+    const paper = await subjectlist.findOne({ 
+      subject: `${subjectinput}`, 
+      forClass: `${studentClass}`, 
+      forTerminal: `${terminal}` 
+    }, { questionPaperOfClass: 1, _id: 0 });
+
+    let file = 'default.pdf';
+    let fileStatus = 'default';
+    const { rootDir } = require("../utils/path");
+
+    if (paper && paper.questionPaperOfClass && paper.questionPaperOfClass !== '') {
+      const requestedFile = paper.questionPaperOfClass;
+      if (requestedFile.endsWith('.docx')) {
+        const pdfFileName = requestedFile.replace('.docx', '.pdf');
+        const pdfFilePath = `${rootDir}/uploads/${pdfFileName}`;
+        if (fs.existsSync(pdfFilePath)) {
+          file = pdfFileName;
+          fileStatus = 'found';
+        } else {
+          file = 'default.pdf';
+          fileStatus = 'missing';
+        }
+      } else {
+        const actualFilePath = `${rootDir}/uploads/${requestedFile}`;
+        if (fs.existsSync(actualFilePath)) {
+          file = requestedFile;
+          fileStatus = 'found';
+        } else {
+          file = 'default.pdf';
+          fileStatus = 'missing';
+        }
+      }
+    }
+
+    const classList = mongoose.model("studentClass", classSchema, "classlist");
+    const classlisttotal = await classList.find({}).lean();
+    const classlistData = new Set(classlisttotal.map(item => item.studentClass));
+
+    res.render("student-analysis", {
+      student: studentData,
+      questionAnalysis: questionAnalysis,
+      chapterAnalysis: chapterAnalysis,
+      weakestQuestions: weakestQuestions,
+      partiallyCorrectQuestions: partiallyCorrectQuestions,
+      fullyCorrectQuestions: fullyCorrectQuestions,
+      subjectname: subjectinput,
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal,
+      roll: roll,
+      totalStudent: totalStudent,
+      classlistData: classlistData,
+      marksObtained: marksObtained,
+      marksFull: marksFull,
+      overallPercentage: overallPercentage.toFixed(2),
+      totalQuestions: Object.keys(keyValues).length,
+      file: file,
+      fileStatus: fileStatus,
+      ...(await getSidenavData(req))
+    });
+
+  } catch (err) {
+    console.error("Error in studentAnalysis:", err);
+    res.status(500).render('404', {
+      errorMessage: 'Error analyzing student data',
+      currentPage: 'teacher'
+    });
+  }
+};

@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Analysis | <%= student.name %> - <%= subjectname %></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/nav.css">
+    <link rel="stylesheet" href="/student-analysis.css">
+    
+    <style>
+        :root {
+            --primary-50: #f0f9ff;
+            --primary-100: #e0f2fe;
+            --primary-200: #bae6fd;
+            --primary-300: #7dd3fc;
+            --primary-400: #38bdf8;
+            --primary-500: #0ea5e9;
+            --primary-600: #0284c7;
+            --primary-700: #0369a1;
+            --primary-800: #075985;
+            --primary-900: #0c4a6e;
+            --secondary-50: #faf6f2;
+            --secondary-100: #f2ebe1;
+            --secondary-200: #e3d5c3;
+            --secondary-300: #cfb99c;
+            --secondary-400: #b99b76;
+            --secondary-500: #a67c52;
+            --secondary-600: #8b5a2b;
+            --secondary-700: #6b4423;
+            --secondary-800: #523319;
+            --secondary-900: #3d2714;
+            --primary: var(--primary-500);
+            --primary-light: var(--primary-300);
+            --primary-dark: var(--primary-700);
+            --secondary: var(--secondary-600);
+            --secondary-light: var(--secondary-500);
+            --secondary-dark: var(--secondary-800);
+            --light: #f8fafc;
+            --dark: #1e293b;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --gray: #6b7280;
+        }
+
+        body {
+            background-color: #f8fafc;
+            font-family: 'Lexend', sans-serif;
+            color: var(--dark);
+            padding-bottom: 3rem;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 80%);
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border-bottom-left-radius: 20px;
+            border-bottom-right-radius: 20px;
+            color: white;
+            position: relative;
+            z-index: 1000;
+        }
+
+        .hero-section {
+            padding: 1.5rem 1rem;
+            text-align: center;
+        }
+
+        #firstheading {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        #firstspan {
+            color: #fcd34d;
+            font-weight: 800;
+        }
+
+        .subheading {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 1.1rem;
+        }
+
+        .student-profile-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border-left: 4px solid var(--primary);
+            margin-bottom: 1.5rem;
+        }
+
+        .student-profile-card .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+            font-weight: 600;
+            margin-right: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            border-top: 3px solid var(--primary);
+        }
+
+        .stat-card .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .stat-card .stat-label {
+            font-size: 0.8rem;
+            color: var(--gray);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 0.25rem;
+        }
+
+        .stat-card.success { border-top-color: var(--success); }
+        .stat-card.danger { border-top-color: var(--error); }
+        .stat-card.warning { border-top-color: var(--warning); }
+        .stat-card.info { border-top-color: var(--info); }
+
+        .chapter-analysis-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            border-left: 4px solid var(--primary);
+        }
+
+        .chapter-analysis-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .chapter-analysis-card.high-error {
+            border-left-color: var(--error);
+        }
+
+        .chapter-analysis-card.medium-error {
+            border-left-color: var(--warning);
+        }
+
+        .chapter-analysis-card.low-error {
+            border-left-color: var(--success);
+        }
+
+        .progress {
+            height: 8px;
+            border-radius: 4px;
+            background-color: #e5e7eb;
+        }
+
+        .progress-bar {
+            border-radius: 4px;
+            transition: width 0.6s ease;
+        }
+
+        .question-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            margin-bottom: 0.25rem;
+            border-radius: 6px;
+            background: #f8fafc;
+            transition: all 0.2s ease;
+        }
+
+        .question-item:hover {
+            background: #f1f5f9;
+        }
+
+        .question-item .qno {
+            font-weight: 600;
+            color: var(--primary-dark);
+            min-width: 60px;
+        }
+
+        .question-item .marks {
+            font-weight: 600;
+            padding: 0.15rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+        }
+
+        .question-item .marks.correct {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .question-item .marks.incorrect {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .question-item .marks.partial {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .weakness-tag {
+            display: inline-block;
+            padding: 0.15rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin: 0.15rem;
+        }
+
+        .weakness-tag.high {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .weakness-tag.medium {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .weakness-tag.low {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .breadcrumb {
+            background-color: white;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1.25rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .back-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.5rem 1.25rem;
+            border-radius: 30px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .student-profile-card .d-flex {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+            .student-profile-card .avatar {
+                margin-right: 0;
+                margin-bottom: 1rem;
+            }
+            #firstheading {
+                font-size: 1.8rem;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <%- include('partials/sidenav', { 
+        subjects: subjects, 
+        studentClassdata: studentClassdata,
+        terminals: terminals 
+    }) %>
+    
+    <header>
+        <%- include('./partials/nav',{currentPage:'teacher'}) %>
+        <div class="hero-section">
+            <h1 id="firstheading">Student <span id="firstspan">Analysis</span></h1>
+            <span class="subheading">Detailed performance breakdown for <%= student.name %></span>
+        </div>
+    </header>
+
+    <div class="container-fluid">
+        <!-- Breadcrumb -->
+        <nav aria-label="breadcrumb" class="mb-4">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/forms" class="text-decoration-none">Home</a></li>
+                <li class="breadcrumb-item"><a href="/teacher/<%= subjectname %>/findData" class="text-decoration-none"><%= subjectname %></a></li>
+                <li class="breadcrumb-item"><a href="/teacher/<%= subjectname %>/<%= studentClass %>/<%= section %>/<%= terminal %>" class="text-decoration-none">Class <%= studentClass %> (<%= section %>)</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Student Analysis</li>
+            </ol>
+        </nav>
+
+        <!-- Student Profile -->
+        <div class="student-profile-card">
+            <div class="d-flex align-items-center flex-wrap">
+                <div class="avatar">
+                    <%= student.name.charAt(0).toUpperCase() %>
+                </div>
+                <div class="flex-grow-1">
+                    <h3 class="mb-1"><%= student.name %></h3>
+                    <div class="d-flex flex-wrap gap-3">
+                        <span class="badge bg-primary"><i class="fas fa-id-card me-1"></i> Roll: <%= student.roll %></span>
+                        <span class="badge bg-secondary"><i class="fas fa-users me-1"></i> Class <%= student.studentClass %> - <%= student.section %></span>
+                        <span class="badge bg-info"><i class="fas fa-book me-1"></i> <%= subjectname %></span>
+                        <span class="badge bg-success"><i class="fas fa-calendar me-1"></i> <%= terminal %> Terminal</span>
+                    </div>
+                </div>
+                <div class="mt-2 mt-md-0">
+                    <a href="/findData/<%= subjectname %>/<%= studentClass %>/<%= section %>/<%= terminal %>" class="btn back-btn" style="background-color: #0284c7;color:white">
+                        <i class="fas fa-arrow-left me-2"></i> Back to Class
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="stats-grid mb-4">
+            <div class="stat-card">
+                <div class="stat-value"><%= marksObtained.toFixed(1) %></div>
+                <div class="stat-label">Marks Obtained</div>
+                <small class="text-muted">out of <%= marksFull %></small>
+            </div>
+            <div class="stat-card <%= overallPercentage >= 70 ? 'success' : overallPercentage >= 40 ? 'warning' : 'danger' %>">
+                <div class="stat-value"><%= overallPercentage %>%</div>
+                <div class="stat-label">Overall Percentage</div>
+            </div>
+            <div class="stat-card info">
+                <div class="stat-value"><%= totalQuestions %></div>
+                <div class="stat-label">Total Questions</div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-value"><%= fullyCorrectQuestions.length %></div>
+                <div class="stat-label">Full Marks</div>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-value"><%= partiallyCorrectQuestions.length %></div>
+                <div class="stat-label">Partial Marks</div>
+            </div>
+            <div class="stat-card danger">
+                <div class="stat-value"><%= weakestQuestions.length %></div>
+                <div class="stat-label">Incorrect (0 marks)</div>
+            </div>
+        </div>
+
+        <!-- Weakest Areas Alert -->
+        <% if (weakestQuestions.length > 0) { %>
+            <div class="alert alert-danger mb-4">
+                <h5><i class="fas fa-exclamation-triangle me-2"></i> Areas Needing Attention</h5>
+                <p class="mb-2">Student scored <strong>0 marks</strong> in the following questions:</p>
+                <div>
+                    <% weakestQuestions.forEach(q => { %>
+                        <span class="weakness-tag high">Q<%= q.questionNo %></span>
+                    <% }) %>
+                </div>
+            </div>
+        <% } %>
+
+        <!-- Chapter Analysis -->
+        <div class="mb-4">
+            <h4 class="mb-3"><i class="fas fa-layer-group me-2" style="color: var(--primary);"></i>Chapter-wise Performance</h4>
+            <p class="text-muted small">Chapters sorted by error rate (highest to lowest)</p>
+            
+            <% chapterAnalysis.forEach((chapter, index) => { 
+                let cardClass = 'low-error';
+                if (chapter.errorRate > 50) cardClass = 'high-error';
+                else if (chapter.errorRate > 25) cardClass = 'medium-error';
+            %>
+                <div class="chapter-analysis-card <%= cardClass %>">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap">
+                        <div>
+                            <h5 class="mb-1">
+                                <i class="fas fa-book me-2"></i><%= chapter.name %>
+                                <span class="badge bg-secondary ms-2"><%= chapter.questions.length %> questions</span>
+                            </h5>
+                            <div class="d-flex flex-wrap gap-3 mt-1">
+                                <small><span class="text-success">✓</span> <%= chapter.correctQuestions %> correct</small>
+                                <small><span class="text-danger">✗</span> <%= chapter.incorrectQuestions %> incorrect</small>
+                                <small><span class="text-warning">◐</span> <%= chapter.partialQuestions %> partial</small>
+                            </div>
+                        </div>
+                        <div class="text-end">
+                            <div class="fw-bold <%= chapter.errorRate > 50 ? 'text-danger' : chapter.errorRate > 25 ? 'text-warning' : 'text-success' %>">
+                                <%= chapter.errorRate.toFixed(1) %>% Error Rate
+                            </div>
+                            <small class="text-muted">Avg: <%= chapter.averageMarks.toFixed(1) %>/<%= (chapter.totalPossible / chapter.totalQuestions).toFixed(1) %></small>
+                        </div>
+                    </div>
+                    <div class="progress mt-2">
+                        <div class="progress-bar bg-success" style="width: <%= chapter.successRate %>%"></div>
+                        <div class="progress-bar bg-danger" style="width: <%= chapter.errorRate %>%"></div>
+                    </div>
+                    <div class="mt-2">
+                        <small class="text-success"><%= chapter.successRate.toFixed(1) %>% correct</small>
+                        <small class="text-danger ms-3"><%= chapter.errorRate.toFixed(1) %>% wrong</small>
+                    </div>
+                    
+                    <!-- Questions in this chapter -->
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#chapterQuestions<%= index %>">
+                            <i class="fas fa-chevron-down me-1"></i> Show Questions
+                        </button>
+                        <div class="collapse mt-2" id="chapterQuestions<%= index %>">
+                            <div class="border rounded p-2" style="background: #f8fafc;">
+                                <% chapter.questions.sort((a, b) => a.obtained - b.obtained).forEach(q => { %>
+                                    <div class="question-item">
+                                        <span class="qno">Q<%= q.questionNo %></span>
+                                        <span>
+                                            <span class="marks <%= q.status === 'correct' ? 'correct' : q.status === 'incorrect' ? 'incorrect' : 'partial' %>">
+                                                <%= q.obtained %>/<%= q.fullMarks %>
+                                            </span>
+                                            <span class="badge <%= q.status === 'correct' ? 'bg-success' : q.status === 'incorrect' ? 'bg-danger' : 'bg-warning' %>">
+                                                <%= q.percentage.toFixed(0) %>%
+                                            </span>
+                                        </span>
+                                    </div>
+                                <% }) %>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <% }) %>
+        </div>
+
+        <!-- All Questions Analysis -->
+        <div class="card mb-4">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white;">
+                <h5 class="mb-0"><i class="fas fa-list me-2"></i>Complete Question-wise Analysis</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="questionTable">
+                        <thead>
+                            <tr>
+                                <th>Question</th>
+                                <th>Chapter</th>
+                                <th>Obtained</th>
+                                <th>Full Marks</th>
+                                <th>Percentage</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% questionAnalysis.sort((a, b) => a.obtainedMarks - b.obtainedMarks).forEach(q => { %>
+                                <tr>
+                                    <td><strong>Q<%= q.questionNo %></strong></td>
+                                    <td><%= q.chapterName %></td>
+                                    <td class="fw-bold"><%= q.obtainedMarks %></td>
+                                    <td><%= q.fullMarks %></td>
+                                    <td><%= q.percentage %>%</td>
+                                    <td>
+                                        <span class="badge <%= q.status === 'correct' ? 'bg-success' : q.status === 'incorrect' ? 'bg-danger' : 'bg-warning' %>">
+                                            <%= q.status.charAt(0).toUpperCase() + q.status.slice(1) %>
+                                        </span>
+                                    </td>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Initialize tooltips
+            $('[data-bs-toggle="tooltip"]').tooltip();
+        });
+    </script>
+</body>
+</html>

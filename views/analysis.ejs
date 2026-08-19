@@ -2018,15 +2018,15 @@
                         <div class="col-12">
                             <div class="search-form">
                                 <h5 class="mb-3"><i class="fas fa-search me-2"></i>Student Search</h5>
-                                <form action="/search/<%= subjectname %>/<%= studentClass %>/<%= section %>/<%= terminal %>" method="POST" class="row g-3">
+                                <form action="/student-analysis/<%= subjectname %>/<%= studentClass %>/<%= section %>/<%= terminal %>" method="POST" class="row g-3">
                                     <div class="col-8">
                                         <div class="input-group">
                                             <span class="input-group-text"><i class="fas fa-id-card"></i></span>
-                                            <input type="number" class="form-control" id="searchroll" name="roll" placeholder="Enter Roll Number" required>
+                                            <input type="text" class="form-control" id="searchroll" name="roll" placeholder="Enter Roll Number" required>
                                         </div>
                                     </div>
                                     <div class="col-4">
-                                        <button type="submit" class="btn w-100" style="background-color: var(--secondary); color: white;">
+                                        <button  type="button" onclick="studentwise()" class="btn w-100" style="background-color: var(--secondary); color: white;">
                                             <i class="fas fa-search me-1"></i> Find
                                         </button>
                                     </div>
@@ -4107,6 +4107,27 @@
         });
       });
     });
+  </script>
+  <script>
+    function studentwise()
+    {
+      const roll = document.getElementById('searchroll').value;
+      const path = window.location.pathname;
+      const subject = path.split('/')[2];
+      const studentClass = path.split('/')[3];
+      const section = path.split('/')[4];
+      const terminal = path.split('/')[5];
+       // Extract student count from URL
+      if(roll.trim() === '') {
+        alert('Please enter a roll number.');
+        return;
+      }
+      if(roll)
+      {
+        const url = `/student-analysis/${encodeURIComponent(subject)}/${encodeURIComponent(studentClass)}/${encodeURIComponent(section)}/${encodeURIComponent(terminal)}/${encodeURIComponent(roll)}`;
+        window.location.href = url;
+      }
+    }
   </script>
 </body>
 </html>

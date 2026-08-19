@@ -492,4 +492,7 @@ student.post('/forms/:subjectinput/:studentClass?/:section?/:terminal?',verifyto
 
 student.get('/:controller/:subject',verifytoken,authorized,controller.studentclass)
 student.get('/:controller/:subject/:studentClass/:section',verifytoken,authorized,controller.terminal)
+
+// Student-specific analysis
+student.get('/student-analysis/:subjectinput/:studentClass/:section/:terminal/:roll', verifytoken, authorized, controller.studentAnalysis);
 module.exports = student;
