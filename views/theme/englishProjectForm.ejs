@@ -518,7 +518,8 @@
           <div class="section-header">Student Information</div>
           <div class="section-content">
             <div class="student-list-container">
-             <% studentData.forEach((studentname) => { %>
+              <% sortedByRoll = studentData.sort((a, b) => Number(a.roll) - Number(b.roll)); %>
+             <% sortedByRoll.forEach((studentname) => { %>
                 <button type="button" class="student-btn" id="studentData<%= studentname.roll %>" onclick="fill('<%= studentname.roll %>','<%= studentname.name %>','<%= studentname.reg %>')">
                   <span class="roll"><%=studentname.roll%></span> <%= studentname.name %>
                 </button>

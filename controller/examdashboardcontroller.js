@@ -3824,13 +3824,13 @@ function getGradeFromPercentage(percentage) {
 }
 
 function getGPFromPercentage(percentage) {
-    if (percentage >= 90) return 4.0;
-    if (percentage >= 80) return 3.6;
-    if (percentage >= 70) return 3.2;
-    if (percentage >= 60) return 2.8;
-    if (percentage >= 50) return 2.4;
-    if (percentage >= 40) return 2.0;
-    if (percentage >= 35) return 1.6;
+    if (percentage >= 90 && percentage <= 100) return 4.0;
+    if (percentage >= 80 && percentage < 90) return 3.6;
+    if (percentage >= 70 && percentage < 80) return 3.2;
+    if (percentage >= 60 && percentage < 70) return 2.8;
+    if (percentage >= 50 && percentage < 60) return 2.4;
+    if (percentage >= 40 && percentage < 50) return 2.0;
+    if (percentage >= 35 && percentage < 40) return 1.6;
     return 0;
 }
 
