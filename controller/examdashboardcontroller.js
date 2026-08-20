@@ -5343,12 +5343,14 @@ function groupMarksByClass(subjectMarks, subjectClassMap, subjectName, calculati
         const practicalFull = classConfig?.practical || 50;
         const theoryCredit = classConfig?.theoryCreditHour || 2.5;
         const practicalCredit = classConfig?.practicalCreditHour || 2.5;
+        const normalizedClass = normalizeClassName(className);
+        const isTheoryOnlyClass = ['1', '2', '3'].includes(normalizedClass);
         
         // Check if failed
         let failed = false;
         let failReason = '';
         
-        if (calculationType === 'theory') {
+        if (calculationType === 'theory' || isTheoryOnlyClass) {
             if (theoryMarks < passingMarks) {
                 failed = true;
                 failReason = `Theory (${theoryMarks}) < Pass (${passingMarks})`;
