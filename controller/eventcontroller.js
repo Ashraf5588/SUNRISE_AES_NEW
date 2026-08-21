@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Event = require('../model/eventmodel');
+const bs = require('bikram-sambat-js');
 
 const nodemailer = require("nodemailer");
 const cron = require("node-cron");
@@ -15,6 +16,17 @@ const { name } = require("ejs");
 const subjectlist = mongoose.model("subjectlist", subjectSchema, "subjectlist");
 const studentClass = mongoose.model("studentClass", classSchema, "classlist");
 const newsubject = mongoose.model("newsubject", newsubjectSchema, "newsubject");
+
+const toNepaliDate = (dateValue) => {
+  try {
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) return '';
+    const dateText = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    return String(bs.ADToBS(dateText) || '').trim();
+  } catch (error) {
+    return '';
+  }
+};
 
 const getSidenavData = async (req) => {
   try {
@@ -86,6 +98,27 @@ exports.createEventForm = async (req, res) => {
   let editEvent = null;
  
   try {
+       const dueEvents = await Event.find({ status: 'pending', date: { $lte: new Date() } });
+       for (const event of dueEvents) {
+         const scheduled = new Date(event.date);
+         const timeMatch = String(event.time || '').trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+         if (timeMatch) {
+           let hours = Number(timeMatch[1]);
+           const minutes = Number(timeMatch[2]);
+           const period = String(timeMatch[3] || '').toUpperCase();
+           if (period === 'PM' && hours < 12) hours += 12;
+           if (period === 'AM' && hours === 12) hours = 0;
+           scheduled.setHours(hours, minutes, 0, 0);
+         } else {
+           scheduled.setHours(23, 59, 59, 999);
+         }
+         if (scheduled <= new Date()) {
+           event.status = 'completed';
+           event.completedAt = event.completedAt || new Date();
+           event.completedNepaliDate = event.completedNepaliDate || toNepaliDate(event.completedAt);
+           await event.save();
+         }
+       }
        if (req.user.role === 'ADMIN') {
          events = await Event.find().sort({ date: -1 }).lean();
        } else {
@@ -110,7 +143,7 @@ exports.createEventForm = async (req, res) => {
 
 // Start or Update event
 exports.saveEvent = async (req, res) => {
-  const { id, title, subject, description, date, time, forClass, section, teacherName, location, material, nepaliDate } = req.body;
+  const { id, title, subject, description, date, time, forClass, section, teacherName, location, material, nepaliDate, performance } = req.body;
   const classList = Array.isArray(forClass)
     ? forClass.map((item) => String(item || '').trim()).filter(Boolean)
     : [String(forClass || '').trim()].filter(Boolean);
@@ -159,7 +192,8 @@ exports.saveEvent = async (req, res) => {
         teacherName,
         location,
         material,
-        nepaliDate: computedNepaliDate
+        nepaliDate: computedNepaliDate,
+        performance: String(performance || '').trim()
       });
       res.redirect('/createevent?saved=1');
     } else {
@@ -174,7 +208,9 @@ exports.saveEvent = async (req, res) => {
         forClass: classList,
         location,
         material,
-        nepaliDate: computedNepaliDate
+        nepaliDate: computedNepaliDate,
+        performance: String(performance || '').trim(),
+        status: 'pending'
       });
       await event.save();
       res.redirect('/createevent?saved=1');
@@ -182,6 +218,51 @@ exports.saveEvent = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send('Server Error');
+  }
+};
+
+exports.updateEventStatus = async (req, res) => {
+  try {
+    const allowedStatuses = ['pending', 'completed', 'postponed', 'cancelled'];
+    const status = String(req.body.status || '').trim().toLowerCase();
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid event status.' });
+    }
+
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
+    if (req.user.role !== 'ADMIN' && event.teacherName !== req.user.teacherName) {
+      return res.status(403).json({ success: false, message: 'Not allowed.' });
+    }
+
+    event.status = status;
+    event.completedAt = status === 'completed' ? new Date() : null;
+    event.completedNepaliDate = status === 'completed' ? toNepaliDate(event.completedAt) : '';
+    await event.save();
+    return res.json({ success: true, status: event.status, completedAt: event.completedAt });
+  } catch (error) {
+    console.error('Error updating event status:', error);
+    return res.status(500).json({ success: false, message: 'Failed to update event status.' });
+  }
+};
+
+exports.updateEventWinners = async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ success: false, message: 'Event not found.' });
+    if (req.user.role !== 'ADMIN' && event.teacherName !== req.user.teacherName) {
+      return res.status(403).json({ success: false, message: 'Not allowed.' });
+    }
+
+    const winners = (Array.isArray(req.body.winners) ? req.body.winners : [req.body.winners])
+      .map((winner) => String(winner || '').trim())
+      .filter(Boolean);
+    event.winners = winners;
+    await event.save();
+    return res.json({ success: true, winners: event.winners });
+  } catch (error) {
+    console.error('Error saving event winners:', error);
+    return res.status(500).json({ success: false, message: 'Failed to save winners.' });
   }
 };
 

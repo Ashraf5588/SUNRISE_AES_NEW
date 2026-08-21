@@ -329,10 +329,79 @@
       white-space: pre-wrap;
     }
 
+    .winner-display {
+      margin: 0 0 14px;
+      padding: 10px 12px;
+      border-left: 3px solid var(--success);
+      background: #ecfdf5;
+      color: #065f46;
+      border-radius: 8px;
+    }
+
     .event-actions {
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
+    }
+
+    .event-tools {
+      display: grid;
+      gap: 12px;
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    .status-row,
+    .winner-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .status-row select,
+    .winner-row input {
+      width: auto;
+      flex: 1 1 180px;
+      padding: 9px 10px;
+      border-radius: 10px;
+    }
+
+    .winner-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .winner-list.is-hidden {
+      display: none;
+    }
+
+    .btn-small {
+      padding: 8px 10px;
+      border-radius: 10px;
+      font-size: 0.8rem;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: capitalize;
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-badge.completed { background: #d1fae5; color: #065f46; }
+    .status-badge.postponed { background: #dbeafe; color: #1e40af; }
+    .status-badge.cancelled { background: #fee2e2; color: #991b1b; }
+
+    .export-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 16px;
     }
 
     .empty-state {
@@ -527,6 +596,10 @@
                 <label for="material">Material Required</label>
                 <input type="text" id="material" name="material" required value="<%= selectedMaterial %>" placeholder="Enter materials">
               </div>
+              <div class="field full">
+                <label for="performance">Performance / Performed By</label>
+                <input type="text" id="performance" name="performance" value="<%= currentEditEvent ? (currentEditEvent.performance || '') : '' %>" placeholder="Enter performer or performance details">
+              </div>
  <div class="field">
                 <label for="nepaliDate">Nepali Date</label>
                 <input type="text" id="nepaliDate" name="nepaliDate" placeholder="Select Nepali Date" value="<%= selectedNepaliDate %>">
@@ -558,6 +631,9 @@
         <div class="card-header">
           <h2>Saved Events</h2>
           <p>Each card shows the stored event details with quick edit and delete actions.</p>
+          <div class="export-actions">
+            <button type="button" class="btn btn-outline btn-small" onclick="exportEvents()">Export Events</button>
+          </div>
         </div>
         <div class="card-body">
           <% if (events && events.length) { %>
@@ -573,6 +649,7 @@
                           <span class="pill alt">(<%= event.nepaliDate %>)</span>
                         <% } %>
                         <span class="pill alt"><%= event.time ? String(event.time).replace(/\s?(AM|PM)$/i, ' $1') : '' %></span>
+                        <span class="status-badge <%= event.status || 'pending' %>"><%= event.status || 'pending' %></span>
                       </div>
                     </div>
                   </div>
@@ -596,6 +673,37 @@
                   </div>
 
                   <p class="event-description"><%= event.description %></p>
+
+                  <% if (Array.isArray(event.winners) && event.winners.length) { %>
+                    <div class="winner-display">
+                      <strong>Winners:</strong> <%= event.winners.join(', ') %>
+                    </div>
+                  <% } %>
+
+                  <div class="event-tools" data-event-id="<%= event._id %>">
+                    <div class="status-row">
+                      <label for="status-<%= event._id %>">Status</label>
+                      <select id="status-<%= event._id %>" class="event-status" data-event-id="<%= event._id %>">
+                        <% ['pending', 'completed', 'postponed', 'cancelled'].forEach((status) => { %>
+                          <option value="<%= status %>" <%= (event.status || 'pending') === status ? 'selected' : '' %>><%= status %></option>
+                        <% }); %>
+                      </select>
+                      <span class="helper">Completed date (BS): <%= event.completedNepaliDate || '-' %></span>
+                    </div>
+                    <div>
+                      <button type="button" class="btn btn-outline btn-small" onclick="toggleWinners('<%= event._id %>')">Add Winner List</button>
+                      <div id="winners-<%= event._id %>" class="winner-list is-hidden">
+                        <% const winnerValues = Array.isArray(event.winners) && event.winners.length ? event.winners : ['', '', '']; %>
+                        <% winnerValues.forEach((winner) => { %>
+                          <div class="winner-row"><input type="text" value="<%= winner %>" placeholder="Winner name"><button type="button" class="btn btn-danger btn-small" onclick="this.parentElement.remove()">Remove</button></div>
+                        <% }); %>
+                        <div class="winner-row">
+                          <button type="button" class="btn btn-outline btn-small" onclick="addWinnerInput('<%= event._id %>')">Add another</button>
+                          <button type="button" class="btn btn-primary btn-small" onclick="saveWinners('<%= event._id %>')">Save winners</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
                   <div class="event-actions">
                     <a href="/createevent?id=<%= event._id %>" class="btn btn-outline">Edit</a>
@@ -729,6 +837,109 @@
         toast.classList.remove('show');
       }, 2800);
     })();
+
+    (() => {
+      const form = document.querySelector('form[action="/createevent"]');
+      if (!form || form.querySelector('input[name="id"]')?.value) return;
+      const draftKey = 'event-create-draft';
+      const fields = Array.from(form.querySelectorAll('input, textarea, select'))
+        .filter((field) => field.name && field.name !== 'forClass');
+      const saved = localStorage.getItem(draftKey);
+      if (saved) {
+        try {
+          const draft = JSON.parse(saved);
+          fields.forEach((field) => {
+            if (Object.prototype.hasOwnProperty.call(draft, field.name)) field.value = draft[field.name];
+          });
+        } catch (error) {
+          localStorage.removeItem(draftKey);
+        }
+      }
+      let timer;
+      const saveDraft = () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          const draft = {};
+          fields.forEach((field) => { draft[field.name] = field.value; });
+          localStorage.setItem(draftKey, JSON.stringify(draft));
+        }, 300);
+      };
+      fields.forEach((field) => field.addEventListener('input', saveDraft));
+      form.addEventListener('submit', () => localStorage.removeItem(draftKey));
+    })();
+
+    document.querySelectorAll('.event-status').forEach((select) => {
+      select.addEventListener('change', async () => {
+        try {
+          const response = await fetch(`/createevent/${select.dataset.eventId}/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: select.value })
+          });
+          if (!response.ok) throw new Error('Status update failed');
+          window.location.reload();
+        } catch (error) {
+          alert('Unable to update event status.');
+        }
+      });
+    });
+
+    function toggleWinners(eventId) {
+      document.getElementById(`winners-${eventId}`)?.classList.toggle('is-hidden');
+    }
+
+    function addWinnerInput(eventId) {
+      const list = document.getElementById(`winners-${eventId}`);
+      const actions = list?.lastElementChild;
+      if (!list || !actions) return;
+      const row = document.createElement('div');
+      row.className = 'winner-row';
+      row.innerHTML = '<input type="text" placeholder="Winner name"><button type="button" class="btn btn-danger btn-small" onclick="this.parentElement.remove()">Remove</button>';
+      list.insertBefore(row, actions);
+    }
+
+    async function saveWinners(eventId) {
+      const list = document.getElementById(`winners-${eventId}`);
+      const winners = Array.from(list.querySelectorAll('input')).map((input) => input.value.trim()).filter(Boolean);
+      try {
+        const response = await fetch(`/createevent/${eventId}/winners`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ winners })
+        });
+        if (!response.ok) throw new Error('Winner save failed');
+        alert('Winner list saved.');
+      } catch (error) {
+        alert('Unable to save winner list.');
+      }
+    }
+
+    function exportEvents() {
+      const events = <%- JSON.stringify((events || []).map((event) => ({
+        title: event.title || '',
+        scheduleDate: event.nepaliDate || '',
+        time: event.time || '',
+        status: event.status || 'pending',
+        completedDate: event.completedNepaliDate || '',
+        winners: Array.isArray(event.winners) ? event.winners.join(', ') : '',
+        teacher: event.teacherName || '',
+        className: Array.isArray(event.forClass) ? event.forClass.join(', ') : (event.forClass || ''),
+        location: event.location || '',
+        material: event.material || '',
+        description: event.description || ''
+      }))) %>;
+      const columns = ['Event', 'Schedule Date (BS)', 'Time', 'Status', 'Completed Date (BS)', 'Winner Name', 'Teacher', 'Class', 'Location', 'Material Required', 'Description'];
+      const keys = ['title', 'scheduleDate', 'time', 'status', 'completedDate', 'winners', 'teacher', 'className', 'location', 'material', 'description'];
+      const escapeHtml = (value) => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      const rows = events.map((event) => `<tr>${keys.map((key) => `<td>${escapeHtml(event[key])}</td>`).join('')}</tr>`).join('');
+      const html = `<html><head><meta charset="utf-8"><style>table{border-collapse:collapse;font-family:Arial}th,td{border:1px solid #000;padding:6px 8px;text-align:left;vertical-align:top}th{background:#dbeafe}</style></head><body><table><thead><tr>${columns.map((column) => `<th>${column}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></body></html>`;
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `events-${new Date().toISOString().slice(0, 10)}.xls`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }
 
     initFcmNotifications();
   </script>

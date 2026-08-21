@@ -12,6 +12,15 @@ const eventSchema = new mongoose.Schema({
    teacherName: { type: String, required: true },
     forClass: { type: [String], required: true },
     nepaliDate: { type: String, default: '' },
+    status: {
+        type: String,
+        enum: ['pending', 'completed', 'postponed', 'cancelled'],
+        default: 'pending'
+    },
+    completedAt: { type: Date, default: null },
+    completedNepaliDate: { type: String, default: '' },
+    performance: { type: String, default: '' },
+    winners: { type: [String], default: [] },
     // 7-day reminder tracking (old fields for backward compatibility)
     reminder7Sent: { type: Boolean, default: false },
     reminder7SentDate: { type: String, default: '' },

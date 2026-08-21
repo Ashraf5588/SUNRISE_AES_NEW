@@ -554,6 +554,8 @@ student.delete('/addaspect', verifytoken, authorized, themecontroller.deleteaspe
 student.get('/createevent', verifytoken, authorized, eventcontroller.createEventForm);
 student.get('/createevent/edit/:id', verifytoken, authorized, eventcontroller.createEventForm);
 student.post('/createevent', verifytoken, authorized, eventcontroller.saveEvent);
+student.post('/createevent/:id/status', verifytoken, authorized, eventcontroller.updateEventStatus);
+student.post('/createevent/:id/winners', verifytoken, authorized, eventcontroller.updateEventWinners);
 student.get('/events', eventcontroller.listEvents);
 student.get('/delete-event/:id', verifytoken, authorized, eventcontroller.deleteEvent);
 
