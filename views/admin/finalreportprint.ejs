@@ -56,6 +56,46 @@
       border-radius: 5px;
       border-left: 5px solid #4CAF50;
     }
+
+    .print-sort-controls {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      margin: 0 0 14px;
+    }
+
+    .print-sort-controls select {
+      padding: 6px 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #fff;
+    }
+
+    .subject-print-page {
+      page-break-after: always;
+      break-after: page;
+      min-height: 245mm;
+    }
+
+    .subject-blank-page {
+      page-break-after: always;
+      break-after: page;
+      min-height: 245mm;
+    }
+
+    .print-context {
+      text-align: center;
+      font-size: 16px;
+      font-weight: 600;
+      margin: 12px 0 18px;
+    }
+
+    .print-page-header {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
 table thead
 {
  background-color: #70d2ff;
@@ -65,7 +105,24 @@ table thead
         display: none;
       }
 
+      .print-sort-controls {
+        display: none;
+      }
+
       .subject-section {
+        page-break-after: auto;
+        break-after: auto;
+        margin: 0;
+      }
+
+      .subject-print-page,
+      .subject-blank-page {
+        page-break-after: always;
+        break-after: page;
+        min-height: 245mm;
+      }
+
+      .subject-print-page:last-child {
         page-break-after: always;
       }
 
@@ -118,6 +175,75 @@ table thead
     // store DataTable APIs for each subject table
     window._dtTables = [];
 
+    const PRINT_ROWS_PER_PAGE = 22;
+
+    function applyPrintSort() {
+      const value = document.getElementById('printSort')?.value || 'question-asc';
+      const order = value.endsWith('-desc') ? 'desc' : 'asc';
+      const column = value.startsWith('average') ? 11 : value.startsWith('wrong') ? 3 : 0;
+      window._dtTables.forEach(function(dt) {
+        dt.order([[column, order]]).draw();
+      });
+    }
+
+    function buildSubjectPrintPages() {
+      document.querySelectorAll('.subject-section').forEach(function(section) {
+        if (section.dataset.printPrepared === 'true') return;
+        const table = section.querySelector('table');
+        const tbody = table && table.querySelector('tbody');
+        const header = table && table.querySelector('thead');
+        if (!table || !tbody || !header) return;
+
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        if (!rows.length) return;
+
+        const pageHost = document.createElement('div');
+        pageHost.className = 'subject-print-pages';
+        const subjectTitle = section.querySelector('.subject-header h3')?.textContent.trim() || '';
+        const printContext = 'Class <%= studentClass %> - <%= section %> | <%= terminal %> Terminal';
+
+        for (let start = 0; start < rows.length; start += PRINT_ROWS_PER_PAGE) {
+          const page = document.createElement('div');
+          page.className = 'subject-print-page';
+          const pageTitle = document.createElement('div');
+          pageTitle.className = 'print-page-header';
+          pageTitle.textContent = `${printContext} | ${subjectTitle}`;
+          page.appendChild(pageTitle);
+          const pageTable = table.cloneNode(false);
+          const pageHead = header.cloneNode(true);
+          const pageBody = document.createElement('tbody');
+          rows.slice(start, start + PRINT_ROWS_PER_PAGE).forEach(row => pageBody.appendChild(row.cloneNode(true)));
+          pageTable.appendChild(pageHead);
+          pageTable.appendChild(pageBody);
+          page.appendChild(pageTable);
+          pageHost.appendChild(page);
+        }
+
+        const pageCount = Math.ceil(rows.length / PRINT_ROWS_PER_PAGE);
+        const chapterBlocks = Array.from(section.querySelectorAll('.chapter-analysis-block'));
+        if (chapterBlocks.length) {
+          const finalPage = pageHost.querySelector('.subject-print-page:last-of-type');
+          chapterBlocks.forEach(block => {
+            finalPage?.appendChild(block.cloneNode(true));
+            block.remove();
+          });
+        }
+        if (pageCount % 2 === 1) {
+          const blank = document.createElement('div');
+          blank.className = 'subject-blank-page';
+          pageHost.appendChild(blank);
+        }
+
+        const tableCard = table.closest('.card');
+        if (tableCard) {
+          tableCard.replaceWith(pageHost);
+        } else {
+          table.replaceWith(pageHost);
+        }
+        section.dataset.printPrepared = 'true';
+      });
+    }
+
     function printAllReports() {
       try {
         // Expand all DataTables to show all rows before print
@@ -129,6 +255,9 @@ table thead
             api.page.len(-1).draw();
           } catch (e) { console.warn('dt expand failed', e); }
         });
+
+        applyPrintSort();
+        buildSubjectPrintPages();
 
         // ensure layout adjusts
         document.body.style.webkitPrintColorAdjust = 'exact';
@@ -152,6 +281,8 @@ table thead
     }
 
     function printSingleSubject(subjectIndex) {
+      applyPrintSort();
+      buildSubjectPrintPages();
       const content = document.getElementById(`subject-${subjectIndex}`);
       const originalDisplay = [];
       const sections = document.querySelectorAll('.subject-section');
@@ -189,10 +320,18 @@ table thead
   </button>
 
   <div class="container-fluid mt-4">
-    <div class="text-center mb-4">
-      <h2>Class Performance Analysis Report</h2>
-      <h3>Class: <%= studentClass %>-<%= section %></h3>
-      <h4><%= terminal %> Terminal Examination</h4>
+    <div class="print-context">
+      Class <%= studentClass %> - <%= section %> | <%= terminal %> Terminal | Analysis Report
+    </div>
+    <div class="print-sort-controls">
+      <label for="printSort">Sort:</label>
+      <select id="printSort" onchange="applyPrintSort()">
+        <option value="question-asc">Question order</option>
+        <option value="average-asc">Average: Low to High</option>
+        <option value="average-desc">Average: High to Low</option>
+        <option value="wrong-desc">Wrong: High to Low</option>
+        <option value="wrong-asc">Wrong: Low to High</option>
+      </select>
     </div>
 
     <% reportofClass.forEach(function(subjectReport, subjectIndex) { %>
