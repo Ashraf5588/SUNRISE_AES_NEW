@@ -80,6 +80,86 @@ student.get('/admin/subject/:subId?',verifytoken,authorized,admincontrol.showSub
 student.post('/admin/subjectadd/:subId?',verifytoken,authorized,upload.single('questionPaperOfClass'),admincontrol.addSubject)
 student.get('/admin/get_subject_data',verifytoken,admincontrol.subjectData)
 
+
+
+
+// GET - Main selection page (class, section, terminal, roll selection)
+student.get('/student-error-report', controller.getStudentErrorReportPage);
+
+// GET - View report with data (after selection)
+student.get('/student-error-report/view', controller.viewStudentErrorReport);
+
+// GET - Print version of the report (auto-prints)
+student.get('/student-error-report/print', controller.printStudentErrorReport);
+
+// GET - Print specific student report by roll number
+student.get('/student-error-report/print/:roll', controller.printSingleStudentReport);
+
+// POST - Generate report data via AJAX (returns JSON)
+student.post('/student-error-report/generate', controller.generateStudentErrorReport);
+
+// ============================================
+// AJAX / API ROUTES - For dynamic data loading
+// ============================================
+
+// GET - Get single student report data (AJAX)
+student.get('/student-error-report/single', controller.getSingleStudentReport);
+
+// GET - Get all students list for a class (AJAX)
+student.get('/student-error-report/students', controller.getStudentsList);
+
+// GET - Get available roll numbers for a class (AJAX)
+student.get('/student-error-report/rolls', controller.getAvailableRolls);
+
+// ============================================
+// BULK OPERATIONS
+// ============================================
+
+// GET - Print all students without filtering
+student.get('/student-error-report/print-all', controller.printAllStudents);
+
+// GET - Print selected students by roll numbers
+student.get('/student-error-report/print-selected', controller.printSelectedStudents);
+
+// GET - Print summary report (only chapter summaries, no details)
+student.get('/student-error-report/print-summary', controller.printSummaryReport);
+
+// ============================================
+// ANALYTICS ROUTES
+// ============================================
+
+// GET - Get class-wise error analysis summary
+student.get('/student-error-report/class-summary', controller.getClassErrorSummary);
+
+// GET - Get subject-wise error analysis
+student.get('/student-error-report/subject-analysis', controller.getSubjectErrorAnalysis);
+
+// GET - Get student progress over time (if multiple terminals)
+student.get('/student-error-report/progress/:roll', controller.getStudentProgress);
+
+// ============================================
+// EXPORT ROUTES
+// ============================================
+
+// GET - Export report as CSV
+student.get('/student-error-report/export-csv', controller.exportReportCSV);
+
+// GET - Export report as Excel
+student.get('/student-error-report/export-excel', controller.exportReportExcel);
+
+// GET - Download report as JSON data
+student.get('/student-error-report/download-json', controller.downloadReportJSON);
+
+// ============================================
+// UTILITY ROUTES
+// ============================================
+
+// POST - Refresh/recalculate report data
+student.post('/student-error-report/refresh', controller.refreshReportData);
+
+// GET - Get student names by roll numbers (AJAX)
+student.get('/student-error-report/student-names', controller.getStudentNames);
+
 student.get('/admin/class/:classId?',verifytoken,authorized,isAdmin,admincontrol.showClass)
 student.post('/admin/class/:classId?',verifytoken,authorized,isAdmin,admincontrol.addClass)
 student.get('/admin/terminal',verifytoken,authorized,isAdmin,admincontrol.addTerminal)

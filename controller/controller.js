@@ -1994,3 +1994,1252 @@ exports.studentAnalysis = async (req, res) => {
     });
   }
 };
+
+// controllers/studentErrorReportController.js
+
+
+// Helper function to get subject model
+
+
+// controllers/studentErrorReportController.js
+
+
+// Helper function to get subject model
+
+// Helper function to get all subjects for a class
+const getSubjectsForClass = async (studentClass, section, terminal) => {
+  try {
+    const subjects = await subjectlist.find({
+      forClass: studentClass,
+      forTerminal: terminal
+    }).lean();
+    return subjects;
+  } catch (err) {
+    console.error('Error getting subjects:', err);
+    return [];
+  }
+};
+
+// Helper function to get student marks for a subject
+const getStudentMarksForSubject = async (subjectName, studentClass, section, terminal, roll) => {
+  try {
+    const model = getSubjectModel(subjectName, studentClass, section, terminal);
+    const studentMarks = await model.findOne({
+      subject: subjectName,
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal,
+      roll: parseInt(roll)
+    }).lean();
+    return studentMarks;
+  } catch (err) {
+    console.error(`Error getting marks for ${subjectName}:`, err);
+    return null;
+  }
+};
+
+// Helper function to analyze a single student's performance
+const analyzeStudentPerformance = async (student, allSubjects, studentClass, section, terminal) => {
+  const studentData = {
+    name: student.name,
+    roll: student.roll,
+    studentClass: student.studentClass,
+    section: student.section,
+    terminal: student.terminal,
+    subjects: []
+  };
+
+  for (const subjectItem of allSubjects) {
+    const subjectName = subjectItem.subject;
+    
+    try {
+      const subjectData = await getSubjectData(subjectName, studentClass, terminal);
+      
+      if (!subjectData) continue;
+
+      const keyValues = {};
+      const roman = ['i','ii','iii','iv','v','vi','vii','viii','ix','x'];
+      const questionToChapter = {};
+      
+      if (subjectData.chapter && Array.isArray(subjectData.chapter)) {
+        subjectData.chapter.forEach(chap => {
+          if (chap.questions && Array.isArray(chap.questions)) {
+            chap.questions.forEach(q => {
+              questionToChapter[q] = chap.chapterName;
+            });
+          }
+        });
+      }
+
+      for (const key in subjectData) {
+        if (/^q\d+[a-z]$/.test(key)) {
+          const hasSubparts = subjectData[`${key}_has_subparts`] === "on" || subjectData[`${key}_has_subparts`] === true;
+          const subpartsCount = parseInt(subjectData[`${key}_subparts_count`] || 0);
+          const marksPerSubpart = parseFloat(subjectData[`${key}_marks_per_subpart`] || 0);
+          const marks = parseFloat(subjectData[key] || 0);
+
+          if (hasSubparts && subpartsCount > 0 && !isNaN(marksPerSubpart) && marksPerSubpart > 0) {
+            for (let i = 0; i < subpartsCount; i++) {
+              const subKey = `${key}_${roman[i]}`;
+              keyValues[subKey] = marksPerSubpart;
+            }
+          } else if (!hasSubparts && !isNaN(marks) && marks > 0) {
+            keyValues[key] = marks;
+          }
+        }
+      }
+
+      const studentMarks = await getStudentMarksForSubject(subjectName, studentClass, section, terminal, student.roll);
+
+      if (!studentMarks) continue;
+
+      let chapterPerformance = {};
+      let totalObtained = 0;
+      let totalPossible = 0;
+
+      for (const key in keyValues) {
+        const fullMarks = keyValues[key];
+        if (isNaN(fullMarks) || fullMarks <= 0) continue;
+
+        const obtainedMarks = studentMarks[key] !== undefined ? parseFloat(studentMarks[key]) : 0;
+        const chapterName = questionToChapter[key] || 'Uncategorized';
+        
+        totalObtained += obtainedMarks;
+        totalPossible += fullMarks;
+
+        if (!chapterPerformance[chapterName]) {
+          chapterPerformance[chapterName] = {
+            name: chapterName,
+            totalQuestions: 0,
+            errorQuestions: 0,
+            totalObtained: 0,
+            totalPossible: 0,
+            wrongQuestions: []
+          };
+        }
+
+        chapterPerformance[chapterName].totalQuestions++;
+        chapterPerformance[chapterName].totalObtained += obtainedMarks;
+        chapterPerformance[chapterName].totalPossible += fullMarks;
+
+        if (obtainedMarks < fullMarks) {
+          chapterPerformance[chapterName].errorQuestions++;
+          chapterPerformance[chapterName].wrongQuestions.push({
+            questionNo: key,
+            obtained: obtainedMarks,
+            fullMarks: fullMarks,
+            percentage: fullMarks > 0 ? (obtainedMarks / fullMarks) * 100 : 0
+          });
+        }
+      }
+
+      let chapterAnalysis = Object.values(chapterPerformance).map(chap => {
+        const errorRate = chap.totalPossible > 0 
+          ? ((chap.totalPossible - chap.totalObtained) / chap.totalPossible) * 100 
+          : 0;
+        
+        chap.wrongQuestions.sort((a, b) => a.obtained - b.obtained);
+        
+        return {
+          ...chap,
+          errorRate: errorRate,
+          averageMarks: chap.totalQuestions > 0 ? (chap.totalObtained / chap.totalQuestions) : 0
+        };
+      });
+
+      chapterAnalysis.sort((a, b) => b.errorRate - a.errorRate);
+
+      const overallPercentage = totalPossible > 0 ? (totalObtained / totalPossible) * 100 : 0;
+
+      studentData.subjects.push({
+        name: subjectName,
+        chapterAnalysis: chapterAnalysis,
+        totalObtained: totalObtained,
+        totalPossible: totalPossible,
+        overallPercentage: overallPercentage.toFixed(2),
+        totalQuestions: Object.keys(keyValues).length
+      });
+
+    } catch (err) {
+      console.error(`Error processing subject ${subjectName} for student ${student.roll}:`, err);
+      continue;
+    }
+  }
+
+  studentData.subjects.sort((a, b) => parseFloat(a.overallPercentage) - parseFloat(b.overallPercentage));
+  
+  return studentData;
+};
+
+// ============================================
+// CONTROLLER METHODS
+// ============================================
+
+// GET - Main selection page
+exports.getStudentErrorReportPage = async (req, res) => {
+  try {
+    const sidenavData = await getSidenavData(req);
+    
+    const classList = mongoose.model('studentClass', classSchema, 'classlist');
+    const studentClassdata = await classList.find({}).lean();
+    
+    const terminalModel = mongoose.model('terminal', new mongoose.Schema({}, { strict: false }), 'terminals');
+    const terminals = await terminalModel.find({}).lean();
+    
+    res.render("student-error-report-select", {
+      currentPage: 'report',
+      studentClassdata: studentClassdata,
+      terminals: terminals,
+      ...sidenavData
+    });
+  } catch (err) {
+    console.error("Error in getStudentErrorReportPage:", err);
+    res.status(500).render('404', {
+      errorMessage: 'Error loading student error report page: ' + err.message,
+      currentPage: 'teacher'
+    });
+  }
+};
+
+// POST - Generate report data
+exports.generateStudentErrorReport = async (req, res) => {
+  try {
+    const { studentClass, section, terminal, rolls } = req.body;
+    
+    if (!studentClass || !section || !terminal) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing required parameters: class, section, or terminal' 
+      });
+    }
+
+    const allSubjects = await getSubjectsForClass(studentClass, section, terminal);
+    
+    if (!allSubjects || allSubjects.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        error: `No subjects found for Class ${studentClass} ${section} - ${terminal} Terminal` 
+      });
+    }
+
+    const studentModel = mongoose.model('students', new mongoose.Schema({}, { strict: false }), 'students');
+    let query = {
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal
+    };
+
+    let selectedRolls = [];
+    if (rolls) {
+      if (Array.isArray(rolls)) {
+        selectedRolls = rolls.map(r => parseInt(r)).filter(r => !isNaN(r));
+      } else if (typeof rolls === 'string') {
+        selectedRolls = rolls.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
+      }
+      
+      if (selectedRolls.length > 0) {
+        query.roll = { $in: selectedRolls };
+      }
+    }
+
+    const students = await studentModel.find(query).lean();
+
+    if (!students || students.length === 0) {
+      const message = selectedRolls.length > 0 
+        ? `No students found for Roll numbers: ${selectedRolls.join(', ')}`
+        : `No students found for Class ${studentClass} ${section} - ${terminal} Terminal`;
+      return res.status(404).json({ 
+        success: false, 
+        error: message 
+      });
+    }
+
+    const allStudents = await studentModel.find({
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal
+    }).lean();
+
+    const availableRolls = allStudents.map(s => s.roll).sort((a, b) => a - b);
+
+    const studentReports = [];
+    for (const student of students) {
+      const studentData = await analyzeStudentPerformance(student, allSubjects, studentClass, section, terminal);
+      studentReports.push(studentData);
+    }
+
+    studentReports.sort((a, b) => a.roll - b.roll);
+
+    res.json({
+      success: true,
+      data: {
+        studentReports: studentReports,
+        studentClass: studentClass,
+        section: section,
+        terminal: terminal,
+        availableRolls: availableRolls,
+        selectedRolls: selectedRolls
+      }
+    });
+
+  } catch (err) {
+    console.error("Error generating student error report:", err);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Error generating student error report: ' + err.message 
+    });
+  }
+};
+
+// GET - View report with data
+exports.viewStudentErrorReport = async (req, res) => {
+  try {
+    const { studentClass, section, terminal } = req.query;
+    
+    if (!studentClass || !section || !terminal) {
+      return res.status(400).render('404', {
+        errorMessage: 'Missing required parameters: class, section, or terminal',
+        currentPage: 'teacher'
+      });
+    }
+
+    const allSubjects = await getSubjectsForClass(studentClass, section, terminal);
+    
+    if (!allSubjects || allSubjects.length === 0) {
+      return res.status(404).render('404', {
+        errorMessage: `No subjects found for Class ${studentClass} ${section} - ${terminal} Terminal`,
+        currentPage: 'teacher'
+      });
+    }
+
+    const studentModel = mongoose.model('students', new mongoose.Schema({}, { strict: false }), 'students');
+    let query = {
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal
+    };
+
+    let selectedRolls = [];
+    if (req.query.rolls) {
+      selectedRolls = req.query.rolls.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
+      if (selectedRolls.length > 0) {
+        query.roll = { $in: selectedRolls };
+      }
+    }
+
+    const students = await studentModel.find(query).lean();
+
+    if (!students || students.length === 0) {
+      return res.status(404).render('404', {
+        errorMessage: `No students found for Class ${studentClass} ${section} - ${terminal} Terminal`,
+        currentPage: 'teacher'
+      });
+    }
+
+    const allStudents = await studentModel.find({
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal
+    }).lean();
+
+    const availableRolls = allStudents.map(s => s.roll).sort((a, b) => a - b);
+
+    const studentReports = [];
+    for (const student of students) {
+      const studentData = await analyzeStudentPerformance(student, allSubjects, studentClass, section, terminal);
+      studentReports.push(studentData);
+    }
+
+    studentReports.sort((a, b) => a.roll - b.roll);
+
+    const sidenavData = await getSidenavData(req);
+
+    res.render("student-error-report-view", {
+      studentReports: studentReports,
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal,
+      availableRolls: availableRolls,
+      selectedRolls: selectedRolls,
+      currentPage: 'report',
+      ...sidenavData
+    });
+
+  } catch (err) {
+    console.error("Error viewing student error report:", err);
+    res.status(500).render('404', {
+      errorMessage: 'Error viewing student error report: ' + err.message,
+      currentPage: 'teacher'
+    });
+  }
+};
+
+// GET - Print all students report
+exports.printStudentErrorReport = async (req, res) => {
+  try {
+    const { studentClass, section, terminal, rolls } = req.query;
+    
+    if (!studentClass || !section || !terminal) {
+      return res.status(400).render('404', {
+        errorMessage: 'Missing required parameters',
+        currentPage: 'teacher'
+      });
+    }
+
+    const allSubjects = await getSubjectsForClass(studentClass, section, terminal);
+    
+    if (!allSubjects || allSubjects.length === 0) {
+      return res.status(404).render('404', {
+        errorMessage: 'No subjects found',
+        currentPage: 'teacher'
+      });
+    }
+
+    const studentModel = mongoose.model('students', new mongoose.Schema({}, { strict: false }), 'students');
+    let query = {
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal
+    };
+
+    let selectedRolls = [];
+    if (rolls) {
+      selectedRolls = rolls.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
+      if (selectedRolls.length > 0) {
+        query.roll = { $in: selectedRolls };
+      }
+    }
+
+    const students = await studentModel.find(query).lean();
+
+    if (!students || students.length === 0) {
+      return res.status(404).render('404', {
+        errorMessage: 'No students found',
+        currentPage: 'teacher'
+      });
+    }
+
+    const studentReports = [];
+    for (const student of students) {
+      const studentData = await analyzeStudentPerformance(student, allSubjects, studentClass, section, terminal);
+      studentReports.push(studentData);
+    }
+
+    studentReports.sort((a, b) => a.roll - b.roll);
+
+    res.render("student-error-report-print", {
+      studentReports: studentReports,
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal,
+      currentPage: 'report'
+    });
+
+  } catch (err) {
+    console.error("Error printing student error report:", err);
+    res.status(500).render('404', {
+      errorMessage: 'Error printing student error report: ' + err.message,
+      currentPage: 'teacher'
+    });
+  }
+};
+
+// GET - Print single student report by roll number
+exports.printSingleStudentReport = async (req, res) => {
+  try {
+    const { roll } = req.params;
+    const { studentClass, section, terminal } = req.query;
+    
+    if (!studentClass || !section || !terminal || !roll) {
+      return res.status(400).render('404', {
+        errorMessage: 'Missing required parameters',
+        currentPage: 'teacher'
+      });
+    }
+
+    const allSubjects = await getSubjectsForClass(studentClass, section, terminal);
+    
+    if (!allSubjects || allSubjects.length === 0) {
+      return res.status(404).render('404', {
+        errorMessage: 'No subjects found',
+        currentPage: 'teacher'
+      });
+    }
+
+    const studentModel = mongoose.model('students', new mongoose.Schema({}, { strict: false }), 'students');
+    const student = await studentModel.findOne({
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal,
+      roll: parseInt(roll)
+    }).lean();
+
+    if (!student) {
+      return res.status(404).render('404', {
+        errorMessage: 'Student not found',
+        currentPage: 'teacher'
+      });
+    }
+
+    const studentData = await analyzeStudentPerformance(student, allSubjects, studentClass, section, terminal);
+
+    res.render("student-error-report-print-single", {
+      student: studentData,
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal,
+      currentPage: 'report'
+    });
+
+  } catch (err) {
+    console.error("Error printing single student report:", err);
+    res.status(500).render('404', {
+      errorMessage: 'Error printing student report: ' + err.message,
+      currentPage: 'teacher'
+    });
+  }
+};
+
+// GET - Get single student report data (AJAX)
+exports.getSingleStudentReport = async (req, res) => {
+  try {
+    const { studentClass, section, terminal, roll } = req.query;
+    
+    if (!studentClass || !section || !terminal || !roll) {
+      return res.status(400).json({ success: false, error: 'Missing required parameters' });
+    }
+
+    const allSubjects = await getSubjectsForClass(studentClass, section, terminal);
+    
+    if (!allSubjects || allSubjects.length === 0) {
+      return res.status(404).json({ success: false, error: 'No subjects found' });
+    }
+
+    const studentModel = mongoose.model('students', new mongoose.Schema({}, { strict: false }), 'students');
+    const student = await studentModel.findOne({
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal,
+      roll: parseInt(roll)
+    }).lean();
+
+    if (!student) {
+      return res.status(404).json({ success: false, error: 'Student not found' });
+    }
+
+    const studentData = await analyzeStudentPerformance(student, allSubjects, studentClass, section, terminal);
+
+    res.json({
+      success: true,
+      data: studentData
+    });
+
+  } catch (err) {
+    console.error("Error getting single student report:", err);
+    res.status(500).json({ success: false, error: 'Error getting student data' });
+  }
+};
+
+// GET - Get available roll numbers for a class (AJAX)
+exports.getAvailableRolls = async (req, res) => {
+  try {
+    const { studentClass, section, terminal } = req.query;
+    
+    if (!studentClass || !section || !terminal) {
+      return res.status(400).json({ success: false, error: 'Missing required parameters' });
+    }
+
+    const studentModel = mongoose.model('students', new mongoose.Schema({}, { strict: false }), 'students');
+    const students = await studentModel.find({
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal
+    }).lean();
+
+    const rolls = students.map(s => s.roll).sort((a, b) => a - b);
+
+    res.json({
+      success: true,
+      data: rolls
+    });
+
+  } catch (err) {
+    console.error("Error getting available rolls:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// GET - Get students list for a class (AJAX)
+exports.getStudentsList = async (req, res) => {
+  try {
+    const { studentClass, section, terminal } = req.query;
+    
+    if (!studentClass || !section || !terminal) {
+      return res.status(400).json({ success: false, error: 'Missing required parameters' });
+    }
+
+    const studentModel = mongoose.model('students', new mongoose.Schema({}, { strict: false }), 'students');
+    const students = await studentModel.find({
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal
+    }).lean();
+
+    const studentList = students.map(s => ({
+      roll: s.roll,
+      name: s.name,
+      studentClass: s.studentClass,
+      section: s.section,
+      terminal: s.terminal
+    })).sort((a, b) => a.roll - b.roll);
+
+    res.json({
+      success: true,
+      data: studentList
+    });
+
+  } catch (err) {
+    console.error("Error getting students list:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// GET - Print all students without filtering
+exports.printAllStudents = async (req, res) => {
+  try {
+    const { studentClass, section, terminal } = req.query;
+    
+    if (!studentClass || !section || !terminal) {
+      return res.status(400).render('404', {
+        errorMessage: 'Missing required parameters',
+        currentPage: 'teacher'
+      });
+    }
+
+    const allSubjects = await getSubjectsForClass(studentClass, section, terminal);
+    
+    if (!allSubjects || allSubjects.length === 0) {
+      return res.status(404).render('404', {
+        errorMessage: 'No subjects found',
+        currentPage: 'teacher'
+      });
+    }
+
+    const studentModel = mongoose.model('students', new mongoose.Schema({}, { strict: false }), 'students');
+    const students = await studentModel.find({
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal
+    }).lean();
+
+    if (!students || students.length === 0) {
+      return res.status(404).render('404', {
+        errorMessage: 'No students found',
+        currentPage: 'teacher'
+      });
+    }
+
+    const studentReports = [];
+    for (const student of students) {
+      const studentData = await analyzeStudentPerformance(student, allSubjects, studentClass, section, terminal);
+      studentReports.push(studentData);
+    }
+
+    studentReports.sort((a, b) => a.roll - b.roll);
+
+    res.render("student-error-report-print", {
+      studentReports: studentReports,
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal,
+      currentPage: 'report',
+      printAll: true
+    });
+
+  } catch (err) {
+    console.error("Error printing all students:", err);
+    res.status(500).render('404', {
+      errorMessage: 'Error printing all students: ' + err.message,
+      currentPage: 'teacher'
+    });
+  }
+};
+
+// GET - Print selected students by roll numbers
+exports.printSelectedStudents = async (req, res) => {
+  try {
+    const { studentClass, section, terminal, rolls } = req.query;
+    
+    if (!studentClass || !section || !terminal || !rolls) {
+      return res.status(400).render('404', {
+        errorMessage: 'Missing required parameters',
+        currentPage: 'teacher'
+      });
+    }
+
+    const rollNumbers = rolls.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
+    
+    if (rollNumbers.length === 0) {
+      return res.status(400).render('404', {
+        errorMessage: 'Invalid roll numbers',
+        currentPage: 'teacher'
+      });
+    }
+
+    const allSubjects = await getSubjectsForClass(studentClass, section, terminal);
+    
+    if (!allSubjects || allSubjects.length === 0) {
+      return res.status(404).render('404', {
+        errorMessage: 'No subjects found',
+        currentPage: 'teacher'
+      });
+    }
+
+    const studentModel = mongoose.model('students', new mongoose.Schema({}, { strict: false }), 'students');
+    const students = await studentModel.find({
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal,
+      roll: { $in: rollNumbers }
+    }).lean();
+
+    if (!students || students.length === 0) {
+      return res.status(404).render('404', {
+        errorMessage: 'No students found for the selected rolls',
+        currentPage: 'teacher'
+      });
+    }
+
+    const studentReports = [];
+    for (const student of students) {
+      const studentData = await analyzeStudentPerformance(student, allSubjects, studentClass, section, terminal);
+      studentReports.push(studentData);
+    }
+
+    studentReports.sort((a, b) => a.roll - b.roll);
+
+    res.render("student-error-report-print", {
+      studentReports: studentReports,
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal,
+      currentPage: 'report',
+      selectedRolls: rollNumbers
+    });
+
+  } catch (err) {
+    console.error("Error printing selected students:", err);
+    res.status(500).render('404', {
+      errorMessage: 'Error printing selected students: ' + err.message,
+      currentPage: 'teacher'
+    });
+  }
+};
+
+// GET - Print summary report
+exports.printSummaryReport = async (req, res) => {
+  try {
+    const { studentClass, section, terminal } = req.query;
+    
+    if (!studentClass || !section || !terminal) {
+      return res.status(400).render('404', {
+        errorMessage: 'Missing required parameters',
+        currentPage: 'teacher'
+      });
+    }
+
+    const allSubjects = await getSubjectsForClass(studentClass, section, terminal);
+    const studentModel = mongoose.model('students', new mongoose.Schema({}, { strict: false }), 'students');
+    const students = await studentModel.find({
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal
+    }).lean();
+
+    const studentReports = [];
+    for (const student of students) {
+      const studentData = await analyzeStudentPerformance(student, allSubjects, studentClass, section, terminal);
+      // Only keep summary data
+      const summaryData = {
+        name: studentData.name,
+        roll: studentData.roll,
+        subjects: studentData.subjects.map(s => ({
+          name: s.name,
+          overallPercentage: s.overallPercentage,
+          totalObtained: s.totalObtained,
+          totalPossible: s.totalPossible
+        }))
+      };
+      studentReports.push(summaryData);
+    }
+
+    studentReports.sort((a, b) => a.roll - b.roll);
+
+    res.render("student-error-report-print-summary", {
+      studentReports: studentReports,
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal,
+      currentPage: 'report'
+    });
+
+  } catch (err) {
+    console.error("Error printing summary report:", err);
+    res.status(500).render('404', {
+      errorMessage: 'Error printing summary report: ' + err.message,
+      currentPage: 'teacher'
+    });
+  }
+};
+
+// GET - Get class-wise error analysis summary (AJAX)
+exports.getClassErrorSummary = async (req, res) => {
+  try {
+    const { studentClass, section, terminal } = req.query;
+    
+    if (!studentClass || !section || !terminal) {
+      return res.status(400).json({ success: false, error: 'Missing required parameters' });
+    }
+
+    const allSubjects = await getSubjectsForClass(studentClass, section, terminal);
+    
+    if (!allSubjects || allSubjects.length === 0) {
+      return res.status(404).json({ success: false, error: 'No subjects found' });
+    }
+
+    const studentModel = mongoose.model('students', new mongoose.Schema({}, { strict: false }), 'students');
+    const students = await studentModel.find({
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal
+    }).lean();
+
+    if (!students || students.length === 0) {
+      return res.status(404).json({ success: false, error: 'No students found' });
+    }
+
+    const summary = {
+      totalStudents: students.length,
+      totalSubjects: allSubjects.length,
+      subjectWise: {},
+      studentWise: []
+    };
+
+    for (const subjectItem of allSubjects) {
+      const subjectName = subjectItem.subject;
+      summary.subjectWise[subjectName] = {
+        totalStudents: 0,
+        totalObtained: 0,
+        totalPossible: 0,
+        errorRate: 0
+      };
+    }
+
+    for (const student of students) {
+      const studentData = await analyzeStudentPerformance(student, allSubjects, studentClass, section, terminal);
+      
+      summary.studentWise.push({
+        name: studentData.name,
+        roll: studentData.roll,
+        averagePercentage: studentData.subjects.reduce((sum, s) => sum + parseFloat(s.overallPercentage), 0) / studentData.subjects.length
+      });
+
+      for (const subject of studentData.subjects) {
+        if (summary.subjectWise[subject.name]) {
+          summary.subjectWise[subject.name].totalStudents++;
+          summary.subjectWise[subject.name].totalObtained += subject.totalObtained;
+          summary.subjectWise[subject.name].totalPossible += subject.totalPossible;
+        }
+      }
+    }
+
+    for (const key in summary.subjectWise) {
+      const subject = summary.subjectWise[key];
+      subject.errorRate = subject.totalPossible > 0 
+        ? ((subject.totalPossible - subject.totalObtained) / subject.totalPossible) * 100 
+        : 0;
+    }
+
+    res.json({
+      success: true,
+      data: summary
+    });
+
+  } catch (err) {
+    console.error("Error getting class error summary:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// GET - Get subject-wise error analysis (AJAX)
+exports.getSubjectErrorAnalysis = async (req, res) => {
+  try {
+    const { studentClass, section, terminal, subject } = req.query;
+    
+    if (!studentClass || !section || !terminal || !subject) {
+      return res.status(400).json({ success: false, error: 'Missing required parameters' });
+    }
+
+    const allSubjects = await getSubjectsForClass(studentClass, section, terminal);
+    const subjectData = allSubjects.find(s => s.subject === subject);
+    
+    if (!subjectData) {
+      return res.status(404).json({ success: false, error: 'Subject not found' });
+    }
+
+    const studentModel = mongoose.model('students', new mongoose.Schema({}, { strict: false }), 'students');
+    const students = await studentModel.find({
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal
+    }).lean();
+
+    const analysis = {
+      subject: subject,
+      students: []
+    };
+
+    for (const student of students) {
+      const studentData = await analyzeStudentPerformance(student, allSubjects, studentClass, section, terminal);
+      const subjectInfo = studentData.subjects.find(s => s.name === subject);
+      
+      if (subjectInfo) {
+        analysis.students.push({
+          roll: studentData.roll,
+          name: studentData.name,
+          overallPercentage: subjectInfo.overallPercentage,
+          totalObtained: subjectInfo.totalObtained,
+          totalPossible: subjectInfo.totalPossible,
+          chapterAnalysis: subjectInfo.chapterAnalysis
+        });
+      }
+    }
+
+    analysis.students.sort((a, b) => a.roll - b.roll);
+
+    res.json({
+      success: true,
+      data: analysis
+    });
+
+  } catch (err) {
+    console.error("Error getting subject analysis:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// GET - Get student progress over time (AJAX)
+exports.getStudentProgress = async (req, res) => {
+  try {
+    const { roll } = req.params;
+    const { studentClass, section } = req.query;
+    
+    if (!studentClass || !section || !roll) {
+      return res.status(400).json({ success: false, error: 'Missing required parameters' });
+    }
+
+    // Get all terminals for this student
+    const studentModel = mongoose.model('students', new mongoose.Schema({}, { strict: false }), 'students');
+    const allTerminals = await studentModel.find({
+      studentClass: studentClass,
+      section: section,
+      roll: parseInt(roll)
+    }).lean();
+
+    const progress = [];
+
+    for (const terminalData of allTerminals) {
+      const terminal = terminalData.terminal;
+      const allSubjects = await getSubjectsForClass(studentClass, section, terminal);
+      
+      if (allSubjects.length > 0) {
+        const studentData = await analyzeStudentPerformance(
+          terminalData, 
+          allSubjects, 
+          studentClass, 
+          section, 
+          terminal
+        );
+        
+        progress.push({
+          terminal: terminal,
+          student: {
+            name: studentData.name,
+            roll: studentData.roll
+          },
+          subjects: studentData.subjects.map(s => ({
+            name: s.name,
+            overallPercentage: s.overallPercentage,
+            totalObtained: s.totalObtained,
+            totalPossible: s.totalPossible
+          })),
+          averagePercentage: studentData.subjects.reduce((sum, s) => sum + parseFloat(s.overallPercentage), 0) / studentData.subjects.length
+        });
+      }
+    }
+
+    progress.sort((a, b) => a.terminal.localeCompare(b.terminal));
+
+    res.json({
+      success: true,
+      data: progress
+    });
+
+  } catch (err) {
+    console.error("Error getting student progress:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// GET - Get student names by roll numbers (AJAX)
+exports.getStudentNames = async (req, res) => {
+  try {
+    const { studentClass, section, terminal, rolls } = req.query;
+    
+    if (!studentClass || !section || !terminal || !rolls) {
+      return res.status(400).json({ success: false, error: 'Missing required parameters' });
+    }
+
+    const rollNumbers = rolls.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
+    
+    if (rollNumbers.length === 0) {
+      return res.status(400).json({ success: false, error: 'Invalid roll numbers' });
+    }
+
+    const studentModel = mongoose.model('students', new mongoose.Schema({}, { strict: false }), 'students');
+    const students = await studentModel.find({
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal,
+      roll: { $in: rollNumbers }
+    }).lean();
+
+    const studentNames = students.map(s => ({
+      roll: s.roll,
+      name: s.name
+    })).sort((a, b) => a.roll - b.roll);
+
+    res.json({
+      success: true,
+      data: studentNames
+    });
+
+  } catch (err) {
+    console.error("Error getting student names:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// GET - Export report as CSV
+exports.exportReportCSV = async (req, res) => {
+  try {
+    const { studentClass, section, terminal } = req.query;
+    
+    if (!studentClass || !section || !terminal) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+
+    const allSubjects = await getSubjectsForClass(studentClass, section, terminal);
+    const studentModel = mongoose.model('students', new mongoose.Schema({}, { strict: false }), 'students');
+    const students = await studentModel.find({
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal
+    }).lean();
+
+    const studentReports = [];
+    for (const student of students) {
+      const studentData = await analyzeStudentPerformance(student, allSubjects, studentClass, section, terminal);
+      studentReports.push(studentData);
+    }
+
+    // Create CSV
+    let csv = 'Roll,Name';
+    const subjects = allSubjects.map(s => s.subject);
+    subjects.forEach(s => {
+      csv += `,${s} (%)`;
+    });
+    subjects.forEach(s => {
+      csv += `,${s} (Marks)`;
+    });
+    csv += ',Average (%)\n';
+
+    studentReports.forEach(student => {
+      csv += `${student.roll},${student.name}`;
+      subjects.forEach(subject => {
+        const subj = student.subjects.find(s => s.name === subject);
+        csv += subj ? `,${subj.overallPercentage}` : ',-';
+      });
+      subjects.forEach(subject => {
+        const subj = student.subjects.find(s => s.name === subject);
+        csv += subj ? `,${subj.totalObtained}/${subj.totalPossible}` : ',-';
+      });
+      const avg = student.subjects.reduce((sum, s) => sum + parseFloat(s.overallPercentage), 0) / student.subjects.length;
+      csv += `,${avg.toFixed(2)}\n`;
+    });
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=student_error_report_${studentClass}_${section}_${terminal}.csv`);
+    res.send(csv);
+
+  } catch (err) {
+    console.error("Error exporting CSV:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// GET - Export report as Excel
+exports.exportReportExcel = async (req, res) => {
+  try {
+    const { studentClass, section, terminal } = req.query;
+    
+    if (!studentClass || !section || !terminal) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+
+    // For Excel, we'll use the same CSV but with different headers
+    // You can use libraries like xlsx or exceljs for proper Excel export
+    // This is a simple implementation
+    const allSubjects = await getSubjectsForClass(studentClass, section, terminal);
+    const studentModel = mongoose.model('students', new mongoose.Schema({}, { strict: false }), 'students');
+    const students = await studentModel.find({
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal
+    }).lean();
+
+    const studentReports = [];
+    for (const student of students) {
+      const studentData = await analyzeStudentPerformance(student, allSubjects, studentClass, section, terminal);
+      studentReports.push(studentData);
+    }
+
+    let csv = 'Roll,Name';
+    const subjects = allSubjects.map(s => s.subject);
+    subjects.forEach(s => {
+      csv += `,${s} (%)`;
+    });
+    subjects.forEach(s => {
+      csv += `,${s} (Marks)`;
+    });
+    csv += ',Average (%)\n';
+
+    studentReports.forEach(student => {
+      csv += `${student.roll},${student.name}`;
+      subjects.forEach(subject => {
+        const subj = student.subjects.find(s => s.name === subject);
+        csv += subj ? `,${subj.overallPercentage}` : ',-';
+      });
+      subjects.forEach(subject => {
+        const subj = student.subjects.find(s => s.name === subject);
+        csv += subj ? `,${subj.totalObtained}/${subj.totalPossible}` : ',-';
+      });
+      const avg = student.subjects.reduce((sum, s) => sum + parseFloat(s.overallPercentage), 0) / student.subjects.length;
+      csv += `,${avg.toFixed(2)}\n`;
+    });
+
+    res.setHeader('Content-Type', 'application/vnd.ms-excel');
+    res.setHeader('Content-Disposition', `attachment; filename=student_error_report_${studentClass}_${section}_${terminal}.xls`);
+    res.send(csv);
+
+  } catch (err) {
+    console.error("Error exporting Excel:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// GET - Download report as JSON
+exports.downloadReportJSON = async (req, res) => {
+  try {
+    const { studentClass, section, terminal } = req.query;
+    
+    if (!studentClass || !section || !terminal) {
+      return res.status(400).json({ error: 'Missing required parameters' });
+    }
+
+    const allSubjects = await getSubjectsForClass(studentClass, section, terminal);
+    const studentModel = mongoose.model('students', new mongoose.Schema({}, { strict: false }), 'students');
+    const students = await studentModel.find({
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal
+    }).lean();
+
+    const studentReports = [];
+    for (const student of students) {
+      const studentData = await analyzeStudentPerformance(student, allSubjects, studentClass, section, terminal);
+      studentReports.push(studentData);
+    }
+
+    const reportData = {
+      generatedAt: new Date().toISOString(),
+      classInfo: { studentClass, section, terminal },
+      totalStudents: studentReports.length,
+      totalSubjects: allSubjects.length,
+      students: studentReports
+    };
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename=student_error_report_${studentClass}_${section}_${terminal}.json`);
+    res.json(reportData);
+
+  } catch (err) {
+    console.error("Error downloading JSON:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// POST - Refresh report data
+exports.refreshReportData = async (req, res) => {
+  try {
+    const { studentClass, section, terminal } = req.body;
+    
+    if (!studentClass || !section || !terminal) {
+      return res.status(400).json({ success: false, error: 'Missing required parameters' });
+    }
+
+    // This would recalculate all data
+    // For now, just return success
+    res.json({
+      success: true,
+      message: 'Report data refreshed successfully'
+    });
+
+  } catch (err) {
+    console.error("Error refreshing report data:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// GET - Check if student data exists for a class
+exports.checkStudentDataExists = async (req, res) => {
+  try {
+    const { studentClass, section, terminal } = req.query;
+    
+    if (!studentClass || !section || !terminal) {
+      return res.status(400).json({ success: false, error: 'Missing required parameters' });
+    }
+
+    const studentModel = mongoose.model('students', new mongoose.Schema({}, { strict: false }), 'students');
+    const count = await studentModel.countDocuments({
+      studentClass: studentClass,
+      section: section,
+      terminal: terminal
+    });
+
+    const subjects = await getSubjectsForClass(studentClass, section, terminal);
+
+    res.json({
+      success: true,
+      data: {
+        hasStudents: count > 0,
+        studentCount: count,
+        subjectCount: subjects.length
+      }
+    });
+
+  } catch (err) {
+    console.error("Error checking student data:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+};

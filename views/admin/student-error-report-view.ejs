@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Error Report - Class <%= studentClass %> <%= section %></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/nav.css">
+    
+    <style>
+        :root {
+            --primary: #0ea5e9;
+            --primary-dark: #0284c7;
+            --background: #f8fafc;
+            --surface: #ffffff;
+            --text: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+            --error: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            background-color: var(--background);
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--text);
+            margin: 0;
+            padding: 24px;
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        .container-fluid { max-width: 1400px; margin: 0 auto; }
+
+        .page-header {
+            background: var(--surface);
+            padding: 24px 32px;
+            border-radius: 20px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border);
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .page-subtitle {
+            font-size: 15px;
+            color: var(--text-light);
+            margin: 8px 0 0 0;
+        }
+
+        .class-info-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            background: var(--primary);
+            color: white;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .roll-selection {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+        }
+
+        .roll-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .roll-btn {
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 2px solid var(--border);
+            background: var(--surface);
+            color: var(--text);
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .roll-btn:hover {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .roll-btn.active {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: white;
+        }
+
+        .roll-btn.select-all { border-color: var(--success); color: var(--success); }
+        .roll-btn.select-all:hover,
+        .roll-btn.select-all.active { background: var(--success); color: white; border-color: var(--success); }
+
+        .roll-btn.clear-all { border-color: var(--error); color: var(--error); }
+        .roll-btn.clear-all:hover { background: var(--error); color: white; border-color: var(--error); }
+
+        .btn-print {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            text-decoration: none;
+        }
+
+        .btn-print:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px -3px rgba(0, 0, 0, 0.15);
+            color: white;
+            text-decoration: none;
+        }
+
+        .btn-print-secondary {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-print-secondary:hover { background: var(--background); color: var(--text); }
+        .btn-print-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+
+        .student-report-card {
+            background: var(--surface);
+            border-radius: 16px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .student-header {
+            padding: 16px 24px;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border-bottom: 2px solid var(--primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .student-name { font-size: 20px; font-weight: 700; margin: 0; }
+        .student-roll { font-size: 14px; color: var(--text-light); font-weight: 500; }
+
+        .subject-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 20px 24px;
+        }
+
+        .subject-card {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            background: var(--surface);
+            page-break-inside: avoid;
+        }
+
+        .subject-card-header {
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .subject-name { font-weight: 700; font-size: 15px; color: var(--primary-dark); margin: 0; }
+
+        .subject-percentage {
+            font-weight: 700;
+            font-size: 14px;
+            padding: 2px 12px;
+            border-radius: 20px;
+        }
+
+        .subject-percentage.high { background: #d1fae5; color: #065f46; }
+        .subject-percentage.medium { background: #fef3c7; color: #92400e; }
+        .subject-percentage.low { background: #fee2e2; color: #991b1b; }
+
+        .subject-card-body { padding: 12px 16px; }
+
+        .chapter-item { margin-bottom: 10px; }
+        .chapter-item:last-child { margin-bottom: 0; }
+
+        .chapter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .chapter-name { font-weight: 600; font-size: 13px; }
+
+        .chapter-error-rate { font-size: 13px; font-weight: 600; }
+        .chapter-error-rate.high { color: var(--error); }
+        .chapter-error-rate.medium { color: var(--warning); }
+        .chapter-error-rate.low { color: var(--success); }
+
+        .progress-bar-chapter {
+            width: 100%;
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 4px;
+        }
+
+        .progress-fill { height: 100%; border-radius: 3px; }
+        .progress-fill.high { background: var(--error); }
+        .progress-fill.medium { background: var(--warning); }
+        .progress-fill.low { background: var(--success); }
+
+        .wrong-questions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 4px;
+        }
+
+        .wrong-question-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .wrong-question-badge .obtained-mark { font-weight: 700; color: #dc2626; }
+        .no-errors { font-size: 12px; color: var(--success); font-weight: 500; }
+
+        @media print {
+            body { padding: 10px; background: white; }
+            .no-print { display: none !important; }
+            .student-report-card { box-shadow: none; border: 1px solid #ddd; margin-bottom: 20px; page-break-inside: avoid; }
+            .subject-grid { grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px; }
+            .subject-card { border: 1px solid #ddd; page-break-inside: avoid; }
+            .student-header { background: #f0f9ff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .page-header { box-shadow: none; border: 1px solid #ddd; }
+            .roll-selection { display: none !important; }
+            .subject-percentage.high { background: #d1fae5 !important; color: #065f46 !important; }
+            .subject-percentage.medium { background: #fef3c7 !important; color: #92400e !important; }
+            .subject-percentage.low { background: #fee2e2 !important; color: #991b1b !important; }
+            .wrong-question-badge { background: #fee2e2 !important; color: #991b1b !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+
+        @media (max-width: 992px) { .subject-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) {
+            body { padding: 12px; }
+            .page-header { padding: 16px 20px; }
+            .page-title { font-size: 22px; }
+            .student-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+            .subject-grid { padding: 12px 16px; gap: 12px; }
+            .roll-buttons { gap: 6px; }
+            .roll-btn { padding: 4px 10px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <%- include('partials/sidenav', { 
+        subjects: subjects, 
+        studentClassdata: studentClassdata,
+        terminals: terminals 
+    }) %>
+    
+    <div class="container-fluid">
+        <div class="page-header">
+            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                <div>
+                    <h1 class="page-title">
+                        <i class="fas fa-chart-bar"></i>
+                        Student Error Report
+                    </h1>
+                    <p class="page-subtitle">Chapter-wise error analysis for each student</p>
+                </div>
+                <div class="mt-2 mt-md-0">
+                    <span class="class-info-badge">
+                        <i class="fas fa-chalkboard"></i>
+                        Class <%= studentClass %> - <%= section %> | <%= terminal %> Terminal
+                    </span>
+                </div>
+            </div>
+            <div class="mt-3 d-flex gap-2 flex-wrap">
+                <small class="text-muted">
+                    <i class="fas fa-users me-1"></i> Total Students: <%= studentReports.length %>
+                </small>
+                <small class="text-muted">
+                    <i class="fas fa-book me-1"></i> Subjects per student: <%= studentReports.length > 0 ? studentReports[0].subjects.length : 0 %>
+                </small>
+                <small class="text-muted">
+                    <i class="fas fa-file-alt me-1"></i> Showing: <%= selectedRolls && selectedRolls.length > 0 ? selectedRolls.join(', ') : 'All' %>
+                </small>
+            </div>
+        </div>
+
+        <div class="roll-selection no-print">
+            <div class="d-flex justify-content-between align-items-center flex-wrap mb-2">
+                <strong><i class="fas fa-id-card" style="color: var(--primary);"></i> Filter by Roll Number:</strong>
+                <span id="selectedCount" class="badge bg-primary"><%= selectedRolls && selectedRolls.length > 0 ? selectedRolls.length : studentReports.length %> selected</span>
+            </div>
+            <div class="roll-buttons" id="rollButtons">
+                <button class="roll-btn select-all <%= !selectedRolls || selectedRolls.length === 0 ? 'active' : '' %>" onclick="selectAllRolls()">
+                    <i class="fas fa-check-double"></i> All
+                </button>
+                <button class="roll-btn clear-all" onclick="clearAllRolls()">
+                    <i class="fas fa-times"></i> Clear
+                </button>
+                <% if (availableRolls && availableRolls.length > 0) { %>
+                    <% availableRolls.forEach(roll => { 
+                        const isSelected = selectedRolls && selectedRolls.includes(roll);
+                    %>
+                        <button class="roll-btn <%= isSelected ? 'active' : '' %>" onclick="toggleRoll(<%= roll %>)" data-roll="<%= roll %>">
+                            <%= roll %>
+                        </button>
+                    <% }) %>
+                <% } %>
+            </div>
+        </div>
+
+        <div class="print-controls no-print mb-4 d-flex gap-2 flex-wrap">
+            <button onclick="window.print()" class="btn-print">
+                <i class="fas fa-print"></i> Print Report
+            </button>
+            <a href="/student-error-report/print?studentClass=<%= studentClass %>&section=<%= section %>&terminal=<%= terminal %>&rolls=<%= selectedRolls && selectedRolls.length > 0 ? selectedRolls.join(',') : '' %>" 
+               class="btn-print btn-print-success" target="_blank">
+                <i class="fas fa-print"></i> Print All
+            </a>
+            <a href="/student-error-report" class="btn-print btn-print-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Selection
+            </a>
+        </div>
+
+        <div id="studentReports">
+            <% if (studentReports && studentReports.length > 0) { %>
+                <% studentReports.forEach((student, studentIndex) => { %>
+                    <div class="student-report-card" id="student-<%= student.roll %>" data-roll="<%= student.roll %>">
+                        <div class="student-header">
+                            <div>
+                                <h3 class="student-name">
+                                    <i class="fas fa-user-graduate me-2" style="color: var(--primary);"></i>
+                                    <%= student.name %>
+                                </h3>
+                                <span class="student-roll">
+                                    <i class="fas fa-id-card me-1"></i> Roll: <%= student.roll %>
+                                </span>
+                            </div>
+                            <div>
+                                <span class="badge bg-primary me-2">
+                                    <i class="fas fa-book me-1"></i> <%= student.subjects.length %> Subjects
+                                </span>
+                                <% 
+                                    const totalPct = student.subjects.reduce((sum, s) => sum + parseFloat(s.overallPercentage), 0);
+                                    const avgPct = student.subjects.length > 0 ? (totalPct / student.subjects.length) : 0;
+                                %>
+                                <span class="badge <%= avgPct >= 60 ? 'bg-success' : avgPct >= 35 ? 'bg-warning' : 'bg-danger' %>">
+                                    Avg: <%= avgPct.toFixed(1) %>% 
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="subject-grid">
+                            <% student.subjects.forEach((subject, subjectIndex) => { 
+                                const overallPct = parseFloat(subject.overallPercentage);
+                                let pctClass = 'medium';
+                                if (overallPct >= 60) pctClass = 'high';
+                                else if (overallPct >= 35) pctClass = 'medium';
+                                else pctClass = 'low';
+                            %>
+                                <div class="subject-card">
+                                    <div class="subject-card-header">
+                                        <span class="subject-name">
+                                            <i class="fas fa-book-open me-1"></i> <%= subject.name %>
+                                        </span>
+                                        <span class="subject-percentage <%= pctClass %>">
+                                            <%= subject.overallPercentage %>%
+                                        </span>
+                                    </div>
+                                    <div class="subject-card-body">
+                                        <% if (subject.chapterAnalysis && subject.chapterAnalysis.length > 0) { %>
+                                            <% subject.chapterAnalysis.forEach((chapter, idx) => { 
+                                                let errorClass = 'low';
+                                                if (chapter.errorRate > 50) errorClass = 'high';
+                                                else if (chapter.errorRate > 25) errorClass = 'medium';
+                                            %>
+                                                <div class="chapter-item">
+                                                    <div class="chapter-header">
+                                                        <span class="chapter-name">
+                                                            <%= chapter.name %>
+                                                            <small class="text-muted ms-1">(<%= chapter.totalQuestions %> Q)</small>
+                                                        </span>
+                                                        <span class="chapter-error-rate <%= errorClass %>">
+                                                            <%= chapter.errorRate.toFixed(1) %>% error
+                                                        </span>
+                                                    </div>
+                                                    <div class="progress-bar-chapter">
+                                                        <div class="progress-fill <%= errorClass %>" style="width: <%= Math.min(100, chapter.errorRate) %>%"></div>
+                                                    </div>
+                                                    <% if (chapter.wrongQuestions && chapter.wrongQuestions.length > 0) { %>
+                                                        <div class="wrong-questions">
+                                                            <% chapter.wrongQuestions.forEach(wq => { %>
+                                                                <span class="wrong-question-badge">
+                                                                    Q<%= wq.questionNo %>
+                                                                    <span class="obtained-mark"><%= wq.obtained %>/<%= wq.fullMarks %></span>
+                                                                </span>
+                                                            <% }) %>
+                                                        </div>
+                                                    <% } else { %>
+                                                        <div class="no-errors">
+                                                            <i class="fas fa-check-circle me-1"></i> All questions correct
+                                                        </div>
+                                                    <% } %>
+                                                </div>
+                                            <% }) %>
+                                        <% } else { %>
+                                            <p class="text-muted text-center mb-0">No chapter data available</p>
+                                        <% } %>
+                                        <div class="mt-2 pt-2 border-top">
+                                            <small class="text-muted">
+                                                Total: <%= subject.totalObtained %>/<%= subject.totalPossible %>
+                                                <span class="ms-2">|</span>
+                                                <span class="ms-2"><%= subject.totalQuestions %> questions</span>
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% }) %>
+                        </div>
+                    </div>
+                <% }) %>
+            <% } else { %>
+                <div class="alert alert-info text-center p-5">
+                    <i class="fas fa-info-circle fa-3x mb-3 d-block" style="color: var(--primary);"></i>
+                    <h4>No Data Available</h4>
+                    <p class="mb-0">No students or subjects found for Class <%= studentClass %> - <%= section %> | <%= terminal %> Terminal</p>
+                </div>
+            <% } %>
+        </div>
+    </div>
+
+    <script>
+        let selectedRolls = new Set(<%= JSON.stringify(selectedRolls || []) %>);
+        const allRolls = <%= JSON.stringify(availableRolls || []) %>;
+
+        function toggleRoll(roll) {
+            if (selectedRolls.has(roll)) {
+                selectedRolls.delete(roll);
+            } else {
+                selectedRolls.add(roll);
+            }
+            updateUI();
+        }
+
+        function selectAllRolls() {
+            selectedRolls = new Set(allRolls);
+            updateUI();
+        }
+
+        function clearAllRolls() {
+            selectedRolls = new Set();
+            updateUI();
+        }
+
+        function updateUI() {
+            document.querySelectorAll('.roll-btn[data-roll]').forEach(btn => {
+                const roll = parseInt(btn.dataset.roll);
+                btn.classList.toggle('active', selectedRolls.has(roll));
+            });
+
+            const selectAllBtn = document.querySelector('.roll-btn.select-all');
+            if (selectedRolls.size === allRolls.length && allRolls.length > 0) {
+                selectAllBtn.classList.add('active');
+            } else {
+                selectAllBtn.classList.remove('active');
+            }
+
+            document.getElementById('selectedCount').textContent = selectedRolls.size + ' selected';
+
+            if (selectedRolls.size === 0) {
+                document.querySelectorAll('.student-report-card').forEach(card => {
+                    card.style.display = '';
+                });
+            } else {
+                document.querySelectorAll('.student-report-card').forEach(card => {
+                    const roll = parseInt(card.dataset.roll);
+                    card.style.display = selectedRolls.has(roll) ? '' : 'none';
+                });
+            }
+
+            updateURL();
+        }
+
+        function updateURL() {
+            const params = new URLSearchParams();
+            params.set('studentClass', '<%= studentClass %>');
+            params.set('section', '<%= section %>');
+            params.set('terminal', '<%= terminal %>');
+            
+            if (selectedRolls.size > 0 && selectedRolls.size < allRolls.length) {
+                const rollsArray = Array.from(selectedRolls).sort((a, b) => a - b);
+                params.set('rolls', rollsArray.join(','));
+            }
+            
+            const newUrl = window.location.pathname + '?' + params.toString();
+            window.history.replaceState({}, '', newUrl);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (selectedRolls.size === 0) {
+                document.querySelectorAll('.student-report-card').forEach(card => {
+                    card.style.display = '';
+                });
+            } else {
+                document.querySelectorAll('.student-report-card').forEach(card => {
+                    const roll = parseInt(card.dataset.roll);
+                    card.style.display = selectedRolls.has(roll) ? '' : 'none';
+                });
+            }
+            document.getElementById('selectedCount').textContent = selectedRolls.size + ' selected';
+        });
+    </script>
+</body>
+</html>

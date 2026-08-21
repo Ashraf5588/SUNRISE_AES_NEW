@@ -850,6 +850,9 @@ exports.analytics = async (req, res, next) => {
   try{
 
     const {terminal,studentClass,section,academicYear,subject} = req.query;
+    const sectionMode = req.query.sectionMode === 'with-section' || (req.query.sectionMode === undefined && section && section !== 'all')
+      ? 'with-section'
+      : 'all';
     const studentClassdata = await studentClassModel.find({}).lean();
     const marksheetSetups = await marksheetSetup.find({}).lean();
       const subjects = await newsubject.find({}).lean();
@@ -862,9 +865,16 @@ exports.analytics = async (req, res, next) => {
       matchStage.terminal = terminal;
     }
     if (studentClass) {
-      matchStage.studentClass = studentClass;
+      const classAliases = {
+        nursery: ['Nursery', 'nursery'], lkg: ['LKG', 'lkg'], ukg: ['UKG', 'ukg'],
+        one: ['One', 'one', '1'], two: ['Two', 'two', '2'], three: ['Three', 'three', '3'],
+        four: ['Four', 'four', '4'], five: ['Five', 'five', '5'], six: ['Six', 'six', '6'],
+        seven: ['Seven', 'seven', '7'], eight: ['Eight', 'eight', '8'], nine: ['Nine', 'nine', '9'], ten: ['Ten', 'ten', '10']
+      };
+      const classKey = String(studentClass).trim().toLowerCase();
+      matchStage.studentClass = { $in: classAliases[classKey] || [studentClass] };
     }
-    if (section) {
+    if (sectionMode === 'with-section' && section && section !== 'all') {
       matchStage.section = section;
     }
     if(subject)
@@ -1166,6 +1176,49 @@ const schoolOverviewFinalStructure = {};
  
  }
  console.log("Terminal Comparison:", terminalComparisonFinalStructure);
+
+    const comparisonClassOrder = {
+      nursery: 0, lkg: 1, ukg: 2, one: 3, two: 4, three: 5, four: 6,
+      five: 7, six: 8, seven: 9, eight: 10, nine: 11, ten: 12,
+      '1': 3, '2': 4, '3': 5, '4': 6, '5': 7, '6': 8, '7': 9, '8': 10, '9': 11, '10': 12
+    };
+    const comparisonClassName = (value) => {
+      const key = String(value || '').trim().toLowerCase();
+      const names = { nursery: 'Nursery', lkg: 'LKG', ukg: 'UKG', one: 'One', two: 'Two', three: 'Three', four: 'Four', five: 'Five', six: 'Six', seven: 'Seven', eight: 'Eight', nine: 'Nine', ten: 'Ten' };
+      return names[key] || names[Object.keys(names).find(name => comparisonClassOrder[name] === comparisonClassOrder[key])] || value;
+    };
+    const comparisonGroups = new Map();
+    const comparisonTerminals = new Set();
+    terminalComparison.forEach((item) => {
+      const rawClass = String(item._id.studentClass || '').trim();
+      const classKey = rawClass.toLowerCase();
+      const displayClass = comparisonClassName(rawClass);
+      const groupSection = sectionMode === 'with-section' ? String(item._id.section || 'Unassigned') : 'All Sections';
+      const groupKey = `${item._id.academicYear}||${classKey}||${groupSection}`;
+      if (!comparisonGroups.has(groupKey)) {
+        comparisonGroups.set(groupKey, { academicYear: item._id.academicYear, classKey, className: displayClass, section: groupSection, terminals: {}, subjects: new Set() });
+      }
+      const group = comparisonGroups.get(groupKey);
+      const terminalName = String(item._id.terminal || 'Unknown');
+      comparisonTerminals.add(terminalName);
+      group.subjects.add(item._id.subject);
+      if (!group.terminals[terminalName]) group.terminals[terminalName] = {};
+      const current = group.terminals[terminalName][item._id.subject] || { totalStudents: 0, pass: 0, fail: 0, avgWeighted: 0 };
+      current.totalStudents += Number(item.totalStudents || 0);
+      current.pass += Number(item.passtheory || 0);
+      current.fail += Number(item.failtheory || 0);
+      current.avgWeighted += Number(item.avgMarks || 0) * Number(item.totalStudents || 0);
+      group.terminals[terminalName][item._id.subject] = current;
+    });
+    const comparisonData = [...comparisonGroups.values()]
+      .map(group => ({
+        ...group,
+        subjects: [...group.subjects].sort((a, b) => String(a).localeCompare(String(b))),
+        terminals: Object.fromEntries(Object.entries(group.terminals).map(([terminalName, subjectMap]) => [terminalName, Object.fromEntries(Object.entries(subjectMap).map(([subjectName, value]) => [subjectName, { totalStudents: value.totalStudents, passPercent: value.totalStudents ? (value.pass / value.totalStudents) * 100 : 0, failPercent: value.totalStudents ? (value.fail / value.totalStudents) * 100 : 0, avg: value.totalStudents ? value.avgWeighted / value.totalStudents : 0 }]))]))
+      }))
+      .sort((a, b) => (comparisonClassOrder[a.classKey] ?? 999) - (comparisonClassOrder[b.classKey] ?? 999) || String(a.section).localeCompare(String(b.section)));
+    const sortedComparisonTerminals = [...comparisonTerminals].sort((a, b) => ({ FIRST: 1, SECOND: 2, THIRD: 3, FOURTH: 4, FINAL: 5 }[a] || 99) - ({ FIRST: 1, SECOND: 2, THIRD: 3, FOURTH: 4, FINAL: 5 }[b] || 99) || a.localeCompare(b));
+    const comparisonSections = [...new Set(terminalComparison.map(item => String(item._id.section || '').trim()).filter(Boolean))].sort();
  
     // 6. Year-wise Trend (for multiple years)
     const yearTrend = await model.aggregate([
@@ -1280,6 +1333,13 @@ console.log("Generated Student Tracking Data:", studenttracking);
       persubjectFailStudentNameStructure,
       combinationsofFailStudentAccrossTerminals,
       studenttracking,
+      comparisonData,
+      comparisonTerminals: sortedComparisonTerminals,
+      comparisonSections,
+      sectionMode,
+      selectedClass: studentClass || 'all',
+      selectedSection: section || '',
+      selectedSubject: subject || 'all',
       
       combinationsofFailStudentAccrossTerminals
     });
@@ -1584,13 +1644,13 @@ exports.ledger = async (req, res, next) => {
             theoryDisplay = 'Ab';
           } else {
             const gp = theoryGP;
-            if (gp === 4.0) theoryDisplay = 'A+';
-            else if (gp >= 3.6) theoryDisplay = 'A';
-            else if (gp >= 3.2) theoryDisplay = 'B+';
-            else if (gp >= 2.8) theoryDisplay = 'B';
-            else if (gp >= 2.4) theoryDisplay = 'C+';
-            else if (gp >= 2.0) theoryDisplay = 'C';
-            else if (gp >= 1.6) theoryDisplay = 'D';
+            if (gp >= 3.61 && gp <= 4.0) theoryDisplay = 'A+';
+            else if (gp >= 3.21 && gp <= 3.60) theoryDisplay = 'A';
+            else if (gp >= 2.81 && gp <= 3.20) theoryDisplay = 'B+';
+            else if (gp >= 2.41 && gp <= 2.80) theoryDisplay = 'B';
+            else if (gp >= 2.01 && gp <= 2.40) theoryDisplay = 'C+';
+            else if (gp >= 1.61 && gp <= 2.00) theoryDisplay = 'C';
+            else if (gp === 1.6) theoryDisplay = 'D';
             else theoryDisplay = 'NG';
           }
 
@@ -1791,13 +1851,13 @@ exports.ledger = async (req, res, next) => {
             theoryDisplay = 'Ab';
           } else {
             const gp = theoryGP;
-            if (gp === 4.0) theoryDisplay = 'A+';
-            else if (gp >= 3.6) theoryDisplay = 'A';
-            else if (gp >= 3.2) theoryDisplay = 'B+';
-            else if (gp >= 2.8) theoryDisplay = 'B';
-            else if (gp >= 2.4) theoryDisplay = 'C+';
-            else if (gp >= 2.0) theoryDisplay = 'C';
-            else if (gp >= 1.6) theoryDisplay = 'D';
+            if (gp >=3.61 && gp <= 4.0) theoryDisplay = 'A+';
+            else if (gp >= 3.21 && gp <= 3.60) theoryDisplay = 'A';
+            else if (gp >= 2.81 && gp <= 3.20) theoryDisplay = 'B+';
+            else if (gp >= 2.41 && gp <= 2.80) theoryDisplay = 'B';
+            else if (gp >= 2.01 && gp <= 2.40) theoryDisplay = 'C+';
+            else if (gp >= 1.61 && gp <= 2.00) theoryDisplay = 'C';
+            else if (gp == 1.60  ) theoryDisplay = 'D';
             else theoryDisplay = 'NG';
           }
 
@@ -4051,9 +4111,9 @@ function processGradeCounter(examMarks, subjectConfigMap, calcMode = 'combined')
 
         const normalizedCls = normalizeClassName(cls);
 
-        // Get marks
+        // Get marks. Grade Counter uses the stored total practical marks.
         const theoryMarks = parseFloat(record.theorymarks) || 0;
-        const practicalMarks = parseFloat(record.practicalmarks) || 0;
+        const practicalMarks = parseFloat(record.totalpracticalmarks ?? record.practicalmarks) || 0;
         
         // Get full marks from record
         const theoryFull = parseFloat(record.theoryfullmarks) || 0;
@@ -4071,29 +4131,36 @@ function processGradeCounter(examMarks, subjectConfigMap, calcMode = 'combined')
         const theoryCredit = config.theoryCredit || normalizedConfig.theoryCredit || 1;
         const practicalCredit = config.practicalCredit || normalizedConfig.practicalCredit || 1;
         
-        let finalGP = 0;
+        const theoryGP = getGPFromPercentage(theoryFull > 0 ? (theoryMarks / theoryFull) * 100 : 0);
+        const practicalGP = getGPFromPercentage(practicalFull > 0 ? (practicalMarks / practicalFull) * 100 : 0);
+        const worksheetValues = Array.isArray(record.worksheetGrades)
+          ? record.worksheetGrades.map(getWorksheetGP)
+          : [];
+        const worksheetGP = worksheetValues.length > 0
+          ? worksheetValues.reduce((sum, value) => sum + value, 0) / worksheetValues.length
+          : 0;
+        const worksheetTotalGP = worksheetValues.reduce((sum, value) => sum + value, 0);
+        const isNoWorksheetSubject = ['ORAL', 'HYGIENE', 'ECA'].includes(subject.toUpperCase())
+          || (normalizedCls === 'LKG' && subject.toUpperCase() === 'THEME');
 
-        // Calculate based on class level
-        if (isPrePrimary(cls)) {
-            // Pre-Primary: Only practical marks
-            if (practicalFull > 0) {
-                const percentage = (practicalMarks / practicalFull) * 100;
-                finalGP = getGPFromPercentage(percentage);
-            }
-        } else if (isPrimary(cls)) {
-            // Primary (1-3): Theory only
-            if (theoryFull > 0) {
-                const percentage = (theoryMarks / theoryFull) * 100;
-                finalGP = getGPFromPercentage(percentage);
-            }
+        let finalGP = theoryGP;
+        if (calcMode === 'theory') {
+          // Theory Only: always derive the grade from theory marks/full marks.
+          finalGP = theoryGP;
+        } else if (calcMode === 'practical') {
+          finalGP = isPrePrimary(cls) || isPrimary(cls) ? worksheetGP : practicalGP;
+        } else if (isNoWorksheetSubject) {
+          finalGP = theoryGP;
+        } else if (isPrePrimary(cls)) {
+          // Nursery, LKG and UKG combine theory GP with worksheet GP.
+          finalGP = (theoryGP + worksheetTotalGP) / (worksheetValues.length + 1);
         } else {
-            // Class 4-10: Use credit-based calculation
-            finalGP = calculateGP(
-                theoryMarks, theoryFull,
-                practicalMarks, practicalFull,
-                theoryCredit, practicalCredit,
-                calcMode
-            );
+          // Classes 1-10 use credit-weighted theory and practical/worksheet GP.
+          const appliedPracticalGP = isPrimary(cls) ? worksheetGP : practicalGP;
+          const totalCredit = theoryCredit + practicalCredit;
+          finalGP = totalCredit > 0
+            ? ((theoryGP * theoryCredit) + (appliedPracticalGP * practicalCredit)) / totalCredit
+            : theoryGP;
         }
 
         // Get grade from GP
@@ -4130,7 +4197,7 @@ function processGradeCounter(examMarks, subjectConfigMap, calcMode = 'combined')
     return subjectClassData;
 }
 
-function processGradeCounter(examMarks) {
+function processLegacyGradeCounter(examMarks) {
     // Group by subject, then by class
     const subjectClassData = {};
 
@@ -4429,7 +4496,7 @@ function calculateOverallStats(subjectData) {
     };
 }
 
-async function processClassData(className, subjectName, classMarks, calculationType, sectionFilter, classConfig, isOptionalSubject = false, allExamMarks = []) {
+async function processSubjectWiseClassData(className, subjectName, classMarks, calculationType, sectionFilter, classConfig, isOptionalSubject = false, allExamMarks = []) {
     const getSummary = (marksForSection) => {
         // Filter out absent students (those with 0 in all subjects)
         const activeStudents = marksForSection.filter(student => {
@@ -4517,8 +4584,14 @@ async function processClassData(className, subjectName, classMarks, calculationT
 
             // THEORY PASS MARKS: Compare theory marks against theory pass marks
             if (calculationType === 'theory') {
-                // Theory only - direct comparison with theory pass marks
-                passed = theoryMarks >= passingMarks;
+              // Theory only - compare percentages so full-mark differences are respected
+              const theoryPercentage = theoryFullMarksStudent > 0
+                ? theoryMarks / theoryFullMarksStudent
+                : 0;
+              const passingPercentage = theoryFullMarks > 0
+                ? passingMarks / theoryFullMarks
+                : 0;
+              passed = theoryPercentage >= passingPercentage;
                 gp = passed ? 1.6 : 0;
                 marks = theoryMarks;
             } else {
@@ -4937,7 +5010,7 @@ exports.subjectWiseanalysis = async (req, res) => {
                 const classConfig = subjectClassMap[subjectName]?.[className];
                 
                 // Process class data - pass all exam marks for absent check
-                const classData = await processClassData(
+                const classData = await processSubjectWiseClassData(
                     className, 
                     subjectName, 
                     classMarksForProcessing, 
@@ -5183,6 +5256,7 @@ function sortRollNumbers(a, b) {
 exports.subjectWiseFailStudents = async (req, res) => {
     try {
         const { classFilter, sectionFilter, subjectFilter, terminalFilter, calculationType } = req.query;
+    const selectedCalculationType = calculationType === 'practical' ? 'practical' : 'theory';
         
         console.log('=== Starting Subject Wise Fail Students ===');
         
@@ -5216,7 +5290,7 @@ exports.subjectWiseFailStudents = async (req, res) => {
         
         for (const subjectName of subjectList) {
             const subjectMarks = examMarks.filter(m => m.subject === subjectName);
-            const classMap = groupMarksByClass(subjectMarks, subjectClassMap, subjectName, calculationType, studentMarkMap, sectionFilter);
+          const classMap = groupMarksByClass(subjectMarks, subjectClassMap, subjectName, selectedCalculationType, studentMarkMap, sectionFilter);
             
             if (Object.keys(classMap).length > 0) {
                 const totalFail = Object.values(classMap).reduce((sum, sections) => {
@@ -5246,7 +5320,7 @@ exports.subjectWiseFailStudents = async (req, res) => {
             sectionFilter: sectionFilter || 'all',
             subjectFilter: subjectFilter || 'all',
             terminalFilter: terminalFilter || 'all',
-            calculationType: calculationType || 'theory',
+            calculationType: selectedCalculationType,
             availableSubjects,
             availableClasses,
             availableTerminals,
@@ -5451,3 +5525,453 @@ function renderEmptyResponse(res, classFilter, sectionFilter, subjectFilter, ter
         getClassDisplayName
     });
 }
+
+// ecd grade counter
+// controllers/gradeCounterController.js
+
+
+// Helper function to check if a value is Ab (sentinel 0.000001)
+function isAb(value) {
+    if (value === null || value === undefined) return false;
+    const strValue = String(value).trim();
+    if (strValue === '0.000001') return true;
+    if (typeof value === 'number') {
+        const epsilon = 0.0000001;
+        if (Math.abs(value - 0.000001) < epsilon) return true;
+    }
+    if (typeof value === 'string') {
+        const cleanValue = value.trim().toLowerCase();
+        if (cleanValue === '0.000001' || cleanValue === 'ab' || cleanValue === 'absent') return true;
+    }
+    return false;
+}
+
+// Helper function to get numeric value
+function getNumericValue(value) {
+    if (isAb(value)) return 0;
+    if (value === null || value === undefined) return 0;
+    const num = Number(value);
+    return isNaN(num) ? 0 : num;
+}
+
+// Helper function to get grade from GP
+function getGradeFromGP(gp) {
+    if (gp >=3.61 && gp <= 4.0) return "A+";
+    if (gp >= 3.21 && gp <= 3.60) return "A";
+    if (gp >= 2.81 && gp <= 3.20) return "B+";
+    if (gp >= 2.41 && gp <= 2.80) return "B";
+    if (gp >= 2.01 && gp <= 2.40) return "C+";
+    if (gp >= 1.61 && gp <= 2.00) return "C";
+    if (gp === 1.6) return "D";
+    return "NG";
+}
+
+// Helper function to get worksheet GP
+function getWorksheetGP(grade) {
+    if (!grade) return 0;
+    if (isAb(grade)) return 0;
+    const gradeMap = {
+        'A+': 4.0,
+        'A': 3.6,
+        'B+': 3.2,
+        'B': 2.8,
+        'C+': 2.4,
+        'C': 2.0,
+        'D': 1.6,
+        'NG': 0.0
+    };
+    return gradeMap[grade] || 0;
+}
+
+// Helper function to get subject model
+const getSubjectModel = (subjectinput, studentClass, section, terminal) => {
+    const modelName = `${subjectinput.replace(/\s+/g, '_')}_${studentClass}_${section}_${terminal}`;
+  if (mongoose.models[modelName]) {
+    return mongoose.models[modelName];
+  }
+  return mongoose.model(modelName, studentSchema, modelName);
+};
+
+// Helper function to get all students for a class
+const getStudentsForClass = async (studentClass, section, terminal) => {
+    try {
+    const studentModel = mongoose.models.students
+      || mongoose.model('students', new mongoose.Schema({}, { strict: false }), 'students');
+        const students = await studentModel.find({
+            studentClass: studentClass,
+            section: section,
+            terminal: terminal
+        }).lean();
+        return students;
+    } catch (err) {
+        console.error('Error getting students:', err);
+        return [];
+    }
+};
+
+// Helper function to get all subjects for a class
+const getSubjectsForClass = async (studentClass, terminal) => {
+    try {
+        const subjects = await subjectlist.find({
+            forClass: studentClass,
+            forTerminal: terminal
+        }).lean();
+        return subjects;
+    } catch (err) {
+        console.error('Error getting subjects:', err);
+        return [];
+    }
+};
+
+// Helper function to get subject data with question keys
+const getSubjectData = async (subjectName, studentClass, terminal) => {
+    try {
+        const subjectData = await subjectlist.findOne({
+            subject: subjectName,
+            forClass: studentClass,
+            forTerminal: terminal
+        }).lean();
+        return subjectData;
+    } catch (err) {
+        console.error('Error getting subject data:', err);
+        return null;
+    }
+};
+
+// Helper function to calculate GP for a student in a subject
+function calculateStudentGP(studentMarks, subjectData, isNoWorksheet = false) {
+    // Get question key values
+    const keyValues = {};
+    const roman = ['i','ii','iii','iv','v','vi','vii','viii','ix','x'];
+    const questionToChapter = {};
+    
+    if (subjectData && subjectData.chapter && Array.isArray(subjectData.chapter)) {
+        subjectData.chapter.forEach(chap => {
+            if (chap.questions && Array.isArray(chap.questions)) {
+                chap.questions.forEach(q => {
+                    questionToChapter[q] = chap.chapterName;
+                });
+            }
+        });
+    }
+
+    for (const key in subjectData) {
+        if (/^q\d+[a-z]$/.test(key)) {
+            const hasSubparts = subjectData[`${key}_has_subparts`] === "on" || subjectData[`${key}_has_subparts`] === true;
+            const subpartsCount = parseInt(subjectData[`${key}_subparts_count`] || 0);
+            const marksPerSubpart = parseFloat(subjectData[`${key}_marks_per_subpart`] || 0);
+            const marks = parseFloat(subjectData[key] || 0);
+
+            if (hasSubparts && subpartsCount > 0 && !isNaN(marksPerSubpart) && marksPerSubpart > 0) {
+                for (let i = 0; i < subpartsCount; i++) {
+                    const subKey = `${key}_${roman[i]}`;
+                    keyValues[subKey] = marksPerSubpart;
+                }
+            } else if (!hasSubparts && !isNaN(marks) && marks > 0) {
+                keyValues[key] = marks;
+            }
+        }
+    }
+
+    let totalTheoryMarks = 0;
+    let totalTheoryPossible = 0;
+
+    // Calculate theory marks
+    for (const key in keyValues) {
+        const fullMarks = keyValues[key];
+        if (isNaN(fullMarks) || fullMarks <= 0) continue;
+
+        const obtainedMarks = studentMarks[key] !== undefined ? parseFloat(studentMarks[key]) : 0;
+        const isAbValue = isAb(obtainedMarks);
+        
+        totalTheoryMarks += isAbValue ? 0 : obtainedMarks;
+        totalTheoryPossible += fullMarks;
+    }
+
+    // Calculate theory percentage
+    const theoryPercentage = totalTheoryPossible > 0 ? (totalTheoryMarks / totalTheoryPossible) * 100 : 0;
+    let theoryGP = 0;
+
+    // Convert percentage to GP (matching ledger logic)
+    if (theoryPercentage >= 90) theoryGP = 4.0;
+    else if (theoryPercentage >= 80) theoryGP = 3.6;
+    else if (theoryPercentage >= 70) theoryGP = 3.2;
+    else if (theoryPercentage >= 60) theoryGP = 2.8;
+    else if (theoryPercentage >= 50) theoryGP = 2.4;
+    else if (theoryPercentage >= 40) theoryGP = 2.0;
+    else if (theoryPercentage >= 33) theoryGP = 1.6;
+    else theoryGP = 0.0;
+
+    if (isNoWorksheet) {
+        return theoryGP;
+    }
+
+    // Calculate practical/worksheet GP
+    let practicalGP = 0;
+    if (studentMarks.worksheetGrades && studentMarks.worksheetGrades.length > 0) {
+        let totalWorksheetGP = 0;
+        let validWorksheets = 0;
+        studentMarks.worksheetGrades.forEach(grade => {
+            const gp = getWorksheetGP(grade);
+            if (gp > 0 || grade === 'NG' || grade === 'D') {
+                totalWorksheetGP += gp;
+                validWorksheets++;
+            }
+        });
+        if (validWorksheets > 0) {
+            practicalGP = totalWorksheetGP / validWorksheets;
+        }
+    }
+
+    // Calculate combined GP (matching ledger logic)
+    const avgGP = (theoryGP + practicalGP) / 2;
+    return avgGP;
+}
+
+// Main controller method
+exports.getGradeCounterLegacy = async (req, res) => {
+    try {
+        const { terminal, academicYear, filterSubject, calcMode } = req.query;
+        
+        // Get all class data for dropdown
+        const classList = mongoose.model('studentClass', classSchema, 'classlist');
+        const studentClassdata = await classList.find({}).lean();
+
+        // Get all terminals
+       
+        const terminalsData = await terminalModel.find({}).lean();
+        const terminals = terminalsData.map(t => t.terminal).filter(Boolean);
+
+        // Get unique years from marksheet setups
+    
+        const marksheetSetups = await marksheetSetup.find({}).lean();
+        const years = [...new Set(marksheetSetups.map(m => m.academicYear).filter(Boolean))].sort((a, b) => b - a);
+
+        // Get all unique subjects
+        const allSubjects = await subjectlist.find({}).lean();
+        const subjectList = [...new Set(allSubjects.map(s => s.subject).filter(Boolean))].sort();
+
+        // Initialize grade data structure
+        const gradeData = {};
+        const grades = ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'NG'];
+
+        // If no filters are applied, show all data
+        if (!terminal && !academicYear) {
+            // Get all class-section combinations
+            const classSections = [];
+            studentClassdata.forEach(cls => {
+                const key = `${cls.studentClass}-${cls.section}`;
+                if (!classSections.includes(key)) {
+                    classSections.push(key);
+                }
+            });
+
+            // Process each class-section
+            for (const classSection of classSections) {
+                const [studentClass, section] = classSection.split('-');
+                
+                // Get all terminals for this class
+              
+                const studentTerminals = await getSlipModel().distinct('terminal', {
+                    studentClass: studentClass,
+                    section: section
+                });
+
+                for (const term of studentTerminals) {
+                    await processClassData(studentClass, section, term, gradeData, grades, filterSubject, calcMode);
+                }
+            }
+        } else {
+            // Process with filters
+            const classSections = [];
+            studentClassdata.forEach(cls => {
+                const key = `${cls.studentClass}-${cls.section}`;
+                if (!classSections.includes(key)) {
+                    classSections.push(key);
+                }
+            });
+
+            for (const classSection of classSections) {
+                const [studentClass, section] = classSection.split('-');
+                await processClassData(studentClass, section, terminal, gradeData, grades, filterSubject, calcMode);
+            }
+        }
+
+        // Get sidenav data
+    
+
+        res.render("./exam/gradeCounter", {
+            gradeData: gradeData,
+            grades: grades,
+            terminals: terminals,
+            years: years,
+            subjectList: subjectList,
+            selectedTerminal: terminal || '',
+            selectedYear: academicYear || '',
+            filterSubject: filterSubject || '',
+            calcMode: calcMode || 'combined',
+            studentClassdata: studentClassdata,
+            currentPage: 'gradecounter',
+
+        });
+
+    } catch (err) {
+        console.error("Error in getGradeCounter:", err);
+        res.status(500).render('404', {
+            errorMessage: 'Error loading grade counter: ' + err.message,
+            currentPage: 'teacher'
+        });
+    }
+};
+
+// Helper function to process class data
+async function processClassData(studentClass, section, terminal, gradeData, grades, filterSubject, calcMode) {
+    try {
+        // Get all subjects for this class and terminal
+        const subjects = await getSubjectsForClass(studentClass, terminal);
+        
+        if (!subjects || subjects.length === 0) return;
+
+        // Get all students for this class
+        const students = await getStudentsForClass(studentClass, section, terminal);
+        
+        if (!students || students.length === 0) return;
+
+        // Subjects that should NOT have worksheets
+        const NO_WORKSHEET_SUBJECTS = ['ORAL', 'HYGIENE', 'ECA'];
+        if (studentClass && studentClass.toUpperCase() === 'LKG') {
+            NO_WORKSHEET_SUBJECTS.push('THEME');
+        }
+
+        // Process each subject
+        for (const subjectItem of subjects) {
+            const subjectName = subjectItem.subject;
+            
+            // Skip if filterSubject is set and doesn't match
+            if (filterSubject && subjectName !== filterSubject) continue;
+
+            const isNoWorksheet = NO_WORKSHEET_SUBJECTS.includes(subjectName.toUpperCase());
+
+            // Get subject data
+            const subjectData = await getSubjectData(subjectName, studentClass, terminal);
+            if (!subjectData) continue;
+
+            // Get the model for this subject
+            const model = getSubjectModel(subjectName, studentClass, section, terminal);
+
+            // Initialize grade counts for this subject if not exists
+            if (!gradeData[subjectName]) {
+                gradeData[subjectName] = {};
+            }
+
+            // Initialize class data
+            const classKey = `${studentClass}`;
+            if (!gradeData[subjectName][classKey]) {
+                gradeData[subjectName][classKey] = {
+                    grades: {},
+                    total: 0
+                };
+                grades.forEach(g => gradeData[subjectName][classKey].grades[g] = 0);
+            }
+
+            // Process each student
+            for (const student of students) {
+                try {
+                    const studentMarks = await model.findOne({
+                        subject: subjectName,
+                        studentClass: studentClass,
+                        section: section,
+                        terminal: terminal,
+                        roll: parseInt(student.roll)
+                    }).lean();
+
+                    if (!studentMarks) continue;
+
+                    // Calculate GP based on mode
+                    let gp = 0;
+                    
+                    if (calcMode === 'theory') {
+                        // Theory only
+                        const theoryGP = calculateStudentGP(studentMarks, subjectData, true);
+                        gp = theoryGP;
+                    } else if (calcMode === 'practical') {
+                        // Practical only - calculate from worksheet grades
+                        let practicalGP = 0;
+                        if (studentMarks.worksheetGrades && studentMarks.worksheetGrades.length > 0) {
+                            let totalWorksheetGP = 0;
+                            let validWorksheets = 0;
+                            studentMarks.worksheetGrades.forEach(grade => {
+                                const gradeGP = getWorksheetGP(grade);
+                                if (gradeGP > 0 || grade === 'NG' || grade === 'D') {
+                                    totalWorksheetGP += gradeGP;
+                                    validWorksheets++;
+                                }
+                            });
+                            if (validWorksheets > 0) {
+                                practicalGP = totalWorksheetGP / validWorksheets;
+                            }
+                        }
+                        gp = practicalGP;
+                    } else {
+                        // Combined (Theory + Practical)
+                        gp = calculateStudentGP(studentMarks, subjectData, isNoWorksheet);
+                    }
+
+                    // Get grade from GP
+                    const grade = getGradeFromGP(gp);
+
+                    // Increment grade count
+                    if (gradeData[subjectName][classKey].grades[grade] !== undefined) {
+                        gradeData[subjectName][classKey].grades[grade]++;
+                    }
+                    gradeData[subjectName][classKey].total++;
+
+                } catch (err) {
+                    console.error(`Error processing student ${student.roll} for ${subjectName}:`, err);
+                    continue;
+                }
+            }
+        }
+
+    } catch (err) {
+        console.error(`Error processing class ${studentClass} ${section}:`, err);
+    }
+}
+
+// Get grade counter page (alternative route)
+exports.getGradeCounterPage = async (req, res) => {
+    try {
+  
+        
+        const classList = mongoose.model('studentClass', classSchema, 'classlist');
+        const studentClassdata = await classList.find({}).lean();
+        
+      terminalModel.find({}).lean();
+        const terminals = terminalsData.map(t => t.terminal).filter(Boolean);
+
+        // Get unique years
+        const marksheetModel = mongoose.model('marksheetsetup', new mongoose.Schema({}, { strict: false }), 'marksheetsetups');
+        const marksheetSetups = await marksheetModel.find({}).lean();
+        const years = [...new Set(marksheetSetups.map(m => m.academicYear).filter(Boolean))].sort((a, b) => b - a);
+
+        // Get all unique subjects
+        const allSubjects = await subjectlist.find({}).lean();
+        const subjectList = [...new Set(allSubjects.map(s => s.subject).filter(Boolean))].sort();
+
+        res.render("grade-counter-select", {
+            studentClassdata: studentClassdata,
+            terminals: terminals,
+            years: years,
+            subjectList: subjectList,
+            currentPage: 'gradecounter',
+            ...sidenavData
+        });
+
+    } catch (err) {
+        console.error("Error in getGradeCounterPage:", err);
+        res.status(500).render('404', {
+            errorMessage: 'Error loading grade counter page: ' + err.message,
+            currentPage: 'teacher'
+        });
+    }
+};

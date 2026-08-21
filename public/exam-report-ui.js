@@ -40,7 +40,7 @@
                 html += '<tr>';
                 Array.from(row.cells).forEach(function (cell) {
                     var tag = cell.tagName.toLowerCase() === 'th' ? 'th' : 'td';
-                    html += '<' + tag + ' style="border:1px solid #000;padding:5px;text-align:center;">' +
+                    html += '<' + tag + ' style="border:1px solid #000;padding:5px;text-align:center;mso-number-format:\'@\';">' +
                         escapeHtml(cell.textContent.trim()) + '</' + tag + '>';
                 });
                 html += '</tr>';

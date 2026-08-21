@@ -353,6 +353,75 @@
         border: 1px solid #fee2e2;
     }
 
+    .comparison-toolbar {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(150px, 1fr)) auto;
+      gap: 10px;
+      align-items: end;
+      margin-bottom: 1.25rem;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .comparison-toolbar label {
+      display: block;
+      margin-bottom: 4px;
+      color: #475569;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .comparison-toolbar select,
+    .comparison-toolbar button {
+      width: 100%;
+      min-height: 36px;
+      padding: 7px 9px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: #fff;
+      color: var(--text);
+      font-size: 12px;
+    }
+
+    .comparison-toolbar button {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #fff;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .comparison-table {
+      min-width: 760px;
+      font-size: 10px;
+    }
+
+    .comparison-table th,
+    .comparison-table td {
+      padding: 6px 7px;
+      white-space: nowrap;
+    }
+
+    .comparison-table .subject-cell {
+      text-align: left;
+      font-weight: 700;
+      background: #f8fafc;
+    }
+
+    .comparison-table .terminal-heading {
+      background: #dbeafe;
+      color: #1e3a8a;
+    }
+
+    .legacy-comparison { display: none; }
+
+    @media (max-width: 800px) {
+      .comparison-toolbar { grid-template-columns: 1fr 1fr; }
+    }
+
     @media print {
       body { background: none; padding: 0; display: block; }
       .dashboard-container { display: block; }
@@ -377,7 +446,6 @@
     
     @page { size: A4 landscape; margin: 0; }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
@@ -466,6 +534,25 @@
         window.location.href=(`/analytics?studentClass=${studentClass}&section=${section}&subject=${selectedSubject}&terminal=${terminal}&academicYear=${academicYear}`)
       
     }
+
+    function applyComparisonFilters() {
+      const params = new URLSearchParams(window.location.search);
+      const classValue = document.getElementById('comparisonClass').value;
+      const sectionModeValue = document.getElementById('comparisonSectionMode').value;
+      const sectionValue = document.getElementById('comparisonSection').value;
+      const subjectValue = document.getElementById('comparisonSubject').value;
+
+      if (classValue) params.set('studentClass', classValue); else params.delete('studentClass');
+      if (sectionModeValue === 'with-section') {
+        params.set('sectionMode', 'with-section');
+        if (sectionValue) params.set('section', sectionValue); else params.delete('section');
+      } else {
+        params.set('sectionMode', 'all');
+        params.delete('section');
+      }
+      if (subjectValue) params.set('subject', subjectValue); else params.delete('subject');
+      window.location.href = window.location.pathname + '?' + params.toString();
+    }
   </script>
 
   <%
@@ -493,8 +580,82 @@
       return acc;
     }, {});
   %>
-  
+
+  <div class="comparison-toolbar no-print">
+    <div>
+      <label for="comparisonClass">Class</label>
+      <select id="comparisonClass">
+        <option value="">All Classes</option>
+        <% [...new Map((comparisonData || []).map(item => [item.classKey, item.className])).entries()].forEach(([classKey, className]) => { %>
+          <option value="<%= classKey %>" <%= String(selectedClass || 'all').toLowerCase() === String(classKey).toLowerCase() ? 'selected' : '' %>><%= className %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div>
+      <label for="comparisonSectionMode">Sections</label>
+      <select id="comparisonSectionMode">
+        <option value="all" <%= sectionMode === 'all' ? 'selected' : '' %>>Without Section (Combined)</option>
+        <option value="with-section" <%= sectionMode === 'with-section' ? 'selected' : '' %>>With Sections</option>
+      </select>
+    </div>
+    <div>
+      <label for="comparisonSection">Section</label>
+      <select id="comparisonSection">
+        <option value="">All Sections</option>
+        <% (comparisonSections || []).forEach(sectionName => { %>
+          <option value="<%= sectionName %>" <%= sectionMode === 'with-section' && selectedSection === sectionName ? 'selected' : '' %>><%= sectionName %></option>
+        <% }) %>
+      </select>
+    </div>
+    <div>
+      <label for="comparisonSubject">Subject</label>
+      <select id="comparisonSubject">
+        <option value="">All Subjects</option>
+        <% [...new Set((comparisonData || []).flatMap(item => item.subjects || []))].sort().forEach(subjectName => { %>
+          <option value="<%= subjectName %>" <%= selectedSubject === subjectName ? 'selected' : '' %>><%= subjectName %></option>
+        <% }) %>
+      </select>
+    </div>
+    <button type="button" onclick="applyComparisonFilters()">Generate</button>
+  </div>
+
   <div class="page">
+    <div class="report-header">
+      <div>
+        <h1 class="report-title">Class Comparison</h1>
+        <p class="report-subtitle">Subjects grouped in one table per class and section</p>
+      </div>
+    </div>
+    <% (comparisonData || []).forEach(group => { %>
+      <div class="section-header">Class <%= group.className %> | <%= group.section %> | Academic Year: <%= group.academicYear %></div>
+      <div class="table-container">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th rowspan="2">Subject</th>
+              <% comparisonTerminals.forEach(terminalName => { %><th class="terminal-heading" colspan="4"><%= terminalName %></th><% }) %>
+            </tr>
+            <tr>
+              <% comparisonTerminals.forEach(() => { %><th>Total</th><th>Pass%</th><th>Fail%</th><th>Avg</th><% }) %>
+            </tr>
+          </thead>
+          <tbody>
+            <% group.subjects.filter(subjectName => !selectedSubject || selectedSubject === 'all' || selectedSubject === subjectName).forEach(subjectName => { %>
+              <tr>
+                <td class="subject-cell"><%= subjectName %></td>
+                <% comparisonTerminals.forEach(terminalName => { const row = group.terminals[terminalName]?.[subjectName]; %>
+                  <% if (row) { %><td><%= row.totalStudents %></td><td><%= fixed2(row.passPercent) %>%</td><td><%= fixed2(row.failPercent) %>%</td><td><%= fixed2(row.avg) %></td>
+                  <% } else { %><td colspan="4">-</td><% } %>
+                <% }) %>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% }) %>
+  </div>
+
+  <div class="page legacy-comparison">
     <div class="report-header">
       <div>
           <h1 class="report-title">Academic Progress Report</h1>
@@ -520,386 +681,7 @@
   <!-- Group by class -->
   <% const byClass = groupBy(data, i => i._id.studentClass); %>
 
-  <div class="table-container table-container--wide">
-  <table border="1" cellspacing="0" cellpadding="5" class="wide-subject-table">
-    <thead>
-        <tr>
-        <th>Class</th>
-        <% subjectsArr.forEach(sub => { %>
-            <th colspan="4"><%= sub %></th>
-        <% }) %>
-        </tr>
-
-        <tr>
-        <th></th>
-        <% subjectsArr.forEach(sub => { %>
-            <th>Total</th>
-            <th>Pass</th>
-            <th>Fail</th>
-            <th>Avg</th>
-        <% }) %>
-        </tr>
-    </thead>
-    <tbody>
-    <% for (const classNo in byClass) { %>
-      <tr>
-        <td style="font-weight:bold;"><%= classNo %></td>
-
-        <% 
-          // Group subjects inside this class
-          const subGroup = groupBy(byClass[classNo], i => i._id.subject);
-        %>
-
-
-        <% subjectsArr.forEach(sub => { 
-             const row = subGroup[sub]?.[0]; 
-        %>
-
-            <% if (row) { %>
-                <td><%= row.totalStudents %></td>
-                <td style="color:var(--success)"><%= row.pass %></td>
-                <td style="color:var(--danger)"><%= row.fail %></td>
-                <td><%= fixed2(row.avgMarks)  %></td>
-            <% } else { %>
-                <td>-</td><td>-</td><td>-</td><td>-</td>
-            <% } %>
-
-        <% }) %>
-
-      </tr>
-    <% } %>
-    </tbody>
-  </table>
-  </div>
-
-<% } %>
-
-  </div>
-
-
-  <div class="page">
-  <div class="report-header">
-    <div>
-        <h1 class="report-title">Section Wise Analysis</h1>
-        <p class="report-subtitle">Detailed Subject Performance</p>
-    </div>
-  </div>
-    
-    <div class="insight-box">
-        <h4><span style="font-size:1.2em">💡</span> Key Insights</h4>
-        <div class="insight-text">
-            १) तल दिएको data ले कुनै पनि section मा कुन विषयको अवस्था कस्तो छ भन्ने देखाउँछ। <br>
-            २) एउटा Section मा सबै भन्दा धेरै विद्यार्थी कुन विषयमा फेल भए र कति जना फेल भए भन्ने देखाउँछ।
-        </div>
-    </div>
-    
-    <% Object.entries(finalStructureSectionAnalysis).forEach(([academicYear, yearData]) =>{
-      Object.entries(yearData).forEach(([terminal, terminalData])=>{
-    %>
-
-        <% Object.entries(terminalData).forEach(([classSection, records])=>{%>
-          <div class="section-header">
-             Academic Year: <%= academicYear %> | Terminal: <%= terminal %> | Class-Section: <%= classSection %>
-          </div>
-          <div class="analysis-meta">
-            <span class="meta-chip meta-chip--analysis">Analysis Type: Section Wise</span>
-            <span class="meta-chip">Academic Year: <%= academicYear %></span>
-            <span class="meta-chip">Terminal: <%= terminal %></span>
-            <span class="meta-chip">Class: <%= classSection %></span>
-          </div>
-          
-          <div class="table-container">
-          <table cellspacing="0" border="1">
-            <thead>
-              <tr>
-                <th>Subject</th>
-                <th>Total Students</th>
-                <th>Pass</th>
-                <th>Fail</th>
-                <th>Pass %</th>
-                <th>Fail %</th>
-                <th>Average Marks</th>
-                <th>Highest Marks</th>
-                <th>Lowest Marks</th>
-                <th>Median Marks</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% records.forEach((record) => { %>
-                <tr>
-                  <td style="font-weight:600; text-align:left;"><%= record._id.subject %></td>
-                  <td><%= record.totalStudents %></td>
-                  <td style="color:var(--success)"><%= record.pass %></td>
-                  <td style="color:var(--danger)"><%= record.fail %></td>
-                  <td><%= pct(record.pass, record.totalStudents) %></td>
-                  <td><%= pct(record.fail, record.totalStudents) %></td>
-                  <td><%= fixed2(record.avgMarks) %></td>
-                  <td><%= record.highestMarks %></td>
-                  <td><%= record.lowestMarks %></td>
-                  <td><%= record.medianMarks %></td>
-                </tr>
-               
-              <% }) %>
-            </tbody>
-          </table>
-          </div>
-
-          <% 
-             const maxFailRec = records.reduce((max, rec) => rec.fail > max.fail ? rec : max, records[0]);
-             const maxPassRec = records.reduce((acc,rec)=> acc.pass>rec.pass?acc:rec,records[0]);
-             const highestAvgRec = records.reduce((max, rec) => rec.avgMarks > max.avgMarks ? rec : max, records[0]);
-          %>
-
-          <div class="summary-grid">
-              <div class="stat-card" style="border-left: 4px solid var(--danger);">
-                  <div class="stat-label">Max Fail Subject</div>
-                  <div class="stat-value"><%= maxFailRec._id.subject %></div>
-                  <div class="stat-detail">Fail Count: <%= maxFailRec.fail %></div>
-              </div>
-              
-              <div class="stat-card" style="border-left: 4px solid var(--success);">
-                  <div class="stat-label">Max Pass Subject</div>
-                  <div class="stat-value"><%= maxPassRec._id.subject %></div>
-                  <div class="stat-detail">Pass Count: <%= maxPassRec.pass %></div>
-              </div>
-              
-              <div class="stat-card" style="border-left: 4px solid var(--primary);">
-                  <div class="stat-label">Highest Average</div>
-                  <div class="stat-value"><%= highestAvgRec._id.subject %></div>
-                  <div class="stat-detail">Avg Marks: <%= fixed2(highestAvgRec.avgMarks) %></div>
-              </div>
-          </div>
-
-          <% const key = `${classSection}`; %>
-          <% const failData = failpersectionlookup[key]; %>
-          
-          <% if(failData && failData.length > 0) { %>
-          <div class="fail-list">
-             <strong>Fail Count Distribution:</strong>
-             <div style="display:flex; flex-wrap:wrap; gap:15px; margin-top:5px;">
-                 <% failData.forEach((data)=>{ %>
-                  <span>• <%=data._id.failCount %>-subject Fail: <strong><%= data.totalFailCount %></strong> Student(s)</span>
-                 <%})%>
-             </div>
-          </div>
-          <% } %>
-          
-          <hr style="margin: 2rem 0; border:0; border-top:1px dashed #ccc;">
-        <%})%>
-    <%})%>
-    <%})%>
-  </div> <br>
-  <div class="page">
-  <div class="report-header">
-    <div>
-        <h1 class="report-title">Subject Specific Analysis</h1>
-        <p class="report-subtitle">Performance Across Classes</p>
-    </div>
-  </div>
   
-    <div class="insight-box">
-        <h4><span style="font-size:1.2em">💡</span> Key Insights</h4>
-        <div class="insight-text">
-            1) तल दिएको data ले कुन विषय कुन कक्षामा राम्रो प्रदशन गरिरहेको छ र कुन कक्षा मा खराब प्रदर्शन गरिरहेको छ भन्ने देखाउँछ।<br>
-            २) विद्यार्थीहरुको marks कुन range मा बढी परेको छ भन्ने देखाउँछ। 
-        </div>
-    </div>
-
-    <% Object.entries(subjectAnalysisFinalStructure).forEach(([academicYear, yearData]) =>{
-      Object.entries(yearData).forEach(([terminal, terminalData])=>{
-    %>
-
-        <% Object.entries(terminalData).forEach(([subject, records])=>{%>
-          <div class="section-header">
-             Academic Year: <%= academicYear %> | Terminal: <%= terminal %> | Subject: <%= subject %>
-          </div>
-          <div class="analysis-meta">
-            <span class="meta-chip meta-chip--analysis">Analysis Type: Subject Wise</span>
-            <span class="meta-chip">Academic Year: <%= academicYear %></span>
-            <span class="meta-chip">Terminal: <%= terminal %></span>
-            <span class="meta-chip">Subject: <%= subject %></span>
-          </div>
-          
-          <div class="table-container">
-          <table cellspacing="0" border="1">
-            <thead>
-              <tr>
-                <th>Class-Section</th>
-                <th>Total</th>
-                <th>Pass</th>
-                <th>Fail</th>
-                <th>Pass %</th>
-                <th>Fail %</th>
-                <th>Avg Marks</th>
-                <th>Highest</th>
-                <th>Lowest</th>
-                <th>Median</th>
-                <th style="width:25%">Mark Range Distribution</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% records.forEach((record) => { %>
-                <tr>
-                  <td style="font-weight:600"><%= record._id.studentClass %>-<%= record._id.section %></td>
-                  <td><%= record.totalStudents %></td>
-                  <td style="color:var(--success)"><%= record.pass %></td>
-                  <td style="color:var(--danger)"><%= record.fail %></td>
-                  <td><%= pct(record.pass, record.totalStudents) %></td>
-                  <td><%= pct(record.fail, record.totalStudents) %></td>
-                  <td><%= fixed2(record.avgTheory) %></td>
-                  <td><%= record.highestMarkstheory %></td>
-                  <td><%= record.lowestMarkstheory %></td>
-                  <td><%= record.medianMarkstheory %></td>
-                  <td style="text-align:left; font-size:10px; line-height:1.4;">
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:2px;">
-                       <span>0-20%: <b><%=record.range1theory %></b></span>
-                       <span>21-40%: <b><%=record.range2theory %></b></span>
-                       <span>41-60%: <b><%= record.range3theory %></b></span>
-                       <span>61-80%: <b><%=record.range4theory %></b></span>
-                       <span>81-100%: <b><%=record.range5theory %></b></span>
-                    </div>
-                   </td>
-                </tr>
-               
-              <% }) %>
-            </tbody>
-          </table>
-          </div>
-
-          <% 
-             const maxFailRec = records.reduce((max, rec) => rec.fail > max.fail ? rec : max, records[0]);
-             const maxPassRec = records.reduce((acc,rec)=> acc.pass>rec.pass?acc:rec,records[0]);
-             const highestAvgRec = records.reduce((max, rec) => rec.avgTheory > max.avgTheory ? rec : max, records[0]);
-          %>
-
-          <div class="summary-grid">
-              <div class="stat-card" style="border-left: 4px solid var(--danger);">
-                  <div class="stat-label">Max Fail Class</div>
-                  <div class="stat-value"><%= maxFailRec._id.studentClass %>-<%= maxFailRec._id.section %></div>
-                  <div class="stat-detail">Fail Count: <%= maxFailRec.fail %></div>
-              </div>
-              
-              <div class="stat-card" style="border-left: 4px solid var(--success);">
-                  <div class="stat-label">Max Pass Class</div>
-                  <div class="stat-value"><%= maxPassRec._id.studentClass %>-<%= maxPassRec._id.section %></div>
-                  <div class="stat-detail">Pass Count: <%= maxPassRec.pass %></div>
-              </div>
-              
-              <div class="stat-card" style="border-left: 4px solid var(--primary);">
-                  <div class="stat-label">Highest Average Class</div>
-                  <div class="stat-value"><%= highestAvgRec._id.studentClass %>-<%= highestAvgRec._id.section %></div>
-                  <div class="stat-detail">Avg Marks: <%= fixed2(highestAvgRec.avgTheory) %></div>
-              </div>
-          </div>
-          
-          <hr style="margin: 2rem 0; border:0; border-top:1px dashed #ccc;">
-
-          <%})%>
-        <%})%>
-    <%})%>
-  </div>
-
-  <div class="page">
-  <div class="report-header">
-    <div>
-        <h1 class="report-title">Overall School Analysis</h1>
-        <p class="report-subtitle">Aggregated Performance Metrics</p>
-    </div>
-  </div>
-    
-    <% Object.entries(subjectAnalysisFinalStructure).forEach(([academicYear, yearData]) =>{
-      Object.entries(yearData).forEach(([terminal, terminalData])=>{
-    %>
-
-        <% Object.entries(terminalData).forEach(([subject, records])=>{%>
-          <div class="section-header">
-             Academic Year: <%= academicYear %> | Terminal: <%= terminal %> | Subject: <%= subject %>
-          </div>
-          <div class="analysis-meta">
-            <span class="meta-chip meta-chip--analysis">Analysis Type: Overall School</span>
-            <span class="meta-chip">Academic Year: <%= academicYear %></span>
-            <span class="meta-chip">Terminal: <%= terminal %></span>
-            <span class="meta-chip">Subject: <%= subject %></span>
-          </div>
-          
-          <div class="table-container">
-          <table cellspacing="0" border="1">
-            <thead>
-              <tr>
-                <th>Class-Section</th>
-                <th>Total</th>
-                <th>Pass</th>
-                <th>Fail</th>
-                <th>Pass %</th>
-                <th>Fail %</th>
-                <th>Avg Marks</th>
-                <th>Highest</th>
-                <th>Lowest</th>
-                <th>Median</th>
-                <th style="width:25%">Mark Range Distribution</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% records.forEach((record) => { %>
-                <tr>
-                  <td style="font-weight:600"><%= record._id.studentClass %>-<%= record._id.section %></td>
-                  <td><%= record.totalStudents %></td>
-                  <td style="color:var(--success)"><%= record.pass %></td>
-                  <td style="color:var(--danger)"><%= record.fail %></td>
-                  <td><%= pct(record.pass, record.totalStudents) %></td>
-                  <td><%= pct(record.fail, record.totalStudents) %></td>
-                  <td><%= fixed2(record.avgTheory) %></td>
-                  <td><%= record.highestMarkstheory %></td>
-                  <td><%= record.lowestMarkstheory %></td>
-                  <td><%= record.medianMarkstheory %></td>
-                  <td style="text-align:left; font-size:10px; line-height:1.4;">
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:2px;">
-                       <span>0-20%: <b><%=record.range1theory %></b></span>
-                       <span>21-40%: <b><%=record.range2theory %></b></span>
-                       <span>41-60%: <b><%= record.range3theory %></b></span>
-                       <span>61-80%: <b><%=record.range4theory %></b></span>
-                       <span>81-100%: <b><%=record.range5theory %></b></span>
-                    </div>
-                   </td>
-                </tr>
-               
-              <% }) %>
-            </tbody>
-          </table>
-          </div>
-
-          <% 
-             const maxFailRec = records.reduce((max, rec) => rec.fail > max.fail ? rec : max, records[0]);
-             const maxPassRec = records.reduce((acc,rec)=> acc.pass>rec.pass?acc:rec,records[0]);
-             const highestAvgRec = records.reduce((max, rec) => rec.avgTheory > max.avgTheory ? rec : max, records[0]);
-          %>
-
-          <div class="summary-grid">
-              <div class="stat-card" style="border-left: 4px solid var(--danger);">
-                  <div class="stat-label">Max Fail Class</div>
-                  <div class="stat-value"><%= maxFailRec._id.studentClass %>-<%= maxFailRec._id.section %></div>
-                  <div class="stat-detail">Fail Count: <%= maxFailRec.fail %></div>
-              </div>
-              
-              <div class="stat-card" style="border-left: 4px solid var(--success);">
-                  <div class="stat-label">Max Pass Class</div>
-                  <div class="stat-value"><%= maxPassRec._id.studentClass %>-<%= maxPassRec._id.section %></div>
-                  <div class="stat-detail">Pass Count: <%= maxPassRec.pass %></div>
-              </div>
-              
-              <div class="stat-card" style="border-left: 4px solid var(--primary);">
-                  <div class="stat-label">Highest Average Class</div>
-                  <div class="stat-value"><%= highestAvgRec._id.studentClass %>-<%= highestAvgRec._id.section %></div>
-                  <div class="stat-detail">Avg Marks: <%= fixed2(highestAvgRec.avgTheory) %></div>
-              </div>
-          </div>
-          
-          <hr style="margin: 2rem 0; border:0; border-top:1px dashed #ccc;">
-
-          <%})%>
-        <%})%>
-    <%})%>
-  </div> <br>
   <div class="page">
   <div class="">
     <div>
@@ -963,50 +745,6 @@
               <%})%>
             </tr>
          </table>
-         <div>
-  <canvas id="chart_<%= academicYear %>_<%= subject %>_<%= classSection.replace(/\s/g,'') %>"></canvas>
-</div>
-<script>
-  {
-    const labels = <%- JSON.stringify(Object.keys(records)) %>;
-    const pass = <%- JSON.stringify(Object.values(records).map(r => (r[0].passtheory / r[0].totalStudents * 100))) %>;
-    const fail = <%- JSON.stringify(Object.values(records).map(r => (r[0].failtheory / r[0].totalStudents * 100))) %>;
-    const avg = <%- JSON.stringify(Object.values(records).map(r => r[0].avgMarks)) %>;
-
-    const ctx = document.getElementById('chart_<%= academicYear %>_<%= subject %>_<%= classSection.replace(/\s/g,'') %>').getContext('2d');
-
-    new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Pass%',
-          data: pass,
-          borderWidth: 1
-        },
-        {
-          label: 'Fail%',
-          data: fail,
-          borderWidth: 1
-        },
-        {
-          label: 'Avg Marks',
-          data: avg,
-          borderWidth: 1
-        }
-      ]
-      },
-      options: {
-        scales: {
-          y: {
-            beginAtZero: true
-          }
-        }
-      }
-    });
-  }
-</script>
-          
           <hr style="margin: 2rem 0; border:0; border-top:1px dashed #ccc;">
         <%})%>
     <%})%>
@@ -1014,6 +752,7 @@
 
 
   </div>
+  <% } %>
   <div class="page">
   <div class="report-header">
     <div>
@@ -1102,58 +841,6 @@
          </table>
          </div>
          
-         <div>
-            <canvas id="chart_year_<%= subject.replace(/[^a-zA-Z0-9]/g,'') %>_<%= classSection.replace(/[^a-zA-Z0-9]/g,'') %>"></canvas>
-         </div>
-         
-         <script>
-          {
-            const labels = <%- JSON.stringify(years) %>;
-            const pass = <%- JSON.stringify(years.map(y => yearRecords[y].passPercent)) %>;
-            const fail = <%- JSON.stringify(years.map(y => yearRecords[y].failPercent)) %>;
-            const avg = <%- JSON.stringify(years.map(y => yearRecords[y].avg)) %>;
-
-            const ctx = document.getElementById('chart_year_<%= subject.replace(/[^a-zA-Z0-9]/g,'') %>_<%= classSection.replace(/[^a-zA-Z0-9]/g,'') %>').getContext('2d');
-
-            new Chart(ctx, {
-              type: 'bar',
-              data: {
-                labels: labels,
-                datasets: [{
-                  label: 'Pass%',
-                  data: pass,
-                  borderColor: '#10b981',
-                  backgroundColor: '#10b981',
-                  borderWidth: 2
-                },
-                {
-                  label: 'Fail%',
-                  data: fail,
-                  borderColor: '#ef4444',
-                  backgroundColor: '#ef4444',
-                  borderWidth: 2
-                },
-                {
-                  label: 'Avg Marks',
-                  data: avg,
-                  borderColor: '#2563eb',
-                  backgroundColor: '#2563eb',
-                  borderWidth: 2
-                }
-              ]
-              },
-              options: {
-                responsive: true,
-                scales: {
-                  y: {
-                    beginAtZero: true
-                  }
-                }
-              }
-            });
-          }
-         </script>
-          
           <hr style="margin: 2rem 0; border:0; border-top:1px dashed #ccc;">
       <% }) %>
    <% }) %>

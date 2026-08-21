@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grade Counter - Selection</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/nav.css">
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --bg-body: #f1f5f9;
+            --surface: #ffffff;
+            --text-main: #0f172a;
+            --border: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-body);
+            color: var(--text-main);
+            padding: 20px;
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        .container { max-width: 800px; margin: 0 auto; }
+
+        .header {
+            background: var(--surface);
+            padding: 1.5rem 2rem;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .header h1 { 
+            font-size: 1.8rem; 
+            font-weight: 700; 
+            color: var(--primary);
+        }
+
+        .header p {
+            color: #64748b;
+            margin-top: 0.25rem;
+        }
+
+        .selection-card {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            border: 1px solid var(--border);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            background: white;
+            cursor: pointer;
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 0.8rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .info-text {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-top: 0.25rem;
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .selection-card { padding: 1.25rem; }
+            .header h1 { font-size: 1.4rem; }
+        }
+    </style>
+</head>
+<body>
+    <%- include('partials/sidenav', { 
+        subjects: subjects, 
+        studentClassdata: studentClassdata,
+        terminals: terminals 
+    }) %>
+
+    <div class="container">
+        <div class="header">
+            <h1>🏷️ Grade Counter</h1>
+            <p>Select class, section, and terminal to view grade distribution</p>
+        </div>
+
+        <div class="selection-card">
+            <form action="/gradecounter" method="GET">
+                <div class="form-group">
+                    <label class="form-label">Select Class & Section</label>
+                    <select name="classSection" class="form-select" required>
+                        <option value="" selected disabled>Choose class and section</option>
+                        <% 
+                            const sortedClassData = [...studentClassdata].sort((a, b) => {
+                                const classA = parseInt(a.studentClass);
+                                const classB = parseInt(b.studentClass);
+                                if (classA !== classB) return classA - classB;
+                                return a.section.localeCompare(b.section);
+                            });
+                            const classGroups = {};
+                            sortedClassData.forEach(item => {
+                                const classNum = item.studentClass;
+                                if (!classGroups[classNum]) classGroups[classNum] = [];
+                                classGroups[classNum].push(item);
+                            });
+                            const sortedClassNumbers = Object.keys(classGroups).sort((a, b) => parseInt(a) - parseInt(b));
+                            sortedClassNumbers.forEach(classNum => {
+                                const sections = classGroups[classNum];
+                        %>
+                            <optgroup label="Class <%= classNum %>">
+                                <% sections.forEach(studentclass => { %>
+                                    <option value="<%=studentclass.studentClass.trim()%>-<%=studentclass.section.trim()%>">
+                                        Class <%= studentclass.studentClass %> - <%= studentclass.section %>
+                                    </option>
+                                <% }); %>
+                            </optgroup>
+                        <% }); %>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Select Terminal</label>
+                    <select name="terminal" class="form-select" required>
+                        <option value="" selected disabled>Choose terminal</option>
+                        <% if (terminals && terminals.length > 0) { %>
+                            <% terminals.forEach(term => { %>
+                                <option value="<%= term %>"><%= term %></option>
+                            <% }); %>
+                        <% } %>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Select Academic Year</label>
+                    <select name="academicYear" class="form-select" required>
+                        <option value="" selected disabled>Choose academic year</option>
+                        <% if (years && years.length > 0) { %>
+                            <% years.forEach(year => { %>
+                                <option value="<%= year %>"><%= year %></option>
+                            <% }); %>
+                        <% } %>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Calculation Mode</label>
+                    <select name="calcMode" class="form-select">
+                        <option value="combined">Theory + Practical (Combined)</option>
+                        <option value="theory">Theory Only</option>
+                        <option value="practical">Practical Only</option>
+                    </select>
+                    <div class="info-text">Choose how GP should be calculated for grade counting</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Filter Subject (Optional)</label>
+                    <select name="filterSubject" class="form-select">
+                        <option value="">All Subjects</option>
+                        <% if (subjectList && subjectList.length > 0) { %>
+                            <% subjectList.forEach(sub => { %>
+                                <option value="<%= sub %>"><%= sub %></option>
+                            <% }); %>
+                        <% } %>
+                    </select>
+                    <div class="info-text">Select a specific subject to analyze, or leave empty for all</div>
+                </div>
+
+                <button type="submit" class="btn-primary">📊 Generate Grade Analysis</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
