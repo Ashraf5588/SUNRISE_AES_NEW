@@ -109,6 +109,23 @@
       font-size: 0.93rem;
     }
 
+    .search-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .search-row label {
+      white-space: nowrap;
+    }
+
+    .search-row input {
+      max-width: 360px;
+      padding: 10px 12px;
+      border-radius: 10px;
+    }
+
     .card-body {
       padding: 22px;
     }
@@ -277,6 +294,19 @@
       gap: 16px;
     }
 
+    .event-group {
+      display: grid;
+      gap: 12px;
+    }
+
+    .month-heading {
+      margin: 8px 0 0;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--primary);
+      color: var(--primary-dark);
+      font-size: 1rem;
+    }
+
     .event-card {
       background: linear-gradient(180deg, #fff 0%, #f9fbff 100%);
       border: 1px solid var(--border);
@@ -358,6 +388,27 @@
       gap: 8px;
       align-items: center;
       flex-wrap: wrap;
+    }
+
+    .completed-date-control {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      flex: 1 1 230px;
+    }
+
+    .completed-date-control.is-visible {
+      display: flex;
+    }
+
+    .completed-date-control input {
+      width: 150px;
+      padding: 9px 10px;
+      border-radius: 10px;
+    }
+
+    .is-hidden {
+      display: none !important;
     }
 
     .status-row select,
@@ -460,6 +511,18 @@
       .event-top {
         flex-direction: column;
       }
+
+      .search-row,
+      .completed-date-control {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .search-row input,
+      .completed-date-control input {
+        max-width: none;
+        width: 100%;
+      }
     }
   </style>
 </head>
@@ -535,6 +598,23 @@
     const selectedNepaliDate = currentEditEvent && currentEditEvent.nepaliDate
       ? String(currentEditEvent.nepaliDate || '').trim()
       : '';
+    const nepaliMonths = ['Baisakh', 'Jestha', 'Ashadh', 'Shrawan', 'Bhadra', 'Ashwin', 'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'];
+    const getNepaliDateParts = (value) => {
+      const parts = String(value || '').trim().split(/[-/]/).map(Number);
+      return parts.length === 3 && parts.every((part) => Number.isFinite(part))
+        ? { year: parts[0], month: parts[1], day: parts[2] }
+        : { year: 0, month: 99, day: 0 };
+    };
+    const sortedEvents = [...(events || [])].sort((a, b) => {
+      const first = getNepaliDateParts(a.nepaliDate);
+      const second = getNepaliDateParts(b.nepaliDate);
+      return first.month - second.month || first.year - second.year || first.day - second.day || String(a.title || '').localeCompare(String(b.title || ''));
+    });
+    const eventGroups = nepaliMonths.map((monthName, index) => ({
+      monthName,
+      events: sortedEvents.filter((event) => getNepaliDateParts(event.nepaliDate).month === index + 1)
+    })).filter((group) => group.events.length);
+    const undatedEvents = sortedEvents.filter((event) => getNepaliDateParts(event.nepaliDate).month === 99);
   %>
 
   <div class="page-shell">
@@ -631,15 +711,22 @@
         <div class="card-header">
           <h2>Saved Events</h2>
           <p>Each card shows the stored event details with quick edit and delete actions.</p>
+          <div class="search-row">
+            <label for="eventSearch">Search event name</label>
+            <input type="search" id="eventSearch" placeholder="Search by event title" autocomplete="off">
+          </div>
           <div class="export-actions">
             <button type="button" class="btn btn-outline btn-small" onclick="exportEvents()">Export Events</button>
           </div>
         </div>
         <div class="card-body">
-          <% if (events && events.length) { %>
+          <% if (sortedEvents.length) { %>
             <div class="event-list">
-              <% events.forEach((event) => { %>
-                <div class="event-card">
+              <% [...eventGroups, ...(undatedEvents.length ? [{ monthName: 'No Nepali date', events: undatedEvents }] : [])].forEach((group) => { %>
+                <div class="event-group" data-event-group>
+                  <h3 class="month-heading"><%= group.monthName %></h3>
+                  <% group.events.forEach((event) => { %>
+                <div class="event-card" data-event-title="<%= String(event.title || '').toLowerCase() %>">
                   <div class="event-top">
                     <div>
                       <h3 class="event-title"><%= event.title %></h3>
@@ -688,7 +775,11 @@
                           <option value="<%= status %>" <%= (event.status || 'pending') === status ? 'selected' : '' %>><%= status %></option>
                         <% }); %>
                       </select>
-                      <span class="helper">Completed date (BS): <%= event.completedNepaliDate || '-' %></span>
+                      <div class="completed-date-control <%= event.status === 'completed' ? 'is-visible' : '' %>" data-completed-date-control>
+                        <label for="completed-date-<%= event._id %>">Completed date (BS)</label>
+                        <input type="text" id="completed-date-<%= event._id %>" class="completed-nepali-date" value="<%= event.completedNepaliDate || event.nepaliDate || '' %>" data-schedule-date="<%= event.nepaliDate || '' %>" placeholder="YYYY-MM-DD">
+                      </div>
+                      <button type="button" class="btn btn-primary btn-small status-save" data-event-id="<%= event._id %>">Save status</button>
                     </div>
                     <div>
                       <button type="button" class="btn btn-outline btn-small" onclick="toggleWinners('<%= event._id %>')">Add Winner List</button>
@@ -710,8 +801,11 @@
                     <a href="/delete-event/<%= event._id %>" class="btn btn-danger" onclick="return confirm('Delete this event?');">Delete</a>
                   </div>
                 </div>
+                  <% }); %>
+                </div>
               <% }); %>
             </div>
+            <div class="empty-state is-hidden" id="searchEmptyState">No matching events found.</div>
           <% } else { %>
             <div class="empty-state">
               No events have been created yet.
@@ -869,12 +963,25 @@
     })();
 
     document.querySelectorAll('.event-status').forEach((select) => {
-      select.addEventListener('change', async () => {
+      const tools = select.closest('.event-tools');
+      const dateControl = tools?.querySelector('[data-completed-date-control]');
+      const dateInput = tools?.querySelector('.completed-nepali-date');
+      const saveButton = tools?.querySelector('.status-save');
+      const updateDateVisibility = () => {
+        if (!dateControl) return;
+        dateControl.classList.toggle('is-visible', select.value === 'completed');
+        if (select.value === 'completed' && dateInput && !dateInput.value) {
+          dateInput.value = dateInput.dataset.scheduleDate || '';
+        }
+      };
+      updateDateVisibility();
+      select.addEventListener('change', updateDateVisibility);
+      saveButton?.addEventListener('click', async () => {
         try {
           const response = await fetch(`/createevent/${select.dataset.eventId}/status`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: select.value })
+            body: JSON.stringify({ status: select.value, completedNepaliDate: dateInput?.value.trim() || '' })
           });
           if (!response.ok) throw new Error('Status update failed');
           window.location.reload();
@@ -883,6 +990,28 @@
         }
       });
     });
+
+    (() => {
+      const search = document.getElementById('eventSearch');
+      const emptyState = document.getElementById('searchEmptyState');
+      if (!search) return;
+      const applySearch = () => {
+        const query = search.value.trim().toLowerCase();
+        let visibleCount = 0;
+        document.querySelectorAll('[data-event-group]').forEach((group) => {
+          let groupCount = 0;
+          group.querySelectorAll('[data-event-title]').forEach((card) => {
+            const isMatch = !query || card.dataset.eventTitle.includes(query);
+            card.classList.toggle('is-hidden', !isMatch);
+            if (isMatch) groupCount += 1;
+          });
+          group.classList.toggle('is-hidden', groupCount === 0);
+          visibleCount += groupCount;
+        });
+        emptyState?.classList.toggle('is-hidden', visibleCount !== 0);
+      };
+      search.addEventListener('input', applySearch);
+    })();
 
     function toggleWinners(eventId) {
       document.getElementById(`winners-${eventId}`)?.classList.toggle('is-hidden');

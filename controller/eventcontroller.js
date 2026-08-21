@@ -115,7 +115,7 @@ exports.createEventForm = async (req, res) => {
          if (scheduled <= new Date()) {
            event.status = 'completed';
            event.completedAt = event.completedAt || new Date();
-           event.completedNepaliDate = event.completedNepaliDate || toNepaliDate(event.completedAt);
+           event.completedNepaliDate = event.completedNepaliDate || event.nepaliDate || toNepaliDate(event.completedAt);
            await event.save();
          }
        }
@@ -225,6 +225,7 @@ exports.updateEventStatus = async (req, res) => {
   try {
     const allowedStatuses = ['pending', 'completed', 'postponed', 'cancelled'];
     const status = String(req.body.status || '').trim().toLowerCase();
+    const completedNepaliDate = String(req.body.completedNepaliDate || '').trim();
     if (!allowedStatuses.includes(status)) {
       return res.status(400).json({ success: false, message: 'Invalid event status.' });
     }
@@ -237,7 +238,9 @@ exports.updateEventStatus = async (req, res) => {
 
     event.status = status;
     event.completedAt = status === 'completed' ? new Date() : null;
-    event.completedNepaliDate = status === 'completed' ? toNepaliDate(event.completedAt) : '';
+    event.completedNepaliDate = status === 'completed'
+      ? (completedNepaliDate || event.nepaliDate || '')
+      : '';
     await event.save();
     return res.json({ success: true, status: event.status, completedAt: event.completedAt });
   } catch (error) {
