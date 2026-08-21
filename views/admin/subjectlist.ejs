@@ -129,6 +129,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const form = document.querySelector('.subject-form');
   if (form) {
     form.addEventListener('submit', validateForm);
+    form.addEventListener('input', (event) => {
+      if (event.target.classList.contains('is-missing') && event.target.value.trim()) {
+        event.target.classList.remove('is-missing');
+      }
+    });
   }
   
   // Add event listener for max questions field
@@ -143,6 +148,9 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById('subQuestionContainer').innerHTML = '<div style="color: red; margin-top: 10px;">Please enter a valid maximum question number</div>';
       }
     });
+
+    document.getElementById('maxQuestionMinus')?.addEventListener('click', () => adjustMaxQuestions(-1));
+    document.getElementById('maxQuestionPlus')?.addEventListener('click', () => adjustMaxQuestions(1));
     
     // IMPORTANT: Auto-generate form if in edit mode
     if (editing === 'true' && subjectedit && subjectedit.max) {
@@ -202,8 +210,7 @@ document.addEventListener("DOMContentLoaded", () => {
         id: `q${questionNum}${letter}_chapter`
 
       });
-      
-      
+
       cardHeader.appendChild(chapterSelect);
       
       const cardBody = document.createElement('div');
@@ -502,18 +509,26 @@ document.addEventListener("DOMContentLoaded", () => {
   function validateForm(event) {
     const subjectField = document.getElementById('subject');
     const maxField = document.getElementById('max');
+    document.querySelectorAll('.subject-form .is-missing').forEach((field) => field.classList.remove('is-missing'));
+
+    const markMissing = (field, message) => {
+      if (field) {
+        field.classList.add('is-missing');
+        field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        field.focus({ preventScroll: true });
+      }
+      alert(message);
+      event.preventDefault();
+      return false;
+    };
 
     // Basic validation
     if (!subjectField.value.trim()) {
-      alert('Please enter a subject name');
-      event.preventDefault();
-      return false;
+      return markMissing(subjectField, 'Please enter a subject name');
     }
 
     if (!maxField.value || parseInt(maxField.value) <= 0) {
-      alert('Please enter a valid number of maximum questions');
-      event.preventDefault();
-      return false;
+      return markMissing(maxField, 'Please enter a valid number of maximum questions');
     }
 
     // Check if all sub-question counts are valid
@@ -521,18 +536,13 @@ document.addEventListener("DOMContentLoaded", () => {
     for (let i = 1; i <= max; i++) {
       const subQInput = document.getElementById(`subQuestion${i}`);
       if (!subQInput || !subQInput.value || parseInt(subQInput.value) <= 0) {
-        alert(`Please enter a valid number of sub-questions for question ${i}`);
-        event.preventDefault();
-        return false;
+        return markMissing(subQInput, `Please enter a valid number of sub-questions for question ${i}`);
       }
 
       // Check marks per sub-question
       const markInput = document.getElementById(`markPerSubQ${i}`);
       if (!markInput || !markInput.value || parseFloat(markInput.value) < 0) {
-        alert(`Please enter a valid mark value for question ${i}`);
-        markInput.focus();
-        event.preventDefault();
-        return false;
+        return markMissing(markInput, `Please enter a valid mark value for question ${i}`);
       }
       
       // Get sub-question count
@@ -549,26 +559,17 @@ document.addEventListener("DOMContentLoaded", () => {
           const subPartsMarksInput = document.querySelector(`input[name="q${i}${letter}_marks_per_subpart"]`);
           
           if (!subPartsCountInput || !subPartsCountInput.value || parseInt(subPartsCountInput.value) <= 0) {
-            alert(`Please enter a valid number of sub-parts for question ${i}${letter}`);
-            subPartsCountInput.focus();
-            event.preventDefault();
-            return false;
+            return markMissing(subPartsCountInput, `Please enter a valid number of sub-parts for question ${i}${letter}`);
           }
           
           if (!subPartsMarksInput || !subPartsMarksInput.value || parseFloat(subPartsMarksInput.value) < 0) {
-            alert(`Please enter valid marks per sub-part for question ${i}${letter}`);
-            subPartsMarksInput.focus();
-            event.preventDefault();
-            return false;
+            return markMissing(subPartsMarksInput, `Please enter valid marks per sub-part for question ${i}${letter}`);
           }
         } else {
           // If no sub-parts, validate the marks for the sub-question
           const marksInput = document.querySelector(`input[name="q${i}${letter}"]`);
           if (!marksInput || !marksInput.value || parseFloat(marksInput.value) < 0) {
-            alert(`Please enter valid marks for question ${i}${letter}`);
-            marksInput.focus();
-            event.preventDefault();
-            return false;
+            return markMissing(marksInput, `Please enter valid marks for question ${i}${letter}`);
           }
         }
       }
@@ -633,6 +634,14 @@ function createChapterSelect({
 }
 function generateDynamicForm(number) {
     const subContainer = document.getElementById("subQuestionContainer");
+    const preservedValues = {};
+    subContainer.querySelectorAll('input, select, textarea').forEach((field) => {
+      if (!field.name) return;
+      preservedValues[field.name] = {
+        value: field.value,
+        checked: field.type === 'checkbox' ? field.checked : undefined
+      };
+    });
     subContainer.innerHTML = "";
 
     if (isNaN(number) || number <= 0) {
@@ -668,6 +677,15 @@ function generateDynamicForm(number) {
   chapters: availableChapters,
   id: `q${i}_chapter`,
   value: (typeof editing !== 'undefined' && editing === 'true' && typeof subjectedit !== 'undefined' && subjectedit[`q${i}_chapter`]) ? subjectedit[`q${i}_chapter`] : ""
+});
+
+chapterSelect.addEventListener('change', function() {
+  const parentChapter = this.value;
+  questionContainer.querySelectorAll('select').forEach((select) => {
+    if (select !== chapterSelect && select.name.endsWith('_chapter')) {
+      select.value = parentChapter;
+    }
+  });
 });
 
 
@@ -783,6 +801,61 @@ questionContainer.appendChild(chapterSelect);
 
       subContainer.appendChild(questionContainer);
     }
+
+    const restorePreservedValues = () => {
+      Object.entries(preservedValues).forEach(([name, saved]) => {
+        const field = subContainer.querySelector(`[name="${CSS.escape(name)}"]`);
+        if (!field) return;
+        if (field.type === 'checkbox') field.checked = Boolean(saved.checked);
+        else field.value = saved.value;
+      });
+    };
+
+    restorePreservedValues();
+    Object.keys(preservedValues).forEach((name) => {
+      if (!/^q\d+_subcount$/.test(name)) return;
+      const questionNumber = Number(name.match(/^q(\d+)_/)[1]);
+      const count = Number(preservedValues[name].value);
+      const marks = preservedValues[`q${questionNumber}_marks_per_sub`]?.value;
+      if (count > 0 && marks !== undefined) {
+        generateSubQuestions(questionNumber, count, marks);
+      }
+    });
+    setTimeout(() => {
+      restorePreservedValues();
+      Object.keys(preservedValues).forEach((name) => {
+        const match = name.match(/^q(\d+)([a-z])_has_subparts$/);
+        if (!match || !preservedValues[name].checked) return;
+        const questionNumber = match[1];
+        const letter = match[2];
+        const checkbox = document.getElementById(`hasSubParts_${questionNumber}_${letter}`);
+        const countInput = document.querySelector(`input[name="q${questionNumber}${letter}_subparts_count"]`);
+        const marksInput = document.querySelector(`input[name="q${questionNumber}${letter}_marks_per_subpart"]`);
+        if (checkbox) checkbox.dispatchEvent(new Event('change'));
+        if (countInput?.value && marksInput?.value) {
+          generateSubParts(questionNumber, letter, Number(countInput.value), marksInput.value);
+        }
+      });
+      setTimeout(restorePreservedValues, 0);
+    }, 0);
+}
+
+function adjustMaxQuestions(delta) {
+  const maxField = document.getElementById('max');
+  const container = document.getElementById('subQuestionContainer');
+  if (!maxField || !container) return;
+
+  const current = Math.max(0, Number.parseInt(maxField.value, 10) || 0);
+  const next = Math.max(1, current + delta);
+  maxField.value = next;
+
+  if (delta > 0) {
+    generateDynamicForm(next);
+    return;
+  }
+
+  const lastQuestion = container.querySelector(`#question_${current}_container`);
+  if (lastQuestion && current > next) lastQuestion.remove();
 }
 
 // Add this new function to populate edit data for sub-questions
@@ -980,13 +1053,42 @@ function populateSubPartEditMarks(questionNum, letter, subPartsCount) {
 
   <div class="form-group">
     <label for="max">Maximum Questions</label>
-    <input type="number" id="max" name="max" required
-           value="<%= editing ? subjectedit.max : '' %>" 
-           placeholder="Enter Maximum Question Number"
-           class="form-control ios-input" min="1">
+    <div class="max-question-control">
+      <button type="button" id="maxQuestionMinus" class="max-question-button" aria-label="Remove last question">-</button>
+      <input type="number" id="max" name="max" required
+             value="<%= editing ? subjectedit.max : '' %>"
+             placeholder="Enter Maximum Question Number"
+             class="form-control ios-input" min="1">
+      <button type="button" id="maxQuestionPlus" class="max-question-button" aria-label="Add question">+</button>
+    </div>
   </div>
 
   <style>
+    .max-question-control {
+      display: flex;
+      align-items: stretch;
+      max-width: 360px;
+    }
+
+    .max-question-control .ios-input {
+      border-radius: 0;
+      text-align: center;
+    }
+
+    .max-question-button {
+      width: 44px;
+      border: 1px solid #d2d2d7;
+      background: #f0f7ff;
+      color: #0066cc;
+      font-size: 22px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .max-question-button:first-child { border-radius: 12px 0 0 12px; }
+    .max-question-button:last-child { border-radius: 0 12px 12px 0; }
+    .max-question-button:hover { background: #dbeafe; }
+
     .file-input-wrapper {
       background: rgba(255, 255, 255, 0.8);
       backdrop-filter: blur(10px);
@@ -1031,6 +1133,14 @@ function populateSubPartEditMarks(questionNum, letter, subPartsCount) {
       outline: none;
       border-color: #0066cc;
       box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.1);
+    }
+
+    .subject-form .is-missing,
+    .subject-form .is-missing:focus {
+      border-color: #dc2626 !important;
+      background-color: #fff1f2 !important;
+      box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.16) !important;
+      outline: none;
     }
 
     .alert {

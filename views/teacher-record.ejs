@@ -776,7 +776,7 @@
             div.style.padding = '8px 0';
 
             div.innerHTML = `
-              <div style="display:flex;gap:12px;align-items:center;margin-bottom:6px;"><strong>Date:</strong><span>${it.dateBs || ''}</span></div>
+              <div style="display:flex;gap:12px;align-items:center;margin-bottom:6px;"><strong>Date (BS):</strong><input class="modal-dateBs" value="${it.dateBs || ''}" placeholder="YYYY-MM-DD" style="width:160px"></div>
               <div style="margin-bottom:6px;"><label style="font-weight:600;">Issue / Note</label><textarea class="modal-issue-text" style="width:100%;min-height:60px;">${it.issue || ''}</textarea></div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:6px;">
                 <div><label>Late In Reason</label><input class="modal-lateInReason" value="${it.lateInReason || ''}" style="width:100%"></div>
@@ -818,6 +818,7 @@
       if (!issueId || !container) return;
 
       const issueText = container.querySelector('.modal-issue-text').value.trim();
+      const dateBs = container.querySelector('.modal-dateBs').value.trim();
       const lateInReason = container.querySelector('.modal-lateInReason').value.trim();
       const earlyOutReason = container.querySelector('.modal-earlyOutReason').value.trim();
       const outReason = container.querySelector('.modal-outReason').value.trim();
@@ -829,7 +830,7 @@
         const res = await fetch(`/teacher-record/issue/${issueId}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ issue: issueText, lateInReason, earlyOutReason, outReason, outTime, comebackTime })
+          body: JSON.stringify({ dateBs, issue: issueText, lateInReason, earlyOutReason, outReason, outTime, comebackTime })
         });
         const data = await res.json();
         if (!res.ok || !data.success) throw new Error(data.message || 'Update failed');
