@@ -72,6 +72,45 @@
       background: #fff;
     }
 
+    .subject-filter-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 14px;
+      padding: 10px 12px;
+      margin-bottom: 16px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #f8fafc;
+      font-size: 13px;
+    }
+
+    .subject-filter-controls strong {
+      margin-right: 4px;
+    }
+
+    .subject-filter-controls label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+    }
+
+    .subject-filter-actions {
+      display: inline-flex;
+      gap: 6px;
+      margin-left: auto;
+    }
+
+    .subject-filter-actions button {
+      border: 1px solid #94a3b8;
+      border-radius: 5px;
+      padding: 4px 8px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
     .subject-print-page {
       page-break-after: always;
       break-after: page;
@@ -106,6 +145,10 @@ table thead
       }
 
       .print-sort-controls {
+        display: none;
+      }
+
+      .subject-filter-controls {
         display: none;
       }
 
@@ -176,6 +219,18 @@ table thead
     window._dtTables = [];
 
     const PRINT_ROWS_PER_PAGE = 22;
+
+    function toggleSubject(subjectIndex, isVisible) {
+      const section = document.getElementById(`subject-${subjectIndex}`);
+      if (section) section.style.display = isVisible ? '' : 'none';
+    }
+
+    function setAllSubjects(isVisible) {
+      document.querySelectorAll('.subject-toggle').forEach(function(toggle) {
+        toggle.checked = isVisible;
+        toggleSubject(toggle.dataset.subjectIndex, isVisible);
+      });
+    }
 
     function applyPrintSort() {
       const value = document.getElementById('printSort')?.value || 'question-asc';
@@ -332,6 +387,19 @@ table thead
         <option value="wrong-desc">Wrong: High to Low</option>
         <option value="wrong-asc">Wrong: Low to High</option>
       </select>
+    </div>
+    <div class="subject-filter-controls no-print" id="subjectFilterControls">
+      <strong>Subjects:</strong>
+      <% reportofClass.forEach(function(subjectReport, subjectIndex) { %>
+        <label>
+          <input type="checkbox" class="subject-toggle" data-subject-index="<%= subjectIndex %>" checked onchange="toggleSubject(<%= subjectIndex %>, this.checked)">
+          <span><%= subjectReport.subject %></span>
+        </label>
+      <% }); %>
+      <span class="subject-filter-actions">
+        <button type="button" onclick="setAllSubjects(true)">Show all</button>
+        <button type="button" onclick="setAllSubjects(false)">Hide all</button>
+      </span>
     </div>
 
     <% reportofClass.forEach(function(subjectReport, subjectIndex) { %>
