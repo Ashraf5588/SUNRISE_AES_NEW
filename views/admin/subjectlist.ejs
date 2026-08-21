@@ -2252,6 +2252,28 @@ if (editing === true) {
   .modern-table-wrapper {
      overflow-x: auto;
   }
+
+  .modern-table {
+    table-layout: fixed;
+    min-width: 0 !important;
+  }
+
+  .modern-table .question-paper-column,
+  .modern-table .question-column {
+    display: none !important;
+  }
+
+  .modern-table .subject-column { width: 42% !important; }
+  .modern-table .class-column { width: 20% !important; }
+  .modern-table .terminal-column { width: 22% !important; }
+  .modern-table .action-column { width: 16% !important; }
+
+  .modern-table td,
+  .modern-table th {
+    min-width: 0 !important;
+    padding: 0.55rem 0.35rem;
+    font-size: 0.78rem;
+  }
 }
 
 /* Ensure no external sticky classes interfere */
@@ -2293,12 +2315,12 @@ th.action-column, td.action-column {
 
       <thead>
         <tr>
-          <th>Question Paper</th>
+          <th class="question-paper-column">Question Paper</th>
           <% allKeys.forEach((key) => { %>
             <% if (!isNaN(parseInt(key))) { %>
-              <th>Q.No. <%= key %></th>
+              <th class="question-column">Q.No. <%= key %></th>
             <% } else { %>
-              <th><%= key.charAt(0).toUpperCase() + key.slice(1) %></th>
+              <th class="<%= key === 'subject' ? 'subject-column' : key === 'forClass' ? 'class-column' : key === 'forTerminal' ? 'terminal-column' : '' %>"><%= key.charAt(0).toUpperCase() + key.slice(1) %></th>
             <% } %>
           <% }); %>
           
@@ -2318,7 +2340,7 @@ th.action-column, td.action-column {
           if(sortedSubjects.length > 0) {
               sortedSubjects.forEach((sub) => { %>
               <tr>
-                  <td>
+                  <td class="question-paper-column">
                   <% if (sub.questionPaperOfClass && sub.questionPaperOfClass !== 'default.pdf') { %>
                     <a href="/file-viewer/<%= sub.questionPaperOfClass %>" target="_blank" class="file-badge has-file" style="text-decoration:none;">
                       <i class="fas fa-file-pdf"></i> View Paper
@@ -2331,7 +2353,7 @@ th.action-column, td.action-column {
                 <% allKeys.forEach((key) => { %>
                   <% if (!isNaN(parseInt(key))) { %>
                     <!-- Question Column with Dropdown -->
-                    <td>
+                    <td class="question-column">
                         <% if (sub.availableChapters && sub.availableChapters.length > 0) { %>
                            <select class="form-select form-select-sm chapter-select">
                                <option value="">-- Mark/Chapter --</option>
@@ -2351,7 +2373,7 @@ th.action-column, td.action-column {
                         <% } %>
                     </td>
                   <% } else { %>
-                    <td>
+                    <td class="<%= key === 'subject' ? 'subject-column' : key === 'forClass' ? 'class-column' : key === 'forTerminal' ? 'terminal-column' : '' %>">
                         <span style="font-weight: 500; color: var(--text-main);">
                             <%= (typeof sub[key] !== 'undefined' && sub[key] !== null && sub[key] !== '') ? sub[key] : '' %>
                         </span>
@@ -2359,7 +2381,7 @@ th.action-column, td.action-column {
                   <% } %>
                 <% }); %>
               
-                <td>
+                <td class="action-column">
                   <div class="action-buttons">
                       <a href="/admin/editsub/<%= sub._id %>?editing=true&subjectname=<%= encodeURIComponent(sub.subject) %>&forClass=<%= encodeURIComponent(sub.forClass) %>&forTerminal=<%= encodeURIComponent(sub.forTerminal) %>" class="btn-icon btn-edit" title="Edit">
                         <i class="fas fa-pen"></i>
