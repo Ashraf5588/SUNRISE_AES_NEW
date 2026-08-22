@@ -316,13 +316,10 @@
       <h3><%= marksheetSetting[0].address %></h3>
       <h3><%= marksheetSetting[0].phone %> | <%= marksheetSetting[0].email %> | <%= marksheetSetting[0].website %></h3>
       <h3><%= terminal %> Terminal - <%= marksheetSetting[0].academicYear %></h3>
-      <h1>Science Practical & Project Slip</h1>
+      <h1><%= subject %> Practical & Project Slip</h1>
     </div>
 
     <form action="/practicalslipsave?studentClass=<%= studentClass %>&section=<%= section %>&subject=<%= subject %>&terminal=<%= terminal %>&academicYear=<%= marksheetSetting[0].academicYear %>" method="POST">
-
-  
-
 
       <table>
         <thead>
@@ -437,7 +434,7 @@
         </tbody>
       </table>
 
-      <div style="margin-top: 20px; text-align: center;">
+      <div style="margin-top: 0px; text-align: center;">
         <button type="submit" style="background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px;">
           💾 Save Report
         </button>

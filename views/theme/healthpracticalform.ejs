@@ -573,6 +573,15 @@
     let unitIndex = 0;
     let editing = <%= typeof editing !== 'undefined' && editing ? 'true' : 'false' %>;
     let editingLessonData = editing ? <%- typeof lessonData !== 'undefined' && lessonData ? JSON.stringify(lessonData) : 'null' %> : null;
+    let chapterData = <%- typeof chaptername !== 'undefined' && chaptername ? JSON.stringify(chaptername) : '[]' %>;
+    let availableChapters = [];
+    if (Array.isArray(chapterData)) {
+      chapterData.forEach(doc => {
+        if (Array.isArray(doc.chapters)) {
+          availableChapters = availableChapters.concat(doc.chapters);
+        }
+      });
+    }
 
     // Auto-resize textarea function
     function autoResize(textarea) {
@@ -625,9 +634,13 @@
         </div>
         
         <div class="form-group" style="margin-bottom: 1rem;">
-          <label for="unitName_${unitIndex}">Unit Name</label>
-          <textarea name="units[${unitIndex}][unitName]" id="unitName_${unitIndex}" placeholder="Enter unit name" required rows="1" 
-                    oninput="autoResize(this)">${unitData ? unitData.unitName || '' : ''}</textarea>
+          <label for="unitName_${unitIndex}">Select Chapter</label>
+          <select name="units[${unitIndex}][unitName]" id="unitName_${unitIndex}" required
+                  style="width: 100%; padding: 0.875rem 1rem; border: 2px solid #e9ecef; border-radius: 12px; font-size: 1rem; background: rgba(255, 255, 255, 0.8); color: #2c3e50;">
+            <option value="" disabled ${!unitData || !unitData.unitName ? 'selected' : ''}>Select Chapter</option>
+            ${availableChapters.map(chapter => `<option value="${chapter}" ${unitData && unitData.unitName === chapter ? 'selected' : ''}>${chapter}</option>`).join('')}
+            ${unitData && unitData.unitName && !availableChapters.includes(unitData.unitName) ? `<option value="${unitData.unitName}" selected>${unitData.unitName}</option>` : ''}
+          </select>
         </div>
         
         <div class="form-group" style="margin-bottom: 1.5rem;">

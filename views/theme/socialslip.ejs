@@ -96,7 +96,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 20px;
+      margin-top: 0;
       font-size: 11px;
     }
 
@@ -316,7 +316,7 @@
       <h3><%= marksheetSetting[0].address %></h3>
       <h3><%= marksheetSetting[0].phone %> | <%= marksheetSetting[0].email %> | <%= marksheetSetting[0].website %></h3>
       <h3><%= terminal %> Terminal - <%= marksheetSetting[0].academicYear %></h3>
-      <h1>Science Practical & Project Slip</h1>
+      <h1>Social Practical & Project Slip</h1>
     </div>
 
   <form action="/practicalslipsave?studentClass=<%= studentClass %>&section=<%= section %>&subject=<%= subject %>&terminal=<%= terminal %>&academicYear=<%= marksheetSetting[0].academicYear %>" method="POST">
@@ -462,7 +462,7 @@
     <input type="hidden" name="slip[<%= index %>][terminal]" value="<%= terminalMarks %>">
     <input type="hidden" name="slip[<%= index %>][total]" value="<%= totalMarks %>">
     <input type="hidden" name="slip[<%= index %>][grade]" value="<%= grade %>">
-    <br><br>
+
   <% }) %>
     </table>
     <input type="submit" value="Save Practical Slip">
