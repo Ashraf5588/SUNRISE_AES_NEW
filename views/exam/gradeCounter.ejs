@@ -374,6 +374,18 @@
                             <% }) %>
                         <% } %>
                     </select>
+                    <select name="classFilter" id="classFilter">
+                        <option value="all" <%= classFilter === 'all' ? 'selected' : '' %>>All Classes</option>
+                        <% if (availableClasses && availableClasses.length > 0) { %>
+                            <% availableClasses.forEach(cls => { %>
+                                <option value="<%= cls %>" <%= String(classFilter || 'all') === String(cls) ? 'selected' : '' %>><%= displayClassName(cls) %></option>
+                            <% }) %>
+                        <% } %>
+                    </select>
+                    <select name="sectionFilter" id="sectionFilter">
+                        <option value="all" <%= sectionFilter === 'all' ? 'selected' : '' %>>All Sections</option>
+                        <option value="with-section" <%= sectionFilter === 'with-section' ? 'selected' : '' %>>With Sections</option>
+                    </select>
                     <select name="filterSubject">
                         <option value="">All Subjects</option>
                         <% if (subjectList && subjectList.length > 0) { %>
@@ -498,6 +510,42 @@
 
     <script src="/exam-report-ui.js"></script>
     <script>
+        const classSectionMap = <%- JSON.stringify(classSectionMap || {}) %>;
+
+        function populateGradeCounterSections() {
+            const classSelect = document.getElementById('classFilter');
+            const sectionSelect = document.getElementById('sectionFilter');
+            if (!classSelect || !sectionSelect) return;
+
+            const selectedSection = '<%= sectionFilter || "all" %>';
+            const selectedClass = classSelect.value;
+            const sections = selectedClass === 'all'
+                ? [...new Set(Object.values(classSectionMap).flat())].sort((a, b) => a.localeCompare(b))
+                : (classSectionMap[selectedClass] || []);
+
+            sectionSelect.innerHTML = '';
+            [['all', 'All Sections'], ['with-section', 'With Sections']]
+                .concat(sections.map(section => [section, section]))
+                .forEach(([value, label]) => {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = label;
+                    option.selected = value === selectedSection;
+                    sectionSelect.appendChild(option);
+                });
+
+            if (!Array.from(sectionSelect.options).some(option => option.value === selectedSection)) {
+                sectionSelect.value = 'all';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            populateGradeCounterSections();
+            document.getElementById('classFilter')?.addEventListener('change', function() {
+                populateGradeCounterSections();
+            });
+        });
+
         // Show all subjects
         function showAllSubjects() {
             document.querySelectorAll('.subject-content').forEach(el => {

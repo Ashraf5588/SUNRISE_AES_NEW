@@ -136,6 +136,14 @@
         margin-top: 1rem;
     }
 
+    .sidebar-btn--excel {
+      background: #059669;
+    }
+
+    .sidebar-btn--excel:hover {
+      background: #047857;
+    }
+
     /* Action Buttons & Form */
     .action-buttons {
       /* Hidden in main view, moved to sidebar */
@@ -514,6 +522,7 @@
           </div>
           
           <button class="sidebar-btn" onclick="loadform()">Generate Report</button>
+          <button type="button" class="sidebar-btn sidebar-btn--excel no-print" onclick="exportAnalyticsToExcel()">Export to Excel</button>
           <button class="sidebar-btn" style="background: #ff9a60;" onclick="window.print()">Print Report</button>
       </div>
   </div>
@@ -522,6 +531,75 @@
   <div class="main-content">
 
   <script>
+    function escapeExcelHtml(value) {
+      return String(value ?? '').replace(/[&<>'"]/g, function(character) {
+        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'}[character];
+      });
+    }
+
+    function addExcelHeading(html, text, level) {
+      const cleanText = String(text || '').replace(/\s+/g, ' ').trim();
+      if (!cleanText) return html;
+      return html + `<h${level} style="font-family:Arial;margin:14px 0 6px;color:#1e293b;">${escapeExcelHtml(cleanText)}</h${level}>`;
+    }
+
+    function exportAnalyticsToExcel() {
+      const tables = Array.from(document.querySelectorAll('.comparison-table'))
+        .filter((table) => table.offsetParent !== null);
+      if (!tables.length) {
+        window.alert('No analytics table data available to export.');
+        return;
+      }
+
+      let html = '<html><head><meta charset="UTF-8"><style>' +
+        'body{font-family:Arial;color:#1e293b}h1{color:#1e3a8a}h2{margin-top:22px}' +
+        'table{border-collapse:collapse;border:1px solid #334155;margin:0 0 22px;width:100%}' +
+        'th,td{border:1px solid #64748b;padding:6px 8px;text-align:center;vertical-align:middle}' +
+        'th{background:#dbeafe;color:#1e293b;font-weight:700}td:first-child{text-align:left}' +
+        '</style></head><body>';
+
+      const reportTitle = document.querySelector('.report-title');
+      html = addExcelHeading(html, reportTitle ? reportTitle.textContent : 'Comprehensive Analytics Report', 1);
+
+      tables.forEach((table) => {
+        const tableContainer = table.closest('.table-container');
+        const sectionHeader = tableContainer?.previousElementSibling?.classList.contains('section-header')
+          ? tableContainer.previousElementSibling
+          : null;
+        if (sectionHeader) {
+          html = addExcelHeading(html, sectionHeader.textContent, 2);
+        }
+
+        const meta = tableContainer?.previousElementSibling?.classList.contains('analysis-meta')
+          ? tableContainer.previousElementSibling
+          : null;
+        if (meta) {
+          html = addExcelHeading(html, meta.textContent, 3);
+        }
+
+        html += '<table>';
+        Array.from(table.rows).forEach((row) => {
+          html += '<tr>';
+          Array.from(row.cells).forEach((cell) => {
+            const tag = cell.tagName.toLowerCase() === 'th' ? 'th' : 'td';
+            const colspan = cell.colSpan > 1 ? ` colspan="${cell.colSpan}"` : '';
+            const rowspan = cell.rowSpan > 1 ? ` rowspan="${cell.rowSpan}"` : '';
+            html += `<${tag}${colspan}${rowspan}>${escapeExcelHtml(cell.textContent.trim())}</${tag}>`;
+          });
+          html += '</tr>';
+        });
+        html += '</table>';
+      });
+
+      html += '</body></html>';
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `comprehensive-analytics-${new Date().toISOString().slice(0, 10)}.xls`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    }
+
     function loadform()
     {
         const selectedSubject = document.getElementById('subject').value;
@@ -617,6 +695,7 @@
       </select>
     </div>
     <button type="button" onclick="applyComparisonFilters()">Generate</button>
+    <button type="button" style="background-color: #259374;color: white;" class="sidebar-btn sidebar-btn--excel no-print" onclick="exportAnalyticsToExcel()">Export to Excel</button>
   </div>
 
   <div class="page">

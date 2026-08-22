@@ -4022,12 +4022,27 @@ function isSecondary(cls) {
 
 exports.getGradeCounter = async (req, res) => {
     try {
-        const { terminal, academicYear, filterSubject, calcMode } = req.query;
+    const { terminal, academicYear, filterSubject, calcMode, classFilter, sectionFilter } = req.query;
+
+    const classSectionList = await studentClass.find({}, { studentClass: 1, section: 1 }).lean();
+    const classSectionMap = buildClassSectionMap(classSectionList);
+    const availableClasses = getAvailableClasses(classSectionList);
 
         // Build filter
         let filter = {};
         if (terminal) filter.terminal = terminal;
         if (academicYear) filter.academicYear = academicYear;
+    if (classFilter && classFilter !== 'all') {
+      const normalizedClass = normalizeClassName(classFilter);
+      const displayClass = getClassDisplayName(normalizedClass);
+      const registeredClassValues = classSectionList
+        .map((item) => String(item.studentClass || '').trim())
+        .filter((value) => normalizeClassName(value) === normalizedClass);
+      filter.studentClass = { $in: [...new Set([classFilter, normalizedClass, displayClass, ...registeredClassValues])] };
+    }
+    if (sectionFilter && sectionFilter !== 'all' && sectionFilter !== 'with-section') {
+      filter.section = sectionFilter;
+    }
 
         // Get the exam model
         const Exammodel = await getSlipModel();
@@ -4063,9 +4078,13 @@ exports.getGradeCounter = async (req, res) => {
                 classList: [],
                 terminals: [],
                 years: [],
+                availableClasses,
+                classSectionMap,
                 selectedTerminal: terminal || '',
                 selectedYear: academicYear || '',
                 filterSubject: filterSubject || '',
+                classFilter: classFilter || 'all',
+                sectionFilter: sectionFilter || 'all',
                 calcMode: calcMode || 'combined'
             });
         }
@@ -4086,9 +4105,13 @@ exports.getGradeCounter = async (req, res) => {
             classList: classList.sort(),
             terminals: terminals.sort(),
             years: years.sort(),
+            availableClasses,
+            classSectionMap,
             selectedTerminal: terminal || '',
             selectedYear: academicYear || '',
             filterSubject: filterSubject || '',
+            classFilter: classFilter || 'all',
+            sectionFilter: sectionFilter || 'all',
             calcMode: calcMode || 'combined'
         });
 

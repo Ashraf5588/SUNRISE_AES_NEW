@@ -35,6 +35,9 @@
             var section = table.closest('.class-section');
             var classTitle = section && section.querySelector('.class-title');
             if (classTitle) html += '<h3>' + escapeHtml(classTitle.textContent.trim()) + '</h3>';
+            var subjectSection = table.closest('.grade-section');
+            var subjectTitle = subjectSection && subjectSection.querySelector('.subject-title');
+            if (subjectTitle) html += '<h3>' + escapeHtml(subjectTitle.textContent.trim()) + '</h3>';
             html += '<table border="1" style="border-collapse:collapse;border:1px solid #000;">';
             Array.from(table.rows).forEach(function (row) {
                 html += '<tr>';

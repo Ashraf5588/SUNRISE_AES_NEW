@@ -147,7 +147,7 @@
 
     .evaluation-table td, table td {
       padding: 12px 15px;
-      border: 1px solid var(--border-color);
+      border: 1.5px solid black;
       vertical-align: middle;
       font-size: 15px;
       line-height: 1.6;
@@ -160,6 +160,24 @@
 
     .evaluation-table tr:nth-child(even), table tr:nth-child(even) {
       background-color: #f8f9fa;
+    }
+
+    .evaluation-table tr.criteria-end td,
+    .project-section table tr.criteria-end td {
+      border-bottom: 5px double #78d202 !important;
+    }
+
+    .evaluation-table,
+    .project-section table {
+      table-layout: fixed;
+    }
+
+    .evaluation-table th,
+    .evaluation-table td,
+    .project-section table th,
+    .project-section table td {
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
 
     .evaluation-table td:last-child, table td:last-child {
@@ -442,21 +460,68 @@
       }
 
       .evaluation-table, table {
-        min-width: 800px;
+        width: 100%;
+        min-width: 0;
         margin: 0;
         border: none;
         box-shadow: none;
+        table-layout: fixed;
       }
 
       .evaluation-table th, table th {
-        padding: 12px 8px;
-        font-size: 14px;
-        white-space: nowrap;
+        padding: 8px 4px;
+        font-size: 11px;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
       }
 
       .evaluation-table td, table td {
-        padding: 10px 8px;
-        font-size: 13px;
+        padding: 7px 4px;
+        font-size: 11px;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+
+      .evaluation-table th:first-child,
+      .evaluation-table td:first-child,
+      .project-section table th:first-child,
+      .project-section table td:first-child {
+        width: 9%;
+      }
+
+      .evaluation-table th:nth-child(2),
+      .evaluation-table td:nth-child(2),
+      .project-section table th:nth-child(2),
+      .project-section table td:nth-child(2) {
+        width: 21%;
+      }
+
+      .evaluation-table th:nth-child(3),
+      .evaluation-table td:nth-child(3),
+      .project-section table th:nth-child(3),
+      .project-section table td:nth-child(3) {
+        width: 20%;
+      }
+
+      .evaluation-table th:nth-child(4),
+      .evaluation-table td:nth-child(4),
+      .project-section table th:nth-child(4),
+      .project-section table td:nth-child(4) {
+        width: 40%;
+      }
+
+      .evaluation-table th:nth-child(5),
+      .evaluation-table td:nth-child(5),
+      .project-section table th:nth-child(5),
+      .project-section table td:nth-child(5) {
+        width: 10%;
+      }
+
+      .evaluation-table .radio-group,
+      .project-section table .radio-group {
+        gap: 3px;
+        margin: 3px 0;
       }
 
       .radio-group {
@@ -630,6 +695,16 @@
           <div class="section-header">Practical/Project Work Evaluation</div>
           <div class="section-content">
             
+            <% const hasPracticalAssessmentSide = (practicalFormatData || []).some((doc) =>
+              (doc.themes || []).some((theme) =>
+                (theme.learningOutcome || []).some((lo) => String(lo.learningOutcomeName || '').trim())
+              )
+            ); %>
+            <% const hasProjectAssessmentSide = (projectFormatData || []).some((doc) =>
+              (doc.themes || []).some((theme) =>
+                (theme.learningOutcome || []).some((lo) => String(lo.learningOutcomeName || '').trim())
+              )
+            ); %>
             <% ScienceData.forEach((item, itemIdx) => { %>
               <% item.units.forEach((unit, idx) => { %>
                 <div class="unit-section">
@@ -656,7 +731,9 @@
                                 <tr>
                                   <th>S.No</th>
                                   <th>मुल्याङ्कनका आधार</th>
-                                  <th>परिक्षण पक्ष</th>
+                                  <% if (hasPracticalAssessmentSide) { %>
+                                    <th>परिक्षण पक्ष</th>
+                                  <% } %>
                                   <th>सूचक</th>
                                   <th>अंक</th>
                                 </tr>
@@ -776,11 +853,11 @@
 
                             <% if(firstLoRow){ %>
 
-                                <td rowspan="<%= loRowspan %>">
-
-                                    <%= lo.learningOutcomeName || "-" %>
-
-                                </td>
+                                <% if (hasPracticalAssessmentSide) { %>
+                                  <td rowspan="<%= loRowspan %>">
+                                    <%= lo.learningOutcomeName || "" %>
+                                  </td>
+                                <% } %>
 
 
 
@@ -927,7 +1004,9 @@
                                 <tr>
                                   <th>SN</th>
                                   <th>आधार</th>
-                                  <th>पक्ष</th>
+                                  <% if (hasProjectAssessmentSide) { %>
+                                    <th>पक्ष</th>
+                                  <% } %>
                                   <th>सूचक</th>
                                   <th>अंक</th>
                                 </tr>
@@ -951,8 +1030,8 @@
                                             <% firstThemeRow = false; %>
                                           <% } %>
 
-                                          <% if(indIndex === 0) { %>
-                                            <td rowspan="<%= loRowspan %>"><%= lo.learningOutcomeName %></td>
+                                          <% if(indIndex === 0 && hasProjectAssessmentSide) { %>
+                                            <td rowspan="<%= loRowspan %>"><%= lo.learningOutcomeName || '' %></td>
                                           <% } %>
 
                                           <td><%= ind.indicatorName %></td>
@@ -970,7 +1049,7 @@
                                               <label for="project_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>"><%= ind.indicatorsMarks %></label>
                                             </div>
                                           </td>
-                                          <td></td>
+
                                         </tr>
                                       <% }) %>
                                       <% iIndex++ %>
@@ -1014,6 +1093,18 @@
 
 
   <script>
+
+    document.querySelectorAll('.evaluation-table, .project-section table').forEach((table) => {
+      const rows = Array.from(table.querySelectorAll('tbody tr'));
+      const groupStartRows = rows.filter((row) => row.cells[0]?.hasAttribute('rowspan'));
+
+      groupStartRows.forEach((startRow, index) => {
+        const nextStartRow = groupStartRows[index + 1];
+        const endIndex = nextStartRow ? rows.indexOf(nextStartRow) - 1 : rows.length - 1;
+        const endRow = rows[endIndex];
+        if (endRow) endRow.classList.add('criteria-end');
+      });
+    });
 
     //populating terminal
     const terminal = window.location.search;
