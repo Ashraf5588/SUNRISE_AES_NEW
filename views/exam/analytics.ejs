@@ -712,10 +712,10 @@
           <thead>
             <tr>
               <th rowspan="2">Subject</th>
-              <% comparisonTerminals.forEach(terminalName => { %><th class="terminal-heading" colspan="4"><%= terminalName %></th><% }) %>
+              <% comparisonTerminals.forEach(terminalName => { %><th class="terminal-heading" colspan="6"><%= terminalName %></th><% }) %>
             </tr>
             <tr>
-              <% comparisonTerminals.forEach(() => { %><th>Total</th><th>Pass%</th><th>Fail%</th><th>Avg</th><% }) %>
+              <% comparisonTerminals.forEach(() => { %><th>Total</th><th>Pass</th><th>Pass%</th><th>Fail</th><th>Fail%</th><th>Avg</th><% }) %>
             </tr>
           </thead>
           <tbody>
@@ -723,8 +723,8 @@
               <tr>
                 <td class="subject-cell"><%= subjectName %></td>
                 <% comparisonTerminals.forEach(terminalName => { const row = group.terminals[terminalName]?.[subjectName]; %>
-                  <% if (row) { %><td><%= row.totalStudents %></td><td><%= fixed2(row.passPercent) %>%</td><td><%= fixed2(row.failPercent) %>%</td><td><%= fixed2(row.avg) %></td>
-                  <% } else { %><td colspan="4">-</td><% } %>
+                  <% if (row) { %><td><%= row.totalStudents %></td><td><%= row.pass %></td><td><%= fixed2(row.passPercent) %>%</td><td><%= row.fail %></td><td><%= fixed2(row.failPercent) %>%</td><td><%= fixed2(row.avg) %></td>
+                  <% } else { %><td colspan="6">-</td><% } %>
                 <% }) %>
               </tr>
             <% }) %>
@@ -801,14 +801,16 @@
          
             <tr>
              <% Object.entries(records).forEach(([terminal, record])=>{ %>
-                <th colspan="4" ><%= terminal %></th>
+                <th colspan="6" ><%= terminal %></th>
               <%})%>
             </tr>
             <tr>
               <% Object.entries(records).forEach(([terminal, record])=>{ %>
                
               <th>Total Student</th>
+              <th>Pass</th>
               <th>Pass%</th>
+              <th>Fail</th>
               <th>Fail%</th>
               <th>Avg</th>
               <%})%>
@@ -817,7 +819,9 @@
               <% Object.entries(records).forEach(([terminal, record])=>{ %>
                
               <td><%= record[0].totalStudents %></td>
+              <td><%= record[0].passtheory %></td>
               <td><%= pct(record[0].passtheory, record[0].totalStudents) %></td>
+              <td><%= record[0].failtheory %></td>
               <td><%= pct(record[0].failtheory, record[0].totalStudents) %></td>
               <td><%= fixed2(record[0].avgMarks) %></td>
               
@@ -896,13 +900,15 @@
          <table cellspacing="0" border="1">
             <tr>
              <% years.forEach(year => { %>
-                <th colspan="4"><%= year %></th>
+                <th colspan="6"><%= year %></th>
               <% }) %>
             </tr>
             <tr>
               <% years.forEach(year => { %>
               <th>Total</th>
+              <th>Pass</th>
               <th>Pass%</th>
+              <th>Fail</th>
               <th>Fail%</th>
               <th>Avg</th>
               <% }) %>
@@ -912,7 +918,9 @@
                    const record = yearRecords[year];
               %>
               <td><%= record.totalStudents %></td>
+              <td><%= record.pass %></td>
               <td><%= fixed2(record.passPercent, '0.00') %></td>
+              <td><%= record.fail %></td>
               <td><%= fixed2(record.failPercent, '0.00') %></td>
               <td><%= fixed2(record.avg, '0.00') %></td>
               <% }) %>

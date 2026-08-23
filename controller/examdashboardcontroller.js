@@ -1272,7 +1272,7 @@ const schoolOverviewFinalStructure = {};
       .map(group => ({
         ...group,
         subjects: [...group.subjects].sort((a, b) => String(a).localeCompare(String(b))),
-        terminals: Object.fromEntries(Object.entries(group.terminals).map(([terminalName, subjectMap]) => [terminalName, Object.fromEntries(Object.entries(subjectMap).map(([subjectName, value]) => [subjectName, { totalStudents: value.totalStudents, passPercent: value.totalStudents ? (value.pass / value.totalStudents) * 100 : 0, failPercent: value.totalStudents ? (value.fail / value.totalStudents) * 100 : 0, avg: value.totalStudents ? value.avgWeighted / value.totalStudents : 0 }]))]))
+        terminals: Object.fromEntries(Object.entries(group.terminals).map(([terminalName, subjectMap]) => [terminalName, Object.fromEntries(Object.entries(subjectMap).map(([subjectName, value]) => [subjectName, { totalStudents: value.totalStudents, pass: value.pass, passPercent: value.totalStudents ? (value.pass / value.totalStudents) * 100 : 0, fail: value.fail, failPercent: value.totalStudents ? (value.fail / value.totalStudents) * 100 : 0, avg: value.totalStudents ? value.avgWeighted / value.totalStudents : 0 }]))]))
       }))
       .sort((a, b) => (comparisonClassOrder[a.classKey] ?? 999) - (comparisonClassOrder[b.classKey] ?? 999) || String(a.section).localeCompare(String(b.section)));
     const sortedComparisonTerminals = [...comparisonTerminals].sort((a, b) => ({ FIRST: 1, SECOND: 2, THIRD: 3, FOURTH: 4, FINAL: 5 }[a] || 99) - ({ FIRST: 1, SECOND: 2, THIRD: 3, FOURTH: 4, FINAL: 5 }[b] || 99) || a.localeCompare(b));
