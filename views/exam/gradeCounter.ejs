@@ -244,6 +244,8 @@
         .total-row { font-weight: 700; background: #f1f5f9 !important; }
         .subject-content { display: none; }
         .subject-content.active { display: block; }
+        .orientation-content { display: none; }
+        .orientation-content.active { display: block; }
 
         .no-data {
             text-align: center;
@@ -394,6 +396,10 @@
                             <% }) %>
                         <% } %>
                     </select>
+                    <select id="orientationSelect" aria-label="Table orientation">
+                        <option value="subject">Subject First</option>
+                        <option value="class">Class First</option>
+                    </select>
                     
                     <div class="toggle-group">
                         <button type="submit" name="calcMode" value="theory" class="<%= currentMode === 'theory' ? 'active' : '' %>">
@@ -433,7 +439,63 @@
             </div>
         <% } %>
 
+        <div id="classFirstData" class="orientation-content">
+            <% 
+                const classFirstSubjects = filterSubject
+                    ? sortedSubjects.filter(s => s === filterSubject)
+                    : sortedSubjects;
+                const classFirstClasses = [...new Set(classFirstSubjects.flatMap(subject => Object.keys(gradeData[subject] || {})))].sort((a, b) => getClassOrder(a) - getClassOrder(b));
+            %>
+            <% classFirstClasses.forEach(cls => { %>
+                <div class="grade-section">
+                    <div class="subject-title">
+                        Class: <%= displayClassName(cls) %>
+                        <span class="info">Subjects: <%= classFirstSubjects.filter(subject => gradeData[subject] && gradeData[subject][cls]).length %></span>
+                    </div>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Subject</th>
+                                    <% grades.forEach(grade => { %>
+                                        <th class="grade-<%= grade.replace('+', 'plus') %>"><%= grade %></th>
+                                    <% }) %>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% let classGrandTotal = 0; const classGrandTotals = {}; grades.forEach(g => classGrandTotals[g] = 0); %>
+                                <% classFirstSubjects.forEach(subject => { 
+                                    const data = gradeData[subject] && gradeData[subject][cls];
+                                    if (!data) return;
+                                    const total = data.total || 0;
+                                    classGrandTotal += total;
+                                    grades.forEach(g => classGrandTotals[g] += (data.grades[g] || 0));
+                                %>
+                                    <tr>
+                                        <td><strong><%= subject %></strong></td>
+                                        <% grades.forEach(grade => { %>
+                                            <td><%= data.grades[grade] || 0 %></td>
+                                        <% }) %>
+                                        <td><%= total %></td>
+                                    </tr>
+                                <% }) %>
+                                <tr class="total-row">
+                                    <td><strong>Total</strong></td>
+                                    <% grades.forEach(grade => { %>
+                                        <td><%= classGrandTotals[grade] || 0 %></td>
+                                    <% }) %>
+                                    <td><%= classGrandTotal %></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            <% }) %>
+        </div>
+
         <!-- Grade Data -->
+        <div id="subjectFirstData" class="orientation-content active">
         <% if (hasData) { %>
             <% 
                 // Filter subjects if filterSubject is set
@@ -506,6 +568,7 @@
                 <small>Try changing the filters or check if data exists in the database.</small>
             </div>
         <% } %>
+        </div>
     </div>
 
     <script src="/exam-report-ui.js"></script>
@@ -576,12 +639,22 @@
             });
         }
 
-        // Auto-submit form on select change
-        document.querySelectorAll('select').forEach(select => {
+        function updateTableOrientation() {
+            const orientation = document.getElementById('orientationSelect')?.value || 'subject';
+            document.getElementById('subjectFirstData')?.classList.toggle('active', orientation === 'subject');
+            document.getElementById('classFirstData')?.classList.toggle('active', orientation === 'class');
+        }
+
+        document.getElementById('orientationSelect')?.addEventListener('change', updateTableOrientation);
+
+        // Auto-submit filters on select change, excluding local orientation control.
+        document.querySelectorAll('select:not(#orientationSelect)').forEach(select => {
             select.addEventListener('change', function() {
                 this.closest('form').submit();
             });
         });
+
+        updateTableOrientation();
 
         // Initialize - show all subjects if no filter
         document.addEventListener('DOMContentLoaded', function() {
