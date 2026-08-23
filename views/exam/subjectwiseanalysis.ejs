@@ -704,6 +704,7 @@
                                                                 <thead>
                                                                     <tr>
                                                                         <th>Total Students</th>
+                                                                        <th>Absent</th>
                                                                         <th>Pass</th>
                                                                         <th>Pass %</th>
                                                                         <th>Fail</th>
@@ -712,6 +713,7 @@
                                                                         <th>Median</th>
                                                                         <th>Highest Marks</th>
                                                                         <th>Lowest Marks</th>
+                                                                        <th>Reason</th>
                                                                         <% if (calculationType === 'practical') { %>
                                                                             <th>Config</th>
                                                                         <% } %>
@@ -720,6 +722,7 @@
                                                                 <tbody>
                                                                     <tr>
                                                                         <td><%= sectionData.totalStudents %></td>
+                                                                        <td><%= sectionData.absentStudents || 0 %></td>
                                                                         <td><%= sectionData.passCount %></td>
                                                                         <td><%= sectionData.passPercentage.toFixed(2) %>%</td>
                                                                         <td><%= sectionData.failCount %></td>
@@ -728,6 +731,7 @@
                                                                         <td><%= sectionData.median.toFixed(2) %></td>
                                                                         <td><%= sectionData.maxMarks %></td>
                                                                         <td><%= sectionData.minMarks %></td>
+                                                                        <td><%= sectionData.reason %></td>
                                                                         <% if (calculationType === 'practical') { %>
                                                                             <td style="font-size: 11px;">
                                                                                 T:<%= sectionData.theoryFullMarks %>/P:<%= sectionData.practicalFullMarks %>
@@ -760,6 +764,7 @@
                                                 <tr>
                                                     <th>Class</th>
                                                     <th>Total Students</th>
+                                                    <th>Absent</th>
                                                     <th>Pass</th>
                                                     <th>Pass %</th>
                                                     <th>Fail</th>
@@ -768,6 +773,7 @@
                                                     <th>Median</th>
                                                     <th>Highest Marks</th>
                                                     <th>Lowest Marks</th>
+                                                    <th>Reason</th>
                                                     <% if (calculationType === 'practical') { %>
                                                         <th>Config</th>
                                                     <% } %>
@@ -779,6 +785,7 @@
                                                     <tr class="<%= cIndex === group.length - 1 && gIndex < groups.length - 1 ? 'double-border' : '' %>">
                                                         <td><%= getClassDisplayName(className) %></td>
                                                         <td><%= classData.totalStudents %></td>
+                                                        <td><%= classData.absentStudents || 0 %></td>
                                                         <td><%= classData.passCount %></td>
                                                         <td><%= classData.passPercentage.toFixed(2) %>%</td>
                                                         <td><%= classData.failCount %></td>
@@ -787,6 +794,7 @@
                                                         <td><%= classData.median.toFixed(2) %></td>
                                                         <td><%= classData.maxMarks %></td>
                                                         <td><%= classData.minMarks %></td>
+                                                        <td><%= classData.reason %></td>
                                                         <% if (calculationType === 'practical') { %>
                                                             <td style="font-size: 11px;">
                                                                 T:<%= classData.theoryFullMarks %>/P:<%= classData.practicalFullMarks %>

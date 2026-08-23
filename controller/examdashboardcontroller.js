@@ -881,6 +881,64 @@ exports.analytics = async (req, res, next) => {
     {
       matchStage.subject= subject;
     }
+
+    // Exclude students who have no theory marks in any subject for this scope.
+    const activeStudentScope = { ...matchStage };
+    delete activeStudentScope.subject;
+    const scopedExamMarks = await model.find(activeStudentScope).lean();
+    const getComparableTheoryMarks = (record) => {
+      const theoryMarks = Number(record?.theorymarks);
+      return Number.isFinite(theoryMarks)
+        && Math.abs(theoryMarks - 0.000001) >= 0.0000001
+        ? theoryMarks
+        : 0;
+    };
+    const uniqueExamMarks = [...scopedExamMarks.reduce((recordsByStudentSubject, record) => {
+      const studentKey = String(record.reg ?? '').trim()
+        || `${String(record.name ?? '').trim()}-${String(record.roll ?? '').trim()}`;
+      const recordKey = [
+        studentKey,
+        String(record.studentClass ?? '').trim().toLowerCase(),
+        String(record.section ?? '').trim().toLowerCase(),
+        String(record.terminal ?? '').trim().toLowerCase(),
+        String(record.academicYear ?? '').trim(),
+        String(record.subject ?? '').trim().toLowerCase()
+      ].join('|');
+      const currentRecord = recordsByStudentSubject.get(recordKey);
+
+      if (!currentRecord || getComparableTheoryMarks(record) > getComparableTheoryMarks(currentRecord)) {
+        recordsByStudentSubject.set(recordKey, record);
+      }
+      return recordsByStudentSubject;
+    }, new Map()).values()];
+    const uniqueRecordIds = uniqueExamMarks.map((record) => record._id);
+    const activeStudentKeys = [...new Map(
+      uniqueExamMarks
+        .filter((record) => {
+          return getComparableTheoryMarks(record) > 0;
+        })
+        .map((record) => {
+          const registrationNumber = String(record.reg ?? '').trim();
+          if (!registrationNumber) return null;
+          const studentKey = [
+            registrationNumber,
+            String(record.studentClass ?? '').trim().toLowerCase(),
+            String(record.section ?? '').trim().toLowerCase()
+          ].join('|');
+          return [studentKey, {
+            reg: registrationNumber,
+            studentClass: String(record.studentClass ?? '').trim(),
+            section: String(record.section ?? '').trim()
+          }];
+        })
+        .filter(Boolean)
+    )].map(([, student]) => student);
+    matchStage.$or = activeStudentKeys.map((student) => ({
+      reg: student.reg,
+      studentClass: student.studentClass,
+      section: student.section
+    }));
+    matchStage._id = { $in: uniqueRecordIds };
     
     // 1. Class-wise Subject Analysis
     const classSubjectAnalysis = await model.aggregate([
@@ -1222,6 +1280,7 @@ const schoolOverviewFinalStructure = {};
  
     // 6. Year-wise Trend (for multiple years)
     const yearTrend = await model.aggregate([
+      { $match: matchStage },
       {
         $group: {
           _id: { subject: "$subject", academicYear: "$academicYear", terminal: "$terminal" },
@@ -4447,32 +4506,37 @@ function getClassOrder(className) {
     return orderMap[className] || 999;
 }
 
-// Helper function to check if a student is absent (0 in all subjects)
-function isStudentAbsent(studentMarks, allExamMarks) {
+// Helper function to check if a student is absent (0 in theory for all subjects)
+function isSubjectWiseStudentAbsent(studentMarks, allExamMarks) {
     // Get all marks for this student
-    const studentReg = studentMarks.reg;
-    const studentClass = studentMarks.studentClass;
-    const section = studentMarks.section;
+  const studentReg = String(studentMarks.reg ?? '').trim();
+  const studentClass = String(studentMarks.studentClass ?? '').trim().toLowerCase();
+  const section = String(studentMarks.section ?? '').trim().toLowerCase();
     
     // Get all records for this student
     const allStudentRecords = allExamMarks.filter(mark => 
-        mark.reg === studentReg && 
-        mark.studentClass === studentClass &&
-        mark.section === section
+    String(mark.reg ?? '').trim() === studentReg &&
+    String(mark.studentClass ?? '').trim().toLowerCase() === studentClass &&
+    String(mark.section ?? '').trim().toLowerCase() === section
     );
     
-    // Check if student has any marks > 0 in any subject
-    let hasAnyMarks = false;
+    // A student is absent when theory marks are zero in every subject.
+    let hasAnyTheoryMarks = false;
     for (const record of allStudentRecords) {
-        const theoryMarks = record.theorymarks || 0;
-        const practicalMarks = record.practicalmarks || 0;
-        if (theoryMarks > 0 || practicalMarks > 0) {
-            hasAnyMarks = true;
+      const theoryValue = String(record.theorymarks ?? '').trim().toLowerCase();
+      const theoryMarks = Number(record.theorymarks);
+      const isAbsentValue = theoryValue === 'ab'
+        || theoryValue === 'absent'
+        || theoryValue === '0.000001'
+        || (Number.isFinite(theoryMarks) && Math.abs(theoryMarks - 0.000001) < 0.0000001);
+
+      if (Number.isFinite(theoryMarks) && theoryMarks > 0 && !isAbsentValue) {
+        hasAnyTheoryMarks = true;
             break;
         }
     }
     
-    return !hasAnyMarks;
+    return !hasAnyTheoryMarks;
 }
 
 function calculateGP(percentage) {
@@ -4520,9 +4584,39 @@ function calculateOverallStats(subjectData) {
 }
 
 async function processSubjectWiseClassData(className, subjectName, classMarks, calculationType, sectionFilter, classConfig, isOptionalSubject = false, allExamMarks = []) {
+  const getTheoryMarkForComparison = (record) => {
+    const value = Number(record?.theorymarks);
+    return Number.isFinite(value) && Math.abs(value - 0.000001) >= 0.0000001 ? value : 0;
+  };
+
+  const uniqueClassMarks = [...classMarks.reduce((recordsByStudent, record) => {
+    const studentKey = String(record.reg || `${record.name || ''}-${record.roll || ''}`).trim();
+    const currentRecord = recordsByStudent.get(studentKey);
+    const currentTheoryMarks = getTheoryMarkForComparison(currentRecord);
+    const recordTheoryMarks = getTheoryMarkForComparison(record);
+
+    if (!currentRecord || recordTheoryMarks > currentTheoryMarks) {
+      recordsByStudent.set(studentKey, record);
+    }
+    return recordsByStudent;
+  }, new Map()).values()];
+
     const getSummary = (marksForSection) => {
+    const uniqueStudents = [...marksForSection.reduce((recordsByStudent, record) => {
+      const studentKey = String(record.reg || `${record.name || ''}-${record.roll || ''}`).trim();
+      const currentRecord = recordsByStudent.get(studentKey);
+            const currentTheoryMarks = getTheoryMarkForComparison(currentRecord);
+            const recordTheoryMarks = getTheoryMarkForComparison(record);
+
+      if (!currentRecord || recordTheoryMarks > currentTheoryMarks) {
+        recordsByStudent.set(studentKey, record);
+      }
+      return recordsByStudent;
+    }, new Map()).values()];
+
         // Filter out absent students (those with 0 in all subjects)
-        const activeStudents = marksForSection.filter(student => {
+    const absentStudents = uniqueStudents.filter(student => isSubjectWiseStudentAbsent(student, allExamMarks)).length;
+    const activeStudents = uniqueStudents.filter(student => {
             if (!student || typeof student !== 'object') {
                 return false;
             }
@@ -4537,7 +4631,7 @@ async function processSubjectWiseClassData(className, subjectName, classMarks, c
             }
             
             // Check if student is absent (0 in all subjects)
-            const isAbsent = isStudentAbsent(student, allExamMarks);
+            const isAbsent = isSubjectWiseStudentAbsent(student, allExamMarks);
             if (isAbsent) {
                 console.log(`  ⏭️ Excluding absent student: ${student.name || 'Unknown'} (Reg: ${student.reg})`);
                 return false;
@@ -4607,14 +4701,8 @@ async function processSubjectWiseClassData(className, subjectName, classMarks, c
 
             // THEORY PASS MARKS: Compare theory marks against theory pass marks
             if (calculationType === 'theory') {
-              // Theory only - compare percentages so full-mark differences are respected
-              const theoryPercentage = theoryFullMarksStudent > 0
-                ? theoryMarks / theoryFullMarksStudent
-                : 0;
-              const passingPercentage = theoryFullMarks > 0
-                ? passingMarks / theoryFullMarks
-                : 0;
-              passed = theoryPercentage >= passingPercentage;
+              // Match School Analysis: pass when theory marks reach pass marks.
+              passed = theoryMarks >= passingMarks;
                 gp = passed ? 1.6 : 0;
                 marks = theoryMarks;
             } else {
@@ -4702,11 +4790,15 @@ async function processSubjectWiseClassData(className, subjectName, classMarks, c
             practicalFullMarks,
             passingMarks,
             theoryCredit,
-            practicalCredit
+            practicalCredit,
+            absentStudents,
+            reason: calculationType === 'theory'
+              ? `Theory marks below pass marks (${passingMarks})`
+              : 'Theory below pass marks or combined GP below 1.6'
         };
     };
 
-    let filteredMarks = classMarks;
+    let filteredMarks = uniqueClassMarks;
     if (sectionFilter && sectionFilter !== 'all' && sectionFilter !== 'with-section') {
         filteredMarks = filteredMarks.filter(mark => mark.section === sectionFilter);
     }
