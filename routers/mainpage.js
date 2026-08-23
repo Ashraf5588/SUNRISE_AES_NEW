@@ -11,7 +11,7 @@ const attendancecontroller = require('../controller/attendancecontroller')
 const practical410controller = require('../controller/practical410controller')
 const themecontroller = require('../controller/themecontroller')
 const eventcontroller = require('../controller/eventcontroller')
-
+const ecdcontroller = require('../controller/ecdgradecontroller')
 const {verifytoken,authorized,isAdmin,isnewsAdmin}=require('../middleware/auth')
 
 const storage = multer.diskStorage({
@@ -371,6 +371,13 @@ student.get('/generatemarksheet',verifytoken,authorized,isAdmin,examdashboardcon
 student.get('/schoolanalysis',verifytoken,authorized,isAdmin,examdashboardcontroller.schoolanalysis);
 student.get('/quantamanalysis',verifytoken,authorized,isAdmin,examdashboardcontroller.quantamanalysis);
 student.get('/gradecounter',verifytoken,authorized,isAdmin,examdashboardcontroller.getGradeCounter);
+
+
+student.get('/ecd-gradecounter', ecdcontroller.getECDGradeCounter);
+
+// Export to Excel
+student.get('/ecd-gradecounter/export', ecdcontroller.exportECDGradeCounterExcel);
+
 student.get('/subjectwiseanalysis',verifytoken,authorized,isAdmin,examdashboardcontroller.subjectWiseanalysis);
 student.get('/subjectwisefail',verifytoken,authorized,isAdmin,examdashboardcontroller.subjectWiseFailStudents);
 student.get('/admitcard',verifytoken,authorized,isAdmin,examdashboardcontroller.admitCard)

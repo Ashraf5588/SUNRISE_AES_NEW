@@ -106,6 +106,72 @@
             cursor: not-allowed;
         }
 
+        .results-card {
+            margin-top: 2rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+
+        .results-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .results-header h2 {
+            color: var(--primary);
+        }
+
+        .export-link {
+            display: inline-block;
+            padding: 0.65rem 1rem;
+            border-radius: 8px;
+            background: #217346;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .grade-table {
+            width: 100%;
+            min-width: 760px;
+            border-collapse: collapse;
+            margin: 1.25rem 0 2rem;
+            font-size: 0.9rem;
+        }
+
+        .grade-table th,
+        .grade-table td {
+            border: 1px solid var(--border);
+            padding: 0.65rem;
+            text-align: center;
+        }
+
+        .grade-table th {
+            background: #153b71;
+            color: white;
+        }
+
+        .grade-table td:first-child,
+        .grade-table th:first-child {
+            text-align: left;
+        }
+
+        .section-heading {
+            margin-top: 1.5rem;
+            padding: 0.7rem 1rem;
+            background: #e0e7ff;
+            color: #3730a3;
+            border-left: 4px solid var(--primary);
+        }
+
         .info-text {
             font-size: 0.85rem;
             color: #64748b;
@@ -120,11 +186,7 @@
     </style>
 </head>
 <body>
-    <%- include('partials/sidenav', { 
-        subjects: subjects, 
-        studentClassdata: studentClassdata,
-        terminals: terminals 
-    }) %>
+  
 
     <div class="container">
         <div class="header">
@@ -133,7 +195,7 @@
         </div>
 
         <div class="selection-card">
-            <form action="/gradecounter" method="GET">
+            <form action="/ecd-gradecounter" method="GET" onsubmit="return submitEcdGradeFilters(this)">
                 <div class="form-group">
                     <label class="form-label">Select Class & Section</label>
                     <select name="classSection" class="form-select" required>
@@ -216,6 +278,60 @@
                 <button type="submit" class="btn-primary">📊 Generate Grade Analysis</button>
             </form>
         </div>
+
+        <% const resultClassData = gradeData && selectedClass ? gradeData[selectedClass] : null; %>
+        <% if (resultClassData && Object.keys(resultClassData).length) { %>
+            <div class="results-card">
+                <div class="results-header">
+                    <h2>Grade Distribution</h2>
+                    <a class="export-link" href="/ecd-gradecounter/export?studentClass=<%= encodeURIComponent(selectedClass) %>&section=<%= encodeURIComponent(selectedSection || 'all') %>&terminal=<%= encodeURIComponent(selectedTerminal) %>&academicYear=<%= encodeURIComponent(selectedYear) %>&calcMode=<%= encodeURIComponent(calcMode || 'combined') %>">Export to Excel</a>
+                </div>
+                <% Object.entries(resultClassData).forEach(([sectionName, sectionSubjects]) => { %>
+                    <h3 class="section-heading">Class <%= selectedClass %> | Section: <%= sectionName %></h3>
+                    <table class="grade-table">
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <% grades.forEach((grade) => { %><th><%= grade %></th><% }) %>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% Object.entries(sectionSubjects).forEach(([subjectName, subjectData]) => { %>
+                                <tr>
+                                    <td><strong><%= subjectName %></strong></td>
+                                    <% grades.forEach((grade) => { %><td><%= subjectData.grades[grade] || 0 %></td><% }) %>
+                                    <td><strong><%= subjectData.total || 0 %></strong></td>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                <% }) %>
+            </div>
+        <% } %>
     </div>
+
+    <script>
+        function submitEcdGradeFilters(form) {
+            const classSection = form.querySelector('[name="classSection"]').value;
+            if (!classSection) return false;
+            const separatorIndex = classSection.indexOf('-');
+            if (separatorIndex === -1) return false;
+
+            const studentClass = classSection.slice(0, separatorIndex).trim();
+            const section = classSection.slice(separatorIndex + 1).trim();
+            ['studentClass', 'section'].forEach((name) => {
+                let input = form.querySelector(`[name="${name}"]`);
+                if (!input) {
+                    input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = name;
+                    form.appendChild(input);
+                }
+                input.value = name === 'studentClass' ? studentClass : section;
+            });
+            return true;
+        }
+    </script>
 </body>
 </html>

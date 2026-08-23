@@ -31,7 +31,13 @@
     table td{padding:8px;border:1px solid var(--border);text-align:center;background:#fff}
     table tr:nth-child(even) td{background:#fafbfc}
     table tr:hover td{background:var(--hover)}
+    table tr.missing-reg td,
+    table tr.missing-reg input{background:#fee2e2 !important;color:#b91c1c !important;border-color:#ef4444 !important}
+    table tr.missing-reg td:nth-child(2){font-weight:700}
     table input[type="text"],table input[type="number"]{width:100%;padding:7px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px;transition:border .2s;text-align:center}
+    table input[type="number"]{-moz-appearance:textfield}
+    table input[type="number"]::-webkit-inner-spin-button,
+    table input[type="number"]::-webkit-outer-spin-button{margin:0;-webkit-appearance:none}
     table input[type="text"]:read-only{background:#f7fafc;border-color:#e2e8f0;color:#4a5568}
     table input[type="number"]:not([readonly]):focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 2px rgba(255,140,66,.1)}
     table input[readonly]{background:#edf2f7;cursor:not-allowed}
@@ -250,7 +256,7 @@
         });
       %>
       <% sortedStudentData.forEach((student,idx)=>{%>
-        <tr>
+        <tr class="<%= !String(student.reg || '').trim() ? 'missing-reg' : '' %>">
           <input type="hidden" name="gender[<%=student.reg%>]" value="<%=student.gender%>" readonly>
           <input type="hidden" name="reg[<%=student.reg%>]" value="<%=student.reg%>" readonly>
           <td><input type="text" name="roll[<%=student.reg%>]" value="<%=student.roll%>" readonly></td>
@@ -305,6 +311,31 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
   const terminal = document.getElementById('terminal').value;
   const saveTimers = new Map();
   let practicalDataSource = 'db'; // 'db', 'theme', 'api'
+
+  function ceilNumberInput(input) {
+    if (!input || String(input.value).trim() === '') return;
+    const numericValue = Number(input.value);
+    if (Number.isFinite(numericValue)) input.value = String(Math.ceil(numericValue));
+  }
+
+  function ceilLoadedNumberInputs() {
+    document.querySelectorAll('input[type="number"]').forEach(ceilNumberInput);
+  }
+
+  document.querySelectorAll('input[type="number"]').forEach((input) => {
+    const normalizeAndRecalculate = () => {
+      ceilNumberInput(input);
+      const reg = input.dataset.reg || input.id.replace(/^(?:practicalmarks_|attendancemarks_|participationMarks_|terminalmarks_|totalpractical_)/, '');
+      if (reg) calculateTotal(reg);
+    };
+    input.addEventListener('change', normalizeAndRecalculate);
+    input.addEventListener('blur', normalizeAndRecalculate);
+    ceilNumberInput(input);
+  });
+
+  document.addEventListener('wheel', function(event) {
+    if (event.target.matches('input[type="number"]')) event.target.blur();
+  }, { passive: true });
 
   // ==================== LOADING OVERLAY ====================
   
@@ -431,7 +462,7 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
           
           if (data.hasPercentage && data.marks !== null) {
             // Has valid percentage - apply converted marks
-            const marks = data.marks;
+            const marks = Math.ceil(data.marks);
             const percentage = data.percentage;
             
             practicalInput.value = marks.toFixed(2);
@@ -478,6 +509,7 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
       });
       
       practicalDataSource = hasValidPercentage ? 'theme' : 'manual';
+      ceilLoadedNumberInputs();
       console.log(`Theme data processed for: ${currentSubject}, applied: ${appliedCount} students, hasValidPercentage: ${hasValidPercentage}`);
       return { applied: appliedCount > 0, hasValidPercentage };
     } catch (error) {
@@ -533,6 +565,7 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
         if (sourceBadge) {
           sourceBadge.innerHTML = `<span class="practical-source-badge badge-api">🔄 Practical Slip API</span>`;
         }
+        ceilLoadedNumberInputs();
       } else {
         console.log("No practical marks data found");
       }
@@ -735,10 +768,10 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
     }
 
     // Total = practical + attendance + terminal + participation
-    const total = practical 
+    const total = Math.ceil(practical);
     
     if (totalPracticalInput) {
-      totalPracticalInput.value = total.toFixed(2);
+      totalPracticalInput.value = String(Math.ceil(total));
     }
   }
 
@@ -773,7 +806,7 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
     
     const attendanceMarksInput = document.getElementById(`attendancemarks_${reg}`);
     if (attendanceMarksInput) {
-      attendanceMarksInput.value = attendanceMarks;
+      attendanceMarksInput.value = String(Math.ceil(attendanceMarks));
     }
     
     calculateTotal(reg);
@@ -1115,6 +1148,7 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
           calculateTotal(reg);
         }
       });
+      ceilLoadedNumberInputs();
       
     } catch (error) {
       console.error("Error in populateData:", error);
