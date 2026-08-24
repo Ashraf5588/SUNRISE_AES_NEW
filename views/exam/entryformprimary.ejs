@@ -237,6 +237,7 @@
             <div class="student-cell">
               <span class="student-roll"><%=student.roll%>.</span>
               <span class="student-name"><%=student.name%></span>
+              <label class="absent-toggle"><input type="checkbox" name="status[<%=student.reg%>]" value="ABSENT" data-reg="<%=student.reg%>" onchange="autoSave(this)" <%= theoryData.find(t => t.reg === student.reg)?.status === 'ABSENT' ? 'checked' : '' %>> Ab</label>
             </div>
           </td>
           <td data-column="worksheet" data-reg="<%=student.reg%>"></td>
@@ -581,6 +582,7 @@ async function initializeStudentRecords(subject, studentClass, section, academic
       });
       
       const worksheetGrades = baseGrades;
+      const status = document.querySelector(`input[name="status[${reg}]"]`)?.checked ? 'ABSENT' : 'PRESENT';
 
       const saveData = {
         reg,
@@ -596,6 +598,7 @@ async function initializeStudentRecords(subject, studentClass, section, academic
         totalWorksheet,
         worksheetGrades,
         gender,
+        status,
         passMarks,
         practicalfullmarks,
         theoryfullmarks,
@@ -858,6 +861,7 @@ async function initializeStudentRecords(subject, studentClass, section, academic
         totalWorksheet: newCount,
         worksheetGrades: grades,
         gender,
+        status: document.querySelector(`input[name="status[${reg}]"]`)?.checked ? 'ABSENT' : 'PRESENT',
         passMarks: Number(passMarks),
         practicalfullmarks: Number(practicalfullmarks),
         theoryfullmarks: Number(theoryfullmarks),

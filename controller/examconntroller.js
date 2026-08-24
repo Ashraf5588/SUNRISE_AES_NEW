@@ -411,6 +411,7 @@ exports.saveEntryform = async (req, res, next) => {
         roll: req.body.roll,
         name: req.body.name,
         theorymarks: theorymarks, // This can be null, 0.000001, 0.0, 4.0, etc.
+        status: req.body.status === 'ABSENT' ? 'ABSENT' : 'PRESENT',
         practicalmarks: Number(req.body.practicalmarks) || 0,
         totalpracticalmarks: Number(req.body.totalpracticalmarks) || 0,
         attendance: Number(req.body.attendance) || 0,

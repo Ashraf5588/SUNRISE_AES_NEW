@@ -288,6 +288,7 @@
             <div class="student-cell">
               <span class="student-roll"><%=student.roll%>.</span>
               <span class="student-name"><%=student.name%></span>
+              <label class="absent-toggle"><input type="checkbox" name="status[<%=student.reg%>]" value="ABSENT" data-reg="<%=student.reg%>" onchange="autoSave(this)" <%= theoryData.find(t => t.reg === student.reg)?.status === 'ABSENT' ? 'checked' : '' %>> Ab</label>
             </div>
           </td>
           <td data-column="worksheet" data-reg="<%=student.reg%>"></td>
@@ -821,6 +822,7 @@ window.onload = function() {
       
       // Keep empty strings to maintain indices
       const worksheetGrades = storedGrades.slice(0, totalWorksheet);
+      const status = document.querySelector(`input[name="status[${reg}]"]`)?.checked ? 'ABSENT' : 'PRESENT';
 
       const saveData = {
         reg,
@@ -836,6 +838,7 @@ window.onload = function() {
         totalWorksheet,
         worksheetGrades,
         gender,
+        status,
         passMarks: Number(passMarks),
         practicalfullmarks: Number(practicalfullmarks),
         theoryfullmarks: Number(theoryfullmarks),
@@ -977,6 +980,7 @@ window.onload = function() {
         const passMarks = document.getElementById('passMarks')?.value || 0;
         const practicalfullmarks = document.getElementById('practicalfullmarks')?.value || 0;
         const theoryfullmarks = document.getElementById('fullMarks')?.value || 0;
+        const status = document.querySelector(`input[name="status[${reg}]"]`)?.checked ? 'ABSENT' : 'PRESENT';
 
         const saveData = {
           reg,
@@ -992,6 +996,7 @@ window.onload = function() {
           totalWorksheet: Number(totalCount),
           worksheetGrades,
           gender,
+          status,
           passMarks: Number(passMarks),
           practicalfullmarks: Number(practicalfullmarks),
           theoryfullmarks: Number(theoryfullmarks),
