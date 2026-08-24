@@ -6,7 +6,6 @@ const examSchema = new mongoose.Schema({
  studentClass: {type: String, required: true},
  section: {type: String, required: true},
  academicYear: {type: String, required: true},
-
  name: {type: String, required: true},
  gender:{type: String, required:false},
  theorymarks: {type: Number, required: true},
@@ -22,6 +21,11 @@ const examSchema = new mongoose.Schema({
   terminalmarks: {type: Number, required: false},
    totalWorksheet:{type: Number, required: false},
  worksheetGrades: [{ type: String }],
+ status: {
+  type: String,
+  enum: ['PRESENT', 'ABSENT'],
+  default: 'PRESENT'
+}
 
 });
 
