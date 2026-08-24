@@ -379,6 +379,9 @@ student.get('/ecd-gradecounter', ecdcontroller.getECDGradeCounter);
 student.get('/ecd-gradecounter/export', ecdcontroller.exportECDGradeCounterExcel);
 
 student.get('/subjectwiseanalysis',verifytoken,authorized,isAdmin,examdashboardcontroller.subjectWiseanalysis);
+
+student.get('/teacheranalysis',verifytoken,authorized,isAdmin,examdashboardcontroller.teacherAnalysis);
+
 student.get('/subjectwisefail',verifytoken,authorized,isAdmin,examdashboardcontroller.subjectWiseFailStudents);
 student.get('/admitcard',verifytoken,authorized,isAdmin,examdashboardcontroller.admitCard)
 student.get('/routineterminalchoose'  ,verifytoken,authorized,isAdmin,examdashboardcontroller.routineTerminalChoose)

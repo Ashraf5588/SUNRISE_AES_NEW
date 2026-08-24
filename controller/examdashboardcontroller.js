@@ -22,6 +22,7 @@ const {holiday} = require('../model/holidayschema')
 const terminal = mongoose.model("terminal", terminalSchema, "terminal");
 const terminalModel = mongoose.model("terminal", terminalSchema, "terminal");
 const { marksheetsetupschemaForAdmin ,routineSchema} = require("../model/marksheetschema");
+const teacherSchema = require("../model/admin").teacherSchema;
 const { onlineAttendanceSchema } = require("../model/onlineattendanceschema");
 const { fail } = require("assert");
 const routineModel = mongoose.model("routine", routineSchema, "routine");
@@ -32,7 +33,7 @@ const onlineAttendance = mongoose.model("onlineAttendance", onlineAttendanceSche
 app.set("view engine", "ejs");
 app.set("view", path.join(rootDir, "views"));
 const newsubject = mongoose.model("newsubject", newsubjectSchema, "newsubject");
-
+const usermodel = mongoose.model("users", teacherSchema, "users");
 const getSlipModel = () => {
  
   if (mongoose.models[`exam_marks`]) {
@@ -6087,6 +6088,132 @@ exports.getGradeCounterPage = async (req, res) => {
         res.status(500).render('404', {
             errorMessage: 'Error loading grade counter page: ' + err.message,
             currentPage: 'teacher'
+        });
+    }
+};
+
+exports.teacherAnalysis = async (req, res) => {
+    try {
+        const Teacher = usermodel;
+        const ExamMarks = await getSlipModel()
+
+        // Get all teachers with role TEACHER
+        const teachers = await Teacher.find({ role: 'TEACHER' });
+        
+        let teacherData = [];
+
+        for (const teacher of teachers) {
+            const teacherName = teacher.teacherName || teacher.username;
+            let subjectsData = [];
+            let totalStudentsAll = 0;
+            let totalPassedAll = 0;
+            let totalFailedAll = 0;
+            let totalMarksAll = 0;
+            let passPercentages = [];
+
+            // Process each allowed subject
+            for (const allowedSubject of teacher.allowedSubjects) {
+                if (!allowedSubject.studentClass || !allowedSubject.section) continue;
+
+                const marks = await ExamMarks.find({
+                    subject: allowedSubject.subject,
+                    studentClass: allowedSubject.studentClass,
+                    section: allowedSubject.section,
+                    terminal: 'FIRST'
+                });
+
+                if (marks.length === 0) continue;
+
+                let passed = 0;
+                let failed = 0;
+                let totalMarks = 0;
+
+                for (const mark of marks) {
+                    const theoryMarks = mark.theorymarks || mark.theoryMarks || 0;
+                    const passMarks = mark.passMarks || 0;
+                    
+                    totalMarks += theoryMarks;
+                    
+                    if (theoryMarks >= passMarks) {
+                        passed++;
+                    } else {
+                        failed++;
+                    }
+                }
+
+                const totalStudents = marks.length;
+                const passPercentage = totalStudents > 0 ? (passed / totalStudents) * 100 : 0;
+                const failPercentage = totalStudents > 0 ? (failed / totalStudents) * 100 : 0;
+                const averageMarks = totalStudents > 0 ? totalMarks / totalStudents : 0;
+
+                subjectsData.push({
+                    subject: allowedSubject.subject,
+                    class: allowedSubject.studentClass,
+                    section: allowedSubject.section,
+                    totalStudents,
+                    passed,
+                    failed,
+                    passPercentage: passPercentage.toFixed(2),
+                    failPercentage: failPercentage.toFixed(2),
+                    averageMarks: averageMarks.toFixed(2),
+                    totalMarks
+                });
+
+                totalStudentsAll += totalStudents;
+                totalPassedAll += passed;
+                totalFailedAll += failed;
+                totalMarksAll += totalMarks;
+                passPercentages.push(passPercentage);
+            }
+
+            // Calculate overall achievement - average of all subject pass percentages
+            const overallPassPercentage = passPercentages.length > 0 ? 
+                passPercentages.reduce((a, b) => a + b, 0) / passPercentages.length : 0;
+
+            // Also calculate overall pass rate (total passed / total students)
+            const overallPassRate = totalStudentsAll > 0 ? 
+                (totalPassedAll / totalStudentsAll) * 100 : 0;
+
+            teacherData.push({
+                teacherName: teacherName,
+                username: teacher.username,
+                subjects: subjectsData,
+                totalStudents: totalStudentsAll,
+                totalPassed: totalPassedAll,
+                totalFailed: totalFailedAll,
+                overallPassPercentage: overallPassPercentage.toFixed(2),
+                overallPassRate: overallPassRate.toFixed(2),
+                overallAverageMarks: totalStudentsAll > 0 ? 
+                    (totalMarksAll / totalStudentsAll).toFixed(2) : 0
+            });
+        }
+
+        // Sort by overall pass percentage
+        teacherData.sort((a, b) => parseFloat(b.overallPassPercentage) - parseFloat(a.overallPassPercentage));
+
+        // Get unique values for filters
+        const teacherNames = teacherData.map(t => t.teacherName);
+        const allSubjects = [...new Set(
+            teacherData.flatMap(t => t.subjects.map(s => s.subject))
+        )];
+        const allClasses = [...new Set(
+            teacherData.flatMap(t => t.subjects.map(s => s.class))
+        )];
+
+        res.render('./exam/teacherachievement', {
+            teacherData,
+            teacherNames,
+            allSubjects,
+            allClasses,
+            success: true
+        });
+
+    } catch (err) {
+        console.error('Error in teacherAnalysis:', err);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching teacher analysis',
+            error: err.message
         });
     }
 };

@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teacher Achievement Analysis</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            font-size: 28px;
+        }
+        
+        .header-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .stats-summary {
+            display: flex;
+            gap: 20px;
+            background: #f8f9fa;
+            padding: 10px 20px;
+            border-radius: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .stats-summary span {
+            font-size: 14px;
+            color: #555;
+        }
+        
+        .stats-summary strong {
+            color: #2c3e50;
+        }
+        
+        .search-box {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 8px 15px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        
+        .search-box input {
+            border: none;
+            padding: 8px 12px;
+            font-size: 14px;
+            background: transparent;
+            width: 250px;
+            outline: none;
+        }
+        
+        .search-box input:focus {
+            border-color: #3498db;
+        }
+        
+        .search-box .search-icon {
+            color: #7f8c8d;
+        }
+        
+        .sort-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .sort-controls label {
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+        }
+        
+        .sort-controls select {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            background: white;
+            min-width: 150px;
+        }
+        
+        .sort-controls select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        
+        .btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #229954;
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        
+        .teacher-table-container {
+            margin-bottom: 30px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .teacher-table-container.hidden {
+            display: none;
+        }
+        
+        .teacher-summary {
+            background: linear-gradient(135deg, #2c3e50, #34495e);
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .teacher-summary .teacher-name {
+            font-size: 18px;
+            font-weight: 700;
+        }
+        
+        .teacher-summary .teacher-name .subject-count {
+            font-size: 13px;
+            font-weight: normal;
+            color: #bdc3c7;
+            margin-left: 10px;
+        }
+        
+        .teacher-summary .stats {
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+            flex-wrap: wrap;
+        }
+        
+        .teacher-summary .stats span {
+            background: rgba(255,255,255,0.12);
+            padding: 4px 14px;
+            border-radius: 12px;
+        }
+        
+        .teacher-summary .stats .achievement {
+            background: rgba(46, 204, 113, 0.3);
+            font-weight: 700;
+        }
+        
+        .table-wrapper {
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        
+        th {
+            background: #f8f9fa;
+            color: #2c3e50;
+            padding: 10px 8px;
+            text-align: center;
+            font-weight: 600;
+            border-bottom: 2px solid #e0e0e0;
+            white-space: nowrap;
+        }
+        
+        td {
+            padding: 8px 6px;
+            text-align: center;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        
+        .subject-row:hover {
+            background: #f8f9fa;
+        }
+        
+        .subject-name {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .pass-rate {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 13px;
+        }
+        
+        .pass-high {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .pass-medium {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .pass-low {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .achievement-cell {
+            font-weight: 700;
+            font-size: 16px;
+        }
+        
+        .total-row {
+            background: #e8f4fd !important;
+            font-weight: 600;
+        }
+        
+        .total-row td {
+            background: #e8f4fd !important;
+            border-top: 2px solid #3498db;
+            padding: 10px 8px;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 30px;
+            color: #7f8c8d;
+            font-size: 16px;
+        }
+        
+        .footer {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #7f8c8d;
+            font-size: 13px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .legend {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+        
+        .legend-color.high {
+            background: #d4edda;
+        }
+        .legend-color.medium {
+            background: #fff3cd;
+        }
+        .legend-color.low {
+            background: #f8d7da;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+            font-size: 18px;
+        }
+        
+        .no-results i {
+            font-size: 48px;
+            display: block;
+            margin-bottom: 10px;
+        }
+        
+        @media print {
+            .search-box, .sort-controls, .btn { display: none; }
+            .teacher-table-container { page-break-inside: avoid; }
+        }
+        
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .header-controls {
+                flex-direction: column;
+            }
+            .stats-summary {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            .search-box input {
+                width: 100%;
+            }
+            .sort-controls {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            .teacher-summary {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+            .teacher-summary .stats {
+                justify-content: center;
+            }
+            table {
+                font-size: 12px;
+            }
+            th, td {
+                padding: 4px 3px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Teacher Achievement Analysis</h1>
+            <div class="stats-summary">
+                <span>👨‍🏫 Teachers: <strong><%= teacherData.length %></strong></span>
+                <span>📚 Total Subjects: <strong><%= teacherData.reduce((sum, t) => sum + t.subjects.length, 0) %></strong></span>
+                <span>👨‍🎓 Total Students: <strong><%= teacherData.reduce((sum, t) => sum + t.totalStudents, 0) %></strong></span>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; align-items: center; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+            <div class="search-box" style="flex: 1; min-width: 200px;">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" placeholder="Search teacher by name..." onkeyup="searchTeachers()">
+            </div>
+            
+            <div class="sort-controls">
+                <label for="sortFilter">📊 Sort by Achievement:</label>
+                <select id="sortFilter" onchange="sortTeachers()">
+                    <option value="highest">Highest to Lowest</option>
+                    <option value="lowest">Lowest to Highest</option>
+                </select>
+            </div>
+            
+            <button class="btn btn-secondary" onclick="resetAll()">🔄 Reset</button>
+        </div>
+
+        <div id="teacherTables">
+            <% teacherData.forEach((teacher, index) => { 
+                const hasSubjects = teacher.subjects.length > 0;
+            %>
+                <div class="teacher-table-container" data-teacher="<%= teacher.teacherName %>" data-achievement="<%= teacher.overallPassPercentage %>">
+                    <div class="teacher-summary">
+                        <div class="teacher-name">
+                            👨‍🏫 <%= teacher.teacherName %>
+                            <span class="subject-count">(<%= teacher.subjects.length %> subjects)</span>
+                        </div>
+                        <div class="stats">
+                            <span class="achievement">🏆 Achievement: <strong><%= teacher.overallPassPercentage %>%</strong></span>
+                            <span>👨‍🎓 Total Students: <strong><%= teacher.totalStudents %></strong></span>
+                            <span>✅ Passed: <strong style="color: #2ecc71;"><%= teacher.totalPassed %></strong></span>
+                            <span>❌ Failed: <strong style="color: #e74c3c;"><%= teacher.totalFailed %></strong></span>
+                            <span>📊 Avg Marks: <strong><%= teacher.overallAverageMarks %></strong></span>
+                        </div>
+                    </div>
+                    
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width: 5%;">SN</th>
+                                    <th style="width: 15%;">Subject</th>
+                                    <th style="width: 8%;">Class</th>
+                                    <th style="width: 10%;">Section</th>
+                                    <th style="width: 8%;">Total</th>
+                                    <th style="width: 8%;">Passed</th>
+                                    <th style="width: 8%;">Failed</th>
+                                    <th style="width: 10%;">Pass %</th>
+                                    <th style="width: 10%;">Fail %</th>
+                                    <th style="width: 10%;">Avg Marks</th>
+                                    <th style="width: 12%;">Achievement %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% if (hasSubjects) { %>
+                                    <% teacher.subjects.forEach((subject, subIndex) => { 
+                                        const passClass = subject.passPercentage >= 70 ? 'pass-high' : 
+                                                         subject.passPercentage >= 50 ? 'pass-medium' : 'pass-low';
+                                        const achievementClass = teacher.overallPassPercentage >= 70 ? 'pass-high' :
+                                                                teacher.overallPassPercentage >= 50 ? 'pass-medium' : 'pass-low';
+                                    %>
+                                        <tr class="subject-row" 
+                                            data-subject="<%= subject.subject %>"
+                                            data-class="<%= subject.class %>"
+                                            data-pass-percentage="<%= subject.passPercentage %>">
+                                            <td><%= subIndex + 1 %></td>
+                                            <td><span class="subject-name"><%= subject.subject %></span></td>
+                                            <td><span class="badge badge-info"><%= subject.class %></span></td>
+                                            <td><%= subject.section %></td>
+                                            <td><strong><%= subject.totalStudents %></strong></td>
+                                            <td><span class="badge badge-success"><%= subject.passed %></span></td>
+                                            <td><span class="badge badge-danger"><%= subject.failed %></span></td>
+                                            <td>
+                                                <span class="pass-rate <%= passClass %>">
+                                                    <%= subject.passPercentage %>%
+                                                </span>
+                                            </td>
+                                            <td><%= subject.failPercentage %>%</td>
+                                            <td><strong><%= subject.averageMarks %></strong></td>
+                                            <td class="achievement-cell">
+                                                <span class="pass-rate <%= achievementClass %>">
+                                                    <%= teacher.overallPassPercentage %>%
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    <% }) %>
+                                    
+                                    <!-- Total Row for this teacher -->
+                                    <tr class="total-row">
+                                        <td colspan="4" style="text-align: right; font-weight: 600; padding-right: 15px;">
+                                            <strong>TOTAL</strong>
+                                        </td>
+                                        <td><strong><%= teacher.totalStudents %></strong></td>
+                                        <td><strong style="color: #27ae60;"><%= teacher.totalPassed %></strong></td>
+                                        <td><strong style="color: #e74c3c;"><%= teacher.totalFailed %></strong></td>
+                                        <td>
+                                            <span class="pass-rate <%= teacher.overallPassPercentage >= 70 ? 'pass-high' : teacher.overallPassPercentage >= 50 ? 'pass-medium' : 'pass-low' %>">
+                                                <%= teacher.overallPassPercentage %>%
+                                            </span>
+                                        </td>
+                                        <td><%= teacher.totalStudents > 0 ? ((teacher.totalFailed / teacher.totalStudents) * 100).toFixed(2) : 0 %>%</td>
+                                        <td><strong><%= teacher.overallAverageMarks %></strong></td>
+                                        <td>
+                                            <span class="pass-rate <%= teacher.overallPassPercentage >= 70 ? 'pass-high' : teacher.overallPassPercentage >= 50 ? 'pass-medium' : 'pass-low' %>">
+                                                <%= teacher.overallPassPercentage %>%
+                                            </span>
+                                        </td>
+                                    </tr>
+                                <% } else { %>
+                                    <tr>
+                                        <td colspan="11" style="color: #95a5a6; font-style: italic; text-align: center; padding: 20px;">
+                                            No subject data available
+                                        </td>
+                                    </tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            <% }) %>
+        </div>
+
+        <div id="noResults" class="no-results" style="display: none;">
+            <i>🔍</i>
+            No teachers found matching your search
+        </div>
+
+        <div class="footer">
+            <span>📅 Generated on: <%= new Date().toLocaleString() %></span>
+            <div class="legend">
+                <span class="legend-item">
+                    <span class="legend-color high"></span> Pass ≥ 70%
+                </span>
+                <span class="legend-item">
+                    <span class="legend-color medium"></span> Pass 50-69%
+                </span>
+                <span class="legend-item">
+                    <span class="legend-color low"></span> Pass &lt; 50%
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function searchTeachers() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const containers = document.querySelectorAll('.teacher-table-container');
+            let hasResults = false;
+            
+            containers.forEach(container => {
+                const teacherName = container.getAttribute('data-teacher').toLowerCase();
+                if (searchTerm === '' || teacherName.includes(searchTerm)) {
+                    container.classList.remove('hidden');
+                    hasResults = true;
+                } else {
+                    container.classList.add('hidden');
+                }
+            });
+            
+            document.getElementById('noResults').style.display = hasResults ? 'none' : 'block';
+        }
+
+        function sortTeachers() {
+            const sortValue = document.getElementById('sortFilter').value;
+            const container = document.getElementById('teacherTables');
+            const tables = Array.from(container.querySelectorAll('.teacher-table-container'));
+            
+            tables.sort((a, b) => {
+                const achA = parseFloat(a.getAttribute('data-achievement'));
+                const achB = parseFloat(b.getAttribute('data-achievement'));
+                return sortValue === 'highest' ? achB - achA : achA - achB;
+            });
+            
+            // Reorder in DOM
+            tables.forEach(table => container.appendChild(table));
+        }
+
+        function resetAll() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('sortFilter').value = 'highest';
+            
+            // Show all tables
+            document.querySelectorAll('.teacher-table-container').forEach(container => {
+                container.classList.remove('hidden');
+            });
+            
+            document.getElementById('noResults').style.display = 'none';
+            sortTeachers();
+        }
+
+        // Search on input change with debounce
+        let searchTimeout;
+        document.getElementById('searchInput').addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(searchTeachers, 300);
+        });
+
+        // Initial sort
+        setTimeout(sortTeachers, 100);
+    </script>
+</body>
+</html>
