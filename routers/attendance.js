@@ -28,6 +28,8 @@ attendance.post('/frontdesk/reason',verifytoken,attendancecontroller.saveFrontde
 attendance.get('/frontdesk/students',verifytoken,attendancecontroller.searchFrontdeskStudents)
 attendance.post('/frontdesk/call-log',verifytoken,attendancecontroller.saveFrontdeskCallLog)
 attendance.get('/frontdesk/call-logs',verifytoken,attendancecontroller.getFrontdeskCallLogs)
+attendance.get('/frontdesk/export/absent-records',verifytoken,attendancecontroller.getFrontdeskAbsentRecordsExport)
+attendance.get('/frontdesk/export/call-logs-all',verifytoken,attendancecontroller.getFrontdeskCallLogsExport)
 attendance.get('/setholiday',verifytoken,authorized,isAdmin,attendancecontroller.setHoliday)
 attendance.post('/setholiday',verifytoken,authorized,isAdmin,attendancecontroller.savesetHoliday)
 

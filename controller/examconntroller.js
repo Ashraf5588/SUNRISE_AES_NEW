@@ -376,6 +376,7 @@ exports.saveEntryform = async (req, res, next) => {
     console.log("[Backend] Query params:", { studentClass, section, subject, academicYear, terminal });
     console.log("[Backend] Body - reg:", req.body.reg, "totalWorksheet:", req.body.totalWorksheet);
     console.log("[Backend] Body - theorymarks:", req.body.theorymarks, "type:", typeof req.body.theorymarks);
+    
 
     const model = getSlipModel();
     

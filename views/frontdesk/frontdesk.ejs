@@ -72,6 +72,9 @@
 		.call-log-table td{font-size:14px;padding:10px;border-top:1px solid var(--border)}
 		.call-log-table tr:nth-child(even){background:var(--row)}
 		.call-log-empty{padding:20px;text-align:center;color:var(--muted);font-weight:600}
+		.export-row{margin-top:10px;display:flex;justify-content:flex-end}
+		.export-btn{padding:8px 12px;border:1px solid #a7b4c4;border-radius:8px;background:#fff;color:#1f2937;font-size:12px;font-weight:700;cursor:pointer}
+		.export-btn:hover{background:#f8fafc}
 		@media (max-width: 768px){
 			body{padding:10px}
 			.title{font-size:18px}
@@ -79,6 +82,8 @@
 			table{min-width:760px}
 			.call-card{padding:16px}
 			.call-log-card{padding:16px}
+			.export-row{justify-content:stretch}
+			.export-btn{width:100%}
 		}
 	</style>
 </head>
@@ -124,7 +129,7 @@
 		</div>
 
 		<div class="table-wrap">
-			<table>
+			<table id="absentRecordTable">
 				<thead>
 					<tr>
 						<th class="num">SN</th>
@@ -196,6 +201,9 @@
 					<% } %>
 				</tbody>
 			</table>
+		</div>
+		<div class="export-row">
+			<button type="button" id="exportAbsentBtn" class="export-btn">Export Absent Record to Excel</button>
 		</div>
 
 		<section class="call-card">
@@ -293,7 +301,7 @@
 				</div>
 			</div>
 			<div class="call-log-table-wrap">
-				<table class="call-log-table">
+				<table id="callLogTable" class="call-log-table">
 					<thead>
 						<tr>
 							<th class="num">SN</th>
@@ -313,6 +321,9 @@
 					</tbody>
 				</table>
 			</div>
+			<div class="export-row">
+				<button type="button" id="exportCallLogBtn" class="export-btn">Export Call Log to Excel</button>
+			</div>
 		</section>
 	</div>
 
@@ -328,6 +339,8 @@
 		const callLogDay = document.getElementById('callLogDay');
 		const callLogFilterBtn = document.getElementById('callLogFilterBtn');
 		const callLogTableBody = document.getElementById('callLogTableBody');
+		const exportAbsentBtn = document.getElementById('exportAbsentBtn');
+		const exportCallLogBtn = document.getElementById('exportCallLogBtn');
 		const callFields = {
 			reg: document.getElementById('callReg'),
 			name: callSearchInput,
@@ -360,6 +373,181 @@
 			.replace(/>/g, '&gt;')
 			.replace(/"/g, '&quot;')
 			.replace(/'/g, '&#39;');
+
+		const buildExcelFile = ({ fileName, headers, rows }) => {
+			const headerHtml = headers
+				.map((header) => `<th style="border:1px solid #000;padding:6px;font-weight:700;background:#f4f4f4">${escapeHtml(header)}</th>`)
+				.join('');
+
+			const bodyHtml = rows
+				.map((row) => {
+					const cells = row.map((value) => `<td style="border:1px solid #000;padding:6px">${escapeHtml(value)}</td>`).join('');
+					return `<tr>${cells}</tr>`;
+				})
+				.join('');
+
+			const html = `
+				<html>
+				<head>
+					<meta charset="UTF-8">
+				</head>
+				<body>
+					<table style="border-collapse:collapse;width:100%">
+						<thead><tr>${headerHtml}</tr></thead>
+						<tbody>${bodyHtml}</tbody>
+					</table>
+				</body>
+				</html>
+			`;
+
+			const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+			const url = URL.createObjectURL(blob);
+			const link = document.createElement('a');
+			link.href = url;
+			link.download = `${fileName}.xls`;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			URL.revokeObjectURL(url);
+		};
+
+		const exportAbsentHistory = async () => {
+			const response = await fetch('/frontdesk/export/absent-records');
+			if (!response.ok) {
+				throw new Error('Failed to load absent export data');
+			}
+
+			const data = await response.json();
+			const rows = (Array.isArray(data) ? data : []).map((item) => [
+				item.academicYear || '',
+				item.month || '',
+				item.day || '',
+				item.studentClass || '',
+				item.section || '',
+				item.roll || '',
+				item.name || '',
+				item.contact || '',
+				item.status || '',
+				item.reason || '',
+				item.callReason || '',
+				item.parentResponse || '',
+				item.callLoggedAt || ''
+			]);
+
+			buildExcelFile({
+				fileName: 'absent-call-record-all',
+				headers: [
+					'Academic Year',
+					'Month',
+					'Day',
+					'Class',
+					'Section',
+					'Roll',
+					'Student',
+					'Contact',
+					'Status',
+					'Informed Reason',
+					'Call Reason',
+					'Parent Response',
+					'Call Logged At'
+				],
+				rows
+			});
+		};
+
+		const exportCallLogsHistory = async () => {
+			const response = await fetch('/frontdesk/export/call-logs-all');
+			if (!response.ok) {
+				throw new Error('Failed to load call log export data');
+			}
+
+			const data = await response.json();
+			const sourceRows = Array.isArray(data) ? data : [];
+			const rows = [];
+			let activeMonthKey = '';
+			let activeMonthLabel = '';
+			let monthCount = 0;
+
+			sourceRows.forEach((item, index) => {
+				const monthKey = `${item.academicYear || ''}-${item.month || ''}`;
+				const monthLabel = `${item.month || '-'} ${item.academicYear || ''}`.trim();
+
+				if (!activeMonthKey) {
+					activeMonthKey = monthKey;
+					activeMonthLabel = monthLabel;
+				}
+
+				if (monthKey !== activeMonthKey) {
+					rows.push([
+						'',
+						activeMonthLabel,
+						'',
+						'',
+						'',
+						'',
+						'',
+						'',
+						`Total Calls Done This Month: ${monthCount}`,
+						'',
+						''
+					]);
+
+					activeMonthKey = monthKey;
+					activeMonthLabel = monthLabel;
+					monthCount = 0;
+				}
+
+				rows.push([
+					item.academicYear || '',
+					item.month || '',
+					item.day || '',
+					item.studentClass || '',
+					item.section || '',
+					item.roll || '',
+					item.name || '',
+					item.contact || '',
+					item.callReason || '',
+					item.parentResponse || '',
+					item.callLoggedAt || ''
+				]);
+
+				monthCount += 1;
+
+				if (index === sourceRows.length - 1) {
+					rows.push([
+						'',
+						activeMonthLabel,
+						'',
+						'',
+						'',
+						'',
+						'',
+						'',
+						`Total Calls Done This Month: ${monthCount}`,
+						'',
+						''
+					]);
+				}
+			});
+
+			buildExcelFile({
+				fileName: 'call-record-logs-all',
+				headers: [
+					'Academic Year',
+					'Month',
+					'Day',
+					'Class',
+					'Section',
+					'Roll',
+					'Student',
+					'Contact',
+					'Call Reason',
+					'Parent Response',
+					'Call Logged At'
+				],
+				rows
+			});
+		};
 
 		const clearCallSuggestions = () => {
 			if (!callSuggestions) {
@@ -642,6 +830,28 @@
 
 		if (callLogFilterBtn) {
 			callLogFilterBtn.addEventListener('click', loadCallLogs);
+		}
+
+		if (exportAbsentBtn) {
+			exportAbsentBtn.addEventListener('click', async () => {
+				try {
+					await exportAbsentHistory();
+				} catch (error) {
+					console.error(error);
+					alert('Unable to export absent record right now.');
+				}
+			});
+		}
+
+		if (exportCallLogBtn) {
+			exportCallLogBtn.addEventListener('click', async () => {
+				try {
+					await exportCallLogsHistory();
+				} catch (error) {
+					console.error(error);
+					alert('Unable to export call log right now.');
+				}
+			});
 		}
 
 		loadCallLogs();

@@ -159,6 +159,10 @@ const BS_MONTH_ORDER = {
 
 const normalizeText = (value) => String(value || '').trim().toLowerCase();
 const escapeRegex = (value) => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const isAbsentStatus = (value) => {
+  const normalized = normalizeText(value);
+  return normalized === 'absent' || normalized === 'a' || normalized === 'false';
+};
 
 const getUpdateMatchedCount = (result) => {
   if (!result) {
@@ -794,6 +798,217 @@ exports.getFrontdeskCallLogs = async (req, res) => {
   }
 };
 
+exports.getFrontdeskCallLogsExport = async (req, res) => {
+  try {
+    const attendanceDocs = await onlineAttendance.find({}).lean();
+
+    const normalizeReg = (value) => String(value || '').trim();
+    const logs = [];
+    const regSet = new Set();
+
+    attendanceDocs.forEach((doc) => {
+      const attendanceEntries = Array.isArray(doc && doc.attendance) ? doc.attendance : [];
+
+      attendanceEntries.forEach((entry) => {
+        const hasLog = Boolean(entry && (entry.callReason || entry.parentResponse || entry.callLoggedAt));
+        if (!hasLog) {
+          return;
+        }
+
+        const reg = normalizeReg(doc && doc.reg);
+        if (reg) {
+          regSet.add(reg);
+        }
+
+        const monthName = String(entry && entry.month || '').trim();
+        const dayNumber = Number.parseInt(entry && entry.day, 10);
+
+        logs.push({
+          reg,
+          name: String(doc && doc.name || ''),
+          studentClass: String(doc && doc.studentClass || ''),
+          section: String(doc && doc.section || ''),
+          roll: doc && doc.roll,
+          callReason: String(entry && entry.callReason || ''),
+          parentResponse: String(entry && entry.parentResponse || ''),
+          callLoggedAt: String(entry && entry.callLoggedAt || ''),
+          day: Number.isFinite(dayNumber) ? dayNumber : '',
+          month: monthName,
+          monthOrder: getBsMonthOrder(monthName),
+          academicYear: String(entry && entry.academicYear || doc && doc.academicYear || '').trim()
+        });
+      });
+    });
+
+    const regs = Array.from(regSet);
+    const studentRecords = regs.length > 0
+      ? await studentRecord.find({ reg: { $in: regs } }).lean()
+      : [];
+
+    const contactByReg = new Map(
+      studentRecords.map((student) => [normalizeReg(student.reg), getPreferredContact(student)])
+    );
+    const studentByReg = new Map(
+      studentRecords.map((student) => [normalizeReg(student.reg), student])
+    );
+
+    const responseData = logs
+      .map((log) => {
+        const normalizedReg = normalizeReg(log.reg);
+        const record = studentByReg.get(normalizedReg);
+        const contact = contactByReg.get(normalizedReg) || '';
+        return {
+          ...log,
+          name: log.name || String(record && record.name || ''),
+          studentClass: log.studentClass || String(record && record.studentClass || ''),
+          section: log.section || String(record && record.section || ''),
+          roll: log.roll !== undefined ? log.roll : (record && record.roll),
+          contact
+        };
+      })
+      .sort((a, b) => {
+        const yearCompare = Number.parseInt(String(a.academicYear || '0'), 10) - Number.parseInt(String(b.academicYear || '0'), 10);
+        if (yearCompare !== 0) {
+          return yearCompare;
+        }
+
+        const monthCompare = (a.monthOrder || 0) - (b.monthOrder || 0);
+        if (monthCompare !== 0) {
+          return monthCompare;
+        }
+
+        const dayCompare = Number.parseInt(String(a.day || 0), 10) - Number.parseInt(String(b.day || 0), 10);
+        if (dayCompare !== 0) {
+          return dayCompare;
+        }
+
+        const classCompare = String(a.studentClass || '').localeCompare(String(b.studentClass || ''), 'en', { numeric: true });
+        if (classCompare !== 0) {
+          return classCompare;
+        }
+
+        const sectionCompare = String(a.section || '').localeCompare(String(b.section || ''));
+        if (sectionCompare !== 0) {
+          return sectionCompare;
+        }
+
+        return String(a.roll || '').localeCompare(String(b.roll || ''), 'en', { numeric: true });
+      })
+      .map((log, index) => ({ ...log, sn: index + 1 }));
+
+    return res.status(200).json(responseData);
+  } catch (error) {
+    console.error('Error loading frontdesk call logs export:', error);
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+exports.getFrontdeskAbsentRecordsExport = async (req, res) => {
+  try {
+    const attendanceDocs = await onlineAttendance.find({}).lean();
+
+    const normalizeReg = (value) => String(value || '').trim();
+    const records = [];
+    const regSet = new Set();
+
+    attendanceDocs.forEach((doc) => {
+      const attendanceEntries = Array.isArray(doc && doc.attendance) ? doc.attendance : [];
+
+      attendanceEntries.forEach((entry) => {
+        if (!isAbsentStatus(entry && entry.status)) {
+          return;
+        }
+
+        const reg = normalizeReg(doc && doc.reg);
+        if (reg) {
+          regSet.add(reg);
+        }
+
+        const monthName = String(entry && entry.month || '').trim();
+        const dayNumber = Number.parseInt(entry && entry.day, 10);
+
+        records.push({
+          reg,
+          name: String(doc && doc.name || ''),
+          studentClass: String(doc && doc.studentClass || ''),
+          section: String(doc && doc.section || ''),
+          roll: doc && doc.roll,
+          status: String(entry && entry.status || ''),
+          reason: String(entry && entry.reason || ''),
+          callReason: String(entry && entry.callReason || ''),
+          parentResponse: String(entry && entry.parentResponse || ''),
+          callLoggedAt: String(entry && entry.callLoggedAt || ''),
+          day: Number.isFinite(dayNumber) ? dayNumber : '',
+          month: monthName,
+          monthOrder: getBsMonthOrder(monthName),
+          academicYear: String(entry && entry.academicYear || doc && doc.academicYear || '').trim()
+        });
+      });
+    });
+
+    const regs = Array.from(regSet);
+    const studentRecords = regs.length > 0
+      ? await studentRecord.find({ reg: { $in: regs } }).lean()
+      : [];
+
+    const contactByReg = new Map(
+      studentRecords.map((student) => [normalizeReg(student.reg), getPreferredContact(student)])
+    );
+    const studentByReg = new Map(
+      studentRecords.map((student) => [normalizeReg(student.reg), student])
+    );
+
+    const responseData = records
+      .map((row) => {
+        const normalizedReg = normalizeReg(row.reg);
+        const record = studentByReg.get(normalizedReg);
+        const contact = contactByReg.get(normalizedReg) || '';
+        return {
+          ...row,
+          name: row.name || String(record && record.name || ''),
+          studentClass: row.studentClass || String(record && record.studentClass || ''),
+          section: row.section || String(record && record.section || ''),
+          roll: row.roll !== undefined ? row.roll : (record && record.roll),
+          contact
+        };
+      })
+      .sort((a, b) => {
+        const yearCompare = Number.parseInt(String(a.academicYear || '0'), 10) - Number.parseInt(String(b.academicYear || '0'), 10);
+        if (yearCompare !== 0) {
+          return yearCompare;
+        }
+
+        const monthCompare = (a.monthOrder || 0) - (b.monthOrder || 0);
+        if (monthCompare !== 0) {
+          return monthCompare;
+        }
+
+        const dayCompare = Number.parseInt(String(a.day || 0), 10) - Number.parseInt(String(b.day || 0), 10);
+        if (dayCompare !== 0) {
+          return dayCompare;
+        }
+
+        const classCompare = String(a.studentClass || '').localeCompare(String(b.studentClass || ''), 'en', { numeric: true });
+        if (classCompare !== 0) {
+          return classCompare;
+        }
+
+        const sectionCompare = String(a.section || '').localeCompare(String(b.section || ''));
+        if (sectionCompare !== 0) {
+          return sectionCompare;
+        }
+
+        return String(a.roll || '').localeCompare(String(b.roll || ''), 'en', { numeric: true });
+      })
+      .map((row, index) => ({ ...row, sn: index + 1 }));
+
+    return res.status(200).json(responseData);
+  } catch (error) {
+    console.error('Error loading frontdesk absent records export:', error);
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
 exports.frontdeskPage = async (req, res) => {
   try {
     const todayBs = String(bs.ADToBS(new Date()) || '');
@@ -829,6 +1044,29 @@ exports.frontdeskPage = async (req, res) => {
           academicYear: targetAcademicYear
         }).lean();
       }
+    }
+
+    const holidayDoc = await holiday.findOne({
+      academicYear: String(targetAcademicYear || '').trim()
+    }).lean();
+
+    const selectedMonthHolidayDays = new Set();
+    if (Array.isArray(holidayDoc && holidayDoc.month)) {
+      holidayDoc.month.forEach((monthItem) => {
+        const holidayMonthVariants = getMonthVariants(monthItem && monthItem.monthName);
+        const isSelectedMonthHoliday = holidayMonthVariants.some((variant) => monthVariants.includes(variant));
+        if (!isSelectedMonthHoliday) {
+          return;
+        }
+
+        const days = Array.isArray(monthItem && monthItem.holidayDays) ? monthItem.holidayDays : [];
+        days.forEach((dayValue) => {
+          const normalizedDay = Number.parseInt(dayValue, 10);
+          if (Number.isFinite(normalizedDay)) {
+            selectedMonthHolidayDays.add(normalizedDay);
+          }
+        });
+      });
     }
 
     const absentCandidates = [];
@@ -928,6 +1166,12 @@ exports.frontdeskPage = async (req, res) => {
 
           for (let day = selectedDay; day >= 1; day -= 1) {
             const entry = getEntryForDay(monthMap, day);
+
+            // Skip holidays from holiday collection while counting continuous absence.
+            if (!entry && selectedMonthHolidayDays.has(day)) {
+              continue;
+            }
+
             if (!entry || !isAbsentStatus(entry.status)) {
               break;
             }
