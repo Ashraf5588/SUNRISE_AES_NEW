@@ -2101,7 +2101,9 @@
     
     questionMap.get(questionNo).categories[categoryName] = {
       total: data.total,
+
       studentName: data.studentName,
+      roll: data.roll,
       obtainedMarks: data.obtainedMarks
     };
   }
@@ -2148,6 +2150,60 @@
     if (!chapters[ch]) chapters[ch] = [];
     chapters[ch].push(q);
   });
+
+  function questionSortValue(questionNo) {
+    const value = String(questionNo || '').trim();
+    const match = value.match(/^q?(\d+)([a-z]?)$/i);
+    if (!match) {
+      return Number.MAX_SAFE_INTEGER;
+    }
+    const questionNum = Number.parseInt(match[1], 10);
+    const subLetter = (match[2] || 'a').toLowerCase();
+    const subValue = subLetter.charCodeAt(0) - 97;
+    return questionNum * 100 + (Number.isFinite(subValue) ? subValue : 0);
+  }
+
+  function compactCategoryText(category) {
+    if (!category || !Array.isArray(category.studentName) || category.studentName.length === 0) {
+      return '';
+    }
+
+    const items = category.studentName.map((name, idx) => {
+      const rollValue = Array.isArray(category.roll) ? category.roll[idx] : '';
+      const rollText = String(rollValue || '').trim();
+      const obtained = Array.isArray(category.obtainedMarks) ? category.obtainedMarks[idx] : '';
+      const rollNo = Number.parseInt(rollText, 10);
+      return {
+        name: String(name || '').trim(),
+        rollText,
+        obtained,
+        rollNo: Number.isFinite(rollNo) ? rollNo : Number.MAX_SAFE_INTEGER
+      };
+    }).sort((a, b) => {
+      if (a.rollNo !== b.rollNo) {
+        return a.rollNo - b.rollNo;
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    return items.map((item) => {
+      const prefix = item.rollText ? `(${item.rollText}) ` : '';
+      return `${prefix}${item.name} (${item.obtained})`;
+    }).join(', ');
+  }
+
+  const avgMap = new Map((results || []).map((item) => [String(item.questionNo || '').trim(), item.averagePercentage]));
+  var compactQuestionExportRows = Array.from(questionMap.values())
+    .sort((a, b) => questionSortValue(a.questionNo) - questionSortValue(b.questionNo))
+    .map((q) => ({
+      questionNo: q.questionNo,
+      averagePercentage: avgMap.get(String(q.questionNo || '').trim()) || '0',
+      correct: compactCategoryText(q.categories.correct),
+      incorrect: compactCategoryText(q.categories.incorrect),
+      fifty: compactCategoryText(q.categories.fifty),
+      above50: compactCategoryText(q.categories.correctAbove50),
+      below50: compactCategoryText(q.categories.correctBelow50)
+    }));
 %>
 
 <!-- Student Performance Data - Two-section Layout -->
@@ -2158,7 +2214,11 @@
         <div class="section-header text-center mb-4">
           <h4 class="fw-bold"><i class="fas fa-chart-bar me-2"></i>Student Response Analysis by Question</h4>
           <p class="text-muted">Detailed breakdown of student performance grouped by question with question paper always visible</p>
-        
+          <div class="mt-3">
+            <button type="button" id="exportCompactAnalysisBtn" class="btn btn-sm btn-outline-primary">
+              <i class="fas fa-file-excel me-1"></i> Export Compact Excel
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -2263,6 +2323,46 @@
           const incorrectCount = questionData.categories.incorrect ? questionData.categories.incorrect.total : 0;
           const totalStudents = totalStudent;
           const wrongPercentage = totalStudents > 0 ? (incorrectCount / totalStudents) * 100 : 0;
+
+          const getSortedStudentsByRoll = (category) => {
+            if (!category || !Array.isArray(category.studentName)) {
+              return [];
+            }
+
+            const fullMarksValue = Number(questionData.fullMarks) || 0;
+            return category.studentName.map((name, idx) => {
+              const obtained = Number(category.obtainedMarks && category.obtainedMarks[idx]) || 0;
+              const average = fullMarksValue > 0 ? (obtained / fullMarksValue) : 0;
+              const roll = Array.isArray(category.roll) ? category.roll[idx] : '';
+              return {
+                name,
+                obtained,
+                average,
+                roll
+              };
+            }).sort((a, b) => {
+              const rollA = Number.parseInt(a.roll, 10);
+              const rollB = Number.parseInt(b.roll, 10);
+              const hasNumericRollA = Number.isFinite(rollA);
+              const hasNumericRollB = Number.isFinite(rollB);
+
+              if (hasNumericRollA && hasNumericRollB && rollA !== rollB) {
+                return rollA - rollB;
+              }
+
+              if (hasNumericRollA !== hasNumericRollB) {
+                return hasNumericRollA ? -1 : 1;
+              }
+
+              return String(a.name || '').localeCompare(String(b.name || ''));
+            });
+          };
+
+          const correctStudents = getSortedStudentsByRoll(questionData.categories.correct);
+          const incorrectStudents = getSortedStudentsByRoll(questionData.categories.incorrect);
+          const fiftyStudents = getSortedStudentsByRoll(questionData.categories.fifty);
+          const below50Students = getSortedStudentsByRoll(questionData.categories.correctBelow50);
+          const above50Students = getSortedStudentsByRoll(questionData.categories.correctAbove50);
           
           // Determine priority based on wrong percentage
           let priorityClass = 'low-priority';
@@ -2306,11 +2406,12 @@
                   </div>
                   <div class="column-body p-3">
                     <% if (questionData.categories.correct) { %>
-                      <% questionData.categories.correct.studentName.forEach((name, idx) => { %>
+                      <% correctStudents.forEach((student) => { %>
                         <div class="student-item">
-                          <span class="student-name"><%= name %></span>
+                          <span class="student-name">
+                            <%= student.roll ? `(${student.roll}) ` : '' %><%= student.name %></span>
                           <span class="student-marks badge bg-light text-success">
-                            <%= questionData.categories.correct.obtainedMarks[idx] %>
+                            <%= student.obtained %>
                           </span>
                         </div>
                       <% }) %>
@@ -2332,11 +2433,11 @@
                   </div>
                   <div class="column-body p-3">
                     <% if (questionData.categories.incorrect) { %>
-                      <% questionData.categories.incorrect.studentName.forEach((name, idx) => { %>
+                      <% incorrectStudents.forEach((student) => { %>
                         <div class="student-item">
-                          <span class="student-name"><%= name %></span>
+                          <span class="student-name"><%= student.roll ? `(${student.roll}) ` : '' %><%= student.name %></span>
                           <span class="student-marks badge bg-light text-danger">
-                            <%= questionData.categories.incorrect.obtainedMarks[idx] %>
+                            <%= student.obtained %>
                           </span>
                         </div>
                       <% }) %>
@@ -2358,11 +2459,11 @@
                   </div>
                   <div class="column-body p-3">
                     <% if (questionData.categories.fifty) { %>
-                      <% questionData.categories.fifty.studentName.forEach((name, idx) => { %>
+                      <% fiftyStudents.forEach((student) => { %>
                         <div class="student-item">
-                          <span class="student-name"><%= name %></span>
+                          <span class="student-name"><%= student.roll ? `(${student.roll}) ` : '' %><%= student.name %></span>
                           <span class="student-marks badge bg-light text-primary">
-                            <%= questionData.categories.fifty.obtainedMarks[idx] %>
+                            <%= student.obtained %>
                           </span>
                         </div>
                       <% }) %>
@@ -2384,11 +2485,11 @@
                   </div>
                   <div class="column-body p-3">
                     <% if (questionData.categories.correctBelow50) { %>
-                      <% questionData.categories.correctBelow50.studentName.forEach((name, idx) => { %>
+                      <% below50Students.forEach((student) => { %>
                         <div class="student-item">
-                          <span class="student-name"><%= name %></span>
+                          <span class="student-name"><%= student.roll ? `(${student.roll}) ` : '' %><%= student.name %></span>
                           <span class="student-marks badge bg-light text-warning">
-                            <%= questionData.categories.correctBelow50.obtainedMarks[idx] %>
+                            <%= student.obtained %>
                           </span>
                         </div>
                       <% }) %>
@@ -2410,11 +2511,11 @@
                   </div>
                   <div class="column-body p-3">
                     <% if (questionData.categories.correctAbove50) { %>
-                      <% questionData.categories.correctAbove50.studentName.forEach((name, idx) => { %>
+                      <% above50Students.forEach((student) => { %>
                         <div class="student-item">
-                          <span class="student-name"><%= name %></span>
+                          <span class="student-name"><%= student.roll ? `(${student.roll}) ` : '' %><%= student.name %></span>
                           <span class="student-marks badge bg-light text-warning">
-                            <%= questionData.categories.correctAbove50.obtainedMarks[idx] %>
+                            <%= student.obtained %>
                           </span>
                         </div>
                       <% }) %>
@@ -4109,6 +4210,71 @@
     });
   </script>
   <script>
+    (function () {
+      const exportButton = document.getElementById('exportCompactAnalysisBtn');
+      const compactRows = <%- JSON.stringify(compactQuestionExportRows || []) %>;
+
+      function escapeCell(value) {
+        return String(value || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function exportCompactExcel() {
+        if (!Array.isArray(compactRows) || compactRows.length === 0) {
+          alert('No data available to export.');
+          return;
+        }
+
+        const headers = ['Q.no', 'Avg', 'Correct', 'Incorrect', '50%', 'above 50%', 'below 50%'];
+        const headerHtml = headers
+          .map((header) => `<th style="border:1px solid #000;padding:6px;background:#f4f4f4;font-weight:700">${escapeCell(header)}</th>`)
+          .join('');
+
+        const bodyHtml = compactRows.map((row) => {
+          const cells = [
+            row.questionNo,
+            `${row.averagePercentage}%`,
+            row.correct,
+            row.incorrect,
+            row.fifty,
+            row.above50,
+            row.below50
+          ].map((cell) => `<td style="border:1px solid #000;padding:6px;vertical-align:top">${escapeCell(cell)}</td>`).join('');
+          return `<tr>${cells}</tr>`;
+        }).join('');
+
+        const html = `
+          <html>
+          <head><meta charset="UTF-8"></head>
+          <body>
+            <table style="border-collapse:collapse;width:100%">
+              <thead><tr>${headerHtml}</tr></thead>
+              <tbody>${bodyHtml}</tbody>
+            </table>
+          </body>
+          </html>
+        `;
+
+        const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'question-wise-compact-analysis.xls';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+
+      if (exportButton) {
+        exportButton.addEventListener('click', exportCompactExcel);
+      }
+    })();
+
     function studentwise()
     {
       const roll = document.getElementById('searchroll').value;
