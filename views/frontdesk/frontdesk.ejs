@@ -179,7 +179,7 @@
 								<td class="days-col"><%= Number(student.continuousAbsentDays || 0) %></td>
 								<td class="last-called-col"><%= student.lastCalledText || '-' %></td>
 								<td>
-									<input
+									<textarea
 										type="text"
 										class="response-input"
 										placeholder="Type parent response"
@@ -190,7 +190,7 @@
 										data-academicyear="<%= academicYear %>"
 										data-month="<%= currentMonthName %>"
 										data-day="<%= todayDay %>"
-									>
+									><%= student.reason || '' %></textarea>
 								</td>
 							</tr>
 						<% }) %>
