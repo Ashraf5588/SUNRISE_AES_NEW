@@ -399,6 +399,8 @@ student.get('/dailydashboard',verifytoken,authorized,isAdmin,dailydashboardcontr
 student.get('/formatchoosestudent',examdashboardcontroller.formatChooseStudent)
 student.get('/student/generatemarksheet',examdashboardcontroller.generateMarksheetStudent)
 student.get('/studentportfolio',verifytoken,authorized,examdashboardcontroller.studentPortfolio)
+student.get('/projectcounter',verifytoken,authorized,practical410controller.projectWorkCounter)
+student.get('/projectlist',verifytoken,authorized,practical410controller.projectList)
 student.post('/addComplaint',verifytoken,authorized,examdashboardcontroller.addComplaint)
 student.put('/complaint/:id',verifytoken,authorized,examdashboardcontroller.updateComplaint)
 student.post('/studentportfolio/record',verifytoken,authorized,examdashboardcontroller.saveStudentRecordFromPortfolio)

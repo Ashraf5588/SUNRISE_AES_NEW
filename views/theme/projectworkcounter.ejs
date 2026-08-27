@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Project Work Counter</title>
+	<style>
+		:root { --navy: #102d5a; --blue: #1d4ed8; --ink: #172033; --muted: #64748b; --line: #dbe3ee; }
+		* { box-sizing: border-box; }
+		body { margin: 0; padding: 28px; color: var(--ink); font-family: Arial, sans-serif; background: linear-gradient(135deg, #eaf0f8, #f8fafc 55%, #e8f4f2); }
+		.page { max-width: 1450px; margin: 0 auto; }
+		.hero { background: linear-gradient(120deg, var(--navy), #1e477e); color: #fff; border-radius: 16px; padding: 24px; box-shadow: 0 14px 30px rgba(15, 36, 72, .16); }
+		h1 { margin: 0 0 6px; font-size: 1.55rem; } .hero p { margin: 0; color: #dbeafe; font-size: .9rem; }
+		.filter { margin-top: 20px; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; gap: 12px; align-items: end; flex-wrap: wrap; box-shadow: 0 8px 22px rgba(30, 41, 59, .07); }
+		label { display: grid; gap: 5px; color: var(--muted); font-size: .75rem; font-weight: 700; } select, button { min-height: 38px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 11px; font: inherit; } button { background: var(--blue); color: #fff; border-color: var(--blue); font-weight: 700; cursor: pointer; }
+		.table-card { margin-top: 18px; background: #fff; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: 0 12px 28px rgba(30, 41, 59, .08); }
+		.table-title { padding: 16px 18px; color: var(--navy); font-weight: 800; border-bottom: 1px solid var(--line); } .table-wrap { overflow: auto; }
+		table { width: 100%; min-width: 780px; border-collapse: collapse; font-size: .84rem; } th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: center; white-space: nowrap; } th { background: var(--navy); color: #fff; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; } th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; } tbody tr:nth-child(even) { background: #f8fafc; } tbody tr:hover { background: #eff6ff; }
+		.class-name { font-weight: 800; } .section-name { color: var(--muted); } .counter { display: inline-block; min-width: 74px; padding: 7px 9px; border-radius: 8px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; font-weight: 800; }
+		.counter.complete { background: #ecfdf5; border-color: #a7f3d0; color: #047857; } .empty { padding: 24px; color: var(--muted); text-align: center; }
+		@media (max-width: 640px) { body { padding: 12px; } .hero { padding: 18px; } .filter { align-items: stretch; } .filter label, .filter select, .filter button { width: 100%; } h1 { font-size: 1.3rem; } }
+	</style>
+</head>
+<body>
+	<main class="page">
+		<header class="hero"><h1>Project Work Entry Counter</h1><p>Track practical and project records entered for each class, section, subject, and terminal.</p></header>
+		<form class="filter" method="get" action="/projectcounter">
+			<label>Academic Year<select name="academicYear"><% academicYearOptions.forEach((year) => { %><option value="<%= year %>" <%= String(year) === String(academicYear) ? 'selected' : '' %>><%= year %></option><% }) %></select></label>
+			<label>Terminal<select name="terminal"><% terminals.forEach((item) => { %><option value="<%= item %>" <%= item === selectedTerminal ? 'selected' : '' %>><%= item %></option><% }) %></select></label>
+			<button type="submit">Load Counter</button>
+		</form>
+		<section class="table-card">
+			<div class="table-title">Entries for <%= selectedTerminal %> terminal, academic year <%= academicYear %></div>
+			<div class="table-wrap"><table><thead><tr><th>Class</th><th>Section</th><% subjects.forEach((subject) => { %><th><%= subject %></th><% }) %></tr></thead><tbody>
+				<% if (!rows.length) { %><tr><td colspan="<%= subjects.length + 2 %>" class="empty">No class or section records found.</td></tr><% } %>
+				<% rows.forEach((row) => { %><tr><td class="class-name"><%= row.studentClass %></td><td class="section-name"><%= row.section %></td><% row.entries.forEach((entry) => { %><td><span class="counter <%= entry.entered >= entry.total && entry.total > 0 ? 'complete' : '' %>"><%= entry.entered %> / <%= entry.total %></span></td><% }) %></tr><% }) %>
+			</tbody></table></div>
+		</section>
+	</main>
+</body>
+</html>

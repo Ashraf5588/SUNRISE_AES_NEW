@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Project and Practical Work List</title>
+	<style>
+		:root { --navy: #102d5a; --blue: #1d4ed8; --ink: #172033; --muted: #64748b; --line: #dbe3ee; }
+		* { box-sizing: border-box; }
+		body { margin: 0; padding: 28px; color: var(--ink); font-family: Arial, sans-serif; background: linear-gradient(135deg, #eaf0f8, #f8fafc 55%, #e8f4f2); }
+		.page { max-width: 1250px; margin: 0 auto; }
+		.hero { background: linear-gradient(120deg, var(--navy), #1e477e); color: #fff; border-radius: 16px; padding: 24px; box-shadow: 0 14px 30px rgba(15, 36, 72, .16); }
+		h1 { margin: 0 0 6px; font-size: 1.55rem; } .hero p { margin: 0; color: #dbeafe; font-size: .9rem; }
+		.filter { margin-top: 20px; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; gap: 12px; align-items: end; flex-wrap: wrap; box-shadow: 0 8px 22px rgba(30, 41, 59, .07); }
+		label { display: grid; gap: 5px; color: var(--muted); font-size: .75rem; font-weight: 700; } select, button { min-height: 38px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 11px; font: inherit; } button { background: var(--blue); color: #fff; border-color: var(--blue); font-weight: 700; cursor: pointer; }
+		.table-card { margin-top: 18px; background: #fff; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; box-shadow: 0 12px 28px rgba(30, 41, 59, .08); }
+		.table-stack { margin-top: 18px; }
+		.table-title { padding: 16px 18px; color: var(--navy); font-weight: 800; border-bottom: 1px solid var(--line); } .table-wrap { overflow: auto; }
+		table { width: 100%; min-width: 950px; border-collapse: collapse; font-size: .85rem; } th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; } th { background: var(--navy); color: #fff; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; } tbody tr:nth-child(even) { background: #f8fafc; } tbody tr:hover { background: #eff6ff; }
+		.class-name { font-weight: 800; } .section-name { color: var(--muted); } .subject { color: #1e40af; font-weight: 800; } .unit-name { color: var(--navy); font-weight: 700; min-width: 150px; } .work-list { white-space: pre-line; line-height: 1.5; } .total { text-align: center; font-weight: 800; color: var(--navy); } .empty { padding: 24px; color: var(--muted); text-align: center; }
+		@media (max-width: 640px) { body { padding: 12px; } .hero { padding: 18px; } .filter { align-items: stretch; } .filter label, .filter select, .filter button { width: 100%; } h1 { font-size: 1.3rem; } }
+	</style>
+</head>
+<body>
+	<main class="page">
+		<header class="hero"><h1>Project and Practical Work List</h1><p>View the configured work names by class, section, subject, and terminal.</p></header>
+		<form class="filter" method="get" action="/projectlist">
+			<label>Academic Year<select name="academicYear"><% academicYearOptions.forEach((year) => { %><option value="<%= year %>" <%= String(year) === String(academicYear) ? 'selected' : '' %>><%= year %></option><% }) %></select></label>
+			<label>Terminal<select name="terminal"><% terminals.forEach((item) => { %><option value="<%= item %>" <%= item === selectedTerminal ? 'selected' : '' %>><%= item %></option><% }) %></select></label>
+			<button type="submit">Load Work List</button>
+		</form>
+		<section class="table-stack">
+			<% if (!classTables.length) { %>
+				<div class="empty">No class or section records found.</div>
+			<% } %>
+			<% classTables.forEach((classTable) => { %>
+				<section class="table-card">
+					<div class="table-title">Class <%= classTable.studentClass %> <%= classTable.section %></div>
+					<div class="table-wrap"><table><thead><tr><th>SN</th><th>Subject</th><th>Unit Name</th><th>Project Work Name</th><th>Practical Work Name</th><th>Total Practical</th><th>Total Project</th></tr></thead><tbody>
+						<% let rowNumber = 0; classTable.subjectGroups.forEach((subjectGroup) => { %>
+							<% subjectGroup.rows.forEach((row, rowIndex) => { rowNumber += 1; %>
+								<tr>
+									<td><%= rowNumber %></td>
+									<% if (rowIndex === 0) { %><td class="subject" rowspan="<%= subjectGroup.rows.length %>"><%= subjectGroup.subject %></td><% } %>
+									<td class="unit-name"><%= row.unitName %></td>
+									<td class="work-list"><%= row.projectNames.length ? row.projectNames.join('\n') : '-' %></td>
+									<td class="work-list"><%= row.practicalNames.length ? row.practicalNames.join('\n') : '-' %></td>
+									<% if (rowIndex === 0) { %><td class="total" rowspan="<%= subjectGroup.rows.length %>"><%= subjectGroup.totalPractical || '-' %></td><td class="total" rowspan="<%= subjectGroup.rows.length %>"><%= subjectGroup.totalProject || '-' %></td><% } %>
+								</tr>
+							<% }) %>
+						<% }) %>
+					</tbody></table></div>
+				</section>
+			<% }) %>
+		</section>
+	</main>
+</body>
+</html>

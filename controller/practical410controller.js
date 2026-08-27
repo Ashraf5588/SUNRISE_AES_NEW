@@ -26,6 +26,11 @@ const student = require("../routers/mainpage");
 const {marksheetsetupschemaForAdmin} = require("../model/masrksheetschema");
 const marksheetSetup = mongoose.models.marksheetSetup || mongoose.model("marksheetSetup", marksheetsetupschemaForAdmin, "marksheetSetup");
 
+const PROJECT_COUNTER_SUBJECTS = ['MATHEMATICS', 'HEALTH', 'NEPALI', 'ENGLISH', 'SOCIAL', 'SCIENCE'];
+const PROJECT_COUNTER_CLASSES = ['six', '6', 'seven', '7'];
+const PROJECT_LIST_SUBJECTS = ['MATHEMATICS', 'SCIENCE', 'ENGLISH', 'NEPALI', 'HEALTH', 'SOCIAL'];
+const PROJECT_LIST_CLASSES = ['Six', 'Seven'];
+
 const { BlobServiceClient } = require("@azure/storage-blob");
 const sharp = require("sharp");
 require("dotenv").config();
@@ -61,6 +66,144 @@ const getPracticalProjectModel = (subject, studentClass, section, year) => {
     return mongoose.models[`Practicalproject_${subject}_${studentClass}_${section}_${year}`];
   }
   return mongoose.model(`Practicalproject_${subject}_${studentClass}_${section}_${year}`, practicalprojectSchema, `Practicalproject_${subject}_${studentClass}_${section}_${year}`);
+};
+
+exports.projectWorkCounter = async (req, res) => {
+  try {
+    const setups = await marksheetSetup.find({}).lean();
+    const defaultYear = Number(setups[0] && setups[0].academicYear) || new Date().getFullYear();
+    const academicYear = String(Number.parseInt(req.query.academicYear, 10) || defaultYear);
+    const terminals = await terminal.find({}).lean();
+    const terminalOptions = [...new Set(terminals.map((item) => item.terminal || item.name).filter(Boolean))];
+    const selectedTerminal = String(req.query.terminal || terminalOptions[0] || 'FIRST');
+    const subjects = PROJECT_COUNTER_SUBJECTS;
+    const classes = (await studentClass.find({}).lean().sort({ studentClass: 1, section: 1 }))
+      .filter((classItem) => PROJECT_COUNTER_CLASSES.includes(String(classItem.studentClass || '').trim().toLowerCase()));
+
+    const rows = await Promise.all(classes.map(async (classItem) => {
+      const roster = await studentRecord.find({
+        studentClass: classItem.studentClass,
+        section: classItem.section
+      }).select('reg roll').lean();
+      const denominator = roster.length;
+      const entries = await Promise.all(subjects.map(async (subject) => {
+        const model = getPracticalProjectModel(subject, classItem.studentClass, classItem.section, academicYear);
+        const records = await model.find({ terminalName: selectedTerminal }).select('reg roll').lean();
+        const uniqueStudents = new Set(records.map((record) => String(record.reg || `roll:${record.roll || ''}`)).filter(Boolean));
+        return { subject, entered: uniqueStudents.size, total: denominator };
+      }));
+
+      return {
+        studentClass: classItem.studentClass,
+        section: classItem.section,
+        entries
+      };
+    }));
+
+    return res.render('theme/projectworkcounter', {
+      ...await getSidenavData(req),
+      rows,
+      subjects,
+      terminals: terminalOptions,
+      academicYear,
+      academicYearOptions: Array.from({ length: 5 }, (_, index) => String(Number(academicYear) - index)),
+      selectedTerminal
+    });
+  } catch (error) {
+    console.error('Error loading project work counter:', error);
+    return res.status(500).send('Unable to load project work counter.');
+  }
+};
+
+exports.projectList = async (req, res) => {
+  try {
+    const setups = await marksheetSetup.find({}).lean();
+    const defaultYear = Number(setups[0] && setups[0].academicYear) || new Date().getFullYear();
+    const academicYear = String(Number.parseInt(req.query.academicYear, 10) || defaultYear);
+    const terminalDocs = await terminal.find({}).lean();
+    const terminalOptions = [...new Set(terminalDocs.map((item) => item.terminal || item.name).filter(Boolean))];
+    const selectedTerminal = String(req.query.terminal || terminalOptions[0] || 'FIRST');
+    const query_subjects = PROJECT_LIST_SUBJECTS;
+    const query_classes = PROJECT_LIST_CLASSES;
+    const classSections = await studentClass.find({
+      studentClass: { $in: query_classes }
+    }).lean().sort({ studentClass: 1, section: 1 });
+    const classTables = [];
+
+    for (const classItem of classSections) {
+      const subjectRows = [];
+      for (const subject of query_subjects) {
+        const model = getPracticalProjectModel(subject, classItem.studentClass, classItem.section, academicYear);
+        const records = await model.find({ terminalName: selectedTerminal }).select('unit').lean();
+        const unitMap = new Map();
+
+        records.forEach((record) => {
+          const units = Array.isArray(record.unit) ? record.unit : [];
+          units.forEach((unit) => {
+            const unitName = String(unit && unit.unitName || '').trim() || '-';
+            if (!unitMap.has(unitName)) {
+              unitMap.set(unitName, { practicalNames: new Set(), projectNames: new Set() });
+            }
+            const unitWorks = unitMap.get(unitName);
+            const practicals = Array.isArray(unit.practicals) ? unit.practicals : [];
+            const projectWorks = Array.isArray(unit.projectWorks) ? unit.projectWorks : [];
+            practicals.forEach((work) => {
+              const name = String(work && work.practicalName || '').trim();
+              if (name) unitWorks.practicalNames.add(name);
+            });
+            projectWorks.forEach((work) => {
+              const name = String(work && (work.projectName || work.projectWork) || '').trim();
+              if (name) unitWorks.projectNames.add(name);
+            });
+          });
+        });
+
+        if (!unitMap.size) unitMap.set('-', { practicalNames: new Set(), projectNames: new Set() });
+        unitMap.forEach((unitWorks, unitName) => subjectRows.push({
+          studentClass: classItem.studentClass,
+          section: classItem.section,
+          subject,
+          unitName,
+          projectNames: [...unitWorks.projectNames],
+          practicalNames: [...unitWorks.practicalNames],
+          totalProject: unitWorks.projectNames.size,
+          totalPractical: unitWorks.practicalNames.size
+        }));
+      }
+
+      const subjectGroups = query_subjects.map((subject) => {
+        const subjectRowsForGroup = subjectRows.filter((row) => row.subject === subject);
+        const totalPractical = subjectRowsForGroup.reduce((total, row) => total + row.practicalNames.length, 0);
+        const totalProject = subjectRowsForGroup.reduce((total, row) => total + row.projectNames.length, 0);
+        return {
+          subject,
+          rows: subjectRowsForGroup,
+          totalPractical,
+          totalProject
+        };
+      });
+
+      classTables.push({
+        studentClass: classItem.studentClass,
+        section: classItem.section,
+        subjectGroups
+      });
+    }
+
+    return res.render('theme/projectlist', {
+      ...await getSidenavData(req),
+      classTables,
+      query_subjects,
+      query_classes,
+      terminals: terminalOptions,
+      academicYear,
+      academicYearOptions: Array.from({ length: 5 }, (_, index) => String(Number(academicYear) - index)),
+      selectedTerminal,
+    });
+  } catch (error) {
+    console.error('Error loading project list:', error);
+    return res.status(500).send('Unable to load project list.');
+  }
 };
 
 app.set("view engine", "ejs");
