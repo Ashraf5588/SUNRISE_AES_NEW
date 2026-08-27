@@ -131,7 +131,7 @@
             grid-template-columns: 1fr;
             gap: 1.25rem;
             margin-bottom: 1.5rem;
-            align-items: stretch;
+            align-items: start;
         }
 
         .quick-groups > .quick-group {
@@ -139,11 +139,27 @@
         }
 
         .quick-group {
-            background: #fff;
-            border: 1px solid var(--tile-border);
-            border-radius: 22px;
-            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+            background: rgba(255, 255, 255, 0.94);
+            border: 1px solid rgba(148, 163, 184, 0.24);
+            border-radius: 20px;
+            box-shadow: 0 14px 30px rgba(15, 23, 42, 0.09);
             padding: 1.1rem;
+            position: relative;
+            overflow: hidden;
+            height: fit-content;
+        }
+
+        .quick-group-academic { grid-area: academic; }
+        .quick-group-analysis { grid-area: analysis; }
+        .quick-group-more { grid-area: more; }
+        .quick-group-admin { grid-area: admin; }
+
+        .quick-group::before {
+            content: '';
+            position: absolute;
+            inset: 0 0 auto;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
         }
 
         .group-title {
@@ -206,10 +222,9 @@
             color: var(--dark) !important;
             gap: 0.6rem;
             min-width: 0;
-           
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            background: #f8fafc;
             min-height: 110px;
-       
-           
         }
 
         .action-card:hover {
@@ -226,8 +241,19 @@
             align-items: center;
             justify-content: center;
             background: rgba(255, 255, 255, 0.18);
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+            box-shadow: 0 8px 16px rgba(15, 23, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            flex-shrink: 0;
         }
+
+        .card-blue { background: #eff6ff; border-color: #bfdbfe; }
+        .card-orange, .card-oranges { background: #fff7ed; border-color: #fed7aa; }
+        .card-green, .card-emerald { background: #ecfdf5; border-color: #a7f3d0; }
+        .card-yellow { background: #fffbeb; border-color: #fde68a; }
+        .card-skyblue { background: #f0f9ff; border-color: #bae6fd; }
+        .card-violet { background: #eef2ff; border-color: #c7d2fe; }
+        .card-darkgreen { background: #f0fdf4; border-color: #bbf7d0; }
+        .card-slate { background: #f1f5f9; border-color: #cbd5e1; }
+        .card-rose { background: #fff1f2; border-color: #fecdd3; }
 
         .card-blue .icon-wrapper { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: #fff; }
         .card-orange .icon-wrapper { background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%); color: #fff; }
@@ -247,6 +273,7 @@
             line-height: 1.25;
             overflow-wrap: anywhere;
             word-break: break-word;
+            font-size: 0.82rem;
         }
         
         .subject-grid {
@@ -428,6 +455,8 @@
                 width: 100%;
                 padding: 0.9rem;
                 margin-bottom: 1rem;
+                border-radius: 16px;
+                height: auto;
             }
 
             .action-section {
@@ -480,15 +509,34 @@
             .action-buttons.more { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         }
 
-        @media (min-width: 992px) {
+        @media (min-width: 769px) {
             .quick-groups {
-                grid-template-columns: repeat(3, minmax(0, 1fr));
+                grid-template-columns: minmax(0, 1fr) minmax(280px, 0.86fr);
+                grid-template-areas:
+                    "academic more"
+                    "analysis more"
+                    "admin more";
+                align-items: start;
             }
         }
 
         @media (min-width: 769px) and (max-width: 991px) {
             .quick-groups {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
+                grid-template-columns: minmax(0, 1fr) minmax(230px, 0.8fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .quick-groups {
+                grid-template-columns: 1fr;
+                grid-template-areas: none;
+            }
+
+            .quick-group-academic,
+            .quick-group-analysis,
+            .quick-group-more,
+            .quick-group-admin {
+                grid-area: auto;
             }
         }
 
@@ -541,7 +589,7 @@
         <div class="action-section">
             <div class="quick-groups">
                
-                <div class="quick-group">
+                <div class="quick-group quick-group-academic">
                     <h3 class="group-title">Academic</h3>
                     <div class="action-buttons academic">
                         <a href="/lessonplanselect" class="action-card card-yellow" aria-label="Lesson Plan">
@@ -561,8 +609,10 @@
                             <div class="text-wrapper">Portfolio</div>
                         </a>
                     </div>
+                    
                 </div>
-                 <div class="quick-group">
+                
+                 <div class="quick-group quick-group-analysis">
                     <h3 class="group-title">Answer Analysis</h3>
                     <div class="action-buttons answeranalysis">
                         <a href="/addchapterselect" class="action-card card-skyblue" aria-label="Add Chapter Name">
@@ -583,7 +633,7 @@
                         </a>
                     </div>
                 </div>
-                <div class="quick-group">
+                <div class="quick-group quick-group-more">
                     <h3 class="group-title">More</h3>
                     <div class="action-buttons">
                         <a href="/student-transfer" class="action-card card-yellow" aria-label="Student Transfer">
@@ -592,7 +642,7 @@
                         </a>
                         <% if (userrole === 'ADMIN') { %>
                             <a href="/absent-record" class="action-card card-rose" aria-label="Absent Record">
-                            <div class="icon-wrapper"><i class="fa-solid fa-user-pen"></i></div>
+                            <div class="icon-wrapper"><i class="fa-solid fa-user-clock"></i></div>
                             <div class="text-wrapper">Absent Record</div>
                         </a>
                         <% } %>
@@ -628,6 +678,29 @@
                         </a>
                  </div>
                 </div>
+                <%if (userrole === 'ADMIN') { %>
+                <div class="quick-group quick-group-admin">
+                    <h3 class="group-title">Admin</h3>
+                    <div class="action-buttons academic">
+                        <a href="/dailydashboard" class="action-card card-yellow" aria-label="Lesson Plan">
+                            <div class="icon-wrapper"><i class="fa-solid fa-chart-pie"></i></div>
+                            <div class="text-wrapper">Day Dashboard</div>
+                        </a>
+                        <a href="/projectcounter" class="action-card card-yellow" aria-label="Lesson Plan">
+                            <div class="icon-wrapper"><i class="fa-solid fa-clipboard-list"></i></div>
+                            <div class="text-wrapper">Project Work Counter</div>
+                        </a>
+                        <a href="/entryformlocker" class="action-card card-yellow" aria-label="Lesson Plan">
+                            <div class="icon-wrapper"><i class="fa-solid fa-clipboard-list"></i></div>
+                            <div class="text-wrapper">Entry Form Locker</div>
+                        </a>
+                    <a href="/admin/term/FIRST" class="action-card card-yellow" aria-label="Lesson Plan">
+                            <div class="icon-wrapper"><i class="fa-solid fa-clipboard-list"></i></div>
+                            <div class="text-wrapper">Analysis Entry Counter</div>
+                        </a>
+                    </div>
+                </div>
+                <% } %>
             </div>
             <% if (userrole === 'ADMIN') { %>
                 <div class="d-grid gap-2 mt-4 d-md-flex justify-content-md-start">

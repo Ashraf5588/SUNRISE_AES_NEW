@@ -18,18 +18,23 @@
 		button { background: var(--brand); color: #fff; border-color: var(--brand); cursor: pointer; font-weight: 700; }
 		.date-chip { width: 100%; color: var(--brand); font-weight: 700; font-size: .95rem; }
 		.kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 18px; }
-		.kpi { background: #fff; border: 1px solid var(--line); padding: 18px; box-shadow: 0 8px 22px rgba(30, 41, 59, .07); border-top: 4px solid var(--brand); }
+		.kpi { background: #fff; border: 1px solid var(--line); padding: 18px; box-shadow: 0 8px 22px rgba(30, 41, 59, .07); border-top: 4px solid var(--brand); border-radius: 12px; display: flex; flex-direction: column; justify-content: space-between; }
 		.kpi.blue { border-top-color: var(--blue); } .kpi.amber { border-top-color: var(--amber); }
 		.kpi-label { color: var(--muted); font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 		.kpi-value { display: block; font-size: 2rem; margin: 7px 0 10px; } .kpi a { color: var(--brand); font-size: .82rem; font-weight: 700; text-decoration: none; }
 		.dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(360px, .9fr); gap: 18px; align-items: start; }
 		.panel { background: #fff; border: 1px solid var(--line); box-shadow: 0 10px 26px rgba(30, 41, 59, .07); overflow: hidden; }
+		.complaint-panel { background: #f8fbff; border: 1px solid #b9c9df; border-radius: 14px; box-shadow: 0 14px 30px rgba(15, 36, 72, .14); overflow: hidden; }
 		.panel-header { padding: 17px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+		.complaint-panel .panel-header { background: #102d5a; color: #fff; border-bottom-color: #244a80; }
+		.complaint-panel .panel-count { color: #bfdbfe; }
 		.panel-title { font-size: 1rem; font-weight: 700; } .panel-count { color: var(--brand); font-weight: 700; font-size: .82rem; }
 		.table-wrap { overflow-x: auto; background: #fff; border: 1px solid var(--line); }
 		table { width: 100%; min-width: 1050px; border-collapse: collapse; font-size: .86rem; }
 		th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
 		th { background: #e8f3f1; color: #115e59; text-transform: uppercase; font-size: .72rem; letter-spacing: .03em; white-space: nowrap; }
+		.complaint-panel .table-wrap { border: 0; border-radius: 0 0 14px 14px; }
+		.complaint-panel th { background: #183b70; color: #e5efff; }
 		tbody tr:hover { background: var(--soft); }
 		.sn, .class-cell { text-align: center; }
 		.student { font-weight: 700; }
@@ -41,6 +46,8 @@
 		.images { display: flex; gap: 6px; margin-top: 7px; flex-wrap: wrap; }
 		.images img { width: 54px; height: 54px; object-fit: cover; border: 1px solid var(--line); cursor: pointer; }
 		.count { display: inline-block; background: #ccfbf1; color: #115e59; padding: 3px 7px; font-weight: 700; }
+		.detail-btn { display: inline-flex; align-items: center; justify-content: center; margin-top: 8px; padding: 7px 10px; border-radius: 7px; background: #dbeafe; border: 1px solid #93c5fd; color: #164e8a; font-size: .75rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
+		.detail-btn:hover { background: #bfdbfe; color: #102d5a; }
 		.empty { color: var(--muted); }
 		.medical-table { min-width: 650px; } .medical-table th { background: #e9f5f2; }
 		@media (max-width: 950px) { .dashboard-grid { grid-template-columns: 1fr; } }
@@ -51,7 +58,7 @@
 	<main class="page">
 		<section class="toolbar">
 			<div>
-				<h1>Daily Portfolio Dashboard</h1>
+				<h1>Day Dashboard</h1>
 				<p class="subtitle">Complaints and parent calls for the selected Bikram Sambat date</p>
 			</div>
 			<form class="date-form" method="get" action="/dailydashboard">
@@ -59,7 +66,7 @@
 					<select name="year"><% for (let year = selectedYear + 2; year >= selectedYear - 5; year--) { %><option value="<%= year %>" <%= year === selectedYear ? 'selected' : '' %>><%= year %></option><% } %></select>
 				</label>
 				<label>Month
-					<select name="month"><% Object.entries(bsMonthNames).forEach(([number, name]) => { %><option value="<%= number %>" <%= Number(number) === selectedMonth ? 'selected' : '' %>><%= number %> - <%= name %></option><% }) %></select>
+					<select name="month"><% Object.entries(bsMonthNames).forEach(([number, name]) => { %><option value="<%= number %>" <%= Number(number) === selectedMonth ? 'selected' : '' %>> <%= name %></option><% }) %></select>
 				</label>
 				<label>Day
 					<select name="day"><% for (let day = 1; day <= 32; day++) { %><option value="<%= day %>" <%= day === selectedDay ? 'selected' : '' %>><%= day %></option><% } %></select>
@@ -76,7 +83,7 @@
 		</section>
 
 		<section class="dashboard-grid">
-		<section class="panel">
+		<section class="panel complaint-panel">
 			<div class="panel-header"><span class="panel-title">Complaints and parent calls</span><span class="panel-count"><%= totalComplaintToday %> complaint(s)</span></div>
 		<div class="table-wrap">
 			<table>
@@ -95,7 +102,7 @@
 								<% }) } else { %><span class="empty">No complaint</span><% } %>
 							</td>
 							<td class="class-cell"><%= row.studentClass %> / <%= row.section %></td>
-							<td><span class="count"><%= row.totalComplaints %></span></td>
+							<td><span class="count"><%= row.totalComplaints %></span>&ensp;<a class="detail-btn" href="/studentportfolio?studentClass=<%= encodeURIComponent(row.studentClass) %>&section=<%= encodeURIComponent(row.section) %>&academicYear=<%= encodeURIComponent(selectedYear) %>&reg=<%= encodeURIComponent(row.reg) %>">Show All </a></td>
 							<td><% if (row.callLogs.length) { row.callLogs.forEach((call) => { %><div class="entry-reason"><%= call.callReason || '-' %></div><% }) } else { %><span class="empty">-</span><% } %></td>
 							<td><% if (row.callLogs.length) { row.callLogs.forEach((call) => { %><div class="entry-reason"><%= call.parentResponse || '-' %></div><% }) } else { %><span class="empty">-</span><% } %></td>
 						</tr>
