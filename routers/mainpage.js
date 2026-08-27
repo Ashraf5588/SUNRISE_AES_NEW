@@ -1,8 +1,10 @@
 const express = require('express');
 const student = express.Router();
 const controller = require('../controller/controller')
+const dailydashboardcontroller = require('../controller/dailydashboardcontroller')
 const newscontroller = require('../controller/newscontroller')
 const examcontroller = require('../controller/examconntroller')
+const lockcontroller = require('../controller/lockcontroller')
 const nursecontroller = require('../controller/nursecontroller')
 const multer  = require('multer')
 const newthemecontroller = require('../controller/newthemecontroller')
@@ -392,7 +394,8 @@ student.get('/editroutine',verifytoken,authorized,isAdmin,examdashboardcontrolle
 student.get('/deleteroutine',verifytoken,authorized,isAdmin,examdashboardcontroller.deleteRoutine)
 student.get('/ledger',verifytoken,authorized,isAdmin,examdashboardcontroller.ledger)
 student.get('/myresult',examdashboardcontroller.myResult)
-
+student.get('/locker',verifytoken,authorized,isAdmin,lockcontroller.locker);
+student.get('/dailydashboard',verifytoken,authorized,isAdmin,dailydashboardcontroller.dailydashboard);
 student.get('/formatchoosestudent',examdashboardcontroller.formatChooseStudent)
 student.get('/student/generatemarksheet',examdashboardcontroller.generateMarksheetStudent)
 student.get('/studentportfolio',verifytoken,authorized,examdashboardcontroller.studentPortfolio)

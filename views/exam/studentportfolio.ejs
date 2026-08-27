@@ -1429,9 +1429,10 @@
                                  <li class="complaint-item">
                                     <div class="complaint-meta">
                                        <span>By: <%= item.by || 'Unknown' %></span>
-                                       <span>Date: <%= item.date ? new Date(item.date).toLocaleDateString() : 'N/A' %></span>
+                                       <span>Date (BS): <%= item.nepaliDate || 'N/A' %></span>
                                     </div>
                                     <div class="complaint-reason"><%= item.reason || '-' %></div>
+                                    <button type="button" class="no-print" onclick="editComplaint('<%= reg %>', '<%= item._id %>')">Edit Complaint</button>
                                     <% if (Array.isArray(item.imageUrls) && item.imageUrls.length) { %>
                                       <div class="complaint-images">
                                         <% item.imageUrls.forEach((img, index) => { %>
@@ -2176,6 +2177,7 @@
    const callLogStatus = document.getElementById('callLogStatus');
    const callLogNow = document.getElementById('callLogNow');
    let complaintImageUrls = [];
+   let editingComplaintId = '';
 
    function normalize(value) {
       return String(value || '').toLowerCase().trim();
@@ -2465,9 +2467,31 @@
    }
 
    function openComplaintModal(reg) {
+      editingComplaintId = '';
+      document.getElementById('complaintModalTitle').textContent = 'Add Complaint';
+      document.querySelector('#complaintForm button[type="submit"]').textContent = 'Save Complaint';
       setField('complaint_reg', reg);
       setField('complaint_reason', '');
       complaintImageUrls = [];
+      renderComplaintPreview();
+      setComplaintUploadStatus('');
+
+      const modal = document.getElementById('complaintModal');
+      modal.classList.add('is-open');
+      modal.setAttribute('aria-hidden', 'false');
+   }
+
+   function editComplaint(reg, complaintId) {
+      const complaints = complaintsByReg[reg] || [];
+      const complaint = complaints.find((item) => String(item._id) === String(complaintId));
+      if (!complaint) return;
+
+      editingComplaintId = complaintId;
+      document.getElementById('complaintModalTitle').textContent = 'Edit Complaint';
+      document.querySelector('#complaintForm button[type="submit"]').textContent = 'Update Complaint';
+      setField('complaint_reg', reg);
+      setField('complaint_reason', complaint.reason || '');
+      complaintImageUrls = Array.isArray(complaint.imageUrls) ? [...complaint.imageUrls] : [];
       renderComplaintPreview();
       setComplaintUploadStatus('');
 
@@ -2480,6 +2504,7 @@
       const modal = document.getElementById('complaintModal');
       modal.classList.remove('is-open');
       modal.setAttribute('aria-hidden', 'true');
+      editingComplaintId = '';
    }
 
    document.getElementById('infoForm').addEventListener('submit', function (event) {
@@ -2598,15 +2623,16 @@
             return;
          }
 
-         fetch('/addComplaint', {
-            method: 'POST',
+         const endpoint = editingComplaintId ? `/complaint/${encodeURIComponent(editingComplaintId)}` : '/addComplaint';
+         fetch(endpoint, {
+            method: editingComplaintId ? 'PUT' : 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ reg, complaint, images: complaintImageUrls })
          })
          .then(response => response.json())
          .then((data) => {
             if (data.success) {
-               alert('Complaint added successfully!');
+               alert(editingComplaintId ? 'Complaint updated successfully!' : 'Complaint added successfully!');
                closeComplaintModal();
                window.location.reload();
             } else {
@@ -2726,9 +2752,9 @@
       if (!Array.isArray(items) || !items.length) return '';
       return items.map((item, index) => {
          const reason = item.reason || item.complaint || '-';
-         const date = formatDateOnly(item.date);
+         const date = item.nepaliDate || '';
          const by = item.by || '';
-         const meta = [date && `Date: ${date}`, by && `By: ${by}`].filter(Boolean).join(' | ');
+         const meta = [date && `Date (BS): ${date}`, by && `By: ${by}`].filter(Boolean).join(' | ');
          return `${index + 1}. ${reason}${meta ? ` (${meta})` : ''}`;
       }).join('\n');
    }

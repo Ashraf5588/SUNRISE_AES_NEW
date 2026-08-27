@@ -11,6 +11,7 @@ const portfolioSchema = new mongoose.Schema({
     {
       by: { type: String, required: false },   // teacher name or id
       date: { type: Date, required: false },
+      nepaliDate: { type: String, required: false },
       reason: { type: String, required: false },
       imageUrls: [{ type: String, required: false }]
     }

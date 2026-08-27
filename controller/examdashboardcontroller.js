@@ -2479,8 +2479,18 @@ for (const student of studentWisedata) {
          : [];
        const portfolioByReg = portfolioDocs.reduce((acc, doc) => {
          if (doc && doc.reg) {
+           doc.complaints = Array.isArray(doc.complaints)
+             ? doc.complaints.map((complaint) => ({
+               ...complaint,
+               nepaliDate: complaint.nepaliDate || (complaint.date ? String(bs.ADToBS(new Date(complaint.date)) || '') : '')
+             }))
+             : [];
            acc[doc.reg] = doc;
          }
+         return acc;
+       }, {});
+       const complaintsByReg = Object.entries(portfolioByReg).reduce((acc, [portfolioReg, portfolio]) => {
+         acc[portfolioReg] = Array.isArray(portfolio.complaints) ? portfolio.complaints : [];
          return acc;
        }, {});
 
@@ -2592,6 +2602,7 @@ for (const student of studentWisedata) {
       studentWisedatastructured,
       marksheetSetups,
         portfolioByReg,
+        complaintsByReg,
         rosterByReg,
         healthRecordsByReg,
         callLogsByReg,
@@ -2626,6 +2637,7 @@ exports.addComplaint = async (req, res) => {
           complaints: {
             by: teacherName,
             date: new Date(),
+            nepaliDate: String(bs.ADToBS(new Date()) || ''),
             reason,
             imageUrls
           }

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Daily Portfolio Dashboard</title>
+	<style>
+		:root { --ink: #172033; --muted: #64748b; --line: #dbe3ee; --brand: #0f766e; --soft: #f8fafc; --blue: #2563eb; --amber: #d97706; }
+		* { box-sizing: border-box; }
+		body { margin: 0; padding: 28px; background: linear-gradient(135deg, #e8f0f7 0%, #f7fafc 48%, #e9f5f2 100%); color: var(--ink); font-family: Arial, sans-serif; }
+		.page { max-width: 1400px; margin: 0 auto; }
+		.toolbar { background: rgba(255,255,255,.92); border: 1px solid var(--line); padding: 22px; margin-bottom: 18px; display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap; align-items: end; box-shadow: 0 10px 28px rgba(30, 41, 59, .08); }
+		h1 { margin: 0 0 6px; font-size: 1.45rem; }
+		.subtitle { color: var(--muted); margin: 0; font-size: .9rem; }
+		.date-form { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+		label { display: grid; gap: 5px; color: var(--muted); font-size: .75rem; font-weight: 700; }
+		select, button { min-height: 38px; border: 1px solid var(--line); padding: 8px 11px; font: inherit; }
+		button { background: var(--brand); color: #fff; border-color: var(--brand); cursor: pointer; font-weight: 700; }
+		.date-chip { width: 100%; color: var(--brand); font-weight: 700; font-size: .95rem; }
+		.kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 18px; }
+		.kpi { background: #fff; border: 1px solid var(--line); padding: 18px; box-shadow: 0 8px 22px rgba(30, 41, 59, .07); border-top: 4px solid var(--brand); }
+		.kpi.blue { border-top-color: var(--blue); } .kpi.amber { border-top-color: var(--amber); }
+		.kpi-label { color: var(--muted); font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+		.kpi-value { display: block; font-size: 2rem; margin: 7px 0 10px; } .kpi a { color: var(--brand); font-size: .82rem; font-weight: 700; text-decoration: none; }
+		.dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(360px, .9fr); gap: 18px; align-items: start; }
+		.panel { background: #fff; border: 1px solid var(--line); box-shadow: 0 10px 26px rgba(30, 41, 59, .07); overflow: hidden; }
+		.panel-header { padding: 17px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+		.panel-title { font-size: 1rem; font-weight: 700; } .panel-count { color: var(--brand); font-weight: 700; font-size: .82rem; }
+		.table-wrap { overflow-x: auto; background: #fff; border: 1px solid var(--line); }
+		table { width: 100%; min-width: 1050px; border-collapse: collapse; font-size: .86rem; }
+		th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+		th { background: #e8f3f1; color: #115e59; text-transform: uppercase; font-size: .72rem; letter-spacing: .03em; white-space: nowrap; }
+		tbody tr:hover { background: var(--soft); }
+		.sn, .class-cell { text-align: center; }
+		.student { font-weight: 700; }
+		.reg { color: var(--muted); font-size: .75rem; margin-top: 3px; }
+		.entry { border-left: 3px solid #f59e0b; padding-left: 8px; margin-bottom: 10px; }
+		.entry:last-child { margin-bottom: 0; }
+		.entry-meta { color: var(--muted); font-size: .75rem; margin-bottom: 4px; }
+		.entry-reason { white-space: pre-wrap; line-height: 1.4; }
+		.images { display: flex; gap: 6px; margin-top: 7px; flex-wrap: wrap; }
+		.images img { width: 54px; height: 54px; object-fit: cover; border: 1px solid var(--line); cursor: pointer; }
+		.count { display: inline-block; background: #ccfbf1; color: #115e59; padding: 3px 7px; font-weight: 700; }
+		.empty { color: var(--muted); }
+		.medical-table { min-width: 650px; } .medical-table th { background: #e9f5f2; }
+		@media (max-width: 950px) { .dashboard-grid { grid-template-columns: 1fr; } }
+		@media (max-width: 650px) { body { padding: 12px; } .toolbar { padding: 14px; } .date-form { width: 100%; } .date-form label, .date-form select, .date-form button { width: 100%; } .kpi-grid { grid-template-columns: 1fr; } }
+	</style>
+</head>
+<body>
+	<main class="page">
+		<section class="toolbar">
+			<div>
+				<h1>Daily Portfolio Dashboard</h1>
+				<p class="subtitle">Complaints and parent calls for the selected Bikram Sambat date</p>
+			</div>
+			<form class="date-form" method="get" action="/dailydashboard">
+				<label>Year
+					<select name="year"><% for (let year = selectedYear + 2; year >= selectedYear - 5; year--) { %><option value="<%= year %>" <%= year === selectedYear ? 'selected' : '' %>><%= year %></option><% } %></select>
+				</label>
+				<label>Month
+					<select name="month"><% Object.entries(bsMonthNames).forEach(([number, name]) => { %><option value="<%= number %>" <%= Number(number) === selectedMonth ? 'selected' : '' %>><%= number %> - <%= name %></option><% }) %></select>
+				</label>
+				<label>Day
+					<select name="day"><% for (let day = 1; day <= 32; day++) { %><option value="<%= day %>" <%= day === selectedDay ? 'selected' : '' %>><%= day %></option><% } %></select>
+				</label>
+				<button type="submit">Show Date</button>
+			</form>
+			<div class="date-chip">Selected date: <%= selectedDate %> (<%= monthName %>)</div>
+		</section>
+
+		<section class="kpi-grid">
+			<div class="kpi"><span class="kpi-label">Medical cases today</span><strong class="kpi-value"><%= totalMedicalToday %></strong><a href="/healthrecord">See medical details</a></div>
+			<div class="kpi blue"><span class="kpi-label">Calls completed today</span><strong class="kpi-value"><%= totalCallToday %></strong><a href="/frontdesk">See call records</a></div>
+			<div class="kpi amber"><span class="kpi-label">Complaints today</span><strong class="kpi-value"><%= totalComplaintToday %></strong><span class="kpi-label">Selected BS date</span></div>
+		</section>
+
+		<section class="dashboard-grid">
+		<section class="panel">
+			<div class="panel-header"><span class="panel-title">Complaints and parent calls</span><span class="panel-count"><%= totalComplaintToday %> complaint(s)</span></div>
+		<div class="table-wrap">
+			<table>
+				<thead><tr><th>SN</th><th>Name</th><th>Complaints Today</th><th>Class / Section</th><th>Total Complaints Till Now</th><th>Call Reason Today</th><th>Call Response</th></tr></thead>
+				<tbody>
+					<% if (!rows.length) { %><tr><td colspan="7" class="empty">No portfolio students found.</td></tr><% } %>
+					<% rows.forEach((row, index) => { %>
+						<tr>
+							<td class="sn"><%= index + 1 %></td>
+							<td><div class="student"><%= row.name %></div><div class="reg"><%= row.reg %></div></td>
+							<td>
+								<% if (row.todayComplaints.length) { row.todayComplaints.forEach((complaint) => { %>
+									<article class="entry"><div class="entry-meta">By: <%= complaint.by || 'Unknown' %> | BS: <%= complaint.nepaliDate || selectedDate %></div><div class="entry-reason"><%= complaint.reason || '-' %></div>
+										<% if (Array.isArray(complaint.imageUrls) && complaint.imageUrls.length) { %><div class="images"><% complaint.imageUrls.forEach((image, imageIndex) => { %><a href="<%= image %>" target="_blank" rel="noopener"><img src="<%= image %>" alt="Complaint image <%= imageIndex + 1 %>"></a><% }) %></div><% } %>
+									</article>
+								<% }) } else { %><span class="empty">No complaint</span><% } %>
+							</td>
+							<td class="class-cell"><%= row.studentClass %> / <%= row.section %></td>
+							<td><span class="count"><%= row.totalComplaints %></span></td>
+							<td><% if (row.callLogs.length) { row.callLogs.forEach((call) => { %><div class="entry-reason"><%= call.callReason || '-' %></div><% }) } else { %><span class="empty">-</span><% } %></td>
+							<td><% if (row.callLogs.length) { row.callLogs.forEach((call) => { %><div class="entry-reason"><%= call.parentResponse || '-' %></div><% }) } else { %><span class="empty">-</span><% } %></td>
+						</tr>
+					<% }) %>
+				</tbody>
+			</table>
+		</section>
+		</div>
+
+		<section class="panel">
+			<div class="panel-header"><span class="panel-title">Medical visits today</span><span class="panel-count"><%= totalMedicalToday %> visit(s)</span></div>
+			<div class="table-wrap">
+			<table class="medical-table">
+				<thead><tr><th>SN</th><th>Student</th><th>Class / Section</th><th>Diagnosis</th><th>Treatment</th><th>Remarks</th></tr></thead>
+				<tbody>
+					<% if (!medicalRows.length) { %><tr><td colspan="6" class="empty">No medical visits found for this date.</td></tr><% } %>
+					<% medicalRows.forEach((record, index) => { %>
+						<tr><td class="sn"><%= index + 1 %></td><td><div class="student"><%= record.name || '-' %></div><div class="reg"><%= record.reg || '-' %></div></td><td class="class-cell"><%= record.studentClass || '-' %> / <%= record.section || '-' %></td><td><%= record.diagnosis || '-' %></td><td><%= record.treatment || '-' %></td><td><%= record.remarks || '-' %></td></tr>
+					<% }) %>
+				</tbody>
+			</table>
+			</div>
+		</section>
+		</section>
+	</main>
+</body>
+</html>
