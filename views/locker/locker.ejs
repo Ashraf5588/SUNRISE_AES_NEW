@@ -53,6 +53,181 @@
     hr {
       margin: 40px 0;
     }
+
+    .locker-form,
+    .active-rules {
+      margin: 24px auto;
+      max-width: 1400px;
+      padding: 20px;
+      border: 1px solid #d8e1ea;
+      border-radius: 12px;
+      background: #f8fbff;
+      box-shadow: 0 4px 14px rgba(18, 52, 86, .08);
+    }
+
+    .locker-form,
+    .legacy-locker {
+      display: none;
+    }
+
+    .locker-form h2,
+    .active-rules h2 {
+      margin-top: 0;
+      color: #102d5a;
+    }
+
+    .locker-form p {
+      color: #64748b;
+    }
+
+    .locker-form form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 14px;
+      align-items: end;
+    }
+
+    .locker-form label {
+      display: grid;
+      gap: 6px;
+      color: #475569;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .locker-form select,
+    .locker-form input,
+    .locker-form button {
+      width: 100%;
+      min-height: 40px;
+      padding: 9px 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 7px;
+      font: inherit;
+    }
+
+    .locker-form button {
+      border-color: #0f766e;
+      background: #0f766e;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .active-rules {
+      overflow-x: auto;
+    }
+
+    .active-rules table {
+      min-width: 850px;
+      margin-bottom: 0;
+    }
+
+    .active-rules th {
+      background: #102d5a;
+      color: #fff;
+    }
+
+    .locker-grid {
+      min-width: 850px;
+    }
+
+    .locker-grid input {
+      width: 145px;
+      padding: 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font: inherit;
+    }
+
+    .locker-grid button {
+      min-width: 78px;
+      padding: 8px 12px;
+      border: 0;
+      border-radius: 6px;
+      background: #0f766e;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .terminal-filter {
+      display: flex;
+      align-items: end;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .terminal-filter label,
+    .group-date-controls label {
+      display: grid;
+      gap: 5px;
+      color: #475569;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .terminal-filter select,
+    .group-date-controls input {
+      min-height: 38px;
+      padding: 8px 10px;
+      border: 1px solid #cbd5e1;
+      border-radius: 7px;
+      font: inherit;
+    }
+
+    .group-table {
+      margin-top: 20px;
+      border: 1px solid #d8e1ea;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .group-table-title {
+      padding: 12px 14px;
+      background: #102d5a;
+      color: #fff;
+      font-weight: 800;
+    }
+
+    .group-date-controls {
+      display: flex;
+      align-items: end;
+      gap: 10px;
+      flex-wrap: wrap;
+      padding: 12px 14px;
+      background: #eef4fb;
+      border-bottom: 1px solid #d8e1ea;
+    }
+
+    .apply-dates {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #334155;
+      font-size: 13px;
+      font-weight: 700;
+      padding-bottom: 10px;
+    }
+
+    .save-all {
+      min-height: 38px;
+      padding: 8px 13px;
+      border: 0;
+      border-radius: 7px;
+      background: #102d5a;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .save-status {
+      padding-bottom: 10px;
+      color: #047857;
+      font-size: 13px;
+      font-weight: 700;
+    }
   </style>
 </head>
 
@@ -60,6 +235,66 @@
 <body>
 
   <h1>Exam Locker</h1>
+
+  <section class="locker-form">
+    <h2>Open Entry Form Access</h2>
+    <p>Teachers can access an entry form only between the selected Bikram Sambat dates. Administrators always have access.</p>
+    <form method="POST" action="/locker/save">
+      <label>Class and Section
+        <select id="classSection" required>
+          <option value="">Select class and section</option>
+          <% classList.forEach((item) => { %><option value="<%= item.studentClass %>|<%= item.section %>"><%= item.studentClass %> - <%= item.section %></option><% }) %>
+        </select>
+      </label>
+      <input type="hidden" name="studentClass" id="lockerClass">
+      <input type="hidden" name="section" id="lockerSection">
+      <label>Subject
+        <select name="subject" required><option value="">Select subject</option><% subjectList.forEach((item) => { %><option value="<%= item.newsubject || item.subject %>"><%= item.newsubject || item.subject %></option><% }) %></select>
+      </label>
+      <label>Terminal
+        <select name="terminal" required><% terminalList.forEach((item) => { %><option value="<%= item.terminal %>"><%= item.terminal %></option><% }) %></select>
+      </label>
+      <label>Academic Year<input name="academicYear" type="text" value="<%= marksheetSetupList[0] && marksheetSetupList[0].academicYear || '' %>" required></label>
+      <label>Open From (BS)<input name="fromDate" type="text" value="<%= currentBsDate %>" placeholder="YYYY-MM-DD" required></label>
+      <label>Open Until (BS)<input name="toDate" type="text" value="<%= currentBsDate %>" placeholder="YYYY-MM-DD" required></label>
+      <button type="submit">Save Access Rule</button>
+    </form>
+  </section>
+
+  <section class="active-rules">
+    <h2>Entry Form Access by Class and Subject</h2>
+    <form class="terminal-filter" method="GET" action="/locker">
+      <label>Terminal
+        <select name="terminal"><% terminalList.forEach((item) => { %><option value="<%= item.terminal %>" <%= String(item.terminal) === String(selectedTerminal) ? 'selected' : '' %>><%= item.terminal %></option><% }) %></select>
+      </label>
+      <button type="submit">Load Terminal</button>
+    </form>
+    <% if (!groupTables.length) { %><div>No class-subject combinations found.</div><% } %>
+    <% groupTables.forEach((group, groupIndex) => { const groupId = `group-${groupIndex}`; %>
+      <section class="group-table" data-group="<%= groupId %>">
+        <div class="group-table-title"><%= group.name %> | Terminal: <%= selectedTerminal %></div>
+        <div class="group-date-controls">
+          <label>Apply From (BS)<input class="group-from" data-group="<%= groupId %>" type="text" value="<%= currentBsDate %>" placeholder="YYYY-MM-DD"></label>
+          <label>Apply Until (BS)<input class="group-to" data-group="<%= groupId %>" type="text" value="<%= currentBsDate %>" placeholder="YYYY-MM-DD"></label>
+          <label class="apply-dates"><input type="checkbox" class="apply-all-dates" data-group="<%= groupId %>"> Apply same dates to all subjects</label>
+          <button type="button" class="save-all" data-group="<%= groupId %>">Save All</button><span class="save-status" data-group="<%= groupId %>" aria-live="polite"></span>
+        </div>
+        <div style="overflow-x:auto"><table class="locker-grid">
+          <thead><tr><th>Class</th><th>Subject</th><th>Academic Year</th><th>Open Date (BS)</th><th>Close Date (BS)</th><th>Save</th></tr></thead>
+          <tbody>
+            <% group.rows.forEach((row, index) => { const formId = `${groupId}-row-${index}`; %>
+              <tr>
+                <td><%= row.studentClass %></td><td><%= row.subject %></td><td><%= row.academicYear %></td>
+                <td><input form="<%= formId %>" class="row-from" data-group="<%= groupId %>" data-form="<%= formId %>" name="fromDate" type="text" value="<%= row.fromDate %>" placeholder="YYYY-MM-DD" required></td>
+                <td><input form="<%= formId %>" class="row-to" data-group="<%= groupId %>" data-form="<%= formId %>" name="toDate" type="text" value="<%= row.toDate %>" placeholder="YYYY-MM-DD" required></td>
+                <td><form id="<%= formId %>" method="POST" action="/locker/save-bulk"><input type="hidden" name="studentClass" value="<%= row.studentClass %>"><input type="hidden" name="sections" value="<%= JSON.stringify(row.sections) %>"><input type="hidden" name="subject" value="<%= row.subject %>"><input type="hidden" name="terminal" value="<%= row.terminal %>"><input type="hidden" name="academicYear" value="<%= row.academicYear %>"><button type="submit">Save</button></form></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table></div>
+      </section>
+    <% }) %>
+  </section>
 
 
   <%
@@ -163,7 +398,7 @@
   <% terminalList.forEach(function(terminal) { %>
 
 
-    <div class="terminal">
+    <div class="terminal legacy-locker">
 
       <h2 class="terminal-title">
         Terminal: <%= terminal.terminal %>
@@ -305,5 +540,59 @@
 
 
 </body>
+<script>
+  document.getElementById('classSection').addEventListener('change', function () {
+    const [studentClass, section] = this.value.split('|');
+    document.getElementById('lockerClass').value = studentClass || '';
+    document.getElementById('lockerSection').value = section || '';
+  });
+  document.querySelectorAll('.apply-all-dates').forEach((checkbox) => {
+    checkbox.addEventListener('change', function () {
+      if (!this.checked) return;
+      const group = this.dataset.group;
+      const from = document.querySelector(`.group-from[data-group="${group}"]`).value;
+      const to = document.querySelector(`.group-to[data-group="${group}"]`).value;
+      document.querySelectorAll(`.row-from[data-group="${group}"]`).forEach((input) => { input.value = from; });
+      document.querySelectorAll(`.row-to[data-group="${group}"]`).forEach((input) => { input.value = to; });
+    });
+  });
+  document.querySelectorAll('.save-all').forEach((button) => {
+    button.addEventListener('click', async function () {
+      const group = this.dataset.group;
+      const status = document.querySelector(`.save-status[data-group="${group}"]`);
+      const table = document.querySelector(`.group-table[data-group="${group}"]`);
+      const rows = Array.from(table.querySelectorAll('tbody tr')).map((row) => {
+        const fromInput = row.querySelector('.row-from');
+        const toInput = row.querySelector('.row-to');
+        const form = document.getElementById(fromInput.dataset.form);
+        return {
+          studentClass: form.elements.studentClass.value,
+          sections: JSON.parse(form.elements.sections.value),
+          subject: form.elements.subject.value,
+          terminal: form.elements.terminal.value,
+          academicYear: form.elements.academicYear.value,
+          fromDate: fromInput.value,
+          toDate: toInput.value
+        };
+      });
+      status.textContent = 'Saving...';
+      status.style.color = '#1d4ed8';
+      try {
+        const response = await fetch('/locker/save-all', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rows })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.message || 'Save failed');
+        status.textContent = 'All rows saved.';
+        status.style.color = '#047857';
+      } catch (error) {
+        status.textContent = error.message || 'Unable to save rows.';
+        status.style.color = '#b91c1c';
+      }
+    });
+  });
+</script>
 
 </html>

@@ -1,1198 +1,321 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
-<link rel="manifest" href="/site.webmanifest">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Marks Entry Form</title>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    :root{--primary:#ff8c42;--primary-dark:#e67a2e;--secondary:#1a3a52;--secondary-light:#2c5f8d;--bg:#f8f9fa;--card:#fff;--border:#e1e8ed;--text:#2d3748;--success:#48bb78;--hover:#fff5eb}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(135deg,var(--secondary) 0%,var(--secondary-light) 100%);min-height:100vh;padding:15px;color:var(--text)}
-    
-    .selector-panel{background:var(--card);border-radius:10px;padding:20px;margin:0 auto 20px;box-shadow:0 2px 8px rgba(0,0,0,.1);max-width:1400px}
-    .selector-title{font-size:18px;font-weight:700;color:var(--secondary);margin-bottom:15px;text-align:center;text-transform:uppercase;letter-spacing:.5px}
-    .selector-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:15px}
-    .selector-panel select{width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:6px;font-size:14px;color:var(--text);background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a3a52' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center/16px;padding-right:35px;transition:border .2s;cursor:pointer;appearance:none}
-    .selector-panel select:hover{border-color:var(--primary)}
-    .selector-panel select:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 3px rgba(255,140,66,.1)}
-    .load-btn{display:block;width:100%;max-width:280px;margin:0 auto;padding:12px 28px;background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);color:#fff;border:0;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;transition:transform .2s,box-shadow .2s;box-shadow:0 3px 12px rgba(255,140,66,.3);text-transform:uppercase;letter-spacing:.5px}
-    .load-btn:hover{transform:translateY(-1px);box-shadow:0 5px 16px rgba(255,140,66,.4)}
-    .load-btn:active{transform:translateY(0)}
-    
-    .entry-container{background:var(--card);border-radius:10px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,.1);max-width:1400px;margin:0 auto;overflow-x:auto}
-    .entry-title{font-size:20px;font-weight:700;color:var(--secondary);margin-bottom:15px;text-align:center;text-transform:uppercase;letter-spacing:.5px;padding-bottom:12px;border-bottom:3px solid var(--primary)}
-    
-    table{width:100%;border-collapse:collapse;margin-top:12px;min-width:900px;table-layout:auto}
-    table th{background:linear-gradient(135deg,var(--secondary) 0%,var(--secondary-light) 100%);color:#fff;padding:12px 8px;text-align:center;font-weight:600;font-size:13px;border:1px solid var(--secondary-light);position:sticky;top:0;z-index:10;white-space:nowrap;min-width:80px}
-    table td{padding:8px;border:1px solid var(--border);text-align:center;background:#fff;word-wrap:break-word}
-    table tr:nth-child(even) td{background:#fafbfc}
-    table tr:hover td{background:var(--hover)}
-    table input[type="text"],table input[type="number"],table select{width:100%;padding:7px 8px;border:1px solid var(--border);border-radius:4px;font-size:13px;transition:border .2s;text-align:center}
-    table input[type="text"]:read-only{background:#f7fafc;border-color:#e2e8f0;color:#4a5568}
-    table input[type="number"]:not([readonly]):focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 2px rgba(255,140,66,.1)}
-    table select:focus{outline:0;border-color:var(--primary);box-shadow:0 0 0 2px rgba(255,140,66,.1)}
-    table input[readonly]{background:#edf2f7;cursor:not-allowed}
-    table img{width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid var(--border)}
-    
-    .submit-container{text-align:center;margin-top:20px;padding-top:15px;border-top:2px solid var(--border)}
-    input[type="submit"]{padding:12px 40px;background:linear-gradient(135deg,var(--success) 0%,#38a169 100%);color:#fff;border:0;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;transition:transform .2s,box-shadow .2s;box-shadow:0 3px 12px rgba(72,187,120,.3);text-transform:uppercase;letter-spacing:.5px}
-    input[type="submit"]:hover{transform:translateY(-1px);box-shadow:0 5px 16px rgba(72,187,120,.4)}
-    input[type="submit"]:active{transform:translateY(0)}
-    .worksheet-controls{display:grid;grid-template-columns:48px minmax(140px,1fr) 48px;align-items:center;gap:8px;max-width:430px;margin:12px auto 16px}
-    .worksheet-controls label{grid-column:1/-1;font-weight:700;color:var(--secondary);text-align:center}
-    .worksheet-btn{width:48px;height:40px;border:0;border-radius:8px;background:var(--secondary);color:#fff;font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background-color 0.2s;box-shadow:0 2px 8px rgba(26,58,82,.18)}
-    .worksheet-btn:hover{background:var(--secondary-light)}
-    .worksheet-select{width:100%;min-width:0;padding:9px 12px;border:1px solid var(--border);border-radius:6px;text-align:center;font-size:14px;background:#fff;color:var(--text)}
-    .worksheet-select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 2px rgba(255,140,66,.12)}
-    .student-cell{display:flex;align-items:center;justify-content:flex-start;gap:8px;min-width:0;width:100%}
-    .student-roll{font-weight:700;color:var(--secondary);white-space:nowrap;flex-shrink:0}
-    .student-name{font-weight:600;color:var(--text);word-break:break-word;line-height:1.25;min-width:0}
-    .worksheet-cell{display:flex;align-items:center;justify-content:center;gap:6px;min-width:0;width:100%}
-    .mobile-column-toggle{display:flex;justify-content:center;align-items:center;gap:12px;flex-wrap:wrap;margin:10px 0 12px}
-    .mobile-column-toggle label{display:flex;align-items:center;gap:6px;font-weight:700;color:var(--secondary);cursor:pointer;background:#fff;padding:6px 10px;border-radius:999px;border:1px solid var(--border)}
-    .mobile-column-toggle input[type="checkbox"]{width:16px !important;height:16px !important;cursor:pointer;accent-color:var(--primary)}
-    
-    /* Grade select styling */
-    .grade-select {
-      width: 100%;
-      padding: 7px 8px;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      font-size: 13px;
-      text-align: center;
-      background: #fff;
-      cursor: pointer;
-      transition: border 0.2s;
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a3a52' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 6px center;
-      background-size: 14px;
-      padding-right: 28px;
-    }
-    .grade-select:focus {
-      outline: 0;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 2px rgba(255,140,66,.1);
-    }
-    .grade-select:hover {
-      border-color: var(--primary);
-    }
-
-    /* Worksheet select inner styling */
-    .worksheet-select-inner {
-      width: 100%;
-      padding: 7px 8px;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      font-size: 13px;
-      text-align: center;
-      background: #fff;
-      cursor: pointer;
-      transition: border 0.2s;
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a3a52' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 6px center;
-      background-size: 14px;
-      padding-right: 28px;
-    }
-    .worksheet-select-inner:focus {
-      outline: 0;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 2px rgba(255,140,66,.1);
-    }
-    .worksheet-select-inner:hover {
-      border-color: var(--primary);
-    }
-
-    #markstable.hide-attendance th[data-column="attendance"],
-    #markstable.hide-attendance td[data-column="attendance"]{display:none}
-    #markstable.hide-theory th[data-column="theory"],
-    #markstable.hide-theory td[data-column="theory"]{display:none}
-    
-    @media(max-width:1024px){.entry-container{padding:15px}table{font-size:12px}table th,table td{padding:7px 5px}}
-    @media(max-width:768px){body{padding:10px}.selector-panel,.entry-container{padding:15px;border-radius:8px}.selector-title,.entry-title{font-size:16px}.selector-grid{grid-template-columns:1fr}.entry-container{overflow-x:visible;-webkit-overflow-scrolling:touch}table{min-width:0;width:100%;table-layout:fixed}table th,table td{font-size:12px;padding:6px 4px}table td[data-column="student"]{min-width:0;width:36%}table td[data-column="worksheet"]{min-width:0;width:32%}table td[data-column="theory"]{min-width:0;width:16%}table td[data-column="attendance"]{min-width:0;width:16%}table input{font-size:12px;padding:6px}table input[type="number"]{min-width:0}input[type="submit"],.load-btn{width:100%;max-width:100%;padding:11px 20px}.entry-container::after{content:'';display:block;text-align:center;color:var(--primary);font-size:11px;margin-top:8px;font-weight:600}}
-    @media(max-width:480px){.selector-title,.entry-title{font-size:15px}.worksheet-controls{grid-template-columns:44px minmax(0,1fr) 44px;gap:6px;max-width:100%}.worksheet-btn{width:44px;height:38px;font-size:20px}.worksheet-select{font-size:13px}.mobile-column-toggle{gap:8px}.mobile-column-toggle label{font-size:12px;padding:5px 8px}.table th,table td{font-size:11px;padding:5px 3px}table img{width:32px;height:32px}.student-name{font-size:12px}.student-roll{font-size:12px}}
-  </style>
+  <title>Pre primary Entry Form</title>
 </head>
 <body>
+  <form action="/entryformpreprimary?studentClass=<%= studentClass %>&section=<%= section %>&terminal=<%= terminal %>&academicYear=<%= academicYear %>" method="POST" id="entryForm" >  
+  <select name="subject" id="subjectSelect" class="formloader">
+    <option selected disabled>Select Subject</option>
+    <%
+    const preprimarysubjects = subjects.filter(sub=> sub.forClass.toLowerCase() === "nursery" || sub.forClass.toLowerCase() === "playgroup" || sub.forClass.toLowerCase() === "lkg" || sub.forClass.toLowerCase() === "ukg");
+    const uniqueSubjects = new Set(preprimarysubjects.map(sub => sub.newsubject));
+    uniqueSubjects.forEach(subject => { %>
+      <option value="<%= subject %>"><%= subject %></option>
+    <% }) %>
+  </select>
 
-<div class="selector-panel">
-  <div class="selector-title">Choose Class, Section and Terminal for Marks Entry</div>
-    <div class="selector-grid">
-     <div class="form-group">
-       
-        <select name="subject" id="subject">
-          <option value="">Choose subject</option>
-          <% uniqueSubjects = new Set(subjects.map((subject)=>subject.newsubject)) %>
-          <%uniqueSubjects.forEach((subject)=>{%>
-            <option value="<%=subject%>"><%=subject%></option>
-          <%})%>
-        </select>
-      </div>
-    <select name="classSection" id="classSection">
-      
-      <option value="" disabled>Choose Class & Section</option>
-      <% studentClassdata.forEach((data)=>{%>
-        <option value="<%=data.studentClass%>-<%=data.section%>"><%=data.studentClass%>-<%=data.section%></option>
-      <%})%>
-    </select>
-    <select name="terminal" id="terminal">
-      <option value="" selected disabled>Choose Terminal</option>
-      <%marksheetSetups[0].terminals.forEach((terminal)=>{%>
-        <option value="<%=terminal.name%>"><%=terminal.name%></option>
-      <% }) %>
-    </select>
-<select name="academicYear" id="academicYear">
-          <option value="" disabled>Choose Academic Year</option>
-          <% currentYear = Number(marksheetSetups[0].academicYear) %>;
-            <% for (let i = 0; i < 5; i++) { %>
-              <option value="<%= currentYear - i %>"><%= currentYear - i %></option>
-            <% } %>
-        </select>
-  </div>
-  <div class="selector-grid" style="margin-top:8px">
-    <label style="display:flex;align-items:center;gap:8px;font-weight:600;color:var(--secondary)">
-      <input type="checkbox" id="saveClassDefault" style="width:16px;height:16px">
-      Set class/section as default
-    </label>
-  </div>
-  <button class="load-btn" onclick="loadform()">Load Form</button>
-</div>
+      <select name="classSection" class="formloader">
+        <option selected disabled>Select Class Section</option>
+        <% const classOrder = {
+          "Nursery": 1,
+          "LKG": 2,
+          "UKG": 3,
+          "One": 4,
+          "Two": 5,
+          "Three": 6,
+          "Four": 7,
+          "Five": 8,
+          "Six": 9,
+          "Seven": 10,
+          "Eight": 11,
+          "Nine": 12,
+          "Ten": 13,
+        }; %>
+        <% studentClassdata.sort((a, b) => classOrder[a.studentClass] - classOrder[b.studentClass]).forEach(classItem => { %>
+          <option value="<%= classItem.studentClass %>-<%= classItem.section %>"><%= classItem.studentClass %>-<%= classItem.section %></option>
+        <% }) %>
+      </select>
+  <!-- hidden field for class & section -->
+   <input type="hidden" name="studentClass" value="<%= studentClass %>">
+   <input type="hidden" name="section" value="<%= section %>">
+<select name="terminal" class="formloader">
+  <option selected disabled>Select Terminal</option>
+  <% terminals.forEach(terminal => { %>
+    <option value="<%= terminal.terminal %>"><%= terminal.terminal%></option>
+  <% }) %>
 
+</select>
+<select name="academicYear" class="formloader">
+  <option selected disabled>Select Academic Year</option>
+<% marksheetSetups.forEach(setup => { %>
+  <% for (i=0;i<5;i++){ %>
+    <option value="<%= setup.academicYear - i %>" ><%= setup.academicYear - i %></option>
+  <% } %>
 
-<script>
-  const classSectionSelect = document.getElementById('classSection');
-  const terminalSelect = document.getElementById('terminal');
-  const academicYearSelect = document.getElementById('academicYear');
-  const subjectSelect = document.getElementById('subject');
-  const saveClassDefault = document.getElementById('saveClassDefault');
+<% }) %>
+</select>
 
-  classSectionSelect.value = "<%= studentClass %>-<%= section %>";
-  terminalSelect.value = "<%= terminal %>";
-  academicYearSelect.value = "<%= academicYear %>";
-  subjectSelect.value = "<%= subject %>";
+<br>
+<%= subject %> | <%=studentClass%>-<%section%> | <%=terminal%> Terminal | <%=academicYear%>
 
-  if (!academicYearSelect.value && academicYearSelect.options.length > 0) {
-    academicYearSelect.selectedIndex = 1;
-  }
-
-  const savedClassSection = localStorage.getItem('defaultClassSection');
-  if (!classSectionSelect.value && savedClassSection) {
-    classSectionSelect.value = savedClassSection;
-  }
-
-  if (savedClassSection && classSectionSelect.value === savedClassSection) {
-    saveClassDefault.checked = true;
-  }
-
-  saveClassDefault.addEventListener('change', function() {
-    if (this.checked && classSectionSelect.value) {
-      localStorage.setItem('defaultClassSection', classSectionSelect.value);
-    } else {
-      localStorage.removeItem('defaultClassSection');
-    }
-  });
-
-  classSectionSelect.addEventListener('change', function() {
-    if (saveClassDefault.checked && this.value) {
-      localStorage.setItem('defaultClassSection', this.value);
-    }
-  });
-</script>
-
-  <script>
-    function loadform()
-    {
-        const selectedSubject = document.getElementById('subject').value;
-        const classSection = document.getElementById('classSection').value
-        const studentClass = classSection.split("-")[0];
-        const section = classSection.split("-")[1];
-        const academicYear = document.getElementById('academicYear').value;
-        const terminal = document.getElementById('terminal').value
-
-        const targetUrl = '/entryform?studentClass=' + encodeURIComponent(studentClass)
-          + '&section=' + encodeURIComponent(section)
-          + '&subject=' + encodeURIComponent(selectedSubject)
-          + '&terminal=' + encodeURIComponent(terminal)
-          + '&academicYear=' + encodeURIComponent(academicYear);
-        window.location.href = targetUrl;
-      
-    }
-  </script>
-  <!-- end here -->
-
-<div class="entry-container">
-  <div class="entry-title">Enter Marks Data</div>
-  <center><div style="font-weight: 800;">Class <%= studentClass %> - <%= section %> | <%= subject %> | <%= terminal %> Terminal- <%= academicYear %></div></center>
-  <div class="worksheet-controls">
-    <label for="worksheetCountSelect">Worksheet Number</label>
-    <button type="button" id="decreaseWorksheetBtn" class="worksheet-btn" aria-label="Decrease worksheet number">−</button>
-    <select id="worksheetCountSelect" class="worksheet-select" aria-label="Select worksheet number"></select>
-    <button type="button" id="increaseWorksheetBtn" class="worksheet-btn" aria-label="Increase worksheet number">+</button>
-    <input type="hidden" name="totalWorksheet" id="totalWorksheet" value="1">
-  </div>
-
-  <div class="mobile-column-toggle" aria-label="Mobile column visibility controls">
-    <label><input type="checkbox" id="hideAttendanceToggle">Hide Attendance</label>
-    <label><input type="checkbox" id="hideMarksToggle">Hide Marks</label>
-  </div>
-  
-
-  <form action="/entryform?studentClass=<%= encodeURIComponent(studentClass) %>&section=<%= encodeURIComponent(section) %>&subject=<%= encodeURIComponent(subject) %>&academicYear=<%= encodeURIComponent(academicYear) %>&terminal=<%= encodeURIComponent(terminal) %>" method="POST">
-   <% if (!subjectData || subjectData.length === 0) { %>
-      <div style="color:red;font-weight:600;margin-top:10px;text-align:center;">Theory Marks and Practical Marks are not setup. Please contact the admin to add subject details.</div>
-      <script>
-        document.querySelector('#markstable').style.display = 'none';
-      </script>
+ 
+  Total Worksheet: <input type="number" name="totalWorksheet" value="<%= existingData[0]?.totalWorksheet || 1 %>" readonly>
+  <select name="worksheet">
+    <option selected disabled>Select Worksheet</option>
+    <% for (let i = 1; i <= (existingData[0]?.totalWorksheet || 1); i++) { %>
+      <option value="<%= i %>" <%= existingData[0]?.worksheet === i ? 'selected' : '' %>>Worksheet <%= i %></option>
     <% } %>
-    <table id="markstable">
-      <tr id="headerRow">
-        <th data-column="student">Student</th>
-        <th data-column="worksheet" id="worksheetHeader">Worksheet <span id="worksheetHeaderNumber">1</span> </th>
-      
-        <th data-column="theory">
-          Theory Grade (
-          <% if (subjectData && subjectData.length > 0) { %>
-            <%= subjectData[0].theory %>
-          <% } else { %>
-            <span style="color:red;">Theory marks not added. Contact admin.</span>
-          <% } %>
-          )
-        </th>
-        <th data-column="attendance">Attendance</th>
-        
-      </tr>
-      <% 
-        const sortedStudentData = [...studentData].sort((a, b) => {
-          const rollA = Number.parseInt(a.roll, 10);
-          const rollB = Number.parseInt(b.roll, 10);
-          if (Number.isNaN(rollA) || Number.isNaN(rollB)) {
-            return String(a.roll).localeCompare(String(b.roll), 'en', { numeric: true });
-          }
-          return rollA - rollB;
-        });
-      %>
-      <% sortedStudentData.forEach((student)=>{%>
-        <tr id="dataEntryRow">
-          <input type="hidden" name="gender[<%=student.reg%>]" value="<%=student.gender%>" readonly>
-          <input type="hidden" name="reg[<%=student.reg%>]" value="<%=student.reg%>" readonly>
-          <input type="hidden" name="name[<%=student.reg%>]" value="<%=student.name%>" readonly>
-          <input type="hidden" name="roll[<%=student.reg%>]" value="<%=student.roll%>" readonly>
-          <td data-column="student">
-            <div class="student-cell">
-              <span class="student-roll"><%=student.roll%>.</span>
-              <span class="student-name"><%=student.name%></span>
-              <label class="absent-toggle"><input type="checkbox" name="status[<%=student.reg%>]" value="ABSENT" data-reg="<%=student.reg%>" onchange="autoSave(this)" <%= theoryData.find(t => t.reg === student.reg)?.status === 'ABSENT' ? 'checked' : '' %>> Ab</label>
-            </div>
-          </td>
-          <td data-column="worksheet" data-reg="<%=student.reg%>"></td>
-          <td data-column="theory">
-            <select class="grade-select" name="theoryGrade[<%=student.reg%>]" data-reg="<%= student.reg %>" onchange="handleGradeChange(this)">
-              <option value="null" disabled selected>Select Grade</option>
-              <option value="4.0">A+</option>
-              <option value="3.6">A</option>
-              <option value="3.2">B+</option>
-              <option value="2.8">B</option>
-              <option value="2.4">C+</option>
-              <option value="2.0">C</option>
-              <option value="1.6">D</option>
-              <option value="0.0">NG</option>
-              <option value="0.000001">Ab</option>
-            </select>
-            <input type="hidden" name="theorymarks[<%=student.reg%>]" value="null" data-reg="<%= student.reg %>">
-          </td>
-          <td data-column="attendance"><input type="number" id="attendance[<%=student.reg%>]" name="attendance[<%=student.reg%>]" value="" data-reg="<%= student.reg %>" oninput="autoSave(this)"></td>
-        </tr>
-      <%})%>
-    </table>
-
+  </select>
+<table cellspacing="0" border="1"> 
+  <tr>
    
+  <Th>Name</Th>
+  <th>Th</th>
+  <th id="worksheetheader"></th>
+  <th>Attendance</th>
+</tr>
+<% const sortedStudent = studentData.sort((a,b)=>Number(a.roll) - Number(b.roll)); %>
+<% sortedStudent.forEach(student => { %>
+  <tr>
+     <input type="hidden" name="roll[<%= student.reg %>]" value="<%= student.roll %>">
+      <input type="hidden" name="gender[<%= student.reg %>]" value="<%= student.gender %>">
 
-     <input type="hidden" id="formTerminal" name="terminal" value="<%=terminal%>">
-    <% if (subjectData && subjectData.length > 0) { %>
-     <input type="hidden" name="theoryfullmarks" id="fullMarks" value="<%=subjectData[0].theory%>">
-    
-     <input type="hidden" name="passMarks" id="passMarks" value="<%=subjectData[0].passingMarks%>">
-   
-     <input type="hidden" name="practicalfullmarks" id="practicalfullmarks" value="<%=subjectData[0].practical%>">
-      <% } else { %>
-       <span style="color:red;">Theory marks or practical marks are not added. Contact admin.</span>
-    <%}%>
-     <input type="hidden" name="studentClass" id="studentClass" value="<%=studentClass %>">
-     <input type="hidden" name="section" id="section" value="<%=section %>">
-
-  </form>
-</div>
-<% if (terminal == "FIRST")
-{
-  workingDays = marksheetSetups[0].terminals[0].workingDays;
-}
-else if (terminal == "SECOND")
-{
-  workingDays = marksheetSetups[0].terminals[1].workingDays;
-}
-else if (terminal == "THIRD")
-{
-  workingDays = marksheetSetups[0].terminals[2].workingDays;
-}
-else if (terminal == "FINAL")
-{
-  workingDays = marksheetSetups[0].terminals[3].workingDays;
-}%>
-<input type="hidden" id="workingDays" value="<%=workingDays%>">
-  
-
-<script>
-// Grade mapping for display
-const gradeMap = {
-  'null': 'Select Grade',
-  '4.0': 'A+',
-  '3.6': 'A',
-  '3.2': 'B+',
-  '2.8': 'B',
-  '2.4': 'C+',
-  '2.0': 'C',
-  '1.6': 'D',
-  '0.0': 'NG',
-  '0.000001': 'Ab'
-};
-
-// Store for grade data from DB
-let gradeDataFromDB = {};
-
-// Convert grade to numeric value with proper formatting
-function getGradeValue(grade) {
-  const map = {
-    'A+': 4.0,
-    'A': 3.6,
-    'B+': 3.2,
-    'B': 2.8,
-    'C+': 2.4,
-    'C': 2.0,
-    'D': 1.6,
-    'NG': 0.0,
-    'Ab': 0
-  };
-  return map[grade] || 0;
-}
-
-// Handle grade change
-function handleGradeChange(select) {
-  const reg = select.dataset.reg;
-  const hiddenInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
-  const selectedValue = select.value;
-  
-  if (hiddenInput) {
-    hiddenInput.value = selectedValue === 'null' ? null : selectedValue;
-  }
-  
-  // Auto-save when grade changes
-  if (typeof autoSave === 'function') {
-    autoSave(select);
-  }
-}
-
-// Populate grade select from saved numeric value
-function setGradeFromValue(reg, value) {
-  const select = document.querySelector(`select[name="theoryGrade[${reg}]"]`);
-  const hiddenInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
-  
-  if (!select) {
-    console.warn(`Select not found for reg: ${reg}`);
-    return;
-  }
-  
-  // If value is null or undefined, set to null
-  if (value === null || value === undefined || value === 'null') {
-    select.value = 'null';
-    if (hiddenInput) {
-      hiddenInput.value = null;
-    }
-    return;
-  }
-  
-  // Convert value to string for comparison
-  const valueStr = value.toString();
-  
-  // Find matching option
-  let found = false;
-  for (let i = 0; i < select.options.length; i++) {
-    if (select.options[i].value === valueStr) {
-      select.value = valueStr;
-      found = true;
-      console.log(`Found matching option: ${select.options[i].text} (${valueStr})`);
-      break;
-    }
-  }
-  
-  if (!found) {
-    // Try formatting for decimal values (4.0, 3.6, etc.)
-    let formattedValue = valueStr;
-    if (!valueStr.includes('.') && !isNaN(valueStr) && valueStr !== '0') {
-      formattedValue = Number(value).toFixed(1);
-    }
-    
-    for (let i = 0; i < select.options.length; i++) {
-      if (select.options[i].value === formattedValue) {
-        select.value = formattedValue;
-        found = true;
-        console.log(`Found matching option (formatted): ${select.options[i].text} (${formattedValue})`);
-        break;
-      }
-    }
-  }
-  
-  if (!found) {
-    select.value = 'null';
-    console.log(`No matching option for value ${value}, defaulting to null`);
-  }
-  
-  // Update hidden input
-  if (hiddenInput) {
-    hiddenInput.value = select.value === 'null' ? null : select.value;
-  }
-  
-  // Store in global for later reference
-  gradeDataFromDB[reg] = value;
-}
-
-// Function to populate all grades after worksheet rendering is complete
-function populateAllGradesAfterRender() {
-  console.log("=== populateAllGradesAfterRender STARTED ===");
-  console.log("Grade data from DB:", gradeDataFromDB);
-  
-  // Get all grade selects
-  const gradeSelects = document.querySelectorAll('select[name^="theoryGrade"]');
-  console.log(`Found ${gradeSelects.length} grade selects`);
-  
-  gradeSelects.forEach(select => {
-    const reg = select.dataset.reg;
-    if (reg && gradeDataFromDB[reg] !== undefined) {
-      let value = gradeDataFromDB[reg];
-      console.log(`Populating grade for reg ${reg} from stored data: ${value} (type: ${typeof value})`);
+    <td style="color: <%= student.reg == '' || student.reg == null || student.reg == undefined || student.reg == 'N/A'|| !student.reg ? 'red' : 'black' %>">
+      <input type="hidden" name="reg[<%= student.reg %>]" value="<%= student.reg %>">
+      <input type="hidden" name="name[<%= student.reg %>]" value="<%= student.name %>">
       
-      // If value is null or undefined, set to null
-      if (value === null || value === undefined || value === 'null') {
-        select.value = 'null';
-        const hiddenInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
-        if (hiddenInput) {
-          hiddenInput.value = null;
+      <%=student.roll%>. <%= student.name %></td>
+    <td><input type="text" name="theorymarks[<%= student.reg %>]" value="<%= existingData[0]?.theorymarks || 0 %>" /></td>
+    <td><select  class="worksheetGrade" id="worksheetgrade_<%= student._id %>" name="worksheetGrades[<%= student.reg %>]" data-reg = <%=student.reg%>  >
+      <option selected disabled>Select Grade</option>
+      <option value="A+" >A+</option>
+      
+      <option value="A" >A</option>
+      <option value="B+" >B+</option>
+      <option value="B" >B</option>
+      <option value="C+" >C+</option>
+      <option value="C" >C</option>
+      <option value="D" >D</option>
+      <option value="NG" >NG</option>
+      <option value="Ab">Absent</option>
+    </select></td>
+    <td><input type="number" name="attendance[<%= student.reg %>]"></td>
+  </tr>
+<% }) %>
+</table>
+
+
+</form>
+
+<!-- script to auto load  -->
+ <script>
+  const subjectSelect = document.getElementById('subjectSelect');
+  const studentClassSection = document.querySelector('select[name="classSection"]').value;
+  const separated = studentClassSection.split('-');
+  const studentClass = separated[0];
+  const section = separated[1];
+  const terminal = document.querySelector('select[name="terminal"]').value;
+  const academicYear = document.querySelector('select[name="academicYear"]').value;
+
+  // if all values are selected, redirect to the entry form
+  if (subjectSelect.value && studentClass && section && terminal && academicYear) {
+    const url = `/entryform?subject=${encodeURIComponent(subjectSelect.value)}&studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&terminal=${encodeURIComponent(terminal)}&academicYear=${encodeURIComponent(academicYear)}`;
+    window.location.href = url;
+  }
+  else
+  {
+    // highlight the missing fields
+    if (!subjectSelect.value) {
+      subjectSelect.style.border = '2px solid red';
+    }
+    if (!studentClass) {
+      document.querySelector('select[name="classSection"]').style.border = '2px solid red';
+    }
+ 
+    if (!terminal) {
+      document.querySelector('select[name="terminal"]').style.border = '2px solid red';
+    }
+    if (!academicYear) {
+      document.querySelector('select[name="academicYear"]').style.border = '2px solid red';
+    }
+
+
+    // make selected value from query on page load
+    const urlParams = new URLSearchParams(window.location.search);
+    const subjectParam = urlParams.get('subject');
+    const studentClassParam = urlParams.get('studentClass');
+    const sectionParam = urlParams.get('section');
+    const terminalParam = urlParams.get('terminal');
+    // terminal param value become empty fix
+    if (terminalParam === '') {
+      document.querySelector('select[name="terminal"]').value = '';
+    }
+
+    const academicYearParam = urlParams.get('academicYear');
+
+    if (subjectParam) {
+      subjectSelect.value = subjectParam;
+    }
+    if (studentClassParam) {
+      document.querySelector('select[name="classSection"]').value = `${studentClassParam}-${sectionParam}`;
+    }
+    if (terminalParam) {
+      document.querySelector('select[name="terminal"]').value = terminalParam;
+    }
+    if (academicYearParam) {
+      document.querySelector('select[name="academicYear"]').value = academicYearParam;
+    }
+
+    document.querySelectorAll('.formloader').forEach(select => {
+      select.addEventListener('change', () => {
+        const selectedSubject = subjectSelect.value;
+        const selectedClassSection = document.querySelector('select[name="classSection"]').value;
+        const selectedTerminal = document.querySelector('select[name="terminal"]').value;
+        const selectedAcademicYear = document.querySelector('select[name="academicYear"]').value;
+
+        if (selectedSubject && selectedClassSection && selectedTerminal && selectedAcademicYear) {
+          const [selectedClass, selectedSection] = selectedClassSection.split('-');
+          const url = `/entryform?subject=${encodeURIComponent(selectedSubject)}&studentClass=${encodeURIComponent(selectedClass)}&section=${encodeURIComponent(selectedSection)}&terminal=${encodeURIComponent(selectedTerminal)}&academicYear=${encodeURIComponent(selectedAcademicYear)}`;
+          window.location.href = url;
         }
-        return;
-      }
-      
-      // Convert to string for comparison
-      const valueStr = value.toString();
-      
-      // Special handling for Ab sentinel value (0.000001)
-      if (valueStr === '0.000001') {
-        select.value = '0.000001'; // Ab
-        const hiddenInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
-        if (hiddenInput) {
-          hiddenInput.value = '0.000001';
-        }
-        return;
-      }
-      
-      let found = false;
-      
-      // First try exact match
-      for (let i = 0; i < select.options.length; i++) {
-        const optionValue = select.options[i].value;
-        if (optionValue === valueStr) {
-          select.value = optionValue;
-          found = true;
-          console.log(`Set reg ${reg} to ${select.options[i].text} (${optionValue}) - exact match`);
-          break;
-        }
-      }
-      
-      // If not found, try formatting for decimal values (4.0, 3.6, etc.)
-      if (!found) {
-        let formattedValue = valueStr;
-        if (!valueStr.includes('.') && !isNaN(valueStr) && valueStr !== '0') {
-          formattedValue = Number(value).toFixed(1);
-        }
-        
-        for (let i = 0; i < select.options.length; i++) {
-          if (select.options[i].value === formattedValue) {
-            select.value = formattedValue;
-            found = true;
-            console.log(`Set reg ${reg} to ${select.options[i].text} (${formattedValue}) - formatted`);
-            break;
-          }
-        }
-      }
-      
-      // FIX: Handle '0' value - treat as NG (0.0)
-      if (!found && valueStr === '0') {
-        // This is NG - Not Graded (0.0)
-        select.value = '0.0'; // NG
-        found = true;
-        console.log(`Set reg ${reg} to NG (0.0) - value was 0`);
-      }
-      
-      if (!found) {
-        select.value = 'null';
-        console.log(`No matching option for reg ${reg} value ${value}, defaulting to null`);
-      }
-      
-      // Update hidden input
-      const hiddenInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
-      if (hiddenInput) {
-        hiddenInput.value = select.value === 'null' ? null : select.value;
-      }
-    } else {
-      console.log(`No data for reg ${reg}, keeping default`);
-      select.value = 'null';
-      const hiddenInput = document.querySelector(`input[name="theorymarks[${reg}]"]`);
-      if (hiddenInput) {
-        hiddenInput.value = null;
-      }
-    }
-  });
-  
-  console.log("=== populateAllGradesAfterRender COMPLETED ===");
-}
-
-async function populateData(subject,studentClass,section,academicYear,terminal)
-{
-  console.log("=== populateData STARTED ===");
-  console.log(`Fetching data for:`);
-  console.log(`  - subject: "${subject}"`);
-  console.log(`  - studentClass: "${studentClass}"`);
-  console.log(`  - section: "${section}"`);
-  console.log(`  - academicYear: "${academicYear}"`);
-  console.log(`  - terminal: "${terminal}"`);
-
-  const fetchUrl = `/getPreviousmarks?subject=${encodeURIComponent(subject)}&studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}&terminal=${encodeURIComponent(terminal)}`;
-
-  try {
-    const data = await fetch(fetchUrl);
-    const result = await data.json();
-
-    if (result.length > 0) {
-      console.log("📋 First record details:", result[0]);
-    } else {
-      console.warn("⚠️ No records found for this filter");
-    }
-
-    let maxTotalWorksheet = 1;
-    if(result.length > 0) {
-      maxTotalWorksheet = Math.max(1, ...result.map(item => Number(item.totalWorksheet) || 1));
-      console.log(`📊 Maximum totalWorksheet across all students: ${maxTotalWorksheet}`);
-    }
-    console.log(`📋 Will create ${maxTotalWorksheet} columns in UI`);
-
-    // Set total worksheet without triggering save
-    isPageLoading = true;
-    document.getElementById('totalWorksheet').value = maxTotalWorksheet;
-    
-    // Build worksheet options without saving
-    maxWorksheetNumber = Math.max(1, Number(maxTotalWorksheet) || 1);
-    if (worksheetCountSelect) {
-      worksheetCountSelect.innerHTML = '';
-      for (let i = 1; i <= maxWorksheetNumber; i++) {
-        const option = document.createElement('option');
-        option.value = i;
-        option.textContent = `Worksheet ${i}`;
-        worksheetCountSelect.appendChild(option);
-      }
-      if (currentWorksheetNumber > maxWorksheetNumber) {
-        currentWorksheetNumber = maxWorksheetNumber;
-      }
-      worksheetCountSelect.value = String(currentWorksheetNumber);
-    }
-    if (totalWorksheetInput) {
-      totalWorksheetInput.value = maxWorksheetNumber;
-    }
-    
-    await new Promise(resolve => setTimeout(resolve, 300));
-    console.log("✓ Columns recreated, waiting for DOM update");
-
-    // STORE GRADE DATA FIRST - Preserve null values
-    if(result.length > 0) {
-      console.log("Storing grade data from DB...");
-      result.forEach((item) => {
-        const reg = item.reg;
-        let dbValue = item.theorymarks;
-        
-        // Check if this is Ab (Absent) - sentinel value or string
-        if (dbValue === 'Ab' || dbValue === '0.000001') {
-          dbValue = 0.000001; // Sentinel for Ab
-        } else if (dbValue === undefined || dbValue === null) {
-          dbValue = null;
-        }
-        // Keep 0 as 0 (will be treated as NG)
-        // Keep 0.0 as 0.0 (will be treated as NG)
-        
-        gradeDataFromDB[reg] = dbValue;
-        console.log(`Stored theory grade for reg ${reg}: ${dbValue} (type: ${typeof dbValue})`);
       });
-    }
+    });
 
-    // STORE WORKSHEET GRADES - PRESERVE THE EXACT ARRAY WITH EMPTY STRINGS
-    if(result.length > 0) {
-      console.log("Storing worksheet grade data from DB...");
-      result.forEach((item) => {
-        const reg = item.reg;
-        let worksheetGrades = item.worksheetGrades;
-        
-        // If it's a string, try to parse it
-        if (typeof worksheetGrades === 'string') {
-          try {
-            worksheetGrades = JSON.parse(worksheetGrades);
-          } catch (e) {
-            worksheetGrades = worksheetGrades.split(',').map(g => g.trim());
-          }
-        }
-        
-        // Ensure it's an array
-        if (!Array.isArray(worksheetGrades)) {
-          worksheetGrades = [];
-        }
-        
-        // PRESERVE THE EXACT ARRAY - keep empty strings
-        // Don't filter out empty strings - we need to maintain index positions
-        console.log(`Stored worksheet grades for reg ${reg}:`, worksheetGrades);
-        worksheetGradeStore.set(reg, worksheetGrades);
-      });
-      console.log("✓ Worksheet grades stored with preserved indices");
-    }
+  }
 
-    // Populate attendance data
-    result.forEach((item) => {
-      const reg = item.reg;
-      const attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
-      if (attendanceInput) {
-        const attendanceValue = item.attendance || 0;
-       attendanceInput.value = attendanceValue
+ </script>
+
+ <!-- making as per worksheet select value shown in table  -->
+  <script>
+    const currentWorksheetSelect = document.querySelector('select[name="worksheet"]').value;
+    document.querySelector('select[name="worksheet"]').addEventListener('change', (event) => {
+      const selectedWorksheet = event.target.value;
+      const urlParams = new URLSearchParams(window.location.search);
+      urlParams.set('worksheet', selectedWorksheet);
+      window.location.search = urlParams.toString();
+    });
+
+    window.addEventListener('load', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const worksheetParam = urlParams.get('worksheet');
+      if (worksheetParam) {
+        document.querySelector('select[name="worksheet"]').value = worksheetParam;
+        document.getElementById('worksheetheader').textContent = `W${worksheetParam}`;
+      } else {
+        document.querySelector('select[name="worksheet"]').value = currentWorksheetSelect;
+
       }
     });
+   
+  </script>
+
+   <input type="hidden" id = "exisingData" value = "<%= JSON.stringify(existingData) %>">
+  <script>
+       const existingData = document.getElementById('exisingData').value ? JSON.parse(document.getElementById('exisingData').value) : [];
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentWorksheet = urlParams.get('worksheet') ? parseInt(urlParams.get('worksheet')) : 1; // Default to 1 if not present
+    document.querySelectorAll('.worksheetGrade').forEach(select => {  
+   const reg = select.dataset.reg;
+
+   const existingGrade = existingData.find(item => item.reg === reg)?.worksheetGrades[currentWorksheet-1];
+ 
+   if (existingGrade) {
+     select.value = existingGrade;
+   }
   
-    // CRITICAL: Now render the worksheet cells with the stored data
-    console.log("Rendering worksheet cells with stored data...");
-    renderWorksheetCells(currentWorksheetNumber);
 
-    // Also populate theory grades
-    console.log("Waiting for theory grades population...");
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
-    // Now populate all theory grades
-    populateAllGradesAfterRender();
 
-    isPageLoading = false;
-    console.log("✓ Page load complete - autosave enabled");
-    console.log("=== populateData COMPLETED ===");
-    
-  } catch(err) {
-    console.error("ERROR in populateData:", err);
-    isPageLoading = false;
-  }
-}
 
-// Initialize student records with default values
-async function initializeStudentRecords(subject, studentClass, section, academicYear, terminal) {
-  console.log("[Init] Creating default student records...");
-  
-  const savePromises = studentData.map(student => {
-    const reg = student.reg;
-    const saveData = {
-      reg,
-      theorymarks: null, // Use null for "no grade selected"
-      attendance: 0,
-      studentClass,
-      section,
-      subject,
-      academicYear,
-      terminal,
-      name: student.name || '',
-      roll: student.roll || '',
-      totalWorksheet: 1,
-      worksheetGrades: [],
-      gender: student.gender || '',
-      passMarks: document.getElementById('passMarks')?.value || 0,
-      practicalfullmarks: document.getElementById('practicalfullmarks')?.value || 0,
-      theoryfullmarks: document.getElementById('fullMarks')?.value || 0,
+    });
+  </script>
+
+  <!-- script for autosave -->
+   <script>
+    async function autoSave() {
+      const form = document.getElementById('entryForm');
+     const reg = this.dataset.reg; // Get the reg value from the data attribute
+      const urlParams = new URLSearchParams(window.location.search);
+      const studentClass = urlParams.get('studentClass');
+      const section = urlParams.get('section');
+      const terminal = urlParams.get('terminal');
+      const academicYear = urlParams.get('academicYear');
+ const studentInputs = form.querySelectorAll(
+        `[name$="[${reg}]"]`
+    );
+
+        const studentData = {
+        reg: reg,
+        studentClass: studentClass,
+        section: section,
+        terminal: terminal,
+        academicYear: academicYear,
+        subject: form.querySelector('[name="subject"]').value,
+        worksheet: form.querySelector('[name="worksheet"]').value,
+        totalWorksheet: form.querySelector('[name="totalWorksheet"]').value,
+        worksheetGrades: form.querySelector(`[name="worksheetGrades[${reg}]"]`).value,
+        theorymarks: form.querySelector(`[name="theorymarks[${reg}]"]`)?.value || 0, // Default to 0 if empty
+        attendance: form.querySelector(`[name="attendance[${reg}]"]`).value
+
     };
+    console.log("Student data to be saved:", studentData);
+    studentInputs.forEach(input => {
 
-    return fetch(`/entryform?studentClass=${studentClass}&section=${section}&subject=${subject}&academicYear=${academicYear}&terminal=${terminal}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(saveData)
-    }).catch(err => {
-      console.error(`[Init] Error initializing student ${reg}:`, err);
-    });
-  });
+        const match = input.name.match(/^([^\[]+)\[([^\]]+)\]$/);
 
-  try {
-    await Promise.all(savePromises);
-    console.log("[Init] ✓ Default student records created");
-  } catch (err) {
-    console.error("[Init] Error initializing records:", err);
-  }
-}
+        if (!match) return;
 
-window.onload = function() {
-  const urlParams = new URLSearchParams(window.location.search);
+        const field = match[1];
 
-  // Fetch each parameter
-  const studentClass = urlParams.get('studentClass');
-  const section = urlParams.get('section');
-  const subject = urlParams.get('subject');
-  const terminal = urlParams.get('terminal');
-  const academicYear = urlParams.get('academicYear');
-  
-  console.log("[Page Load] ===== WINDOW ONLOAD STARTED =====");
-  console.log(`[Page Load] URL Params: subject=${subject}, class=${studentClass}, section=${section}, terminal=${terminal}, year=${academicYear}`);
-  
-  // Call populateData with the URL parameters
-  populateData(subject, studentClass, section, academicYear, terminal);
-  
-  console.log("[Page Load] ===== WINDOW ONLOAD COMPLETED =====");
-}
-</script>
-
-<!-- script for autosave the data -->
-<script>
-  const saveTimers = new Map();
-
-  async function autoSave(el) {
-    const reg = el.dataset.reg;
-    
-    if (!reg) {
-      return;
-    }
-
-    el.style.backgroundColor = '';
-    el.style.borderColor = '';
-
-    if (saveTimers.has(el)) {
-      clearTimeout(saveTimers.get(el));
-    }
-
-    const timer = setTimeout(async () => {
-      // Get theory grade from select
-      const gradeSelect = document.querySelector(`select[name="theoryGrade[${reg}]"]`);
-      let theorymarks = gradeSelect ? gradeSelect.value : null;
-      
-      // If the value is 'null' string, convert to actual null
-      if (theorymarks === 'null') {
-        theorymarks = null;
-      }
-      // IMPORTANT: Keep '0.000001' as sentinel for Ab
-      // The backend will convert it to 0
-      
-      // Update hidden input
-      const theoryHidden = document.querySelector(`input[name="theorymarks[${reg}]"]`);
-      if (theoryHidden) {
-        theoryHidden.value = theorymarks;
-      }
-      
-      const attendance = document.querySelector(`input[name="attendance[${reg}]"]`)?.value || 0;
-      const param = new URLSearchParams(window.location.search);
-      const studentClass = param.get('studentClass');
-      const section = param.get('section');
-      const subject = param.get('subject');
-      const academicYear = param.get('academicYear');
-      const terminal = param.get('terminal');
-      const name = document.querySelector(`input[name="name[${reg}]"]`)?.value || '';
-      const roll = document.querySelector(`input[name="roll[${reg}]"]`)?.value || '';
-      const gender = document.querySelector(`input[name="gender[${reg}]"]`)?.value || '';
-      const passMarks = document.getElementById('passMarks')?.value || 0;
-      const practicalfullmarks = document.getElementById('practicalfullmarks')?.value || 0;
-      const theoryfullmarks = document.getElementById('fullMarks')?.value || 0;
-      const totalWorksheet = Number(document.getElementById('totalWorksheet')?.value || 1);
-      
-      // Get worksheet grades from store (preserving empty strings for indices)
-      const storedGrades = worksheetGradeStore.get(reg) || [];
-      
-      // Ensure the array has the correct length (totalWorksheet)
-      while (storedGrades.length < totalWorksheet) {
-        storedGrades.push('');
-      }
-      
-      // Keep empty strings to maintain indices
-      const worksheetGrades = storedGrades.slice(0, totalWorksheet);
-      const status = document.querySelector(`input[name="status[${reg}]"]`)?.checked ? 'ABSENT' : 'PRESENT';
-
-      const saveData = {
-        reg,
-        theorymarks: theorymarks, // Can be null, '0.000001', '0.0', or any other value
-        attendance: Number(attendance),
-        studentClass,
-        section,
-        subject,
-        academicYear,
-        terminal,
-        name,
-        roll,
-        totalWorksheet,
-        worksheetGrades,
-        gender,
-        status,
-        passMarks: Number(passMarks),
-        practicalfullmarks: Number(practicalfullmarks),
-        theoryfullmarks: Number(theoryfullmarks),
-      };
-
-      console.log(`Saving theorymarks for reg ${reg}:`, theorymarks);
-
-      try {
-        const response = await fetch(`/entryform?studentClass=${studentClass}&section=${section}&subject=${subject}&academicYear=${academicYear}&terminal=${terminal}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(saveData)
-        });
-        if (response.ok) {
-          el.style.backgroundColor = '#e0f2fe';
-          el.style.borderColor = '#7dd3fc';
-          el.style.transition = 'background-color 0.3s ease';
-        }
-      } catch (err) {
-        console.error(`AutoSave error for reg ${reg}:`, err);
-      }
-      saveTimers.delete(el);
-    }, 1000);
-
-    saveTimers.set(el, timer);
-  }
-</script>
-
-<script>
-  const totalWorksheetInput = document.getElementById('totalWorksheet');
-  const worksheetCountSelect = document.getElementById('worksheetCountSelect');
-  const increaseWorksheetBtn = document.getElementById('increaseWorksheetBtn');
-  const decreaseWorksheetBtn = document.getElementById('decreaseWorksheetBtn');
-  const headerRow = document.getElementById('headerRow');
-  const studentData = <%- JSON.stringify(studentData).replace(/</g, '\u003c') %>;
-  const worksheetGradeStore = new Map();
-  const hideAttendanceToggle = document.getElementById('hideAttendanceToggle');
-  const hideMarksToggle = document.getElementById('hideMarksToggle');
-  const markstable = document.getElementById('markstable');
-  let isPageLoading = true;
-  let currentWorksheetNumber = 1;
-  let maxWorksheetNumber = 10;
-
-  function syncMobileColumnToggles() {
-    if (!markstable || !hideAttendanceToggle || !hideMarksToggle) return;
-
-    const savedHideAttendance = localStorage.getItem('entryformHideAttendance') === '1';
-    const savedHideMarks = localStorage.getItem('entryformHideMarks') === '1';
-
-    hideAttendanceToggle.checked = savedHideAttendance;
-    hideMarksToggle.checked = savedHideMarks;
-    markstable.classList.toggle('hide-attendance', savedHideAttendance);
-    markstable.classList.toggle('hide-theory', savedHideMarks);
-
-    hideAttendanceToggle.addEventListener('change', function () {
-      localStorage.setItem('entryformHideAttendance', this.checked ? '1' : '0');
-      markstable.classList.toggle('hide-attendance', this.checked);
+        // Remove [REG] from field name
+        studentData[field] = input.value;
     });
 
-    hideMarksToggle.addEventListener('change', function () {
-      localStorage.setItem('entryformHideMarks', this.checked ? '1' : '0');
-      markstable.classList.toggle('hide-theory', this.checked);
-    });
-  }
-
-  function updateWorksheetHeader(number) {
-    const headerNumber = document.getElementById('worksheetHeaderNumber');
-    if (headerNumber) {
-      headerNumber.textContent = number;
-    } else {
-      const worksheetHeader = document.getElementById('worksheetHeader');
-      if (worksheetHeader) worksheetHeader.textContent = `Worksheet ${number}`;
-    }
-  }
-
-  function buildWorksheetOptions(count) {
-    maxWorksheetNumber = Math.max(1, Number(count) || 1);
-    if (worksheetCountSelect) {
-      worksheetCountSelect.innerHTML = '';
-      for (let i = 1; i <= maxWorksheetNumber; i++) {
-        const option = document.createElement('option');
-        option.value = i;
-        option.textContent = `Worksheet ${i}`;
-        worksheetCountSelect.appendChild(option);
-      }
-      if (currentWorksheetNumber > maxWorksheetNumber) {
-        currentWorksheetNumber = maxWorksheetNumber;
-      }
-      worksheetCountSelect.value = String(currentWorksheetNumber);
-    }
-    if (totalWorksheetInput) {
-      totalWorksheetInput.value = maxWorksheetNumber;
-    }
-    // Persist new totalWorksheet count to DB when user changes it (skip during initial load)
-    if (!isPageLoading) {
-      saveTotalWorksheetToDB(maxWorksheetNumber);
-    }
-  }
-
-  async function saveTotalWorksheetToDB(total) {
-    if (!totalWorksheetInput) return;
-    totalWorksheetInput.style.backgroundColor = '#fef3c7';
-    totalWorksheetInput.style.borderColor = '#f59e0b';
-
-    const param = new URLSearchParams(window.location.search);
-    const studentClass = param.get('studentClass');
-    const section = param.get('section');
-    const subject = param.get('subject');
-    const academicYear = param.get('academicYear');
-    const terminal = param.get('terminal');
+    console.log("Saving ONLY student:", studentData);
 
     try {
-        const savePromises = studentData.map((student) => {
-        const reg = student.reg;
-        const totalCount = Number(total);
-        // Use stored grades as the base so reducing/persisting doesn't wipe unseen grades
-        const stored = worksheetGradeStore.get(reg) || [];
-        const gradesBase = Array.from({ length: totalCount }, (_, i) => stored[i] || '');
-        // If a select for this reg exists in the DOM, make sure its runtime value is included
-        const visible = Array.from(document.querySelectorAll(`select[name="worksheetGrades[${reg}][]"]`));
-        visible.forEach((s) => {
-          const idx = Number(s.dataset.worksheetIndex) || currentWorksheetNumber;
-          if (idx >= 1 && idx <= totalCount) gradesBase[idx - 1] = s.value || '';
-        });
-        // KEEP EMPTY STRINGS TO MAINTAIN INDICES
-        const worksheetGrades = gradesBase;
-        const theoryHidden = document.querySelector(`input[name="theorymarks[${reg}]"]`);
-        let theorymarks = theoryHidden ? theoryHidden.value : null;
-        // Keep null as is, don't convert to 0
-        if (theorymarks === 'null' || theorymarks === undefined || theorymarks === '') {
-          theorymarks = null;
-        }
-        const attendance = document.querySelector(`input[name="attendance[${reg}]"]`)?.value || 0;
-        const name = document.querySelector(`input[name="name[${reg}]"]`)?.value || '';
-        const roll = document.querySelector(`input[name="roll[${reg}]"]`)?.value || '';
-        const gender = document.querySelector(`input[name="gender[${reg}]"]`)?.value || '';
-        const passMarks = document.getElementById('passMarks')?.value || 0;
-        const practicalfullmarks = document.getElementById('practicalfullmarks')?.value || 0;
-        const theoryfullmarks = document.getElementById('fullMarks')?.value || 0;
-        const status = document.querySelector(`input[name="status[${reg}]"]`)?.checked ? 'ABSENT' : 'PRESENT';
 
-        const saveData = {
-          reg,
-          theorymarks: theorymarks, // Keep null as null, sentinel as 0.000001
-          attendance: Number(attendance),
-          studentClass,
-          section,
-          subject,
-          academicYear,
-          terminal,
-          name,
-          roll,
-          totalWorksheet: Number(totalCount),
-          worksheetGrades,
-          gender,
-          status,
-          passMarks: Number(passMarks),
-          practicalfullmarks: Number(practicalfullmarks),
-          theoryfullmarks: Number(theoryfullmarks),
-        };
+        const response = await fetch(
+            `/entryformpreprimary?studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&terminal=${encodeURIComponent(terminal)}&academicYear=${encodeURIComponent(academicYear)}`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(studentData)
+            }
+        );
 
-        return fetch(`/entryform?studentClass=${studentClass}&section=${section}&subject=${subject}&academicYear=${academicYear}&terminal=${terminal}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(saveData)
-        });
+        const data = await response.json();
+
+        console.log("Student auto-saved:", data);
+
+    } catch (error) {
+
+        console.error("Auto-save error:", error);
+
+    }
+}
+      
+   </script>
+
+   <!-- script to trigger auto-save -->
+    <script>
+      document.querySelector('input[name="totalWorksheet"]').addEventListener('change', autoSave);
+      document.querySelectorAll('.worksheetGrade').forEach(select => {
+        select.addEventListener('change', autoSave);
       });
-
-      const responses = await Promise.all(savePromises);
-      const allSuccess = responses.every(r => r.ok);
-      if (allSuccess) {
-        totalWorksheetInput.style.backgroundColor = '#e0f2fe';
-        totalWorksheetInput.style.borderColor = '#7dd3fc';
-      } else {
-        totalWorksheetInput.style.backgroundColor = '#fee2e2';
-        totalWorksheetInput.style.borderColor = '#f87171';
-      }
-    } catch (err) {
-      console.error('Failed to save totalWorksheet:', err);
-      totalWorksheetInput.style.backgroundColor = '#fee2e2';
-      totalWorksheetInput.style.borderColor = '#f87171';
-    } finally {
-      setTimeout(() => { totalWorksheetInput.style.backgroundColor = ''; totalWorksheetInput.style.borderColor = ''; }, 1200);
-    }
-  }
-
-  function getWorksheetGrade(reg, worksheetNumber) {
-    const grades = worksheetGradeStore.get(reg) || [];
-    return grades[worksheetNumber - 1] || '';
-  }
-
-  function setWorksheetGrade(reg, worksheetNumber, grade) {
-    const grades = worksheetGradeStore.get(reg) || [];
-    // Store the value (including empty string to maintain index)
-    grades[worksheetNumber - 1] = grade || '';
-    worksheetGradeStore.set(reg, grades);
-  }
-
-  function buildWorksheetSelect(reg, worksheetNumber) {
-    const container = document.createElement('div');
-    container.className = 'worksheet-cell';
-
-    const select = document.createElement('select');
-    select.className = 'worksheet-select-inner';
-    select.name = `worksheetGrades[${reg}][]`;
-    select.dataset.reg = reg;
-    select.dataset.worksheetIndex = worksheetNumber;
-
-    // Add disabled default option first
-    const defaultOption = document.createElement('option');
-    defaultOption.value = '';
-    defaultOption.textContent = 'Select Grade';
-    defaultOption.disabled = true;
-    defaultOption.selected = true;
-    select.appendChild(defaultOption);
-
-    // Add actual grade options
-    const grades = ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'NG', 'Ab'];
-    grades.forEach((grade) => {
-      const option = document.createElement('option');
-      option.value = grade;
-      option.textContent = grade;
-      select.appendChild(option);
-    });
-
-    // Set the value from stored data (preserving empty strings)
-    const storedGrades = worksheetGradeStore.get(reg) || [];
-    const storedValue = storedGrades[worksheetNumber - 1] || '';
-    
-    // Set the value (including empty string)
-    select.value = storedValue;
-    
-    // If the value is empty, select the disabled default option
-    if (!storedValue || storedValue === '') {
-      defaultOption.selected = true;
-    } else {
-      console.log(`Set worksheet ${worksheetNumber} for reg ${reg} to: ${storedValue}`);
-    }
-
-    select.addEventListener('change', function () {
-      // Store the value (including empty string to maintain index)
-      const grades = worksheetGradeStore.get(reg) || [];
-      grades[worksheetNumber - 1] = this.value || '';
-      worksheetGradeStore.set(reg, grades);
+      document.querySelectorAll('input[name^="theorymarks"]').forEach(input => {
+        input.addEventListener('input', autoSave);
+      });
+      document.querySelectorAll('input[name^="attendance"]').forEach(input => {
+        input.addEventListener('input', autoSave);
+      });
+      document.querySelector('select[name="worksheet"]').addEventListener('change', autoSave);
       
-      if (typeof autoSave === 'function') autoSave(select);
-    });
 
-    container.appendChild(select);
-    return container;
-  }
-
-  function renderWorksheetCells(worksheetNumber) {
-    updateWorksheetHeader(worksheetNumber);
-
-    document.querySelectorAll('#markstable td[data-column="worksheet"]').forEach((td) => {
-      const reg = td.dataset.reg;
-      td.innerHTML = '';
-      if (!reg) {
-        return;
-      }
-      td.appendChild(buildWorksheetSelect(reg, worksheetNumber));
-    });
-    
-    // After rendering worksheet cells, populate worksheet grades from the store
-    console.log("Populating worksheet grades in rendered cells...");
-    document.querySelectorAll('#markstable td[data-column="worksheet"] select').forEach((select) => {
-      const reg = select.dataset.reg;
-      const worksheetIndex = Number(select.dataset.worksheetIndex);
-      
-      // Get the stored grades array (PRESERVING empty strings)
-      const storedGrades = worksheetGradeStore.get(reg) || [];
-      
-      // Get the value at the specific index (could be empty string)
-      const storedValue = storedGrades[worksheetIndex - 1] || '';
-      
-      console.log(`Setting worksheet grade for reg ${reg}, worksheet ${worksheetIndex}: "${storedValue}"`);
-      
-      // Set the value (including empty string - which will show as "Select Grade")
-      select.value = storedValue;
-      
-      // If the value is empty, select the disabled default option
-      if (!storedValue || storedValue === '') {
-        const defaultOption = select.querySelector('option[value=""]');
-        if (defaultOption) {
-          defaultOption.selected = true;
-        }
-      }
-    });
-  }
-
-  function syncWorksheetSelection(desiredWorksheetNumber) {
-    let target = Number(desiredWorksheetNumber);
-    if (Number.isNaN(target) || target < 1) {
-      target = 1;
-    }
-    if (target > maxWorksheetNumber) {
-      buildWorksheetOptions(target);
-    }
-    currentWorksheetNumber = target;
-    if (worksheetCountSelect) {
-      worksheetCountSelect.value = String(currentWorksheetNumber);
-    }
-    renderWorksheetCells(currentWorksheetNumber);
-  }
-
-  if (worksheetCountSelect) {
-    worksheetCountSelect.addEventListener('change', function () {
-      syncWorksheetSelection(this.value);
-    });
-  }
-
-  if (increaseWorksheetBtn) {
-    increaseWorksheetBtn.addEventListener('click', function () {
-      // Increase number of available worksheet options, do NOT change displayed worksheet
-      buildWorksheetOptions(maxWorksheetNumber + 1);
-    });
-  }
-
-  if (decreaseWorksheetBtn) {
-    decreaseWorksheetBtn.addEventListener('click', function () {
-      // Ask for confirmation before reducing available worksheets
-      if (!confirm('Reduce available worksheet options? This will remove the highest worksheet option. Continue?')) {
-        return;
-      }
-      if (maxWorksheetNumber <= 1) return;
-      // Decrease available options
-      buildWorksheetOptions(maxWorksheetNumber - 1);
-      // If current displayed worksheet is now out of range, clamp and re-render
-      if (currentWorksheetNumber > maxWorksheetNumber) {
-        currentWorksheetNumber = maxWorksheetNumber;
-        renderWorksheetCells(currentWorksheetNumber);
-      }
-    });
-  }
-
-  if (totalWorksheetInput) {
-    totalWorksheetInput.addEventListener('input', function () {
-      buildWorksheetOptions(this.value);
-      if (currentWorksheetNumber > maxWorksheetNumber) {
-        syncWorksheetSelection(maxWorksheetNumber);
-      }
-    });
-  }
-
-  syncMobileColumnToggles();
-
-  // Start with a single worksheet option by default
-  buildWorksheetOptions(1);
-  syncWorksheetSelection(currentWorksheetNumber);
-  isPageLoading = false;
-</script>
-
+    </script>
 </body>
 </html>

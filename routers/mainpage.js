@@ -361,10 +361,12 @@ student.post('/newsadmin/update', verifytoken, authorized, isnewsAdmin, upload.f
 
 //exam part started here
 student.get('/examform',verifytoken,authorized,examcontroller.loadForm)
-student.get('/entryform',verifytoken,authorized,examcontroller.entryform)
-student.post('/entryform',verifytoken,authorized,examcontroller.saveEntryform)
+student.get('/entryform',verifytoken,authorized,lockcontroller.checkEntryLocker,examcontroller.entryform)
+student.post('/entryform',verifytoken,authorized,lockcontroller.checkEntryLocker,examcontroller.saveEntryform)
+
+student.post('/entryformpreprimary',verifytoken,authorized,lockcontroller.checkEntryLocker,examcontroller.saveEntryFormPrePrimay)
 // Persist totalWorksheet for entire class/section/subject
-student.post('/entryform/setTotalWorksheet',verifytoken,authorized,examcontroller.setTotalWorksheetForClass)
+student.post('/entryform/setTotalWorksheet',verifytoken,authorized,lockcontroller.checkEntryLocker,examcontroller.setTotalWorksheetForClass)
 student.get('/getPreviousmarks',verifytoken,authorized,examcontroller.getPreviousmarks)
 student.get('/getAttendanceData',verifytoken,authorized,examcontroller.getAttendanceData)
 student.get('/exammanagement',verifytoken,authorized,isAdmin,examdashboardcontroller.examManagement)
@@ -395,6 +397,10 @@ student.get('/deleteroutine',verifytoken,authorized,isAdmin,examdashboardcontrol
 student.get('/ledger',verifytoken,authorized,isAdmin,examdashboardcontroller.ledger)
 student.get('/myresult',examdashboardcontroller.myResult)
 student.get('/locker',verifytoken,authorized,isAdmin,lockcontroller.locker);
+student.post('/locker/save',verifytoken,authorized,isAdmin,lockcontroller.saveLocker);
+student.post('/locker/save-bulk',verifytoken,authorized,isAdmin,lockcontroller.saveLockerBulk);
+student.post('/locker/save-all',verifytoken,authorized,isAdmin,lockcontroller.saveLockerAll);
+student.post('/locker/save',verifytoken,authorized,isAdmin,lockcontroller.saveLocker);
 student.get('/dailydashboard',verifytoken,authorized,isAdmin,dailydashboardcontroller.dailydashboard);
 student.get('/formatchoosestudent',examdashboardcontroller.formatChooseStudent)
 student.get('/student/generatemarksheet',examdashboardcontroller.generateMarksheetStudent)

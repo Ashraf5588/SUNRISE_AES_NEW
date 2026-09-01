@@ -352,12 +352,13 @@ exports.entryform = async (req,res,next)=>
   }
   else if (studentClass<=3 || studentClass=="THREE" || studentClass=="Three" || studentClass=="three" || studentClass=="3" || studentClass=="TWO" || studentClass=="Two" || studentClass=="two" || studentClass=="2" || studentClass=="ONE" || studentClass=="One" || studentClass=="one" || studentClass=="1")
   {
-    res.render("./exam/newfeaturetemp",{studentData,studentClass:studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData});
+    res.render("./exam/entryformprimary",{studentData,studentClass:studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData});
   }
   else if( studentClass && studentClass.toLowerCase() === "nursery" || studentClass.toLowerCase() === "playgroup" || studentClass.toLowerCase() === "lkg" || studentClass.toLowerCase() === "ukg")
   {
+    const existingData = await getSlipModel().find({studentClass: studentClass,section: section,subject: subject,terminal: terminal,academicYear: academicYear}).lean();
     // entryformpreprimary.ejs will handle the rendering for pre-primary classes
-    res.render("./exam/newfeaturetemp",{studentData,studentClass:studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData});
+    res.render("./exam/entryformpreprimary",{studentData,studentClass:studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData,existingData});
   }
  
 }
@@ -1416,3 +1417,177 @@ exports.entryCounter = async (req, res) => {
         res.status(500).send("Internal Server Error");
     }
 };
+
+exports.saveEntryFormPrePrimay = async (req, res) => {
+
+  try {
+    console.log("Received data for saving:", req.body);
+
+    const {
+      reg,
+      studentClass,
+      section,
+      terminal,
+      academicYear,
+      subject,
+      worksheet,
+      totalWorksheet,
+      worksheetGrades,
+      theorymarks,
+      attendance,
+      roll,
+      gender,
+      name
+    } = req.body;
+
+    // Basic validation
+    if (!reg) {
+      return res.status(400).json({
+        success: false,
+        message: "Student registration number is required"
+      });
+    }
+
+    const worksheetNumber = Number(worksheet);
+
+    if (!worksheetNumber || worksheetNumber < 1) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid worksheet number"
+      });
+    }
+
+    // Find ONLY this student's record
+    let student = await getSlipModel().findOne({
+      reg: reg,
+      studentClass: studentClass,
+      section: section,
+      subject: subject,
+      terminal: terminal,
+      academicYear: academicYear
+    });
+
+    // =====================================================
+    // CREATE NEW STUDENT RECORD
+    // =====================================================
+
+    if (!student) {
+
+      let worksheetGrades = [];
+
+      // Create positions up to the current worksheet
+      while (worksheetGrades.length < worksheetNumber) {
+        worksheetGrades.push("");
+      }
+
+      // Save current grade at correct position
+      if (
+        worksheetGrades &&
+        worksheetGrades.length >= worksheetNumber &&
+        worksheetGrades !== ""
+      ) {
+        worksheetGrades[worksheetNumber - 1] = req.body.worksheetGrades;
+      }
+const model = await getSlipModel();
+      student = new model({
+        reg,
+        studentClass,
+        section,
+        subject,
+        terminal,
+        academicYear,
+
+        name,
+        roll,
+        gender,
+
+        totalWorksheet,
+
+        worksheetGrades,
+
+        theorymarks,
+        attendance
+      });
+
+      await student.save();
+
+      console.log(
+        `Created student ${reg} with worksheet ${worksheetNumber}`
+      );
+
+      return res.json({
+        success: true,
+        action: "created",
+        reg,
+        worksheet: worksheetNumber,
+        worksheetGrades: student.worksheetGrades
+      });
+    }
+
+    // =====================================================
+    // EXISTING STUDENT
+    // =====================================================
+
+    let grades = Array.isArray(student.worksheetGrades)
+      ? [...student.worksheetGrades]
+      : [];
+
+    // Make sure array is long enough
+    while (grades.length < worksheetNumber) {
+      grades.push("");
+    }
+
+    // IMPORTANT:
+    // Only update the current worksheet if a grade exists.
+    // Existing worksheet grades are preserved.
+    if (
+      typeof worksheetGrades === "string" &&
+      worksheetGrades.trim() !== ""
+    ) {
+      grades[worksheetNumber - 1] = worksheetGrades;
+    }
+
+    // Save the updated array
+    student.worksheetGrades = grades;
+
+    // Update other student information
+    student.totalWorksheet = totalWorksheet;
+    student.theorymarks = theorymarks;
+    student.attendance = attendance;
+
+    // These normally don't change, but can be kept updated
+    student.name = name;
+    student.roll = roll;
+    student.gender = gender;
+
+    await student.save();
+
+    console.log(
+      `Updated student ${reg}, worksheet ${worksheetNumber}`
+    );
+
+    console.log(
+      "Final worksheetGrades:",
+      student.worksheetGrades
+    );
+
+    return res.json({
+      success: true,
+      action: "updated",
+      reg,
+      worksheet: worksheetNumber,
+      worksheetGrades: student.worksheetGrades
+    });
+
+  } catch (error) {
+
+    console.error("Error saving preprimary entry:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Error saving data",
+      error: error.message
+    });
+  }
+}
+

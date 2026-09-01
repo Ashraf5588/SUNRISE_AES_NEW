@@ -30,6 +30,7 @@ const marksheetSetup = mongoose.model("marksheetSetup", marksheetsetupschemaForA
 const Portfolio = require("../model/portfolio");
 const HealthRecord = require("../model/nurseschema");
 const onlineAttendance = mongoose.model("onlineAttendance", onlineAttendanceSchema, "onlineAttendance");
+const Locker = require('../model/locker');
 app.set("view engine", "ejs");
 app.set("view", path.join(rootDir, "views"));
 const newsubject = mongoose.model("newsubject", newsubjectSchema, "newsubject");
@@ -140,15 +141,77 @@ function getCurrentBSDate() {
 exports.locker = async (req, res) => {
   try{
 
-const classlist = await studentClass.find({});
-const subjectlist = await newsubject.find({}).sort({subject:1});
+const classlist = await studentClass.find({}).lean();
+const subjectlist = await newsubject.find({}).lean().sort({subject:1});
 const terminalList = await terminal.find({}).sort({terminal:1});
 const marksheetSetupList = await marksheetSetup.find({}).sort({marksheetName:1});
+const lockerRecords = await Locker.find({}).lean();
+const currentDate = getCurrentBSDate();
+const currentBsDate = `${currentDate.year}-${String(currentDate.month).padStart(2, '0')}-${String(currentDate.day).padStart(2, '0')}`;
+const academicYear = String(marksheetSetupList[0] && marksheetSetupList[0].academicYear || currentDate.year);
+const selectedTerminal = String(req.query.terminal || terminalList[0] && terminalList[0].terminal || 'FIRST');
+const classGroups = [
+  { name: 'Nursery - UKG', classes: ['Nursery', 'LKG', 'UKG'] },
+  { name: 'One - Three', classes: ['One', 'Two', 'Three', '1', '2', '3'] },
+  { name: 'Four - Five', classes: ['Four', 'Five', '4', '5'] },
+  { name: 'Six - Seven', classes: ['Six', 'Seven', '6', '7'] },
+  { name: 'Eight - Ten', classes: ['Eight', 'Nine', 'Ten', '8', '9', '10'] }
+];
+const lockerRows = [];
+const classMap = new Map();
+classlist.forEach((classItem) => {
+  const classKey = normalizeText(classItem.studentClass);
+  if (!classMap.has(classKey)) {
+    classMap.set(classKey, { studentClass: classItem.studentClass, sections: new Set() });
+  }
+  classMap.get(classKey).sections.add(String(classItem.section || '').trim());
+});
+
+classMap.forEach((classData) => {
+  const classSubjects = [...new Map(subjectlist
+    .filter((subject) => normalizeText(subject.forClass) === normalizeText(classData.studentClass))
+    .map((subject) => {
+      const name = String(subject.newsubject || subject.subject || '').trim();
+      return [normalizeText(name), name];
+    })
+    .filter(([key, name]) => key && name)
+  ).values()];
+  classSubjects.forEach((subject) => {
+    const terminalName = selectedTerminal;
+    const sectionValues = [...classData.sections].filter(Boolean);
+    const savedRecords = lockerRecords.filter((record) =>
+      normalizeText(record.subject) === normalizeText(subject)
+      && normalizeText(record.studentClass) === normalizeText(classData.studentClass)
+      && normalizeText(record.terminal) === normalizeText(terminalName)
+      && String(record.academicYear) === academicYear
+    );
+    const saved = savedRecords.find((record) => sectionValues.includes(String(record.section || '').trim())) || savedRecords[0];
+    lockerRows.push({
+      studentClass: classData.studentClass,
+      sections: sectionValues,
+      subject,
+      terminal: terminalName,
+      academicYear,
+      fromDate: saved && saved.fromDate || currentBsDate,
+      toDate: saved && saved.toDate || currentBsDate
+    });
+  });
+});
+const groupTables = classGroups.map((group) => ({
+  name: group.name,
+  rows: lockerRows.filter((row) => group.classes.includes(String(row.studentClass)))
+})).filter((group) => group.rows.length);
     res.render('./locker/locker', {
       classList: classlist,
       subjectList: subjectlist,
       terminalList: terminalList,
-      marksheetSetupList: marksheetSetupList
+      marksheetSetupList: marksheetSetupList,
+      lockerRecords,
+      currentBsDate,
+      academicYear,
+      lockerRows,
+      selectedTerminal,
+      groupTables
     });
 
   }catch(err)
@@ -157,3 +220,119 @@ const marksheetSetupList = await marksheetSetup.find({}).sort({marksheetName:1})
     res.status(500).send('Internal Server Error'+err);
   }
 }
+
+const normalizeLockerDate = (value) => {
+  const match = String(value || '').trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  return match ? `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}` : '';
+};
+
+exports.saveLocker = async (req, res) => {
+  try {
+    const fields = ['subject', 'studentClass', 'section', 'terminal', 'academicYear'];
+    const values = Object.fromEntries(fields.map((field) => [field, String(req.body[field] || '').trim()]));
+    values.fromDate = normalizeLockerDate(req.body.fromDate);
+    values.toDate = normalizeLockerDate(req.body.toDate);
+    if (fields.some((field) => !values[field]) || !values.fromDate || !values.toDate) {
+      return res.status(400).json({ success: false, message: 'All locker fields are required.' });
+    }
+    if (values.fromDate > values.toDate) {
+      return res.status(400).json({ success: false, message: 'Opening date cannot be after closing date.' });
+    }
+    await Locker.findOneAndUpdate(
+      { subject: values.subject, studentClass: values.studentClass, section: values.section, terminal: values.terminal, academicYear: values.academicYear },
+      values,
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    return res.redirect('/locker');
+  } catch (error) {
+    console.error('Error saving locker:', error);
+    return res.status(500).send('Unable to save locker settings.');
+  }
+};
+
+exports.saveLockerBulk = async (req, res) => {
+  try {
+    const fields = ['subject', 'studentClass', 'terminal', 'academicYear'];
+    const values = Object.fromEntries(fields.map((field) => [field, String(req.body[field] || '').trim()]));
+    const sections = Array.isArray(req.body.sections) ? req.body.sections : JSON.parse(String(req.body.sections || '[]'));
+    values.fromDate = normalizeLockerDate(req.body.fromDate);
+    values.toDate = normalizeLockerDate(req.body.toDate);
+    if (fields.some((field) => !values[field]) || !sections.length || !values.fromDate || !values.toDate) {
+      return res.status(400).json({ success: false, message: 'Complete locker data and at least one section are required.' });
+    }
+    if (values.fromDate > values.toDate) {
+      return res.status(400).json({ success: false, message: 'Opening date cannot be after closing date.' });
+    }
+    await Promise.all(sections.map((section) => Locker.findOneAndUpdate(
+      { subject: values.subject, studentClass: values.studentClass, section: String(section).trim(), terminal: values.terminal, academicYear: values.academicYear },
+      { ...values, section: String(section).trim() },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    )));
+    return res.redirect('/locker?terminal=' + encodeURIComponent(values.terminal));
+  } catch (error) {
+    console.error('Error saving locker rules by class:', error);
+    return res.status(500).send('Unable to save locker settings.');
+  }
+};
+
+exports.saveLockerAll = async (req, res) => {
+  try {
+    const rows = Array.isArray(req.body.rows) ? req.body.rows : [];
+    if (!rows.length) return res.status(400).json({ success: false, message: 'No locker rows to save.' });
+
+    for (const row of rows) {
+      const fromDate = normalizeLockerDate(row.fromDate);
+      const toDate = normalizeLockerDate(row.toDate);
+      const sections = Array.isArray(row.sections) ? row.sections : [];
+      if (!row.subject || !row.studentClass || !row.terminal || !row.academicYear || !sections.length || !fromDate || !toDate || fromDate > toDate) {
+        return res.status(400).json({ success: false, message: 'Every row must contain valid locker data and dates.' });
+      }
+      await Promise.all(sections.map((section) => Locker.findOneAndUpdate(
+        { subject: String(row.subject).trim(), studentClass: String(row.studentClass).trim(), section: String(section).trim(), terminal: String(row.terminal).trim(), academicYear: String(row.academicYear).trim() },
+        { subject: String(row.subject).trim(), studentClass: String(row.studentClass).trim(), section: String(section).trim(), terminal: String(row.terminal).trim(), academicYear: String(row.academicYear).trim(), fromDate, toDate },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      )));
+    }
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Error saving all locker rows:', error);
+    return res.status(500).json({ success: false, message: 'Unable to save all locker settings.' });
+  }
+};
+
+exports.checkEntryLocker = async (req, res, next) => {
+  try {
+    if (req.user && req.user.role === 'ADMIN') return next();
+    const subject = String(req.query.subject || req.body.subject || '').trim();
+    const studentClassValue = String(req.query.studentClass || req.body.studentClass || '').trim();
+    const section = String(req.query.section || req.body.section || '').trim();
+    const terminalValue = String(req.query.terminal || req.body.terminal || '').trim();
+    const academicYear = String(req.query.academicYear || req.body.academicYear || '').trim();
+    const today = normalizeLockerDate(bs.ADToBS(new Date()));
+    const records = await Locker.find({ academicYear }).lean();
+    const locker = records.find((record) =>
+      normalizeText(record.subject) === normalizeText(subject)
+      && normalizeText(record.studentClass) === normalizeText(studentClassValue)
+      && normalizeText(record.section) === normalizeText(section)
+      && normalizeText(record.terminal) === normalizeText(terminalValue)
+    );
+    const isOpen = locker
+      && normalizeLockerDate(locker.fromDate) <= today
+      && normalizeLockerDate(locker.toDate) >= today;
+    if (!isOpen) {
+      return res.status(403).render('locker-access-denied', {
+        subject,
+        studentClass: studentClassValue,
+        section,
+        terminal: terminalValue,
+        academicYear,
+        fromDate: locker && locker.fromDate,
+        toDate: locker && locker.toDate
+      });
+    }
+    return next();
+  } catch (error) {
+    console.error('Error checking entry locker:', error);
+    return res.status(500).send('Unable to verify entry access.');
+  }
+};

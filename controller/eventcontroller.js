@@ -122,7 +122,7 @@ exports.createEventForm = async (req, res) => {
        if (req.user.role === 'ADMIN') {
          events = await Event.find().sort({ date: -1 }).lean();
        } else {
-         events = await Event.find({ teacherName: req.user.teacherName }).sort({ date: -1 }).lean();
+         events = await Event.find({}).sort({ date: -1 }).lean();
        }
 
       const editEventId = req.query.id || req.params.id;
@@ -138,7 +138,7 @@ exports.createEventForm = async (req, res) => {
       console.error("Error fetching events:", err);
   }
 
-  res.render('eventsremainder/createevent', { sidenavData, teacherName: req.user.teacherName, events, editEvent }); // Render the form view
+  res.render('eventsremainder/createevent', { sidenavData, teacherName: req.user.teacherName, events, editEvent, isAdmin: req.user.role === 'ADMIN' }); // Render the form view
 };
 
 // Start or Update event

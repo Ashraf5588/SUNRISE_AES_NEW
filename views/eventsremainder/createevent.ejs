@@ -798,7 +798,9 @@
 
                   <div class="event-actions">
                     <a href="/createevent?id=<%= event._id %>" class="btn btn-outline">Edit</a>
-                    <a href="/delete-event/<%= event._id %>" class="btn btn-danger" onclick="return confirm('Delete this event?');">Delete</a>
+                    <% if (isAdmin) { %>
+                      <a href="/delete-event/<%= event._id %>" class="btn btn-danger" onclick="return confirm('Delete this event?');">Delete</a>
+                    <% } %>
                   </div>
                 </div>
                   <% }); %>
