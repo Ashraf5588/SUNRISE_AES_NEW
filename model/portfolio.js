@@ -16,6 +16,16 @@ const portfolioSchema = new mongoose.Schema({
       imageUrls: [{ type: String, required: false }]
     }
   ],
+  parentMeetings: [
+    {
+      nepaliDate: { type: String, required: false },
+      visitingReason: { type: String, required: false },
+      parentComplaint: { type: String, required: false },
+      schoolResponse: { type: String, required: false },
+      by: { type: String, required: false },
+      createdAt: { type: Date, required: false }
+    }
+  ],
   participations: [
     {
       date: {type:"date", required: false},

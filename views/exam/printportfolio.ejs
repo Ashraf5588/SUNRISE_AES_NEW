@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Printable Student Portfolio</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; color: #111827; }
+    .controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; margin-bottom: 20px; }
+    .controls label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; }
+    .controls input, .controls select, .controls button { padding: 8px; font-size: 14px; }
+    .name-search { position: relative; }
+    .name-suggestions { position: absolute; z-index: 5; left: 0; right: 0; top: 100%; background: #fff; border: 1px solid #9ca3af; max-height: 220px; overflow-y: auto; min-width: 260px; }
+    .name-suggestion { display: block; width: 100%; border: 0; border-bottom: 1px solid #e5e7eb; background: #fff; color: #111827; text-align: left; padding: 8px; cursor: pointer; }
+    .name-suggestion:hover { background: #eff6ff; }
+    .controls button { cursor: pointer; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    th, td { border: 1px solid #374151; padding: 7px; vertical-align: top; word-break: break-word; }
+    th { background: #e5e7eb; text-align: center; }
+    th:nth-child(1), td.roll { width: 42px; text-align: center; }
+    th:nth-child(2), td.name { width: 125px; white-space: normal; overflow-wrap: anywhere; }
+    th:nth-child(3), td.complaints { width: 20%; }
+    th:nth-child(4), td.health { width: 16%; }
+    th:nth-child(5), td.absent { width: 16%; }
+    .entry { margin-bottom: 6px; white-space: pre-line; }
+    .entry:last-child { margin-bottom: 0; }
+    .heading { text-align: center; margin-bottom: 15px; }
+    .empty { color: #6b7280; }
+    .add-complaint-btn { margin-top: 8px; padding: 5px 8px; font-size: 12px; background: #2563eb; color: #fff; border: 0; border-radius: 4px; cursor: pointer; }
+    @media print {
+      .controls { display: none; }
+      .heading { display: none; }
+      body { margin: 8mm; }
+      th { background: #e5e7eb !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      tr { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <form class="controls" method="get" action="/printportfolio">
+    <label class="name-search">Student name
+      <input id="studentName" type="search" name="name" value="<%= nameQuery %>" placeholder="Type student name" autocomplete="off">
+      <input id="studentReg" type="hidden" name="reg" value="<%= selectedReg %>">
+      <div id="nameSuggestions" class="name-suggestions" hidden></div>
+    </label>
+    <label>Class &amp; Section
+      <select name="classSection" required>
+        <option value="">Choose class &amp; section</option>
+        <% studentClassdata.forEach(function(item) { %>
+          <option value="<%= item.studentClass %>-<%= item.section %>" <%= selectedClass === item.studentClass && selectedSection === item.section ? 'selected' : '' %>><%= item.studentClass %>-<%= item.section %></option>
+        <% }); %>
+      </select>
+    </label>
+    <label>Academic year
+      <select name="academicYear">
+        <% academicYears.forEach(function(year) { %>
+          <option value="<%= year %>" <%= academicYear === year ? 'selected' : '' %>><%= year %></option>
+        <% }); %>
+      </select>
+    </label>
+    <button type="submit">Search</button>
+    <button type="button" onclick="window.print()">Print</button>
+  </form>
+
+  <div class="heading">
+    <h2>Student Portfolio Report</h2>
+    <div>Class: <%= selectedClass || '-' %> | Section: <%= selectedSection || '-' %> | Academic Year: <%= academicYear || '-' %></div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Roll</th><th>Name</th><th>Complaints</th><th>Health Visit</th><th>Absent Detail</th><th>Call Log</th><th>Participation</th><th>Award</th></tr></thead>
+      <tbody>
+        <% if (!reportStudents.length) { %><tr><td colspan="8" class="empty">Select a class and section to view students.</td></tr><% } %>
+        <% reportStudents.forEach(function(student) { %>
+          <tr>
+            <td class="roll"><%= student.roll %></td>
+            <td class="name"><strong><%= student.name %></strong><br><span><%= student.studentClass %> | <%= student.section %></span></td>
+            <td class="complaints">
+              <% if (student.complaints.length) { student.complaints.forEach(function(item, index) { %>
+                <div class="entry"><strong><%= index + 1 %>. <%= item.nepaliDate || '' %><%= item.by ? ' (By ' + item.by + ')' : '' %></strong><br><%= item.reason || '-' %></div>
+              <% }); } else { %><span class="empty">No complaint</span><% } %>
+              <button type="button" class="add-complaint-btn no-print" data-reg="<%= student.reg %>" data-name="<%= student.name %>">Add Complaint</button>
+            </td>
+            <td class="health"><% if (student.healthVisits.length) { student.healthVisits.forEach(function(item, index) { %><div class="entry"><strong><%= index + 1 %>. <%= item.date %></strong><br><%= item.text %></div><% }); } else { %><span class="empty">-</span><% } %></td>
+            <td class="absent"><% if (student.absences.length) { student.absences.forEach(function(item, index) { %><div class="entry"><strong><%= index + 1 %>. <%= item.date %></strong><br><%= item.text %></div><% }); } else { %><span class="empty">-</span><% } %></td>
+            <td><% if (student.callLogs.length) { student.callLogs.forEach(function(item, index) { %><div class="entry"><strong><%= index + 1 %>. <%= item.date %><%= item.by ? ' (By ' + item.by + ')' : '' %></strong><br><strong>Reason:</strong> <%= item.reason %><br><strong>Response:</strong> <%= item.response %></div><% }); } else { %><span class="empty">-</span><% } %></td>
+            <td><% if (student.participations.length) { student.participations.forEach(function(item, index) { %><div class="entry"><strong><%= index + 1 %>. <%= item.date %></strong><br><%= item.text %></div><% }); } else { %><span class="empty">-</span><% } %></td>
+            <td><% if (student.awards.length) { student.awards.forEach(function(item, index) { %><div class="entry"><strong><%= index + 1 %>. <%= item.date %></strong><br><%= item.text %></div><% }); } else { %><span class="empty">-</span><% } %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+  <script>
+    const allNameSuggestions = <%- JSON.stringify(nameSuggestions || []) %>;
+    const nameInput = document.getElementById('studentName');
+    const regInput = document.getElementById('studentReg');
+    const suggestionsBox = document.getElementById('nameSuggestions');
+    const classSectionSelect = document.querySelector('select[name="classSection"]');
+    const searchForm = document.querySelector('form.controls');
+
+    function renderNameSuggestions() {
+      const query = nameInput.value.trim().toLowerCase();
+      regInput.value = '';
+      suggestionsBox.innerHTML = '';
+      if (query.length < 2) {
+        suggestionsBox.hidden = true;
+        return;
+      }
+      const matches = allNameSuggestions.filter((item) =>
+        item.name.toLowerCase().includes(query)
+      ).slice(0, 20);
+      matches.forEach((item) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'name-suggestion';
+        button.textContent = `${item.name} - ${item.classSection}`;
+        button.addEventListener('click', () => {
+          nameInput.value = item.name;
+          regInput.value = item.reg;
+          if (classSectionSelect) classSectionSelect.value = item.classSection;
+          suggestionsBox.hidden = true;
+          searchForm.submit();
+        });
+        suggestionsBox.appendChild(button);
+      });
+      suggestionsBox.hidden = matches.length === 0;
+    }
+
+    nameInput.addEventListener('input', renderNameSuggestions);
+    classSectionSelect.addEventListener('change', () => {
+      regInput.value = '';
+      searchForm.submit();
+    });
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest('.name-search')) suggestionsBox.hidden = true;
+    });
+
+    document.querySelectorAll('.add-complaint-btn').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const complaint = window.prompt(`Write complaint for ${button.dataset.name || 'student'}:`);
+        if (!complaint || !complaint.trim()) return;
+        button.disabled = true;
+        try {
+          const response = await fetch('/addComplaint', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              reg: button.dataset.reg,
+              complaint: complaint.trim(),
+              images: []
+            })
+          });
+          const result = await response.json();
+          if (!response.ok || !result.success) {
+            throw new Error(result.message || 'Failed to save complaint.');
+          }
+          window.location.reload();
+        } catch (error) {
+          button.disabled = false;
+          window.alert(error.message || 'Failed to save complaint.');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

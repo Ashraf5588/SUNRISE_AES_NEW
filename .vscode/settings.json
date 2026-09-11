@@ -1,4 +1,10 @@
 {
   "compile-hero.disable-compile-files-on-did-save-code": false,
-  "liveServer.settings.port": 5501
+  "liveServer.settings.port": 5501,
+  "chat.tools.terminal.autoApprove": {
+    "/^node -e \"const fs=require\\('fs'\\); const ejs=require\\('ejs'\\); ejs\\.compile\\(fs\\.readFileSync\\('views/exam/printportfolio\\.ejs','utf8'\\)\\); console\\.log\\('printportfolio EJS compile passed'\\);\"$/": {
+      "approve": true,
+      "matchCommandLine": true
+    }
+  }
 }

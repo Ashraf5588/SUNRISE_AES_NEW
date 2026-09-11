@@ -2388,6 +2388,7 @@ exports.studentPortfolio = async (req, res, next) => {
        if (reg) {
          rosterFilter.reg = String(reg);
        }
+
        const roster = await studentRecord.find(rosterFilter).lean().sort({ roll: 1 });
        const rosterByReg = roster.reduce((acc, item) => {
          if (item && item.reg) {
@@ -2503,6 +2504,10 @@ for (const student of studentWisedata) {
          acc[portfolioReg] = Array.isArray(portfolio.complaints) ? portfolio.complaints : [];
          return acc;
        }, {});
+       const parentMeetingsByReg = Object.entries(portfolioByReg).reduce((acc, [portfolioReg, portfolio]) => {
+         acc[portfolioReg] = Array.isArray(portfolio.parentMeetings) ? portfolio.parentMeetings : [];
+         return acc;
+       }, {});
 
        const healthRecords = portfolioRegs.length
          ? await HealthRecord.find({ reg: { $in: portfolioRegs } }).lean().sort({ createdAt: -1 })
@@ -2613,6 +2618,7 @@ for (const student of studentWisedata) {
       marksheetSetups,
         portfolioByReg,
         complaintsByReg,
+        parentMeetingsByReg,
         rosterByReg,
         healthRecordsByReg,
         callLogsByReg,
@@ -2624,6 +2630,141 @@ for (const student of studentWisedata) {
     res.status(500).send("Internal Server Error");
   }
 }
+
+exports.printPortfolio = async (req, res) => {
+  try {
+    const user = req.user || {};
+    const normalize = (value) => String(value || '').trim().toLowerCase();
+    const allClassData = await studentClassModel.find({}).lean().sort({ studentClass: 1, section: 1 });
+    const studentClassdata = String(user.role || '').toUpperCase() !== 'ADMIN'
+      ? allClassData.filter((item) => (user.allowedSubjects || []).some((allowed) =>
+          normalize(allowed.studentClass) === normalize(item.studentClass) &&
+          normalize(allowed.section) === normalize(item.section)
+        ))
+      : allClassData;
+    const setupYears = await marksheetSetup.find({}, { academicYear: 1, _id: 0 }).lean();
+    const academicYears = [...new Set(setupYears.map((item) => String(item.academicYear || '').trim()).filter(Boolean))]
+      .sort((a, b) => Number(b) - Number(a));
+    const currentAcademicYear = academicYears[0] || '';
+    const classSection = String(req.query.classSection || '').trim();
+    const classSectionParts = classSection.split('-');
+    const selectedClass = String(req.query.studentClass || classSectionParts[0] || '').trim();
+    const selectedSection = String(req.query.section || classSectionParts.slice(1).join('-') || '').trim();
+    const academicYear = String(req.query.academicYear || currentAcademicYear).trim();
+    const nameQuery = String(req.query.name || '').trim();
+    const selectedReg = String(req.query.reg || '').trim();
+    const viewerIsAdmin = String(user.role || '').toUpperCase() === 'ADMIN';
+    const viewerIdentities = new Set([user.teacherName, user.username].map(normalize).filter(Boolean));
+    const classAllowed = viewerIsAdmin || studentClassdata.some((item) =>
+      normalize(item.studentClass) === normalize(selectedClass) &&
+      normalize(item.section) === normalize(selectedSection)
+    );
+    const allStudents = await studentRecord.find({}).lean();
+    const selectedStudent = selectedReg
+      ? allStudents.find((student) => String(student.reg || '') === selectedReg)
+      : null;
+    const roster = selectedStudent
+      ? [selectedStudent]
+      : selectedClass && selectedSection && classAllowed
+        ? allStudents.filter((student) =>
+            normalize(student.studentClass) === normalize(selectedClass) &&
+            normalize(student.section) === normalize(selectedSection)
+          )
+        : nameQuery
+          ? allStudents.filter((student) => normalize(student.name).includes(normalize(nameQuery)))
+          : [];
+    const regs = roster.map((item) => item.reg).filter(Boolean);
+    const [portfolioDocs, healthRecords, attendanceDocs] = regs.length
+      ? await Promise.all([
+          Portfolio.find({ reg: { $in: regs } }).lean(),
+          HealthRecord.find({ reg: { $in: regs } }).lean().sort({ createdAt: -1 }),
+          onlineAttendance.find({ reg: { $in: regs } }).lean()
+        ])
+      : [[], [], []];
+    const portfoliosByReg = Object.fromEntries(portfolioDocs.map((item) => [String(item.reg), item]));
+    const healthByReg = healthRecords.reduce((acc, item) => {
+      const key = String(item.reg || '');
+      if (key) (acc[key] ||= []).push(item);
+      return acc;
+    }, {});
+    const attendanceByReg = Object.fromEntries(attendanceDocs.map((item) => [String(item.reg), item]));
+    const nepaliDate = (value) => {
+      if (!value) return '';
+      const converted = bs.ADToBS(new Date(value));
+      return converted ? String(converted) : '';
+    };
+    const entryDate = (item) =>
+      String(item.nepaliDate || '').trim() ||
+      ([item.academicYear, item.month, item.day].filter(Boolean).join('-')) ||
+      nepaliDate(item.date || item.createdAt || item.callLoggedAt);
+    const reportStudents = roster
+      .filter((student) => !nameQuery || normalize(student.name).includes(normalize(nameQuery)))
+      .sort((a, b) => {
+        const rollA = Number.parseInt(String(a.roll || '').replace(/[^\d-]/g, ''), 10);
+        const rollB = Number.parseInt(String(b.roll || '').replace(/[^\d-]/g, ''), 10);
+        if (Number.isNaN(rollA) && Number.isNaN(rollB)) return String(a.roll || '').localeCompare(String(b.roll || ''));
+        if (Number.isNaN(rollA)) return 1;
+        if (Number.isNaN(rollB)) return -1;
+        return rollA - rollB;
+      })
+      .map((student) => {
+        const portfolio = portfoliosByReg[String(student.reg)] || {};
+        const attendance = attendanceByReg[String(student.reg)] || {};
+        const entries = Array.isArray(attendance.attendance) ? attendance.attendance : [];
+        return {
+          reg: String(student.reg || ''),
+          roll: student.roll || '',
+          name: student.name || '',
+          studentClass: student.studentClass || '',
+          section: student.section || '',
+          complaints: (Array.isArray(portfolio.complaints) ? portfolio.complaints : [])
+            .filter((item) => viewerIsAdmin || viewerIdentities.has(normalize(item && item.by))),
+          healthVisits: (healthByReg[String(student.reg)] || []).map((item) => ({
+            date: entryDate(item),
+            text: [item.diagnosis || item.reason, item.treatment].filter(Boolean).join(' - ') || '-'
+          })),
+          absences: entries.filter((item) => ['absent', 'a', 'false'].includes(normalize(item && item.status)))
+            .map((item) => ({ date: entryDate(item), text: item.reason || 'Absent' })),
+          callLogs: entries.filter((item) => item && (item.callReason || item.parentResponse || item.callLoggedAt))
+            .map((item) => ({
+              date: entryDate(item),
+              by: item.callBy || item.by || '',
+              reason: item.callReason || '-',
+              response: item.parentResponse || '-'
+            })),
+          participations: (Array.isArray(portfolio.participations) ? portfolio.participations : [])
+            .filter((item) => !academicYear || String(item.year || '') === academicYear)
+            .map((item) => ({
+              date: entryDate(item),
+              text: [item.event, item.position].filter(Boolean).join(' - ') || '-'
+            })),
+          awards: (Array.isArray(portfolio.awards) ? portfolio.awards : [])
+            .filter((item) => !academicYear || String(item.year || '') === academicYear)
+            .map((item) => ({
+              date: entryDate(item),
+              text: [item.event, item.position].filter(Boolean).join(' - ') || '-'
+            }))
+        };
+      });
+    res.render('./exam/printportfolio', {
+      currentPage: 'exammanagement',
+      studentClassdata, academicYears, currentAcademicYear, academicYear,
+      selectedClass, selectedSection, classSection, nameQuery,
+      selectedReg,
+      nameSuggestions: allStudents
+        .filter((student) => student.name && student.reg)
+        .map((student) => ({
+          name: student.name,
+          reg: String(student.reg),
+          classSection: `${student.studentClass || ''}-${student.section || ''}`
+        })),
+      reportStudents
+    });
+  } catch (error) {
+    console.error('Error loading print portfolio page:', error);
+    res.status(500).send('Internal Server Error');
+  }
+};
 
 exports.eventScholarshipReport = async (req, res) => {
   try {
@@ -2716,6 +2857,53 @@ exports.addComplaint = async (req, res) => {
   } catch (error) {
     console.error('Error saving complaint:', error);
     return res.status(500).json({ success: false, message: 'Failed to save complaint.' });
+  }
+};
+
+exports.addParentMeeting = async (req, res) => {
+  try {
+    const reg = String(req.body && req.body.reg || '').trim();
+    const nepaliDate = String(req.body && req.body.nepaliDate || '').trim();
+    const visitingReason = String(req.body && req.body.visitingReason || '').trim();
+    const parentComplaint = String(req.body && req.body.parentComplaint || '').trim();
+    const schoolResponse = String(req.body && req.body.schoolResponse || '').trim();
+    if (!reg || !nepaliDate || !visitingReason || !parentComplaint || !schoolResponse) {
+      return res.status(400).json({ success: false, message: 'All parent meeting fields are required.' });
+    }
+
+    const student = await studentRecord.findOne({ reg }).lean();
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found.' });
+    }
+
+    await Portfolio.updateOne(
+      { reg },
+      {
+        $setOnInsert: {
+          reg,
+          name: student.name || '',
+          studentClass: student.studentClass || '',
+          section: student.section || ''
+        },
+        $push: {
+          parentMeetings: {
+            nepaliDate,
+            visitingReason,
+            parentComplaint,
+            schoolResponse,
+            by: req.user && (req.user.teacherName || req.user.username)
+              ? String(req.user.teacherName || req.user.username).trim()
+              : '',
+            createdAt: new Date()
+          }
+        }
+      },
+      { upsert: true }
+    );
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Error saving parent meeting:', error);
+    return res.status(500).json({ success: false, message: 'Failed to save parent meeting.' });
   }
 };
 
