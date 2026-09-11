@@ -606,6 +606,172 @@ subjectMappings.forEach(sub => {
   }
 };
 
+// Analysis Entry Counter Page
+exports.analysisEntryCounter = async (req, res, next) => {
+  try {
+    entryArray = [];
+    const subjects = await subject.find({});
+    const studentClasslist = await studentClass.find({});
+    const selectedTerminal = req.query.terminal || 'FIRST'; // Get terminal from query params
+    const terminals = await terminal.find({}).lean(); // Fetch all terminals for dropdown
+    
+    console.log(`🔍 Processing analysis entry counter data for terminal: ${selectedTerminal}`);
+    console.log(`📚 Found ${subjects.length} subjects`);
+    console.log(`🏫 Found ${studentClasslist.length} class-sections`);
+
+    // Create subject mappings
+    const subjectMappings = await subject.find({});
+    const allowedSubjectsMap = {};
+    subjectMappings.forEach(sub => {
+      if (!allowedSubjectsMap[sub.subject]) {
+        allowedSubjectsMap[sub.subject] = [];
+      }
+      allowedSubjectsMap[sub.subject].push(String(sub.forClass));
+    });
+
+    // Optimized batch processing for entry counts
+    const db = mongoose.connection.db;
+    const batchSize = 50;
+    entryArray = [];
+
+    // Process subjects in batches
+    for (let i = 0; i < subjects.length; i += batchSize) {
+      const batchSubjects = subjects.slice(i, i + batchSize);
+      const batchPromises = [];
+
+      for (const sub of batchSubjects) {
+        for (const stuclass of studentClasslist) {
+          const section = stuclass.section;
+          const studentClass = stuclass.studentClass;
+
+          if (!allowedSubjectsMap[sub.subject] || !allowedSubjectsMap[sub.subject].includes(studentClass.toString())) {
+            entryArray.push({
+              studentClass,
+              section,
+              subject: sub.subject,
+              terminal: selectedTerminal,
+              totalentry: 0,
+            });
+            continue;
+          }
+
+          const modelName = `${sub.subject}_${studentClass}_${section}_${selectedTerminal}`;
+          
+          const processPromise = (async () => {
+            try {
+              const collections = await db.listCollections({ name: modelName }).toArray();
+              
+              if (collections.length === 0) {
+                return {
+                  studentClass,
+                  section,
+                  subject: sub.subject,
+                  terminal: selectedTerminal,
+                  totalentry: 0,
+                };
+              }
+
+              const collection = db.collection(modelName);
+              const count = await collection.countDocuments({
+                section,
+                terminal: selectedTerminal,
+                studentClass
+              });
+
+              return {
+                studentClass,
+                section,
+                subject: sub.subject,
+                terminal: selectedTerminal,
+                totalentry: count,
+              };
+            } catch (error) {
+              console.error(`Error processing ${modelName}:`, error.message);
+              return {
+                studentClass,
+                section,
+                subject: sub.subject,
+                terminal: selectedTerminal,
+                totalentry: 0,
+              };
+            }
+          })();
+
+          batchPromises.push(processPromise);
+        }
+      }
+
+      const batchResults = await Promise.all(batchPromises);
+      entryArray.push(...batchResults);
+    }
+
+    // Transform entryArray into pivoted format
+    let pivotedData;
+    try {
+      if (typeof transformToPivotedFormat === 'function') {
+        pivotedData = transformToPivotedFormat(entryArray);
+        console.log("✅ Pivoted data generated successfully using function");
+      } else {
+        console.log("⚠️  transformToPivotedFormat function not available, creating manually");
+        
+        const uniqueSubjects = [...new Set(entryArray.map(e => e.subject))].sort();
+        const uniqueHeaders = [...new Set(entryArray.map(e => `${e.studentClass}-${e.section}`))].sort();
+        
+        const pivotTable = {};
+        uniqueSubjects.forEach(subjectName => {
+          pivotTable[subjectName] = {};
+          uniqueHeaders.forEach(header => {
+            pivotTable[subjectName][header] = 0;
+          });
+        });
+        
+        entryArray.forEach(entry => {
+          const header = `${entry.studentClass}-${entry.section}`;
+          if (pivotTable[entry.subject]) {
+            pivotTable[entry.subject][header] = entry.totalentry;
+          }
+        });
+        
+        pivotedData = { 
+          subjects: uniqueSubjects, 
+          headers: uniqueHeaders, 
+          pivotTable: pivotTable 
+        };
+      }
+    } catch (error) {
+      console.error("❌ Error transforming data:", error);
+      pivotedData = { subjects: [], headers: [], pivotTable: {} };
+    }
+
+    const studentClassdata = await studentClass.find({});
+    const sidenavData = await getSidenavData(req);
+    
+    console.log(`\n🎯 Final data summary:`);
+    console.log(`  - Subjects: ${subjects.length}`);
+    console.log(`  - Class list: ${studentClasslist.length}`);
+    console.log(`  - Entry array: ${entryArray.length}`);
+    console.log(`  - Pivot subjects: ${pivotedData.subjects.length}`);
+    console.log(`  - Pivot headers: ${pivotedData.headers.length}`);
+    
+    res.render("admin/analysisentrycounter", {
+      editing: false,
+      subjects,
+      studentClasslist,
+      entryArray,
+      pivotedData,
+      terminal: selectedTerminal, 
+      terminals,
+      studentClassdata,
+      ...sidenavData
+    });
+    
+  } catch (err) {
+    console.error("❌ Error in analysisEntryCounter function:", err);
+    console.error("Stack trace:", err.stack);
+    next(err);
+  }
+};
+
 exports.showSubject = async (req, res, next) => {
   const {forClass,subjectname} = req.query;
 

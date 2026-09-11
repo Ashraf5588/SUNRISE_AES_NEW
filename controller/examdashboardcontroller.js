@@ -2477,13 +2477,23 @@ for (const student of studentWisedata) {
        const portfolioDocs = portfolioRegs.length
          ? await Portfolio.find({ reg: { $in: portfolioRegs } }).lean()
          : [];
+       const viewerIsAdmin = user && String(user.role || '').toUpperCase() === 'ADMIN';
+       const viewerIdentities = new Set(
+         [user && user.teacherName, user && user.username]
+           .map((value) => String(value || '').trim().toLowerCase())
+           .filter(Boolean)
+       );
+       const canViewComplaint = (complaint) =>
+         viewerIsAdmin ||
+         viewerIdentities.has(String(complaint && complaint.by || '').trim().toLowerCase());
+
        const portfolioByReg = portfolioDocs.reduce((acc, doc) => {
          if (doc && doc.reg) {
            doc.complaints = Array.isArray(doc.complaints)
              ? doc.complaints.map((complaint) => ({
                ...complaint,
                nepaliDate: complaint.nepaliDate || (complaint.date ? String(bs.ADToBS(new Date(complaint.date)) || '') : '')
-             }))
+             })).filter(canViewComplaint)
              : [];
            acc[doc.reg] = doc;
          }
@@ -2615,6 +2625,60 @@ for (const student of studentWisedata) {
   }
 }
 
+exports.eventScholarshipReport = async (req, res) => {
+  try {
+    const { studentClass = '', section = '', academicYear = '' } = req.query;
+    const allClassData = await studentClassModel.find({}).lean().sort({ studentClass: 1, section: 1 });
+    const classSections = allClassData.map((item) => ({
+      studentClass: item.studentClass,
+      section: item.section
+    }));
+
+    const selectedClass = String(studentClass).trim();
+    const selectedSection = String(section).trim();
+    const selectedYear = String(academicYear).trim();
+    const portfolioFilter = {};
+    if (selectedClass) portfolioFilter.studentClass = selectedClass;
+    if (selectedSection) portfolioFilter.section = selectedSection;
+
+    const portfolios = selectedClass && selectedSection
+      ? await Portfolio.find(portfolioFilter).lean().sort({ name: 1 })
+      : [];
+    const currentNepaliYear = Number(String(bs.ADToBS(new Date()) || '').split('-')[0]) || new Date().getFullYear() + 57;
+    const yearMatches = (item) => {
+      if (!selectedYear) return true;
+      const nepaliDate = String(item && item.nepaliDate || '').trim()
+        || (item && item.date ? String(bs.ADToBS(new Date(item.date)) || '').trim() : '');
+      return String(item && item.year || '').trim() === selectedYear
+        || nepaliDate.startsWith(`${selectedYear}-`)
+        || nepaliDate === selectedYear;
+    };
+
+    const reportStudents = portfolios.map((portfolio) => ({
+      reg: portfolio.reg,
+      name: portfolio.name || '',
+      studentClass: portfolio.studentClass || selectedClass,
+      section: portfolio.section || selectedSection,
+      participations: (portfolio.participations || []).filter(yearMatches),
+      awards: (portfolio.awards || []).filter(yearMatches),
+      scholarships: (portfolio.scholarships || []).filter(yearMatches)
+    })).filter((student) => student.participations.length || student.awards.length || student.scholarships.length);
+
+    res.render('./admin/portfolio/eventscholarship', {
+      currentPage: 'portfolio',
+      classSections,
+      reportStudents,
+      selectedClass,
+      selectedSection,
+      selectedYear,
+      reportYears: Array.from({ length: 5 }, (_, index) => currentNepaliYear - index)
+    });
+  } catch (error) {
+    console.error('Error loading event scholarship report:', error);
+    res.status(500).send('Internal Server Error');
+  }
+};
+
 exports.addComplaint = async (req, res) => {
   try {
     const reg = String(req.body && req.body.reg ? req.body.reg : '').trim();
@@ -2624,7 +2688,9 @@ exports.addComplaint = async (req, res) => {
       .filter((item) => typeof item === 'string')
       .map((item) => item.trim())
       .filter(Boolean);
-    const teacherName = req.user && req.user.teacherName ? String(req.user.teacherName).trim() : '';
+    const teacherName = req.user && (req.user.teacherName || req.user.username)
+      ? String(req.user.teacherName || req.user.username).trim()
+      : '';
 
     if (!reg || !reason) {
       return res.status(400).json({ success: false, message: 'Reg and complaint are required.' });
@@ -2653,6 +2719,77 @@ exports.addComplaint = async (req, res) => {
   }
 };
 
+exports.addPortfolioAchievement = async (req, res) => {
+  try {
+    const body = req.body || {};
+    const reg = String(body.reg || '').trim();
+    const type = String(body.type || '').trim().toLowerCase();
+    const allowedTypes = {
+      participation: {
+        field: 'participations',
+        required: ['event'],
+        values: ['date', 'nepaliDate', 'event', 'position']
+      },
+      award: {
+        field: 'awards',
+        required: ['event'],
+        values: ['date', 'nepaliDate', 'event', 'position']
+      },
+      scholarship: {
+        field: 'scholarships',
+        required: ['amount', 'reason', 'year'],
+        values: ['date', 'nepaliDate', 'amount', 'reason', 'year']
+      }
+    };
+    const config = allowedTypes[type];
+
+    if (!reg || !config) {
+      return res.status(400).json({ success: false, message: 'Valid registration number and portfolio type are required.' });
+    }
+
+    const entry = {};
+    config.values.forEach((field) => {
+      if (field === 'date') {
+        if (body.date) {
+          const date = new Date(body.date);
+          if (Number.isNaN(date.getTime())) {
+            return;
+          }
+          entry.date = date;
+        }
+        return;
+      }
+      entry[field] = String(body[field] || '').trim();
+    });
+
+    const missing = config.required.filter((field) => !entry[field]);
+    if (missing.length) {
+      return res.status(400).json({ success: false, message: `${missing.join(', ')} is required.` });
+    }
+
+    const roster = await studentRecord.findOne({ reg }).lean();
+    const portfolioValues = {
+      name: String(body.name || (roster && roster.name) || '').trim(),
+      studentClass: String(body.studentClass || (roster && roster.studentClass) || '').trim(),
+      section: String(body.section || (roster && roster.section) || '').trim()
+    };
+
+    await Portfolio.updateOne(
+      { reg },
+      {
+        $setOnInsert: { reg, ...portfolioValues },
+        $push: { [config.field]: entry }
+      },
+      { upsert: true }
+    );
+
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Error saving portfolio achievement:', error);
+    return res.status(500).json({ success: false, message: 'Failed to save portfolio information.' });
+  }
+};
+
 exports.updateComplaint = async (req, res) => {
   try {
     const complaintId = String(req.params && req.params.id ? req.params.id : '').trim();
@@ -2668,8 +2805,20 @@ exports.updateComplaint = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Reg, complaint, and complaint ID are required.' });
     }
 
+    const isAdmin = req.user && String(req.user.role || '').toUpperCase() === 'ADMIN';
+    const complaintOwner = req.user && (req.user.teacherName || req.user.username)
+      ? String(req.user.teacherName || req.user.username).trim()
+      : '';
+    const complaintFilter = {
+      reg,
+      'complaints._id': complaintId
+    };
+    if (!isAdmin) {
+      complaintFilter['complaints.by'] = complaintOwner;
+    }
+
     const result = await Portfolio.updateOne(
-      { reg, 'complaints._id': complaintId },
+      complaintFilter,
       {
         $set: {
           'complaints.$.reason': reason,

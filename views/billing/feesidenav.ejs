@@ -1,0 +1,41 @@
+<style>
+  :root { --navy: #07152f; --navy2: #0d2854; --blue: #3b82f6; }
+  .fee-sidebar { position: fixed; inset: 0 auto 0 0; width: 268px; padding: 24px 16px 18px; background: linear-gradient(180deg, var(--navy), var(--navy2)); color: #d9e6fb; box-shadow: 12px 0 32px rgba(7, 21, 47, .12); z-index: 5; }
+  .fee-brand { display: flex; align-items: center; gap: 11px; padding: 4px 10px 24px; border-bottom: 1px solid rgba(255, 255, 255, .1); }
+  .fee-brand-mark { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; background: #fff; color: var(--navy2); font-weight: 800; font-size: 18px; }
+  .fee-brand strong { display: block; color: #fff; font-size: 16px; }
+  .fee-brand small { display: block; margin-top: 3px; color: #8fa8ca; font-size: 11px; }
+  .fee-nav-label { margin: 25px 11px 9px; color: #7893ba; font-size: 10px; font-weight: 800; letter-spacing: 1.3px; text-transform: uppercase; }
+  .fee-nav { display: grid; gap: 4px; }
+  .fee-nav-link { display: flex; align-items: center; gap: 11px; min-height: 42px; padding: 10px 12px; border: 1px solid transparent; border-radius: 10px; color: #b7c9e4; font-size: 13px; text-decoration: none; transition: .2s ease; }
+  .fee-nav-link span { display: grid; place-items: center; width: 20px; color: #82b2f5; font-size: 16px; }
+  .fee-nav-link:hover, .fee-nav-link.is-active { background: rgba(75, 137, 230, .16); border-color: rgba(113, 166, 247, .18); color: #fff; }
+  .fee-nav-link.is-active { box-shadow: inset 3px 0 #67a2ff; }
+  .fee-sidebar-footer { position: absolute; right: 16px; bottom: 18px; left: 16px; display: flex; align-items: center; gap: 8px; padding: 12px; border: 1px solid rgba(255, 255, 255, .09); border-radius: 10px; color: #8fa8ca; font-size: 11px; }
+  .fee-sidebar-footer i { width: 7px; height: 7px; border-radius: 50%; background: #37c892; box-shadow: 0 0 0 4px rgba(55, 200, 146, .12); }
+  @media (max-width: 760px) {
+    .fee-sidebar { position: static; width: 100%; min-height: auto; }
+    .fee-sidebar-footer { position: static; margin-top: 20px; }
+    .fee-nav { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 480px) { .fee-nav { grid-template-columns: 1fr; } }
+</style>
+
+<aside class="fee-sidebar" aria-label="Fee management navigation">
+  <div class="fee-brand"><span class="fee-brand-mark">F</span><span><strong>FeeDesk</strong><small>School finance</small></span></div>
+  <div class="fee-nav-label">Fee management</div>
+  <nav class="fee-nav">
+    <a href="#" class="fee-nav-link is-active"><span>⌂</span>Overview</a>
+    <a href="/feehead" class="fee-nav-link"><span>▦</span>Fee Head Setup</a>
+    <a href="#" class="fee-nav-link"><span>◫</span>Fee Plan</a>
+    <a href="#" class="fee-nav-link"><span>▤</span>Fee Receipt</a>
+    <a href="#" class="fee-nav-link"><span>⇄</span>Sibling Fee Collection</a>
+    <a href="#" class="fee-nav-link"><span>↶</span>Payment Revert</a>
+    <a href="#" class="fee-nav-link"><span>▥</span>Fee Report</a>
+    <a href="#" class="fee-nav-link"><span>▣</span>Demand Bill</a>
+    <a href="#" class="fee-nav-link"><span>＋</span>Fee Carry Forward</a>
+    <a href="#" class="fee-nav-link"><span>✦</span>Extra Fee Management</a>
+    <a href="#" class="fee-nav-link"><span>✓</span>Online Bank Approval</a>
+  </nav>
+  <div class="fee-sidebar-footer"><i></i>Finance workspace</div>
+</aside>

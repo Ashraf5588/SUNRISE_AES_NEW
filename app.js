@@ -1,6 +1,7 @@
 const express = require('express');
 const student  = require('./routers/mainpage');
 const attendance  = require('./routers/attendance');
+const billing  = require('./routers/billing');
 const fs = require('fs');
 const admincontrol = require('./controller/admincontroller')
 const cirriculum = require('./routers/cirriculum');
@@ -355,6 +356,7 @@ app.use(cirriculum)
 app.use(attendance)
 app.use(student)
 app.use(aspectRouter)
+app.use(billing)
 app.use(express.static('public'));
 const PORT = process.env.PORT || 80;
 app.listen(PORT, () => {

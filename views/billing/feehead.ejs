@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fee Head</title>
+    <style>
+      :root { --navy:#07152f; --blue:#3b82f6; --ink:#17233b; --muted:#71809b; --line:#e4eaf3; --page:#f4f7fb; --green:#159570; }
+      * { box-sizing:border-box; }
+      body { margin:0; background:var(--page); color:var(--ink); font-family:"Segoe UI",Arial,sans-serif; }
+      .fee-main { min-height:100vh; margin-left:268px; padding:34px 40px 46px; }
+      .fee-content { max-width:1500px; margin:0 auto; }
+      .fee-heading { margin-bottom:24px; }
+      .fee-eyebrow { margin:0 0 7px; color:var(--blue); font-size:11px; font-weight:800; letter-spacing:1.3px; text-transform:uppercase; }
+      h1 { margin:0; color:var(--navy); font-size:32px; letter-spacing:-.8px; }
+      .fee-subtitle { margin:8px 0 0; color:var(--muted); font-size:14px; }
+      .fee-panel { border:1px solid var(--line); border-radius:14px; background:#fff; box-shadow:0 14px 34px rgba(13,35,71,.08); }
+      .fee-form-panel { padding:24px; }
+      .fee-panel-title { margin:0 0 20px; color:var(--navy); font-size:16px; }
+      .fee-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px 22px; }
+      .fee-field { display:grid; gap:7px; }
+      .fee-field label, .frequency-label { color:var(--muted); font-size:12px; font-weight:750; }
+      .fee-field input[type="text"] { width:100%; padding:11px 13px; border:1px solid var(--line); border-radius:8px; color:var(--ink); font:inherit; outline:none; }
+      .fee-field input[type="text"]:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(59,130,246,.12); }
+      .frequency-field { grid-column:1 / -1; }
+      .frequency-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
+      .select-all { border:0; background:transparent; color:var(--blue); cursor:pointer; padding:4px 0; font:700 12px inherit; }
+      .month-grid { display:grid; grid-template-columns:repeat(6, minmax(100px, 1fr)); gap:9px; }
+      .month-option { display:flex; align-items:center; gap:8px; min-height:40px; padding:9px 10px; border:1px solid var(--line); border-radius:8px; color:var(--ink); cursor:pointer; font-size:12px; transition:.15s ease; }
+      .month-option:has(input:checked) { border-color:#9bc0ff; background:#f0f6ff; color:var(--blue); font-weight:700; }
+      .month-option input { width:15px; height:15px; accent-color:var(--blue); }
+      .fee-form-actions { display:flex; justify-content:flex-end; margin-top:22px; }
+      .submit-button { border:0; border-radius:8px; background:var(--navy); color:#fff; cursor:pointer; padding:11px 18px; font:700 13px inherit; }
+      .submit-button:hover { background:#12366d; }
+      .table-panel { margin-top:24px; overflow:hidden; }
+      .table-heading { display:flex; align-items:center; justify-content:space-between; padding:20px 22px 15px; }
+      .table-heading h2 { margin:0; color:var(--navy); font-size:16px; }
+      .table-heading span { color:var(--muted); font-size:12px; }
+      .table-scroll { overflow-x:auto; }
+      .fee-table { width:100%; min-width:950px; border-collapse:collapse; font-size:12px; }
+      .fee-table th { padding:0 14px 12px; color:var(--muted); font-size:10px; letter-spacing:.6px; text-align:left; text-transform:uppercase; white-space:nowrap; }
+      .fee-table td { padding:14px; border-top:1px solid var(--line); white-space:nowrap; }
+      .fee-table tbody tr:hover { background:#fbfcfe; }
+      .fee-table .month-cell { color:var(--green); font-size:17px; font-weight:800; text-align:center; }
+      .fee-table .month-cell.not-applied { color:#a9b3c2; font-size:15px; font-weight:500; }
+      .fee-actions { display:flex; align-items:center; gap:8px; }
+      .fee-action { display:grid; place-items:center; width:30px; height:30px; border:1px solid var(--line); border-radius:7px; background:#fff; color:var(--muted); cursor:pointer; font-size:15px; text-decoration:none; }
+      .fee-action:hover { border-color:#9bc0ff; background:#f0f6ff; color:var(--blue); }
+      .fee-action.delete:hover { border-color:#f2b4bb; background:#fff1f2; color:#c43d4d; }
+      .empty-state { padding:30px 22px; color:var(--muted); text-align:center; }
+      @media (max-width:760px) { .fee-main { margin-left:0; padding:25px 16px 35px; } .fee-form-grid { grid-template-columns:1fr; } .frequency-field { grid-column:auto; } .month-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+      @media (max-width:420px) { .month-grid { grid-template-columns:1fr; } .fee-form-actions .submit-button { width:100%; } }
+    </style>
+</head>
+<body>
+  <%- include('feesidenav') %>
+  <main class="fee-main">
+    <div class="fee-content">
+      <header class="fee-heading"><p class="fee-eyebrow">Fee management</p><h1>Fee head setup</h1><p class="fee-subtitle">Create fee heads and choose the months when each one applies.</p></header>
+      <section class="fee-panel fee-form-panel">
+        <h2 class="fee-panel-title"><%= editFeeHead ? 'Edit fee head' : 'Add fee head' %></h2>
+        <form action="<%= editFeeHead ? '/feehead/' + editFeeHead._id + '/edit' : '/feehead' %>" method="POST">
+          <div class="fee-form-grid">
+            <div class="fee-field"><label for="feehead">Fee head name</label><input type="text" id="feehead" name="feehead" value="<%= editFeeHead ? editFeeHead.feehead : '' %>" placeholder="e.g. Admission Fee" required></div>
+            <div class="fee-field"><label for="reportname">Report name</label><input type="text" id="reportname" name="reportname" value="<%= editFeeHead ? editFeeHead.reportname || '' : '' %>" placeholder="e.g. Admission" required></div>
+            <div class="frequency-field">
+              <div class="frequency-heading"><span class="frequency-label">Frequency</span><button type="button" class="select-all" id="select-all">Select all</button></div>
+              <div class="month-grid">
+                <% const months = [['Baisakh','baisakh'],['Jestha','jestha'],['Ashad','ashad'],['Shrawan','shrawan'],['Bhadra','bhadra'],['Ashwin','ashwin'],['Kartik','kartik'],['Mangsir','mangsir'],['Poush','poush'],['Magh','magh'],['Falgun','falgun'],['Chaitra','chaitra']]; %>
+                <% months.forEach(([label, value]) => { %><label class="month-option"><input type="checkbox" name="appliedmonth" value="<%= value %>" <%= editFeeHead && (editFeeHead.appliedmonth || []).includes(value) ? 'checked' : '' %>><span><%= label %></span></label><% }); %>
+              </div>
+            </div>
+          </div>
+          <div class="fee-form-actions"><button type="submit" class="submit-button"><%= editFeeHead ? 'Update fee head' : 'Add fee head' %></button></div>
+        </form>
+      </section>
+      <section class="fee-panel table-panel">
+        <div class="table-heading"><h2>Fee heads</h2><span><%= feeheads.length %> saved</span></div>
+        <% if (feeheads.length) { %><div class="table-scroll"><table class="fee-table"><thead><tr><th>SN</th><th>Fee head</th><th>Report name</th><% months.forEach(([label]) => { %><th><%= label %></th><% }); %><th>Actions</th></tr></thead><tbody>
+          <% feeheads.forEach((item, index) => { %><tr><td><%= index + 1 %></td><td><strong><%= item.feehead %></strong></td><td><%= item.reportname || '-' %></td><% months.forEach(([, value]) => { const applied = (item.appliedmonth || []).includes(value); %><td class="month-cell <%= applied ? '' : 'not-applied' %>"><%= applied ? '✓' : '-' %></td><% }); %><td><div class="fee-actions"><a class="fee-action" href="/feehead/<%= item._id %>/edit" title="Edit fee head" aria-label="Edit fee head" style="background-color: #007bff;color:white">✎</a><form action="/feehead/<%= item._id %>/delete" method="POST" onsubmit="return confirm('Delete this fee head?');"><button type="submit" class="fee-action delete" style="background-color: #ff001e;color:white" title="Delete fee head" aria-label="Delete fee head">⌫</button></form></div></td></tr><% }); %>
+        </tbody></table></div><% } else { %><div class="empty-state">No fee heads have been added yet.</div><% } %>
+      </section>
+    </div>
+  </main>
+  <script>
+    const selectAllButton = document.getElementById('select-all');
+    const monthCheckboxes = Array.from(document.querySelectorAll('input[name="appliedmonth"]'));
+    selectAllButton.addEventListener('click', () => { const shouldSelect = monthCheckboxes.some((checkbox) => !checkbox.checked); monthCheckboxes.forEach((checkbox) => { checkbox.checked = shouldSelect; }); selectAllButton.textContent = shouldSelect ? 'Clear all' : 'Select all'; });
+  </script>
+   
+</body>
+</html>

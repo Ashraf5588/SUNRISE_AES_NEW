@@ -145,6 +145,16 @@ exports.dailydashboard = async (req, res) => {
     const selectedDay = Number.parseInt(req.query.day, 10) || currentDate.day;
     const selectedDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
 
+    const isAdmin = req.user && String(req.user.role || '').toUpperCase() === 'ADMIN';
+    const viewerIdentities = new Set(
+      [req.user && req.user.teacherName, req.user && req.user.username]
+        .map((value) => String(value || '').trim().toLowerCase())
+        .filter(Boolean)
+    );
+    const canViewComplaint = (complaint) =>
+      isAdmin ||
+      viewerIdentities.has(String(complaint && complaint.by || '').trim().toLowerCase());
+
     const portfolios = await Portfolio.find({}).lean();
     const regs = portfolios.map((portfolio) => portfolio.reg).filter(Boolean);
     const students = regs.length ? await studentRecord.find({ reg: { $in: regs } }).lean() : [];
@@ -157,7 +167,9 @@ exports.dailydashboard = async (req, res) => {
     const rows = portfolios.map((portfolio) => {
       const reg = String(portfolio.reg || '');
       const student = studentsByReg[reg] || {};
-      const complaints = Array.isArray(portfolio.complaints) ? portfolio.complaints : [];
+      const complaints = Array.isArray(portfolio.complaints)
+        ? portfolio.complaints.filter(canViewComplaint)
+        : [];
       const normalizedComplaints = complaints.map((complaint) => ({
         ...complaint,
         nepaliDate: complaint.nepaliDate || (complaint.date ? String(bs.ADToBS(new Date(complaint.date)) || '') : '')

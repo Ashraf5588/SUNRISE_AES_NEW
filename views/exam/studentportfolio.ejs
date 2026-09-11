@@ -1309,6 +1309,9 @@
         <% const roster = rosterByReg && rosterByReg[reg] ? rosterByReg[reg] : {}; %>
         <% const portfolio = portfolioByReg ? portfolioByReg[reg] : null; %>
         <% const complaints = portfolio && Array.isArray(portfolio.complaints) ? portfolio.complaints : []; %>
+            <% const participations = portfolio && Array.isArray(portfolio.participations) ? portfolio.participations : []; %>
+            <% const awards = portfolio && Array.isArray(portfolio.awards) ? portfolio.awards : []; %>
+            <% const scholarships = portfolio && Array.isArray(portfolio.scholarships) ? portfolio.scholarships : []; %>
       <% const healthRecords = healthRecordsByReg && Array.isArray(healthRecordsByReg[reg]) ? healthRecordsByReg[reg] : []; %>
       <% const callLogs = callLogsByReg && Array.isArray(callLogsByReg[reg]) ? callLogsByReg[reg] : []; %>
       <% const absentSummary = absentSummaryByReg && absentSummaryByReg[reg] ? absentSummaryByReg[reg] : { totalAbsent: 0, monthCounts: {}, reasons: [] }; %>
@@ -1350,6 +1353,9 @@
                    <div class="profile-right">
                       <button type="button" class="print-btn no-print" onclick="window.print()">Print Portfolio</button>
                       <button type="button" class="no-print" onclick="addComplaint('<%= reg %>')" style="background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Add Complaint</button>
+                      <button type="button" class="no-print" onclick="openAchievementModal('<%= reg %>', 'participation')" style="background-color: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Add Participation</button>
+                      <button type="button" class="no-print" onclick="openAchievementModal('<%= reg %>', 'award')" style="background-color: #d97706; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Add Award</button>
+                      <button type="button" class="no-print" onclick="openAchievementModal('<%= reg %>', 'scholarship')" style="background-color: #059669; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Add Scholarship</button>
                       <button type="button" class="no-print" onclick="openCallLogModal('<%= reg %>')" style="background-color: #0f766e; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Add Call Record</button>
                          <button type="button" class="no-print" onclick="addInformation('<%= reg %>')" style="background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Add Information</button>
                          <div class="zone-badge <%= zoneClass %>">
@@ -1415,6 +1421,27 @@
                          <div class="detail-item"><strong>TV at Home:</strong> <%= roster.tvatHome || '-' %></div>
                          <div class="detail-item"><strong>Internet at Home:</strong> <%= roster.internetAtHome || '-' %></div>
                          <div class="detail-item"><strong>Fee Paid Duration:</strong> <%= roster.feepaidduration || '-' %></div>
+                      </div>
+                   </div>
+
+                   <div class="details-grid">
+                      <div class="details-group">
+                         <div class="details-title">Participations</div>
+                         <% if (participations.length) { participations.forEach((item) => { %>
+                            <div class="detail-item"><strong><%= item.event || '-' %></strong> | <%= item.position || '-' %> | <%= item.nepaliDate || (item.date ? new Date(item.date).toLocaleDateString() : '-') %></div>
+                         <% }); } else { %><div class="detail-item">No participation records yet.</div><% } %>
+                      </div>
+                      <div class="details-group">
+                         <div class="details-title">Awards</div>
+                         <% if (awards.length) { awards.forEach((item) => { %>
+                            <div class="detail-item"><strong><%= item.event || '-' %></strong> | <%= item.position || '-' %> | <%= item.nepaliDate || (item.date ? new Date(item.date).toLocaleDateString() : '-') %></div>
+                         <% }); } else { %><div class="detail-item">No award records yet.</div><% } %>
+                      </div>
+                      <div class="details-group">
+                         <div class="details-title">Scholarships</div>
+                         <% if (scholarships.length) { scholarships.forEach((item) => { %>
+                            <div class="detail-item"><strong><%= item.reason || '-' %></strong> | Amount: <%= item.amount || '-' %> | Year: <%= item.year || '-' %> | <%= item.nepaliDate || (item.date ? new Date(item.date).toLocaleDateString() : '-') %></div>
+                         <% }); } else { %><div class="detail-item">No scholarship records yet.</div><% } %>
                       </div>
                    </div>
 
@@ -2099,6 +2126,34 @@
    </div>
 </div>
 
+<div id="achievementModal" class="modal-backdrop" aria-hidden="true">
+   <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="achievementModalTitle">
+      <div class="modal-header">
+         <div class="modal-title" id="achievementModalTitle">Add Participation</div>
+         <button type="button" class="btn-secondary" onclick="closeAchievementModal()">Close</button>
+      </div>
+      <form id="achievementForm">
+         <div class="modal-body" style="grid-template-columns: 1fr;">
+            <input id="achievementReg" type="hidden" />
+            <input id="achievementType" type="hidden" />
+            <div class="modal-field"><label for="achievementDate">Date</label><input id="achievementDate" type="date" /></div>
+            <div class="modal-field"><label for="achievementNepaliDate">Nepali Date</label><input id="achievementNepaliDate" type="text" placeholder="YYYY-MM-DD" /></div>
+            <div id="achievementEventFields">
+               <div class="modal-field"><label for="achievementEvent">Event</label><input id="achievementEvent" type="text" required /></div>
+               <div class="modal-field"><label for="achievementPosition">Position</label><input id="achievementPosition" type="text" /></div>
+            </div>
+            <div id="scholarshipFields" style="display: none;">
+               <div class="modal-field"><label for="scholarshipAmount">Amount</label><input id="scholarshipAmount" type="text" /></div>
+               <div class="modal-field"><label for="scholarshipReason">Reason</label><textarea id="scholarshipReason"></textarea></div>
+               <div class="modal-field"><label for="scholarshipYear">Year</label><input id="scholarshipYear" type="text" /></div>
+            </div>
+            <div id="achievementStatus" class="call-status"></div>
+         </div>
+         <div class="modal-footer"><button type="button" class="btn-secondary" onclick="closeAchievementModal()">Cancel</button><button type="submit">Save</button></div>
+      </form>
+   </div>
+</div>
+
 <div id="callLogModal" class="modal-backdrop" aria-hidden="true">
    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="callLogModalTitle">
       <div class="modal-header">
@@ -2156,6 +2211,8 @@
    const healthRecordsByReg = <%- JSON.stringify(typeof healthRecordsByReg !== 'undefined' ? healthRecordsByReg : {}) %>;
    const callLogsByReg = <%- JSON.stringify(typeof callLogsByReg !== 'undefined' ? callLogsByReg : {}) %>;
    const absentSummaryByReg = <%- JSON.stringify(typeof absentSummaryByReg !== 'undefined' ? absentSummaryByReg : {}) %>;
+   const achievementForm = document.getElementById('achievementForm');
+   const achievementStatus = document.getElementById('achievementStatus');
    const studentCards = Array.from(document.querySelectorAll('.student-card'));
    const filterSearch = document.getElementById('filterSearch');
    const filterFamily = document.getElementById('filterFamily');
@@ -2555,6 +2612,64 @@
 
    function addComplaint(reg) {
       openComplaintModal(reg);
+   }
+
+   function openAchievementModal(reg, type) {
+      const isScholarship = type === 'scholarship';
+      setField('achievementReg', reg);
+      setField('achievementType', type);
+      setField('achievementDate', '');
+      setField('achievementNepaliDate', '');
+      setField('achievementEvent', '');
+      setField('achievementPosition', '');
+      setField('scholarshipAmount', '');
+      setField('scholarshipReason', '');
+      setField('scholarshipYear', '');
+      document.getElementById('achievementEventFields').style.display = isScholarship ? 'none' : 'block';
+      document.getElementById('scholarshipFields').style.display = isScholarship ? 'block' : 'none';
+      document.getElementById('achievementEvent').required = !isScholarship;
+      document.getElementById('scholarshipAmount').required = isScholarship;
+      document.getElementById('scholarshipReason').required = isScholarship;
+      document.getElementById('scholarshipYear').required = isScholarship;
+      document.getElementById('achievementModalTitle').textContent = `Add ${isScholarship ? 'Scholarship' : type === 'award' ? 'Award' : 'Participation'}`;
+      achievementStatus.textContent = '';
+      document.getElementById('achievementModal').classList.add('is-open');
+      document.getElementById('achievementModal').setAttribute('aria-hidden', 'false');
+   }
+
+   function closeAchievementModal() {
+      const modal = document.getElementById('achievementModal');
+      modal.classList.remove('is-open');
+      modal.setAttribute('aria-hidden', 'true');
+   }
+
+   if (achievementForm) {
+      achievementForm.addEventListener('submit', async (event) => {
+         event.preventDefault();
+         const type = document.getElementById('achievementType').value;
+         const payload = {
+            reg: document.getElementById('achievementReg').value,
+            type,
+            date: document.getElementById('achievementDate').value,
+            nepaliDate: document.getElementById('achievementNepaliDate').value,
+            event: document.getElementById('achievementEvent').value,
+            position: document.getElementById('achievementPosition').value,
+            amount: document.getElementById('scholarshipAmount').value,
+            reason: document.getElementById('scholarshipReason').value,
+            year: document.getElementById('scholarshipYear').value
+         };
+         achievementStatus.textContent = 'Saving...';
+         try {
+            const response = await fetch('/studentportfolio/achievement', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.message || 'Unable to save record.');
+            closeAchievementModal();
+            window.location.reload();
+         } catch (error) {
+            achievementStatus.textContent = error.message;
+            achievementStatus.style.color = '#dc2626';
+         }
+      });
    }
 
    function openCallLogModal(reg) {

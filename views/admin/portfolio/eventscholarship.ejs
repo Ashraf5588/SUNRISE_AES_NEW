@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Event and Scholarship Report</title>
+	<style>
+		:root { --ink: #172033; --muted: #64748b; --line: #cbd5e1; --accent: #0f766e; }
+		* { box-sizing: border-box; }
+		body { margin: 0; padding: 24px; background: #eef2f6; color: var(--ink); font-family: Arial, sans-serif; }
+		.controls { max-width: 1120px; margin: 0 auto 18px; padding: 18px; background: #fff; border: 1px solid var(--line); border-radius: 10px; }
+		.controls h1 { margin: 0 0 14px; font-size: 22px; }
+		.control-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+		label { display: grid; gap: 5px; color: var(--muted); font-size: 12px; font-weight: 700; }
+		input, select, button { width: 100%; min-height: 40px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+		button { background: var(--accent); color: #fff; border-color: var(--accent); cursor: pointer; font-weight: 700; }
+		.control-actions { display: flex; gap: 10px; margin-top: 12px; justify-content: flex-end; }
+		.control-actions button { width: auto; min-width: 130px; }
+		.report { max-width: 1120px; margin: 0 auto; padding: 28px; background: #fff; }
+		.report-header { text-align: center; border-bottom: 2px solid var(--ink); padding-bottom: 12px; margin-bottom: 18px; }
+		.report-header h2 { margin: 0; font-size: 24px; text-transform: uppercase; }
+		.report-header p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+		.student-report { border: 1px solid var(--line); margin: 0 0 20px; break-inside: avoid; }
+		.student-heading { display: flex; justify-content: space-between; gap: 12px; padding: 9px 12px; background: #f1f5f9; border-bottom: 1px solid var(--line); font-size: 13px; font-weight: 700; }
+		.student-search { position: relative; }
+		.student-suggestions { position: absolute; left: 0; right: 0; top: 100%; z-index: 10; display: none; max-height: 220px; overflow: auto; background: #fff; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 8px 18px rgba(15, 23, 42, .14); }
+		.student-suggestion-item { padding: 9px 10px; border-bottom: 1px solid #e2e8f0; cursor: pointer; }
+		.student-suggestion-item:last-child { border-bottom: 0; }
+		.student-suggestion-item:hover { background: #f8fafc; }
+		.student-suggestion-name { display: block; color: var(--ink); font-weight: 700; }
+		.student-suggestion-meta { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; }
+		.record-section { padding: 10px 12px 12px; }
+		.record-section h3 { margin: 0 0 7px; font-size: 13px; }
+		table { width: 100%; border-collapse: collapse; font-size: 12px; }
+		th, td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; }
+		th { background: #f8fafc; font-size: 11px; text-transform: uppercase; }
+		.empty { color: var(--muted); text-align: center; padding: 30px 10px; }
+		@media (max-width: 720px) { body { padding: 10px; } .control-grid { grid-template-columns: 1fr; } .report { padding: 14px; } .student-heading { flex-direction: column; } }
+		@media print {
+			@page { size: A4; margin: 12mm; }
+			body { padding: 0; background: #fff; }
+			.no-print { display: none !important; }
+			.report { max-width: none; padding: 0; }
+			.report-header h2 { font-size: 19px; }
+			.student-report { margin-bottom: 0; break-inside: avoid; page-break-inside: avoid; }
+			.student-report:not(:first-of-type) { break-before: page; page-break-before: always; }
+		}
+	</style>
+</head>
+<body>
+	<section class="controls no-print">
+		<h1>Event and Scholarship Report</h1>
+		<form method="get" action="/admin/portfolio/eventscholarship">
+			<div class="control-grid">
+				<label>Class and Section
+					<select name="classSection" id="classSection" required>
+						<option value="">Select class and section</option>
+						<% classSections.forEach((item) => { %>
+							<% const value = `${item.studentClass}||${item.section}`; %>
+							<option value="<%= value %>" <%= selectedClass === String(item.studentClass) && selectedSection === String(item.section) ? 'selected' : '' %>><%= item.studentClass %> - <%= item.section %></option>
+						<% }) %>
+					</select>
+				</label>
+				<label>Nepali Academic Year
+					<select name="academicYear">
+						<option value="">All years</option>
+						<% reportYears.forEach((year) => { %><option value="<%= year %>" <%= selectedYear === String(year) ? 'selected' : '' %>><%= year %></option><% }) %>
+					</select>
+				</label>
+				<label class="student-search">Search Student Name
+					<input id="studentSearch" type="search" placeholder="Type 2 letters to search..." autocomplete="off">
+					<div id="studentSuggestions" class="student-suggestions"></div>
+				</label>
+			</div>
+			<input type="hidden" name="studentClass" id="studentClass">
+			<input type="hidden" name="section" id="section">
+			<div class="control-actions"><button type="button" id="searchStudentButton">Search</button><button type="button" onclick="window.print()">Print A4</button><button type="submit">Show Records</button></div>
+		</form>
+	</section>
+
+	<main class="report">
+		<header class="report-header">
+			<h2>Participation, Certificate/Awards and Scholarship Record</h2>
+			<p><%= selectedClass && selectedSection ? `Class ${selectedClass} - Section ${selectedSection}` : 'Select a class and section to view records' %><%= selectedYear ? ` | Year ${selectedYear}` : '' %></p>
+		</header>
+		<% if (reportStudents.length) { reportStudents.forEach((student) => { %>
+				<article class="student-report" data-student-name="<%= String(student.name).toLowerCase() %>" data-student-reg="<%= String(student.reg || '').toLowerCase() %>">
+				<div class="student-heading"><span><%= student.name || '-' %></span><span>Reg: <%= student.reg || '-' %> | Class: <%= student.studentClass %> | Section: <%= student.section %></span></div>
+				<section class="record-section">
+					<h3>Participation Record</h3>
+					<table><thead><tr><th>Date</th><th>Event</th><th>Position</th></tr></thead><tbody>
+						<% student.participations.forEach((item) => { %><tr><td><%= item.nepaliDate || (item.date ? new Date(item.date).toLocaleDateString() : '-') %></td><td><%= item.event || '-' %></td><td><%= item.position || '-' %></td></tr><% }) %>
+						<% if (!student.participations.length) { %><tr><td colspan="3">No participation records</td></tr><% } %>
+					</tbody></table>
+				</section>
+				<section class="record-section">
+					<h3>Certificate/Awards Record</h3>
+					<table><thead><tr><th>Date</th><th>Event</th><th>Position</th></tr></thead><tbody>
+						<% student.awards.forEach((item) => { %><tr><td><%= item.nepaliDate || (item.date ? new Date(item.date).toLocaleDateString() : '-') %></td><td><%= item.event || '-' %></td><td><%= item.position || '-' %></td></tr><% }) %>
+						<% if (!student.awards.length) { %><tr><td colspan="3">No award records</td></tr><% } %>
+					</tbody></table>
+				</section>
+				<% if (student.scholarships.length) { %><section class="record-section">
+					<h3>Scholarship Record</h3>
+					<table><thead><tr><th>SN</th><th>Name</th><th>Class</th><th>Section</th><th>Scholarship Taken</th><th>Amount</th><th>Date</th><th>Year</th></tr></thead><tbody>
+						<% student.scholarships.forEach((item, index) => { %><tr><td><%= index + 1 %></td><td><%= student.name || '-' %></td><td><%= student.studentClass %></td><td><%= student.section %></td><td><%= item.reason || '-' %></td><td><%= item.amount || '-' %></td><td><%= item.nepaliDate || (item.date ? new Date(item.date).toLocaleDateString() : '-') %></td><td><%= item.year || '-' %></td></tr><% }) %>
+					</tbody></table>
+				</section><% } %>
+			</article>
+		<% }) } else { %><div class="empty">No records found for the selected class, section, and year.</div><% } %>
+	</main>
+	<script>
+		const classSection = document.getElementById('classSection');
+		const studentClass = document.getElementById('studentClass');
+		const section = document.getElementById('section');
+		const search = document.getElementById('studentSearch');
+		const suggestions = document.getElementById('studentSuggestions');
+		let searchTimer;
+		function syncClassSection() {
+			const parts = classSection.value.split('||');
+			studentClass.value = parts[0] || '';
+			section.value = parts[1] || '';
+		}
+		classSection.addEventListener('change', syncClassSection);
+		syncClassSection();
+		function filterStudents() {
+			const query = search.value.trim().toLowerCase();
+			document.querySelectorAll('.student-report').forEach((card) => {
+				card.hidden = query && !card.dataset.studentName.includes(query) && !card.dataset.studentReg.includes(query);
+			});
+		}
+		function clearSuggestions() {
+			suggestions.innerHTML = '';
+			suggestions.style.display = 'none';
+		}
+		function showSuggestions(students) {
+			if (!students.length) {
+				suggestions.innerHTML = '<div class="student-suggestion-item"><span class="student-suggestion-meta">No matches found</span></div>';
+				suggestions.style.display = 'block';
+				return;
+			}
+			suggestions.innerHTML = students.map((student) => `
+				<div class="student-suggestion-item" data-name="${encodeURIComponent(student.name || '')}" data-reg="${encodeURIComponent(student.reg || '')}">
+					<span class="student-suggestion-name">${student.name || '-'}</span>
+					<span class="student-suggestion-meta">Reg: ${student.reg || '-'} | Class: ${student.studentClass || '-'} | Section: ${student.section || '-'}</span>
+				</div>
+			`).join('');
+			suggestions.style.display = 'block';
+		}
+		async function searchStudents() {
+			const query = search.value.trim();
+			if (query.length < 2) {
+				clearSuggestions();
+				filterStudents();
+				return;
+			}
+			try {
+				const response = await fetch(`/healthrecord/students?q=${encodeURIComponent(query)}`);
+				if (!response.ok) throw new Error('Student search failed');
+				const students = await response.json();
+				showSuggestions(Array.isArray(students) ? students : []);
+			} catch (error) {
+				clearSuggestions();
+			}
+		}
+		search.addEventListener('input', filterStudents);
+		search.addEventListener('input', () => {
+			clearTimeout(searchTimer);
+			searchTimer = setTimeout(searchStudents, 200);
+		});
+		document.getElementById('searchStudentButton').addEventListener('click', filterStudents);
+		suggestions.addEventListener('click', (event) => {
+			const item = event.target.closest('.student-suggestion-item[data-name]');
+			if (!item) return;
+			search.value = decodeURIComponent(item.dataset.name || '');
+			filterStudents();
+			clearSuggestions();
+		});
+		document.addEventListener('click', (event) => {
+			if (!event.target.closest('.student-search')) clearSuggestions();
+		});
+	</script>
+</body>
+</html>
