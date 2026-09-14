@@ -351,12 +351,12 @@ app.get('/convert-docx/:filename', (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
+app.use(billing)
 app.use(cirriculum)
 app.use(attendance)
 app.use(student)
 app.use(aspectRouter)
-app.use(billing)
+
 app.use(express.static('public'));
 const PORT = process.env.PORT || 80;
 app.listen(PORT, () => {

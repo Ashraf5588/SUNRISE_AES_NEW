@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Math</title>
+  <title>Nepali</title>
   <link rel="stylesheet" href="/form.css">
   <link rel="stylesheet" href="/mobile-form-enhancements.css">
  <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
@@ -99,9 +99,6 @@
 
     <select id="aspectselect" onchange="showTools()" name="aspectName">
       <option disabled selected>Select Aspect</option>
-     <%aspectcontainerData.aspects.forEach((aspect, aspectIndex) => { %>
-        <option value="<%= aspect.aspectName %>" data-aspectIndex="<%= aspectIndex %>"><%= aspect.aspectName %></option>
-      <% }); %>
     </select>
   
      <select id="toolselect" onchange="showTable()">
@@ -205,21 +202,30 @@ function filterLO() {
         learningOutcomeSelect.appendChild(option);
         
     });
+
+      document.getElementById('aspectselect').innerHTML = '<option disabled selected>Select Aspect</option>';
+      document.getElementById('toolselect').innerHTML = '<option disabled selected>Select Tool</option>';
+      document.querySelector('.themeTable').style.display = 'none';
 }
 
 </script>
 
 <script>
   function showTools() {
-    const selectedAspectIndex =
-        document.getElementById("aspectselect").selectedOptions[0].dataset.aspectindex;
+    const selectedAspectName = document.getElementById("aspectselect").value;
+    const selectedThemeIndex = document.getElementById("themeselect").selectedOptions[0].dataset.themeindex;
+    const selectedLOIndex = document.getElementById("learningoutcomeselect").selectedIndex - 1;
+    const selectedLearningOutcome = themeData[0].themes[selectedThemeIndex].learningOutcome[selectedLOIndex];
+    const selectedThemeAspect = (selectedLearningOutcome.assessmentAspects || []).find(
+        aspect => aspect.aspectName === selectedAspectName
+    );
 
     const toolsSelectbtn = document.getElementById("toolselect");
     toolsSelectbtn.innerHTML = '<option disabled selected>Select Tool</option>';
 
-    const aspectcontainerData = JSON.parse(document.getElementById("aspectcontainerData").value);
+    if (!selectedThemeAspect) return;
 
-    aspectcontainerData.aspects[selectedAspectIndex].tools.forEach((tool, toolIndex) => {
+    (selectedThemeAspect.tools || []).forEach((tool, toolIndex) => {
         const option = document.createElement("option");
         option.value = tool.toolName;
         option.textContent = tool.toolName;
@@ -238,9 +244,22 @@ function filterLO() {
         document.getElementById("learningoutcomeselect").selectedIndex-1;
         console.log("Selected LO Index:", selectedLOIndex);
 
-    // adding name for selected lo to save in db
-    // document.getElementById('selectedLOName').name = `subjects[0][themes][${selectedThemeIndex}][learningOutcome][${selectedLOIndex}][learningOutcomeName]`;
-    document.getElementById('selectedLOName').value = themeData[0].themes[selectedThemeIndex].learningOutcome[selectedLOIndex].learningOutcomeName;
+    const selectedLearningOutcome = themeData[0].themes[selectedThemeIndex].learningOutcome[selectedLOIndex];
+    document.getElementById('selectedLOName').value = selectedLearningOutcome.learningOutcomeName;
+
+    const aspectSelect = document.getElementById('aspectselect');
+    const toolSelect = document.getElementById('toolselect');
+    aspectSelect.innerHTML = '<option disabled selected>Select Aspect</option>';
+    toolSelect.innerHTML = '<option disabled selected>Select Tool</option>';
+
+    (selectedLearningOutcome.assessmentAspects || []).forEach((aspect) => {
+      const option = document.createElement('option');
+      option.value = aspect.aspectName;
+      option.textContent = aspect.aspectName;
+      aspectSelect.appendChild(option);
+    });
+
+    document.querySelector('.themeTable').style.display = 'none';
   }
 </script>
 <script>
@@ -260,21 +279,32 @@ function showTable() {
     const selectedLOIndex =
         document.getElementById("learningoutcomeselect").selectedIndex - 1;
 
-    tables[0].style.display = "table"; // Show table
-
     const studentData =
         JSON.parse(document.getElementById("studentData").value);
 
-    const selectedToolName =
-        document.getElementById("toolselect").value;
+    const selectedToolName = document.getElementById("toolselect").value;
 
     document.getElementById("toolname").value =
         selectedToolName;
-        const aspectcontainerData = JSON.parse(document.getElementById("aspectcontainerData").value);
-        const aspectIndex = document.getElementById("aspectselect").selectedIndex-1;
-        console.log("Selected Aspect Index:", aspectIndex);
-        const toolIndex = document.getElementById("toolselect").selectedIndex-1;
-        console.log("Selected Tool Index:", toolIndex);
+    const aspectcontainerData = JSON.parse(document.getElementById("aspectcontainerData").value || 'null');
+    const selectedAspectName = document.getElementById("aspectselect").value;
+    const normalizeName = value => String(value || '').trim();
+    const selectedAspect = (aspectcontainerData && aspectcontainerData.aspects || []).find(
+      aspect => normalizeName(aspect.aspectName) === normalizeName(selectedAspectName)
+    );
+    const selectedTool = selectedAspect && (selectedAspect.tools || []).find(
+      tool => normalizeName(tool.toolName) === normalizeName(selectedToolName)
+    );
+
+    if (!selectedAspect || !selectedTool) {
+        tables[0].style.display = "table";
+        indicatorTDs.forEach(cell => {
+            cell.textContent = "No indicators found for this aspect and tool.";
+        });
+        return;
+    }
+
+    tables[0].style.display = "table";
 
     const existingMap =
         JSON.parse(document.getElementById("existingMap").value);
@@ -290,7 +320,7 @@ function showTable() {
             `${themeData[0].themes[selectedThemeIndex].themeName}|` +
             `${themeData[0].themes[selectedThemeIndex]
                 .learningOutcome[selectedLOIndex]
-                .learningOutcomeName}|` + `${aspectcontainerData.aspects[aspectIndex].aspectName}|` +
+                .learningOutcomeName}|` + `${selectedAspect.aspectName}|` +
             `${selectedToolName}`;
 
         const existingRecord = existingMap[key];
@@ -305,7 +335,7 @@ function showTable() {
 }
 
         
-            aspectcontainerData.aspects[aspectIndex].tools[toolIndex].indicators
+            (selectedTool.indicators || [])
             .forEach((indicator, index) => {
 
                 // Indicator name

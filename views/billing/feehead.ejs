@@ -62,9 +62,21 @@
         <form action="<%= editFeeHead ? '/feehead/' + editFeeHead._id + '/edit' : '/feehead' %>" method="POST">
           <div class="fee-form-grid">
             <div class="fee-field"><label for="feehead">Fee head name</label><input type="text" id="feehead" name="feehead" value="<%= editFeeHead ? editFeeHead.feehead : '' %>" placeholder="e.g. Admission Fee" required></div>
-            <div class="fee-field"><label for="reportname">Report name</label><input type="text" id="reportname" name="reportname" value="<%= editFeeHead ? editFeeHead.reportname || '' : '' %>" placeholder="e.g. Admission" required></div>
+            <div>
+              <select name="frequency" id="frequency" required>
+                <option value="">Select frequency</option>
+                <option value="monthly" <%= editFeeHead && editFeeHead.frequency === 'monthly' ? 'selected' : '' %>>Monthly</option>
+                <option value="quarterly" <%= editFeeHead && editFeeHead.frequency === 'quarterly' ? 'selected' : '' %>>Quarterly</option>
+                <option value="half-yearly" <%= editFeeHead && editFeeHead.frequency === 'half-yearly' ? 'selected' : '' %>>Half-Yearly</option>
+                <option value="yearly" <%= editFeeHead && editFeeHead.frequency === 'yearly' ? 'selected' : '' %>>Yearly</option>
+              </select>
+            </div>
+            <div class="fee-field"><label for="reportname">Report name</label><input type="text" id="reportname" name="reportname" value="<%= editFeeHead ? editFeeHead.reportname || '' : '' %>" placeholder="e.g. Admission" required>
+              
+            </div>
+            <div class="fee-field"><label for="group">Group</label><input type="text" id="group" name="group" value="<%= editFeeHead ? editFeeHead.group || '' : '' %>" placeholder="e.g. Academic" required></div>
             <div class="frequency-field">
-              <div class="frequency-heading"><span class="frequency-label">Frequency</span><button type="button" class="select-all" id="select-all">Select all</button></div>
+              <div class="frequency-heading"><span class="frequency-label">Applied Month</span><button type="button" class="select-all" id="select-all">Select all</button></div>
               <div class="month-grid">
                 <% const months = [['Baisakh','baisakh'],['Jestha','jestha'],['Ashad','ashad'],['Shrawan','shrawan'],['Bhadra','bhadra'],['Ashwin','ashwin'],['Kartik','kartik'],['Mangsir','mangsir'],['Poush','poush'],['Magh','magh'],['Falgun','falgun'],['Chaitra','chaitra']]; %>
                 <% months.forEach(([label, value]) => { %><label class="month-option"><input type="checkbox" name="appliedmonth" value="<%= value %>" <%= editFeeHead && (editFeeHead.appliedmonth || []).includes(value) ? 'checked' : '' %>><span><%= label %></span></label><% }); %>
@@ -76,8 +88,8 @@
       </section>
       <section class="fee-panel table-panel">
         <div class="table-heading"><h2>Fee heads</h2><span><%= feeheads.length %> saved</span></div>
-        <% if (feeheads.length) { %><div class="table-scroll"><table class="fee-table"><thead><tr><th>SN</th><th>Fee head</th><th>Report name</th><% months.forEach(([label]) => { %><th><%= label %></th><% }); %><th>Actions</th></tr></thead><tbody>
-          <% feeheads.forEach((item, index) => { %><tr><td><%= index + 1 %></td><td><strong><%= item.feehead %></strong></td><td><%= item.reportname || '-' %></td><% months.forEach(([, value]) => { const applied = (item.appliedmonth || []).includes(value); %><td class="month-cell <%= applied ? '' : 'not-applied' %>"><%= applied ? '✓' : '-' %></td><% }); %><td><div class="fee-actions"><a class="fee-action" href="/feehead/<%= item._id %>/edit" title="Edit fee head" aria-label="Edit fee head" style="background-color: #007bff;color:white">✎</a><form action="/feehead/<%= item._id %>/delete" method="POST" onsubmit="return confirm('Delete this fee head?');"><button type="submit" class="fee-action delete" style="background-color: #ff001e;color:white" title="Delete fee head" aria-label="Delete fee head">⌫</button></form></div></td></tr><% }); %>
+        <% if (feeheads.length) { %><div class="table-scroll"><table class="fee-table"><thead><tr><th>SN</th><th>Fee head</th><th>Frequency</th><th>Report name</th><% months.forEach(([label]) => { %><th><%= label %></th><% }); %><th>Actions</th></tr></thead><tbody>
+          <% feeheads.forEach((item, index) => { %><tr><td><%= index + 1 %></td><td><strong><%= item.feehead %></strong></td><td><%= item.frequency || '-' %></td><td><%= item.reportname || '-' %></td><% months.forEach(([, value]) => { const applied = (item.appliedmonth || []).includes(value); %><td class="month-cell <%= applied ? '' : 'not-applied' %>"><%= applied ? '✓' : '-' %></td><% }); %><td><div class="fee-actions"><a class="fee-action" href="/feehead/<%= item._id %>/edit" title="Edit fee head" aria-label="Edit fee head" style="background-color: #007bff;color:white">✎</a><form action="/feehead/<%= item._id %>/delete" method="POST" onsubmit="return confirm('Delete this fee head?');"><button type="submit" class="fee-action delete" style="background-color: #ff001e;color:white" title="Delete fee head" aria-label="Delete fee head">⌫</button></form></div></td></tr><% }); %>
         </tbody></table></div><% } else { %><div class="empty-state">No fee heads have been added yet.</div><% } %>
       </section>
     </div>

@@ -1520,7 +1520,9 @@ const model = await getSlipModel();
         action: "created",
         reg,
         worksheet: worksheetNumber,
-        worksheetGrades: student.worksheetGrades
+        worksheetGrades: student.worksheetGrades,
+        theorymarks: student.theorymarks,
+        attendance: student.attendance
       });
     }
 
@@ -1568,7 +1570,7 @@ const model = await getSlipModel();
 
     console.log(
       "Final worksheetGrades:",
-      student.worksheetGrades
+      student.worksheetGrades,student.theorymarks,student.attendance
     );
 
     return res.json({
@@ -1576,6 +1578,8 @@ const model = await getSlipModel();
       action: "updated",
       reg,
       worksheet: worksheetNumber,
+      theorymarks: student.theorymarks,
+      attendance: student.attendance,
       worksheetGrades: student.worksheetGrades
     });
 

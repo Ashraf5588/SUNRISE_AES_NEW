@@ -69,7 +69,9 @@
       <option value="<%= i %>" <%= existingData[0]?.worksheet === i ? 'selected' : '' %>>Worksheet <%= i %></option>
     <% } %>
   </select>
-<table cellspacing="0" border="1"> 
+
+
+<table cellspacing="0" border="1" id="entrytable"> 
   <tr>
    
   <Th>Name</Th>
@@ -87,8 +89,27 @@
       <input type="hidden" name="reg[<%= student.reg %>]" value="<%= student.reg %>">
       <input type="hidden" name="name[<%= student.reg %>]" value="<%= student.name %>">
       
-      <%=student.roll%>. <%= student.name %></td>
-    <td><input type="text" name="theorymarks[<%= student.reg %>]" value="<%= existingData[0]?.theorymarks || 0 %>" /></td>
+      <%=student.roll%>. <%= student.name %>  &ensp;Ab <input type="checkbox" placeholder="Ab" name="status[<%= student.reg %>]" value="1" <%= existingData.find(item => item.reg === student.reg)?.status === 1 ? 'checked' : '' %> > 
+    </td>
+    <td>
+  <select
+    class="theoryGrade"
+    name="theorymarks[<%= student.reg %>]"
+    data-reg="<%= student.reg %>"
+  >
+    <option value="">Select Grade</option>
+
+    <option value="4.0">A+</option>
+    <option value="3.6">A</option>
+    <option value="3.2">B+</option>
+    <option value="2.8">B</option>
+    <option value="2.4">C+</option>
+    <option value="2.0">C</option>
+    <option value="1.6">D</option>
+    <option value="0.0">NG</option>
+    <option value="0.0">Absent</option>
+  </select>
+</td>
     <td><select  class="worksheetGrade" id="worksheetgrade_<%= student._id %>" name="worksheetGrades[<%= student.reg %>]" data-reg = <%=student.reg%>  >
       <option selected disabled>Select Grade</option>
       <option value="A+" >A+</option>
@@ -102,7 +123,14 @@
       <option value="NG" >NG</option>
       <option value="Ab">Absent</option>
     </select></td>
-    <td><input type="number" name="attendance[<%= student.reg %>]"></td>
+   <td>
+  <input
+    type="number"
+    name="attendance[<%= student.reg %>]"
+    value="<%= existingData.find(item => item.reg === student.reg)?.attendance ?? '' %>"
+    data-reg="<%= student.reg %>"
+  >
+</td>
   </tr>
 <% }) %>
 </table>
@@ -178,7 +206,7 @@
 
         if (selectedSubject && selectedClassSection && selectedTerminal && selectedAcademicYear) {
           const [selectedClass, selectedSection] = selectedClassSection.split('-');
-          const url = `/entryform?subject=${encodeURIComponent(selectedSubject)}&studentClass=${encodeURIComponent(selectedClass)}&section=${encodeURIComponent(selectedSection)}&terminal=${encodeURIComponent(selectedTerminal)}&academicYear=${encodeURIComponent(selectedAcademicYear)}`;
+          const url = `/entryform?subject=${encodeURIComponent(selectedSubject)}&studentClass=${encodeURIComponent(selectedClass)}&section=${encodeURIComponent(selectedSection)}&terminal=${encodeURIComponent(selectedTerminal)}&academicYear=${encodeURIComponent(selectedAcademicYear)}&worksheet=1`;
           window.location.href = url;
         }
       });
@@ -307,8 +335,8 @@
       document.querySelectorAll('.worksheetGrade').forEach(select => {
         select.addEventListener('change', autoSave);
       });
-      document.querySelectorAll('input[name^="theorymarks"]').forEach(input => {
-        input.addEventListener('input', autoSave);
+      document.querySelectorAll('select[name^="theorymarks"]').forEach(select => {
+        select.addEventListener('change', autoSave);
       });
       document.querySelectorAll('input[name^="attendance"]').forEach(input => {
         input.addEventListener('input', autoSave);
@@ -317,5 +345,50 @@
       
 
     </script>
+
+   <script>
+  // Hide table only when no worksheet is selected
+  const worksheetSelect = document.querySelector('select[name="worksheet"]');
+  const entryTable = document.getElementById('entrytable');
+
+  function updateTableVisibility() {
+    if (worksheetSelect.value) {
+      entryTable.style.display = 'table';
+    } else {
+      entryTable.style.display = 'none';
+    }
+  }
+
+  // Run immediately after page loads
+  updateTableVisibility();
+
+  // Run whenever worksheet changes
+  worksheetSelect.addEventListener('change', function () {
+    updateTableVisibility();
+  });
+</script>
+<script>
+  // Load saved theory marks and display them as grades
+  document.querySelectorAll('.theoryGrade').forEach(select => {
+
+    const reg = select.dataset.reg;
+
+    const studentData = existingData.find(
+      item => String(item.reg) === String(reg)
+    );
+
+    if (
+      studentData &&
+      studentData.theorymarks !== null &&
+      studentData.theorymarks !== undefined
+    ) {
+      const savedTheoryMark = Number(studentData.theorymarks).toFixed(1);
+      if ([...select.options].some(option => option.value === savedTheoryMark)) {
+        select.value = savedTheoryMark;
+      }
+    }
+
+  });
+</script>
 </body>
 </html>

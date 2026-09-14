@@ -2630,9 +2630,22 @@ exports.searchTeacherRecordTeachers = async (req, res) => {
       .limit(10)
       .lean();
 
-    const results = staffRows
+    let results = staffRows
       .map((staff) => String(staff.staffName || '').trim())
       .filter(Boolean);
+
+    if (!results.length) {
+      const userRows = await userlist.find({
+        teacherName: { $regex: query, $options: 'i' }
+      })
+        .select('teacherName')
+        .limit(10)
+        .lean();
+
+      results = userRows
+        .map((user) => String(user.teacherName || '').trim())
+        .filter(Boolean);
+    }
 
     res.status(200).json(results);
   } catch (error) {
