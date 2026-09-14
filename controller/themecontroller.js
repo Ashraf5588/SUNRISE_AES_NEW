@@ -2896,3 +2896,110 @@ students.forEach(student => {
         res.status(500).send(e.message);
     }
 };
+
+const THEME_COUNTER_CLASSES = ['one', '1', 'two', '2', 'three', '3'];
+
+const getThemeCounterModel = (studentClass, academicYear) => {
+  const collectionName = `themeForStudent-${studentClass}-${academicYear}`;
+  if (mongoose.models[collectionName]) return mongoose.models[collectionName];
+  return mongoose.model(collectionName, new mongoose.Schema({}, { strict: false }), collectionName);
+};
+
+exports.themeAssessmentCounter = async (req, res) => {
+  try {
+    const setup = await marksheetSetup.findOne({}).lean();
+    const academicYear = String(setup?.academicYear || '');
+    const selectedClassSection = String(req.query.classSection || '').trim();
+    const selectedParts = selectedClassSection.split('|');
+    const classFilter = String(req.query.studentClass || selectedParts[0] || '').trim();
+    const sectionFilter = String(req.query.section || selectedParts[1] || '').trim();
+    const eligibleClassRows = (await studentClass.find({}).lean().sort({ studentClass: 1, section: 1 }))
+      .filter((item) => THEME_COUNTER_CLASSES.includes(String(item.studentClass || '').trim().toLowerCase()));
+    const classRows = eligibleClassRows
+      .filter((item) => !classFilter || String(item.studentClass) === classFilter)
+      .filter((item) => !sectionFilter || String(item.section) === sectionFilter);
+    const classSectionOptions = eligibleClassRows
+      .filter((item) => item.studentClass && item.section)
+      .map((item) => ({ value: `${item.studentClass}|${item.section}`, label: `${item.studentClass} - ${item.section}` }));
+    const tables = [];
+
+    for (const classItem of classRows) {
+      const roster = await studentRecord.find({ studentClass: classItem.studentClass, section: classItem.section })
+        .select('reg roll').lean();
+      const rosterKeys = new Set(roster.map((student) => String(student.reg || `roll:${student.roll || ''}`)));
+      const themeConfig = await getThemeFormat(classItem.studentClass)
+        .find({}).lean();
+      const records = await getThemeCounterModel(classItem.studentClass, academicYear).find({
+        studentClass: classItem.studentClass, section: classItem.section
+      }).select('reg roll subject themeName learningOutcomeName obtainedMarksBefore obtainedMarksAfter').lean();
+      const subjects = new Map();
+
+      themeConfig.forEach((subjectDoc) => {
+        const subject = String(subjectDoc.subject || '').trim();
+        if (!subject) return;
+        if (!subjects.has(subject)) subjects.set(subject, []);
+        (subjectDoc.themes || []).forEach((theme) => {
+          (theme.learningOutcome || []).forEach((outcome) => {
+            subjects.get(subject).push({
+              themeName: theme.themeName || '-',
+              learningOutcomeName: outcome.learningOutcomeName || '-',
+              beforeKeys: new Set(),
+              afterKeys: new Set(),
+              enteredKeys: new Set()
+            });
+          });
+        });
+      });
+
+      records.forEach((record) => {
+        const subjectRows = subjects.get(String(record.subject || '').trim()) || [];
+        const row = subjectRows.find((item) => item.themeName === record.themeName && item.learningOutcomeName === record.learningOutcomeName);
+        const key = String(record.reg || `roll:${record.roll || ''}`);
+        if (row && rosterKeys.has(key)) {
+          if (Number(record.obtainedMarksBefore) !== 0) row.beforeKeys.add(key);
+          if (Number(record.obtainedMarksAfter) !== 0) row.afterKeys.add(key);
+          if (Number(record.obtainedMarksBefore) !== 0 || Number(record.obtainedMarksAfter) !== 0) row.enteredKeys.add(key);
+        }
+      });
+
+      tables.push({
+        studentClass: classItem.studentClass,
+        section: classItem.section,
+        totalStudents: roster.length,
+        subjects: [...subjects.entries()].map(([subject, rows]) => {
+          const totalThemes = new Set(rows.map((row) => row.themeName)).size;
+          const completedThemes = new Set(rows.filter((row) => row.enteredKeys.size > 0).map((row) => row.themeName)).size;
+          return {
+          subject,
+          themeProgress: `${completedThemes} / ${totalThemes}`,
+          rows: rows.map((row, rowIndex) => {
+            const themeRows = rows.filter((themeRow) => themeRow.themeName === row.themeName);
+            const themeEnteredKeys = new Set(themeRows.flatMap((themeRow) => [...themeRow.enteredKeys]));
+            const completedLearningOutcomes = themeRows.filter((themeRow) => themeRow.enteredKeys.size > 0).length;
+            const themeNumber = rows.slice(0, rowIndex).filter((previousRow, previousIndex, previousRows) =>
+              previousIndex === 0 || previousRow.themeName !== previousRows[previousIndex - 1].themeName
+            ).length + (rowIndex === 0 || rows[rowIndex - 1].themeName !== row.themeName ? 1 : 0);
+            return {
+              themeName: row.themeName,
+              learningOutcomeName: row.learningOutcomeName,
+              themeNumber,
+              before: row.beforeKeys.size,
+              after: row.afterKeys.size,
+              loEntered: row.enteredKeys.size,
+              themeEntered: themeEnteredKeys.size,
+              loProgress: `${completedLearningOutcomes} / ${themeRows.length}`
+            };
+          })
+        }; })
+      });
+    }
+
+    return res.render('theme/cascounter', {
+      ...await getSidenavData(req), tables, academicYear, classSectionOptions,
+      selectedClassSection: selectedClassSection || (classFilter && sectionFilter ? `${classFilter}|${sectionFilter}` : '')
+    });
+  } catch (error) {
+    console.error('Error loading theme assessment counter:', error);
+    return res.status(500).send('Unable to load theme assessment counter.');
+  }
+};

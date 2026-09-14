@@ -468,6 +468,7 @@ student.get('/healthrecord/analytics', verifytoken, nursecontroller.showHealthAn
 student.get('/getpracticalslipdata',verifytoken,authorized,examcontroller.getPracticalSlipData)
 // Theme Routes Start Here
 student.get('/theme', verifytoken, authorized, themecontroller.themeopener);
+student.get('/cascounter', verifytoken, authorized, themecontroller.themeAssessmentCounter);
 student.get('/themeform', verifytoken, authorized, themecontroller.themeform);
 student.get('/themefillupform', verifytoken, authorized, themecontroller.themefillupform);
 student.post('/themefillupform', verifytoken, authorized, themecontroller.themefillupformsave);

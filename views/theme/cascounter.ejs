@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Internal Assessment Counter</title>
+	<style>
+		:root { --ink: #172033; --muted: #667085; --line: #d9e2ec; --navy: #17324d; --teal: #0f766e; }
+		* { box-sizing: border-box; }
+		body { margin: 0; padding: 28px; color: var(--ink); font-family: Georgia, serif; background: linear-gradient(135deg, #eef5f3, #f8fafc 58%, #f5efe4); }
+		.page { max-width: 1500px; margin: auto; } header { background: var(--navy); color: white; padding: 24px; border-radius: 14px; } h1 { margin: 0 0 6px; font-size: 1.7rem; } header p { margin: 0; color: #d8e7ef; }
+		.filter { display: flex; gap: 14px; flex-wrap: wrap; align-items: end; margin: 18px 0; padding: 15px; background: white; border: 1px solid var(--line); border-radius: 12px; } label { display: grid; gap: 5px; color: var(--muted); font: 700 .78rem Arial, sans-serif; } select, button { min-height: 38px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 7px; font: 15px Arial, sans-serif; } button { background: var(--teal); color: white; border-color: var(--teal); font-weight: 700; cursor: pointer; }
+		.class-block { margin: 18px 0; background: white; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; } .class-title { padding: 15px 18px; background: #edf5f3; color: var(--navy); font: 700 1rem Arial, sans-serif; } .subject { padding: 15px 18px 4px; } h2 { margin: 0 0 9px; color: var(--teal); font: 700 1.05rem Arial, sans-serif; } .table-wrap { overflow-x: auto; } table { width: 100%; min-width: 1050px; border-collapse: collapse; font-size: .93rem; } th, td { padding: 10px; border: 1px solid var(--line); vertical-align: top; } th { background: var(--navy); color: white; font: 700 .73rem Arial, sans-serif; text-align: left; } td:nth-child(1) { width: 4%; text-align: center; } td:nth-child(2) { width: 13%; } td:nth-child(3) { width: 34%; } td:nth-child(4), td:nth-child(5) { width: 11%; } td:nth-child(6), td:nth-child(7) { width: 13.5%; } .count { text-align: center; font: 700 .9rem Arial, sans-serif; color: var(--teal); white-space: nowrap; } .before-count { white-space: normal; overflow-wrap: anywhere; } .progress { display: block; margin-top: 4px; color: var(--muted); font: .72rem Arial, sans-serif; } .empty { padding: 28px; text-align: center; color: var(--muted); background: white; }
+		@media (max-width: 640px) { body { padding: 12px; } header { padding: 18px; } .filter label, .filter select, .filter button { width: 100%; } }
+	</style>
+</head>
+<body>
+	<main class="page">
+		<header><h1>Internal Assessment Entry Counter</h1><p>Classes 1 to 3 | Academic year <%= academicYear || 'Not configured' %></p></header>
+		<form class="filter" method="get" action="/cascounter">
+			<label>Class / section<select name="classSection"><option value="">All classes and sections</option><% classSectionOptions.forEach((item) => { %><option value="<%= item.value %>" <%= item.value === selectedClassSection ? 'selected' : '' %>><%= item.label %></option><% }) %></select></label>
+			<button type="submit">Load Counter</button>
+		</form>
+		<% if (!tables.length) { %><div class="empty">No class or section records found.</div><% } %>
+		<% tables.forEach((table) => { %>
+			<section class="class-block"><div class="class-title">Class <%= table.studentClass %> | Section <%= table.section %> | Students: <%= table.totalStudents %></div>
+				<% if (!table.subjects.length) { %><div class="empty">No theme configuration found for this class.</div><% } %>
+				<% table.subjects.forEach((subject) => { %><div class="subject"><h2><%= subject.subject %></h2><div class="table-wrap"><table><thead><tr><th>SN</th><th>Theme name</th><th>Learning outcome</th><th>Before<br>marks entry</th><th>After<br>marks entry</th><th>Theme progress</th><th>LO progress</th></tr></thead><tbody>
+					<% subject.rows.forEach((row, index) => { const firstThemeRow = index === 0 || subject.rows[index - 1].themeName !== row.themeName; const themeRowSpan = subject.rows.filter((item) => item.themeName === row.themeName).length; %><tr><% if (firstThemeRow) { %><td rowspan="<%= themeRowSpan %>"><%= row.themeNumber %></td><td rowspan="<%= themeRowSpan %>"><%= row.themeName %></td><% } %><td><%= row.learningOutcomeName %></td><td class="count before-count"><%= row.before %> / <%= table.totalStudents %></td><td class="count"><%= row.after %> / <%= table.totalStudents %></td><% if (firstThemeRow) { %><td rowspan="<%= themeRowSpan %>" class="count"><%= subject.themeProgress %></td><% } %><td class="count"><%= row.loProgress %></td></tr><% }) %>
+				</tbody></table></div></div><% }) %>
+			</section>
+		<% }) %>
+	</main>
+</body>
+</html>
