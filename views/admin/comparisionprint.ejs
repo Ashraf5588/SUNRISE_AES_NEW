@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Chapter Error Comparison</title>
+	<style>
+		:root { --ink: #172033; --muted: #64748b; --line: #cbd5e1; --navy: #17324d; --teal: #0f766e; }
+		* { box-sizing: border-box; }
+		body { margin: 0; padding: 24px; color: var(--ink); font-family: Arial, sans-serif; background: #f1f5f9; }
+		.page { max-width: 1500px; margin: auto; } .toolbar { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; padding: 16px; margin-bottom: 18px; background: white; border: 1px solid var(--line); border-radius: 8px; } label { display: grid; gap: 5px; color: var(--muted); font-size: 12px; font-weight: 700; } select, button { min-height: 38px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 6px; font: inherit; } button { background: var(--teal); color: white; border-color: var(--teal); font-weight: 700; cursor: pointer; } .print-button { margin-left: auto; background: var(--navy); border-color: var(--navy); }
+		header { margin-bottom: 18px; padding: 22px; background: var(--navy); color: white; border-radius: 8px; } h1 { margin: 0 0 5px; font-size: 22px; } header p { margin: 0; color: #dbeafe; font-size: 13px; }
+		.subject-report { margin-bottom: 24px; padding: 16px; background: white; border: 1px solid var(--line); border-radius: 8px; break-inside: avoid; } h2 { margin: 0 0 12px; color: var(--teal); font-size: 18px; } .table-wrap { overflow-x: auto; } table { width: 100%; border-collapse: collapse; min-width: 600px; } th, td { border: 1px solid var(--line); padding: 9px 10px; text-align: center; } th { background: var(--navy); color: white; font-size: 12px; } td:first-child { text-align: left; font-weight: 600; } td.empty { color: var(--muted); } .rate { font-weight: 700; color: #b45309; }
+		.no-data { padding: 30px; color: var(--muted); text-align: center; background: white; border: 1px solid var(--line); border-radius: 8px; }
+		@media print { body { padding: 0; background: white; } .toolbar { display: none; } header { color: black; background: white; border-bottom: 2px solid #111; border-radius: 0; padding: 0 0 12px; } header p { color: black; } .subject-report { border: 0; padding: 0; margin-bottom: 22px; } .subject-report:not(:last-child) { page-break-after: always; } table { min-width: 0; } th { background: #e2e8f0 !important; color: black !important; } }
+	</style>
+</head>
+<body>
+	<main class="page">
+		<header><h1>Chapter-wise Error Comparison</h1><p>Class and section comparison by subject and terminal</p></header>
+		<form class="toolbar" method="get" action="/admin/comparisionprint">
+			<label>Class / section<select name="classSection" required><% classSections.forEach((item) => { %><option value="<%= item.value %>" <%= item.value === selectedClassSection ? 'selected' : '' %>><%= item.label %></option><% }) %></select></label>
+			<button type="submit">Load Report</button><button type="button" class="print-button" onclick="window.print()">Print Report</button>
+		</form>
+		<% if (!subjectReports.length) { %><div class="no-data">Select a class and section to generate the comparison report.</div><% } %>
+		<% subjectReports.forEach((report) => { %>
+			<section class="subject-report"><h2><%= report.subject %></h2><div class="table-wrap"><table><thead><tr><th>Chapter name</th><% terminalNames.forEach((terminalName) => { %><th><%= terminalName %><br><small>Error rate</small></th><% }) %></tr></thead><tbody>
+				<% report.chapters.forEach((chapterName) => { %><tr><td><%= chapterName %></td><% terminalNames.forEach((terminalName) => { const value = report.terminalResults[terminalName]?.[chapterName]; %><td class="rate"><%= value === null || typeof value === 'undefined' ? '-' : `${value.toFixed(2)}%` %></td><% }) %></tr><% }) %>
+				<% if (!report.chapters.length) { %><tr><td colspan="<%= terminalNames.length + 1 %>" class="empty">No chapter data found.</td></tr><% } %>
+			</tbody></table></div></section>
+		<% }) %>
+	</main>
+</body>
+</html>

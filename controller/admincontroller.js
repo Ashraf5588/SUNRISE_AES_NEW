@@ -3844,6 +3844,95 @@ exports.report = async (req, res, next) => {
     res.status(500).send("Error loading report page: " + err.message);
   }
 };
+
+exports.comparisionPrint = async (req, res) => {
+  try {
+    const classDocs = await studentClass.find({}).lean();
+    const terminalDocs = await terminal.find({}).lean();
+    const classSections = classDocs
+      .filter((item) => item.studentClass && item.section)
+      .map((item) => ({
+        value: `${item.studentClass}|${item.section}`,
+        label: `${item.studentClass} - ${item.section}`,
+        studentClass: String(item.studentClass),
+        section: String(item.section)
+      }))
+      .sort((a, b) => Number(a.studentClass) - Number(b.studentClass) || a.section.localeCompare(b.section));
+    const terminalNames = [...new Set(terminalDocs.map((item) => item.terminalName || item.name || item.term || item.terminal).filter(Boolean))];
+    const selectedClassSection = String(req.query.classSection || classSections[0]?.value || '');
+    const [selectedClass, selectedSection] = selectedClassSection.split('|');
+    const subjects = selectedClass
+      ? [...new Set((await subject.find({ forClass: selectedClass }, { subject: 1 }).lean()).map((item) => item.subject).filter(Boolean))]
+      : [];
+    const subjectReports = [];
+
+    for (const subjectName of subjects) {
+      const terminalResults = {};
+      const chapterNames = new Set();
+
+      for (const terminalName of terminalNames) {
+        const subjectDetails = await getSubjectData(subjectName, selectedClass, terminalName, null);
+        const model = getSubjectModel(subjectName, selectedClass, selectedSection, terminalName);
+        const records = subjectDetails ? await model.find({
+          subject: subjectName,
+          studentClass: selectedClass,
+          section: selectedSection,
+          terminal: terminalName
+        }).lean() : [];
+        const chapterMap = {};
+
+        (subjectDetails?.chapter || []).forEach((chapter) => {
+          const chapterName = chapter.chapterName || 'Uncategorized';
+          chapterMap[chapterName] = { totalObtained: 0, totalPossible: 0 };
+          chapterNames.add(chapterName);
+          (chapter.questions || []).forEach((question) => {
+            const marks = Number(subjectDetails[question] || subjectDetails[`${question}_marks_per_sub`] || 0);
+            if (!marks) return;
+            records.forEach((record) => {
+              chapterMap[chapterName].totalObtained += Number(record[question] || 0);
+              chapterMap[chapterName].totalPossible += marks;
+            });
+          });
+        });
+
+        terminalResults[terminalName] = Object.fromEntries(Object.entries(chapterMap).map(([chapterName, totals]) => [
+          chapterName,
+          totals.totalPossible > 0 ? ((totals.totalPossible - totals.totalObtained) / totals.totalPossible) * 100 : null
+        ]));
+      }
+
+      const firstTerminal = terminalNames[0];
+      const sortedChapters = [...chapterNames].sort((chapterA, chapterB) => {
+        const errorA = terminalResults[firstTerminal]?.[chapterA];
+        const errorB = terminalResults[firstTerminal]?.[chapterB];
+        const hasErrorA = typeof errorA === 'number';
+        const hasErrorB = typeof errorB === 'number';
+
+        if (hasErrorA !== hasErrorB) return hasErrorA ? -1 : 1;
+        if (hasErrorA && errorA !== errorB) return errorB - errorA;
+        return chapterA.localeCompare(chapterB);
+      });
+
+      subjectReports.push({
+        subject: subjectName,
+        chapters: sortedChapters,
+        terminalResults
+      });
+    }
+
+    return res.render('admin/comparisionprint', {
+      ...(await getSidenavData(req)),
+      classSections,
+      terminalNames,
+      subjectReports,
+      selectedClassSection
+    });
+  } catch (error) {
+    console.error('Error generating chapter comparison report:', error);
+    return res.status(500).send(`Error generating chapter comparison report: ${error.message}`);
+  }
+};
+
 const getSubjectData = async (subjectinput, forClass, forTerminal, res) => {
   try {
     // First try exact match

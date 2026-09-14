@@ -190,6 +190,86 @@ const getSubjectData = async (subjectinput, forClass,section,terminal) => {
     return null;
   }
 };
+
+const getTerminalChapterComparison = async (subjectName, studentClassValue, sectionValue) => {
+  const terminalDocs = await terminal.find({}).lean();
+  const terminalNames = [...new Set(terminalDocs.map((item) => item.terminalName || item.name || item.term || item.terminal).filter(Boolean))];
+  const terminalResults = {};
+  const chapterNames = new Set();
+  const roman = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'];
+
+  for (const terminalName of terminalNames) {
+    const subjectData = await getSubjectData(subjectName, studentClassValue, sectionValue, terminalName);
+    if (!subjectData) {
+      terminalResults[terminalName] = {};
+      continue;
+    }
+
+    const questionToChapter = {};
+    (subjectData.chapter || []).forEach((chapter) => {
+      const chapterName = chapter.chapterName || 'Uncategorized';
+      chapterNames.add(chapterName);
+      (chapter.questions || []).forEach((question) => {
+        questionToChapter[question] = chapterName;
+      });
+    });
+
+    const keyValues = {};
+    for (const key in subjectData) {
+      if (!/^q\d+[a-z]$/.test(key)) continue;
+      const hasSubparts = subjectData[`${key}_has_subparts`] === 'on' || subjectData[`${key}_has_subparts`] === true;
+      const subpartsCount = Number.parseInt(subjectData[`${key}_subparts_count`] || 0, 10);
+      const marksPerSubpart = Number.parseFloat(subjectData[`${key}_marks_per_subpart`] || 0);
+      const marks = Number.parseFloat(subjectData[key] || 0);
+      if (hasSubparts && subpartsCount > 0 && marksPerSubpart > 0) {
+        for (let index = 0; index < subpartsCount; index += 1) {
+          const subKey = `${key}_${roman[index]}`;
+          keyValues[subKey] = marksPerSubpart;
+          questionToChapter[subKey] = questionToChapter[key] || 'Uncategorized';
+        }
+      } else if (!hasSubparts && marks > 0) {
+        keyValues[key] = marks;
+      }
+    }
+
+    const model = getSubjectModel(subjectName, studentClassValue, sectionValue, terminalName);
+    const records = await model.find({
+      subject: subjectName,
+      studentClass: studentClassValue,
+      section: sectionValue,
+      terminal: terminalName
+    }).lean();
+    const chapterTotals = {};
+
+    Object.entries(keyValues).forEach(([question, fullMarks]) => {
+      const chapterName = questionToChapter[question] || 'Uncategorized';
+      chapterNames.add(chapterName);
+      if (!chapterTotals[chapterName]) chapterTotals[chapterName] = { totalObtained: 0, totalPossible: 0 };
+      records.forEach((record) => {
+        chapterTotals[chapterName].totalObtained += Number(record[question] || 0);
+        chapterTotals[chapterName].totalPossible += fullMarks;
+      });
+    });
+
+    terminalResults[terminalName] = Object.fromEntries(Object.entries(chapterTotals).map(([chapterName, totals]) => [
+      chapterName,
+      totals.totalPossible > 0 ? ((totals.totalPossible - totals.totalObtained) / totals.totalPossible) * 100 : null
+    ]));
+  }
+
+  const firstTerminal = terminalNames[0];
+  const chapters = [...chapterNames].sort((chapterA, chapterB) => {
+    const errorA = terminalResults[firstTerminal]?.[chapterA];
+    const errorB = terminalResults[firstTerminal]?.[chapterB];
+    const hasErrorA = typeof errorA === 'number';
+    const hasErrorB = typeof errorB === 'number';
+    if (hasErrorA !== hasErrorB) return hasErrorA ? -1 : 1;
+    if (hasErrorA && errorA !== errorB) return errorB - errorA;
+    return chapterA.localeCompare(chapterB);
+  });
+
+  return { terminalNames, chapters, terminalResults };
+};
 exports.homePage = async (req, res, next) => {
 
   
@@ -971,6 +1051,7 @@ const classlistData = new Set(classlisttotal.map(item => item.studentClass));
 
 // chapter wise analysis
 const chapterwiseQuestion = await subjectlist.findOne({ subject: `${subjectinput}`, forClass: `${studentClass}`,forTerminal: `${terminal}`}).lean();
+const terminalChapterComparison = await getTerminalChapterComparison(subjectinput, studentClass, section);
 
 console.log("✅ Analysis complete! Rendering results...");
     res.render("analysis", {
@@ -989,6 +1070,7 @@ classlistData,
       CorrectBelow50,
       file, 
       fileStatus, // Pass file status to view
+      terminalChapterComparison,
       originalFile: paper && paper.questionPaperOfClass ? paper.questionPaperOfClass : '', // Pass original filename for display
       total,
       ...(await getSidenavData(req))

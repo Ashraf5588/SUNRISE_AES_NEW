@@ -73,6 +73,7 @@ student.get('/admin/term/:terminal',verifytoken,authorized,isAdmin,admincontrol.
 student.get('/analysisentrycounter',verifytoken,authorized,isAdmin,admincontrol.analysisEntryCounter)
 student.get('/report',verifytoken,authorized,isAdmin,admincontrol.report)
 student.get('/reportprint',verifytoken,authorized,isAdmin,admincontrol.reportprint)
+student.get('/admin/comparisionprint',verifytoken,authorized,isAdmin,admincontrol.comparisionPrint)
 student.get('/admin/portfolio/eventscholarship',verifytoken,authorized,isAdmin,examdashboardcontroller.eventScholarshipReport)
 student.get('/newform',verifytoken,authorized,controller.newform)
 
