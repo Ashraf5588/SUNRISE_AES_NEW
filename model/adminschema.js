@@ -52,9 +52,23 @@ const classSchema = new mongoose.Schema({
 
 })
 const terminalSchema = new mongoose.Schema({
-
-  "terminal":{ type: String,required: false},
-
+  "terminal": { type: String, required: false },
+  "terminalType": {
+    type: String,
+    enum: ['TEST', 'TERMINAL'],
+    default: 'TEST',
+    required: false
+  },
+  "fullMarks": {
+    type: Number,
+    required: false,
+    default: 50
+  },
+  "passMarks": {
+    type: Number,
+    required: false,
+    default: 18
+  }
 })
 
 const studentrecordschema = new mongoose.Schema({

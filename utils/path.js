@@ -1,3 +1,5 @@
 const path = require("path");
 
-exports.rootDir = path.dirname(require.main.filename);
+const appEntry = require.main && require.main.filename ? require.main.filename : __filename;
+
+exports.rootDir = path.dirname(appEntry);

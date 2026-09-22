@@ -1,0 +1,42 @@
+<%- include('../partials/head', { title: 'Fee Structures' }) %>
+<%- include('../partials/navbar') %>
+<div class="container mt-4">
+  <h3>Fee Structures</h3>
+  <div class="row">
+    <div class="col-md-5">
+      <form method="POST" action="/setup/fee-structures" class="bg-white p-3 rounded shadow-sm">
+        <div class="mb-2">
+          <label class="form-label">Academic Session</label>
+          <select class="form-select" name="academicSession" required>
+            <% sessions.forEach(s => { %><option value="<%= s._id %>"><%= s.titleBS %></option><% }) %>
+          </select>
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Class</label>
+          <select class="form-select" name="class" required>
+            <% classes.forEach(c => { %><option value="<%= c._id %>"><%= c.name %></option><% }) %>
+          </select>
+        </div>
+        <div class="mb-2">
+          <label class="form-label">Fee Category</label>
+          <select class="form-select" name="feeCategory" required>
+            <% feeCategories.forEach(f => { %><option value="<%= f._id %>"><%= f.name %> (<%= f.frequency %>)</option><% }) %>
+          </select>
+        </div>
+        <div class="mb-2"><label class="form-label">Amount (Rs)</label><input type="number" step="0.01" class="form-control" name="amount" required></div>
+        <button class="btn btn-primary">Add Fee Structure</button>
+      </form>
+    </div>
+    <div class="col-md-7">
+      <table class="table table-bordered bg-white">
+        <thead><tr><th>Session</th><th>Class</th><th>Category</th><th>Amount</th></tr></thead>
+        <tbody>
+          <% feeStructures.forEach(fs => { %>
+          <tr><td><%= fs.academicSession.titleBS %></td><td><%= fs.class.name %></td><td><%= fs.feeCategory.name %></td><td><%= fs.amount.toFixed(2) %></td></tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

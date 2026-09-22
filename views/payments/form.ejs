@@ -1,0 +1,58 @@
+<%- include('../partials/head', { title: 'Record Payment' }) %>
+<%- include('../partials/navbar') %>
+<div class="container mt-4">
+  <h3>Record Payment - <%= student.name %> (<%= student.studentCode %>)</h3>
+
+  <div class="card p-3 mb-3">
+    <h6>Outstanding Invoices (oldest is settled first, automatically)</h6>
+    <table class="table table-sm mb-0">
+      <thead><tr><th>Invoice #</th><th>Month</th><th>Balance</th></tr></thead>
+      <tbody>
+        <% outstandingInvoices.forEach(inv => { %>
+        <tr><td><%= inv.invoiceNumber %></td><td><%= inv.billMonthBS %></td><td><%= inv.balanceDue.toFixed(2) %></td></tr>
+        <% }) %>
+        <% if (outstandingInvoices.length === 0) { %>
+        <tr><td colspan="3" class="text-muted">No outstanding invoices - this student is fully paid up.</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <form method="POST" action="/payments" class="bg-white p-4 rounded shadow-sm">
+    <input type="hidden" name="studentId" value="<%= student._id %>">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Amount Received (Rs)</label>
+        <input type="number" step="0.01" class="form-control" name="amount" required>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Payment Date (AD)</label>
+        <input type="date" class="form-control" name="paymentDateAD" required>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Payment Date (BS)</label>
+        <input class="form-control" name="paymentDateBS" placeholder="2082-01-15">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Mode</label>
+        <select class="form-select" name="mode" required>
+          <option value="CASH">Cash</option>
+          <option value="BANK">Bank</option>
+          <option value="ESEWA">eSewa</option>
+          <option value="KHALTI">Khalti</option>
+          <option value="CHEQUE">Cheque</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Collected By</label>
+        <input class="form-control" name="collectedBy">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Remarks</label>
+        <input class="form-control" name="remarks">
+      </div>
+    </div>
+    <button class="btn btn-success mt-4">Record Payment</button>
+  </form>
+</div>
+<%- include('../partials/footer') %>

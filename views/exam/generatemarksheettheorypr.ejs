@@ -6,7 +6,6 @@
   <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
   <link rel="manifest" href="/site.webmanifest">
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Grade Sheet</title>
 
   <style>
@@ -115,7 +114,7 @@
     }
 
     .border-frame {
-      border: 5px double #000;
+      border: 3px double #000;
       height: 100%;
       padding: 15px;
       box-sizing: border-box;
@@ -196,7 +195,7 @@
     }
 
     .school-meta {
-      font-size: 13px;
+      font-size: 14px;
       color: #000000;
       font-weight: 500;
     }
@@ -217,7 +216,7 @@
     .student-info {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      margin-top: 10px;
+      margin-top: 0px;
       gap: 8px;
       font-size: 14px;
       border: 1px solid #000;
@@ -246,7 +245,7 @@
     table th, table td {
       border: 2px solid #000;
       padding: 6px 7px;
-      text-align: center;
+      text-align: left;
       word-wrap: break-word;
       font-size: 15px;
     }
@@ -255,7 +254,7 @@
       background: #f0f0f0;
       color: #000;
       font-weight: 800;
-      font-size: 15px;
+      font-size: 14px;
       text-transform: uppercase;
     }
 
@@ -269,14 +268,14 @@
       font-weight: 600;
     }
 
-    .summary-box {
+    .summary {
       display: flex;
       justify-content: space-between;
       margin-top: 12px;
       font-weight: 700;
       border: 2px solid #000;
       padding: 10px;
-      font-size: 15px;
+      font-size: 13px;
     }
 
     .remark-box {
@@ -301,7 +300,7 @@
     }
 
     .issued-box {
-      flex: 0 0 180px;
+      flex: 0 0 35px;
       border: 1px solid #000;
       border-radius: 4px;
       background: #fff;
@@ -309,15 +308,16 @@
       font-size: 13px;
       display: flex;
       align-items: center;
-      justify-content: center;
+      justify-content: space-between;
       text-align: center;
+      margin-bottom:2%;
     }
 
     .sign-row {
       display: flex;
       justify-content: space-between;
       align-items: flex-end;
-      margin-top: 30px;
+      margin-top: 5px;
       padding: 0 10px;
       gap: 16px;
     }
@@ -367,7 +367,7 @@
 
     .grading-scale {
       margin-top: 10px;
-      font-size: 10px;
+      font-size: 13px;
       width: 100%;
     }
 
@@ -380,7 +380,16 @@
       padding: 3px 8px;
       border: 1px solid #000;
       text-align: left;
-      font-size: 10px;
+      font-size: 13px;
+    }
+
+    .summary-box {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 12px;
+      font-weight: 700;
+      padding: 10px;
+      font-size: 15px;
     }
 
     /* Form Selector Styles */
@@ -516,7 +525,7 @@
       }
 
       .school-name {
-        font-size: 24px;
+        font-size: 28px;
       }
 
       table {
@@ -528,11 +537,12 @@
       }
 
       .student-info {
-        font-size: 13px;
+        margin-top: 0px;
+        font-size: 18px;
         padding: 8px;
       }
 
-      .summary-box {
+      .summary {
         font-size: 11px;
         padding: 8px;
       }
@@ -569,7 +579,7 @@
       }
 
       .school-name {
-        font-size: 18px;
+        font-size: 20px;
         white-space: normal;
       }
 
@@ -578,7 +588,7 @@
       }
 
       table {
-        font-size: 10px;
+        font-size: 14px;
       }
 
       table th, table td {
@@ -858,7 +868,7 @@
             <div class="school-meta"><%= marksheetSetups[0].address %> &nbsp; | &nbsp; Phone: <%= marksheetSetups[0].phone %></div>
             <div class="report-title">
               <div>Grade Sheet</div>
-              <div style="font-size:18px; margin-top:2px; font-weight:600"><%= terminal %> Terminal - Examination <%= academicYear %></div>
+              <div style="font-size:18px; margin-top:2px; font-weight:600"><%= terminal %> Terminal Examination-<%= academicYear %></div>
             </div>
           </div>
           <div class="logo" style="border:none; visibility:hidden"></div>
@@ -877,7 +887,7 @@
           <thead>
             <tr>
               <th style="width:3%">S.N</th>
-              <th style="width:16%">Subject</th>
+              <th class="subject-header">Subject</th>
               <th style="width:7%">Credit Hour</th>
               <th class="col-theorymarks" style="width:8%">Th Marks</th>
               <th class="col-prmarks" style="width:8%">Pr Marks</th>
@@ -899,8 +909,11 @@
 
             <%
               const terminalData = marksheetSetups[0].terminals.find(t => t.name === terminal);
+              
               const workingDays = terminalData ? terminalData.workingDays : 0;
+              const publishdate = terminalData ? terminalData.resultpublishdate : '';
             %>
+
 
             <% sortedSubjects.forEach((sub, index) => { 
               // Get display name for subject
@@ -978,8 +991,10 @@
             <% }) %>
             <tr>
               <td></td>
-              <td></td>
-              <td colspan="7"><div>
+              
+              <td colspan="8">
+                <center>
+                  <div>
            <b> Grade Average Point (GPA): 
             <% 
               let gpaForDisplay = totalCredit > 0 ? (totalGradePoints / totalCredit) : 0;
@@ -994,22 +1009,20 @@
             <% 
               } 
             %></b>
-          </div></td>
+          </div></center></td>
               </td>
             </tr>
           </tbody>
         </table>
 
         <!-- SUMMARY -->
-        <div class="summary-box">
-          <div>Total Credit Hours: <%= totalCredit %></div>
-          <div><span class="info-label">Attendance:</span> <span class="info-value"><%= totalAttendance || 'N/A' %></span></div>
-          
-        </div>
-
+    
         <!-- REMARKS -->
         <div class="notes-row">
           <div class="remark-box">
+            <div style="display: flex;justify-content:space-between;">
+             <div><b>Total Credit Hours: </b><%= totalCredit %></div>
+          <div><span class="info-label">Attendance:</span> <span class="info-value"><%= totalAttendance || 'N/A' %>/<%= workingDays %></span></div></div>
             <b>Remarks:</b>
             <% 
               let gpaForRemark = totalCredit > 0 ? (totalGradePoints / totalCredit) : 0;
@@ -1017,10 +1030,89 @@
             %>
             <%= overallRemark %>
           </div>
-          <div class="issued-box"><b>Issued Date:</b>&nbsp;2083-4-31</div>
+         
         </div>
+        <!-- GRADING SCALE -->
+      <div class="grading-scale">
+        <table border="1" cellspacing="0" cellpadding="6" style="width:100%; border-collapse:collapse; text-align:center; font-family:Arial, sans-serif;">
+          <thead>
+            <tr>
+              <th>S.N</th>
+              <th>Learning %</th>
+              <th>GP</th>
+              <th>Grade</th>
+              <th>Grade Explanation</th>
+            </tr>
+          </thead>
 
-        <!-- SIGNATURES -->
+          <tbody>
+            <tr>
+              <td>1</td>
+              <td>90% – 100%</td>
+              <td>4.0</td>
+              <td>A+</td>
+              <td>Outstanding</td>
+            </tr>
+
+            <tr>
+              <td>2</td>
+              <td>80% – 89%</td>
+              <td>3.6</td>
+              <td>A</td>
+              <td>Excellent</td>
+            </tr>
+
+            <tr>
+              <td>3</td>
+              <td>70% – 79%</td>
+              <td>3.2</td>
+              <td>B+</td>
+              <td>Very Good</td>
+            </tr>
+
+            <tr>
+              <td>4</td>
+              <td>60% – 69%</td>
+              <td>2.8</td>
+              <td>B</td>
+              <td>Good</td>
+            </tr>
+
+            <tr>
+              <td>5</td>
+              <td>50% – 59%</td>
+              <td>2.4</td>
+              <td>C+</td>
+              <td>Satisfactory</td>
+            </tr>
+
+            <tr>
+              <td>6</td>
+              <td>40% – 49%</td>
+              <td>2.0</td>
+              <td>C</td>
+              <td>Acceptable</td>
+            </tr>
+
+            <tr>
+              <td>7</td>
+              <td>35% – 39%</td>
+              <td>1.6</td>
+              <td>D</td>
+              <td>Basic</td>
+            </tr>
+
+            <tr>
+              <td>8</td>
+              <td>Below 35%</td>
+              <td>NG</td>
+              <td>NG</td>
+              <td>Not Graded</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+       <!-- SIGNATURES -->
         <div class="sign-row">
           <div class="sign">
             <div class="sign-placeholder"></div>
@@ -1035,27 +1127,13 @@
             <div class="line">Principal</div>
           </div>
         </div>
-
-        <hr>
-
-        <!-- GRADING SCALE -->
-        <div class="grading-scale">
-          <table>
-            <tr>
-              <td>90%+ : A+</td>
-              <td>80%+ : A</td>
-              <td>70%+ : B+</td>
-              <td>60%+ : B</td>
-            </tr>
-            <tr>
-              <td>50%+ : C+</td>
-              <td>40%+ : C</td>
-              <td>35%+ : D</td>
-              <td>&lt;35% : NG</td>
-            </tr>
-          </table>
-        </div>
+ <div class="issued-box" >
+  <span>Note: Ab = Absent</span>
+  <span><b>Issued Date:</b>&nbsp;<%= publishdate %></span>
+  <span>Note: W = Withheld</span>
+</div>
       </div>
+       
     </div>
     <% 
         }); // end of sortedStudentData.forEach
@@ -1073,6 +1151,10 @@
   
   <script>
     function applyColumnVisibility() {
+      const compactSubjectColumns = document.querySelector('[data-column-toggle="theorymarks"]').checked ||
+        document.querySelector('[data-column-toggle="prmarks"]').checked;
+      document.querySelector('.sheets-container').classList.toggle('compact-subject-columns', compactSubjectColumns);
+
       document.querySelectorAll('[data-column-toggle]').forEach(function(checkbox) {
         const key = checkbox.dataset.columnToggle;
         const shouldHide = checkbox.checked;

@@ -1,0 +1,21 @@
+<%- include('../partials/head', { title: 'Payments' }) %>
+<%- include('../partials/navbar') %>
+<div class="container mt-4">
+  <h3>Payments</h3>
+  <table class="table table-bordered bg-white">
+    <thead><tr><th>Receipt #</th><th>Student</th><th>Date</th><th>Amount</th><th>Mode</th><th></th></tr></thead>
+    <tbody>
+      <% payments.forEach(p => { %>
+      <tr>
+        <td><%= p.receiptNumber %></td>
+        <td><%= p.student ? p.student.name : '-' %></td>
+        <td><%= p.paymentDateAD.toDateString() %></td>
+        <td><%= p.amount.toFixed(2) %></td>
+        <td><%= p.mode %></td>
+        <td><a href="/payments/<%= p._id %>" target="_blank">Print</a></td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<%- include('../partials/footer') %>

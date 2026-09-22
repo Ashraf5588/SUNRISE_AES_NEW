@@ -1,0 +1,32 @@
+<%- include('../partials/head', { title: 'Receipt ' + payment.receiptNumber }) %>
+<div class="container mt-4">
+  <div class="d-flex justify-content-end no-print mb-3">
+    <button class="btn btn-primary" onclick="window.print()">Print</button>
+  </div>
+  <div class="card p-4">
+    <div class="text-center mb-3">
+      <h5>Payment Receipt</h5>
+    </div>
+    <p class="mb-1"><strong>Receipt No:</strong> <%= payment.receiptNumber %></p>
+    <p class="mb-1"><strong>Date:</strong> <%= payment.paymentDateBS %> BS (<%= payment.paymentDateAD.toDateString() %>)</p>
+    <p class="mb-1"><strong>Received From:</strong> <%= payment.student.name %> (<%= payment.student.studentCode %>)</p>
+    <p class="mb-1"><strong>Mode:</strong> <%= payment.mode %></p>
+    <p class="mb-3"><strong>Amount:</strong> Rs <%= payment.amount.toFixed(2) %></p>
+
+    <h6>Applied To</h6>
+    <table class="table table-sm table-bordered">
+      <thead><tr><th>Invoice #</th><th class="text-end">Amount Applied</th></tr></thead>
+      <tbody>
+        <% payment.allocations.forEach(a => { %>
+        <tr>
+          <td><%= a.invoice ? a.invoice.invoiceNumber : '-' %></td>
+          <td class="text-end"><%= a.amountApplied.toFixed(2) %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <% if (payment.remarks) { %><p class="text-muted mb-1">Remarks: <%= payment.remarks %></p><% } %>
+    <p class="text-muted">Collected by: <%= payment.collectedBy %></p>
+  </div>
+</div>
+<%- include('../partials/footer') %>

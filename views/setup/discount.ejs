@@ -1,0 +1,211 @@
+<%- include('../partials/head', { title: 'Discount Setup' }) %>
+<%- include('../partials/navbar') %>
+
+<div class="container mt-4">
+  <h3>Discount Setup</h3>
+
+  <div class="row">
+    <div class="col-md-6">
+      <form method="POST" action="/setup/discount" class="bg-white p-3 rounded shadow-sm">
+        <div class="mb-3">
+          <label class="form-label">Search Student Name</label>
+          <input
+            id="studentNameInput"
+            class="form-control"
+            list="studentOptions"
+            placeholder="Type student name..."
+            autocomplete="off"
+            required
+          >
+          <datalist id="studentOptions">
+            <% students.forEach(student => { %>
+              <option data-student-id="<%= student._id %>" value="<%= student.name %>"></option>
+            <% }) %>
+          </datalist>
+          <input type="hidden" id="studentId" name="student" value="">
+          <small class="text-muted">Selected student ObjectId will be saved.</small>
+        </div>
+
+        <div class="card mb-3">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <strong>Discount Entries</strong>
+              <button type="button" class="btn btn-sm btn-outline-primary" id="addDiscountRow">Add Row</button>
+            </div>
+
+            <div id="discountRows">
+              <div class="discount-row border rounded p-3 mb-2">
+                <div class="row g-2">
+                  <div class="col-md-3">
+                    <label class="form-label">Fee Head</label>
+                    <select class="form-select" name="title[0][feehead]" required>
+                      <option value="">Select</option>
+                      <% feeHeads.forEach(feeHead => { %>
+                        <option value="<%= feeHead._id %>"><%= feeHead.feehead %></option>
+                      <% }) %>
+                    </select>
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label">Type</label>
+                    <select class="form-select" name="title[0][discountType]" required>
+                      <option value="">Select</option>
+                      <option value="PERCENTAGE">%</option>
+                      <option value="FLAT">Flat</option>
+                    </select>
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label">Value</label>
+                    <input class="form-control" type="number" step="0.01" name="title[0][value]" required>
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label">Valid From</label>
+                    <input class="form-control" type="date" name="title[0][validFromAD]">
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label">Valid To</label>
+                    <input class="form-control" type="date" name="title[0][validToAD]">
+                  </div>
+                  <div class="col-md-1 d-flex align-items-end">
+                    <button type="button" class="btn btn-sm btn-outline-danger remove-row">Remove</button>
+                  </div>
+                </div>
+                <div class="mt-2">
+                  <label class="form-label">Reason</label>
+                  <textarea class="form-control" rows="2" name="title[0][reason]" placeholder="Scholarship / sibling / staff child"></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save Discount</button>
+      </form>
+    </div>
+
+    <div class="col-md-6">
+      <table class="table table-bordered bg-white">
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Fee Head</th>
+            <th>Type</th>
+            <th>Value</th>
+            <th>Valid From</th>
+            <th>Valid To</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (discounts && discounts.length) { %>
+            <% discounts.forEach(doc => { %>
+              <% const entries = doc.title || []; %>
+              <% if (entries.length === 0) { %>
+                <tr>
+                  <td><%= doc.student && doc.student.name ? doc.student.name : 'Unknown student' %></td>
+                  <td colspan="6" class="text-muted">No entry</td>
+                </tr>
+              <% } else { %>
+                <% entries.forEach((item, index) => { %>
+                  <tr>
+                    <td><%= index === 0 ? (doc.student && doc.student.name ? doc.student.name : 'Unknown student') : '' %></td>
+                    <td><%= item.feehead && item.feehead.name ? item.feehead.name : '-' %></td>
+                    <td><%= item.discountType %></td>
+                    <td><%= item.discountType === 'PERCENTAGE' ? item.value + '%' : item.value %></td>
+                    <td><%= item.validFromAD ? new Date(item.validFromAD).toISOString().split('T')[0] : '-' %></td>
+                    <td><%= item.validToAD ? new Date(item.validToAD).toISOString().split('T')[0] : '-' %></td>
+                    <td><%= item.reason || '-' %></td>
+                  </tr>
+                <% }) %>
+              <% } %>
+            <% }) %>
+          <% } else { %>
+            <tr>
+              <td colspan="7" class="text-center text-muted">No discount saved yet.</td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  const studentNameInput = document.getElementById('studentNameInput');
+  const studentHiddenInput = document.getElementById('studentId');
+  const studentOptions = Array.from(document.querySelectorAll('#studentOptions option'));
+  const discountRows = document.getElementById('discountRows');
+  const feeCategoryOptions = `
+    <% feeCategories.forEach(category => { %>
+      <option value="<%= category._id %>"><%= category.name %></option>
+    <% }) %>
+  `;
+
+  function syncStudentId() {
+    const typedName = studentNameInput.value.trim();
+    const exactMatch = studentOptions.find(option => option.value.trim().toLowerCase() === typedName.toLowerCase());
+    studentHiddenInput.value = exactMatch ? exactMatch.dataset.studentId || '' : '';
+  }
+
+  function addDiscountRow() {
+    const rowCount = discountRows.querySelectorAll('.discount-row').length;
+    const template = `
+      <div class="discount-row border rounded p-3 mb-2">
+        <div class="row g-2">
+          <div class="col-md-3">
+            <label class="form-label">Fee Head</label>
+            <select class="form-select" name="title[${rowCount}][feehead]" required>
+              <option value="">Select</option>
+              ${feeCategoryOptions}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Type</label>
+            <select class="form-select" name="title[${rowCount}][discountType]" required>
+              <option value="">Select</option>
+              <option value="PERCENTAGE">%</option>
+              <option value="FLAT">Flat</option>
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Value</label>
+            <input class="form-control" type="number" step="0.01" name="title[${rowCount}][value]" required>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Valid From</label>
+            <input class="form-control" type="date" name="title[${rowCount}][validFromAD]">
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Valid To</label>
+            <input class="form-control" type="date" name="title[${rowCount}][validToAD]">
+          </div>
+          <div class="col-md-1 d-flex align-items-end">
+            <button type="button" class="btn btn-sm btn-outline-danger remove-row">Remove</button>
+          </div>
+        </div>
+        <div class="mt-2">
+          <label class="form-label">Reason</label>
+          <textarea class="form-control" rows="2" name="title[${rowCount}][reason]" placeholder="Scholarship / sibling / staff child"></textarea>
+        </div>
+      </div>
+    `;
+
+    discountRows.insertAdjacentHTML('beforeend', template);
+    bindRemoveButtons();
+  }
+
+  function bindRemoveButtons() {
+    document.querySelectorAll('.remove-row').forEach((button) => {
+      button.addEventListener('click', function () {
+        const row = this.closest('.discount-row');
+        if (row) row.remove();
+      });
+    });
+  }
+
+  studentNameInput.addEventListener('input', syncStudentId);
+  studentNameInput.addEventListener('change', syncStudentId);
+  document.getElementById('addDiscountRow').addEventListener('click', addDiscountRow);
+  bindRemoveButtons();
+</script>
+
+<%- include('../partials/footer') %>

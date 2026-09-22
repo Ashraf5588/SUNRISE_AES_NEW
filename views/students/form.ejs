@@ -1,0 +1,88 @@
+<%- include('../partials/head', { title: student ? 'Edit Student' : 'New Student' }) %>
+<%- include('../partials/navbar') %>
+<div class="container mt-4">
+  <h3><%= student ? 'Edit Student' : 'New Student' %></h3>
+  <form method="POST" action="<%= student ? '/students/' + student._id : '/students' %>" class="bg-white p-4 rounded shadow-sm">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Student Code (old roll no.)</label>
+        <input type="text" name="studentCode" class="form-control" value="<%= student ? student.studentCode : '' %>" required>
+      </div>
+      <div class="col-md-8">
+        <label class="form-label">Full Name</label>
+        <input type="text" name="name" class="form-control" value="<%= student ? student.name : '' %>" required>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Class</label>
+        <select name="class" class="form-select" required>
+          <% classes.forEach(c => { %>
+          <option value="<%= c._id %>" <%= student && student.class && String(student.class._id) === String(c._id) ? 'selected' : '' %>><%= c.studentClass %>-<%= c.section %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Section</label>
+        <input type="text" name="section" class="form-control" value="<%= student ? student.section : '' %>">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Academic Session</label>
+        <select name="academicSession" class="form-select" required>
+          <% sessions.forEach(s => { %>
+          <option value="<%= s._id %>" <%= student && student.academicSession && String(student.academicSession._id) === String(s._id) ? 'selected' : '' %>><%= s.titleBS %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Guardian Name</label>
+        <input type="text" name="guardianName" class="form-control" value="<%= student ? student.guardianName : '' %>">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Guardian Phone</label>
+        <input type="text" name="guardianPhone" class="form-control" value="<%= student ? student.guardianPhone : '' %>">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Admission Date</label>
+        <input type="date" name="admissionDateAD" class="form-control"
+          value="<%= student ? student.admissionDateAD.toISOString().slice(0,10) : '' %>" required>
+        <div class="form-text">If the student joins partway through the session, bills for earlier months are skipped automatically.</div>
+      </div>
+      <% if (student) { %>
+      <div class="col-md-6">
+        <label class="form-label">Status</label>
+        <select name="status" class="form-select">
+          <option value="ACTIVE" <%= student.status === 'ACTIVE' ? 'selected' : '' %>>Active</option>
+          <option value="INACTIVE" <%= student.status === 'INACTIVE' ? 'selected' : '' %>>Inactive</option>
+          <option value="TRANSFERRED" <%= student.status === 'TRANSFERRED' ? 'selected' : '' %>>Transferred</option>
+        </select>
+      </div>
+      <% } %>
+    </div>
+
+    <% if (!student) { %>
+    <hr>
+    <h5>Migrating from old software?</h5>
+    <div class="form-check mb-2">
+      <input class="form-check-input" type="checkbox" name="migratedFromOldSystem" id="migrated"
+        onclick="document.getElementById('openingDueFields').classList.toggle('d-none')">
+      <label class="form-check-label" for="migrated">This student has an existing due from the old system</label>
+    </div>
+    <div id="openingDueFields" class="row g-3 d-none">
+      <div class="col-md-4">
+        <label class="form-label">Opening Due Amount (Rs)</label>
+        <input type="number" step="0.01" name="openingDueAmount" class="form-control">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">As Of Date</label>
+        <input type="date" name="openingDueAsOfDate" class="form-control">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Note</label>
+        <input type="text" name="openingDueNote" class="form-control" placeholder="Migrated from XYZ software">
+      </div>
+    </div>
+    <% } %>
+
+    <button type="submit" class="btn btn-primary mt-4">Save Student</button>
+  </form>
+</div>
+<%- include('../partials/footer') %>

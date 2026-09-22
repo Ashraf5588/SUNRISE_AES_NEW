@@ -338,6 +338,45 @@
               required
             >
           </div>
+
+          <div class="form-group">
+            <label for="terminalType" class="form-label">
+              <i class="fas fa-filter me-2"></i>Terminal Type
+            </label>
+            <select id="terminalType" name="terminalType" class="form-control" required>
+              <option value="TEST" <%= editing && terminalData.terminalType === 'TEST' ? 'selected' : (!editing ? 'selected' : '') %>>TEST</option>
+              <option value="TERMINAL" <%= editing && terminalData.terminalType === 'TERMINAL' ? 'selected' : '' %>>TERMINAL</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="fullMarks" class="form-label">
+              <i class="fas fa-pen me-2"></i>Full Marks
+            </label>
+            <input
+              type="number"
+              id="fullMarks"
+              name="fullMarks"
+              class="form-control"
+              value="<%= editing ? (terminalData.fullMarks || 50) : 50 %>"
+              min="1"
+              step="1"
+              required
+            >
+             <label for="passMarks" class="form-label">
+              <i class="fas fa-pen me-2"></i>Pass Marks
+            </label>
+            <input
+              type="number"
+              id="passMarks"
+              name="passMarks"
+              class="form-control"
+              value="<%= editing ? (terminalData.passMarks || 18) : 18 %>"
+              min="1"
+              step="1"
+              required
+            >
+          </div>
           
           <button type="submit" class="btn btn-primary">
             <i class="fas fa-<%= editing ? 'save' : 'plus' %>"></i>
@@ -368,6 +407,8 @@
                 <tr>
                   <th><i class="fas fa-hashtag me-2"></i>S.No.</th>
                   <th><i class="fas fa-terminal me-2"></i>Terminal Name</th>
+                  <th><i class="fas fa-filter me-2"></i>Type</th>
+                  <th><i class="fas fa-pen me-2"></i>Full Marks</th>
                   <th><i class="fas fa-cogs me-2"></i>Actions</th>
                 </tr>
               </thead>
@@ -378,6 +419,11 @@
                     <td>
                       <span class=""><%= term.terminal %></span>
                     </td>
+                    <td>
+                      <span class="badge bg-light text-dark"><%= term.terminalType || 'TEST' %></span>
+                    </td>
+                    <td><%= term.fullMarks || 50 %></td>
+                     <td><%= term.passMarks || 18 %></td>
                     <td>
                       <a href="/admin/terminal/<%= term._id %>/edit-terminal?editing=true" 
                          class="action-btn edit-btn"

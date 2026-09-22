@@ -1,0 +1,25 @@
+<%- include('../partials/head', { title: 'Classes' }) %>
+<%- include('../partials/navbar') %>
+<div class="container mt-4">
+  <h3>Classes</h3>
+  <div class="row">
+    <div class="col-md-5">
+      <form method="POST" action="/setup/classes" class="bg-white p-3 rounded shadow-sm">
+        <div class="mb-2"><label class="form-label">Name</label><input class="form-control" name="name" required placeholder="Class 5"></div>
+        <div class="mb-2"><label class="form-label">Sort Order</label><input type="number" class="form-control" name="order" required></div>
+        <button class="btn btn-primary">Add Class</button>
+      </form>
+    </div>
+    <div class="col-md-7">
+      <table class="table table-bordered bg-white">
+        <thead><tr><th>Order</th><th>Name</th></tr></thead>
+        <tbody>
+          <% classes.forEach(c => { %>
+          <tr><td><%= c.order %></td><td><%= c.name %></td></tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

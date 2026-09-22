@@ -39,7 +39,6 @@ const addChapter = mongoose.model("addChapter", addChapterSchema, "addChapter");
 const {ThemeEvaluationSchema,practicalSchema,scienceprojectSchema, practicalprojectSchema} = require("../model/themeformschema");
 const {themeSchemaFor1,scienceSchema,FinalPracticalSlipSchema} = require("../model/themeschema");
 const { get } = require("http");
-const student = require("../routers/mainpage");
 
 const marksheetSetup = mongoose.models.marksheetSetup || mongoose.model("marksheetSetup", marksheetsetupschemaForAdmin, "marksheetSetup");
 
@@ -275,12 +274,13 @@ exports.loadForm = async (req,res,next)=>
         )
       );
     }
-    console.log("Accessible Subjects:", accessibleSubject);
+    const terminals = await terminalModel.find({}).lean();
    const marksheetSetups = await marksheetSetup.find({}).lean();
     res.render("./exam/formloader", { 
       currentPage: "home",
       subjects: accessibleSubject, 
       studentClassdata:accessibleClass,
+      terminals,
   
       marksheetSetups,
       user,

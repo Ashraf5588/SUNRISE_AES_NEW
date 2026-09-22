@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Library Members</title>
+  <style>
+    :root { --bg:#f5f7fb; --panel:#ffffff; --sidebar:#0f172a; --sidebar-soft:#162236; --primary:#2563eb; --primary-soft:#dbeafe; --green:#16a34a; --green-soft:#dcfce7; --red:#ef4444; --red-soft:#fee2e2; --text:#1f2937; --muted:#64748b; --border:#e5e7eb; --shadow:0 10px 28px rgba(15,23,42,0.08); }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--text); }
+    a { text-decoration:none; color:inherit; }
+    .library-shell { display:flex; min-height:100vh; }
+    .sidebar { width:260px; background:linear-gradient(180deg,var(--sidebar) 0%, var(--sidebar-soft) 100%); color:#e5eefb; padding:24px 18px; position:sticky; top:0; height:100vh; }
+    .brand { font-size:22px; font-weight:700; margin-bottom:18px; display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:10px; background:rgba(255,255,255,0.04); }
+    .brand-mark { width:34px; height:34px; border-radius:10px; background:linear-gradient(135deg,#60a5fa,#2563eb); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; }
+    .nav-group { margin-top:24px; }
+    .nav-label { font-size:11px; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.6); padding:0 12px 8px; }
+    .nav-item { display:flex; align-items:center; gap:10px; padding:11px 12px; margin-bottom:6px; border-radius:10px; color:#dce9ff; }
+    .nav-item:hover, .nav-item.active { background:rgba(255,255,255,0.08); }
+    .content { flex:1; padding:28px; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:24px; }
+    .title { font-size:30px; font-weight:700; margin:0; }
+    .action-row { display:flex; gap:10px; flex-wrap:wrap; }
+    .btn { display:inline-flex; align-items:center; justify-content:center; border:none; border-radius:10px; padding:10px 16px; font-weight:600; cursor:pointer; }
+    .btn-primary { background:var(--primary); color:white; }
+    .btn-success { background:var(--green); color:white; }
+    .btn-secondary { background:#e2e8f0; color:var(--text); }
+    .grid { display:grid; grid-template-columns:1.5fr 1fr; gap:18px; }
+    .card { background:var(--panel); border-radius:18px; box-shadow:var(--shadow); border:1px solid rgba(148,163,184,0.12); padding:18px; margin-bottom:20px; }
+    .card h3 { margin:0 0 16px; font-size:18px; }
+    .search-box { display:flex; gap:12px; flex-wrap:wrap; }
+    .search-box input, .manual-form input, .manual-form select { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:10px; font-size:14px; }
+    .search-box input { flex:1; }
+    .manual-form { display:grid; gap:12px; }
+    .manual-form .row { display:grid; grid-template-columns:repeat(2,minmax(120px,1fr)); gap:12px; }
+    .result-item { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; padding:12px 14px; background:#fbfdff; border:1px solid var(--border); border-radius:10px; margin-top:14px; }
+    .tag { display:inline-block; border-radius:999px; padding:5px 10px; font-size:11px; font-weight:600; background:var(--primary-soft); color:var(--primary); }
+    .message { padding:10px 12px; border-radius:8px; font-size:14px; margin-top:12px; }
+    .success { background:var(--green-soft); color:#166534; }
+    .error { background:var(--red-soft); color:#991b1b; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { padding:12px 14px; border-bottom:1px solid var(--border); text-align:left; }
+    th { background:#eef5ff; }
+    .status-pill { display:inline-flex; background:var(--green-soft); color:#166534; padding:4px 8px; border-radius:999px; font-size:11px; font-weight:700; }
+    @media (max-width:900px) { .library-shell { display:block; } .sidebar { width:100%; height:auto; position:static; } .content { padding:18px; } .grid { grid-template-columns:1fr; } .manual-form .row { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div class="library-shell">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-mark">L</div><span>Library</span></div>
+      <div class="nav-group">
+        <div class="nav-label">Overview</div>
+        <a class="nav-item" href="/library/dashboard">Dashboard</a>
+        <a class="nav-item" href="/library/books">Books</a>
+        <a class="nav-item" href="/library/categories">Categories</a>
+        <a class="nav-item active" href="/library/members">Members</a>
+        <a class="nav-item" href="/library/issues">Book Issue</a>
+      </div>
+    </aside>
+
+    <main class="content">
+      <div class="topbar">
+        <div><h1 class="title">Library Members</h1></div>
+        <div class="action-row">
+          <a class="btn btn-primary" href="/library/dashboard">Dashboard</a>
+          <a class="btn btn-secondary" href="/library/issues">Issue Book</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="search-box">
+          <input id="memberSearch" type="text" name="search" value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" placeholder="Search student name or staff name..." />
+          <button id="memberSearchBtn" class="btn btn-primary" type="button">Search</button>
+        </div>
+
+        <% if (typeof error !== 'undefined' && error) { %><div class="message error"><%= error %></div><% } %>
+        <% if (typeof success !== 'undefined' && success) { %><div class="message success"><%= success %></div><% } %>
+
+        <div id="searchResultsContainer">
+          <% if (typeof searchResults !== 'undefined' && searchResults.length) { %>
+            <div>
+              <h3>Matched Members</h3>
+              <% searchResults.forEach((item) => { %>
+                <div class="result-item">
+                  <div>
+                    <strong><%= item.name %></strong>
+                    <small><%= item.memberType %> • <%= item.studentClass || item.section || item.teacherId || item.username || '' %></small>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <span class="tag"><%= item.memberType %></span>
+                    <button class="btn btn-success" type="button" onclick="fillMember('<%= JSON.stringify(item).replace(/'/g, '&#39;') %>')">Use this member</button>
+                  </div>
+                </div>
+              <% }); %>
+            </div>
+          <% } %>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h3>Add New Member Manually</h3>
+          <form class="manual-form" id="manualForm">
+            <div class="row">
+              <select name="memberType" id="memberType">
+                <option value="student">Student</option>
+                <option value="staff">Staff</option>
+              </select>
+              <input type="text" name="name" id="name" placeholder="Full name" required>
+            </div>
+            <div class="row">
+              <input type="text" name="contactNumber" id="contactNumber" placeholder="Contact number">
+              <input type="email" name="email" id="email" placeholder="Email">
+            </div>
+            <div class="row">
+              <input type="number" name="membershipFee" id="membershipFee" min="0" step="0.01" placeholder="Membership fee">
+              <input type="number" name="membershipCollected" id="membershipCollected" min="0" step="0.01" placeholder="Collected amount">
+            </div>
+            <div class="row">
+              <input type="date" name="membershipDate" id="membershipDate" placeholder="Membership date">
+              <input type="text" name="notes" id="notes" placeholder="Notes">
+            </div>
+            <div class="row" id="studentFields">
+              <input type="text" name="studentReg" id="studentReg" placeholder="Student registration no.">
+              <input type="text" name="studentClass" id="studentClass" placeholder="Class">
+            </div>
+            <div class="row" id="staffFields" style="display:none;">
+              <input type="text" name="staffUsername" id="staffUsername" placeholder="Staff username">
+              <input type="text" name="staffId" id="staffId" placeholder="Staff ID">
+            </div>
+            <div class="row">
+              <input type="text" name="section" id="section" placeholder="Section">
+            </div>
+            <button class="btn btn-primary" type="submit">Add Member</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3>Members</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (members && members.length) { %>
+                <% members.forEach((member) => { %>
+                  <tr>
+                    <td><%= member.name %></td>
+                    <td><%= member.memberType %></td>
+                    <td><span class="status-pill"><%= member.status %></span></td>
+                  </tr>
+                <% }); %>
+              <% } else { %>
+                <tr><td colspan="3">No members added yet.</td></tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const memberType = document.getElementById('memberType');
+    const studentFields = document.getElementById('studentFields');
+    const staffFields = document.getElementById('staffFields');
+
+    memberType.addEventListener('change', function () {
+      const type = this.value;
+      studentFields.style.display = type === 'student' ? 'grid' : 'none';
+      staffFields.style.display = type === 'staff' ? 'grid' : 'none';
+    });
+
+    function fillMember(item) {
+      const data = typeof item === 'string' ? JSON.parse(item) : item;
+      document.getElementById('memberType').value = data.memberType || 'student';
+      document.getElementById('name').value = data.name || '';
+      document.getElementById('contactNumber').value = data.contactNumber || '';
+      document.getElementById('email').value = data.email || '';
+      document.getElementById('studentReg').value = data.reg || '';
+      document.getElementById('studentClass').value = data.studentClass || '';
+      document.getElementById('section').value = data.section || '';
+      document.getElementById('staffUsername').value = data.username || '';
+      document.getElementById('staffId').value = data.teacherId || '';
+      memberType.dispatchEvent(new Event('change'));
+    }
+
+    const memberSearchInput = document.getElementById('memberSearch');
+    const memberSearchBtn = document.getElementById('memberSearchBtn');
+    const searchResultsContainer = document.getElementById('searchResultsContainer');
+
+    const performMemberSearch = async (query) => {
+      if (!query || query.length < 2) {
+        searchResultsContainer.innerHTML = '<div class="message error">Type at least 2 letters to search.</div>';
+        return;
+      }
+
+      const response = await fetch('/library/member/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ search: query })
+      });
+
+      const result = await response.json();
+      const items = result.results || [];
+
+      if (!items.length) {
+        searchResultsContainer.innerHTML = '<div class="message error">No matching student or staff found.</div>';
+        return;
+      }
+
+      searchResultsContainer.innerHTML = items.map((item) => `
+        <div class="result-item">
+          <div>
+            <strong>${item.name}</strong>
+            <small>${item.memberType} • ${item.studentClass || item.section || item.teacherId || item.username || ''}</small>
+          </div>
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <span class="tag">${item.memberType}</span>
+            <button class="btn btn-success" type="button" onclick="fillMember(${JSON.stringify(item).replace(/'/g, "\\'")})">Use this member</button>
+          </div>
+        </div>
+      `).join('');
+    };
+
+    memberSearchInput.addEventListener('input', function () {
+      const value = this.value.trim();
+      if (value.length >= 2) {
+        performMemberSearch(value);
+      }
+    });
+
+    memberSearchBtn.addEventListener('click', function () {
+      performMemberSearch(memberSearchInput.value.trim());
+    });
+
+    document.getElementById('manualForm').addEventListener('submit', async function (event) {
+      event.preventDefault();
+      const payload = {
+        memberType: document.getElementById('memberType').value,
+        name: document.getElementById('name').value,
+        contactNumber: document.getElementById('contactNumber').value,
+        email: document.getElementById('email').value,
+        membershipFee: document.getElementById('membershipFee').value,
+        membershipCollected: document.getElementById('membershipCollected').value,
+        membershipDate: document.getElementById('membershipDate').value,
+        studentReg: document.getElementById('studentReg').value,
+        studentClass: document.getElementById('studentClass').value,
+        section: document.getElementById('section').value,
+        staffUsername: document.getElementById('staffUsername').value,
+        staffId: document.getElementById('staffId').value,
+        notes: document.getElementById('notes').value
+      };
+
+      const response = await fetch('/library/member/create', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+      alert(result.message || 'Member saved successfully.');
+      if (response.ok) window.location.reload();
+    });
+  </script>
+</body>
+</html>

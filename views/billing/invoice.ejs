@@ -1,0 +1,50 @@
+<%- include('../partials/head', { title: 'Invoice ' + (invoice.invoiceNo || invoice.invoiceNumber || 'Bill') }) %>
+<div class="container mt-4">
+  <div class="d-flex justify-content-end no-print mb-3">
+    <button class="btn btn-primary" onclick="window.print()">Print</button>
+  </div>
+  <div class="card p-4">
+    <div class="text-center mb-3">
+      <h3><%= school && school.name ? school.name : 'School' %></h3>
+      <p class="mb-0"><%= school && school.address ? school.address : '' %></p>
+      <p class="mb-0">PAN: <%= school && school.panNumber ? school.panNumber : '' %><% if (school && school.phone) { %> | Phone: <%= school.phone %><% } %></p>
+      <hr>
+      <h5>Fee Invoice</h5>
+    </div>
+
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <p class="mb-1"><strong>Invoice No:</strong> <%= invoice.invoiceNo || invoice.invoiceNumber || '-' %></p>
+        <p class="mb-1"><strong>Bill Month:</strong> <%= invoice.nepaliMonth || invoice.billMonthBS || '-' %></p>
+        <p class="mb-1"><strong>Academic Year:</strong> <%= invoice.academicYear || '-' %></p>
+      </div>
+      <div class="col-md-6 text-md-end">
+        <p class="mb-1"><strong>Student:</strong> <%= invoice.studentName || (invoice.student && invoice.student.name) || '-' %></p>
+        <p class="mb-1"><strong>Class:</strong> <%= invoice.studentClass || (invoice.student && invoice.student.class && invoice.student.class.name) || '' %></p>
+        <p class="mb-1"><strong>Section:</strong> <%= invoice.section || (invoice.student && invoice.student.section) || '' %></p>
+      </div>
+    </div>
+
+    <table class="table table-bordered">
+      <thead><tr><th>Description</th><th class="text-end">Amount (Rs)</th></tr></thead>
+      <tbody>
+        <% const itemList = Array.isArray(invoice.items) ? invoice.items : (invoice.currentItems || []); %>
+        <% itemList.forEach(item => { %>
+        <tr><td><%= item.feehead || item.label %></td><td class="text-end"><%= Number(item.amount || 0).toFixed(2) %></td></tr>
+        <% }) %>
+        <% const totalAmount = Number(invoice.totalAmount ?? invoice.grandTotal ?? 0); %>
+        <% const paidAmount = Number(invoice.paidAmount ?? 0); %>
+        <% const balanceAmount = Math.max(0, totalAmount - paidAmount); %>
+        <% const status = invoice.status || 'UNPAID'; %>
+        <tr class="table-secondary"><td><strong>Grand Total</strong></td><td class="text-end"><strong><%= totalAmount.toFixed(2) %></strong></td></tr>
+        <tr><td>Paid So Far</td><td class="text-end"><%= paidAmount.toFixed(2) %></td></tr>
+        <tr class="<%= balanceAmount > 0 ? 'table-danger' : 'table-success' %>">
+          <td><strong>Balance Due</strong></td><td class="text-end"><strong><%= balanceAmount.toFixed(2) %></strong></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="text-muted mt-3 mb-0">Status: <strong><%= status %></strong></p>
+  </div>
+</div>
+<%- include('../partials/footer') %>

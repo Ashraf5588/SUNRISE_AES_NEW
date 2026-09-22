@@ -1,0 +1,30 @@
+<%- include('../partials/head', { title: 'Academic Sessions' }) %>
+<%- include('../partials/navbar') %>
+<div class="container mt-4">
+  <h3>Academic Sessions</h3>
+  <div class="row">
+    <div class="col-md-5">
+      <form method="POST" action="/setup/sessions" class="bg-white p-3 rounded shadow-sm">
+        <div class="mb-2"><label class="form-label">Title (BS)</label><input class="form-control" name="titleBS" required placeholder="2082"></div>
+        <div class="mb-2"><label class="form-label">Start Date (AD)</label><input type="date" class="form-control" name="startDateAD" required></div>
+        <div class="mb-2"><label class="form-label">End Date (AD)</label><input type="date" class="form-control" name="endDateAD" required></div>
+        <input type="radio" name="isActive" value="true" id="currentSession"><label for="currentSession">Set as Current Session</label>
+
+        <button class="btn btn-primary">Add Session</button>
+      </form>
+    </div>
+    <div class="col-md-7">
+      <table class="table table-bordered bg-white">
+        <thead><tr><th>BS Year</th><th>Start</th><th>End</th><th>Current</th></tr></thead>
+        <tbody>
+          <% sessions.forEach(s => { %>
+          <tr><td><%= s.titleBS %></td><td><%= s.startDateAD.toDateString() %></td><td><%= s.endDateAD.toDateString() %></td>
+            <td><%= s.isActive ? 'Yes' : 'No' %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

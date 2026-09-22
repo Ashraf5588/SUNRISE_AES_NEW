@@ -1,0 +1,33 @@
+<%- include('../partials/head', { title: 'Academic Sessions' }) %>
+<%- include('../partials/navbar') %>
+<div class="container mt-4">
+  <h3>Academic Sessions</h3>
+  <div class="row">
+    <div class="col-md-5">
+      <form method="POST" action="/setup/transportfee" class="bg-white p-3 rounded shadow-sm">
+        <div class="mb-2"><label class="form-label">Route Name</label><input class="form-control" name="routeName" required placeholder="Example Route"></div>
+        <div class="mb-2"><label class="form-label">Transport Fee</label><input class="form-control" name="transportFee" type="number" step="0.01" required></div>
+       <select name="academicSession" class="form-control" required>
+        <% academicSessions.forEach(session => { %>
+          <option value="<%= session._id %>"><%= session.titleBS %> (<%= session.startDateAD.toDateString() %> - <%= session.endDateAD.toDateString() %>)</option>
+        <% }) %>
+       </select>
+
+        <button class="btn btn-primary">Add Transport Fee</button>
+      </form>
+    </div>
+    <div class="col-md-7">
+      <table class="table table-bordered bg-white">
+        <thead><tr><th>Route Name</th><th>Transport Fee</th><th>Academic Session</th><th>Current</th></tr></thead>
+        <tbody>
+          <% transportFees.forEach(s => { %>
+          <tr><td><%= s.routeName %></td><td><%= s.transportFee %></td><td><%= s.academicSession.titleBS %></td>
+            <td><%= s.academicSession.isActive ? 'Yes' : 'No' %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

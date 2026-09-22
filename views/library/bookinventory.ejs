@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Book Inventory</title>
+  <style>
+    :root {
+      --bg:#f5f7fb; --panel:#ffffff; --sidebar:#0f172a; --sidebar-soft:#162236; --primary:#2563eb; --primary-soft:#dbeafe; --green:#16a34a; --green-soft:#dcfce7; --yellow:#f59e0b; --yellow-soft:#fef3c7; --red:#ef4444; --red-soft:#fee2e2; --text:#1f2937; --muted:#64748b; --border:#e5e7eb; --shadow:0 10px 28px rgba(15,23,42,0.08);
+    }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--text); }
+    a { text-decoration:none; color:inherit; }
+    .library-shell { display:flex; min-height:100vh; }
+    .sidebar { width:260px; background:linear-gradient(180deg,var(--sidebar) 0%, var(--sidebar-soft) 100%); color:#e5eefb; padding:24px 18px; position:sticky; top:0; height:100vh; }
+    .brand { font-size:22px; font-weight:700; margin-bottom:18px; display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:10px; background:rgba(255,255,255,0.04); }
+    .brand-mark { width:34px; height:34px; border-radius:10px; background:linear-gradient(135deg,#60a5fa,#2563eb); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; }
+    .nav-group { margin-top:24px; }
+    .nav-label { font-size:11px; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.6); padding:0 12px 8px; }
+    .nav-item { display:flex; align-items:center; gap:10px; padding:11px 12px; margin-bottom:6px; border-radius:10px; color:#dce9ff; }
+    .nav-item:hover, .nav-item.active { background:rgba(255,255,255,0.08); }
+    .content { flex:1; padding:28px; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:24px; }
+    .title { font-size:30px; font-weight:700; margin:0; }
+    .action-row { display:flex; gap:10px; flex-wrap:wrap; }
+    .btn { display:inline-flex; align-items:center; justify-content:center; border:none; border-radius:10px; padding:10px 16px; font-weight:600; cursor:pointer; }
+    .btn-primary { background:var(--primary); color:white; }
+    .btn-secondary { background:#e2e8f0; color:var(--text); }
+    .card { background:var(--panel); border-radius:18px; box-shadow:var(--shadow); border:1px solid rgba(148,163,184,0.12); padding:18px; margin-bottom:20px; }
+    .filters { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
+    .filters input, .filters select { padding:10px 12px; border:1px solid var(--border); border-radius:10px; min-width:180px; }
+    .filters .checkbox { display:flex; align-items:center; gap:8px; font-size:14px; color:var(--muted); }
+    table { width:100%; border-collapse:collapse; }
+    th, td { padding:12px 14px; border-bottom:1px solid var(--border); text-align:left; }
+    th { background:#eef5ff; }
+    .status-good { color:var(--green); font-weight:700; }
+    .status-low { color:#b45309; font-weight:700; }
+    .status-zero { color:var(--red); font-weight:700; }
+    .summary { display:grid; grid-template-columns:repeat(4, minmax(160px,1fr)); gap:12px; margin-bottom:18px; }
+    .summary-box { background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px; }
+    .summary-box .label { color:var(--muted); font-size:12px; text-transform:uppercase; font-weight:700; }
+    .summary-box .value { font-size:24px; font-weight:800; margin-top:8px; }
+    @media (max-width:900px) { .library-shell { display:block; } .sidebar { width:100%; height:auto; position:static; } .content { padding:18px; } .summary { grid-template-columns:repeat(2,minmax(160px,1fr)); } }
+  </style>
+</head>
+<body>
+  <div class="library-shell">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-mark">L</div><span>Library</span></div>
+      <div class="nav-group">
+        <div class="nav-label">Overview</div>
+        <a class="nav-item" href="/library/dashboard">Dashboard</a>
+        <a class="nav-item" href="/library/books">Books</a>
+        <a class="nav-item" href="/library/categories">Categories</a>
+        <a class="nav-item" href="/library/members">Members</a>
+        <a class="nav-item" href="/library/issues">Book Issue</a>
+        <a class="nav-item active" href="/library/inventory">Inventory</a>
+      </div>
+    </aside>
+
+    <main class="content">
+      <div class="topbar">
+        <div>
+          <h1 class="title">Book Inventory</h1>
+        </div>
+        <div class="action-row">
+          <a class="btn btn-primary" href="/library/dashboard">Dashboard</a>
+          <a class="btn btn-secondary" href="/library/books">Add Book</a>
+        </div>
+      </div>
+
+      <div class="summary">
+        <div class="summary-box">
+          <div class="label">Total Books</div>
+          <div class="value"><%= allBooks.length %></div>
+        </div>
+        <div class="summary-box">
+          <div class="label">Available</div>
+          <div class="value"><%= allBooks.reduce((sum, book) => sum + Number(book.availableQuantity || 0), 0) %></div>
+        </div>
+        <div class="summary-box">
+          <div class="label">Total Copies</div>
+          <div class="value"><%= allBooks.reduce((sum, book) => sum + Number(book.totalQuantity || 0), 0) %></div>
+        </div>
+        <div class="summary-box">
+          <div class="label">Need Reorder</div>
+          <div class="value"><%= allBooks.filter(book => Number(book.availableQuantity || 0) <= 2).length %></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <form method="GET" action="/library/inventory">
+          <div class="filters">
+            <input type="text" name="filter" value="<%= filter || '' %>" placeholder="Search book, author, category..." />
+            <select name="category">
+              <option value="">All categories</option>
+              <% categories.forEach((category) => { %>
+                <option value="<%= category.name %>" <%= categoryFilter === category.name ? 'selected' : '' %>><%= category.name %></option>
+              <% }) %>
+            </select>
+            <label class="checkbox">
+              <input type="checkbox" name="lowStockOnly" value="1" <%= lowStockOnly ? 'checked' : '' %> />
+              Show low stock only
+            </label>
+            <button class="btn btn-primary" type="submit">Filter</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>Book Name</th>
+              <th>Category</th>
+              <th>Author</th>
+              <th>Publisher</th>
+              <th>Available</th>
+              <th>Total</th>
+              <th>Price</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (books && books.length) { %>
+              <% books.forEach((book) => { %>
+                <tr>
+                  <td><strong><%= book.title %></strong></td>
+                  <td><%= book.category %></td>
+                  <td><%= book.author || '—' %></td>
+                  <td><%= book.publisherName || '—' %></td>
+                  <td class="<%= Number(book.availableQuantity) === 0 ? 'status-zero' : Number(book.availableQuantity) <= 2 ? 'status-low' : 'status-good' %>"><%= book.availableQuantity %></td>
+                  <td><%= book.totalQuantity %></td>
+                  <td>Rs. <%= Number(book.price || 0).toLocaleString('en-IN') %></td>
+                  <td>
+                    <% if (Number(book.availableQuantity) === 0) { %>
+                      <span class="status-zero">Out of stock</span>
+                    <% } else if (Number(book.availableQuantity) <= 2) { %>
+                      <span class="status-low">Reorder soon</span>
+                    <% } else { %>
+                      <span class="status-good">Healthy</span>
+                    <% } %>
+                  </td>
+                </tr>
+              <% }) %>
+            <% } else { %>
+              <tr>
+                <td colspan="8">No books found for the selected filter.</td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,26 @@
+<%- include('../partials/head', { title: 'Students' }) %>
+<%- include('../partials/navbar') %>
+<div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>Students</h3>
+    <a href="/students/new" class="btn btn-primary">+ New Student</a>
+  </div>
+  <table class="table table-bordered bg-white">
+    <thead>
+      <tr><th>Code</th><th>Name</th><th>Class</th><th>Admission Date</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody>
+      <% students.forEach(s => { %>
+      <tr>
+        <td><%= s.studentCode %></td>
+        <td><%= s.name %></td>
+        <td><%= s.class ? s.class.name : '-' %></td>
+        <td><%= s.admissionDateAD.toDateString() %></td>
+        <td><span class="badge bg-<%= s.status === 'ACTIVE' ? 'success' : 'secondary' %>"><%= s.status %></span></td>
+        <td><a href="/students/<%= s._id %>">View</a></td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<%- include('../partials/footer') %>

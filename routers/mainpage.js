@@ -166,6 +166,7 @@ student.post('/student-error-report/refresh', controller.refreshReportData);
 student.get('/student-error-report/student-names', controller.getStudentNames);
 
 student.get('/admin/class/:classId?',verifytoken,authorized,isAdmin,admincontrol.showClass)
+student.get('/class/:classId/:section?/:terminal?',verifytoken,authorized,isAdmin,admincontrol.showClass)
 student.post('/admin/class/:classId?',verifytoken,authorized,isAdmin,admincontrol.addClass)
 student.get('/admin/terminal',verifytoken,authorized,isAdmin,admincontrol.addTerminal)
 student.post('/admin/terminal/:terminalId?',verifytoken,authorized,isAdmin,admincontrol.addTerminalpost)

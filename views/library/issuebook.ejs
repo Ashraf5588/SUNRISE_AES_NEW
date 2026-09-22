@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Issue Books</title>
+  <style>
+    :root { --bg:#f5f7fb; --panel:#ffffff; --sidebar:#0f172a; --sidebar-soft:#162236; --primary:#2563eb; --primary-soft:#dbeafe; --green:#16a34a; --green-soft:#dcfce7; --yellow:#f59e0b; --yellow-soft:#fef3c7; --red:#ef4444; --red-soft:#fee2e2; --text:#1f2937; --muted:#64748b; --border:#e5e7eb; --shadow:0 10px 28px rgba(15,23,42,0.08); }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--text); }
+    a { text-decoration:none; color:inherit; }
+    .library-shell { display:flex; min-height:100vh; }
+    .sidebar { width:260px; background:linear-gradient(180deg,var(--sidebar) 0%, var(--sidebar-soft) 100%); color:#e5eefb; padding:24px 18px; position:sticky; top:0; height:100vh; }
+    .brand { font-size:22px; font-weight:700; margin-bottom:18px; display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:10px; background:rgba(255,255,255,0.04); }
+    .brand-mark { width:34px; height:34px; border-radius:10px; background:linear-gradient(135deg,#60a5fa,#2563eb); display:flex; align-items:center; justify-content:center; color:white; font-weight:700; }
+    .nav-group { margin-top:24px; }
+    .nav-label { font-size:11px; text-transform:uppercase; letter-spacing:1px; color:rgba(255,255,255,0.6); padding:0 12px 8px; }
+    .nav-item { display:flex; align-items:center; gap:10px; padding:11px 12px; margin-bottom:6px; border-radius:10px; color:#dce9ff; }
+    .nav-item:hover, .nav-item.active { background:rgba(255,255,255,0.08); }
+    .content { flex:1; padding:28px; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:24px; }
+    .title { font-size:30px; font-weight:700; margin:0; }
+    .action-row { display:flex; gap:10px; flex-wrap:wrap; }
+    .btn { display:inline-flex; align-items:center; justify-content:center; border:none; border-radius:10px; padding:10px 16px; font-weight:600; cursor:pointer; }
+    .btn-primary { background:var(--primary); color:white; }
+    .btn-secondary { background:#e2e8f0; color:var(--text); }
+    .card { background:var(--panel); border-radius:18px; box-shadow:var(--shadow); border:1px solid rgba(148,163,184,0.12); padding:18px; margin-bottom:20px; }
+    .card h3 { margin:0 0 16px; font-size:18px; }
+    .form-grid { display:grid; grid-template-columns:repeat(2,minmax(220px,1fr)); gap:14px; }
+    .field { display:flex; flex-direction:column; gap:8px; }
+    .field label { font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; }
+    .field input, .field select { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:10px; font-size:14px; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { padding:12px 14px; border-bottom:1px solid var(--border); text-align:left; }
+    th { background:#eef5ff; }
+    .status-issued { color:var(--green); font-weight:700; }
+    .status-returned { color:var(--primary); font-weight:700; }
+    .message { margin-top:12px; padding:10px 12px; border-radius:8px; font-size:14px; }
+    .success { background:var(--green-soft); color:#166534; }
+    .error { background:var(--red-soft); color:#991b1b; }
+    @media (max-width:900px) { .library-shell { display:block; } .sidebar { width:100%; height:auto; position:static; } .content { padding:18px; } .form-grid { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div class="library-shell">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-mark">L</div><span>Library</span></div>
+      <div class="nav-group">
+        <div class="nav-label">Overview</div>
+        <a class="nav-item" href="/library/dashboard">Dashboard</a>
+        <a class="nav-item" href="/library/books">Books</a>
+        <a class="nav-item" href="/library/categories">Categories</a>
+        <a class="nav-item" href="/library/members">Members</a>
+        <a class="nav-item active" href="/library/issues">Book Issue</a>
+      </div>
+    </aside>
+
+    <main class="content">
+      <div id="returnBookModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.48); z-index:50; align-items:center; justify-content:center; padding:20px;">
+        <div style="background:#fff; width:min(700px, 100%); border-radius:18px; box-shadow:0 20px 48px rgba(15,23,42,0.2); padding:24px; position:relative;">
+          <button type="button" id="closeReturnModal" style="position:absolute; top:16px; right:16px; border:none; background:#f1f5f9; width:36px; height:36px; border-radius:50%; cursor:pointer; font-size:20px;">×</button>
+          <h3 style="margin:0 0 18px;">Return Book Details</h3>
+          <div id="returnModalContent"></div>
+        </div>
+      </div>
+
+      <div class="topbar">
+        <div><h1 class="title">Issue Book</h1></div>
+        <div class="action-row">
+          <a class="btn btn-primary" href="/library/dashboard">Dashboard</a>
+          <a class="btn btn-secondary" href="/library/books">Add Book</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <% if (typeof error !== 'undefined' && error) { %><div class="message error"><%= error %></div><% } %>
+        <% if (typeof success !== 'undefined' && success) { %><div class="message success"><%= success %></div><% } %>
+
+        <h3>Issue a Book</h3>
+        <form id="issueForm">
+          <div class="form-grid">
+            <div class="field">
+              <label for="memberId">Member</label>
+              <select name="memberId" id="memberId" required>
+                <option value="">Select member</option>
+                <% if (members && members.length) { %>
+                  <% members.forEach((member) => { %>
+                    <option value="<%= member._id %>"><%= member.name %> (<%= member.memberType %>)</option>
+                  <% }) %>
+                <% } %>
+              </select>
+            </div>
+
+            <div class="field" style="grid-column: 1 / -1;">
+              <label for="bookSearch">Search Book by Title or Code</label>
+              <input type="text" id="bookSearch" placeholder="Type title or code like SAT-001" autocomplete="off" />
+              <div id="bookSearchResults" style="display:none; border:1px solid var(--border); border-radius:10px; background:#fff; max-height:200px; overflow:auto; box-shadow:0 8px 20px rgba(15,23,42,0.08);"></div>
+            </div>
+
+            <div class="field" style="grid-column: 1 / -1;">
+              <label for="bookId">Book</label>
+              <select name="bookId" id="bookId" required>
+                <option value="">Select book</option>
+                <% if (books && books.length) { %>
+                  <% books.forEach((book) => { %>
+                    <% const availableCodes = (book.bookCodes || []).filter((copy) => copy.status === 'available').map((copy) => copy.code); %>
+                    <option value="<%= book._id %>" data-title="<%= book.title %>" data-book-code="<%= (book.bookCodePrefix || 'BK') %>" data-copy-codes='<%= JSON.stringify(availableCodes) %>' data-search-text="<%= [book.title, book.bookCodePrefix, ...(book.bookCodes || []).map((copy) => copy.code)].join(' ') %>"><%= book.title %> - <%= book.availableQuantity %> available</option>
+                  <% }) %>
+                <% } %>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="quantity">Quantity</label>
+              <input type="number" name="quantity" id="quantity" min="1" value="1" required />
+            </div>
+
+            <div class="field" style="grid-column: 1 / -1;">
+              <label for="scanBookCode">Scan / Search Book Code</label>
+              <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                <input type="text" name="scanBookCode" id="scanBookCode" placeholder="Scan barcode or enter code like SAT-001" style="flex:1; min-width:200px;" />
+                <button type="button" id="startCameraScanBtn" class="btn btn-secondary">Use Webcam</button>
+              </div>
+              <video id="scannerVideo" autoplay playsinline muted style="display:none; width:100%; max-width:420px; border-radius:12px; border:1px solid var(--border); background:#111827; margin-top:8px;"></video>
+            </div>
+
+            <div class="field" style="grid-column: 1 / -1;">
+              <label>Book Copy Codes</label>
+              <div id="bookCopyCodeList" style="padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:#f8fafc; min-height:44px; font-size:13px; color:var(--muted);">Select a book to see available copy codes.</div>
+            </div>
+
+            <div class="field">
+              <label for="dueDate">Due Date (BS)</label>
+              <input type="text" name="dueDateBS" id="dueDateBS" placeholder="2081-06-06" />
+            </div>
+          </div>
+          <div style="margin-top:16px;">
+            <button class="btn btn-primary" type="submit">Issue Book</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h3>Issued Books</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Book</th>
+              <th>Member</th>
+              <th>Qty</th>
+              <th>Issued</th>
+              <th>Due</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (issues && issues.length) { %>
+              <% issues.forEach((issue) => { %>
+                <tr>
+                  <td><%= issue.bookTitle %><br><small><%= (issue.bookCodes || []).join(', ') %></small></td>
+                  <td><%= issue.memberName %></td>
+                  <td><%= issue.quantity %></td>
+                  <td><%= issue.nepaliIssuedAt || (issue.issuedAt ? new Date(issue.issuedAt).toLocaleDateString() : '—') %></td>
+                  <td><%= issue.nepaliDueDate || (issue.dueDate ? new Date(issue.dueDate).toLocaleDateString() : '—') %></td>
+                  <td class="<%= issue.status === 'issued' ? 'status-issued' : 'status-returned' %>"><%= issue.status %></td>
+                  <td>
+                    <% if (issue.status === 'issued') { %>
+                      <button class="btn btn-secondary" type="button" onclick="returnBook('<%= issue._id %>')">Return</button>
+                    <% } else { %>
+                      Returned
+                    <% } %>
+                  </td>
+                </tr>
+              <% }) %>
+            <% } else { %>
+              <tr><td colspan="7">No issued books yet.</td></tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const bookSelect = document.getElementById('bookId');
+    const bookSearch = document.getElementById('bookSearch');
+    const bookSearchResults = document.getElementById('bookSearchResults');
+    const quantityInput = document.getElementById('quantity');
+    const scanBookCode = document.getElementById('scanBookCode');
+    const copyCodeList = document.getElementById('bookCopyCodeList');
+    const returnBookModal = document.getElementById('returnBookModal');
+    const returnModalContent = document.getElementById('returnModalContent');
+    const scannerVideo = document.getElementById('scannerVideo');
+    const startCameraScanBtn = document.getElementById('startCameraScanBtn');
+    let cameraStream = null;
+    let cameraScanTimer = null;
+    const libraryBooks = <%- JSON.stringify((books || []).map((book) => ({
+      _id: book._id,
+      title: book.title,
+      bookCodePrefix: book.bookCodePrefix,
+      bookCodes: (book.bookCodes || []).map((copy) => copy.code)
+    }))) %>;
+    const returnIssueData = <%- JSON.stringify((issues || []).map((issue) => ({
+      _id: issue._id,
+      bookTitle: issue.bookTitle,
+      memberName: issue.memberName,
+      bookCodes: issue.bookCodes || [],
+      quantity: issue.quantity,
+      dueDate: issue.dueDate,
+      status: issue.status
+    }))) %>;
+
+    function renderBookSearchResults() {
+      const searchText = String(bookSearch.value || '').trim().toLowerCase();
+      const matches = Array.from(bookSelect.options).filter((option) => option.value && (!searchText || String(option.dataset.searchText || '').toLowerCase().includes(searchText)));
+
+      if (!searchText || !matches.length) {
+        bookSearchResults.innerHTML = '';
+        bookSearchResults.style.display = 'none';
+        return;
+      }
+
+      bookSearchResults.innerHTML = matches.slice(0, 8).map((option) => {
+        const title = option.dataset.title || 'Unknown book';
+        const copyCodes = (JSON.parse(option.dataset.copyCodes || '[]') || []).slice(0, 3).join(', ');
+        return `
+          <div class="book-search-item" data-book-id="${option.value}" style="padding:10px 12px; border-bottom:1px solid #eef2f7; cursor:pointer;">
+            <div style="font-weight:700;">${title}</div>
+            <div style="font-size:12px; color:#64748b;">Code: ${option.dataset.bookCode || 'BK'} · Copies: ${copyCodes || 'No copies'}</div>
+          </div>
+        `;
+      }).join('');
+
+      bookSearchResults.style.display = 'block';
+
+      bookSearchResults.querySelectorAll('.book-search-item').forEach((item) => {
+        item.addEventListener('click', () => {
+          const selectedValue = item.dataset.bookId;
+          bookSelect.value = selectedValue;
+          const selectedOption = Array.from(bookSelect.options).find((option) => option.value === selectedValue);
+          if (selectedOption) {
+            bookSearch.value = selectedOption.dataset.title || '';
+          }
+          bookSearchResults.style.display = 'none';
+          refreshAvailableBookCopyCodes();
+        });
+      });
+    }
+
+    function applyBookSearchFilter() {
+      const searchText = String(bookSearch.value || '').trim().toLowerCase();
+      let visibleCount = 0;
+
+      Array.from(bookSelect.options).forEach((option) => {
+        if (!option.value) {
+          option.hidden = false;
+          return;
+        }
+
+        const searchableText = String(option.dataset.searchText || '').toLowerCase();
+        const match = !searchText || searchableText.includes(searchText);
+        option.hidden = !match;
+        if (match) visibleCount += 1;
+      });
+
+      renderBookSearchResults();
+
+      if (visibleCount === 1) {
+        const onlyMatch = Array.from(bookSelect.options).find((option) => option.value && !option.hidden);
+        if (onlyMatch) {
+          bookSelect.value = onlyMatch.value;
+        }
+      }
+
+      refreshAvailableBookCopyCodes();
+    }
+
+    function refreshAvailableBookCopyCodes() {
+      const selectedOption = Array.from(bookSelect.options).find((option) => option.value === bookSelect.value && !option.hidden);
+      let codes = [];
+      try {
+        codes = JSON.parse(selectedOption?.dataset.copyCodes || '[]') || [];
+      } catch (error) {
+        codes = [];
+      }
+
+      copyCodeList.textContent = codes.length ? codes.join(', ') : 'No available copies for this book.';
+      quantityInput.max = codes.length || 1;
+      if (Number(quantityInput.value) > Number(quantityInput.max)) {
+        quantityInput.value = Number(quantityInput.max) || 1;
+      }
+    }
+
+    function matchBookFromCode(codeValue) {
+      const normalizedValue = String(codeValue || '').trim().toUpperCase();
+      if (!normalizedValue) return;
+
+      const matchedBook = libraryBooks.find((book) => (book.bookCodes || []).some((entry) => String(entry || '').toUpperCase() === normalizedValue));
+      if (!matchedBook) {
+        alert('This book code was not found in the library inventory.');
+        return;
+      }
+
+      bookSearch.value = matchedBook.title;
+      bookSelect.value = matchedBook._id;
+      applyBookSearchFilter();
+      alert(`Book matched: ${matchedBook.title}`);
+      scanBookCode.value = normalizedValue;
+      stopCameraScan();
+    }
+
+    document.getElementById('issueForm').addEventListener('submit', async function (event) {
+      event.preventDefault();
+      const payload = {
+        memberId: document.getElementById('memberId').value,
+        bookId: document.getElementById('bookId').value,
+        quantity: document.getElementById('quantity').value,
+        dueDateBS: document.getElementById('dueDateBS').value
+      };
+
+      const response = await fetch('/library/issue-book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+      alert(result.message || 'Book issued successfully.');
+      if (response.ok) window.location.reload();
+    });
+
+    function openReturnModal(issueId) {
+      const selectedIssue = returnIssueData.find((entry) => String(entry._id) === String(issueId));
+      if (!selectedIssue) {
+        alert('Issue record not found.');
+        return;
+      }
+
+      const defaultCodes = selectedIssue.bookCodes || [];
+      const dueDate = selectedIssue.dueDate ? new Date(selectedIssue.dueDate) : new Date();
+      const returnDate = new Date();
+      const daysLate = dueDate < returnDate ? Math.max(1, Math.ceil((returnDate - dueDate) / (1000 * 60 * 60 * 24))) : 0;
+      const fine = daysLate > 0 ? daysLate * (selectedIssue.quantity || defaultCodes.length || 1) * 10 : 0;
+
+      const codeOptions = defaultCodes.map((code) => `
+        <label style="display:flex; align-items:center; gap:8px; margin:4px 0;">
+          <input type="checkbox" name="returnBookCode" value="${code}" checked />
+          <span>${code}</span>
+        </label>
+      `).join('');
+
+      const markup = `
+        <form id="returnForm">
+          <div style="display:grid; grid-template-columns:repeat(2,minmax(220px,1fr)); gap:14px;">
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <label><strong>Book</strong></label>
+              <div>${selectedIssue.bookTitle}</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <label><strong>Member</strong></label>
+              <div>${selectedIssue.memberName}</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <label for="returnQuantity">Return Quantity</label>
+              <input id="returnQuantity" type="number" min="1" max="${selectedIssue.quantity || defaultCodes.length || 1}" value="${selectedIssue.quantity || defaultCodes.length || 1}" required />
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <label for="returnDate">Return Date</label>
+              <input id="returnDate" type="date" value="${returnDate.toISOString().slice(0,10)}" required />
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <label for="bookCondition">Condition</label>
+              <select id="bookCondition">
+                <option value="good">Good</option>
+                <option value="fair">Fair</option>
+                <option value="damaged">Damaged</option>
+                <option value="poor">Poor</option>
+              </select>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <label>Due Status</label>
+              <div style="padding:10px 12px; border-radius:10px; ${daysLate ? 'background:#fee2e2; color:#991b1b;' : 'background:#dcfce7; color:#166534;'}; font-weight:700;">
+                ${daysLate ? `Late by ${daysLate} day(s)` : 'On time'}
+              </div>
+            </div>
+            <div style="grid-column: 1 / -1; display:flex; flex-direction:column; gap:8px;">
+              <label>Book Copy Codes</label>
+              <div style="display:flex; flex-wrap:wrap; gap:10px; padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px; background:#f8fafc;">
+                ${codeOptions || '<span>No codes recorded.</span>'}
+              </div>
+            </div>
+            <div style="grid-column: 1 / -1; display:flex; flex-direction:column; gap:8px;">
+              <label for="returnNotes">Notes</label>
+              <textarea id="returnNotes" rows="3" placeholder="Add note about tears, missing pages, damaged cover, etc.">${daysLate ? `Late by ${daysLate} day(s). Fine: Rs. ${fine}` : 'Book returned in good condition.'}</textarea>
+            </div>
+            <div style="grid-column: 1 / -1; display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border:1px solid #e5e7eb; border-radius:10px; background:#f8fafc;">
+              <strong>Fine calculated</strong>
+              <span id="finePreview" style="font-weight:800; color:#b45309;">Rs. ${fine}</span>
+            </div>
+          </div>
+
+          <div style="margin-top:18px; display:flex; justify-content:flex-end; gap:10px;">
+            <button type="button" class="btn btn-secondary" id="cancelReturnBtn">Cancel</button>
+            <button type="submit" class="btn btn-primary">Confirm Return</button>
+          </div>
+        </form>
+      `;
+
+      returnModalContent.innerHTML = markup;
+      returnBookModal.style.display = 'flex';
+
+      const returnQuantityInput = document.getElementById('returnQuantity');
+      const returnDateInput = document.getElementById('returnDate');
+      const bookCondition = document.getElementById('bookCondition');
+      const finePreview = document.getElementById('finePreview');
+      const returnNotes = document.getElementById('returnNotes');
+
+      function calculateFinePreview() {
+        const qty = Number(returnQuantityInput.value || 1);
+        const dateValue = returnDateInput.value ? new Date(returnDateInput.value) : new Date();
+        const due = dueDate;
+        const lateDays = due < dateValue ? Math.max(1, Math.ceil((dateValue - due) / (1000 * 60 * 60 * 24))) : 0;
+        const newFine = lateDays > 0 ? lateDays * qty * 10 : 0;
+        finePreview.textContent = `Rs. ${newFine}`;
+        if (returnNotes.value.trim() === '') {
+          returnNotes.value = `${lateDays ? `Late by ${lateDays} day(s).` : 'Returned on time.'} Condition: ${bookCondition.value}.`;
+        }
+        if (!lateDays && returnNotes.value.includes('Late by')) {
+          returnNotes.value = `Returned on time. Condition: ${bookCondition.value}.`;
+        }
+      }
+
+      returnQuantityInput.addEventListener('input', calculateFinePreview);
+      returnDateInput.addEventListener('change', calculateFinePreview);
+      bookCondition.addEventListener('change', calculateFinePreview);
+
+      document.getElementById('cancelReturnBtn').addEventListener('click', () => {
+        returnBookModal.style.display = 'none';
+      });
+      document.getElementById('closeReturnModal').addEventListener('click', () => {
+        returnBookModal.style.display = 'none';
+      });
+
+      const form = document.getElementById('returnForm');
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const selectedCodes = Array.from(document.querySelectorAll('input[name="returnBookCode"]:checked')).map((input) => input.value);
+        const payload = {
+          returnQuantity: Number(returnQuantityInput.value || 1),
+          returnDate: returnDateInput.value || new Date().toISOString().slice(0, 10),
+          conditionOnReturn: bookCondition.value,
+          notes: returnNotes.value,
+          bookCodes: selectedCodes.length ? selectedCodes : (defaultCodes || []).slice(0, Number(returnQuantityInput.value || 1)),
+          finePerDay: 10
+        };
+
+        const response = await fetch(`/library/return-book/${issueId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        alert(result.message || 'Book returned.');
+        if (response.ok) {
+          returnBookModal.style.display = 'none';
+          window.location.reload();
+        }
+      });
+    }
+
+    function returnBook(issueId) {
+      openReturnModal(issueId);
+    }
+
+    scanBookCode.addEventListener('change', () => {
+      const scannedValue = String(scanBookCode.value || '').trim();
+      matchBookFromCode(scannedValue);
+      scanBookCode.value = '';
+    });
+
+    function stopCameraScan() {
+      if (cameraScanTimer) {
+        clearInterval(cameraScanTimer);
+        cameraScanTimer = null;
+      }
+
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((track) => track.stop());
+        cameraStream = null;
+      }
+
+      scannerVideo.srcObject = null;
+      scannerVideo.style.display = 'none';
+    }
+
+    async function startCameraScan() {
+      const isSecureContext = window.isSecureContext || window.location.protocol === 'https:' || window.location.hostname === 'localhost';
+      if (!isSecureContext) {
+        alert('The camera requires a secure page. Please open this page through https:// or localhost, or use Chrome/Edge on a phone and allow camera access.');
+        return;
+      }
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('This browser does not support webcam access. Please use Chrome or Edge and allow camera permissions, or enter the code manually.');
+        return;
+      }
+
+      try {
+        scannerVideo.style.display = 'block';
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+        cameraStream = stream;
+        scannerVideo.srcObject = stream;
+        await scannerVideo.play();
+
+        const supportsBarcodeDetector = 'BarcodeDetector' in window;
+        if (!supportsBarcodeDetector) {
+          alert('Camera is ready, but this browser does not support built-in barcode detection. Please use Chrome or Edge on mobile/desktop, or type the book code manually.');
+          return;
+        }
+
+        const detector = new BarcodeDetector({ formats: ['code_128', 'code_39', 'ean_13', 'ean_8', 'qr_code', 'upc_a', 'upc_e'] });
+
+        cameraScanTimer = setInterval(async () => {
+          try {
+            const barcodes = await detector.detect(scannerVideo);
+            if (barcodes && barcodes.length) {
+              const value = barcodes[0].rawValue;
+              if (value) {
+                matchBookFromCode(value);
+              }
+            }
+          } catch (error) {
+            console.warn('Barcode detection error:', error);
+          }
+        }, 1000);
+      } catch (error) {
+        console.error('Camera scan failed:', error);
+        alert('Camera access was blocked or unavailable. Please allow camera access in Chrome/Edge or type the book code manually.');
+      }
+    }
+
+    startCameraScanBtn.addEventListener('click', startCameraScan);
+    bookSearch.addEventListener('input', applyBookSearchFilter);
+    bookSearch.addEventListener('focus', renderBookSearchResults);
+    document.addEventListener('click', (event) => {
+      if (!bookSearchResults.contains(event.target) && event.target !== bookSearch) {
+        bookSearchResults.style.display = 'none';
+      }
+    });
+    bookSelect.addEventListener('change', refreshAvailableBookCopyCodes);
+    quantityInput.addEventListener('input', () => {
+      const value = Number(quantityInput.value || 1);
+      const maxAllowed = Number(quantityInput.max || 1);
+      if (value < 1) quantityInput.value = 1;
+      if (value > maxAllowed) quantityInput.value = maxAllowed;
+    });
+    refreshAvailableBookCopyCodes();
+    document.getElementById('closeReturnModal').addEventListener('click', () => {
+      returnBookModal.style.display = 'none';
+    });
+  </script>
+</body>
+</html>

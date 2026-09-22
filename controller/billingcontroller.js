@@ -52,7 +52,7 @@ exports.billingDashboard = async (req, res) => {
      feePaymentModel.aggregate([{ $group: { _id: null, collected: { $sum: '$amount' } } }]),
      feePaymentModel.find().sort({ paidAt: -1 }).limit(8).lean()
    ]);
-   return res.render("./billing/feedashboard", {
+   return res.render("./billingfirst/feedashboard", {
     title: "Billing Dashboard",
     studentCount,
     invoiceStats: invoiceStats[0] || { billed: 0, outstanding: 0, count: 0 },
@@ -69,7 +69,7 @@ exports.billingDashboard = async (req, res) => {
 exports.feeHead = async (req, res) => {
   try {
     const feeheads = await feeheadmodel.find().sort({ createdAt: -1 }).lean();
-    return res.render("./billing/feehead", {
+    return res.render("./billingfirst/feehead", {
       title: "Fee Head",
       feeheads,
       editFeeHead: null
@@ -92,7 +92,7 @@ exports.editFeeHead = async (req, res) => {
       return res.status(404).send("Fee head not found");
     }
 
-    return res.render("./billing/feehead", {
+    return res.render("./billingfirst/feehead", {
       title: "Edit Fee Head",
       feeheads,
       editFeeHead
@@ -179,7 +179,7 @@ const loadFeeStructureData = async (editFeeStructure = null) => {
 
 exports.feeStructure = async (req, res) => {
   try {
-    return res.render('./billing/feestructure', {
+    return res.render('./billingfirst/feestructure', {
       title: 'Fee Structure',
       ...(await loadFeeStructureData())
     });
@@ -224,7 +224,7 @@ exports.editFeeStructure = async (req, res) => {
       return res.status(404).send('Fee structure not found');
     }
 
-    return res.render('./billing/feestructure', {
+    return res.render('./billingfirst/feestructure', {
       title: 'Edit Fee Structure',
       ...(await loadFeeStructureData(editFeeStructure))
     });
@@ -287,7 +287,7 @@ const invoicePageData = async (editInvoice = null) => {
 
 exports.feeInvoices = async (req, res) => {
   try {
-    return res.render('./billing/feeinvoices', { title: 'Fee Invoices', ...(await invoicePageData()) });
+    return res.render('./billingfirst/feeinvoices', { title: 'Fee Invoices', ...(await invoicePageData()) });
   } catch (error) {
     console.error('Error fetching fee invoices:', error);
     res.status(500).send('Internal Server Error');
@@ -325,7 +325,7 @@ exports.viewFeeInvoice = async (req, res) => {
     const invoice = await feeInvoiceModel.findById(req.params.id).lean();
     if (!invoice) return res.status(404).send('Invoice not found');
     const payments = await feePaymentModel.find({ invoiceId: invoice._id }).sort({ paidAt: -1 }).lean();
-    return res.render('./billing/feeinvoice', { title: invoice.invoiceNo, invoice, payments });
+    return res.render('./billingfirst/feeinvoice', { title: invoice.invoiceNo, invoice, payments });
   } catch (error) {
     console.error('Error loading fee invoice:', error);
     res.status(500).send('Internal Server Error');
@@ -350,7 +350,7 @@ exports.feePayments = async (req, res) => {
       feeInvoiceModel.find({ $expr: { $lt: ['$paidAmount', '$totalAmount'] } }).sort({ createdAt: -1 }).lean(),
       feePaymentModel.find().sort({ paidAt: -1 }).limit(100).lean()
     ]);
-    return res.render('./billing/feepayments', { title: 'Fee Payments', invoices, payments });
+    return res.render('./billingfirst/feepayments', { title: 'Fee Payments', invoices, payments });
   } catch (error) {
     console.error('Error fetching fee payments:', error);
     res.status(500).send('Internal Server Error');
@@ -387,9 +387,50 @@ exports.viewFeeReceipt = async (req, res) => {
     const payment = await feePaymentModel.findById(req.params.id).lean();
     if (!payment) return res.status(404).send('Receipt not found');
     const invoice = await feeInvoiceModel.findById(payment.invoiceId).lean();
-    return res.render('./billing/feereceipt', { title: payment.receiptNo, payment, invoice });
+    return res.render('./billingfirst/feereceipt', { title: payment.receiptNo, payment, invoice });
   } catch (error) {
     console.error('Error loading fee receipt:', error);
     res.status(500).send('Internal Server Error');
   }
 };
+
+exports.listInvoices = async (req, res) => {
+  try {
+    const invoices = await feeInvoiceModel.find().sort({ createdAt: -1 }).limit(200).lean();
+    return res.render('billing/list', { title: 'Invoices', invoices });
+  } catch (error) {
+    console.error('Error loading invoices:', error);
+    res.status(500).send('Internal Server Error');
+  }
+};
+
+exports.showGenerateForm = async (req, res) => {
+  try {
+    const students = await studentRecord.find({ status: { $nin: ['Inactive', 'inactive'] } }).sort({ studentClass: 1, section: 1, roll: 1 }).lean();
+    return res.render('billing/generate', { title: 'Generate Bills', students, sessions: [] });
+  } catch (error) {
+    console.error('Error loading bill generation form:', error);
+    res.status(500).send('Internal Server Error');
+  }
+};
+
+exports.generateBills = async (req, res) => {
+  try {
+    return res.status(501).send('Legacy billing generation route is disabled. Use the fee invoice flow instead.');
+  } catch (error) {
+    console.error('Error generating bills:', error);
+    res.status(500).send('Internal Server Error');
+  }
+};
+
+exports.viewInvoice = async (req, res) => {
+  try {
+    const invoice = await feeInvoiceModel.findById(req.params.id).lean();
+    if (!invoice) return res.status(404).send('Invoice not found');
+    return res.render('billing/invoice', { title: invoice.invoiceNo, invoice, school: { name: 'School' } });
+  } catch (error) {
+    console.error('Error loading invoice:', error);
+    res.status(500).send('Internal Server Error');
+  }
+};
+

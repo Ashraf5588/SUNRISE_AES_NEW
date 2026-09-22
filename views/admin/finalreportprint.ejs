@@ -121,6 +121,11 @@
       page-break-after: always;
       break-after: page;
       min-height: 245mm;
+      background: transparent;
+    }
+
+    .subject-print-pages {
+      width: 100%;
     }
 
     .print-context {
@@ -140,19 +145,23 @@ table thead
  background-color: #70d2ff;
 }
     @media print {
-      .print-all-btn {
-        display: none;
-      }
-
-      .print-sort-controls {
-        display: none;
-      }
-
-      .subject-filter-controls {
-        display: none;
+      .print-all-btn,
+      .print-sort-controls,
+      .subject-filter-controls,
+      .no-print,
+      .btn,
+      .dt-buttons,
+      .buttons-html5,
+      .buttons-print,
+      .dataTables_filter,
+      .dataTables_length,
+      .dataTables_paginate,
+      .dataTables_info {
+        display: none !important;
       }
 
       .subject-section {
+        display: block !important;
         page-break-after: auto;
         break-after: auto;
         margin: 0;
@@ -169,12 +178,29 @@ table thead
         page-break-after: always;
       }
 
-      .buttons-html5,
-      .buttons-print {
+      .dtr-control,
+      .dtr-toggle,
+      .dtr-button,
+      .dtr-expansion,
+      .dtr-details,
+      .dtr-title,
+      .dtr-control::before {
         display: none !important;
+        content: "" !important;
       }
-      table { table-layout: auto !important; width: 100% !important; }
-      th, td { font-size: 12px !important; padding: 6px !important; }
+
+      table {
+        table-layout: fixed !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow: visible !important;
+      }
+
+      th, td {
+        font-size: 12px !important;
+        padding: 6px !important;
+        word-break: break-word !important;
+      }
     }
   </style>
 
@@ -241,9 +267,25 @@ table thead
       });
     }
 
-    function buildSubjectPrintPages() {
+    function restoreOriginalSubjectLayout() {
       document.querySelectorAll('.subject-section').forEach(function(section) {
-        if (section.dataset.printPrepared === 'true') return;
+        if (!section.dataset.originalHtml) return;
+        section.innerHTML = section.dataset.originalHtml;
+        section.dataset.printPrepared = 'false';
+      });
+    }
+
+    function buildSubjectPrintPages() {
+      const visibleSections = Array.from(document.querySelectorAll('.subject-section')).filter(function(section) {
+        const styleDisplay = section.style.display || getComputedStyle(section).display;
+        return styleDisplay !== 'none';
+      });
+
+      visibleSections.forEach(function(section) {
+        if (!section.dataset.originalHtml) {
+          section.dataset.originalHtml = section.innerHTML;
+        }
+
         const table = section.querySelector('table');
         const tbody = table && table.querySelector('tbody');
         const header = table && table.querySelector('thead');
@@ -256,6 +298,7 @@ table thead
         pageHost.className = 'subject-print-pages';
         const subjectTitle = section.querySelector('.subject-header h3')?.textContent.trim() || '';
         const printContext = 'Class <%= studentClass %> - <%= section %> | <%= terminal %> Terminal';
+        const subjectPages = [];
 
         for (let start = 0; start < rows.length; start += PRINT_ROWS_PER_PAGE) {
           const page = document.createElement('div');
@@ -264,6 +307,7 @@ table thead
           pageTitle.className = 'print-page-header';
           pageTitle.textContent = `${printContext} | ${subjectTitle}`;
           page.appendChild(pageTitle);
+
           const pageTable = table.cloneNode(false);
           const pageHead = header.cloneNode(true);
           const pageBody = document.createElement('tbody');
@@ -271,57 +315,52 @@ table thead
           pageTable.appendChild(pageHead);
           pageTable.appendChild(pageBody);
           page.appendChild(pageTable);
-          pageHost.appendChild(page);
+          subjectPages.push(page);
         }
 
-        const pageCount = Math.ceil(rows.length / PRINT_ROWS_PER_PAGE);
         const chapterBlocks = Array.from(section.querySelectorAll('.chapter-analysis-block'));
-        if (chapterBlocks.length) {
-          const finalPage = pageHost.querySelector('.subject-print-page:last-of-type');
+        if (chapterBlocks.length && subjectPages.length) {
+          const finalPage = subjectPages[subjectPages.length - 1];
           chapterBlocks.forEach(block => {
             finalPage?.appendChild(block.cloneNode(true));
-            block.remove();
           });
         }
+
+        const pageCount = subjectPages.length;
         if (pageCount % 2 === 1) {
           const blank = document.createElement('div');
           blank.className = 'subject-blank-page';
-          pageHost.appendChild(blank);
+          subjectPages.push(blank);
         }
 
-        const tableCard = table.closest('.card');
-        if (tableCard) {
-          tableCard.replaceWith(pageHost);
-        } else {
-          table.replaceWith(pageHost);
-        }
+        subjectPages.forEach(page => pageHost.appendChild(page));
+        section.innerHTML = '';
+        section.appendChild(pageHost);
         section.dataset.printPrepared = 'true';
       });
     }
 
     function printAllReports() {
       try {
-        // Expand all DataTables to show all rows before print
         const restore = [];
         window._dtTables.forEach(function(dt) {
           try {
-            const api = dt; // already DataTable API instance
+            const api = dt;
             restore.push({ api: api, len: api.page.len(), page: api.page() });
             api.page.len(-1).draw();
           } catch (e) { console.warn('dt expand failed', e); }
         });
 
+        restoreOriginalSubjectLayout();
         applyPrintSort();
         buildSubjectPrintPages();
-
-        // ensure layout adjusts
         document.body.style.webkitPrintColorAdjust = 'exact';
 
-        // after print restore pagination
         function restoreAfterPrint() {
           setTimeout(function() {
+            restoreOriginalSubjectLayout();
             restore.forEach(function(r) {
-              try { r.api.page.len(r.len).draw(false); r.api.page(r.page).draw(false);} catch(e){}
+              try { r.api.page.len(r.len).draw(false); r.api.page(r.page).draw(false); } catch(e){}
             });
             window.removeEventListener('afterprint', restoreAfterPrint);
           }, 500);
@@ -336,26 +375,29 @@ table thead
     }
 
     function printSingleSubject(subjectIndex) {
-      applyPrintSort();
-      buildSubjectPrintPages();
-      const content = document.getElementById(`subject-${subjectIndex}`);
-      const originalDisplay = [];
       const sections = document.querySelectorAll('.subject-section');
-      
+      const originalDisplay = [];
+
       sections.forEach((section, idx) => {
+        originalDisplay[idx] = section.style.display;
         if (idx !== subjectIndex) {
-          originalDisplay[idx] = section.style.display;
           section.style.display = 'none';
         }
       });
 
-      window.print();
-
-      sections.forEach((section, idx) => {
-        if (idx !== subjectIndex) {
+      try {
+        restoreOriginalSubjectLayout();
+        applyPrintSort();
+        buildSubjectPrintPages();
+        window.print();
+      } finally {
+        sections.forEach((section, idx) => {
           section.style.display = originalDisplay[idx];
-        }
-      });
+          if (section.dataset.printPrepared === 'true') {
+            restoreOriginalSubjectLayout();
+          }
+        });
+      }
     }
 
     document.addEventListener('DOMContentLoaded', function() {

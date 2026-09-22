@@ -10,7 +10,6 @@ const { rootDir } = require("../utils/path");
 const { classSchema, subjectSchema, terminalSchema,newsubjectSchema } = require("../model/adminschema");
 const { adminSchema,superadminSchema, teacherSchema} = require("../model/admin");
 const { studentSchema } = require("../model/schema");
-const student = require("../routers/mainpage");
 const terminal = mongoose.model("terminal", terminalSchema, "terminal");
 const newsubject = mongoose.model("newsubject", newsubjectSchema, "newsubject");
 const userlist = mongoose.model("userlist", teacherSchema, "users");

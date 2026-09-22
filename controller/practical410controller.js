@@ -22,7 +22,6 @@ const terminal = mongoose.model("terminal", terminalSchema, "terminal");
 const {ThemeEvaluationSchema,practicalSchema,scienceprojectSchema, practicalprojectSchema} = require("../model/themeformschema");
 const {themeSchemaFor1,scienceSchema,FinalPracticalSlipSchema} = require("../model/themeschema");
 const { get } = require("http");
-const student = require("../routers/mainpage");
 const {marksheetsetupschemaForAdmin} = require("../model/masrksheetschema");
 const marksheetSetup = mongoose.models.marksheetSetup || mongoose.model("marksheetSetup", marksheetsetupschemaForAdmin, "marksheetSetup");
 

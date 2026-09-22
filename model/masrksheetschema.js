@@ -12,7 +12,10 @@ const marksheetSchema = new mongoose.Schema({
 });
 const terminalSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  workingDays: { type: Number, required: true }
+  workingDays: { type: Number, required: true },
+  resultpublishdate: { type: String, required: true },
+  attendancestartdate: { type: String, required: true },
+  attendanceenddate: { type: String, required: true },
 });
 const marksheetsetupschemaForAdmin = new mongoose.Schema({
   schoolName: { type: String, required: true },

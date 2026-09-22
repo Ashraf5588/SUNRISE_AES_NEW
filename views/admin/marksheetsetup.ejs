@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Marksheet Setup</title>
+  <link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css">
   <style>
     * {
       margin: 0;
@@ -481,7 +482,7 @@
                     <div style="display: flex; flex-wrap: wrap; gap: 0.25rem;">
                       <% setup.terminals.forEach((terminal, termIndex) => { %>
                         <span style="background: #e3f2fd; color: #1976d2; padding: 0.25rem 0.5rem; border-radius: 12px; font-size: 0.8rem;">
-                          <%= terminal.name %> (<%= terminal.workingDays %>d)
+                          <%= terminal.name %> (<%= terminal.workingDays %>d; attendance <%= terminal.attendancestartdate || '-' %> to <%= terminal.attendanceenddate || '-' %>; result <%= terminal.resultpublishdate || '-' %>)
                         </span>
                       <% }); %>
                     </div>
@@ -538,8 +539,22 @@
     </div>
     <% } %>
   </div>
+  <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
   <script>
     let terminalCount = 1;
+
+    function initializeNepaliDatePickers() {
+      document.querySelectorAll('#terminalsContainer .nepali-datepicker').forEach((input) => {
+        if (input.dataset.initialized === 'true') return;
+        if (typeof input.nepaliDatePicker === 'function') {
+          input.nepaliDatePicker();
+          input.dataset.initialized = 'true';
+        } else if (typeof input.NepaliDatePicker === 'function') {
+          input.NepaliDatePicker();
+          input.dataset.initialized = 'true';
+        }
+      });
+    }
 
     function addMoreTerminals() {
       const totalterm = document.getElementById('totalTerminals').value;
@@ -565,6 +580,24 @@
                    placeholder="Number of working days" min="1" max="365" required
                    style="background: #f8fbff; border: 2px solid #e3f2fd;">
           </div>
+          <div class="form-group">
+            <label for="attendancestartdate${i}">Attendance Start Date:</label>
+            <input type="text" id="attendancestartdate${i}" name="attendancestartdate${i}"
+                   class="nepali-datepicker" placeholder="YYYY-MM-DD" required
+                   style="background: #f8fbff; border: 2px solid #e3f2fd;">
+          </div>
+          <div class="form-group">
+            <label for="attendanceenddate${i}">Attendance End Date:</label>
+            <input type="text" id="attendanceenddate${i}" name="attendanceenddate${i}"
+                   class="nepali-datepicker" placeholder="YYYY-MM-DD" required
+                   style="background: #f8fbff; border: 2px solid #e3f2fd;">
+          </div>
+          <div class="form-group">
+            <label for="resultpublishdate${i}">Result Publish Date:</label>
+            <input type="text" id="resultpublishdate${i}" name="resultpublishdate${i}"
+                   class="nepali-datepicker" placeholder="YYYY-MM-DD" required
+                   style="background: #f8fbff; border: 2px solid #e3f2fd;">
+          </div>
           ${i > 1 ? `
             <div class="form-group" style="display: flex; align-items: end;">
               <button type="button" onclick="removeTerminal(this)" 
@@ -576,6 +609,7 @@
         `;
         
         container.appendChild(terminalDiv);
+        initializeNepaliDatePickers();
         
         // Add fade-in animation
         terminalDiv.style.opacity = '0';
@@ -617,6 +651,9 @@
         // Update input names for proper form submission
         const nameInput = terminal.querySelector('input[name*="name"]');
         const daysInput = terminal.querySelector('input[name*="workingDays"]');
+        const attendanceStartInput = terminal.querySelector('input[name*="attendancestartdate"]');
+        const attendanceEndInput = terminal.querySelector('input[name*="attendanceenddate"]');
+        const resultPublishInput = terminal.querySelector('input[name*="resultpublishdate"]');
         
         if (nameInput) {
           nameInput.name = `name${index + 1}`;
@@ -625,6 +662,18 @@
         if (daysInput) {
           daysInput.name = `workingDays${index + 1}`;
           daysInput.id = `workingDays${index + 1}`;
+        }
+        if (attendanceStartInput) {
+          attendanceStartInput.name = `attendancestartdate${index + 1}`;
+          attendanceStartInput.id = `attendancestartdate${index + 1}`;
+        }
+        if (attendanceEndInput) {
+          attendanceEndInput.name = `attendanceenddate${index + 1}`;
+          attendanceEndInput.id = `attendanceenddate${index + 1}`;
+        }
+        if (resultPublishInput) {
+          resultPublishInput.name = `resultpublishdate${index + 1}`;
+          resultPublishInput.id = `resultpublishdate${index + 1}`;
         }
       });
       
@@ -737,9 +786,16 @@
           editData.terminals.forEach((terminal, index) => {
             const nameInput = document.getElementById(`terminalName${index + 1}`);
             const daysInput = document.getElementById(`workingDays${index + 1}`);
+            const attendanceStartInput = document.getElementById(`attendancestartdate${index + 1}`);
+            const attendanceEndInput = document.getElementById(`attendanceenddate${index + 1}`);
+            const resultPublishInput = document.getElementById(`resultpublishdate${index + 1}`);
             if (nameInput) nameInput.value = terminal.name;
             if (daysInput) daysInput.value = terminal.workingDays;
+            if (attendanceStartInput) attendanceStartInput.value = terminal.attendancestartdate || '';
+            if (attendanceEndInput) attendanceEndInput.value = terminal.attendanceenddate || '';
+            if (resultPublishInput) resultPublishInput.value = terminal.resultpublishdate || '';
           });
+          initializeNepaliDatePickers();
         }, 100);
       }
     });

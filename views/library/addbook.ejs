@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Book Management</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --sidebar: #0f172a;
+      --sidebar-soft: #162236;
+      --primary: #2563eb;
+      --primary-soft: #dbeafe;
+      --green: #16a34a;
+      --green-soft: #dcfce7;
+      --yellow: #f59e0b;
+      --yellow-soft: #fef3c7;
+      --red: #ef4444;
+      --red-soft: #fee2e2;
+      --text: #1f2937;
+      --muted: #64748b;
+      --border: #e5e7eb;
+      --shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Arial, sans-serif; background: var(--bg); color: var(--text); }
+    a { text-decoration: none; color: inherit; }
+    .library-shell { display: flex; min-height: 100vh; }
+    .sidebar { width: 260px; background: linear-gradient(180deg, var(--sidebar) 0%, var(--sidebar-soft) 100%); color: #e5eefb; padding: 24px 18px; position: sticky; top: 0; height: 100vh; }
+    .brand { font-size: 22px; font-weight: 700; margin-bottom: 18px; display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.04); }
+    .brand-mark { width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, #60a5fa, #2563eb); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; }
+    .nav-group { margin-top: 24px; }
+    .nav-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.6); padding: 0 12px 8px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 12px; margin-bottom: 6px; border-radius: 10px; color: #dce9ff; transition: 0.2s ease; }
+    .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.08); }
+    .content { flex: 1; padding: 28px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
+    .title { font-size: 30px; font-weight: 700; margin: 0; }
+    .action-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; border: none; border-radius: 10px; padding: 10px 16px; font-weight: 600; cursor: pointer; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-success { background: var(--green); color: white; }
+    .btn-secondary { background: #e2e8f0; color: var(--text); }
+    .grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 18px; }
+    .card { background: var(--panel); border-radius: 18px; box-shadow: var(--shadow); border: 1px solid rgba(148,163,184,0.12); padding: 18px; }
+    .card h3 { margin: 0 0 16px; font-size: 18px; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(200px,1fr)); gap: 14px; }
+    .field { display: flex; flex-direction: column; gap: 8px; }
+    .field.full { grid-column: 1 / -1; }
+    .field label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .field input, .field select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; }
+    .btn-wrap { margin-top: 18px; }
+    table { width: 100%; border-collapse: collapse; background: #fff; }
+    th, td { padding: 12px 14px; border-bottom: 1px solid var(--border); text-align: left; }
+    th { background: #eef5ff; }
+    .status-ok { color: var(--green); font-weight: 700; }
+    .status-low { color: #b45309; font-weight: 700; }
+    .message { margin-top: 12px; padding: 10px 12px; border-radius: 8px; font-size: 14px; }
+    .success { background: var(--green-soft); color: #166534; }
+    .error { background: var(--red-soft); color: #991b1b; }
+    @media (max-width: 900px) { .library-shell { display: block; } .sidebar { width: 100%; height: auto; position: static; } .content { padding: 18px; } .grid { grid-template-columns: 1fr; } .form-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="library-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">L</div>
+        <span>Library</span>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Overview</div>
+        <a class="nav-item" href="/library/dashboard">Dashboard</a>
+        <a class="nav-item active" href="/library/books">Books</a>
+        <a class="nav-item" href="/library/categories">Categories</a>
+        <a class="nav-item" href="/library/members">Members</a>
+        <a class="nav-item" href="/library/issues">Book Issue</a>
+      </div>
+    </aside>
+
+    <main class="content">
+      <div class="topbar">
+        <div>
+          <h1 class="title">Add Book</h1>
+        </div>
+        <div class="action-row">
+          <a class="btn btn-primary" href="/library/dashboard">Dashboard</a>
+          <a class="btn btn-secondary" href="/library/issues">Issue Book</a>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h3>Book Details</h3>
+          <form action="/library/books" method="POST" id="bookForm">
+            <input type="hidden" id="bookId" name="bookId" />
+            <div class="form-grid">
+              <div class="field full">
+                <label for="title">Book Name</label>
+                <input type="text" id="title" name="title" required>
+              </div>
+
+              <div class="field">
+                <label for="author">Author</label>
+                <input type="text" id="author" name="author" placeholder="Author name">
+              </div>
+
+              <div class="field">
+                <label for="category">Category</label>
+                <select id="category" name="category" required>
+                  <% if (categories && categories.length) { %>
+                    <% categories.forEach((category) => { %>
+                      <option value="<%= category.name %>"><%= category.name %></option>
+                    <% }) %>
+                  <% } %>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="isbn">ISBN</label>
+                <input type="text" id="isbn" name="isbn" placeholder="Optional">
+              </div>
+
+              <div class="field">
+                <label for="publisherName">Publisher Name</label>
+                <input type="text" id="publisherName" name="publisherName" placeholder="Optional">
+              </div>
+
+              <div class="field">
+                <label for="publishedYear">Published Year</label>
+                <input type="text" id="publishedYear" name="publishedYear" placeholder="Optional">
+              </div>
+
+              <div class="field">
+                <label for="price">Book Price</label>
+                <input type="number" id="price" name="price" min="0" step="0.01" placeholder="0">
+              </div>
+
+              <div class="field">
+                <label for="totalQuantity">Total Quantity</label>
+                <input type="number" id="totalQuantity" name="totalQuantity" min="1" required>
+              </div>
+            </div>
+
+            <div class="field full">
+              <label>Generated Copy Codes</label>
+              <div id="generatedBookCodes" style="padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:#f8fafc; min-height:48px; font-size:13px; color:var(--muted);">Enter quantity to preview generated book codes.</div>
+            </div>
+
+            <div class="btn-wrap" style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button type="submit" class="btn btn-primary" id="submitBookBtn">Add Book</button>
+              <button type="button" class="btn btn-secondary" id="printBookCodesBtn">Print Sticker Labels</button>
+            </div>
+          </form>
+
+          <% if (typeof error !== 'undefined' && error) { %>
+            <div class="message error"><%= error %></div>
+          <% } %>
+          <% if (typeof success !== 'undefined' && success) { %>
+            <div class="message success"><%= success %></div>
+          <% } %>
+        </div>
+
+        <div class="card">
+          <h3>Book Inventory</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Category</th>
+                <th>Available</th>
+                <th>Total</th>
+                <th>Copy Codes</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (books && books.length) { %>
+                <% books.forEach((book) => { %>
+                  <tr>
+                    <td><%= book.title %></td>
+                    <td><%= book.category %></td>
+                    <td class="<%= Number(book.availableQuantity) <= 2 ? 'status-low' : 'status-ok' %>"><%= book.availableQuantity %></td>
+                    <td><%= book.totalQuantity %></td>
+                    <td><small><%= (book.bookCodes || []).map((copy) => copy.code).join(', ') || '—' %></small></td>
+                    <td>
+                      <button type="button" class="btn btn-secondary edit-book" data-id="<%= book._id %>" style="padding:8px 12px; font-size:12px; margin-right:6px;">Edit</button>
+                      <button type="button" class="btn btn-danger delete-book" data-id="<%= book._id %>" style="padding:8px 12px; font-size:12px; background:#ef4444; color:#fff;">Delete</button>
+                    </td>
+                  </tr>
+                <% }) %>
+              <% } else { %>
+                <tr>
+                  <td colspan="6">No books added yet.</td>
+                </tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const bookForm = document.getElementById('bookForm');
+    const bookIdField = document.getElementById('bookId');
+    const titleInput = document.getElementById('title');
+    const authorInput = document.getElementById('author');
+    const categoryInput = document.getElementById('category');
+    const publisherInput = document.getElementById('publisherName');
+    const quantityInput = document.getElementById('totalQuantity');
+    const submitBookBtn = document.getElementById('submitBookBtn');
+    const generatedBookCodes = document.getElementById('generatedBookCodes');
+    const printBookCodesBtn = document.getElementById('printBookCodesBtn');
+
+    function buildPrefix(title, author, publisher, existingPrefixes = []) {
+      const stopWords = new Set(['THE', 'A', 'AN', 'AND', 'OF', 'OR', 'FOR', 'TO', 'IN', 'ON', 'AT', 'BY', 'AS', 'WITH', 'KO', 'KI', 'KA', 'K', 'KE', 'CLASS']);
+      const words = String(title || '').trim().split(/\s+/).filter(Boolean);
+      const filteredWords = words.filter((word) => {
+        const cleaned = String(word).replace(/[^A-Za-z]/g, '');
+        return cleaned && !stopWords.has(cleaned.toUpperCase());
+      });
+      const initials = (filteredWords.length ? filteredWords : words)
+        .map((word) => String(word).replace(/[^A-Za-z]/g, '')[0] || '')
+        .filter(Boolean)
+        .map((char) => char.toUpperCase())
+        .slice(0, 6)
+        .join('');
+
+      const fallback = String(author || publisher || title || '').replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase() || 'BK';
+      const basePrefix = (initials || fallback).slice(0, 6).toUpperCase() || 'BK';
+      const used = new Set((existingPrefixes || []).map((value) => String(value || '').trim().toUpperCase()));
+
+      if (!used.has(basePrefix)) return basePrefix;
+
+      const suffixes = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
+      for (const suffix of suffixes) {
+        const candidate = `${basePrefix}-${suffix}`;
+        if (!used.has(candidate)) return candidate;
+      }
+
+      let counter = 1;
+      while (true) {
+        const candidate = `${basePrefix}-${String(counter).padStart(2, '0')}`;
+        if (!used.has(candidate)) return candidate;
+        counter += 1;
+      }
+    }
+
+    function generateCodes() {
+      const title = titleInput.value.trim();
+      const author = authorInput.value.trim();
+      const publisher = publisherInput.value.trim();
+      const quantity = Number(quantityInput.value || 0);
+      const prefix = buildPrefix(title, author, publisher);
+
+      if (!title || !quantity || quantity <= 0) {
+        generatedBookCodes.textContent = 'Enter quantity to preview generated book codes.';
+        return;
+      }
+
+      const codes = Array.from({ length: quantity }, (_, index) => `${prefix}-${String(index + 1).padStart(3, '0')}`);
+      generatedBookCodes.textContent = codes.join(', ');
+      return codes;
+    }
+
+    function openStickerPrintWindow() {
+      const title = titleInput.value.trim();
+      const quantity = Number(quantityInput.value || 0);
+      if (!title || !quantity || quantity <= 0) {
+        alert('Please enter a book title and quantity before printing labels.');
+        return;
+      }
+
+      const prefix = buildPrefix(title, authorInput.value, publisherInput.value);
+      const codes = Array.from({ length: quantity }, (_, index) => `${prefix}-${String(index + 1).padStart(3, '0')}`);
+      const printWindow = window.open('', '_blank', 'width=900,height=700');
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Book Label Print</title>
+            <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"><\/script>
+            <style>
+              body { font-family: Arial, sans-serif; margin: 20px; }
+              .sheet { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 18px; }
+              .label { border: 2px solid #0f172a; border-radius: 10px; padding: 12px; text-align: center; min-height: 150px; page-break-inside: avoid; }
+              .title { font-size: 12px; font-weight: 700; margin-bottom: 8px; }
+              .code { font-size: 18px; font-weight: 800; margin: 10px 0; }
+              canvas { margin: 6px auto 8px; display: block; max-width: 100%; }
+              @media print { body { margin: 0; } .label { border: 1px solid #000; } }
+            </style>
+          </head>
+          <body>
+            <div class="sheet">
+              ${codes.map((code) => `
+                <div class="label">
+                  <div class="title">${title}</div>
+                  <canvas id="barcode-${code}"></canvas>
+                  <div class="code">${code}</div>
+                </div>
+              `).join('')}
+            </div>
+            <script>
+              window.onload = function () {
+                ${codes.map((code) => `JsBarcode('#barcode-${code}', '${code}', { format: 'CODE128', displayValue: false, width: 1.8, height: 36, margin: 6, background: '#fff', lineColor: '#111827' });`).join('\n')}
+                setTimeout(() => window.print(), 400);
+              };
+            <\/script>
+          </body>
+        </html>
+      `;
+      printWindow.document.write(html);
+      printWindow.document.close();
+    }
+
+    titleInput.addEventListener('input', generateCodes);
+    authorInput.addEventListener('input', generateCodes);
+    publisherInput.addEventListener('input', generateCodes);
+    quantityInput.addEventListener('input', generateCodes);
+    printBookCodesBtn.addEventListener('click', openStickerPrintWindow);
+
+    bookForm.addEventListener('submit', async function (event) {
+      event.preventDefault();
+
+      const method = bookIdField.value ? 'PUT' : 'POST';
+      const url = bookIdField.value ? `/library/books/${bookIdField.value}` : '/library/books';
+      const payload = {
+        title: titleInput.value,
+        author: authorInput.value,
+        isbn: document.getElementById('isbn').value,
+        category: categoryInput.value,
+        publisherName: publisherInput.value,
+        publishedYear: document.getElementById('publishedYear').value,
+        price: document.getElementById('price').value,
+        totalQuantity: quantityInput.value
+      };
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      alert(result.message || 'Book saved successfully.');
+      if (response.ok) {
+        window.location.reload();
+      }
+    });
+
+    document.querySelectorAll('.edit-book').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const id = button.dataset.id;
+        const response = await fetch(`/library/books/${id}`);
+        const book = await response.json();
+
+        if (!book || !book._id) {
+          alert('Book not found.');
+          return;
+        }
+
+        bookIdField.value = book._id;
+        titleInput.value = book.title || '';
+        authorInput.value = book.author || '';
+        document.getElementById('isbn').value = book.isbn || '';
+        categoryInput.value = book.category || '';
+        publisherInput.value = book.publisherName || '';
+        document.getElementById('publishedYear').value = book.publishedYear || '';
+        document.getElementById('price').value = book.price || 0;
+        quantityInput.value = book.totalQuantity || 1;
+        submitBookBtn.textContent = 'Update Book';
+        generateCodes();
+        titleInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    });
+
+    document.querySelectorAll('.delete-book').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const id = button.dataset.id;
+        const confirmDelete = confirm('Delete this book permanently?');
+        if (!confirmDelete) return;
+
+        const response = await fetch(`/library/books/${id}`, { method: 'DELETE' });
+        const result = await response.json();
+        alert(result.message || 'Book deleted.');
+        if (response.ok) window.location.reload();
+      });
+    });
+  </script>
+</body>
+</html>

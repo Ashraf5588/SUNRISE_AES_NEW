@@ -1,0 +1,15 @@
+<%- include('../partials/head', { title: 'Billing Result' }) %>
+<%- include('../partials/navbar') %>
+<div class="container mt-4">
+  <h3>Billing Run Result</h3>
+  <table class="table table-bordered bg-white">
+    <thead><tr><th>Student</th><th>Result</th></tr></thead>
+    <tbody>
+      <% results.forEach(r => { %>
+      <tr><td><%= r.student %></td><td><%= r.status %></td></tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <a href="/billing" class="btn btn-secondary">View All Invoices</a>
+</div>
+<%- include('../partials/footer') %>

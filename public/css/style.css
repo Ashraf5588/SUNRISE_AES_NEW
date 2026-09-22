@@ -1,0 +1,14 @@
+body {
+  background: #f8f9fa;
+}
+.card {
+  border-radius: 10px;
+}
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+}

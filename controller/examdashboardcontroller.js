@@ -330,16 +330,6 @@ exports.generateMarksheet = async (req, res, next) => {
     });
     }
 
-    if (Array.isArray(marksheetSetups)) {
-      marksheetSetups.forEach((setup) => {
-        if (Array.isArray(setup.terminals)) {
-          setup.terminals.forEach((term) => {
-            term.workingDays = attendanceWorkingDays;
-          });
-        }
-      });
-    }
-
     // Use if-else if-else structure to prevent multiple renders
     if (format == "practicalonly") {
       if (studentClass < 1 || studentClass.toLowerCase() === "nursery" || studentClass.toLowerCase() === "playgroup" || studentClass.toLowerCase() === "lkg" || studentClass.toLowerCase() === "ukg") {
@@ -493,7 +483,7 @@ exports.generateMarksheetStudent = async (req, res, next) => {
     const terminals = await terminalModel.find({}).lean();
     const creditHourData = await newsubject.find({ forClass: studentClass }).lean();
        const marksheetSetups = await marksheetSetup.find({}).lean();
-    console.log("credit hour data",creditHourData);
+  
    
     const user = req.user;
 
@@ -714,9 +704,18 @@ exports.saveMarksheetSetup = async (req, res) => {
     for (let i = 1; i <= total; i++) {
       const name = req.body[`name${i}`];
       const workingDays = req.body[`workingDays${i}`];
+      const resultpublishdate = req.body[`resultpublishdate${i}`];
+      const attendancestartdate = req.body[`attendancestartdate${i}`];
+      const attendanceenddate = req.body[`attendanceenddate${i}`];
 
-      if (name && workingDays) {
-        terminals.push({ name, workingDays });
+      if (name && workingDays && resultpublishdate && attendancestartdate && attendanceenddate) {
+        terminals.push({
+          name,
+          workingDays: Number(workingDays),
+          resultpublishdate,
+          attendancestartdate,
+          attendanceenddate
+        });
       }
     }
 

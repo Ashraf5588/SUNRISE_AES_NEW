@@ -1,0 +1,25 @@
+<%- include('../partials/head', { title: 'School Settings' }) %>
+<%- include('../partials/navbar') %>
+<div class="container mt-4">
+  <h3>School Settings</h3>
+  <form method="POST" action="/setup/school" class="bg-white p-4 rounded shadow-sm">
+    <div class="row g-3">
+      <div class="col-md-6"><label class="form-label">School Name</label><input class="form-control" name="name" value="<%= school ? school.name : '' %>" required></div>
+      <div class="col-md-6"><label class="form-label">PAN Number</label><input class="form-control" name="panNumber" value="<%= school ? school.panNumber : '' %>" required></div>
+      <div class="col-md-12"><label class="form-label">Address</label><input class="form-control" name="address" value="<%= school ? school.address : '' %>"></div>
+      <div class="col-md-4"><label class="form-label">Phone</label><input class="form-control" name="phone" value="<%= school ? school.phone : '' %>"></div>
+      <div class="col-md-4"><label class="form-label">Email</label><input class="form-control" name="email" value="<%= school ? school.email : '' %>"></div>
+      <div class="col-md-4 d-flex align-items-end">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="vatRegistered" id="vatRegistered" <%= school && school.vatRegistered ? 'checked' : '' %>>
+          <label class="form-check-label" for="vatRegistered">VAT Registered</label>
+        </div>
+      </div>
+      <div class="col-md-4"><label class="form-label">Invoice Prefix</label><input class="form-control" name="invoicePrefix" value="<%= school ? school.invoicePrefix : 'INV' %>"></div>
+      <div class="col-md-4"><label class="form-label">Receipt Prefix</label><input class="form-control" name="receiptPrefix" value="<%= school ? school.receiptPrefix : 'RCT' %>"></div>
+      <div class="col-md-4"><label class="form-label">Current Fiscal Year (BS)</label><input class="form-control" name="currentFiscalYearBS" value="<%= school ? school.currentFiscalYearBS : '' %>" placeholder="2082/083" required></div>
+    </div>
+    <button class="btn btn-primary mt-4">Save Settings</button>
+  </form>
+</div>
+<%- include('../partials/footer') %>

@@ -16,7 +16,6 @@ const { adminSchema,superadminSchema, teacherSchema} = require("../model/admin")
 const { teacherRecordSchema } = require("../model/teacherrecordschema");
 const { staffSchema } = require("../model/staffschema");
 const { studentSchema } = require("../model/schema");
-const student = require("../routers/mainpage");
 const terminal = mongoose.model("terminal", terminalSchema, "terminal");
 const newsubject = mongoose.model("newsubject", newsubjectSchema, "newsubject");
 const newsubjectModel = mongoose.model("newsubject", newsubjectSchema, "newsubject");
@@ -1510,24 +1509,23 @@ exports.addTerminal = async (req, res, next) => {
 exports.addTerminalpost = async (req, res, next) => {
   try {
     const { terminalId } = req.params;
-    updatedterminal = req.body.terminal.toUpperCase().trim();
-    if(terminalId)
-    {
-      
-      await terminal.findByIdAndUpdate(
-        terminalId,
-        { terminal: `${updatedterminal}` },
-        { new: true, runValidators: true }
-       
-      );
-    
+    const updatedTerminal = String(req.body.terminal || '').trim();
+    const terminalType = String(req.body.terminalType || 'TEST').toUpperCase();
+    const fullMarks = Number(req.body.fullMarks || 100);
+
+    const payload = {
+      terminal: updatedTerminal,
+      terminalType: ['TEST', 'TERMINAL'].includes(terminalType) ? terminalType : 'TEST',
+      fullMarks: Number.isFinite(fullMarks) && fullMarks > 0 ? fullMarks : 100,
+    };
+
+    if (terminalId) {
+      await terminal.findByIdAndUpdate(terminalId, payload, { new: true, runValidators: true });
+    } else {
+      await terminal.create(payload);
     }
-    else
-    {
-      
-    await terminal.create({ terminal: updatedterminal });
-    }
-     res.redirect("/admin/terminal");
+
+    res.redirect("/admin/terminal");
   } catch (err) {
     console.error("Error in addTerminalpost:", err);
     res.status(500).send("Error adding terminal: " + err.message);
@@ -4226,9 +4224,18 @@ exports.savemarksheetSetupForm = async (req, res) => {
     for (let i = 1; i <= total; i++) {
       const name = req.body[`name${i}`];
       const workingDays = req.body[`workingDays${i}`];
+      const resultpublishdate = req.body[`resultpublishdate${i}`];
+      const attendancestartdate = req.body[`attendancestartdate${i}`];
+      const attendanceenddate = req.body[`attendanceenddate${i}`];
 
-      if (name && workingDays) {
-        terminals.push({ name, workingDays });
+      if (name && workingDays && resultpublishdate && attendancestartdate && attendanceenddate) {
+        terminals.push({
+          name,
+          workingDays: Number(workingDays),
+          resultpublishdate,
+          attendancestartdate,
+          attendanceenddate
+        });
       }
     }
 

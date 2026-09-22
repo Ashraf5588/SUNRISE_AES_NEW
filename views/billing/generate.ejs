@@ -1,0 +1,37 @@
+<%- include('../partials/head', { title: 'Generate Bills' }) %>
+<%- include('../partials/navbar') %>
+<div class="container mt-4">
+  <h3>Generate Monthly Bills</h3>
+  <form method="POST" action="/billing/generate" class="bg-white p-4 rounded shadow-sm">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Bill Month (BS)</label>
+        <input class="form-control" name="billMonthBS" placeholder="Baishakh" required>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Bill Date (AD)</label>
+        <input type="date" class="form-control" name="billDateAD" required>
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Bill Date (BS)</label>
+        <input class="form-control" name="billDateBS" placeholder="2082-01-01" required>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Academic Session (used when billing ALL active students)</label>
+        <select class="form-select" name="academicSession">
+          <option value="">-- select --</option>
+          <% sessions.forEach(s => { %><option value="<%= s._id %>"><%= s.titleBS %></option><% }) %>
+        </select>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Or generate for one student only</label>
+        <select class="form-select" name="studentId">
+          <option value="">-- all active students in session above --</option>
+          <% students.forEach(s => { %><option value="<%= s._id %>"><%= s.name %> (<%= s.studentCode %>)</option><% }) %>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-primary mt-4">Generate</button>
+  </form>
+</div>
+<%- include('../partials/footer') %>

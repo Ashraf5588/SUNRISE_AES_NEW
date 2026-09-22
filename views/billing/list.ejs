@@ -1,0 +1,32 @@
+<%- include('../partials/head', { title: 'Invoices' }) %>
+<%- include('../partials/navbar') %>
+<div class="container mt-4">
+  <div class="d-flex justify-content-between">
+    <h3>Invoices</h3>
+    <a href="/generate" class="btn btn-primary">Generate Bills</a>
+  </div>
+  <table class="table table-bordered bg-white">
+    <thead><tr><th>Invoice #</th><th>Student</th><th>Month</th><th>Total</th><th>Balance</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      <% invoices.forEach(inv => { %>
+      <% const totalAmount = Number(inv.totalAmount ?? inv.grandTotal ?? 0); %>
+      <% const paidAmount = Number(inv.paidAmount ?? 0); %>
+      <% const balanceAmount = Math.max(0, totalAmount - paidAmount); %>
+      <% const invoiceNo = inv.invoiceNo || inv.invoiceNumber || '-'; %>
+      <% const studentName = inv.studentName || (inv.student && inv.student.name) || '-'; %>
+      <% const monthLabel = inv.nepaliMonth || inv.billMonthBS || '-'; %>
+      <% const status = inv.status || 'UNPAID'; %>
+      <tr>
+        <td><%= invoiceNo %></td>
+        <td><%= studentName %></td>
+        <td><%= monthLabel %></td>
+        <td><%= totalAmount.toFixed(2) %></td>
+        <td><%= balanceAmount.toFixed(2) %></td>
+        <td><span class="badge bg-<%= status === 'PAID' ? 'success' : status === 'PARTIAL' ? 'warning' : 'danger' %>"><%= status %></span></td>
+        <td><a href="/invoice/<%= inv._id %>" target="_blank">Print</a></td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<%- include('../partials/footer') %>

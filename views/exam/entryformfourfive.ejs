@@ -158,8 +158,8 @@
     </select>
     <select name="terminals" id="terminal">
       <option value="" selected disabled>Choose Terminal</option>
-      <%marksheetSetups[0].terminals.forEach((terminal)=>{%>
-        <option value="<%=terminal.name%>"><%=terminal.name%></option>
+      <%terminals.forEach((terminal)=>{%>
+        <option value="<%=terminal.terminal%>"><%=terminal.terminal%></option>
       <% }) %>
     </select>
     <select name="academicYear" id="academicYear">
@@ -222,12 +222,16 @@
   
         <th>
           Th Marks (
-          <% if (subjectData && subjectData.length > 0) { %>
-            <%= subjectData[0].theory %>
-          <% } else { %>
-            <span style="color:red;">Theory marks not added. Contact admin.</span>
-          <% } %>
-          )
+        <% if (!['FIRST', 'SECOND', 'THIRD', 'FINAL', 'MID'].includes(String(terminal || '').toUpperCase())) { %>
+          <%= terminals.find(t => String(t.terminal || '').toUpperCase() === String(terminal || '').toUpperCase())?.fullMarks ?? 'N/A' %>
+        <% } else { %>
+               <% if (subjectData && subjectData.length > 0) { %>
+                <%= subjectData[0].theory %>
+                 <% } else { %>
+                 <span style="color:red;">Theory marks not added. Contact admin.</span>
+               <% } %>
+        <% } %>
+        )
         </th>
         <th>
           Pr Marks (<%= subjectData[0].practical %>)
@@ -289,7 +293,7 @@
 
     <input type="hidden" id="terminal" name="terminal" value="<%=terminal%>">
     <% if (subjectData && subjectData.length > 0) { %>
-      <input type="hidden" name="theoryfullmarks" id="fullMarks" value="<%=subjectData[0].theory%>">
+      <input type="hidden" name="theoryfullmarks" id="fullMarks" value="<%= ['FIRST', 'SECOND', 'THIRD', 'MID', 'FINAL'].includes(String(terminal || '').toUpperCase()) ? subjectData[0].theory : (terminals.find(t => String(t.terminal || '').toUpperCase() === String(terminal || '').toUpperCase())?.fullMarks ?? '') %>">
       <input type="hidden" name="passMarks" id="passMarks" value="<%=subjectData[0].passingMarks%>">
       <input type="hidden" name="practicalfullmarks" id="practicalfullmarks" value="50">
     <% } else { %>
@@ -300,12 +304,14 @@
     <input type="hidden" name="subject" id="subjectHidden" value="<%=subject %>">
   </form>
 </div>
+<!-- fetch working days on the basis of terminal name -->
+<% if (marksheetSetups) { %>
+  <% const terminalData = marksheetSetups[0].terminals.find(t => t.name === terminal); %>
 
-<% if (terminal == "FIRST") { workingDays = marksheetSetups[0].terminals[0].workingDays; }
-else if (terminal == "SECOND") { workingDays = marksheetSetups[0].terminals[1].workingDays; }
-else if (terminal == "THIRD") { workingDays = marksheetSetups[0].terminals[2].workingDays; }
-else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].workingDays; }%>
-<input type="hidden" id="workingDays" value="<%=workingDays%>">
+  <% if (terminalData) { %>
+    <input type="hidden" id="workingDays" value="<%=terminalData.workingDays%>">
+  <% } %>
+<% } %>
 
 <script>
   const terminal = document.getElementById('terminal').value;
@@ -579,7 +585,7 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
     
     // Determine multiplier based on subject
     let multiplier = 1;
-    if (subject && subject.toUpperCase() === "SCIENCE" || subject.toUpperCase() === "SOCIAL") {
+    if (subject && (subject.toUpperCase() === 'SCIENCE' || subject.toUpperCase() === 'SOCIAL')) {
       multiplier = 2;
     }
     console.log(`Multiplier for ${subject}: ${multiplier}`);
