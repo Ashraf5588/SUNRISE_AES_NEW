@@ -79,13 +79,15 @@
         <h3>Issue a Book</h3>
         <form id="issueForm">
           <div class="form-grid">
-            <div class="field">
-              <label for="memberId">Member</label>
-              <select name="memberId" id="memberId" required>
+            <div class="field" style="grid-column: 1 / -1;">
+              <label for="memberSearchInput">Member</label>
+              <input type="text" id="memberSearchInput" placeholder="Search member by name..." autocomplete="off" />
+              <div id="memberSearchResults" style="display:none; border:1px solid var(--border); border-radius:10px; background:#fff; max-height:200px; overflow:auto; box-shadow:0 8px 20px rgba(15,23,42,0.08);"></div>
+              <select name="memberId" id="memberId" required style="margin-top:8px;">
                 <option value="">Select member</option>
                 <% if (members && members.length) { %>
                   <% members.forEach((member) => { %>
-                    <option value="<%= member._id %>"><%= member.name %> (<%= member.memberType %>)</option>
+                    <option value="<%= member._id %>" data-member-name="<%= member.name %>" data-member-type="<%= member.memberType %>" data-search-text="<%= (member.name + ' ' + member.memberType + ' ' + (member.contactNumber || '')).toLowerCase() %>"><%= member.name %> (<%= member.memberType %>)</option>
                   <% }) %>
                 <% } %>
               </select>
@@ -186,6 +188,9 @@
     const bookSelect = document.getElementById('bookId');
     const bookSearch = document.getElementById('bookSearch');
     const bookSearchResults = document.getElementById('bookSearchResults');
+    const memberSearchInput = document.getElementById('memberSearchInput');
+    const memberSearchResults = document.getElementById('memberSearchResults');
+    const memberIdSelect = document.getElementById('memberId');
     const quantityInput = document.getElementById('quantity');
     const scanBookCode = document.getElementById('scanBookCode');
     const copyCodeList = document.getElementById('bookCopyCodeList');
@@ -210,6 +215,38 @@
       dueDate: issue.dueDate,
       status: issue.status
     }))) %>;
+
+    function renderMemberSearchResults() {
+      const searchText = String(memberSearchInput.value || '').trim().toLowerCase();
+      const matches = Array.from(memberIdSelect.options).filter((option) => option.value && (!searchText || String(option.dataset.searchText || '').includes(searchText)));
+
+      if (!searchText || !matches.length) {
+        memberSearchResults.innerHTML = '';
+        memberSearchResults.style.display = 'none';
+        return;
+      }
+
+      memberSearchResults.innerHTML = matches.slice(0, 8).map((option) => `
+        <div class="member-search-item" data-member-id="${option.value}" style="padding:10px 12px; border-bottom:1px solid #eef2f7; cursor:pointer;">
+          <div style="font-weight:700;">${option.dataset.memberName || option.textContent}</div>
+          <div style="font-size:12px; color:#64748b;">${option.dataset.memberType || 'member'}</div>
+        </div>
+      `).join('');
+
+      memberSearchResults.style.display = 'block';
+
+      memberSearchResults.querySelectorAll('.member-search-item').forEach((item) => {
+        item.addEventListener('click', () => {
+          const selectedValue = item.dataset.memberId;
+          memberIdSelect.value = selectedValue;
+          const selectedOption = Array.from(memberIdSelect.options).find((option) => option.value === selectedValue);
+          if (selectedOption) {
+            memberSearchInput.value = selectedOption.dataset.memberName || selectedOption.textContent;
+          }
+          memberSearchResults.style.display = 'none';
+        });
+      });
+    }
 
     function renderBookSearchResults() {
       const searchText = String(bookSearch.value || '').trim().toLowerCase();
@@ -543,9 +580,17 @@
     startCameraScanBtn.addEventListener('click', startCameraScan);
     bookSearch.addEventListener('input', applyBookSearchFilter);
     bookSearch.addEventListener('focus', renderBookSearchResults);
+    memberSearchInput.addEventListener('input', renderMemberSearchResults);
+    memberIdSelect.addEventListener('change', () => {
+      const selectedOption = Array.from(memberIdSelect.options).find((option) => option.value === memberIdSelect.value);
+      memberSearchInput.value = selectedOption ? (selectedOption.dataset.memberName || selectedOption.textContent) : '';
+    });
     document.addEventListener('click', (event) => {
       if (!bookSearchResults.contains(event.target) && event.target !== bookSearch) {
         bookSearchResults.style.display = 'none';
+      }
+      if (!memberSearchResults.contains(event.target) && event.target !== memberSearchInput) {
+        memberSearchResults.style.display = 'none';
       }
     });
     bookSelect.addEventListener('change', refreshAvailableBookCopyCodes);

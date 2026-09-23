@@ -74,6 +74,8 @@ library.get("/library/members", librarycontroller.listMembers);
 library.post("/library/member/search", librarycontroller.searchMembers);
 library.get("/library/member/search", librarycontroller.searchMembers);
 library.post("/library/member/create", librarycontroller.createMember);
+library.put("/library/member/:id", librarycontroller.updateMember);
+library.delete("/library/member/:id", librarycontroller.deleteMember);
 library.get("/library/issues", librarycontroller.listIssues);
 library.post("/library/issue-book", librarycontroller.assignBook);
 library.post("/library/return-book/:id", librarycontroller.returnBook);

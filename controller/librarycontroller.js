@@ -640,12 +640,68 @@ exports.listBooksPage = async (req, res) => {
   }
 };
 
+exports.updateMember = async (req, res) => {
+  try {
+    const member = await Member.findById(req.params.id);
+    if (!member) {
+      return res.status(404).json({ message: "Member not found." });
+    }
+
+    const name = normalizeText(req.body.name);
+    if (!name) {
+      return res.status(400).json({ message: "Member name is required." });
+    }
+
+    const memberType = String(req.body.memberType || member.memberType || "student").toLowerCase();
+    member.memberType = memberType === "staff" ? "staff" : "student";
+    member.name = name;
+    member.contactNumber = normalizeText(req.body.contactNumber || member.contactNumber || "");
+    member.email = normalizeText(req.body.email || member.email || "");
+    member.membershipFee = Number(req.body.membershipFee || member.membershipFee || 0);
+    member.membershipCollected = Number(req.body.membershipCollected || member.membershipCollected || 0);
+    member.membershipDate = req.body.membershipDate ? new Date(req.body.membershipDate) : member.membershipDate || null;
+    member.notes = normalizeText(req.body.notes || member.notes || "");
+    member.status = String(req.body.status || member.status || "active");
+
+    if (member.memberType === "student") {
+      member.studentReg = normalizeText(req.body.studentReg || member.studentReg || "");
+      member.studentClass = normalizeText(req.body.studentClass || member.studentClass || "");
+      member.section = normalizeText(req.body.section || member.section || "");
+      member.staffUsername = "";
+      member.staffId = "";
+    } else {
+      member.staffUsername = normalizeText(req.body.staffUsername || member.staffUsername || "");
+      member.staffId = normalizeText(req.body.staffId || member.staffId || "");
+      member.studentReg = "";
+      member.studentClass = "";
+      member.section = "";
+    }
+
+    await member.save();
+    res.status(200).json({ message: "Member updated successfully.", member });
+  } catch (error) {
+    console.error("Error updating member:", error);
+    res.status(500).json({ message: "Error updating member.", error });
+  }
+};
+
 exports.deleteMember = async (req, res) => {
   try {
-    await Member.findByIdAndDelete(req.params.id);
+    const member = await Member.findByIdAndDelete(req.params.id);
+    if (!member) {
+      return res.status(404).json({ message: "Member not found." });
+    }
+
+    if (req.xhr || req.headers.accept?.includes("application/json")) {
+      return res.status(200).json({ message: "Member deleted successfully." });
+    }
+
     res.redirect("/library/members");
   } catch (error) {
     console.error("Error deleting member:", error);
+    if (req.xhr || req.headers.accept?.includes("application/json")) {
+      return res.status(500).json({ message: "Error deleting member." });
+    }
     res.status(500).send("Error deleting member.");
   }
 };

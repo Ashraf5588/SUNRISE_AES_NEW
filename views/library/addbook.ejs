@@ -215,13 +215,8 @@
     const printBookCodesBtn = document.getElementById('printBookCodesBtn');
 
     function buildPrefix(title, author, publisher, existingPrefixes = []) {
-      const stopWords = new Set(['THE', 'A', 'AN', 'AND', 'OF', 'OR', 'FOR', 'TO', 'IN', 'ON', 'AT', 'BY', 'AS', 'WITH', 'KO', 'KI', 'KA', 'K', 'KE', 'CLASS']);
       const words = String(title || '').trim().split(/\s+/).filter(Boolean);
-      const filteredWords = words.filter((word) => {
-        const cleaned = String(word).replace(/[^A-Za-z]/g, '');
-        return cleaned && !stopWords.has(cleaned.toUpperCase());
-      });
-      const initials = (filteredWords.length ? filteredWords : words)
+      const initials = words
         .map((word) => String(word).replace(/[^A-Za-z]/g, '')[0] || '')
         .filter(Boolean)
         .map((char) => char.toUpperCase())

@@ -82,14 +82,14 @@
             <div>
               <h3>Matched Members</h3>
               <% searchResults.forEach((item) => { %>
-                <div class="result-item">
+                <div class="result-item" data-member='<%= JSON.stringify(item) %>'>
                   <div>
                     <strong><%= item.name %></strong>
                     <small><%= item.memberType %> • <%= item.studentClass || item.section || item.teacherId || item.username || '' %></small>
                   </div>
                   <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                     <span class="tag"><%= item.memberType %></span>
-                    <button class="btn btn-success" type="button" onclick="fillMember('<%= JSON.stringify(item).replace(/'/g, '&#39;') %>')">Use this member</button>
+                    <button class="btn btn-success fill-member-btn" type="button">Use this member</button>
                   </div>
                 </div>
               <% }); %>
@@ -132,7 +132,11 @@
             <div class="row">
               <input type="text" name="section" id="section" placeholder="Section">
             </div>
-            <button class="btn btn-primary" type="submit">Add Member</button>
+            <input type="hidden" id="memberId" name="memberId" value="">
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button class="btn btn-primary" type="submit" id="saveMemberBtn">Add Member</button>
+              <button class="btn btn-secondary" type="button" id="cancelEditBtn" style="display:none;">Cancel Edit</button>
+            </div>
           </form>
         </div>
 
@@ -142,8 +146,10 @@
             <thead>
               <tr>
                 <th>Name</th>
+                <th>Contact</th>
                 <th>Type</th>
                 <th>Status</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -151,12 +157,19 @@
                 <% members.forEach((member) => { %>
                   <tr>
                     <td><%= member.name %></td>
+                    <td><%= member.contactNumber || '—' %></td>
                     <td><%= member.memberType %></td>
                     <td><span class="status-pill"><%= member.status %></span></td>
+                    <td>
+                      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="btn btn-secondary" type="button" data-edit-member='<%= JSON.stringify(member) %>'>Edit</button>
+                        <button class="btn btn-danger" type="button" data-delete-member='<%= member._id %>' style="background:#ef4444; color:white;">Delete</button>
+                      </div>
+                    </td>
                   </tr>
                 <% }); %>
               <% } else { %>
-                <tr><td colspan="3">No members added yet.</td></tr>
+                <tr><td colspan="5">No members added yet.</td></tr>
               <% } %>
             </tbody>
           </table>
@@ -178,6 +191,7 @@
 
     function fillMember(item) {
       const data = typeof item === 'string' ? JSON.parse(item) : item;
+      document.getElementById('memberId').value = data._id || '';
       document.getElementById('memberType').value = data.memberType || 'student';
       document.getElementById('name').value = data.name || '';
       document.getElementById('contactNumber').value = data.contactNumber || '';
@@ -187,12 +201,43 @@
       document.getElementById('section').value = data.section || '';
       document.getElementById('staffUsername').value = data.username || '';
       document.getElementById('staffId').value = data.teacherId || '';
+      document.getElementById('saveMemberBtn').textContent = data._id ? 'Update Member' : 'Add Member';
+      document.getElementById('cancelEditBtn').style.display = data._id ? 'inline-flex' : 'none';
+      memberType.dispatchEvent(new Event('change'));
+    }
+
+    function resetMemberForm() {
+      document.getElementById('manualForm').reset();
+      document.getElementById('memberId').value = '';
+      document.getElementById('saveMemberBtn').textContent = 'Add Member';
+      document.getElementById('cancelEditBtn').style.display = 'none';
       memberType.dispatchEvent(new Event('change'));
     }
 
     const memberSearchInput = document.getElementById('memberSearch');
     const memberSearchBtn = document.getElementById('memberSearchBtn');
     const searchResultsContainer = document.getElementById('searchResultsContainer');
+
+    function handleMemberSelection(button) {
+      const resultItem = button.closest('.result-item');
+      if (!resultItem) return;
+
+      const memberData = resultItem.dataset.member;
+      if (!memberData) return;
+
+      try {
+        fillMember(JSON.parse(memberData));
+      } catch (error) {
+        console.error('Invalid member data:', error);
+      }
+    }
+
+    document.addEventListener('click', function (event) {
+      const trigger = event.target.closest('.fill-member-btn');
+      if (trigger) {
+        handleMemberSelection(trigger);
+      }
+    });
 
     const performMemberSearch = async (query) => {
       if (!query || query.length < 2) {
@@ -215,14 +260,14 @@
       }
 
       searchResultsContainer.innerHTML = items.map((item) => `
-        <div class="result-item">
+        <div class="result-item" data-member='${JSON.stringify(item).replace(/'/g, "&apos;")}'>
           <div>
             <strong>${item.name}</strong>
             <small>${item.memberType} • ${item.studentClass || item.section || item.teacherId || item.username || ''}</small>
           </div>
           <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
             <span class="tag">${item.memberType}</span>
-            <button class="btn btn-success" type="button" onclick="fillMember(${JSON.stringify(item).replace(/'/g, "\\'")})">Use this member</button>
+            <button class="btn btn-success fill-member-btn" type="button">Use this member</button>
           </div>
         </div>
       `).join('');
@@ -241,6 +286,7 @@
 
     document.getElementById('manualForm').addEventListener('submit', async function (event) {
       event.preventDefault();
+      const memberId = document.getElementById('memberId').value;
       const payload = {
         memberType: document.getElementById('memberType').value,
         name: document.getElementById('name').value,
@@ -257,8 +303,11 @@
         notes: document.getElementById('notes').value
       };
 
-      const response = await fetch('/library/member/create', {
-        method: 'POST',
+      const url = memberId ? `/library/member/${memberId}` : '/library/member/create';
+      const method = memberId ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(payload)
       });
@@ -267,6 +316,35 @@
       alert(result.message || 'Member saved successfully.');
       if (response.ok) window.location.reload();
     });
+
+    document.addEventListener('click', function (event) {
+      const editButton = event.target.closest('[data-edit-member]');
+      if (editButton) {
+        const memberData = JSON.parse(editButton.getAttribute('data-edit-member'));
+        fillMember(memberData);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      const deleteButton = event.target.closest('[data-delete-member]');
+      if (deleteButton) {
+        const memberId = deleteButton.getAttribute('data-delete-member');
+        if (!memberId) return;
+        if (!confirm('Delete this member?')) return;
+
+        fetch(`/library/member/${memberId}`, {
+          method: 'DELETE',
+          headers: { 'Accept': 'application/json' }
+        })
+          .then(async (response) => {
+            const data = await response.json().catch(() => ({}));
+            alert(data.message || 'Member deleted successfully.');
+            if (response.ok) window.location.reload();
+          })
+          .catch(() => alert('Error deleting member.'));
+      }
+    });
+
+    document.getElementById('cancelEditBtn').addEventListener('click', resetMemberForm);
   </script>
 </body>
 </html>
