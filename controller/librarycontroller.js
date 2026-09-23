@@ -504,14 +504,38 @@ exports.assignBook = async (req, res) => {
       return res.status(404).json({ message: "Selected book was not found." });
     }
 
+    const requestedRawCodes = Array.isArray(req.body.bookCodes)
+      ? req.body.bookCodes
+      : req.body.bookCode ? [req.body.bookCode] : req.body.scanBookCode ? [req.body.scanBookCode] : [];
+
+    const requestedCodes = requestedRawCodes
+      .map((code) => String(code || '').trim())
+      .filter(Boolean)
+      .map((code) => code.toUpperCase());
+
     const availableCopies = (book.bookCodes || []).filter((copy) => copy.status === "available");
-    if (availableCopies.length < quantity) {
+    if (availableCopies.length < quantity && requestedCodes.length === 0) {
       return res.status(400).json({ message: `Only ${availableCopies.length} copies available for this book.` });
     }
 
-    const issuedCodes = availableCopies.slice(0, quantity).map((copy) => copy.code);
+    let issuedCodes = [];
+    if (requestedCodes.length) {
+      const invalidCodes = requestedCodes.filter((code) => {
+        const match = (book.bookCodes || []).find((copy) => String(copy.code || '').toUpperCase() === code && copy.status === "available");
+        return !match;
+      });
+
+      if (invalidCodes.length) {
+        return res.status(400).json({ message: `Selected book code(s) not available: ${invalidCodes.join(', ')}` });
+      }
+
+      issuedCodes = requestedCodes.slice(0, quantity);
+    } else {
+      issuedCodes = availableCopies.slice(0, quantity).map((copy) => copy.code.toUpperCase());
+    }
+
     issuedCodes.forEach((code) => {
-      const copy = (book.bookCodes || []).find((entry) => entry.code === code);
+      const copy = (book.bookCodes || []).find((entry) => String(entry.code || '').toUpperCase() === String(code).toUpperCase());
       if (copy) {
         copy.status = "issued";
         copy.issuedTo = member._id;

@@ -349,11 +349,14 @@
 
     document.getElementById('issueForm').addEventListener('submit', async function (event) {
       event.preventDefault();
+      const scannedCode = String(scanBookCode.value || '').trim();
       const payload = {
         memberId: document.getElementById('memberId').value,
         bookId: document.getElementById('bookId').value,
         quantity: document.getElementById('quantity').value,
-        dueDateBS: document.getElementById('dueDateBS').value
+        dueDateBS: document.getElementById('dueDateBS').value,
+        bookCode: scannedCode || '',
+        bookCodes: scannedCode ? [scannedCode] : []
       };
 
       const response = await fetch('/library/issue-book', {
