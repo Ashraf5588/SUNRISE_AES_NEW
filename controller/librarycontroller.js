@@ -29,11 +29,26 @@ const toADDate = (bsDateString) => {
   if (!bsDateString) return null;
   try {
     const adDate = bs.BSToAD(bsDateString);
-    if (!adDate || adDate === "Invalid") return null;
-    return new Date(adDate);
+    if (!adDate || adDate === "Invalid" || adDate === "Invalid Date") return null;
+    const parsedDate = new Date(adDate);
+    if (Number.isNaN(parsedDate.getTime())) return null;
+    return parsedDate;
   } catch (error) {
     return null;
   }
+};
+
+const parseReturnDateValue = (value) => {
+  const rawValue = normalizeText(value);
+  if (!rawValue) return new Date();
+
+  const adDate = toADDate(rawValue);
+  if (adDate) return adDate;
+
+  const directDate = new Date(rawValue);
+  if (!Number.isNaN(directDate.getTime())) return directDate;
+
+  return new Date();
 };
 
 const getPreferredStudentContact = (student = {}) => {
@@ -637,9 +652,9 @@ exports.returnBook = async (req, res) => {
     const conditionOnReturn = String(req.body.conditionOnReturn || "good");
     const notes = String(req.body.notes || "");
     const returnDateInput = req.body.returnDate || req.body.returnDateBS || "";
-    const returnDate = returnDateInput ? toADDate(returnDateInput) || new Date(returnDateInput) : new Date();
+    const returnDate = parseReturnDateValue(returnDateInput);
     const fineType = String(req.body.fineType || "flat").toLowerCase();
-    const fineValue = Number(req.body.fineValue ?? req.body.finePerDay ?? 10);
+    const fineValue = Number(req.body.fineValue ?? req.body.finePerDay ?? 0) || 0;
     const book = await Book.findById(issue.bookId);
 
     if (!Number.isFinite(returnQuantity) || returnQuantity <= 0) {
@@ -660,8 +675,8 @@ exports.returnBook = async (req, res) => {
       quantity: returnQuantity
     });
 
-    let fineAmount = lateDetails.fineAmount;
-    if (lateDetails.daysLate > 0) {
+    let fineAmount = 0;
+    if (fineType !== "none" && lateDetails.daysLate > 0) {
       if (fineType === "percentage") {
         const percentageValue = Number(fineValue || 0);
         const bookPrice = Number(book?.price || 0);
@@ -687,18 +702,17 @@ exports.returnBook = async (req, res) => {
 
     if (book) {
       selectedCodes.forEach((code) => {
-        const copy = (book.bookCodes || []).find((entry) => entry.code === code);
+        const copy = (book.bookCodes || []).find((entry) => String(entry.code || '').toUpperCase() === String(code || '').toUpperCase());
         if (copy) {
-          copy.status = "returned";
+          copy.status = "available";
           copy.returnedAt = returnDate;
           copy.condition = conditionOnReturn;
           copy.issuedTo = null;
+          copy.issuedAt = null;
           copy.issueId = null;
         }
       });
 
-      const remainingIssued = (book.bookCodes || []).filter((copy) => copy.status === "issued");
-      book.availableQuantity = (book.bookCodes || []).filter((copy) => copy.status === "available").length + remainingIssued.length > 0 ? (book.bookCodes || []).filter((copy) => copy.status === "available").length : 0;
       book.availableQuantity = (book.bookCodes || []).filter((copy) => copy.status === "available").length;
       await book.save();
     }

@@ -245,14 +245,44 @@
     }))) %>;
 
     function getTodayNepaliDate() {
-      if (typeof NepaliFunctions === 'undefined') return '';
-      try {
-        const today = new Date();
-        const adDate = today.toISOString().slice(0, 10);
-        return NepaliFunctions.AD2BS(adDate);
-      } catch (error) {
-        return '';
+      if (typeof NepaliFunctions !== 'undefined' && typeof NepaliFunctions.AD2BS === 'function') {
+        try {
+          const today = new Date();
+          const adDate = today.toISOString().slice(0, 10);
+          const bsDate = NepaliFunctions.AD2BS(adDate);
+          if (bsDate && String(bsDate).trim() !== 'Invalid Date' && String(bsDate).trim() !== 'Invalid') {
+            return String(bsDate).trim();
+          }
+        } catch (error) {
+          console.warn('Nepali date conversion failed:', error);
+        }
       }
+
+      return '';
+    }
+
+    function getSafeBsToAdDate(bsDate) {
+      const bsValue = String(bsDate || '').trim();
+      if (!bsValue) return new Date();
+
+      if (typeof NepaliFunctions !== 'undefined' && typeof NepaliFunctions.BS2AD === 'function') {
+        try {
+          const adDate = NepaliFunctions.BS2AD(bsValue);
+          const parsed = new Date(adDate);
+          if (!Number.isNaN(parsed.getTime())) {
+            return parsed;
+          }
+        } catch (error) {
+          console.warn('BS to AD conversion failed:', error);
+        }
+      }
+
+      const directDate = new Date(bsValue);
+      if (!Number.isNaN(directDate.getTime())) {
+        return directDate;
+      }
+
+      return new Date();
     }
 
     function initNepaliDateInput(input, options = {}) {
@@ -472,7 +502,7 @@
             </div>
             <div style="display:flex; flex-direction:column; gap:8px;">
               <label>Due Status</label>
-              <div style="padding:10px 12px; border-radius:10px; ${daysLate ? 'background:#fee2e2; color:#991b1b;' : 'background:#dcfce7; color:#166534;'}; font-weight:700;">
+              <div id="returnStatusBadge" style="padding:10px 12px; border-radius:10px; ${daysLate ? 'background:#fee2e2; color:#991b1b;' : 'background:#dcfce7; color:#166534;'}; font-weight:700;">
                 ${daysLate ? `Late by ${daysLate} day(s)` : 'On time'}
               </div>
             </div>
@@ -481,6 +511,7 @@
               <select id="fineType">
                 <option value="flat">Flat amount</option>
                 <option value="percentage">Percentage</option>
+                <option value="none">No fine</option>
               </select>
             </div>
             <div style="display:flex; flex-direction:column; gap:8px;">
@@ -522,19 +553,28 @@
       const fineValueInput = document.getElementById('fineValue');
       const finePreview = document.getElementById('finePreview');
       const returnNotes = document.getElementById('returnNotes');
+      const returnStatusBadge = document.getElementById('returnStatusBadge');
+
+      const todayNepaliDate = getTodayNepaliDate();
 
       if (typeof NepaliFunctions !== 'undefined' && typeof returnDateInput.nepaliDatePicker === 'function') {
         returnDateInput.nepaliDatePicker({
+          dateFormat: 'YYYY-MM-DD',
+          language: 'en',
           onSelect: function () {
             calculateFinePreview();
           }
         });
       }
 
+      if (returnDateInput && todayNepaliDate) {
+        returnDateInput.value = todayNepaliDate;
+      }
+
       function calculateFinePreview() {
         const qty = Number(returnQuantityInput.value || 1);
         const bsDate = String(returnDateInput.value || '').trim();
-        const dateValue = (typeof NepaliFunctions !== 'undefined' && bsDate) ? new Date(NepaliFunctions.BS2AD(bsDate)) : new Date();
+        const dateValue = getSafeBsToAdDate(bsDate);
         const due = dueDate;
         const lateDays = due < dateValue ? Math.max(1, Math.ceil((dateValue - due) / (1000 * 60 * 60 * 24))) : 0;
 
@@ -542,7 +582,7 @@
         const fineValue = Number(fineValueInput.value || 0);
         let newFine = 0;
 
-        if (lateDays > 0) {
+        if (lateDays > 0 && fineType !== 'none') {
           if (fineType === 'percentage') {
             const bookPriceValue = Number(selectedIssue.bookPrice || 0);
             newFine = bookPriceValue > 0 ? (bookPriceValue * (fineValue / 100)) * qty * lateDays : 0;
@@ -553,6 +593,13 @@
 
         finePreview.textContent = `Rs. ${newFine.toFixed(2)}`;
 
+        const statusText = lateDays ? `Late by ${lateDays} day(s)` : 'On time';
+        if (returnStatusBadge) {
+          returnStatusBadge.textContent = statusText;
+          returnStatusBadge.style.background = lateDays ? '#fee2e2' : '#dcfce7';
+          returnStatusBadge.style.color = lateDays ? '#991b1b' : '#166534';
+        }
+
         if (!returnNotes.value.trim()) {
           returnNotes.value = `${lateDays ? `Late by ${lateDays} day(s).` : 'Returned on time.'} Condition: ${bookCondition.value}.`;
         }
@@ -562,8 +609,12 @@
       returnDateInput.addEventListener('change', calculateFinePreview);
       fineTypeInput.addEventListener('change', function () {
         const type = this.value;
-        const nextValue = type === 'percentage' ? (Number(selectedIssue.bookPrice || 0) > 0 ? 10 : 0) : 10;
-        fineValueInput.value = nextValue;
+        if (type === 'none') {
+          fineValueInput.value = 0;
+        } else {
+          const nextValue = type === 'percentage' ? (Number(selectedIssue.bookPrice || 0) > 0 ? 10 : 0) : 10;
+          fineValueInput.value = nextValue;
+        }
         calculateFinePreview();
       });
       fineValueInput.addEventListener('input', calculateFinePreview);
