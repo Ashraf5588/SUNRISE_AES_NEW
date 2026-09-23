@@ -41,9 +41,12 @@ const buildBookCodePrefix = ({ title = "", author = "", publisherName = "", exis
   }
 };
 
-const generateBookCopyCodes = (prefix = "BK", quantity = 0, existingCodes = []) => {
+const generateBookCopyCodes = (prefix = "BK", quantity = 0, existingCodes = [], reservedCodes = []) => {
   const safePrefix = String(prefix || "BK").replace(/[^A-Z0-9-]/gi, "").toUpperCase() || "BK";
-  const usedCodes = new Set((existingCodes || []).map((code) => String(code || "").trim().toUpperCase()));
+  const usedCodes = new Set([
+    ...(existingCodes || []).map((code) => String(code || "").trim().toUpperCase()),
+    ...(reservedCodes || []).map((code) => String(code || "").trim().toUpperCase())
+  ]);
   const codes = [];
   let counter = 1;
 

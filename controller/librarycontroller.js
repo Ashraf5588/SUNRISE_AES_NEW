@@ -17,6 +17,14 @@ const userModel = mongoose.model("userlist", teacherSchema, "users");
 
 const normalizeText = (value = "") => String(value || "").trim();
 
+const normalizeCategoryColorHex = (value = "") => {
+  const hex = normalizeText(value);
+  if (!/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(hex)) {
+    return "#2563eb";
+  }
+  return hex;
+};
+
 const toNepaliDate = (dateValue) => {
   if (!dateValue) return "";
   const date = new Date(dateValue);
@@ -162,6 +170,9 @@ exports.listCategories = async (req, res) => {
 exports.addCategory = async (req, res) => {
   try {
     const name = normalizeText(req.body.name);
+    const colorName = normalizeText(req.body.colorName);
+    const colorHex = normalizeCategoryColorHex(req.body.colorHex);
+
     if (!name) {
       return res.status(400).json({ message: "Category name is required." });
     }
@@ -171,12 +182,59 @@ exports.addCategory = async (req, res) => {
       return res.status(400).json({ message: "This category already exists." });
     }
 
-    const category = new bookcategory({ name });
+    const category = new bookcategory({ name, colorName, colorHex });
     await category.save();
-  res.redirect("/library/categories");
+    return res.redirect("/library/categories");
   } catch (error) {
     console.error("Error adding category:", error);
     res.status(500).json({ message: "Error adding category.", error });
+  }
+};
+
+exports.updateCategory = async (req, res) => {
+  try {
+    const category = await bookcategory.findById(req.params.id);
+    if (!category) {
+      return res.status(404).json({ message: "Category not found." });
+    }
+
+    const name = normalizeText(req.body.name);
+    if (!name) {
+      return res.status(400).json({ message: "Category name is required." });
+    }
+
+    const duplicate = await bookcategory.findOne({
+      _id: { $ne: category._id },
+      name: { $regex: new RegExp(`^${name}$`, "i") }
+    });
+
+    if (duplicate) {
+      return res.status(400).json({ message: "This category name already exists." });
+    }
+
+    category.name = name;
+    category.colorName = normalizeText(req.body.colorName);
+    category.colorHex = normalizeCategoryColorHex(req.body.colorHex);
+    await category.save();
+
+    return res.json({ message: "Category updated successfully." });
+  } catch (error) {
+    console.error("Error updating category:", error);
+    return res.status(500).json({ message: "Error updating category.", error });
+  }
+};
+
+exports.deleteCategory = async (req, res) => {
+  try {
+    const category = await bookcategory.findByIdAndDelete(req.params.id);
+    if (!category) {
+      return res.status(404).json({ message: "Category not found." });
+    }
+
+    return res.json({ message: "Category deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting category:", error);
+    return res.status(500).json({ message: "Error deleting category.", error });
   }
 };
 
@@ -217,8 +275,15 @@ exports.updateBook = async (req, res) => {
     const isbn = normalizeBookIsbn(req.body.isbn ?? existingBook.isbn ?? "");
     const safeIsbn = isbn || undefined;
     const category = normalizeText(req.body.category || existingBook.category || "");
+    const categoryColor = normalizeCategoryColorHex(req.body.categoryColor || existingBook.categoryColor || "#2563eb");
+    const shelvesNo = normalizeText(req.body.shelvesNo || existingBook.shelvesNo || "");
     const publisherName = normalizeText(req.body.publisherName || existingBook.publisherName || "");
     const publishedYear = normalizeText(req.body.publishedYear || existingBook.publishedYear || "");
+    const date = normalizeText(req.body.date || existingBook.date || "");
+    const edition = normalizeText(req.body.edition || existingBook.edition || "");
+    const page = normalizeText(req.body.page || existingBook.page || "");
+    const source = normalizeText(req.body.source || existingBook.source || "");
+    const remarks = normalizeText(req.body.remarks || existingBook.remarks || "");
     const price = Number(req.body.price || existingBook.price || 0);
     const totalQuantity = Number(req.body.totalQuantity || existingBook.totalQuantity || 0);
 
@@ -230,8 +295,15 @@ exports.updateBook = async (req, res) => {
     existingBook.author = author;
     existingBook.isbn = safeIsbn;
     existingBook.category = category;
+    existingBook.categoryColor = categoryColor;
+    existingBook.shelvesNo = shelvesNo;
     existingBook.publisherName = publisherName;
     existingBook.publishedYear = publishedYear;
+    existingBook.date = date;
+    existingBook.edition = edition;
+    existingBook.page = page;
+    existingBook.source = source;
+    existingBook.remarks = remarks;
     existingBook.price = price;
     existingBook.totalQuantity = totalQuantity;
 
@@ -266,7 +338,7 @@ exports.inventoryPage = async (req, res) => {
 
     let filteredBooks = books.filter((book) => {
       const copyCodes = (book.bookCodes || []).map((copy) => copy.code);
-      const matchesFilter = !filter || [book.title, book.author, book.category, book.publisherName, book.isbn, book.bookCodePrefix, ...copyCodes].some((value) => String(value || "").toLowerCase().includes(filter.toLowerCase()));
+      const matchesFilter = !filter || [book.title, book.author, book.category, book.shelvesNo, book.publisherName, book.isbn, book.bookCodePrefix, ...copyCodes].some((value) => String(value || "").toLowerCase().includes(filter.toLowerCase()));
       const matchesCategory = !categoryFilter || String(book.category || "").toLowerCase() === categoryFilter.toLowerCase();
       const matchesLowStock = !lowStockOnly || Number(book.availableQuantity) <= 2;
       return matchesFilter && matchesCategory && matchesLowStock;
@@ -295,8 +367,15 @@ exports.addBooks = async (req, res) => {
     const isbn = normalizeBookIsbn(req.body.isbn ?? "");
     const safeIsbn = isbn || undefined;
     const category = normalizeText(req.body.category || "");
+    const categoryColor = normalizeCategoryColorHex(req.body.categoryColor || "#2563eb");
+    const shelvesNo = normalizeText(req.body.shelvesNo || "");
     const publisherName = normalizeText(req.body.publisherName || "");
     const publishedYear = normalizeText(req.body.publishedYear || "");
+    const date = normalizeText(req.body.date || "");
+    const edition = normalizeText(req.body.edition || "");
+    const page = normalizeText(req.body.page || "");
+    const source = normalizeText(req.body.source || "");
+    const remarks = normalizeText(req.body.remarks || "");
     const price = Number(req.body.price || 0);
     const totalQuantity = Number(req.body.totalQuantity || req.body.quantity || 0);
 
@@ -334,8 +413,15 @@ exports.addBooks = async (req, res) => {
       author,
       isbn: safeIsbn,
       category,
+      categoryColor,
+      shelvesNo,
       publisherName,
       publishedYear,
+      date,
+      edition,
+      page,
+      source,
+      remarks,
       price,
       availableQuantity: totalQuantity,
       totalQuantity,

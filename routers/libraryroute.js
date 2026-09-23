@@ -70,6 +70,8 @@ library.delete("/library/books/:id", librarycontroller.deleteBook);
 library.get("/library/inventory", librarycontroller.inventoryPage);
 library.get("/library/categories", librarycontroller.listCategories);
 library.post("/library/categories", librarycontroller.addCategory);
+library.put("/library/categories/:id", librarycontroller.updateCategory);
+library.delete("/library/categories/:id", librarycontroller.deleteCategory);
 library.get("/library/members", librarycontroller.listMembers);
 library.post("/library/member/search", librarycontroller.searchMembers);
 library.get("/library/member/search", librarycontroller.searchMembers);

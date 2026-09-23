@@ -65,13 +65,27 @@
 
       <div class="grid">
         <div class="card">
-          <h3>Add New Category</h3>
-          <form action="/library/categories" method="POST" id="categoryForm">
+          <h3 id="categoryFormTitle">Add New Category</h3>
+          <form id="categoryForm">
+            <input type="hidden" id="categoryId" name="categoryId" value="">
             <div class="field">
               <label for="name">Category Name</label>
               <input type="text" id="name" name="name" required placeholder="Example: Fiction, Science, Reference">
             </div>
-            <button type="submit" class="btn btn-primary">Save Category</button>
+            <div class="field">
+              <label for="colorName">Color Name</label>
+              <input type="text" id="colorName" name="colorName" placeholder="Example: Blue, Science, Red">
+            </div>
+            <div class="field">
+              <label for="colorHex">Representation Color</label>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <input type="color" id="colorHex" name="colorHex" value="#2563eb" style="width:60px; height:42px; border:1px solid var(--border); border-radius:10px; padding:4px; background:#fff;" />
+                <span id="colorPreview" style="display:inline-block; width:26px; height:26px; border-radius:8px; border:1px solid var(--border); background:#2563eb; vertical-align:middle;"></span>
+                <span id="colorHexText" style="font-size:12px; color:var(--muted);">#2563eb</span>
+              </div>
+            </div>
+            <button type="submit" id="saveCategoryBtn" class="btn btn-primary">Save Category</button>
+            <button type="button" id="cancelEditBtn" class="btn btn-secondary" style="display:none; margin-left:8px;">Cancel</button>
           </form>
 
           <% if (typeof error !== 'undefined' && error) { %>
@@ -89,6 +103,8 @@
               <tr>
                 <th>#</th>
                 <th>Name</th>
+                <th>Color</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -97,10 +113,22 @@
                   <tr>
                     <td><%= index + 1 %></td>
                     <td><%= category.name %></td>
+                    <td>
+                      <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="display:inline-block; width:18px; height:18px; border-radius:6px; border:1px solid rgba(15,23,42,0.15); background:<%= category.colorHex || '#2563eb' %>;"></span>
+                        <span><%= category.colorName || category.colorHex || 'Default' %></span>
+                      </div>
+                    </td>
+                    <td>
+                      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <button type="button" class="btn btn-secondary edit-category-btn" data-category-id="<%= category._id %>" data-name="<%= category.name %>" data-color-name="<%= category.colorName || '' %>" data-color-hex="<%= category.colorHex || '#2563eb' %>">Edit</button>
+                        <button type="button" class="btn btn-secondary delete-category-btn" data-category-id="<%= category._id %>" style="background:#ef4444; color:white;">Delete</button>
+                      </div>
+                    </td>
                   </tr>
                 <% }) %>
               <% } else { %>
-                <tr><td colspan="2">No categories added yet.</td></tr>
+                <tr><td colspan="4">No categories added yet.</td></tr>
               <% } %>
             </tbody>
           </table>
@@ -108,5 +136,100 @@
       </div>
     </main>
   </div>
+
+  <script>
+    const categoryForm = document.getElementById('categoryForm');
+    const categoryIdInput = document.getElementById('categoryId');
+    const categoryNameInput = document.getElementById('name');
+    const categoryColorNameInput = document.getElementById('colorName');
+    const categoryColorHexInput = document.getElementById('colorHex');
+    const colorPreview = document.getElementById('colorPreview');
+    const colorHexText = document.getElementById('colorHexText');
+    const categoryFormTitle = document.getElementById('categoryFormTitle');
+    const saveCategoryBtn = document.getElementById('saveCategoryBtn');
+    const cancelEditBtn = document.getElementById('cancelEditBtn');
+
+    function syncColorPreview(hexValue) {
+      const safeHex = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(hexValue || '') ? hexValue : '#2563eb';
+      categoryColorHexInput.value = safeHex;
+      colorPreview.style.background = safeHex;
+      colorHexText.textContent = safeHex;
+    }
+
+    categoryColorHexInput.addEventListener('input', () => syncColorPreview(categoryColorHexInput.value));
+
+    function resetCategoryForm() {
+      categoryForm.reset();
+      categoryIdInput.value = '';
+      categoryFormTitle.textContent = 'Add New Category';
+      saveCategoryBtn.textContent = 'Save Category';
+      cancelEditBtn.style.display = 'none';
+      syncColorPreview('#2563eb');
+    }
+
+    cancelEditBtn.addEventListener('click', resetCategoryForm);
+
+    document.addEventListener('click', async (event) => {
+      const editButton = event.target.closest('.edit-category-btn');
+      if (editButton) {
+        const { categoryId, name, colorName, colorHex } = editButton.dataset;
+        categoryIdInput.value = categoryId || '';
+        categoryNameInput.value = name || '';
+        categoryColorNameInput.value = colorName || '';
+        syncColorPreview(colorHex || '#2563eb');
+        categoryFormTitle.textContent = 'Edit Category';
+        saveCategoryBtn.textContent = 'Update Category';
+        cancelEditBtn.style.display = 'inline-flex';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      const deleteButton = event.target.closest('.delete-category-btn');
+      if (deleteButton) {
+        const categoryId = deleteButton.dataset.categoryId;
+        if (!categoryId) return;
+        if (!confirm('Delete this category?')) return;
+
+        const response = await fetch(`/library/categories/${categoryId}`, { method: 'DELETE' });
+        const result = await response.json().catch(() => ({}));
+        alert(result.message || 'Category deleted successfully.');
+        if (response.ok) window.location.reload();
+      }
+    });
+
+    categoryForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const payload = {
+        name: categoryNameInput.value.trim(),
+        colorName: categoryColorNameInput.value.trim(),
+        colorHex: categoryColorHexInput.value
+      };
+
+      if (!payload.name) {
+        alert('Category name is required.');
+        return;
+      }
+
+      const isEditing = Boolean(categoryIdInput.value);
+      const url = isEditing ? `/library/categories/${categoryIdInput.value}` : '/library/categories';
+      const method = isEditing ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json().catch(() => ({}));
+      alert(result.message || (isEditing ? 'Category updated successfully.' : 'Category added successfully.'));
+      if (response.ok) {
+        resetCategoryForm();
+        window.location.reload();
+      }
+    });
+
+    syncColorPreview('#2563eb');
+  </script>
 </body>
 </html>

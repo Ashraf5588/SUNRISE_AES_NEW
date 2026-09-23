@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Book Management</title>
+  <link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css" />
   <style>
     :root {
       --bg: #f5f7fb;
@@ -45,7 +46,7 @@
     .btn-secondary { background: #e2e8f0; color: var(--text); }
     .action-btns { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .table-action-btn { padding: 8px 12px; font-size: 12px; border-radius: 8px; line-height: 1.2; }
-    .grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 18px; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
     .card { background: var(--panel); border-radius: 18px; box-shadow: var(--shadow); border: 1px solid rgba(148,163,184,0.12); padding: 18px; }
     .card h3 { margin: 0 0 16px; font-size: 18px; }
     .form-grid { display: grid; grid-template-columns: repeat(2, minmax(200px,1fr)); gap: 14px; }
@@ -127,6 +128,11 @@
           <form action="/library/books" method="POST" id="bookForm">
             <input type="hidden" id="bookId" name="bookId" />
             <div class="form-grid">
+              <div class="field">
+                <label for="date">Date</label>
+                <input type="text" id="date" name="date" class="nepali-datepicker" placeholder="Select Nepali date" value="">
+              </div>
+
               <div class="field full">
                 <label for="title">Book Name</label>
                 <input type="text" id="title" name="title" required>
@@ -142,15 +148,31 @@
                 <select id="category" name="category" required>
                   <% if (categories && categories.length) { %>
                     <% categories.forEach((category) => { %>
-                      <option value="<%= category.name %>"><%= category.name %></option>
+                      <option
+                        value="<%= category.name %>"
+                        data-color="<%= category.colorHex || '#2563eb' %>"
+                        data-color-name="<%= category.colorName || category.name %>"
+                        style="background-color:<%= category.colorHex || '#2563eb' %>; color:<%= (category.colorHex && category.colorHex.toLowerCase() === '#080808') ? '#ffffff' : '#111827' %>;"
+                      >
+                        <%= category.name %> (<%= category.colorName || category.colorHex || 'Default' %>)
+                      </option>
                     <% }) %>
                   <% } %>
                 </select>
+                <div style="display:flex; align-items:center; gap:10px; margin-top:4px;">
+                  <span id="categoryColorPreview" style="display:inline-block; width:18px; height:18px; border-radius:6px; border:1px solid var(--border); background:#2563eb;"></span>
+                  <span id="categoryColorText" style="font-size:12px; color:var(--muted);">Default</span>
+                </div>
               </div>
 
               <div class="field">
-                <label for="isbn">ISBN</label>
-                <input type="text" id="isbn" name="isbn" placeholder="Optional">
+                <label for="edition">Edition</label>
+                <input type="text" id="edition" name="edition" placeholder="Optional">
+              </div>
+
+              <div class="field">
+                <label for="shelvesNo">Shelves No</label>
+                <input type="text" id="shelvesNo" name="shelvesNo" placeholder="e.g. A-12 or Shelf 2">
               </div>
 
               <div class="field">
@@ -164,8 +186,28 @@
               </div>
 
               <div class="field">
-                <label for="price">Book Price</label>
+                <label for="page">Page</label>
+                <input type="text" id="page" name="page" placeholder="Optional">
+              </div>
+
+              <div class="field">
+                <label for="source">Source</label>
+                <input type="text" id="source" name="source" placeholder="Optional">
+              </div>
+
+              <div class="field">
+                <label for="price">Book Cost</label>
                 <input type="number" id="price" name="price" min="0" step="0.01" placeholder="0">
+              </div>
+
+              <div class="field full">
+                <label for="remarks">Remarks</label>
+                <input type="text" id="remarks" name="remarks" placeholder="Optional notes">
+              </div>
+
+              <div class="field">
+                <label for="isbn">ISBN</label>
+                <input type="text" id="isbn" name="isbn" placeholder="Optional">
               </div>
 
               <div class="field">
@@ -198,23 +240,44 @@
           <table>
             <thead>
               <tr>
+                <th>Date</th>
+                <th>Book Code</th>
+                <th>Author</th>
                 <th>Title</th>
                 <th>Category</th>
-                <th>Available</th>
-                <th>Total</th>
-                <th>Copy Codes</th>
+                <th>Shelves No</th>
+                <th>Edition</th>
+                <th>Publisher</th>
+                <th>Year</th>
+                <th>Page</th>
+                <th>Source</th>
+                <th>Cost</th>
+                <th>Remarks</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody id="bookTableBody">
               <% if (books && books.length) { %>
                 <% books.forEach((book) => { %>
-                  <tr data-book-id="<%= book._id %>" data-search-text="<%= [book.title, book.author, book.category, book.publisherName, book.isbn, book.bookCodePrefix, ...(book.bookCodes || []).map((copy) => copy.code)].join(' ') %>">
-                    <td><%= book.title %></td>
-                    <td><%= book.category %></td>
-                    <td class="<%= Number(book.availableQuantity) <= 2 ? 'status-low' : 'status-ok' %>"><%= book.availableQuantity %></td>
-                    <td><%= book.totalQuantity %></td>
-                    <td><small><%= (book.bookCodes || []).map((copy) => copy.code).join(', ') || '—' %></small></td>
+                  <tr data-book-id="<%= book._id %>" data-search-text="<%= [book.date, (book.bookCodes || []).map((copy) => copy.code).join(' '), book.author, book.title, book.category, book.shelvesNo, book.edition, book.publisherName, book.publishedYear, book.page, book.source, book.price, book.remarks].join(' ') %>">
+                    <td><%= book.date || '—' %></td>
+                    <td><small><%= (book.bookCodes || []).map((copy) => copy.code).join(', ') || book.bookCodePrefix || '—' %></small></td>
+                    <td><%= book.author || '—' %></td>
+                    <td><%= book.title || '—' %></td>
+                    <td>
+                      <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="display:inline-block; width:14px; height:14px; border-radius:4px; border:1px solid rgba(15,23,42,0.15); background:<%= book.categoryColor || '#2563eb' %>;"></span>
+                        <span><%= book.category || '—' %></span>
+                      </div>
+                    </td>
+                    <td><%= book.shelvesNo || '—' %></td>
+                    <td><%= book.edition || '—' %></td>
+                    <td><%= book.publisherName || '—' %></td>
+                    <td><%= book.publishedYear || '—' %></td>
+                    <td><%= book.page || '—' %></td>
+                    <td><%= book.source || '—' %></td>
+                    <td><%= Number(book.price || 0) %></td>
+                    <td><%= book.remarks || '—' %></td>
                     <td>
                       <div class="action-btns">
                         <button type="button" class="btn btn-secondary table-action-btn edit-book" data-id="<%= book._id %>">Edit</button>
@@ -227,7 +290,7 @@
                 <% }) %>
               <% } else { %>
                 <tr>
-                  <td colspan="6">No books added yet.</td>
+                  <td colspan="12">No books added yet.</td>
                 </tr>
               <% } %>
             </tbody>
@@ -273,12 +336,70 @@
     </div>
   </div>
 
+  <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
   <script>
+    function getTodayNepaliDate() {
+      if (typeof NepaliFunctions !== 'undefined' && typeof NepaliFunctions.AD2BS === 'function') {
+        try {
+          const today = new Date();
+          const adDate = today.toISOString().slice(0, 10);
+          const bsDate = NepaliFunctions.AD2BS(adDate);
+          if (bsDate && String(bsDate).trim() !== 'Invalid Date' && String(bsDate).trim() !== 'Invalid') {
+            return String(bsDate).trim();
+          }
+        } catch (error) {
+          console.warn('Nepali date conversion failed:', error);
+        }
+      }
+      return '';
+    }
+
+    function normalizeNepaliDateValue(value) {
+      if (!value) return '';
+      if (typeof value === 'string') return value.trim();
+      if (typeof value === 'number') return String(value);
+      if (value instanceof Date) return value.toISOString().slice(0, 10);
+      if (typeof value === 'object') {
+        if (typeof value.bs === 'string' && value.bs.trim()) return value.bs.trim();
+        if (typeof value.formatted === 'string' && value.formatted.trim()) return value.formatted.trim();
+        const year = value.year ?? value.bsYear ?? value.enYear ?? value.englishYear;
+        const month = value.month ?? value.bsMonth ?? value.monthNumber;
+        const day = value.day ?? value.bsDay ?? value.date;
+        if (year && month && day) {
+          return `${String(year)}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
+        if (value.year && value.month && value.day) {
+          return `${String(value.year)}-${String(value.month).padStart(2, '0')}-${String(value.day).padStart(2, '0')}`;
+        }
+      }
+      return String(value);
+    }
+
+    const dateInput = document.getElementById('date');
+    if (dateInput && typeof dateInput.nepaliDatePicker === 'function') {
+      dateInput.nepaliDatePicker({
+        dateFormat: 'YYYY-MM-DD',
+        language: 'en',
+        onSelect: function (selectedDate) {
+          dateInput.value = normalizeNepaliDateValue(selectedDate);
+        }
+      });
+    }
+
+    if (dateInput && !dateInput.value) {
+      const todayBs = getTodayNepaliDate();
+      if (todayBs) {
+        dateInput.value = todayBs;
+      }
+    }
+
     const bookForm = document.getElementById('bookForm');
     const bookIdField = document.getElementById('bookId');
     const titleInput = document.getElementById('title');
     const authorInput = document.getElementById('author');
     const categoryInput = document.getElementById('category');
+    const categoryColorPreview = document.getElementById('categoryColorPreview');
+    const categoryColorText = document.getElementById('categoryColorText');
     const publisherInput = document.getElementById('publisherName');
     const quantityInput = document.getElementById('totalQuantity');
     const submitBookBtn = document.getElementById('submitBookBtn');
@@ -355,6 +476,17 @@
       }
     }
 
+    function syncCategoryColorDisplay() {
+      const selectedOption = categoryInput.options[categoryInput.selectedIndex];
+      const hexColor = selectedOption && selectedOption.dataset.color ? selectedOption.dataset.color : '#2563eb';
+      const colorName = selectedOption && selectedOption.dataset.colorName ? selectedOption.dataset.colorName : 'Default';
+      categoryColorPreview.style.background = hexColor;
+      categoryColorText.textContent = colorName;
+    }
+
+    categoryInput.addEventListener('change', syncCategoryColorDisplay);
+    syncCategoryColorDisplay();
+
     function generateCodes() {
       const title = titleInput.value.trim();
       const author = authorInput.value.trim();
@@ -372,8 +504,47 @@
       return codes;
     }
 
-    function printStickerSheet(title, codes) {
-      const safeTitle = String(title || '').trim();
+    function getStickerDetailRows(bookInfo = {}) {
+      const detailEntries = [];
+      const pushDetail = (label, value) => {
+        const normalized = String(value ?? '').trim();
+        if (!normalized) return;
+        detailEntries.push({ label, value: normalized });
+      };
+
+      pushDetail('Shelf No', bookInfo.shelvesNo || bookInfo.shelfNo || bookInfo.shelvesno);
+      pushDetail('Author', bookInfo.author);
+
+      const categoryName = String(bookInfo.category || '').trim();
+      const categoryColorName = String(bookInfo.categoryColorName || bookInfo.colorName || '').trim();
+      const categoryHex = String(bookInfo.categoryColor || bookInfo.colorHex || '').trim();
+      if (categoryName) {
+        const categoryText = categoryColorName ? `${categoryName} (${categoryColorName})` : categoryName;
+        if (categoryHex) {
+          detailEntries.push({ label: 'Category', value: `${categoryText} • ${categoryHex}` });
+        } else {
+          detailEntries.push({ label: 'Category', value: categoryText });
+        }
+      } else if (categoryHex) {
+        detailEntries.push({ label: 'Category', value: categoryHex });
+      }
+
+      pushDetail('Publisher', bookInfo.publisherName);
+      pushDetail('Year', bookInfo.publishedYear);
+      pushDetail('Edition', bookInfo.edition);
+      pushDetail('Page', bookInfo.page);
+      pushDetail('Source', bookInfo.source);
+      pushDetail('Cost', bookInfo.price !== undefined && bookInfo.price !== null && bookInfo.price !== '' ? `Rs. ${bookInfo.price}` : '');
+      pushDetail('Remarks', bookInfo.remarks);
+      pushDetail('Date', bookInfo.date);
+      pushDetail('ISBN', bookInfo.isbn);
+
+      return detailEntries;
+    }
+
+    function printStickerSheet(bookInfo, codes) {
+      const providedBook = (typeof bookInfo === 'string' || !bookInfo) ? { title: bookInfo || 'Book' } : bookInfo;
+      const safeTitle = String(providedBook.title || 'Book').trim();
       const safeCodes = Array.from(new Set((codes || [])
         .map((code) => String(code || '').trim())
         .filter(Boolean)));
@@ -382,6 +553,27 @@
         alert('No book stickers are available to print for this book.');
         return;
       }
+
+      const metaRows = [
+        { label: 'Date', value: providedBook.date },
+        { label: 'Book', value: safeTitle },
+        
+        { label: 'Author', value: providedBook.author },
+          { label: 'Edition', value: providedBook.edition },
+        { label: 'Shlv No', value: providedBook.shelvesNo || providedBook.shelfNo || providedBook.shelvesno },
+        { label: 'Publisher', value: providedBook.publisherName },
+        
+       
+        { label: 'Price', value: providedBook.price !== undefined && providedBook.price !== null && providedBook.price !== '' ? `Rs. ${providedBook.price}` : '' },
+      
+        { label: 'Year', value: providedBook.publishedYear },
+        { label: 'Category', value: providedBook.category ? `${providedBook.category}${providedBook.categoryColorName ? ` (${providedBook.categoryColorName})` : ''}` : '' },
+        
+      ].filter((row) => String(row.value ?? '').trim());
+
+      const firstLine = metaRows.slice(0, 3).map((row) => `<span><strong>${row.label}:</strong> ${row.value}</span>`).join('');
+      const secondLine = metaRows.slice(3, 6).map((row) => `<span><strong>${row.label}:</strong> ${row.value}</span>`).join('');
+      const thirdLine = metaRows.slice(6, 12).map((row) => `<span><strong>${row.label}:</strong> ${row.value}</span>`).join('');
 
       const printWindow = window.open('', '_blank', 'width=900,height=700');
       const html = `
@@ -392,11 +584,13 @@
             <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"><\/script>
             <style>
               body { font-family: Arial, sans-serif; margin: 20px; }
-              .sheet { display: grid; grid-template-columns: repeat(3, minmax(180px, 1fr)); gap: 18px; }
-              .label { border: 2px solid #0f172a; border-radius: 10px; padding: 12px; text-align: center; min-height: 150px; page-break-inside: avoid; }
-              .title { font-size: 12px; font-weight: 700; margin-bottom: 8px; }
-              .code { font-size: 18px; font-weight: 800; margin: 10px 0; }
-              canvas { margin: 6px auto 8px; display: block; max-width: 100%; }
+              .sheet { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+              .label { border: 2px solid #0f172a; border-radius: 10px; padding: 12px; text-align: left; min-height: 220px; page-break-inside: avoid; }
+              .meta-line { display: flex; flex-wrap: wrap; gap: 8px 12px; font-size: 10px; line-height: 1.5; margin-bottom: 8px; }
+              .meta-line span { display: inline-flex; align-items: center; gap: 3px; }
+              .barcode-wrap { display: flex; justify-content: center; margin: 8px 0; }
+              .code { font-size: 18px; font-weight: 800; margin: 2px 0 8px; text-align: center; }
+              canvas { max-width: 100%; }
               @media print { body { margin: 0; } .label { border: 1px solid #000; } }
             </style>
           </head>
@@ -404,15 +598,17 @@
             <div class="sheet">
               ${safeCodes.map((code) => `
                 <div class="label">
-                  <div class="title">${safeTitle}</div>
-                  <canvas id="barcode-${code}"></canvas>
+                  <div class="meta-line">${firstLine}</div>
+                  <div class="barcode-wrap"><canvas id="barcode-${code}"></canvas></div>
                   <div class="code">${code}</div>
+                  <div class="meta-line">${secondLine}</div>
+                  <div class="meta-line">${thirdLine}</div>
                 </div>
               `).join('')}
             </div>
             <script>
               window.onload = function () {
-                ${safeCodes.map((code) => `JsBarcode('#barcode-${code}', '${code}', { format: 'CODE128', displayValue: false, width: 1.8, height: 36, margin: 6, background: '#fff', lineColor: '#111827' });`).join('\n')}
+                ${safeCodes.map((code) => `JsBarcode('#barcode-${code}', '${code}', { format: 'CODE128', displayValue: false, width: 1.8, height: 34, margin: 6, background: '#fff', lineColor: '#111827' });`).join('\n')}
                 setTimeout(() => window.print(), 400);
               };
             <\/script>
@@ -448,7 +644,23 @@
 
       const prefix = buildPrefix(title, authorInput.value, publisherInput.value);
       const codes = Array.from({ length: quantity }, (_, index) => `${prefix}-${String(index + 1).padStart(3, '0')}`);
-      printStickerSheet(title, codes);
+      const categoryName = categoryInput.options[categoryInput.selectedIndex]?.dataset?.colorName || categoryInput.value || '';
+      printStickerSheet({
+        title,
+        author: authorInput.value,
+        category: categoryInput.value,
+        categoryColorName: categoryName,
+        categoryColor: categoryInput.options[categoryInput.selectedIndex]?.dataset?.color || '#2563eb',
+        shelvesNo: document.getElementById('shelvesNo').value,
+        publisherName: publisherInput.value,
+        publishedYear: document.getElementById('publishedYear').value,
+        edition: document.getElementById('edition').value,
+      
+        price: document.getElementById('price').value,
+        
+        date: document.getElementById('date').value,
+        
+      }, codes);
     }
 
     function renderPrintBatchOptions(book) {
@@ -580,7 +792,19 @@
         return;
       }
 
-      printStickerSheet(activePrintBook.title || 'Book', selectedCodes);
+      printStickerSheet({
+        title: activePrintBook.title || 'Book',
+        author: activePrintBook.author,
+        category: activePrintBook.category,
+        categoryColorName: activePrintBook.categoryColorName || activePrintBook.categoryColor || '',
+        categoryColor: activePrintBook.categoryColor,
+        shelvesNo: activePrintBook.shelvesNo,
+        publisherName: activePrintBook.publisherName,
+        publishedYear: activePrintBook.publishedYear,
+        edition: activePrintBook.edition,
+        price: activePrintBook.price,
+        date: activePrintBook.date,
+      }, selectedCodes);
       closePrintModal();
     });
 
@@ -640,7 +864,23 @@
       const continuePrint = confirm(`${quantity} new stock code(s) generated. Do you want to print the newly added sticker labels now?`);
       closeStockModal();
       if (continuePrint) {
-        printStickerSheet(activeStockBook.title || 'Book', newStockCodes);
+        printStickerSheet({
+          title: activeStockBook.title || 'Book',
+          author: activeStockBook.author,
+          category: activeStockBook.category,
+          categoryColorName: activeStockBook.categoryColorName || activeStockBook.categoryColor || '',
+          categoryColor: activeStockBook.categoryColor,
+          shelvesNo: activeStockBook.shelvesNo,
+          publisherName: activeStockBook.publisherName,
+          publishedYear: activeStockBook.publishedYear,
+          edition: activeStockBook.edition,
+          page: activeStockBook.page,
+          source: activeStockBook.source,
+          price: activeStockBook.price,
+          remarks: activeStockBook.remarks,
+          date: activeStockBook.date,
+          isbn: activeStockBook.isbn,
+        }, newStockCodes);
       }
       window.location.reload();
     });
@@ -667,8 +907,15 @@
         author: authorInput.value,
         isbn: document.getElementById('isbn').value,
         category: categoryInput.value,
+        categoryColor: categoryColorText.textContent || '#2563eb',
         publisherName: publisherInput.value,
         publishedYear: document.getElementById('publishedYear').value,
+        shelvesNo: document.getElementById('shelvesNo').value,
+        date: document.getElementById('date').value,
+        edition: document.getElementById('edition').value,
+        page: document.getElementById('page').value,
+        source: document.getElementById('source').value,
+        remarks: document.getElementById('remarks').value,
         price: document.getElementById('price').value,
         totalQuantity: quantityInput.value
       };
@@ -701,8 +948,15 @@
         authorInput.value = book.author || '';
         document.getElementById('isbn').value = book.isbn || '';
         categoryInput.value = book.category || '';
+        syncCategoryColorDisplay();
         publisherInput.value = book.publisherName || '';
         document.getElementById('publishedYear').value = book.publishedYear || '';
+        document.getElementById('shelvesNo').value = book.shelvesNo || '';
+        document.getElementById('date').value = book.date || '';
+        document.getElementById('edition').value = book.edition || '';
+        document.getElementById('page').value = book.page || '';
+        document.getElementById('source').value = book.source || '';
+        document.getElementById('remarks').value = book.remarks || '';
         document.getElementById('price').value = book.price || 0;
         quantityInput.value = book.totalQuantity || 1;
         submitBookBtn.textContent = 'Update Book';

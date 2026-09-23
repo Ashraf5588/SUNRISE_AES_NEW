@@ -6,8 +6,15 @@ const bookSchema = new mongoose.Schema({
   author: { type: String, required: false },
   isbn: { type: String, required: false, unique: false, sparse: true, default: undefined },
   category: { type: String, required: true },
+  categoryColor: { type: String, default: '#2563eb' },
+  shelvesNo: { type: String, default: '' },
   publisherName: { type: String, default: '' },
   publishedYear: { type: String, default: '' },
+  date: { type: String, default: '' },
+  edition: { type: String, default: '' },
+  page: { type: String, default: '' },
+  source: { type: String, default: '' },
+  remarks: { type: String, default: '' },
   price: { type: Number, default: 0 },
   availableQuantity: { type: Number, required: true },
   totalQuantity: { type: Number, required: true },
@@ -43,9 +50,14 @@ bookSchema.pre('save', async function(next) {
     const existingBooks = await mongoose.model('Book').find({
       _id: { $ne: this._id },
       bookCodePrefix: { $exists: true, $ne: '' }
-    }).select('bookCodePrefix').lean();
+    }).select('bookCodePrefix bookCodes').lean();
 
     const usedPrefixes = existingBooks.map((book) => book.bookCodePrefix).filter(Boolean);
+    const usedCopyCodes = new Set(
+      existingBooks
+        .flatMap((book) => (book.bookCodes || []).map((copy) => String(copy.code || '').trim().toUpperCase()))
+        .filter(Boolean)
+    );
 
     if (!this.bookCodePrefix) {
       this.bookCodePrefix = buildBookCodePrefix({
@@ -67,7 +79,7 @@ bookSchema.pre('save', async function(next) {
     if (this.totalQuantity > 0 && (!this.bookCodes || this.bookCodes.length < this.totalQuantity)) {
       const existingCodes = (this.bookCodes || []).map((copy) => copy.code);
       const missingCount = Math.max(0, this.totalQuantity - existingCodes.length);
-      const generatedCodes = generateBookCopyCodes(this.bookCodePrefix, missingCount, existingCodes);
+      const generatedCodes = generateBookCopyCodes(this.bookCodePrefix, missingCount, existingCodes, [...usedCopyCodes]);
 
       const newCopies = generatedCodes.map((code) => ({
         code,
