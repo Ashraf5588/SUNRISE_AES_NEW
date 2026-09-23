@@ -455,12 +455,18 @@ exports.listIssues = async (req, res) => {
       Member.find().sort({ createdAt: -1 }).lean()
     ]);
 
-    const normalizedIssues = issues.map((issue) => ({
-      ...issue,
-      nepaliIssuedAt: toNepaliDate(issue.issuedAt),
-      nepaliDueDate: toNepaliDate(issue.dueDate),
-      nepaliReturnedAt: toNepaliDate(issue.returnedAt)
-    }));
+    const bookMap = new Map((books || []).map((book) => [String(book._id), book]));
+
+    const normalizedIssues = issues.map((issue) => {
+      const book = bookMap.get(String(issue.bookId));
+      return {
+        ...issue,
+        bookPrice: Number(book?.price || 0),
+        nepaliIssuedAt: toNepaliDate(issue.issuedAt),
+        nepaliDueDate: toNepaliDate(issue.dueDate),
+        nepaliReturnedAt: toNepaliDate(issue.returnedAt)
+      };
+    });
 
     res.render("library/issuebook", {
       issues: normalizedIssues,
@@ -588,8 +594,11 @@ exports.returnBook = async (req, res) => {
     const returnQuantity = Number(req.body.returnQuantity || issue.quantity || 1);
     const conditionOnReturn = String(req.body.conditionOnReturn || "good");
     const notes = String(req.body.notes || "");
-    const returnDate = req.body.returnDate ? new Date(req.body.returnDate) : new Date();
-    const finePerDay = Number(req.body.finePerDay || 10);
+    const returnDateInput = req.body.returnDate || req.body.returnDateBS || "";
+    const returnDate = returnDateInput ? toADDate(returnDateInput) || new Date(returnDateInput) : new Date();
+    const fineType = String(req.body.fineType || "flat").toLowerCase();
+    const fineValue = Number(req.body.fineValue ?? req.body.finePerDay ?? 10);
+    const book = await Book.findById(issue.bookId);
 
     if (!Number.isFinite(returnQuantity) || returnQuantity <= 0) {
       return res.status(400).json({ message: "Return quantity must be greater than zero." });
@@ -597,7 +606,6 @@ exports.returnBook = async (req, res) => {
 
     const requestedCodes = Array.isArray(req.body.bookCodes) ? req.body.bookCodes : issue.bookCodes || [];
     const selectedCodes = requestedCodes.slice(0, returnQuantity);
-    const book = await Book.findById(issue.bookId);
 
     if (book && selectedCodes.length === 0) {
       return res.status(400).json({ message: "Please select the book code(s) being returned." });
@@ -606,9 +614,23 @@ exports.returnBook = async (req, res) => {
     const lateDetails = calculateLateFine({
       dueDate: issue.dueDate,
       returnDate,
-      finePerDay,
+      finePerDay: fineType === "flat" ? fineValue : 0,
       quantity: returnQuantity
     });
+
+    let fineAmount = lateDetails.fineAmount;
+    if (lateDetails.daysLate > 0) {
+      if (fineType === "percentage") {
+        const percentageValue = Number(fineValue || 0);
+        const bookPrice = Number(book?.price || 0);
+        fineAmount = percentageValue > 0 && bookPrice > 0
+          ? (bookPrice * (percentageValue / 100)) * returnQuantity * lateDetails.daysLate
+          : 0;
+      } else {
+        const flatValue = Number(fineValue || 0);
+        fineAmount = flatValue * returnQuantity * lateDetails.daysLate;
+      }
+    }
 
     issue.status = "returned";
     issue.returnedAt = returnDate;
@@ -618,7 +640,7 @@ exports.returnBook = async (req, res) => {
     issue.notes = notes;
     issue.isLate = lateDetails.daysLate > 0;
     issue.daysLate = lateDetails.daysLate;
-    issue.fineAmount = lateDetails.fineAmount;
+    issue.fineAmount = fineAmount;
     await issue.save();
 
     if (book) {

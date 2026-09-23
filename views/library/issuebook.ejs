@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Issue Books</title>
+  <link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css" />
   <style>
     :root { --bg:#f5f7fb; --panel:#ffffff; --sidebar:#0f172a; --sidebar-soft:#162236; --primary:#2563eb; --primary-soft:#dbeafe; --green:#16a34a; --green-soft:#dcfce7; --yellow:#f59e0b; --yellow-soft:#fef3c7; --red:#ef4444; --red-soft:#fee2e2; --text:#1f2937; --muted:#64748b; --border:#e5e7eb; --shadow:0 10px 28px rgba(15,23,42,0.08); }
     * { box-sizing: border-box; }
@@ -29,7 +30,7 @@
     .form-grid { display:grid; grid-template-columns:repeat(2,minmax(220px,1fr)); gap:14px; }
     .field { display:flex; flex-direction:column; gap:8px; }
     .field label { font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; }
-    .field input, .field select { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:10px; font-size:14px; }
+    .field input, .field select, .field textarea { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:10px; font-size:14px; }
     table { width:100%; border-collapse:collapse; }
     th, td { padding:12px 14px; border-bottom:1px solid var(--border); text-align:left; }
     th { background:#eef5ff; }
@@ -38,7 +39,29 @@
     .message { margin-top:12px; padding:10px 12px; border-radius:8px; font-size:14px; }
     .success { background:var(--green-soft); color:#166534; }
     .error { background:var(--red-soft); color:#991b1b; }
-    @media (max-width:900px) { .library-shell { display:block; } .sidebar { width:100%; height:auto; position:static; } .content { padding:18px; } .form-grid { grid-template-columns:1fr; } }
+    .return-modal-shell { background:#fff; width:min(760px, 100%); border-radius:18px; box-shadow:0 20px 48px rgba(15,23,42,0.2); padding:24px; position:relative; }
+    .return-modal-header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; }
+    .return-grid { display:grid; grid-template-columns:repeat(2, minmax(220px, 1fr)); gap:14px; }
+    .return-form-note { display:flex; flex-direction:column; gap:8px; grid-column:1 / -1; }
+    .return-chip { padding:10px 12px; border-radius:10px; font-weight:700; }
+    .return-code-box { display:flex; flex-wrap:wrap; gap:10px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:#f8fafc; }
+    .return-preview { display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border:1px solid var(--border); border-radius:10px; background:#f8fafc; }
+    .close-return-btn { position:absolute; top:16px; right:16px; border:none; background:#f1f5f9; width:36px; height:36px; border-radius:50%; cursor:pointer; font-size:20px; }
+    @media (max-width:900px) {
+      .library-shell { display:block; }
+      .sidebar { width:100%; height:auto; position:static; }
+      .content { padding:18px; }
+      .form-grid { grid-template-columns:1fr; }
+      .topbar { align-items:flex-start; }
+      .action-row { width:100%; }
+      .action-row .btn { flex:1; }
+    }
+    @media (max-width:520px) {
+      .card { padding:14px; }
+      .title { font-size:24px; }
+      .field input, .field select, .btn { min-height:44px; }
+      th, td { padding:10px 8px; font-size:12px; }
+    }
   </style>
 </head>
 <body>
@@ -57,9 +80,11 @@
 
     <main class="content">
       <div id="returnBookModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.48); z-index:50; align-items:center; justify-content:center; padding:20px;">
-        <div style="background:#fff; width:min(700px, 100%); border-radius:18px; box-shadow:0 20px 48px rgba(15,23,42,0.2); padding:24px; position:relative;">
-          <button type="button" id="closeReturnModal" style="position:absolute; top:16px; right:16px; border:none; background:#f1f5f9; width:36px; height:36px; border-radius:50%; cursor:pointer; font-size:20px;">×</button>
-          <h3 style="margin:0 0 18px;">Return Book Details</h3>
+        <div class="return-modal-shell">
+          <button type="button" id="closeReturnModal" class="close-return-btn">×</button>
+          <div class="return-modal-header">
+            <h3 style="margin:0;">Return Book Details</h3>
+          </div>
           <div id="returnModalContent"></div>
         </div>
       </div>
@@ -132,7 +157,7 @@
             </div>
 
             <div class="field">
-              <label for="dueDate">Due Date (BS)</label>
+              <label for="dueDateBS">Due Date (BS)</label>
               <input type="text" name="dueDateBS" id="dueDateBS" placeholder="2081-06-06" />
             </div>
           </div>
@@ -184,6 +209,7 @@
     </main>
   </div>
 
+  <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
   <script>
     const bookSelect = document.getElementById('bookId');
     const bookSearch = document.getElementById('bookSearch');
@@ -213,8 +239,31 @@
       bookCodes: issue.bookCodes || [],
       quantity: issue.quantity,
       dueDate: issue.dueDate,
+      bookPrice: issue.bookPrice || 0,
       status: issue.status
     }))) %>;
+
+    function getTodayNepaliDate() {
+      if (typeof NepaliFunctions === 'undefined') return '';
+      try {
+        const today = new Date();
+        const adDate = today.toISOString().slice(0, 10);
+        return NepaliFunctions.AD2BS(adDate);
+      } catch (error) {
+        return '';
+      }
+    }
+
+    function initNepaliDateInput(input, options = {}) {
+      if (!input || typeof input.nepaliDatePicker !== 'function') {
+        return;
+      }
+      const config = { ...options };
+      if (options.onSelect) {
+        config.onSelect = options.onSelect;
+      }
+      input.nepaliDatePicker(config);
+    }
 
     function renderMemberSearchResults() {
       const searchText = String(memberSearchInput.value || '').trim().toLowerCase();
@@ -380,9 +429,11 @@
       const defaultCodes = selectedIssue.bookCodes || [];
       const dueDate = selectedIssue.dueDate ? new Date(selectedIssue.dueDate) : new Date();
       const returnDate = new Date();
+      const defaultReturnBsDate = getTodayNepaliDate();
       const daysLate = dueDate < returnDate ? Math.max(1, Math.ceil((returnDate - dueDate) / (1000 * 60 * 60 * 24))) : 0;
-      const fine = daysLate > 0 ? daysLate * (selectedIssue.quantity || defaultCodes.length || 1) * 10 : 0;
-
+      const defaultFlatFine = 10;
+      const bookPrice = Number(selectedIssue.bookPrice || 0);
+      const defaultPercentageFine = bookPrice > 0 ? 10 : 0;
       const codeOptions = defaultCodes.map((code) => `
         <label style="display:flex; align-items:center; gap:8px; margin:4px 0;">
           <input type="checkbox" name="returnBookCode" value="${code}" checked />
@@ -406,8 +457,8 @@
               <input id="returnQuantity" type="number" min="1" max="${selectedIssue.quantity || defaultCodes.length || 1}" value="${selectedIssue.quantity || defaultCodes.length || 1}" required />
             </div>
             <div style="display:flex; flex-direction:column; gap:8px;">
-              <label for="returnDate">Return Date</label>
-              <input id="returnDate" type="date" value="${returnDate.toISOString().slice(0,10)}" required />
+              <label for="returnDateBS">Return Date (BS)</label>
+              <input id="returnDateBS" type="text" value="${defaultReturnBsDate}" placeholder="2081-06-06" required />
             </div>
             <div style="display:flex; flex-direction:column; gap:8px;">
               <label for="bookCondition">Condition</label>
@@ -424,19 +475,32 @@
                 ${daysLate ? `Late by ${daysLate} day(s)` : 'On time'}
               </div>
             </div>
-            <div style="grid-column: 1 / -1; display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <label for="fineType">Fine Type</label>
+              <select id="fineType">
+                <option value="flat">Flat amount</option>
+                <option value="percentage">Percentage</option>
+              </select>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <label for="fineValue">Fine Value</label>
+              <input id="fineValue" type="number" min="0" step="0.01" value="${bookPrice > 0 ? defaultPercentageFine : defaultFlatFine}" required />
+            </div>
+            <div class="return-form-note">
               <label>Book Copy Codes</label>
-              <div style="display:flex; flex-wrap:wrap; gap:10px; padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px; background:#f8fafc;">
+              <div class="return-code-box">
                 ${codeOptions || '<span>No codes recorded.</span>'}
               </div>
             </div>
-            <div style="grid-column: 1 / -1; display:flex; flex-direction:column; gap:8px;">
+            <div class="return-form-note">
               <label for="returnNotes">Notes</label>
-              <textarea id="returnNotes" rows="3" placeholder="Add note about tears, missing pages, damaged cover, etc.">${daysLate ? `Late by ${daysLate} day(s). Fine: Rs. ${fine}` : 'Book returned in good condition.'}</textarea>
+              <textarea id="returnNotes" rows="3" placeholder="Add note about tears, missing pages, damaged cover, etc.">${daysLate ? `Late by ${daysLate} day(s).` : 'Book returned in good condition.'}</textarea>
             </div>
-            <div style="grid-column: 1 / -1; display:flex; justify-content:space-between; align-items:center; padding:12px 14px; border:1px solid #e5e7eb; border-radius:10px; background:#f8fafc;">
-              <strong>Fine calculated</strong>
-              <span id="finePreview" style="font-weight:800; color:#b45309;">Rs. ${fine}</span>
+            <div class="return-form-note">
+              <div class="return-preview">
+                <strong>Fine calculated</strong>
+                <span id="finePreview" style="font-weight:800; color:#b45309;">Rs. 0</span>
+              </div>
             </div>
           </div>
 
@@ -451,29 +515,66 @@
       returnBookModal.style.display = 'flex';
 
       const returnQuantityInput = document.getElementById('returnQuantity');
-      const returnDateInput = document.getElementById('returnDate');
+      const returnDateInput = document.getElementById('returnDateBS');
       const bookCondition = document.getElementById('bookCondition');
+      const fineTypeInput = document.getElementById('fineType');
+      const fineValueInput = document.getElementById('fineValue');
       const finePreview = document.getElementById('finePreview');
       const returnNotes = document.getElementById('returnNotes');
 
+      if (typeof NepaliFunctions !== 'undefined' && typeof returnDateInput.nepaliDatePicker === 'function') {
+        returnDateInput.nepaliDatePicker({
+          onSelect: function () {
+            calculateFinePreview();
+          }
+        });
+      }
+
       function calculateFinePreview() {
         const qty = Number(returnQuantityInput.value || 1);
-        const dateValue = returnDateInput.value ? new Date(returnDateInput.value) : new Date();
+        const bsDate = String(returnDateInput.value || '').trim();
+        const dateValue = (typeof NepaliFunctions !== 'undefined' && bsDate) ? new Date(NepaliFunctions.BS2AD(bsDate)) : new Date();
         const due = dueDate;
         const lateDays = due < dateValue ? Math.max(1, Math.ceil((dateValue - due) / (1000 * 60 * 60 * 24))) : 0;
-        const newFine = lateDays > 0 ? lateDays * qty * 10 : 0;
-        finePreview.textContent = `Rs. ${newFine}`;
-        if (returnNotes.value.trim() === '') {
-          returnNotes.value = `${lateDays ? `Late by ${lateDays} day(s).` : 'Returned on time.'} Condition: ${bookCondition.value}.`;
+
+        const fineType = fineTypeInput.value;
+        const fineValue = Number(fineValueInput.value || 0);
+        let newFine = 0;
+
+        if (lateDays > 0) {
+          if (fineType === 'percentage') {
+            const bookPriceValue = Number(selectedIssue.bookPrice || 0);
+            newFine = bookPriceValue > 0 ? (bookPriceValue * (fineValue / 100)) * qty * lateDays : 0;
+          } else {
+            newFine = fineValue * qty * lateDays;
+          }
         }
-        if (!lateDays && returnNotes.value.includes('Late by')) {
-          returnNotes.value = `Returned on time. Condition: ${bookCondition.value}.`;
+
+        finePreview.textContent = `Rs. ${newFine.toFixed(2)}`;
+
+        if (!returnNotes.value.trim()) {
+          returnNotes.value = `${lateDays ? `Late by ${lateDays} day(s).` : 'Returned on time.'} Condition: ${bookCondition.value}.`;
         }
       }
 
       returnQuantityInput.addEventListener('input', calculateFinePreview);
       returnDateInput.addEventListener('change', calculateFinePreview);
-      bookCondition.addEventListener('change', calculateFinePreview);
+      fineTypeInput.addEventListener('change', function () {
+        const type = this.value;
+        const nextValue = type === 'percentage' ? (Number(selectedIssue.bookPrice || 0) > 0 ? 10 : 0) : 10;
+        fineValueInput.value = nextValue;
+        calculateFinePreview();
+      });
+      fineValueInput.addEventListener('input', calculateFinePreview);
+      bookCondition.addEventListener('change', function () {
+        if (!returnNotes.value.trim()) {
+          returnNotes.value = `${daysLate ? `Late by ${daysLate} day(s).` : 'Returned on time.'} Condition: ${this.value}.`;
+        } else if (!returnNotes.value.includes('Condition:')) {
+          returnNotes.value = `${returnNotes.value} Condition: ${this.value}.`;
+        } else {
+          returnNotes.value = returnNotes.value.replace(/Condition: .*?\.?$/, `Condition: ${this.value}.`);
+        }
+      });
 
       document.getElementById('cancelReturnBtn').addEventListener('click', () => {
         returnBookModal.style.display = 'none';
@@ -488,11 +589,14 @@
         const selectedCodes = Array.from(document.querySelectorAll('input[name="returnBookCode"]:checked')).map((input) => input.value);
         const payload = {
           returnQuantity: Number(returnQuantityInput.value || 1),
-          returnDate: returnDateInput.value || new Date().toISOString().slice(0, 10),
+          returnDate: returnDateInput.value || getTodayNepaliDate(),
+          returnDateBS: returnDateInput.value || getTodayNepaliDate(),
           conditionOnReturn: bookCondition.value,
           notes: returnNotes.value,
           bookCodes: selectedCodes.length ? selectedCodes : (defaultCodes || []).slice(0, Number(returnQuantityInput.value || 1)),
-          finePerDay: 10
+          fineType: fineTypeInput.value,
+          fineValue: Number(fineValueInput.value || 0),
+          finePerDay: Number(fineValueInput.value || 0)
         };
 
         const response = await fetch(`/library/return-book/${issueId}`, {
@@ -518,6 +622,23 @@
       matchBookFromCode(scannedValue);
       scanBookCode.value = '';
     });
+
+    const dueDateBSPicker = document.getElementById('dueDateBS');
+    if (dueDateBSPicker) {
+      const defaultDueDate = getTodayNepaliDate();
+      if (!dueDateBSPicker.value && defaultDueDate) {
+        dueDateBSPicker.value = defaultDueDate;
+      }
+      if (typeof dueDateBSPicker.nepaliDatePicker === 'function') {
+        dueDateBSPicker.nepaliDatePicker({
+          onSelect: function () {
+            if (!dueDateBSPicker.value) {
+              dueDateBSPicker.value = getTodayNepaliDate();
+            }
+          }
+        });
+      }
+    }
 
     function stopCameraScan() {
       if (cameraScanTimer) {
