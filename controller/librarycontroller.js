@@ -36,12 +36,28 @@ const toADDate = (bsDateString) => {
   }
 };
 
+const getPreferredStudentContact = (student = {}) => {
+  const candidates = [
+    student.fatherMobile,
+    student.motherMobile,
+    student.fatherContact,
+    student.motherContact,
+    student.otherguardianContact,
+    student.numberofmobile,
+    student.contactNumber,
+    student.mobile,
+    student.phone,
+  ];
+
+  return normalizeText(candidates.find((value) => normalizeText(value)) || "");
+};
+
 const buildMemberSearchResult = (entry, source) => {
   const base = {
     source,
     memberType: source === "student" ? "student" : "staff",
     name: source === "student" ? normalizeText(entry.name) : normalizeText(entry.teacherName || entry.username),
-    contactNumber: normalizeText(entry.fatherMobile || entry.motherMobile || entry.contactNumber || entry.mobile || ""),
+    contactNumber: source === "student" ? getPreferredStudentContact(entry) : normalizeText(entry.fatherMobile || entry.motherMobile || entry.contactNumber || entry.mobile || ""),
     email: normalizeText(entry.email || ""),
     notes: "",
   };
@@ -142,7 +158,7 @@ exports.addCategory = async (req, res) => {
 
     const category = new bookcategory({ name });
     await category.save();
-    res.status(201).json({ message: "Category added successfully." });
+  res.redirect("/library/categories");
   } catch (error) {
     console.error("Error adding category:", error);
     res.status(500).json({ message: "Error adding category.", error });
@@ -293,8 +309,8 @@ exports.addBooks = async (req, res) => {
       if (isbn && !existingBookByTitleAndAuthor.isbn) {
         existingBookByTitleAndAuthor.isbn = isbn;
       }
-      existingBookByTitleAndAuthor.availableQuantity = (existingBookByTitleAndAuthor.bookCodes || []).filter((copy) => copy.status === "available").length + totalQuantity;
       await existingBookByTitleAndAuthor.save();
+      existingBookByTitleAndAuthor.availableQuantity = (existingBookByTitleAndAuthor.bookCodes || []).filter((copy) => copy.status === "available").length;
       return res.status(200).json({ message: "Book quantity updated successfully.", book: existingBookByTitleAndAuthor });
     }
 
@@ -393,7 +409,7 @@ exports.createMember = async (req, res) => {
       email: normalizeText(req.body.email || ""),
       membershipFee: Number(req.body.membershipFee || 0),
       membershipCollected: Number(req.body.membershipCollected || 0),
-      membershipDate: req.body.membershipDate ? new Date(req.body.membershipDate) : null,
+      membershipDate: req.body.membershipDate ? toADDate(req.body.membershipDate) || new Date(req.body.membershipDate) : null,
       notes: normalizeText(req.body.notes || ""),
       status: "active"
     };
@@ -426,6 +442,32 @@ exports.createMember = async (req, res) => {
   } catch (error) {
     console.error("Error creating member:", error);
     res.status(500).json({ message: "Error creating member.", error });
+  }
+};
+
+exports.getStudentRecordContact = async (req, res) => {
+  try {
+    const reg = normalizeText(req.query.reg || "");
+    const name = normalizeText(req.query.name || "");
+    const studentClass = normalizeText(req.query.studentClass || "");
+    const section = normalizeText(req.query.section || "");
+
+    if (!reg && !name && !studentClass && !section) {
+      return res.json({ contactNumber: "" });
+    }
+
+    const query = {};
+    if (reg) query.reg = { $regex: new RegExp(`^${reg}$`, "i") };
+    if (name) query.name = { $regex: new RegExp(`^${name}$`, "i") };
+    if (studentClass) query.studentClass = { $regex: new RegExp(`^${studentClass}$`, "i") };
+    if (section) query.section = { $regex: new RegExp(`^${section}$`, "i") };
+
+    const student = await studentRecord.findOne(query).lean();
+    const contactNumber = student ? getPreferredStudentContact(student) : "";
+    return res.json({ contactNumber });
+  } catch (error) {
+    console.error("Error fetching student contact:", error);
+    res.status(500).json({ message: "Error fetching student contact.", error });
   }
 };
 

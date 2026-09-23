@@ -12,6 +12,12 @@ const bookSchema = new mongoose.Schema({
   availableQuantity: { type: Number, required: true },
   totalQuantity: { type: Number, required: true },
   bookCodePrefix: { type: String, default: '' },
+  stockBatches: [{
+    batchNumber: { type: Number, required: true },
+    quantity: { type: Number, required: true },
+    codes: [{ type: String, default: [] }],
+    createdAt: { type: Date, default: Date.now }
+  }],
   bookCodes: [{
     code: { type: String, required: true },
     status: {
@@ -60,7 +66,8 @@ bookSchema.pre('save', async function(next) {
 
     if (this.totalQuantity > 0 && (!this.bookCodes || this.bookCodes.length < this.totalQuantity)) {
       const existingCodes = (this.bookCodes || []).map((copy) => copy.code);
-      const generatedCodes = generateBookCopyCodes(this.bookCodePrefix, this.totalQuantity - existingCodes.length, existingCodes);
+      const missingCount = Math.max(0, this.totalQuantity - existingCodes.length);
+      const generatedCodes = generateBookCopyCodes(this.bookCodePrefix, missingCount, existingCodes);
 
       const newCopies = generatedCodes.map((code) => ({
         code,
@@ -73,6 +80,19 @@ bookSchema.pre('save', async function(next) {
       }));
 
       this.bookCodes = [...(this.bookCodes || []), ...newCopies];
+
+      if (generatedCodes.length > 0) {
+        const nextBatchNumber = Number((this.stockBatches || []).length) + 1;
+        this.stockBatches = [
+          ...(this.stockBatches || []),
+          {
+            batchNumber: nextBatchNumber,
+            quantity: generatedCodes.length,
+            codes: generatedCodes,
+            createdAt: new Date()
+          }
+        ];
+      }
     }
 
     this.availableQuantity = Number(this.bookCodes?.filter((copy) => copy.status === 'available').length || this.availableQuantity || 0);

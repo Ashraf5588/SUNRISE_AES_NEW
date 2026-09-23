@@ -38,10 +38,13 @@
     .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
     .title { font-size: 30px; font-weight: 700; margin: 0; }
     .action-row { display: flex; gap: 10px; flex-wrap: wrap; }
-    .btn { display: inline-flex; align-items: center; justify-content: center; border: none; border-radius: 10px; padding: 10px 16px; font-weight: 600; cursor: pointer; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; border: none; border-radius: 10px; padding: 10px 16px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08); }
+    .btn:hover { transform: translateY(-1px); filter: brightness(0.98); }
     .btn-primary { background: var(--primary); color: white; }
     .btn-success { background: var(--green); color: white; }
     .btn-secondary { background: #e2e8f0; color: var(--text); }
+    .action-btns { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .table-action-btn { padding: 8px 12px; font-size: 12px; border-radius: 8px; line-height: 1.2; }
     .grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 18px; }
     .card { background: var(--panel); border-radius: 18px; box-shadow: var(--shadow); border: 1px solid rgba(148,163,184,0.12); padding: 18px; }
     .card h3 { margin: 0 0 16px; font-size: 18px; }
@@ -51,6 +54,26 @@
     .field label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
     .field input, .field select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; }
     .btn-wrap { margin-top: 18px; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 0 0 18px; flex-wrap: wrap; }
+    .search-box { flex: 1; min-width: 260px; position: relative; }
+    .search-box input { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; font-size: 14px; background: #fff; }
+    .stock-modal { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.48); display: none; align-items: center; justify-content: center; z-index: 2000; padding: 20px; }
+    .stock-modal.show { display: flex; }
+    .stock-modal-card { width: min(420px, 100%); background: var(--panel); border-radius: 18px; padding: 22px; box-shadow: var(--shadow); }
+    .stock-modal-card h3 { margin: 0 0 14px; }
+    .stock-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .stock-field input { width: 100%; padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; }
+    .stock-actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+    .print-modal { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.48); display: none; align-items: center; justify-content: center; z-index: 2100; padding: 20px; }
+    .print-modal.show { display: flex; }
+    .print-modal-card { width: min(720px, 100%); background: var(--panel); border-radius: 18px; padding: 22px; box-shadow: var(--shadow); max-height: 80vh; overflow: auto; }
+    .print-options { display: grid; grid-template-columns: repeat(2, minmax(150px, 1fr)); gap: 10px; margin: 14px 0; }
+    .print-option-btn { width: 100%; }
+    .batch-list { display: grid; gap: 8px; margin: 12px 0; }
+    .batch-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; }
+    .code-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 10px; }
+    .code-check { display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font-size: 12px; background: #f8fafc; }
+    .table-action-btn { padding: 8px 12px; font-size: 12px; border-radius: 8px; line-height: 1.2; }
     table { width: 100%; border-collapse: collapse; background: #fff; }
     th, td { padding: 12px 14px; border-bottom: 1px solid var(--border); text-align: left; }
     th { background: #eef5ff; }
@@ -76,6 +99,7 @@
         <a class="nav-item" href="/library/categories">Categories</a>
         <a class="nav-item" href="/library/members">Members</a>
         <a class="nav-item" href="/library/issues">Book Issue</a>
+        <a class="nav-item" href="/library/inventory">Book Inventory</a>
       </div>
     </aside>
 
@@ -88,6 +112,13 @@
           <a class="btn btn-primary" href="/library/dashboard">Dashboard</a>
           <a class="btn btn-secondary" href="/library/issues">Issue Book</a>
         </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="search-box">
+          <input id="bookSearchInput" type="search" placeholder="Search by title, author, category, code..." aria-label="Search books" />
+        </div>
+        <button type="button" class="btn btn-secondary" id="clearSearchBtn">Clear</button>
       </div>
 
       <div class="grid">
@@ -175,18 +206,22 @@
                 <th>Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="bookTableBody">
               <% if (books && books.length) { %>
                 <% books.forEach((book) => { %>
-                  <tr>
+                  <tr data-book-id="<%= book._id %>" data-search-text="<%= [book.title, book.author, book.category, book.publisherName, book.isbn, book.bookCodePrefix, ...(book.bookCodes || []).map((copy) => copy.code)].join(' ') %>">
                     <td><%= book.title %></td>
                     <td><%= book.category %></td>
                     <td class="<%= Number(book.availableQuantity) <= 2 ? 'status-low' : 'status-ok' %>"><%= book.availableQuantity %></td>
                     <td><%= book.totalQuantity %></td>
                     <td><small><%= (book.bookCodes || []).map((copy) => copy.code).join(', ') || '—' %></small></td>
                     <td>
-                      <button type="button" class="btn btn-secondary edit-book" data-id="<%= book._id %>" style="padding:8px 12px; font-size:12px; margin-right:6px;">Edit</button>
-                      <button type="button" class="btn btn-danger delete-book" data-id="<%= book._id %>" style="padding:8px 12px; font-size:12px; background:#ef4444; color:#fff;">Delete</button>
+                      <div class="action-btns">
+                        <button type="button" class="btn btn-secondary table-action-btn edit-book" data-id="<%= book._id %>">Edit</button>
+                        <button type="button" class="btn btn-primary table-action-btn add-stock-btn" data-id="<%= book._id %>">Add Stock</button>
+                        <button type="button" class="btn btn-success table-action-btn print-book-codes" data-id="<%= book._id %>">Print Sticker</button>
+                        <button type="button" class="btn btn-danger table-action-btn delete-book" data-id="<%= book._id %>" style="background:#ef4444; color:#fff;">Delete</button>
+                      </div>
                     </td>
                   </tr>
                 <% }) %>
@@ -202,6 +237,42 @@
     </main>
   </div>
 
+  <div id="stockModal" class="stock-modal" aria-hidden="true">
+    <div class="stock-modal-card">
+      <h3 id="stockModalTitle">Add New Stock</h3>
+      <div class="stock-field">
+        <label for="stockQuantityInput">Quantity to add</label>
+        <input id="stockQuantityInput" type="number" min="1" value="1" />
+      </div>
+      <div class="stock-actions">
+        <button type="button" class="btn btn-secondary" id="cancelStockBtn">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmStockBtn">Add Stock</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="printModal" class="print-modal" aria-hidden="true">
+    <div class="print-modal-card">
+      <h3 id="printModalTitle">Print Sticker Options</h3>
+      <div class="stock-field">
+        <label for="printBatchInput">Stock batch number</label>
+        <input id="printBatchInput" type="number" min="1" value="1" placeholder="Enter stock number" />
+      </div>
+      <div class="print-options">
+        <button type="button" class="btn btn-primary print-option-btn" data-print-mode="last">Print Last Stock</button>
+        <button type="button" class="btn btn-secondary print-option-btn" data-print-mode="all">Print All Codes</button>
+        <button type="button" class="btn btn-success print-option-btn" data-print-mode="batch">Print Batch</button>
+        <button type="button" class="btn btn-secondary print-option-btn" data-print-mode="manual">Print Selected</button>
+      </div>
+      <div id="printBatchList" class="batch-list"></div>
+      <div id="printCodeList" class="code-grid"></div>
+      <div class="stock-actions" style="margin-top:16px;">
+        <button type="button" class="btn btn-secondary" id="closePrintModalBtn">Close</button>
+        <button type="button" class="btn btn-primary" id="confirmPrintBtn">Print Selected</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const bookForm = document.getElementById('bookForm');
     const bookIdField = document.getElementById('bookId');
@@ -213,6 +284,47 @@
     const submitBookBtn = document.getElementById('submitBookBtn');
     const generatedBookCodes = document.getElementById('generatedBookCodes');
     const printBookCodesBtn = document.getElementById('printBookCodesBtn');
+    const bookSearchInput = document.getElementById('bookSearchInput');
+    const clearSearchBtn = document.getElementById('clearSearchBtn');
+    const stockModal = document.getElementById('stockModal');
+    const stockQuantityInput = document.getElementById('stockQuantityInput');
+    const confirmStockBtn = document.getElementById('confirmStockBtn');
+    const cancelStockBtn = document.getElementById('cancelStockBtn');
+    const printModal = document.getElementById('printModal');
+    const printBatchInput = document.getElementById('printBatchInput');
+    const printBatchList = document.getElementById('printBatchList');
+    const printCodeList = document.getElementById('printCodeList');
+    const confirmPrintBtn = document.getElementById('confirmPrintBtn');
+    const closePrintModalBtn = document.getElementById('closePrintModalBtn');
+    let activeStockBook = null;
+    let newStockCodes = [];
+    let activePrintBook = null;
+    let activePrintMode = 'last';
+
+    function filterBookRows() {
+      const searchValue = String(bookSearchInput.value || '').trim().toLowerCase();
+      const rows = document.querySelectorAll('#bookTableBody tr[data-book-id]');
+      rows.forEach((row) => {
+        const haystack = (row.dataset.searchText || '').toLowerCase();
+        const show = !searchValue || haystack.includes(searchValue);
+        row.style.display = show ? '' : 'none';
+      });
+    }
+
+    function openStockModal(book) {
+      activeStockBook = book;
+      stockModal.classList.add('show');
+      stockModal.setAttribute('aria-hidden', 'false');
+      stockQuantityInput.value = '1';
+      stockQuantityInput.focus();
+    }
+
+    function closeStockModal() {
+      stockModal.classList.remove('show');
+      stockModal.setAttribute('aria-hidden', 'true');
+      activeStockBook = null;
+      newStockCodes = [];
+    }
 
     function buildPrefix(title, author, publisher, existingPrefixes = []) {
       const words = String(title || '').trim().split(/\s+/).filter(Boolean);
@@ -260,16 +372,17 @@
       return codes;
     }
 
-    function openStickerPrintWindow() {
-      const title = titleInput.value.trim();
-      const quantity = Number(quantityInput.value || 0);
-      if (!title || !quantity || quantity <= 0) {
-        alert('Please enter a book title and quantity before printing labels.');
+    function printStickerSheet(title, codes) {
+      const safeTitle = String(title || '').trim();
+      const safeCodes = Array.from(new Set((codes || [])
+        .map((code) => String(code || '').trim())
+        .filter(Boolean)));
+
+      if (!safeTitle || !safeCodes.length) {
+        alert('No book stickers are available to print for this book.');
         return;
       }
 
-      const prefix = buildPrefix(title, authorInput.value, publisherInput.value);
-      const codes = Array.from({ length: quantity }, (_, index) => `${prefix}-${String(index + 1).padStart(3, '0')}`);
       const printWindow = window.open('', '_blank', 'width=900,height=700');
       const html = `
         <!DOCTYPE html>
@@ -289,9 +402,9 @@
           </head>
           <body>
             <div class="sheet">
-              ${codes.map((code) => `
+              ${safeCodes.map((code) => `
                 <div class="label">
-                  <div class="title">${title}</div>
+                  <div class="title">${safeTitle}</div>
                   <canvas id="barcode-${code}"></canvas>
                   <div class="code">${code}</div>
                 </div>
@@ -299,7 +412,7 @@
             </div>
             <script>
               window.onload = function () {
-                ${codes.map((code) => `JsBarcode('#barcode-${code}', '${code}', { format: 'CODE128', displayValue: false, width: 1.8, height: 36, margin: 6, background: '#fff', lineColor: '#111827' });`).join('\n')}
+                ${safeCodes.map((code) => `JsBarcode('#barcode-${code}', '${code}', { format: 'CODE128', displayValue: false, width: 1.8, height: 36, margin: 6, background: '#fff', lineColor: '#111827' });`).join('\n')}
                 setTimeout(() => window.print(), 400);
               };
             <\/script>
@@ -310,11 +423,239 @@
       printWindow.document.close();
     }
 
+    function collectUniqueNextCodes(prefix, quantity, existingCodes) {
+      const used = new Set((existingCodes || []).map((code) => String(code || '').trim().toUpperCase()));
+      const generated = [];
+      let counter = 1;
+      while (generated.length < Number(quantity || 0)) {
+        const code = `${prefix}-${String(counter).padStart(3, '0')}`;
+        if (!used.has(code.toUpperCase())) {
+          generated.push(code);
+          used.add(code.toUpperCase());
+        }
+        counter += 1;
+      }
+      return generated;
+    }
+
+    function openStickerPrintWindow() {
+      const title = titleInput.value.trim();
+      const quantity = Number(quantityInput.value || 0);
+      if (!title || !quantity || quantity <= 0) {
+        alert('Please enter a book title and quantity before printing labels.');
+        return;
+      }
+
+      const prefix = buildPrefix(title, authorInput.value, publisherInput.value);
+      const codes = Array.from({ length: quantity }, (_, index) => `${prefix}-${String(index + 1).padStart(3, '0')}`);
+      printStickerSheet(title, codes);
+    }
+
+    function renderPrintBatchOptions(book) {
+      const stockBatches = Array.isArray(book.stockBatches) && book.stockBatches.length
+        ? book.stockBatches
+        : [{ batchNumber: 1, quantity: (book.bookCodes || []).length, codes: (book.bookCodes || []).map((copy) => copy.code || copy) }];
+
+      printBatchList.innerHTML = stockBatches.map((batch) => `
+        <div class="batch-item">
+          <span>Stock ${batch.batchNumber}</span>
+          <strong>${Number(batch.quantity || 0)} copies</strong>
+        </div>
+      `).join('');
+
+      printBatchInput.value = String(stockBatches.length || 1);
+      const allCodes = stockBatches.flatMap((batch) => batch.codes || []);
+      printCodeList.innerHTML = allCodes.map((code) => `
+        <label class="code-check">
+          <input type="checkbox" value="${code}" checked />
+          <span>${code}</span>
+        </label>
+      `).join('');
+    }
+
+    function openPrintModal(book) {
+      activePrintBook = book;
+      activePrintMode = 'last';
+      renderPrintBatchOptions(book);
+      printModal.classList.add('show');
+      printModal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closePrintModal() {
+      printModal.classList.remove('show');
+      printModal.setAttribute('aria-hidden', 'true');
+      activePrintBook = null;
+    }
+
+    function getSelectedPrintCodesFromModal() {
+      const selected = Array.from(printCodeList.querySelectorAll('input[type="checkbox"]:checked')).map((checkbox) => checkbox.value);
+      if (selected.length) return selected;
+      return [];
+    }
+
     titleInput.addEventListener('input', generateCodes);
     authorInput.addEventListener('input', generateCodes);
     publisherInput.addEventListener('input', generateCodes);
     quantityInput.addEventListener('input', generateCodes);
     printBookCodesBtn.addEventListener('click', openStickerPrintWindow);
+
+    document.querySelectorAll('.print-book-codes').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const id = button.dataset.id;
+        const response = await fetch(`/library/books/${id}`);
+        const book = await response.json();
+
+        if (!book || !book._id) {
+          alert('Book not found.');
+          return;
+        }
+
+        openPrintModal(book);
+      });
+    });
+
+    document.querySelectorAll('.print-option-btn').forEach((button) => {
+      button.addEventListener('click', () => {
+        const mode = button.dataset.printMode;
+        activePrintMode = mode;
+        const book = activePrintBook;
+        if (!book) return;
+        const stockBatches = Array.isArray(book.stockBatches) && book.stockBatches.length ? book.stockBatches : [{ batchNumber: 1, quantity: (book.bookCodes || []).length, codes: (book.bookCodes || []).map((copy) => copy.code || copy) }];
+
+        if (mode === 'last') {
+          const lastBatch = stockBatches[stockBatches.length - 1];
+          const selected = lastBatch?.codes || [];
+          printBatchInput.value = String(lastBatch?.batchNumber || stockBatches.length || 1);
+          printCodeList.innerHTML = selected.map((code) => `
+            <label class="code-check">
+              <input type="checkbox" value="${code}" checked />
+              <span>${code}</span>
+            </label>
+          `).join('');
+          return;
+        }
+
+        if (mode === 'all') {
+          const selected = stockBatches.flatMap((batch) => batch.codes || []);
+          printCodeList.innerHTML = selected.map((code) => `
+            <label class="code-check">
+              <input type="checkbox" value="${code}" checked />
+              <span>${code}</span>
+            </label>
+          `).join('');
+          return;
+        }
+
+        if (mode === 'batch') {
+          const batchNumber = Number(printBatchInput.value || 1);
+          const match = stockBatches.find((batch) => Number(batch.batchNumber) === batchNumber) || stockBatches[0];
+          const selected = match?.codes || [];
+          printCodeList.innerHTML = selected.map((code) => `
+            <label class="code-check">
+              <input type="checkbox" value="${code}" checked />
+              <span>${code}</span>
+            </label>
+          `).join('');
+          return;
+        }
+
+        if (mode === 'manual') {
+          const allCodes = stockBatches.flatMap((batch) => batch.codes || []);
+          printCodeList.innerHTML = allCodes.map((code) => `
+            <label class="code-check">
+              <input type="checkbox" value="${code}" />
+              <span>${code}</span>
+            </label>
+          `).join('');
+        }
+      });
+    });
+
+    confirmPrintBtn.addEventListener('click', () => {
+      if (!activePrintBook) return;
+
+      const selectedCodes = getSelectedPrintCodesFromModal();
+      if (!selectedCodes.length) {
+        alert('Please select at least one code to print.');
+        return;
+      }
+
+      printStickerSheet(activePrintBook.title || 'Book', selectedCodes);
+      closePrintModal();
+    });
+
+    closePrintModalBtn.addEventListener('click', closePrintModal);
+    printModal.addEventListener('click', (event) => {
+      if (event.target === printModal) closePrintModal();
+    });
+
+    document.querySelectorAll('.add-stock-btn').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const id = button.dataset.id;
+        const response = await fetch(`/library/books/${id}`);
+        const book = await response.json();
+        if (!book || !book._id) {
+          alert('Book not found.');
+          return;
+        }
+        openStockModal(book);
+      });
+    });
+
+    confirmStockBtn.addEventListener('click', async () => {
+      if (!activeStockBook) return;
+
+      const quantity = Number(stockQuantityInput.value || 0);
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        alert('Please enter a valid quantity greater than zero.');
+        return;
+      }
+
+      const excludedCodes = (activeStockBook.bookCodes || []).map((copy) => copy.code || copy).filter(Boolean);
+      const prefix = String(activeStockBook.bookCodePrefix || buildPrefix(activeStockBook.title, activeStockBook.author, activeStockBook.publisherName)).trim();
+      newStockCodes = collectUniqueNextCodes(prefix, quantity, excludedCodes);
+
+      const response = await fetch(`/library/books/${activeStockBook._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: activeStockBook.title,
+          author: activeStockBook.author,
+          isbn: activeStockBook.isbn,
+          category: activeStockBook.category,
+          publisherName: activeStockBook.publisherName,
+          publishedYear: activeStockBook.publishedYear,
+          price: activeStockBook.price,
+          totalQuantity: Number(activeStockBook.totalQuantity || 0) + quantity
+        })
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        alert(result.message || 'Failed to add stock.');
+        closeStockModal();
+        return;
+      }
+
+      const continuePrint = confirm(`${quantity} new stock code(s) generated. Do you want to print the newly added sticker labels now?`);
+      closeStockModal();
+      if (continuePrint) {
+        printStickerSheet(activeStockBook.title || 'Book', newStockCodes);
+      }
+      window.location.reload();
+    });
+
+    cancelStockBtn.addEventListener('click', closeStockModal);
+    stockModal.addEventListener('click', (event) => {
+      if (event.target === stockModal) closeStockModal();
+    });
+
+    bookSearchInput.addEventListener('input', filterBookRows);
+    clearSearchBtn.addEventListener('click', () => {
+      bookSearchInput.value = '';
+      filterBookRows();
+      bookSearchInput.focus();
+    });
 
     bookForm.addEventListener('submit', async function (event) {
       event.preventDefault();
