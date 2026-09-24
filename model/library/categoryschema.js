@@ -7,6 +7,22 @@ const categorySchema = new mongoose.Schema({
     trim: true,
     unique: true
   },
+  description: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  requiredPercentage: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100
+  },
+  displayOrder: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
   colorName: {
     type: String,
     default: '',

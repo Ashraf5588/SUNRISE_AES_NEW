@@ -42,6 +42,11 @@ const memberSchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
+  address: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   email: {
     type: String,
     trim: true,

@@ -62,6 +62,7 @@ const librarycontroller = require('../controller/librarycontroller');
 
 
 library.get("/library/dashboard", librarycontroller.libraryDashboard);
+library.get("/library/analytics", librarycontroller.libraryAnalytics);
 library.get("/library/books", librarycontroller.listBooks);
 library.get("/library/books/:id", librarycontroller.getBook);
 library.post("/library/books", librarycontroller.addBooks);
@@ -82,6 +83,9 @@ library.delete("/library/member/:id", librarycontroller.deleteMember);
 library.get("/library/issues", librarycontroller.listIssues);
 library.post("/library/issue-book", librarycontroller.assignBook);
 library.post("/library/return-book/:id", librarycontroller.returnBook);
+library.get("/library/lost-books", librarycontroller.listLostBooks);
+library.post("/library/lost-books", librarycontroller.reportLostBook);
+library.put("/library/lost-books/:id", librarycontroller.updateLostBook);
 
 library.get("/addbook", librarycontroller.listBooks);
 library.post("/addbook", librarycontroller.addBooks);

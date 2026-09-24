@@ -10,6 +10,7 @@ const Book = require("../model/library/bookschema");
 const bookcategory = require("../model/library/categoryschema");
 const Member = require("../model/library/memberSchema");
 const BookIssue = require("../model/library/bookIssueSchema");
+const LostBook = require("../model/library/lostBookSchema");
 const { generateBookCopyCodes, calculateLateFine, normalizeBookIsbn } = require("../model/library/libraryBookUtils");
 
 const studentRecord = mongoose.model("studentRecord", studentrecordschema, "studentrecord");
@@ -75,12 +76,15 @@ const getPreferredStudentContact = (student = {}) => {
   return normalizeText(candidates.find((value) => normalizeText(value)) || "");
 };
 
+const getStudentAddress = (student = {}) => normalizeText(student.address || student.studentAddress || "");
+
 const buildMemberSearchResult = (entry, source) => {
   const base = {
     source,
     memberType: source === "student" ? "student" : "staff",
     name: source === "student" ? normalizeText(entry.name) : normalizeText(entry.teacherName || entry.username),
     contactNumber: source === "student" ? getPreferredStudentContact(entry) : normalizeText(entry.fatherMobile || entry.motherMobile || entry.contactNumber || entry.mobile || ""),
+    address: source === "student" ? getStudentAddress(entry) : normalizeText(entry.address || ""),
     email: normalizeText(entry.email || ""),
     notes: "",
   };
@@ -92,6 +96,7 @@ const buildMemberSearchResult = (entry, source) => {
       reg: normalizeText(entry.reg),
       studentClass: normalizeText(entry.studentClass),
       section: normalizeText(entry.section),
+      address: getStudentAddress(entry),
       memberType: "student"
     };
   }
@@ -109,7 +114,7 @@ exports.libraryDashboard = async (req, res) => {
   try {
     const [books, categories, members, allIssues] = await Promise.all([
       Book.find().sort({ title: 1 }).lean(),
-      bookcategory.find().sort({ name: 1 }).lean(),
+      bookcategory.find().sort({ displayOrder: 1, name: 1 }).lean(),
       Member.find().sort({ createdAt: -1 }).lean(),
       BookIssue.find().sort({ issuedAt: -1 }).lean()
     ]);
@@ -158,9 +163,95 @@ exports.libraryDashboard = async (req, res) => {
   }
 };
 
+exports.libraryAnalytics = async (req, res) => {
+  try {
+    const [books, issues, members] = await Promise.all([
+      Book.find().sort({ title: 1 }).lean(),
+      BookIssue.find().sort({ issuedAt: -1 }).lean(),
+      Member.find().sort({ membershipDate: -1, createdAt: -1 }).lean()
+    ]);
+
+    const bookMap = new Map(books.map((book) => [String(book._id), book]));
+    const circulationCategories = issues.map((issue) => normalizeText(bookMap.get(String(issue.bookId))?.category) || 'Uncategorized');
+    const categoryNames = Array.from(new Set([
+      ...books.map((book) => normalizeText(book.category)).filter(Boolean),
+      ...circulationCategories
+    ])).sort();
+    const monthNames = ['Baisakh', 'Jestha', 'Ashadh', 'Shrawan', 'Bhadra', 'Ashwin', 'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'];
+    const monthRows = monthNames.map((month, index) => {
+      const row = { month, categories: Object.fromEntries(categoryNames.map((category) => [category, 0])), total: 0 };
+      issues.forEach((issue) => {
+        if (!issue.issuedAt) return;
+        const bsValue = toNepaliDate(issue.issuedAt);
+        const monthNumber = Number(String(bsValue).split('-')[1]);
+        if (monthNumber !== index + 1) return;
+        const category = normalizeText(bookMap.get(String(issue.bookId))?.category) || 'Uncategorized';
+        if (row.categories[category] === undefined) row.categories[category] = 0;
+        row.categories[category] += Number(issue.quantity || 0);
+        row.total += Number(issue.quantity || 0);
+      });
+      return row;
+    });
+
+    const shelfMap = new Map();
+    books.forEach((book) => {
+      const shelf = normalizeText(book.shelvesNo) || 'Unassigned';
+      shelfMap.set(shelf, (shelfMap.get(shelf) || 0) + Number(book.totalQuantity || 0));
+    });
+    const shelfRows = Array.from(shelfMap, ([shelvesNo, totalBooks]) => ({ shelvesNo, totalBooks }))
+      .sort((a, b) => a.shelvesNo.localeCompare(b.shelvesNo));
+
+    const now = new Date();
+    const dueBooks = issues.filter((issue) => issue.status === 'issued' && issue.dueDate && new Date(issue.dueDate) < now).map((issue) => {
+      const member = members.find((item) => String(item._id) === String(issue.memberId));
+      const dueDate = new Date(issue.dueDate);
+      const daysLate = Math.max(1, Math.ceil((now - dueDate) / (1000 * 60 * 60 * 24)));
+      return {
+        bookName: issue.bookTitle,
+        bookCode: (issue.bookCodes || []).join(', '),
+        memberName: issue.memberName,
+        dueDate: toNepaliDate(issue.dueDate),
+        daysLate,
+        contactNumber: member?.contactNumber || '',
+        address: member?.address || ''
+      };
+    });
+
+    const feeRows = members.filter((member) => Number(member.membershipCollected || 0) > 0).map((member) => ({
+      date: member.membershipDate ? toNepaliDate(member.membershipDate) : toNepaliDate(member.createdAt),
+      memberName: member.name,
+      amount: Number(member.membershipCollected || 0)
+    }));
+    const feeTotal = feeRows.reduce((sum, row) => sum + row.amount, 0);
+    const fineRows = issues.filter((issue) => Number(issue.fineAmount || 0) > 0).map((issue) => ({
+      date: issue.returnedAt ? toNepaliDate(issue.returnedAt) : toNepaliDate(issue.issuedAt),
+      memberName: issue.memberName,
+      amount: Number(issue.fineAmount || 0),
+      reason: issue.isLate ? `Late by ${issue.daysLate || 0} day(s)` : (issue.notes || 'Fine recorded')
+    }));
+    const fineTotal = fineRows.reduce((sum, row) => sum + row.amount, 0);
+
+    res.render('library/libraryanalytics', {
+      shelfRows,
+      categoryNames,
+      monthRows,
+      dueBooks,
+      feeRows,
+      feeTotal,
+      fineRows,
+      fineTotal,
+      totalBooks: books.reduce((sum, book) => sum + Number(book.totalQuantity || 0), 0),
+      totalCopiesAvailable: books.reduce((sum, book) => sum + Number(book.availableQuantity || 0), 0)
+    });
+  } catch (error) {
+    console.error('Error loading library analytics:', error);
+    res.status(500).send('Error loading library analytics.');
+  }
+};
+
 exports.listCategories = async (req, res) => {
   try {
-    const categories = await bookcategory.find().sort({ name: 1 }).lean();
+    const categories = await bookcategory.find().sort({ displayOrder: 1, name: 1 }).lean();
     res.render("library/category", { categories, success: "", error: "" });
   } catch (error) {
     res.status(500).json({ message: "Error fetching categories.", error });
@@ -170,11 +261,17 @@ exports.listCategories = async (req, res) => {
 exports.addCategory = async (req, res) => {
   try {
     const name = normalizeText(req.body.name);
+    const description = normalizeText(req.body.description);
+    const requiredPercentage = Number(req.body.requiredPercentage || 0);
+    const displayOrder = Number(req.body.displayOrder || 0);
     const colorName = normalizeText(req.body.colorName);
     const colorHex = normalizeCategoryColorHex(req.body.colorHex);
 
     if (!name) {
       return res.status(400).json({ message: "Category name is required." });
+    }
+    if (!Number.isFinite(requiredPercentage) || requiredPercentage < 0 || requiredPercentage > 100 || !Number.isInteger(displayOrder) || displayOrder < 0) {
+      return res.status(400).json({ message: "Required percentage must be 0-100 and display order must be a non-negative whole number." });
     }
 
     const exists = await bookcategory.findOne({ name: { $regex: new RegExp(`^${name}$`, "i") } });
@@ -182,7 +279,7 @@ exports.addCategory = async (req, res) => {
       return res.status(400).json({ message: "This category already exists." });
     }
 
-    const category = new bookcategory({ name, colorName, colorHex });
+    const category = new bookcategory({ name, description, requiredPercentage, displayOrder, colorName, colorHex });
     await category.save();
     return res.redirect("/library/categories");
   } catch (error) {
@@ -199,8 +296,13 @@ exports.updateCategory = async (req, res) => {
     }
 
     const name = normalizeText(req.body.name);
+    const requiredPercentage = Number(req.body.requiredPercentage || 0);
+    const displayOrder = Number(req.body.displayOrder || 0);
     if (!name) {
       return res.status(400).json({ message: "Category name is required." });
+    }
+    if (!Number.isFinite(requiredPercentage) || requiredPercentage < 0 || requiredPercentage > 100 || !Number.isInteger(displayOrder) || displayOrder < 0) {
+      return res.status(400).json({ message: "Required percentage must be 0-100 and display order must be a non-negative whole number." });
     }
 
     const duplicate = await bookcategory.findOne({
@@ -213,6 +315,9 @@ exports.updateCategory = async (req, res) => {
     }
 
     category.name = name;
+    category.description = normalizeText(req.body.description);
+    category.requiredPercentage = requiredPercentage;
+    category.displayOrder = displayOrder;
     category.colorName = normalizeText(req.body.colorName);
     category.colorHex = normalizeCategoryColorHex(req.body.colorHex);
     await category.save();
@@ -241,7 +346,7 @@ exports.deleteCategory = async (req, res) => {
 exports.listBooks = async (req, res) => {
   try {
     const books = await Book.find().sort({ title: 1 }).lean();
-    const categories = await bookcategory.find().sort({ name: 1 }).lean();
+    const categories = await bookcategory.find().sort({ displayOrder: 1, name: 1 }).lean();
     res.render("library/addbook", { books, categories, success: "", error: "" });
   } catch (error) {
     console.error("Error fetching books:", error);
@@ -331,7 +436,7 @@ exports.deleteBook = async (req, res) => {
 exports.inventoryPage = async (req, res) => {
   try {
     const books = await Book.find().sort({ title: 1 }).lean();
-    const categories = await bookcategory.find().sort({ name: 1 }).lean();
+    const categories = await bookcategory.find().sort({ displayOrder: 1, name: 1 }).lean();
     const filter = normalizeText(req.query.filter || "");
     const categoryFilter = normalizeText(req.query.category || "");
     const lowStockOnly = req.query.lowStockOnly === "1";
@@ -441,7 +546,7 @@ exports.searchMembers = async (req, res) => {
 
     if (!query || query.length < 2) {
       const members = await Member.find().sort({ createdAt: -1 }).lean();
-      const categories = await bookcategory.find().sort({ name: 1 }).lean();
+      const categories = await bookcategory.find().sort({ displayOrder: 1, name: 1 }).lean();
       if (req.xhr || req.headers.accept?.includes("application/json")) {
         return res.json({ results: [] });
       }
@@ -482,7 +587,7 @@ exports.searchMembers = async (req, res) => {
 
     res.render("library/members", {
       members,
-      categories: await bookcategory.find().sort({ name: 1 }).lean(),
+      categories: await bookcategory.find().sort({ displayOrder: 1, name: 1 }).lean(),
       searchQuery: query,
       searchResults,
       error: searchResults.length ? "" : "No matching student or staff found. You can add a new member manually below.",
@@ -507,6 +612,7 @@ exports.createMember = async (req, res) => {
       memberType,
       name,
       contactNumber: normalizeText(req.body.contactNumber || ""),
+      address: normalizeText(req.body.address || ""),
       email: normalizeText(req.body.email || ""),
       membershipFee: Number(req.body.membershipFee || 0),
       membershipCollected: Number(req.body.membershipCollected || 0),
@@ -565,7 +671,8 @@ exports.getStudentRecordContact = async (req, res) => {
 
     const student = await studentRecord.findOne(query).lean();
     const contactNumber = student ? getPreferredStudentContact(student) : "";
-    return res.json({ contactNumber });
+    const address = student ? getStudentAddress(student) : "";
+    return res.json({ contactNumber, address });
   } catch (error) {
     console.error("Error fetching student contact:", error);
     res.status(500).json({ message: "Error fetching student contact.", error });
@@ -575,7 +682,7 @@ exports.getStudentRecordContact = async (req, res) => {
 exports.listMembers = async (req, res) => {
   try {
     const members = await Member.find().sort({ createdAt: -1 }).lean();
-    const categories = await bookcategory.find().sort({ name: 1 }).lean();
+    const categories = await bookcategory.find().sort({ displayOrder: 1, name: 1 }).lean();
     res.render("library/members", {
       members,
       categories,
@@ -820,7 +927,7 @@ exports.returnBook = async (req, res) => {
 exports.listBooksPage = async (req, res) => {
   try {
     const books = await Book.find().sort({ title: 1 }).lean();
-    const categories = await bookcategory.find().sort({ name: 1 }).lean();
+    const categories = await bookcategory.find().sort({ displayOrder: 1, name: 1 }).lean();
     res.render("library/addbook", { books, categories, error: "", success: "" });
   } catch (error) {
     console.error("Error listing books page:", error);
@@ -844,10 +951,13 @@ exports.updateMember = async (req, res) => {
     member.memberType = memberType === "staff" ? "staff" : "student";
     member.name = name;
     member.contactNumber = normalizeText(req.body.contactNumber || member.contactNumber || "");
+    member.address = normalizeText(req.body.address || member.address || "");
     member.email = normalizeText(req.body.email || member.email || "");
     member.membershipFee = Number(req.body.membershipFee || member.membershipFee || 0);
     member.membershipCollected = Number(req.body.membershipCollected || member.membershipCollected || 0);
-    member.membershipDate = req.body.membershipDate ? new Date(req.body.membershipDate) : member.membershipDate || null;
+    member.membershipDate = req.body.membershipDate
+      ? toADDate(req.body.membershipDate) || new Date(req.body.membershipDate)
+      : member.membershipDate || null;
     member.notes = normalizeText(req.body.notes || member.notes || "");
     member.status = String(req.body.status || member.status || "active");
 
@@ -891,5 +1001,115 @@ exports.deleteMember = async (req, res) => {
       return res.status(500).json({ message: "Error deleting member." });
     }
     res.status(500).send("Error deleting member.");
+  }
+};
+
+exports.listLostBooks = async (req, res) => {
+  try {
+    const [lostBooks, books, issues, members] = await Promise.all([
+      LostBook.find().sort({ createdAt: -1 }).lean(),
+      Book.find().sort({ title: 1 }).lean(),
+      BookIssue.find({ status: "issued" }).sort({ issuedAt: -1 }).lean(),
+      Member.find().sort({ name: 1 }).lean()
+    ]);
+
+    res.render("library/lostbook", { lostBooks, books, issues, members, error: "", success: "" });
+  } catch (error) {
+    console.error("Error listing lost books:", error);
+    res.status(500).send("Error loading lost books.");
+  }
+};
+
+exports.reportLostBook = async (req, res) => {
+  try {
+    const book = await Book.findById(req.body.bookId);
+    if (!book) return res.status(404).json({ message: "Book not found." });
+
+    const bookCode = normalizeText(req.body.bookCode).toUpperCase();
+    const copy = (book.bookCodes || []).find((item) => String(item.code).toUpperCase() === bookCode);
+    if (!copy) return res.status(400).json({ message: "Book copy code was not found." });
+    if (copy.status === "lost") return res.status(400).json({ message: "This copy is already recorded as lost." });
+
+    const duplicate = await LostBook.findOne({ bookId: book._id, bookCode, status: { $nin: ["recovered", "written-off"] } });
+    if (duplicate) return res.status(400).json({ message: "This book copy already has an active lost report." });
+
+    const issue = req.body.issueId
+      ? await BookIssue.findById(req.body.issueId)
+      : await BookIssue.findOne({ status: "issued", bookId: book._id, bookCodes: bookCode });
+    const member = req.body.memberId ? await Member.findById(req.body.memberId).lean() : null;
+    const lossDateBS = normalizeText(req.body.lossDateBS || "");
+    const reportedDateBS = normalizeText(req.body.reportedDateBS || "");
+    const reason = normalizeText(req.body.reason || "");
+    if (!reason) return res.status(400).json({ message: "A loss reason is required." });
+    const lossDate = toADDate(lossDateBS) || new Date();
+    const reportedDate = toADDate(reportedDateBS) || new Date();
+
+    const lostBook = await LostBook.create({
+      bookId: book._id,
+      bookTitle: book.title,
+      bookCode,
+      isbn: book.isbn || "",
+      issueId: issue?._id || null,
+      memberId: member?._id || issue?.memberId || null,
+      memberName: member?.name || issue?.memberName || "",
+      lossDate,
+      lossDateBS: lossDateBS || toNepaliDate(lossDate),
+      reportedDate,
+      reportedDateBS: reportedDateBS || toNepaliDate(reportedDate),
+      reason,
+      reportedBy: normalizeText(req.body.reportedBy),
+      replacementCost: Number(req.body.replacementCost || book.price || 0),
+      fineAmount: Number(req.body.fineAmount || 0),
+      status: normalizeText(req.body.status) || "reported",
+      notes: normalizeText(req.body.notes)
+    });
+
+    copy.status = "lost";
+    copy.issuedTo = null;
+    copy.issuedAt = null;
+    copy.issueId = null;
+    book.availableQuantity = (book.bookCodes || []).filter((item) => item.status === "available").length;
+    await book.save();
+
+    if (issue && issue.status === "issued") {
+      issue.status = "lost";
+      issue.notes = `${issue.notes || ""}${issue.notes ? " " : ""}Copy ${bookCode} reported lost.`;
+      await issue.save();
+    }
+
+    res.status(201).json({ message: "Lost book recorded successfully.", lostBook });
+  } catch (error) {
+    console.error("Error reporting lost book:", error);
+    res.status(500).json({ message: "Error recording lost book.", error });
+  }
+};
+
+exports.updateLostBook = async (req, res) => {
+  try {
+    const lostBook = await LostBook.findById(req.params.id);
+    if (!lostBook) return res.status(404).json({ message: "Lost book record not found." });
+
+    lostBook.status = normalizeText(req.body.status || lostBook.status);
+    lostBook.fineAmount = Number(req.body.fineAmount ?? lostBook.fineAmount ?? 0);
+    lostBook.notes = normalizeText(req.body.notes ?? lostBook.notes);
+    lostBook.recoveryNotes = normalizeText(req.body.recoveryNotes ?? lostBook.recoveryNotes);
+    if (lostBook.status === "recovered" && !lostBook.recoveredAt) lostBook.recoveredAt = new Date();
+    await lostBook.save();
+
+    if (lostBook.status === "recovered") {
+      const book = await Book.findById(lostBook.bookId);
+      const copy = book?.bookCodes?.find((item) => String(item.code).toUpperCase() === lostBook.bookCode);
+      if (copy) {
+        copy.status = "available";
+        copy.condition = "good";
+        book.availableQuantity = (book.bookCodes || []).filter((item) => item.status === "available").length;
+        await book.save();
+      }
+    }
+
+    res.json({ message: "Lost book record updated successfully.", lostBook });
+  } catch (error) {
+    console.error("Error updating lost book:", error);
+    res.status(500).json({ message: "Error updating lost book.", error });
   }
 };

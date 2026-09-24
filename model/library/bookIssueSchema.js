@@ -68,7 +68,7 @@ const bookIssueSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['issued', 'returned'],
+    enum: ['issued', 'returned', 'lost'],
     default: 'issued'
   }
 }, { timestamps: true });

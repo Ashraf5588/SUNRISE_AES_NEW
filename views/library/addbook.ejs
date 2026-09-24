@@ -68,6 +68,16 @@
     .print-modal { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.48); display: none; align-items: center; justify-content: center; z-index: 2100; padding: 20px; }
     .print-modal.show { display: flex; }
     .print-modal-card { width: min(720px, 100%); background: var(--panel); border-radius: 18px; padding: 22px; box-shadow: var(--shadow); max-height: 80vh; overflow: auto; }
+    .bulk-print-modal-card { width: min(760px, 100%); }
+    .bulk-print-list { max-height: 48vh; overflow: auto; border: 1px solid var(--border); border-radius: 10px; }
+    .bulk-print-table { width: 100%; border-collapse: collapse; }
+    .bulk-print-table th, .bulk-print-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; }
+    .bulk-print-table th { position: sticky; top: 0; background: #eef5ff; z-index: 1; }
+    .bulk-print-table tbody tr:nth-child(even) { background: #f8fafc; }
+    .bulk-book-check { vertical-align: top; }
+    .bulk-book-title { min-width: 150px; font-weight: 700; vertical-align: top; }
+    .bulk-code-scroll { max-width: 430px; overflow-x: auto; white-space: nowrap; padding-bottom: 5px; }
+    .bulk-code-option { display: inline-flex; align-items: center; gap: 5px; margin-right: 14px; white-space: nowrap; font-weight: 600; }
     .print-options { display: grid; grid-template-columns: repeat(2, minmax(150px, 1fr)); gap: 10px; margin: 14px 0; }
     .print-option-btn { width: 100%; }
     .batch-list { display: grid; gap: 8px; margin: 12px 0; }
@@ -75,9 +85,14 @@
     .code-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 10px; }
     .code-check { display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font-size: 12px; background: #f8fafc; }
     .table-action-btn { padding: 8px 12px; font-size: 12px; border-radius: 8px; line-height: 1.2; }
+    .table-scroll { width: 100%; overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; background: #fff; }
     th, td { padding: 12px 14px; border-bottom: 1px solid var(--border); text-align: left; }
     th { background: #eef5ff; }
+    tbody tr:nth-child(even) { background: #f8fafc; }
+    tbody tr:hover { background: #eff6ff; }
+    .code-scroll { max-width: 220px; max-height: 42px; overflow-x: auto; overflow-y: hidden; white-space: nowrap; }
+    .code-scroll small { white-space: nowrap; }
     .status-ok { color: var(--green); font-weight: 700; }
     .status-low { color: #b45309; font-weight: 700; }
     .message { margin-top: 12px; padding: 10px 12px; border-radius: 8px; font-size: 14px; }
@@ -100,6 +115,8 @@
         <a class="nav-item" href="/library/categories">Categories</a>
         <a class="nav-item" href="/library/members">Members</a>
         <a class="nav-item" href="/library/issues">Book Issue</a>
+        <a class="nav-item" href="/library/lost-books">Lost Books</a>
+        <a class="nav-item" href="/library/analytics">Analytics</a>
         <a class="nav-item" href="/library/inventory">Book Inventory</a>
       </div>
     </aside>
@@ -212,7 +229,7 @@
 
               <div class="field">
                 <label for="totalQuantity">Total Quantity</label>
-                <input type="number" id="totalQuantity" name="totalQuantity" min="1" required>
+                <input type="number" id="totalQuantity" name="totalQuantity" min="1" value="1" required>
               </div>
             </div>
 
@@ -236,32 +253,40 @@
         </div>
 
         <div class="card">
-          <h3>Book Inventory</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Book Code</th>
-                <th>Author</th>
-                <th>Title</th>
-                <th>Category</th>
-                <th>Shelves No</th>
-                <th>Edition</th>
-                <th>Publisher</th>
-                <th>Year</th>
-                <th>Page</th>
-                <th>Source</th>
-                <th>Cost</th>
-                <th>Remarks</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="bookTableBody">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
+            <h3 style="margin:0;">Book Inventory</h3>
+            <button type="button" class="btn btn-primary" id="bulkPrintStickerBtn">Print Sticker</button>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Book Code</th>
+                  <th>Author</th>
+                  <th>Title</th>
+                  <th>Category</th>
+                  <th>Shelves No</th>
+                  <th>Edition</th>
+                  <th>Publisher</th>
+                  <th>Year</th>
+                  <th>Page</th>
+                  <th>Source</th>
+                  <th>Cost</th>
+                  <th>Remarks</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="bookTableBody">
               <% if (books && books.length) { %>
                 <% books.forEach((book) => { %>
                   <tr data-book-id="<%= book._id %>" data-search-text="<%= [book.date, (book.bookCodes || []).map((copy) => copy.code).join(' '), book.author, book.title, book.category, book.shelvesNo, book.edition, book.publisherName, book.publishedYear, book.page, book.source, book.price, book.remarks].join(' ') %>">
                     <td><%= book.date || '—' %></td>
-                    <td><small><%= (book.bookCodes || []).map((copy) => copy.code).join(', ') || book.bookCodePrefix || '—' %></small></td>
+                    <td>
+                      <div class="code-scroll" title="Scroll to view all book codes">
+                        <small><%= (book.bookCodes || []).map((copy) => copy.code).join(', ') || book.bookCodePrefix || '—' %></small>
+                      </div>
+                    </td>
                     <td><%= book.author || '—' %></td>
                     <td><%= book.title || '—' %></td>
                     <td>
@@ -293,8 +318,9 @@
                   <td colspan="12">No books added yet.</td>
                 </tr>
               <% } %>
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </main>
@@ -332,6 +358,23 @@
       <div class="stock-actions" style="margin-top:16px;">
         <button type="button" class="btn btn-secondary" id="closePrintModalBtn">Close</button>
         <button type="button" class="btn btn-primary" id="confirmPrintBtn">Print Selected</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="bulkPrintModal" class="print-modal" aria-hidden="true">
+    <div class="print-modal-card bulk-print-modal-card">
+      <h3>Print Sticker</h3>
+      <p style="margin:0 0 14px; color:var(--muted); font-size:13px;">All books and copy codes are selected by default. Uncheck anything you do not want to print.</p>
+      <div class="bulk-print-list">
+        <table class="bulk-print-table">
+          <thead><tr><th><input type="checkbox" id="bulkPrintAllCheck" checked aria-label="Select all books"></th><th>Book Name</th><th>Book Codes</th></tr></thead>
+          <tbody id="bulkPrintList"></tbody>
+        </table>
+      </div>
+      <div class="stock-actions" style="margin-top:16px;">
+        <button type="button" class="btn btn-secondary" id="closeBulkPrintBtn">Close</button>
+        <button type="button" class="btn btn-primary" id="confirmBulkPrintBtn">Print Checked Stickers</button>
       </div>
     </div>
   </div>
@@ -417,6 +460,28 @@
     const printCodeList = document.getElementById('printCodeList');
     const confirmPrintBtn = document.getElementById('confirmPrintBtn');
     const closePrintModalBtn = document.getElementById('closePrintModalBtn');
+    const bulkPrintModal = document.getElementById('bulkPrintModal');
+    const bulkPrintList = document.getElementById('bulkPrintList');
+    const bulkPrintAllCheck = document.getElementById('bulkPrintAllCheck');
+    const bulkPrintStickerBtn = document.getElementById('bulkPrintStickerBtn');
+    const closeBulkPrintBtn = document.getElementById('closeBulkPrintBtn');
+    const confirmBulkPrintBtn = document.getElementById('confirmBulkPrintBtn');
+    const bulkPrintBooks = <%- JSON.stringify((books || []).map((book) => ({
+      title: book.title || 'Book',
+      codes: (book.bookCodes || []).map((copy) => copy.code || copy),
+      date: book.date || '',
+      shelvesNo: book.shelvesNo || '',
+      author: book.author || '',
+      category: book.category || '',
+      publisherName: book.publisherName || '',
+      edition: book.edition || '',
+      publishedYear: book.publishedYear || '',
+      page: book.page || '',
+      source: book.source || '',
+      price: book.price || '',
+      remarks: book.remarks || '',
+      isbn: book.isbn || ''
+    }))) %>;
     let activeStockBook = null;
     let newStockCodes = [];
     let activePrintBook = null;
@@ -481,6 +546,7 @@
       const hexColor = selectedOption && selectedOption.dataset.color ? selectedOption.dataset.color : '#2563eb';
       const colorName = selectedOption && selectedOption.dataset.colorName ? selectedOption.dataset.colorName : 'Default';
       categoryColorPreview.style.background = hexColor;
+      
       categoryColorText.textContent = colorName;
     }
 
@@ -491,7 +557,7 @@
       const title = titleInput.value.trim();
       const author = authorInput.value.trim();
       const publisher = publisherInput.value.trim();
-      const quantity = Number(quantityInput.value || 0);
+      const quantity = Number(quantityInput.value || 1);
       const prefix = buildPrefix(title, author, publisher);
 
       if (!title || !quantity || quantity <= 0) {
@@ -636,7 +702,7 @@
 
     function openStickerPrintWindow() {
       const title = titleInput.value.trim();
-      const quantity = Number(quantityInput.value || 0);
+      const quantity = Number(quantityInput.value || 1);
       if (!title || !quantity || quantity <= 0) {
         alert('Please enter a book title and quantity before printing labels.');
         return;
@@ -705,11 +771,114 @@
       return [];
     }
 
+    function escapePrintText(value) {
+      return String(value ?? '').replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
+    }
+
+    function renderBulkPrintList() {
+      bulkPrintList.innerHTML = bulkPrintBooks.filter((book) => (book.codes || []).length).map((book, bookIndex) => `
+        <tr>
+          <td><input type="checkbox" class="bulk-book-check" data-book-index="${bookIndex}" checked aria-label="Select ${escapePrintText(book.title)}"></td>
+          <td class="bulk-book-title">${escapePrintText(book.title)}</td>
+          <td><div class="bulk-code-scroll">${book.codes.map((code, codeIndex) => `
+            <label class="bulk-code-option"><input type="checkbox" class="bulk-print-check" data-book-index="${bookIndex}" data-code-index="${codeIndex}" checked aria-label="Select ${escapePrintText(code)}"><span>${escapePrintText(code)}</span></label>
+          `).join('')}</div></td>
+        </tr>
+      `).join('') || '<tr><td colspan="3">No book codes available to print.</td></tr>';
+      bulkPrintAllCheck.checked = true;
+    }
+
+    function openBulkPrintModal() {
+      renderBulkPrintList();
+      bulkPrintModal.classList.add('show');
+      bulkPrintModal.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeBulkPrintModal() {
+      bulkPrintModal.classList.remove('show');
+      bulkPrintModal.setAttribute('aria-hidden', 'true');
+    }
+
+    function printBulkSelectedStickers() {
+      const selectedEntries = Array.from(bulkPrintList.querySelectorAll('.bulk-print-check:checked')).map((checkbox) => {
+        const book = bulkPrintBooks[Number(checkbox.dataset.bookIndex)];
+        return {
+          ...book,
+          code: book.codes[Number(checkbox.dataset.codeIndex)]
+        };
+      });
+
+      if (!selectedEntries.length) {
+        alert('Please select at least one sticker to print.');
+        return;
+      }
+
+      const printWindow = window.open('', '_blank', 'width=1000,height=750');
+      const labels = selectedEntries.map((entry, index) => {
+        const detailRows = [
+          ['Date', entry.date],
+          ['Shelf No', entry.shelvesNo],
+          ['Author', entry.author],
+          ['Category', entry.category],
+          ['Publisher', entry.publisherName],
+          ['Edition', entry.edition],
+          ['Year', entry.publishedYear],
+          ['Page', entry.page],
+          ['Source', entry.source],
+          ['Cost', entry.price === '' ? '' : `Rs. ${entry.price}`],
+          ['Remarks', entry.remarks],
+          ['ISBN', entry.isbn]
+        ].filter((row) => String(row[1] ?? '').trim());
+        const detailMarkup = detailRows.map(([label, value]) => `<span><strong>${label}:</strong> ${escapePrintText(value)}</span>`).join('');
+        return `
+        <div class="label">
+          <div class="title">${escapePrintText(entry.title)}</div>
+          <canvas id="bulk-barcode-${index}"></canvas>
+          <div class="code">${escapePrintText(entry.code)}</div>
+          <div class="meta-line">${detailMarkup}</div>
+        </div>
+      `;
+      }).join('');
+      const barcodeCalls = selectedEntries.map((entry, index) => `JsBarcode('#bulk-barcode-${index}', '${String(entry.code).replace(/'/g, "\\'")}', { format: 'CODE128', displayValue: false, width: 1.8, height: 38, margin: 6, background: '#fff', lineColor: '#111827' });`).join('\n');
+      printWindow.document.write(`
+        <!DOCTYPE html><html><head><title>Book Sticker Print</title>
+        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"><\/script>
+        <style>body{font-family:Arial,sans-serif;margin:20px}.sheet{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px}.label{border:2px solid #0f172a;border-radius:10px;padding:12px;text-align:center;page-break-inside:avoid;min-height:190px}.title{font-size:12px;font-weight:700;margin-bottom:8px}.code{font-size:18px;font-weight:800;margin-top:8px}.meta-line{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:4px 10px;margin-top:8px;text-align:left;font-size:9px;line-height:1.35}.meta-line span{display:inline-flex;gap:3px;max-width:100%;word-break:break-word}.meta-line strong{white-space:nowrap}canvas{max-width:100%}@media print{body{margin:0}.label{border:1px solid #000}}</style>
+        </head><body><div class="sheet">${labels}</div><script>window.onload=function(){${barcodeCalls}setTimeout(function(){window.print()},400)};<\/script></body></html>
+      `);
+      printWindow.document.close();
+      closeBulkPrintModal();
+    }
+
     titleInput.addEventListener('input', generateCodes);
     authorInput.addEventListener('input', generateCodes);
     publisherInput.addEventListener('input', generateCodes);
     quantityInput.addEventListener('input', generateCodes);
     printBookCodesBtn.addEventListener('click', openStickerPrintWindow);
+    bulkPrintStickerBtn.addEventListener('click', openBulkPrintModal);
+    closeBulkPrintBtn.addEventListener('click', closeBulkPrintModal);
+    confirmBulkPrintBtn.addEventListener('click', printBulkSelectedStickers);
+    bulkPrintAllCheck.addEventListener('change', () => {
+      bulkPrintList.querySelectorAll('.bulk-print-check, .bulk-book-check').forEach((checkbox) => {
+        checkbox.checked = bulkPrintAllCheck.checked;
+      });
+    });
+    bulkPrintList.addEventListener('change', (event) => {
+      if (event.target.classList.contains('bulk-book-check')) {
+        const bookIndex = event.target.dataset.bookIndex;
+        bulkPrintList.querySelectorAll(`.bulk-print-check[data-book-index="${bookIndex}"]`).forEach((checkbox) => {
+          checkbox.checked = event.target.checked;
+        });
+      }
+      if (!event.target.classList.contains('bulk-print-check') && !event.target.classList.contains('bulk-book-check')) return;
+      const checks = Array.from(bulkPrintList.querySelectorAll('.bulk-print-check'));
+      bulkPrintAllCheck.checked = checks.length > 0 && checks.every((checkbox) => checkbox.checked);
+      bulkPrintList.querySelectorAll('.bulk-book-check').forEach((bookCheckbox) => {
+        const bookChecks = Array.from(bulkPrintList.querySelectorAll(`.bulk-print-check[data-book-index="${bookCheckbox.dataset.bookIndex}"]`));
+        bookCheckbox.checked = bookChecks.length > 0 && bookChecks.every((checkbox) => checkbox.checked);
+      });
+    });
+    generateCodes();
 
     document.querySelectorAll('.print-book-codes').forEach((button) => {
       button.addEventListener('click', async () => {
@@ -811,6 +980,9 @@
     closePrintModalBtn.addEventListener('click', closePrintModal);
     printModal.addEventListener('click', (event) => {
       if (event.target === printModal) closePrintModal();
+    });
+    bulkPrintModal.addEventListener('click', (event) => {
+      if (event.target === bulkPrintModal) closeBulkPrintModal();
     });
 
     document.querySelectorAll('.add-stock-btn').forEach((button) => {

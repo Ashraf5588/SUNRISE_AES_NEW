@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lost Books</title>
+  <link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css" />
+  <style>
+    :root { --bg:#f5f7fb; --panel:#fff; --sidebar:#0f172a; --sidebar-soft:#162236; --primary:#2563eb; --green:#16a34a; --red:#dc2626; --text:#111827; --muted:#64748b; --border:#e5e7eb; --shadow:0 10px 28px rgba(15,23,42,.08); }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--text); }
+    a { color:inherit; text-decoration:none; }
+    .library-shell { display:flex; min-height:100vh; }
+    .sidebar { width:260px; min-height:100vh; padding:24px 18px; position:sticky; top:0; background:linear-gradient(180deg,var(--sidebar),var(--sidebar-soft)); color:#e5eefb; }
+    .brand { display:flex; align-items:center; gap:10px; padding:8px 10px; margin-bottom:24px; font-size:22px; font-weight:700; }
+    .brand-mark { display:grid; place-items:center; width:34px; height:34px; border-radius:10px; background:var(--primary); color:#fff; }
+    .nav-label { padding:0 12px 8px; color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:1px; }
+    .nav-item { display:flex; padding:11px 12px; margin-bottom:6px; border-radius:10px; color:#dce9ff; }
+    .nav-item:hover, .nav-item.active { background:rgba(255,255,255,.1); }
+    .content { flex:1; min-width:0; padding:28px; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:24px; }
+    h1 { margin:0; font-size:30px; }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; }
+    .btn { border:0; border-radius:10px; padding:10px 16px; font-weight:700; cursor:pointer; }
+    .btn-primary { background:var(--primary); color:#fff; }
+    .btn-secondary { background:#e2e8f0; color:var(--text); }
+    .btn-success { background:var(--green); color:#fff; }
+    .card { margin-bottom:20px; padding:20px; background:var(--panel); border:1px solid rgba(148,163,184,.15); border-radius:16px; box-shadow:var(--shadow); }
+    .card h2 { margin:0 0 16px; font-size:19px; }
+    .form-grid { display:grid; grid-template-columns:repeat(2,minmax(220px,1fr)); gap:14px; }
+    .field { display:flex; flex-direction:column; gap:7px; }
+    .field.full { grid-column:1 / -1; }
+    label { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+    input, select, textarea { width:100%; padding:11px 12px; border:1px solid #cbd5e1; border-radius:9px; color:var(--text); background:#fff; font:inherit; }
+    textarea { min-height:82px; resize:vertical; }
+    input:focus, select:focus, textarea:focus { outline:0; border-color:var(--primary); box-shadow:0 0 0 3px rgba(37,99,235,.15); background:#eff6ff; }
+    .hint { color:var(--muted); font-size:12px; }
+    .table-scroll { overflow-x:auto; }
+    .table-scroll table { width:100%; min-width:1050px; border-collapse:collapse; }
+    .table-scroll th, .table-scroll td { padding:12px 13px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
+    .table-scroll th { background:#eef5ff; white-space:nowrap; }
+    tbody tr:nth-child(even) { background:#f8fafc; }
+    tbody tr:hover { background:#eff6ff; }
+    .status { display:inline-flex; padding:5px 9px; border-radius:999px; background:#e0e7ff; color:#3730a3; font-size:11px; font-weight:700; white-space:nowrap; }
+    .status.recovered { background:#dcfce7; color:#166534; }
+    .status.settled { background:#fef3c7; color:#92400e; }
+    .status.written-off { background:#fee2e2; color:#991b1b; }
+    .message { padding:11px 13px; margin-bottom:16px; border-radius:9px; background:#fee2e2; color:#991b1b; }
+    @media (max-width:900px) { .library-shell { display:block; } .sidebar { width:100%; min-height:auto; position:static; } .content { padding:18px; } .form-grid { grid-template-columns:1fr; } .field.full { grid-column:auto; } }
+    @media (max-width:520px) { .content { padding:12px; } .card { padding:15px; } h1 { font-size:25px; } .btn { min-height:44px; } }
+  </style>
+</head>
+<body>
+  <div class="library-shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">L</span><span>Library</span></div>
+      <div class="nav-label">Overview</div>
+      <a class="nav-item" href="/library/dashboard">Dashboard</a>
+      <a class="nav-item" href="/library/books">Books</a>
+      <a class="nav-item" href="/library/categories">Categories</a>
+      <a class="nav-item" href="/library/members">Members</a>
+      <a class="nav-item" href="/library/issues">Book Issue</a>
+      <a class="nav-item active" href="/library/lost-books">Lost Books</a>
+      <a class="nav-item" href="/library/analytics">Analytics</a>
+      <a class="nav-item" href="/library/inventory">Book Inventory</a>
+    </aside>
+
+    <main class="content">
+      <div class="topbar">
+        <h1>Lost Books</h1>
+        <div class="actions">
+          <a class="btn btn-primary" href="/library/dashboard">Dashboard</a>
+          <a class="btn btn-secondary" href="/library/issues">Issue Book</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Report Lost Book</h2>
+        <div id="message" class="message" hidden></div>
+        <form id="lostBookForm">
+          <div class="form-grid">
+            <div class="field">
+              <label for="bookId">Book title</label>
+              <select id="bookId" name="bookId" required>
+                <option value="">Select book</option>
+                <% (books || []).forEach((book) => { %>
+                  <option value="<%= book._id %>" data-codes='<%= JSON.stringify((book.bookCodes || []).map((copy) => ({ code: copy.code, status: copy.status }))) %>'><%= book.title %> (<%= book.availableQuantity || 0 %> available)</option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="field">
+              <label for="bookCode">Book copy code</label>
+              <select id="bookCode" name="bookCode" required disabled>
+                <option value="">Select a book first</option>
+              </select>
+              <span class="hint">Choose the exact barcode/copy that is missing.</span>
+            </div>
+            <div class="field">
+              <label for="issueId">Related issue</label>
+              <select id="issueId" name="issueId">
+                <option value="">Not linked to an issue</option>
+                <% (issues || []).forEach((issue) => { %>
+                  <option value="<%= issue._id %>" data-book-id="<%= issue.bookId %>" data-member-id="<%= issue.memberId %>" data-code-list='<%= JSON.stringify(issue.bookCodes || []) %>'><%= issue.bookTitle %> - <%= issue.memberName %> (<%= (issue.bookCodes || []).join(', ') %>)</option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="field">
+              <label for="memberId">Member</label>
+              <select id="memberId" name="memberId">
+                <option value="">No member / unknown</option>
+                <% (members || []).forEach((member) => { %>
+                  <option value="<%= member._id %>"><%= member.name %> (<%= member.memberType %>)</option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="field">
+              <label for="lossDateBS">Loss date (BS)</label>
+              <input id="lossDateBS" name="lossDateBS" type="text" placeholder="YYYY-MM-DD" required />
+            </div>
+            <div class="field">
+              <label for="reportedDateBS">Reported date (BS)</label>
+              <input id="reportedDateBS" name="reportedDateBS" type="text" placeholder="YYYY-MM-DD" required />
+            </div>
+            <div class="field">
+              <label for="reason">Reason</label>
+              <select id="reason" name="reason" required>
+                <option value="">Select reason</option>
+                <option>Lost by member</option>
+                <option>Lost in library</option>
+                <option>Misplaced during circulation</option>
+                <option>Damaged beyond recovery</option>
+                <option>Inventory discrepancy</option>
+                <option>Other</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="status">Initial status</label>
+              <select id="status" name="status">
+                <option value="reported">Reported</option>
+                <option value="under-review">Under review</option>
+                <option value="settled">Settled</option>
+                <option value="written-off">Written off</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="replacementCost">Replacement cost</label>
+              <input id="replacementCost" name="replacementCost" type="number" min="0" step="0.01" value="0" />
+            </div>
+            <div class="field">
+              <label for="fineAmount">Fine / recovery amount</label>
+              <input id="fineAmount" name="fineAmount" type="number" min="0" step="0.01" value="0" />
+            </div>
+            <div class="field">
+              <label for="reportedBy">Reported by</label>
+              <input id="reportedBy" name="reportedBy" placeholder="Staff name or ID" />
+            </div>
+            <div class="field full">
+              <label for="notes">Notes</label>
+              <textarea id="notes" name="notes" placeholder="Investigation details, member communication, or settlement notes"></textarea>
+            </div>
+          </div>
+          <div style="margin-top:16px;"><button class="btn btn-primary" type="submit">Record Lost Book</button></div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Lost Book Register</h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Book / Code</th><th>Member</th><th>Loss date</th><th>Reason</th><th>Cost</th><th>Fine</th><th>Status</th><th>Notes</th><th>Action</th></tr></thead>
+            <tbody>
+              <% if (lostBooks && lostBooks.length) { %>
+                <% lostBooks.forEach((lost) => { %>
+                  <tr>
+                    <td><strong><%= lost.bookTitle %></strong><br><small><%= lost.bookCode %></small></td>
+                    <td><%= lost.memberName || 'Unknown' %></td>
+                    <td><%= lost.lossDateBS || '—' %><br><small>Reported: <%= lost.reportedDateBS || '—' %></small></td>
+                    <td><%= lost.reason %></td>
+                    <td>Rs. <%= Number(lost.replacementCost || 0).toFixed(2) %></td>
+                    <td>Rs. <%= Number(lost.fineAmount || 0).toFixed(2) %></td>
+                    <td><span class="status <%= lost.status %>"><%= lost.status %></span></td>
+                    <td><%= lost.notes || '—' %></td>
+                    <td>
+                      <% if (lost.status !== 'recovered') { %>
+                        <button type="button" class="btn btn-success recover-btn" data-id="<%= lost._id %>">Mark recovered</button>
+                      <% } else { %>Recovered<% } %>
+                    </td>
+                  </tr>
+                <% }) %>
+              <% } else { %><tr><td colspan="9">No lost books recorded.</td></tr><% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
+  <script>
+    const bookSelect = document.getElementById('bookId');
+    const codeSelect = document.getElementById('bookCode');
+    const issueSelect = document.getElementById('issueId');
+    const memberSelect = document.getElementById('memberId');
+    const message = document.getElementById('message');
+
+    function showMessage(text, isError = true) {
+      message.textContent = text;
+      message.hidden = false;
+      message.style.background = isError ? '#fee2e2' : '#dcfce7';
+      message.style.color = isError ? '#991b1b' : '#166534';
+    }
+
+    function populateCodes() {
+      const option = bookSelect.options[bookSelect.selectedIndex];
+      let codes = [];
+      try { codes = JSON.parse(option?.dataset.codes || '[]'); } catch (error) { codes = []; }
+      codeSelect.innerHTML = '<option value="">Select copy code</option>';
+      codes.filter((copy) => copy.status !== 'lost').forEach((copy) => {
+        const item = document.createElement('option');
+        item.value = copy.code;
+        item.textContent = `${copy.code} (${copy.status})`;
+        codeSelect.appendChild(item);
+      });
+      codeSelect.disabled = !bookSelect.value;
+    }
+
+    bookSelect.addEventListener('change', populateCodes);
+    issueSelect.addEventListener('change', () => {
+      const issue = issueSelect.options[issueSelect.selectedIndex];
+      if (issue?.dataset.bookId) {
+        bookSelect.value = issue.dataset.bookId;
+        populateCodes();
+      }
+      if (issue?.dataset.memberId) memberSelect.value = issue.dataset.memberId;
+      const issueCodes = JSON.parse(issue?.dataset.codeList || '[]');
+      if (issueCodes.length && Array.from(codeSelect.options).some((option) => option.value === issueCodes[0])) codeSelect.value = issueCodes[0];
+    });
+
+    function normalizeNepaliDateValue(value) {
+      if (typeof value === 'string' || typeof value === 'number') return String(value).trim();
+      if (!value || typeof value !== 'object') return '';
+      if (typeof value.bs === 'string' && value.bs.trim()) return value.bs.trim();
+      const year = value.year ?? value.bsYear;
+      const month = value.month ?? value.bsMonth;
+      const day = value.day ?? value.bsDay ?? value.date;
+      return year && month && day ? `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` : '';
+    }
+
+    function getTodayBs() {
+      if (typeof NepaliFunctions === 'undefined' || typeof NepaliFunctions.AD2BS !== 'function') return '';
+      const value = NepaliFunctions.AD2BS(new Date().toISOString().slice(0, 10));
+      return normalizeNepaliDateValue(value);
+    }
+
+    ['lossDateBS', 'reportedDateBS'].forEach((id) => {
+      const input = document.getElementById(id);
+      if (typeof input.nepaliDatePicker === 'function') input.nepaliDatePicker({
+        dateFormat:'YYYY-MM-DD',
+        language:'en',
+        showTodayButton:true,
+        closeOnDateSelect:true
+      });
+      input.value = getTodayBs();
+    });
+
+    document.getElementById('lostBookForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const response = await fetch('/library/lost-books', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(Object.fromEntries(new FormData(event.target))) });
+      const result = await response.json();
+      if (!response.ok) { showMessage(result.message || 'Could not record lost book.'); return; }
+      showMessage(result.message || 'Lost book recorded.', false);
+      setTimeout(() => window.location.reload(), 500);
+    });
+
+    document.querySelectorAll('.recover-btn').forEach((button) => button.addEventListener('click', async () => {
+      if (!confirm('Mark this book as recovered and return the copy to available inventory?')) return;
+      const response = await fetch(`/library/lost-books/${button.dataset.id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ status:'recovered' }) });
+      const result = await response.json();
+      if (!response.ok) { showMessage(result.message || 'Could not update lost book.'); return; }
+      window.location.reload();
+    }));
+  </script>
+</body>
+</html>

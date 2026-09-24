@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Library Analytics</title>
+  <style>
+    :root { --bg:#f5f7fb; --panel:#fff; --sidebar:#0f172a; --sidebar-soft:#162236; --primary:#2563eb; --green:#16a34a; --red:#dc2626; --amber:#b45309; --text:#111827; --muted:#64748b; --border:#e5e7eb; --shadow:0 10px 28px rgba(15,23,42,.08); }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Arial,sans-serif; color:var(--text); background:var(--bg); }
+    a { color:inherit; text-decoration:none; }
+    .shell { display:flex; min-height:100vh; }
+    .sidebar { width:260px; min-height:100vh; padding:24px 18px; position:sticky; top:0; background:linear-gradient(180deg,var(--sidebar),var(--sidebar-soft)); color:#e5eefb; }
+    .brand { display:flex; align-items:center; gap:10px; margin-bottom:24px; padding:8px 10px; font-size:22px; font-weight:700; }
+    .brand-mark { display:grid; place-items:center; width:34px; height:34px; border-radius:10px; background:var(--primary); color:#fff; }
+    .nav-label { padding:0 12px 8px; color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:1px; }
+    .nav-item { display:flex; padding:11px 12px; margin-bottom:6px; border-radius:10px; color:#dce9ff; }
+    .nav-item:hover, .nav-item.active { background:rgba(255,255,255,.1); }
+    .content { flex:1; min-width:0; padding:28px; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:22px; }
+    h1 { margin:0; font-size:30px; }
+    h2 { margin:0 0 15px; font-size:19px; }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; }
+    .btn { display:inline-flex; align-items:center; justify-content:center; padding:10px 16px; border:0; border-radius:10px; font-weight:700; cursor:pointer; }
+    .primary { background:var(--primary); color:#fff; }
+    .secondary { background:#e2e8f0; color:var(--text); }
+    .summary { display:grid; grid-template-columns:repeat(4,minmax(150px,1fr)); gap:14px; margin-bottom:18px; }
+    .metric, .section { background:var(--panel); border:1px solid rgba(148,163,184,.15); border-radius:16px; box-shadow:var(--shadow); }
+    .metric { padding:17px; }
+    .metric-label { color:var(--muted); font-size:12px; text-transform:uppercase; font-weight:700; }
+    .metric-value { display:block; margin-top:8px; font-size:27px; }
+    .section { padding:19px; margin-bottom:18px; }
+    .table-scroll { overflow-x:auto; }
+    table { width:100%; min-width:650px; border-collapse:collapse; }
+    th, td { padding:11px 12px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
+    th { background:#eef5ff; white-space:nowrap; }
+    tbody tr:nth-child(even) { background:#f8fafc; }
+    tbody tr:hover { background:#eff6ff; }
+    .empty { color:var(--muted); text-align:center; padding:18px; }
+    .late { color:var(--red); font-weight:700; }
+    .money { font-weight:700; color:#166534; white-space:nowrap; }
+    .fine { color:var(--red); font-weight:700; white-space:nowrap; }
+    .month-table { min-width:720px; }
+    .total-row { font-weight:800; background:#eef5ff; }
+    @media (max-width:900px) { .shell { display:block; } .sidebar { width:100%; min-height:auto; position:static; } .content { padding:18px; } .summary { grid-template-columns:repeat(2,minmax(140px,1fr)); } }
+    @media (max-width:520px) { .content { padding:12px; } h1 { font-size:25px; } .section { padding:14px; } .summary { gap:9px; } .metric { padding:13px; } .metric-value { font-size:22px; } .btn { min-height:44px; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">L</span><span>Library</span></div>
+      <div class="nav-label">Overview</div>
+      <a class="nav-item" href="/library/dashboard">Dashboard</a>
+      <a class="nav-item" href="/library/books">Books</a>
+      <a class="nav-item" href="/library/categories">Categories</a>
+      <a class="nav-item" href="/library/members">Members</a>
+      <a class="nav-item" href="/library/issues">Book Issue</a>
+      <a class="nav-item" href="/library/lost-books">Lost Books</a>
+      <a class="nav-item active" href="/library/analytics">Analytics</a>
+      <a class="nav-item" href="/library/inventory">Book Inventory</a>
+    </aside>
+
+    <main class="content">
+      <div class="topbar">
+        <h1>Library Analytics</h1>
+        <div class="actions"><button class="btn secondary" type="button" onclick="window.print()">Print Report</button><a class="btn primary" href="/library/dashboard">Dashboard</a></div>
+      </div>
+
+      <div class="summary">
+        <div class="metric"><span class="metric-label">Total book copies</span><strong class="metric-value"><%= totalBooks %></strong></div>
+        <div class="metric"><span class="metric-label">Available copies</span><strong class="metric-value"><%= totalCopiesAvailable %></strong></div>
+        <div class="metric"><span class="metric-label">Overdue books</span><strong class="metric-value late"><%= dueBooks.length %></strong></div>
+        <div class="metric"><span class="metric-label">Fines collected</span><strong class="metric-value fine">Rs. <%= Number(fineTotal || 0).toFixed(2) %></strong></div>
+      </div>
+
+      <section class="section">
+        <h2>Shelf-wise Book Inventory</h2>
+        <div class="table-scroll"><table><thead><tr><th>Shelves Number</th><th>Total Book Copies</th></tr></thead><tbody>
+          <% if (shelfRows.length) { shelfRows.forEach((row) => { %><tr><td><%= row.shelvesNo %></td><td><%= row.totalBooks %></td></tr><% }); %><% } else { %><tr><td colspan="2" class="empty">No shelf data available.</td></tr><% } %>
+        </tbody></table></div>
+      </section>
+
+      <section class="section">
+        <h2>Month-wise Circulation by Category</h2>
+        <div class="table-scroll"><table class="month-table"><thead><tr><th>Month</th><% categoryNames.forEach((category) => { %><th><%= category %></th><% }); %><th>Total</th></tr></thead><tbody>
+          <% monthRows.forEach((row) => { %><tr><td><strong><%= row.month %></strong></td><% categoryNames.forEach((category) => { %><td><%= row.categories[category] || 0 %></td><% }); %><td><strong><%= row.total %></strong></td></tr><% }); %>
+        </tbody></table></div>
+        <p class="hint">Counts are issued quantities grouped by Bikram Sambat month.</p>
+      </section>
+
+      <section class="section">
+        <h2>Due Book Analysis</h2>
+        <div class="table-scroll"><table><thead><tr><th>Book Name</th><th>Book Code</th><th>Taken By</th><th>Due Date</th><th>Late By</th><th>Contact</th><th>Address</th></tr></thead><tbody>
+          <% if (dueBooks.length) { dueBooks.forEach((row) => { %><tr><td><%= row.bookName %></td><td><%= row.bookCode %></td><td><%= row.memberName %></td><td><%= row.dueDate %></td><td class="late"><%= row.daysLate %> day(s)</td><td><%= row.contactNumber || '—' %></td><td><%= row.address || '—' %></td></tr><% }); %><% } else { %><tr><td colspan="7" class="empty">No overdue books.</td></tr><% } %>
+        </tbody></table></div>
+      </section>
+
+      <section class="section">
+        <h2>Membership Fee Collection</h2>
+        <div class="table-scroll"><table><thead><tr><th>Date</th><th>Member Name</th><th>Fee Collected</th></tr></thead><tbody>
+          <% if (feeRows.length) { feeRows.forEach((row) => { %><tr><td><%= row.date %></td><td><%= row.memberName %></td><td class="money">Rs. <%= row.amount.toFixed(2) %></td></tr><% }); %><% } else { %><tr><td colspan="3" class="empty">No membership fee collection recorded.</td></tr><% } %>
+          <tr class="total-row"><td colspan="2">Total</td><td class="money">Rs. <%= Number(feeTotal || 0).toFixed(2) %></td></tr>
+        </tbody></table></div>
+      </section>
+
+      <section class="section">
+        <h2>Fine Report</h2>
+        <div class="table-scroll"><table><thead><tr><th>Date</th><th>Member Name</th><th>Fine Amount</th><th>Reason</th></tr></thead><tbody>
+          <% if (fineRows.length) { fineRows.forEach((row) => { %><tr><td><%= row.date %></td><td><%= row.memberName %></td><td class="fine">Rs. <%= row.amount.toFixed(2) %></td><td><%= row.reason %></td></tr><% }); %><% } else { %><tr><td colspan="4" class="empty">No fines recorded.</td></tr><% } %>
+          <tr class="total-row"><td colspan="2">Total</td><td class="fine">Rs. <%= Number(fineTotal || 0).toFixed(2) %></td><td></td></tr>
+        </tbody></table></div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

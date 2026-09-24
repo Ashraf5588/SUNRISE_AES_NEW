@@ -8,7 +8,7 @@
   <style>
     :root { --bg:#f5f7fb; --panel:#ffffff; --sidebar:#0f172a; --sidebar-soft:#162236; --primary:#2563eb; --primary-soft:#dbeafe; --green:#16a34a; --green-soft:#dcfce7; --yellow:#f59e0b; --yellow-soft:#fef3c7; --red:#ef4444; --red-soft:#fee2e2; --text:#1f2937; --muted:#64748b; --border:#e5e7eb; --shadow:0 10px 28px rgba(15,23,42,0.08); }
     * { box-sizing: border-box; }
-    body { margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--text); }
+    body { margin:0; font-family:Arial,sans-serif; background:var(--bg); color:#111827; }
     a { text-decoration:none; color:inherit; }
     .library-shell { display:flex; min-height:100vh; }
     .sidebar { width:260px; background:linear-gradient(180deg,var(--sidebar) 0%, var(--sidebar-soft) 100%); color:#e5eefb; padding:24px 18px; position:sticky; top:0; height:100vh; }
@@ -30,10 +30,18 @@
     .form-grid { display:grid; grid-template-columns:repeat(2,minmax(220px,1fr)); gap:14px; }
     .field { display:flex; flex-direction:column; gap:8px; }
     .field label { font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; }
-    .field input, .field select, .field textarea { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:10px; font-size:14px; }
-    table { width:100%; border-collapse:collapse; }
-    th, td { padding:12px 14px; border-bottom:1px solid var(--border); text-align:left; }
-    th { background:#eef5ff; }
+    .field input, .field select, .field textarea { width:100%; padding:11px 12px; border:1px solid #cbd5e1; border-radius:10px; font-size:14px; color:#111827; background:#fff; transition:border-color .2s ease, box-shadow .2s ease, background .2s ease; }
+    .field input::placeholder, .field textarea::placeholder { color:#64748b; }
+    .field input:focus, .field select:focus, .field textarea:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(37,99,235,.16); background:#eff6ff; }
+    .field label { color:#111827; }
+    .field:focus-within label { color:var(--primary); }
+    .table-scroll { width:100%; overflow-x:auto; }
+    .table-scroll table { width:100%; min-width:900px; border-collapse:collapse; }
+    .table-scroll th, .table-scroll td { padding:12px 14px; border-bottom:1px solid var(--border); text-align:left; }
+    .table-scroll th { background:#eef5ff; color:#111827; }
+    tbody tr:nth-child(even) { background:#f8fafc; }
+    tbody tr:hover { background:#eff6ff; }
+    .member-search-item:hover, .book-search-item:hover { background:#eff6ff; }
     .status-issued { color:var(--green); font-weight:700; }
     .status-returned { color:var(--primary); font-weight:700; }
     .message { margin-top:12px; padding:10px 12px; border-radius:8px; font-size:14px; }
@@ -55,12 +63,19 @@
       .topbar { align-items:flex-start; }
       .action-row { width:100%; }
       .action-row .btn { flex:1; }
+      .return-modal-shell { padding:18px; max-height:calc(100vh - 30px); overflow:auto; }
+      #returnForm > div:first-child { grid-template-columns:1fr !important; }
+      .return-form-note { grid-column:1; }
     }
     @media (max-width:520px) {
       .card { padding:14px; }
       .title { font-size:24px; }
       .field input, .field select, .btn { min-height:44px; }
-      th, td { padding:10px 8px; font-size:12px; }
+      .table-scroll th, .table-scroll td { padding:10px 8px; font-size:12px; }
+      .content { padding:12px; }
+      .card { border-radius:12px; }
+      .return-modal-shell { width:100%; padding:16px; }
+      .return-modal-header { padding-right:38px; }
     }
   </style>
 </head>
@@ -75,6 +90,8 @@
         <a class="nav-item" href="/library/categories">Categories</a>
         <a class="nav-item" href="/library/members">Members</a>
         <a class="nav-item active" href="/library/issues">Book Issue</a>
+          <a class="nav-item" href="/library/lost-books">Lost Books</a>
+          <a class="nav-item" href="/library/analytics">Analytics</a>
           <a class="nav-item active" href="/library/inventory">Book Inventory</a>
       </div>
     </aside>
@@ -109,14 +126,7 @@
               <label for="memberSearchInput">Member</label>
               <input type="text" id="memberSearchInput" placeholder="Search member by name..." autocomplete="off" />
               <div id="memberSearchResults" style="display:none; border:1px solid var(--border); border-radius:10px; background:#fff; max-height:200px; overflow:auto; box-shadow:0 8px 20px rgba(15,23,42,0.08);"></div>
-              <select name="memberId" id="memberId" required style="margin-top:8px;">
-                <option value="">Select member</option>
-                <% if (members && members.length) { %>
-                  <% members.forEach((member) => { %>
-                    <option value="<%= member._id %>" data-member-name="<%= member.name %>" data-member-type="<%= member.memberType %>" data-search-text="<%= (member.name + ' ' + member.memberType + ' ' + (member.contactNumber || '')).toLowerCase() %>"><%= member.name %> (<%= member.memberType %>)</option>
-                  <% }) %>
-                <% } %>
-              </select>
+              <input type="hidden" name="memberId" id="memberId" required />
             </div>
 
             <div class="field" style="grid-column: 1 / -1;">
@@ -170,19 +180,22 @@
 
       <div class="card">
         <h3>Issued Books</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Book</th>
-              <th>Member</th>
-              <th>Qty</th>
-              <th>Issued</th>
-              <th>Due</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Book</th>
+                <th>Member</th>
+                <th>Qty</th>
+                <th>Issued</th>
+                <th>Due</th>
+                <th>Returned</th>
+                <th>Condition</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
             <% if (issues && issues.length) { %>
               <% issues.forEach((issue) => { %>
                 <tr>
@@ -191,6 +204,8 @@
                   <td><%= issue.quantity %></td>
                   <td><%= issue.nepaliIssuedAt || (issue.issuedAt ? new Date(issue.issuedAt).toLocaleDateString() : '—') %></td>
                   <td><%= issue.nepaliDueDate || (issue.dueDate ? new Date(issue.dueDate).toLocaleDateString() : '—') %></td>
+                  <td><%= issue.nepaliReturnedAt || (issue.returnedAt ? new Date(issue.returnedAt).toLocaleDateString() : '—') %></td>
+                  <td><%= issue.conditionOnReturn || '—' %></td>
                   <td class="<%= issue.status === 'issued' ? 'status-issued' : 'status-returned' %>"><%= issue.status %></td>
                   <td>
                     <% if (issue.status === 'issued') { %>
@@ -202,10 +217,11 @@
                 </tr>
               <% }) %>
             <% } else { %>
-              <tr><td colspan="7">No issued books yet.</td></tr>
+              <tr><td colspan="9">No issued books yet.</td></tr>
             <% } %>
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
     </main>
   </div>
@@ -243,6 +259,23 @@
       bookPrice: issue.bookPrice || 0,
       status: issue.status
     }))) %>;
+    const memberDirectory = <%- JSON.stringify((members || []).map((member) => ({
+      _id: member._id,
+      name: member.name,
+      memberType: member.memberType,
+      contactNumber: member.contactNumber || '',
+      address: member.address || ''
+    }))) %>;
+
+    function normalizeNepaliDateValue(value) {
+      if (typeof value === 'string' || typeof value === 'number') return String(value).trim();
+      if (!value || typeof value !== 'object') return '';
+      if (typeof value.bs === 'string' && value.bs.trim()) return value.bs.trim();
+      const year = value.year ?? value.bsYear;
+      const month = value.month ?? value.bsMonth;
+      const day = value.day ?? value.bsDay ?? value.date;
+      return year && month && day ? `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}` : '';
+    }
 
     function getTodayNepaliDate() {
       if (typeof NepaliFunctions !== 'undefined' && typeof NepaliFunctions.AD2BS === 'function') {
@@ -250,9 +283,8 @@
           const today = new Date();
           const adDate = today.toISOString().slice(0, 10);
           const bsDate = NepaliFunctions.AD2BS(adDate);
-          if (bsDate && String(bsDate).trim() !== 'Invalid Date' && String(bsDate).trim() !== 'Invalid') {
-            return String(bsDate).trim();
-          }
+          const normalized = normalizeNepaliDateValue(bsDate);
+          if (normalized && normalized !== 'Invalid Date' && normalized !== 'Invalid') return normalized;
         } catch (error) {
           console.warn('Nepali date conversion failed:', error);
         }
@@ -298,7 +330,12 @@
 
     function renderMemberSearchResults() {
       const searchText = String(memberSearchInput.value || '').trim().toLowerCase();
-      const matches = Array.from(memberIdSelect.options).filter((option) => option.value && (!searchText || String(option.dataset.searchText || '').includes(searchText)));
+      const matches = memberDirectory.filter((member) => {
+        const searchableText = [member.name, member.memberType, member.contactNumber, member.address]
+          .join(' ')
+          .toLowerCase();
+        return !searchText || searchableText.includes(searchText);
+      });
 
       if (!searchText || !matches.length) {
         memberSearchResults.innerHTML = '';
@@ -306,10 +343,10 @@
         return;
       }
 
-      memberSearchResults.innerHTML = matches.slice(0, 8).map((option) => `
-        <div class="member-search-item" data-member-id="${option.value}" style="padding:10px 12px; border-bottom:1px solid #eef2f7; cursor:pointer;">
-          <div style="font-weight:700;">${option.dataset.memberName || option.textContent}</div>
-          <div style="font-size:12px; color:#64748b;">${option.dataset.memberType || 'member'}</div>
+      memberSearchResults.innerHTML = matches.slice(0, 8).map((member) => `
+        <div class="member-search-item" data-member-id="${member._id}" data-member-name="${member.name}" style="padding:10px 12px; border-bottom:1px solid #eef2f7; cursor:pointer;">
+          <div style="font-weight:700;">${member.name}</div>
+          <div style="font-size:12px; color:#64748b;">${member.memberType}</div>
         </div>
       `).join('');
 
@@ -319,10 +356,7 @@
         item.addEventListener('click', () => {
           const selectedValue = item.dataset.memberId;
           memberIdSelect.value = selectedValue;
-          const selectedOption = Array.from(memberIdSelect.options).find((option) => option.value === selectedValue);
-          if (selectedOption) {
-            memberSearchInput.value = selectedOption.dataset.memberName || selectedOption.textContent;
-          }
+          memberSearchInput.value = item.dataset.memberName || '';
           memberSearchResults.style.display = 'none';
         });
       });
@@ -557,13 +591,12 @@
 
       const todayNepaliDate = getTodayNepaliDate();
 
-      if (typeof NepaliFunctions !== 'undefined' && typeof returnDateInput.nepaliDatePicker === 'function') {
+      if (typeof returnDateInput.nepaliDatePicker === 'function') {
         returnDateInput.nepaliDatePicker({
           dateFormat: 'YYYY-MM-DD',
           language: 'en',
-          onSelect: function () {
-            calculateFinePreview();
-          }
+          showTodayButton: true,
+          closeOnDateSelect: true
         });
       }
 
@@ -606,6 +639,7 @@
       }
 
       returnQuantityInput.addEventListener('input', calculateFinePreview);
+      returnDateInput.addEventListener('input', calculateFinePreview);
       returnDateInput.addEventListener('change', calculateFinePreview);
       fineTypeInput.addEventListener('change', function () {
         const type = this.value;
@@ -683,11 +717,10 @@
       }
       if (typeof dueDateBSPicker.nepaliDatePicker === 'function') {
         dueDateBSPicker.nepaliDatePicker({
-          onSelect: function () {
-            if (!dueDateBSPicker.value) {
-              dueDateBSPicker.value = getTodayNepaliDate();
-            }
-          }
+          dateFormat: 'YYYY-MM-DD',
+          language: 'en',
+          showTodayButton: true,
+          closeOnDateSelect: true
         });
       }
     }
@@ -757,10 +790,6 @@
     bookSearch.addEventListener('input', applyBookSearchFilter);
     bookSearch.addEventListener('focus', renderBookSearchResults);
     memberSearchInput.addEventListener('input', renderMemberSearchResults);
-    memberIdSelect.addEventListener('change', () => {
-      const selectedOption = Array.from(memberIdSelect.options).find((option) => option.value === memberIdSelect.value);
-      memberSearchInput.value = selectedOption ? (selectedOption.dataset.memberName || selectedOption.textContent) : '';
-    });
     document.addEventListener('click', (event) => {
       if (!bookSearchResults.contains(event.target) && event.target !== bookSearch) {
         bookSearchResults.style.display = 'none';
