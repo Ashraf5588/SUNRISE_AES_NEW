@@ -347,7 +347,12 @@ exports.listBooks = async (req, res) => {
   try {
     const books = await Book.find().sort({ title: 1 }).lean();
     const categories = await bookcategory.find().sort({ displayOrder: 1, name: 1 }).lean();
-    res.render("library/addbook", { books, categories, success: "", error: "" });
+    const categoryColors = new Map(categories.map((category) => [String(category.name || '').trim().toLowerCase(), category.colorHex || '#2563eb']));
+    const booksWithCategoryColor = books.map((book) => ({
+      ...book,
+      categoryDisplayColor: categoryColors.get(String(book.category || '').trim().toLowerCase()) || book.categoryColor || '#2563eb'
+    }));
+    res.render("library/addbook", { books: booksWithCategoryColor, categories, success: "", error: "" });
   } catch (error) {
     console.error("Error fetching books:", error);
     res.status(500).json({ message: "Error fetching books.", error });
@@ -496,21 +501,14 @@ exports.addBooks = async (req, res) => {
     }
 
     const existingBookByTitleAndAuthor = await Book.findOne({
-      title: { $regex: new RegExp(`^${title}$`, "i") },
-      author: { $regex: new RegExp(`^${author || ""}$`, "i") },
-      category: { $regex: new RegExp(`^${category || ""}$`, "i") },
-      publisherName: { $regex: new RegExp(`^${publisherName || ""}$`, "i") }
+      title: { $regex: new RegExp(`^${title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") }
     });
 
     if (existingBookByTitleAndAuthor) {
-      existingBookByTitleAndAuthor.totalQuantity += totalQuantity;
-      existingBookByTitleAndAuthor.price = existingBookByTitleAndAuthor.price || price;
-      if (isbn && !existingBookByTitleAndAuthor.isbn) {
-        existingBookByTitleAndAuthor.isbn = isbn;
-      }
-      await existingBookByTitleAndAuthor.save();
-      existingBookByTitleAndAuthor.availableQuantity = (existingBookByTitleAndAuthor.bookCodes || []).filter((copy) => copy.status === "available").length;
-      return res.status(200).json({ message: "Book quantity updated successfully.", book: existingBookByTitleAndAuthor });
+      return res.status(409).json({
+        message: "This book is already registered. Use Add Stock to increase its quantity without creating duplicate registration codes.",
+        bookId: existingBookByTitleAndAuthor._id
+      });
     }
 
     const newBook = new Book({
@@ -537,6 +535,72 @@ exports.addBooks = async (req, res) => {
   } catch (error) {
     console.error("Error adding book:", error);
     res.status(500).json({ message: "Error adding book.", error });
+  }
+};
+
+exports.downloadBookCsvTemplate = (req, res) => {
+  const headers = ['date', 'title', 'author', 'isbn', 'category', 'categoryColor', 'shelvesNo', 'publisherName', 'publishedYear', 'edition', 'page', 'source', 'remarks', 'price', 'totalQuantity'];
+  const example = ['2082-01-01', 'Example Book', 'Author Name', '', 'Science', '#2563eb', 'A-01', 'Publisher', '2082', 'First', '250', 'Purchase', '', '500', '1'];
+  res.type('text/csv').set('Content-Disposition', 'attachment; filename="book-import-template.csv"').send(`${headers.join(',')}\n${example.join(',')}\n`);
+};
+
+exports.importBooksCsv = async (req, res) => {
+  try {
+    if (!req.file?.buffer) return res.status(400).json({ message: 'Please select a CSV file.' });
+
+    const csvText = req.file.buffer.toString('utf8').replace(/^\uFEFF/, '');
+    const rows = await require('csvtojson')({ trim: true }).fromString(csvText);
+    if (!rows.length) return res.status(400).json({ message: 'The CSV file has no data rows.' });
+
+    let imported = 0;
+    const errors = [];
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      const title = normalizeText(row.title);
+      const category = normalizeText(row.category);
+      const quantity = Number(row.totalQuantity || 1);
+      if (!title || !category || !Number.isInteger(quantity) || quantity <= 0) {
+        errors.push(`Row ${index + 2}: title, category, and a positive whole totalQuantity are required.`);
+        continue;
+      }
+
+      const author = normalizeText(row.author);
+      const publisherName = normalizeText(row.publisherName);
+      const categoryRecord = await bookcategory.findOne({ name: { $regex: new RegExp(`^${category.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } }).lean();
+      const requestedCategoryColor = normalizeText(row.categoryColor);
+      const categoryColor = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(requestedCategoryColor)
+        ? requestedCategoryColor
+        : (categoryRecord?.colorHex || '#2563eb');
+      const existing = await Book.findOne({
+        title: { $regex: new RegExp(`^${title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+        author: { $regex: new RegExp(`^${author.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+        category: { $regex: new RegExp(`^${category.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+        publisherName: { $regex: new RegExp(`^${publisherName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }
+      });
+
+      const bookData = {
+        title, author, isbn: normalizeBookIsbn(row.isbn), category, categoryColor,
+        shelvesNo: normalizeText(row.shelvesNo), publisherName,
+        publishedYear: normalizeText(row.publishedYear), date: normalizeText(row.date),
+        edition: normalizeText(row.edition), page: normalizeText(row.page),
+        source: normalizeText(row.source), remarks: normalizeText(row.remarks),
+        price: Number(row.price || 0)
+      };
+
+      if (existing) {
+        existing.totalQuantity += quantity;
+        Object.assign(existing, bookData);
+        await existing.save();
+      } else {
+        await new Book({ ...bookData, availableQuantity: quantity, totalQuantity: quantity }).save();
+      }
+      imported += 1;
+    }
+
+    res.status(errors.length ? 207 : 201).json({ message: `${imported} book row(s) imported. Codes were generated automatically.`, imported, errors });
+  } catch (error) {
+    console.error('Error importing books CSV:', error);
+    res.status(500).json({ message: 'Error importing books CSV.', error });
   }
 };
 

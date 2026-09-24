@@ -50,6 +50,7 @@ const marksheetImageStorage = multer.diskStorage({
 });
 
 const uploadMarksheetImages = multer({ storage: marksheetImageStorage });
+const uploadBookCsv = multer({ storage: multer.memoryStorage() });
 
 
 const {authenticateToken} = require('../middleware/loginmiddleware')
@@ -64,8 +65,10 @@ const librarycontroller = require('../controller/librarycontroller');
 library.get("/library/dashboard", librarycontroller.libraryDashboard);
 library.get("/library/analytics", librarycontroller.libraryAnalytics);
 library.get("/library/books", librarycontroller.listBooks);
-library.get("/library/books/:id", librarycontroller.getBook);
 library.post("/library/books", librarycontroller.addBooks);
+library.get("/library/books/import-template", librarycontroller.downloadBookCsvTemplate);
+library.post("/library/books/import-csv", uploadBookCsv.single('bookCsv'), librarycontroller.importBooksCsv);
+library.get("/library/books/:id", librarycontroller.getBook);
 library.put("/library/books/:id", librarycontroller.updateBook);
 library.delete("/library/books/:id", librarycontroller.deleteBook);
 library.get("/library/inventory", librarycontroller.inventoryPage);

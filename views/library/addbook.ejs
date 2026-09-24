@@ -241,6 +241,9 @@
             <div class="btn-wrap" style="display:flex; gap:10px; flex-wrap:wrap;">
               <button type="submit" class="btn btn-primary" id="submitBookBtn">Add Book</button>
               <button type="button" class="btn btn-secondary" id="printBookCodesBtn">Print Sticker Labels</button>
+              <button type="button" class="btn btn-secondary" id="downloadBookTemplateBtn">Download CSV Template</button>
+              <button type="button" class="btn btn-success" id="uploadBookCsvBtn">Upload CSV</button>
+              <input type="file" id="bookCsvInput" accept=".csv,text/csv" hidden>
             </div>
           </form>
 
@@ -291,7 +294,7 @@
                     <td><%= book.title || '—' %></td>
                     <td>
                       <div style="display:flex; align-items:center; gap:8px;">
-                        <span style="display:inline-block; width:14px; height:14px; border-radius:4px; border:1px solid rgba(15,23,42,0.15); background:<%= book.categoryColor || '#2563eb' %>;"></span>
+                        <span style="display:inline-block; width:14px; height:14px; border-radius:4px; border:1px solid rgba(15,23,42,0.15); background:<%= book.categoryDisplayColor || book.categoryColor || '#2563eb' %>;"></span>
                         <span><%= book.category || '—' %></span>
                       </div>
                     </td>
@@ -448,6 +451,9 @@
     const submitBookBtn = document.getElementById('submitBookBtn');
     const generatedBookCodes = document.getElementById('generatedBookCodes');
     const printBookCodesBtn = document.getElementById('printBookCodesBtn');
+    const downloadBookTemplateBtn = document.getElementById('downloadBookTemplateBtn');
+    const uploadBookCsvBtn = document.getElementById('uploadBookCsvBtn');
+    const bookCsvInput = document.getElementById('bookCsvInput');
     const bookSearchInput = document.getElementById('bookSearchInput');
     const clearSearchBtn = document.getElementById('clearSearchBtn');
     const stockModal = document.getElementById('stockModal');
@@ -855,6 +861,36 @@
     publisherInput.addEventListener('input', generateCodes);
     quantityInput.addEventListener('input', generateCodes);
     printBookCodesBtn.addEventListener('click', openStickerPrintWindow);
+    downloadBookTemplateBtn.addEventListener('click', () => {
+      window.location.href = '/library/books/import-template';
+    });
+    uploadBookCsvBtn.addEventListener('click', () => bookCsvInput.click());
+    bookCsvInput.addEventListener('change', async () => {
+      const file = bookCsvInput.files?.[0];
+      if (!file) return;
+      if (!confirm(`Import books from ${file.name}? Existing matching titles will receive additional stock.`)) {
+        bookCsvInput.value = '';
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('bookCsv', file);
+      uploadBookCsvBtn.disabled = true;
+      uploadBookCsvBtn.textContent = 'Uploading...';
+      try {
+        const response = await fetch('/library/books/import-csv', { method: 'POST', body: formData });
+        const result = await response.json().catch(() => ({}));
+        const details = result.errors?.length ? `\n\nSkipped rows:\n${result.errors.join('\n')}` : '';
+        alert((result.message || 'CSV import finished.') + details);
+        if (response.ok || response.status === 207) window.location.reload();
+      } catch (error) {
+        alert('CSV upload failed. Please check the file and try again.');
+      } finally {
+        uploadBookCsvBtn.disabled = false;
+        uploadBookCsvBtn.textContent = 'Upload CSV';
+        bookCsvInput.value = '';
+      }
+    });
     bulkPrintStickerBtn.addEventListener('click', openBulkPrintModal);
     closeBulkPrintBtn.addEventListener('click', closeBulkPrintModal);
     confirmBulkPrintBtn.addEventListener('click', printBulkSelectedStickers);
