@@ -359,6 +359,31 @@ exports.listBooks = async (req, res) => {
   }
 };
 
+exports.shelfAssignmentPage = async (req, res) => {
+  try {
+    const books = await Book.find().sort({ shelvesNo: 1, title: 1 }).lean();
+    res.render('library/shelfassignment', { books, error: '', success: '' });
+  } catch (error) {
+    console.error('Error loading shelf assignment page:', error);
+    res.status(500).send('Error loading shelf assignment page.');
+  }
+};
+
+exports.assignShelfToBooks = async (req, res) => {
+  try {
+    const shelfNumber = normalizeText(req.body.shelvesNo);
+    const bookIds = Array.isArray(req.body.bookIds) ? req.body.bookIds : [];
+    if (!shelfNumber) return res.status(400).json({ message: 'Shelf number is required.' });
+    if (!bookIds.length) return res.status(400).json({ message: 'Select at least one book.' });
+
+    const result = await Book.updateMany({ _id: { $in: bookIds } }, { $set: { shelvesNo: shelfNumber } });
+    res.json({ message: `${result.modifiedCount || result.nModified || 0} book(s) assigned to shelf ${shelfNumber}.` });
+  } catch (error) {
+    console.error('Error assigning shelf to books:', error);
+    res.status(500).json({ message: 'Error assigning shelf to books.' });
+  }
+};
+
 exports.getBook = async (req, res) => {
   try {
     const book = await Book.findById(req.params.id).lean();
@@ -542,6 +567,35 @@ exports.downloadBookCsvTemplate = (req, res) => {
   const headers = ['date', 'title', 'author', 'isbn', 'category', 'categoryColor', 'shelvesNo', 'publisherName', 'publishedYear', 'edition', 'page', 'source', 'remarks', 'price', 'totalQuantity'];
   const example = ['2082-01-01', 'Example Book', 'Author Name', '', 'Science', '#2563eb', 'A-01', 'Publisher', '2082', 'First', '250', 'Purchase', '', '500', '1'];
   res.type('text/csv').set('Content-Disposition', 'attachment; filename="book-import-template.csv"').send(`${headers.join(',')}\n${example.join(',')}\n`);
+};
+
+exports.exportBooksExcel = async (req, res) => {
+  try {
+    const [books, categories] = await Promise.all([
+      Book.find().sort({ title: 1 }).lean(),
+      bookcategory.find().lean()
+    ]);
+    const categoryMap = new Map(categories.map((category) => [String(category.name || '').trim().toLowerCase(), category]));
+    const headers = ['title', 'bookCode', 'date', 'author', 'isbn', 'category', 'categoryColor', 'categoryColorName', 'categoryDescription', 'requiredPercentage', 'shelvesNo', 'publisherName', 'publishedYear', 'edition', 'page', 'source', 'remarks', 'price', 'totalQuantity', 'availableQuantity'];
+    const csvCell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const rows = [];
+    books.forEach((book) => {
+      const category = categoryMap.get(String(book.category || '').trim().toLowerCase());
+      const codes = (book.bookCodes || []).map((copy) => copy.code || copy);
+      const exportCodes = codes.length ? codes : [book.bookCodePrefix || ''];
+      exportCodes.forEach((bookCode) => rows.push([
+        book.title, bookCode, book.date, book.author, book.isbn, book.category,
+        category?.colorHex || book.categoryColor || '#2563eb', category?.colorName || '', category?.description || '',
+        category?.requiredPercentage ?? '', book.shelvesNo, book.publisherName, book.publishedYear, book.edition,
+        book.page, book.source, book.remarks, book.price, book.totalQuantity, book.availableQuantity
+      ].map(csvCell).join(',')));
+    });
+    const csv = [headers.map(csvCell).join(','), ...rows].join('\r\n');
+    res.type('text/csv').set('Content-Disposition', 'attachment; filename="library-books-export.csv"').send(`\uFEFF${csv}`);
+  } catch (error) {
+    console.error('Error exporting books:', error);
+    res.status(500).json({ message: 'Error exporting books.', error });
+  }
 };
 
 exports.importBooksCsv = async (req, res) => {

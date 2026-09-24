@@ -93,6 +93,11 @@
     tbody tr:hover { background: #eff6ff; }
     .code-scroll { max-width: 220px; max-height: 42px; overflow-x: auto; overflow-y: hidden; white-space: nowrap; }
     .code-scroll small { white-space: nowrap; }
+    .inline-book-input { width: 125px; min-width: 90px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 7px; font: inherit; color: var(--text); background: #fff; }
+    .inline-book-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,.14); }
+    .inline-save-status { display: block; min-height: 14px; margin-top: 3px; color: var(--muted); font-size: 10px; }
+    .inline-save-status.saved { color: var(--green); }
+    .inline-save-status.failed { color: var(--red); }
     .status-ok { color: var(--green); font-weight: 700; }
     .status-low { color: #b45309; font-weight: 700; }
     .message { margin-top: 12px; padding: 10px 12px; border-radius: 8px; font-size: 14px; }
@@ -126,6 +131,7 @@
         <a class="nav-item" href="/library/lost-books">Lost Books</a>
         <a class="nav-item" href="/library/analytics">Analytics</a>
         <a class="nav-item" href="/library/inventory">Book Inventory</a>
+        <a class="nav-item" href="/library/shelf-assignment">Assign Shelves</a>
       </div>
     </aside>
 
@@ -266,7 +272,10 @@
         <div class="card">
           <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
             <h3 style="margin:0;">Book Inventory</h3>
-            <button type="button" class="btn btn-primary" id="bulkPrintStickerBtn">Print Sticker</button>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-secondary" id="exportBooksExcelBtn">Export Excel</button>
+              <button type="button" class="btn btn-primary" id="bulkPrintStickerBtn">Print Sticker</button>
+            </div>
           </div>
           <div class="table-scroll">
             <table>
@@ -291,29 +300,29 @@
               <tbody id="bookTableBody">
               <% if (books && books.length) { %>
                 <% books.forEach((book) => { %>
-                  <tr data-book-id="<%= book._id %>" data-search-text="<%= [book.date, (book.bookCodes || []).map((copy) => copy.code).join(' '), book.author, book.title, book.category, book.shelvesNo, book.edition, book.publisherName, book.publishedYear, book.page, book.source, book.price, book.remarks].join(' ') %>">
-                    <td><%= book.date || '—' %></td>
+                  <tr data-book-id="<%= book._id %>" data-category="<%= book.category || '' %>" data-category-color="<%= book.categoryDisplayColor || book.categoryColor || '#2563eb' %>" data-isbn="<%= book.isbn || '' %>" data-total-quantity="<%= book.totalQuantity || 1 %>" data-search-text="<%= [book.date, (book.bookCodes || []).map((copy) => copy.code).join(' '), book.author, book.title, book.category, book.shelvesNo, book.edition, book.publisherName, book.publishedYear, book.page, book.source, book.price, book.remarks].join(' ') %>">
+                    <td><input class="inline-book-input" data-field="date" value="<%= book.date || '' %>" placeholder="Date"><span class="inline-save-status"></span></td>
                     <td>
                       <div class="code-scroll" title="Scroll to view all book codes">
                         <small><%= (book.bookCodes || []).map((copy) => copy.code).join(', ') || book.bookCodePrefix || '—' %></small>
                       </div>
                     </td>
-                    <td><%= book.author || '—' %></td>
-                    <td><%= book.title || '—' %></td>
+                    <td><input class="inline-book-input" data-field="author" value="<%= book.author || '' %>" placeholder="Author"><span class="inline-save-status"></span></td>
+                    <td><input class="inline-book-input" data-field="title" value="<%= book.title || '' %>" placeholder="Title"><span class="inline-save-status"></span></td>
                     <td>
                       <div style="display:flex; align-items:center; gap:8px;">
                         <span style="display:inline-block; width:14px; height:14px; border-radius:4px; border:1px solid rgba(15,23,42,0.15); background:<%= book.categoryDisplayColor || book.categoryColor || '#2563eb' %>;"></span>
                         <span><%= book.category || '—' %></span>
                       </div>
                     </td>
-                    <td><%= book.shelvesNo || '—' %></td>
-                    <td><%= book.edition || '—' %></td>
-                    <td><%= book.publisherName || '—' %></td>
-                    <td><%= book.publishedYear || '—' %></td>
-                    <td><%= book.page || '—' %></td>
-                    <td><%= book.source || '—' %></td>
-                    <td><%= Number(book.price || 0) %></td>
-                    <td><%= book.remarks || '—' %></td>
+                    <td><input class="inline-book-input" data-field="shelvesNo" value="<%= book.shelvesNo || '' %>" placeholder="Shelf"><span class="inline-save-status"></span></td>
+                    <td><input class="inline-book-input" data-field="edition" value="<%= book.edition || '' %>" placeholder="Edition"><span class="inline-save-status"></span></td>
+                    <td><input class="inline-book-input" data-field="publisherName" value="<%= book.publisherName || '' %>" placeholder="Publisher"><span class="inline-save-status"></span></td>
+                    <td><input class="inline-book-input" data-field="publishedYear" value="<%= book.publishedYear || '' %>" placeholder="Year"><span class="inline-save-status"></span></td>
+                    <td><input class="inline-book-input" data-field="page" value="<%= book.page || '' %>" placeholder="Page"><span class="inline-save-status"></span></td>
+                    <td><input class="inline-book-input" data-field="source" value="<%= book.source || '' %>" placeholder="Source"><span class="inline-save-status"></span></td>
+                    <td><input class="inline-book-input" data-field="price" type="number" min="0" step="0.01" value="<%= Number(book.price || 0) %>" placeholder="Cost"><span class="inline-save-status"></span></td>
+                    <td><input class="inline-book-input" data-field="remarks" value="<%= book.remarks || '' %>" placeholder="Remarks"><span class="inline-save-status"></span></td>
                     <td>
                       <div class="action-btns">
                         <button type="button" class="btn btn-secondary table-action-btn edit-book" data-id="<%= book._id %>">Edit</button>
@@ -487,6 +496,7 @@
     const bulkPrintList = document.getElementById('bulkPrintList');
     const bulkPrintAllCheck = document.getElementById('bulkPrintAllCheck');
     const bulkPrintStickerBtn = document.getElementById('bulkPrintStickerBtn');
+    const exportBooksExcelBtn = document.getElementById('exportBooksExcelBtn');
     const closeBulkPrintBtn = document.getElementById('closeBulkPrintBtn');
     const confirmBulkPrintBtn = document.getElementById('confirmBulkPrintBtn');
     const uploadBlocker = document.getElementById('uploadBlocker');
@@ -525,6 +535,51 @@
         row.style.display = show ? '' : 'none';
       });
     }
+
+    async function saveInlineBookField(input) {
+      const row = input.closest('tr[data-book-id]');
+      if (!row || input.dataset.lastSaved === input.value) return;
+
+      const status = input.parentElement.querySelector('.inline-save-status');
+      const value = input.value;
+      const fields = {};
+      row.querySelectorAll('.inline-book-input').forEach((field) => {
+        fields[field.dataset.field] = field.value;
+      });
+      fields.category = row.dataset.category || '';
+      fields.isbn = row.dataset.isbn || '';
+      fields.totalQuantity = row.dataset.totalQuantity || '1';
+      fields.categoryColor = row.dataset.categoryColor || '#2563eb';
+
+      status.textContent = 'Saving...';
+      status.className = 'inline-save-status';
+      try {
+        const response = await fetch(`/library/books/${row.dataset.bookId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(fields)
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || 'Save failed');
+        input.dataset.lastSaved = value;
+        status.textContent = 'Saved';
+        status.className = 'inline-save-status saved';
+        window.setTimeout(() => {
+          if (status.textContent === 'Saved') status.textContent = '';
+        }, 1800);
+      } catch (error) {
+        status.textContent = 'Save failed';
+        status.className = 'inline-save-status failed';
+      }
+    }
+
+    document.querySelectorAll('#bookTableBody tr[data-book-id]').forEach((row) => {
+      row.querySelectorAll('.inline-book-input').forEach((input) => {
+        input.dataset.lastSaved = input.value;
+        input.addEventListener('change', () => saveInlineBookField(input));
+        input.addEventListener('blur', () => saveInlineBookField(input));
+      });
+    });
 
     function openStockModal(book) {
       activeStockBook = book;
@@ -905,6 +960,9 @@
     publisherInput.addEventListener('input', generateCodes);
     quantityInput.addEventListener('input', generateCodes);
     printBookCodesBtn.addEventListener('click', openStickerPrintWindow);
+    exportBooksExcelBtn.addEventListener('click', () => {
+      window.location.href = '/library/books/export-excel';
+    });
     downloadBookTemplateBtn.addEventListener('click', () => {
       window.location.href = '/library/books/import-template';
     });

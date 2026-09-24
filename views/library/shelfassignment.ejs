@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Assign Book Shelves</title>
+  <style>
+    :root { --bg:#f5f7fb; --panel:#fff; --sidebar:#0f172a; --sidebar-soft:#162236; --primary:#2563eb; --green:#16a34a; --text:#111827; --muted:#64748b; --border:#e5e7eb; --shadow:0 10px 28px rgba(15,23,42,.08); }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Arial,sans-serif; background:var(--bg); color:var(--text); }
+    a { color:inherit; text-decoration:none; }
+    .shell { display:flex; min-height:100vh; }
+    .sidebar { width:260px; min-height:100vh; padding:24px 18px; position:sticky; top:0; background:linear-gradient(180deg,var(--sidebar),var(--sidebar-soft)); color:#e5eefb; }
+    .brand { display:flex; align-items:center; gap:10px; margin-bottom:24px; padding:8px 10px; font-size:22px; font-weight:700; }
+    .brand-mark { display:grid; place-items:center; width:34px; height:34px; border-radius:10px; background:var(--primary); color:#fff; }
+    .nav-label { padding:0 12px 8px; color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:1px; }
+    .nav-item { display:flex; padding:11px 12px; margin-bottom:6px; border-radius:10px; color:#dce9ff; }
+    .nav-item:hover, .nav-item.active { background:rgba(255,255,255,.1); }
+    .content { flex:1; min-width:0; padding:28px; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:22px; }
+    h1 { margin:0; font-size:30px; }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; }
+    .btn { border:0; border-radius:10px; padding:10px 16px; font-weight:700; cursor:pointer; }
+    .primary { color:#fff; background:var(--primary); }
+    .secondary { color:var(--text); background:#e2e8f0; }
+    .card { max-width:1000px; padding:20px; background:var(--panel); border:1px solid rgba(148,163,184,.15); border-radius:16px; box-shadow:var(--shadow); }
+    .form-row { display:grid; grid-template-columns:280px 1fr; gap:14px; align-items:end; margin-bottom:18px; }
+    label { display:block; margin-bottom:7px; font-size:12px; font-weight:700; text-transform:uppercase; color:var(--muted); }
+    input { width:100%; padding:11px 12px; border:1px solid #cbd5e1; border-radius:9px; font:inherit; color:var(--text); }
+    input:focus { outline:0; border-color:var(--primary); box-shadow:0 0 0 3px rgba(37,99,235,.14); }
+    .book-picker { border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+    .book-search { border:0; border-bottom:1px solid var(--border); border-radius:0; }
+    .book-list { max-height:430px; overflow:auto; }
+    .book-option { display:flex; align-items:flex-start; gap:10px; padding:12px; border-bottom:1px solid #eef2f7; cursor:pointer; }
+    .book-option:hover { background:#eff6ff; }
+    .book-option input { width:auto; margin-top:3px; }
+    .book-info { min-width:0; }
+    .book-title { display:block; font-weight:700; }
+    .book-meta { display:block; margin-top:3px; color:var(--muted); font-size:12px; }
+    .selection-bar { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin:14px 0; color:var(--muted); font-size:13px; }
+    .message { padding:11px 13px; margin-bottom:14px; border-radius:9px; }
+    .error { color:#991b1b; background:#fee2e2; }
+    .success { color:#166534; background:#dcfce7; }
+    @media (max-width:900px) { .shell { display:block; } .sidebar { width:100%; min-height:auto; position:static; } .content { padding:18px; } .form-row { grid-template-columns:1fr; } }
+    @media (max-width:520px) { .content { padding:12px; } h1 { font-size:25px; } .card { padding:14px; } .btn { min-height:44px; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">L</span><span>Library</span></div>
+      <div class="nav-label">Overview</div>
+      <a class="nav-item" href="/library/dashboard">Dashboard</a>
+      <a class="nav-item" href="/library/books">Books</a>
+      <a class="nav-item" href="/library/categories">Categories</a>
+      <a class="nav-item" href="/library/members">Members</a>
+      <a class="nav-item" href="/library/issues">Book Issue</a>
+      <a class="nav-item" href="/library/lost-books">Lost Books</a>
+      <a class="nav-item" href="/library/analytics">Analytics</a>
+      <a class="nav-item" href="/library/inventory">Book Inventory</a>
+      <a class="nav-item active" href="/library/shelf-assignment">Assign Shelves</a>
+    </aside>
+
+    <main class="content">
+      <div class="topbar">
+        <h1>Assign Book Shelves</h1>
+        <div class="actions"><a class="btn primary" href="/library/books">Books</a><a class="btn secondary" href="/library/dashboard">Dashboard</a></div>
+      </div>
+      <div class="card">
+        <div id="message" hidden></div>
+        <form id="shelfForm">
+          <div class="form-row">
+            <div><label for="shelvesNo">Shelf number</label><input id="shelvesNo" name="shelvesNo" list="shelfSuggestions" placeholder="Example: A-01" required><datalist id="shelfSuggestions"></datalist></div>
+            <div><label for="bookSearch">Search books</label><input id="bookSearch" class="book-search" placeholder="Search by title, author, category, or code"></div>
+          </div>
+          <div class="selection-bar"><span id="selectedCount">0 books selected</span><button type="button" class="btn secondary" id="toggleVisibleBtn">Select visible</button></div>
+          <div class="book-picker"><div class="book-list" id="bookList">
+            <% (books || []).forEach((book) => { %>
+              <label class="book-option" data-search="<%= [book.title, book.author, book.category, book.shelvesNo, ...(book.bookCodes || []).map((copy) => copy.code || copy)].join(' ').toLowerCase() %>">
+                <input type="checkbox" name="bookIds" value="<%= book._id %>">
+                <span class="book-info"><span class="book-title"><%= book.title %></span><span class="book-meta">Code: <%= (book.bookCodes || []).map((copy) => copy.code || copy).join(', ') || '—' %> | Current shelf: <%= book.shelvesNo || 'Unassigned' %></span></span>
+              </label>
+            <% }) %>
+          </div></div>
+          <div style="margin-top:16px;"><button class="btn primary" type="submit">Save Shelf Assignment</button></div>
+        </form>
+      </div>
+    </main>
+  </div>
+  <script>
+    const searchInput = document.getElementById('bookSearch');
+    const bookOptions = Array.from(document.querySelectorAll('.book-option'));
+    const selectedCount = document.getElementById('selectedCount');
+    const message = document.getElementById('message');
+    const shelfInput = document.getElementById('shelvesNo');
+    const shelfSuggestions = document.getElementById('shelfSuggestions');
+
+    function updateSelection() {
+      const count = document.querySelectorAll('input[name="bookIds"]:checked').length;
+      selectedCount.textContent = `${count} book${count === 1 ? '' : 's'} selected`;
+    }
+    function showMessage(text, type) {
+      message.hidden = false;
+      message.className = type;
+      message.textContent = text;
+    }
+    searchInput.addEventListener('input', () => {
+      const value = searchInput.value.trim().toLowerCase();
+      bookOptions.forEach((option) => { option.style.display = !value || option.dataset.search.includes(value) ? 'flex' : 'none'; });
+    });
+    document.querySelectorAll('input[name="bookIds"]').forEach((input) => input.addEventListener('change', updateSelection));
+    document.getElementById('toggleVisibleBtn').addEventListener('click', () => {
+      const visible = bookOptions.filter((option) => option.style.display !== 'none');
+      const shouldSelect = visible.some((option) => !option.querySelector('input').checked);
+      visible.forEach((option) => { option.querySelector('input').checked = shouldSelect; });
+      updateSelection();
+    });
+    bookOptions.forEach((option) => {
+      const shelf = option.querySelector('.book-meta')?.textContent.match(/Current shelf: (.*)$/)?.[1];
+      if (shelf && shelf !== 'Unassigned' && !Array.from(shelfSuggestions.options).some((item) => item.value === shelf)) {
+        const suggestion = document.createElement('option'); suggestion.value = shelf; shelfSuggestions.appendChild(suggestion);
+      }
+    });
+    document.getElementById('shelfForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const ids = Array.from(document.querySelectorAll('input[name="bookIds"]:checked')).map((input) => input.value);
+      if (!ids.length) return showMessage('Select at least one book.', 'error');
+      const response = await fetch('/library/shelf-assignment', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ shelvesNo:shelfInput.value.trim(), bookIds:ids }) });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) return showMessage(result.message || 'Could not save shelf assignment.', 'error');
+      showMessage(result.message || 'Shelf assignment saved.', 'success');
+      setTimeout(() => window.location.reload(), 700);
+    });
+  </script>
+</body>
+</html>
