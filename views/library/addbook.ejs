@@ -35,7 +35,7 @@
     .nav-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.6); padding: 0 12px 8px; }
     .nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 12px; margin-bottom: 6px; border-radius: 10px; color: #dce9ff; transition: 0.2s ease; }
     .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.08); }
-    .content { flex: 1; padding: 28px; }
+    .content { flex: 1; min-width: 0; padding: 28px; }
     .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
     .title { font-size: 30px; font-weight: 700; margin: 0; }
     .action-row { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -47,7 +47,7 @@
     .action-btns { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .table-action-btn { padding: 8px 12px; font-size: 12px; border-radius: 8px; line-height: 1.2; }
     .grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
-    .card { background: var(--panel); border-radius: 18px; box-shadow: var(--shadow); border: 1px solid rgba(148,163,184,0.12); padding: 18px; }
+    .card { min-width: 0; background: var(--panel); border-radius: 18px; box-shadow: var(--shadow); border: 1px solid rgba(148,163,184,0.12); padding: 18px; }
     .card h3 { margin: 0 0 16px; font-size: 18px; }
     .form-grid { display: grid; grid-template-columns: repeat(2, minmax(200px,1fr)); gap: 14px; }
     .field { display: flex; flex-direction: column; gap: 8px; }
@@ -85,7 +85,8 @@
     .code-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 10px; }
     .code-check { display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font-size: 12px; background: #f8fafc; }
     .table-action-btn { padding: 8px 12px; font-size: 12px; border-radius: 8px; line-height: 1.2; }
-    .table-scroll { width: 100%; overflow-x: auto; }
+    .table-scroll { width: 100%; max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    .table-scroll table { min-width: 1450px; }
     table { width: 100%; border-collapse: collapse; background: #fff; }
     th, td { padding: 12px 14px; border-bottom: 1px solid var(--border); text-align: left; }
     th { background: #eef5ff; }
@@ -131,6 +132,7 @@
         <a class="nav-item" href="/library/lost-books">Lost Books</a>
         <a class="nav-item" href="/library/analytics">Analytics</a>
         <a class="nav-item" href="/library/inventory">Book Inventory</a>
+        <a class="nav-item" href="/library/shelf-assignment">Assign Shelves</a>
         <a class="nav-item" href="/library/shelf-assignment">Assign Shelves</a>
       </div>
     </aside>
