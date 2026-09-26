@@ -5,6 +5,8 @@ const studentController = require('../controller/billingcontroller/studentContro
 router.get('/', studentController.listStudents);
 router.get('/new', studentController.newStudentForm);
 router.get('/form', studentController.newStudentForm);
+router.get('/import-template.csv', studentController.downloadStudentTemplate);
+router.post('/import-csv', studentController.importStudentsCsv);
 router.post('/', studentController.createStudent);
 router.get('/:id/edit', studentController.editStudentForm);
 router.post('/:id', studentController.updateStudent);

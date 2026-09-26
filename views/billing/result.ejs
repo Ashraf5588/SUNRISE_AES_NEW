@@ -1,6 +1,6 @@
 <%- include('../partials/head', { title: 'Billing Result' }) %>
 <%- include('../partials/navbar') %>
-<div class="container mt-4">
+<div class="fee-page-shell"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container mt-4">
   <h3>Billing Run Result</h3>
   <table class="table table-bordered bg-white">
     <thead><tr><th>Student</th><th>Result</th></tr></thead>
@@ -12,4 +12,5 @@
   </table>
   <a href="/billing" class="btn btn-secondary">View All Invoices</a>
 </div>
+ </main></div>
 <%- include('../partials/footer') %>

@@ -1,0 +1,42 @@
+<aside class="inventory-sidebar">
+	<div class="inventory-nav-heading">
+		<a class="inventory-brand" href="/inventory/" aria-label="Inventory home">
+			<span class="brand-mark">I</span>
+			<span><strong>Inventory</strong><small>STOCK CONTROL</small></span>
+		</a>
+		<button class="nav-toggle" type="button" data-nav-toggle aria-label="Hide inventory navigation" aria-expanded="true" aria-controls="inventoryLinks"><span></span><span></span><span></span></button>
+	</div>
+	<div class="nav-caption">WORKSPACE</div>
+	<nav class="inventory-links" id="inventoryLinks" aria-label="Inventory navigation">
+		<a class="<%= currentPath === '/inventory' || currentPath === '/inventory/' ? 'active' : '' %>" href="/inventory/">Overview</a>
+		<a class="<%= currentPath.startsWith('/inventory/products') ? 'active' : '' %>" href="/inventory/products">Products</a>
+		<a class="<%= currentPath.startsWith('/inventory/productrequests') ? 'active' : '' %>" href="/inventory/productrequests">Product requests</a>
+		<a class="<%= currentPath.startsWith('/inventory/sales') ? 'active' : '' %>" href="/inventory/sales">Issue items</a>
+		<a class="<%= currentPath.startsWith('/inventory/categories') ? 'active' : '' %>" href="/inventory/categories">Categories</a>
+		<a class="<%= currentPath.startsWith('/inventory/quantity-types') ? 'active' : '' %>" href="/inventory/quantity-types">Quantity types</a>
+		<a class="<%= currentPath.startsWith('/inventory/analytics') ? 'active' : '' %>" href="/inventory/analytics">Analytics</a>
+	</nav>
+	<div class="sidebar-foot"><span class="status-dot"></span> Inventory workspace</div>
+</aside>
+<button class="nav-reopen-button" type="button" data-nav-toggle aria-label="Show inventory navigation" aria-expanded="false" aria-controls="inventoryLinks"><span class="nav-hamburger"><i></i><i></i><i></i></span></button>
+<script>
+	(() => {
+		const shell = document.querySelector('.inventory-shell');
+		const toggleButtons = document.querySelectorAll('[data-nav-toggle]');
+		if (!shell || !toggleButtons.length) return;
+		const applyState = (collapsed) => {
+			shell.classList.toggle('nav-collapsed', collapsed);
+			toggleButtons.forEach((button) => {
+				button.setAttribute('aria-expanded', String(!collapsed));
+				button.setAttribute('aria-label', collapsed ? 'Show inventory navigation' : 'Hide inventory navigation');
+			});
+		};
+		try { applyState(localStorage.getItem('inventoryNavCollapsed') === 'true'); }
+		catch (error) { applyState(false); }
+		toggleButtons.forEach((button) => button.addEventListener('click', () => {
+			const collapsed = !shell.classList.contains('nav-collapsed');
+			applyState(collapsed);
+			try { localStorage.setItem('inventoryNavCollapsed', String(collapsed)); } catch (error) {}
+		}));
+	})();
+</script>

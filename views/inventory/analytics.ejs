@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Inventory analytics</title><link rel="stylesheet" href="/inventory.css"><script src="https://cdn.jsdelivr.net/npm/chart.js"></script></head>
+<body><div class="inventory-shell">
+	<%- include('inventorynav', { currentPath }) %>
+	<main class="inventory-main">
+		<header class="page-header"><div><p class="eyebrow">Stock control / Reporting</p><h1>Inventory analytics</h1><p class="page-subtitle">Issued quantities and current stock by category.</p></div><a class="button secondary" href="/inventory/">Back to overview</a></header>
+		<section class="chart-grid">
+			<article class="panel"><div class="panel-heading"><div><h2>Monthly issues</h2><p>Quantity issued over the last twelve months</p></div></div><div class="chart-wrap"><canvas id="monthlyChart" data-labels="<%= JSON.stringify(monthlyLabels) %>" data-values="<%= JSON.stringify(monthlyValues) %>" aria-label="Monthly issues chart"></canvas></div></article>
+			<article class="panel"><div class="panel-heading"><div><h2>Stock by category</h2><p>Units currently available</p></div></div><div class="chart-wrap"><canvas id="categoryChart" data-labels="<%= JSON.stringify(categoryLabels) %>" data-values="<%= JSON.stringify(categoryValues) %>" aria-label="Stock by category chart"></canvas></div></article>
+		</section>
+		<section class="panel"><div class="panel-heading"><div><h2>Stock status</h2><p>Products sorted by lowest available quantity</p></div></div>
+			<% if (products.length) { %><div class="table-wrap"><table><thead><tr><th>Product</th><th>Category</th><th>Available</th><th>Low-stock threshold</th><th>Status</th></tr></thead><tbody><% products.forEach(product => { const isLow = product.quantity <= product.lowStockThreshold; %><tr><td><span class="cell-primary"><%= product.name %></span><span class="cell-secondary"><%= product.sku || 'No SKU' %></span></td><td><%= product.categoryName %></td><td><%= product.quantity %> <%= product.quantityTypeName %></td><td><%= product.lowStockThreshold %></td><td><span class="pill <%= isLow ? '' : 'ok' %>"><%= isLow ? 'Low stock' : 'In stock' %></span></td></tr><% }) %></tbody></table></div><% } else { %><div class="empty-state">Add products to see inventory analytics.</div><% } %>
+		</section>
+	</main>
+</div>
+<script>
+	const monthlyCanvas = document.getElementById('monthlyChart');
+	new Chart(monthlyCanvas, { type: 'bar', data: { labels: JSON.parse(monthlyCanvas.dataset.labels), datasets: [{ label: 'Units issued', data: JSON.parse(monthlyCanvas.dataset.values), backgroundColor: '#176b50', borderRadius: 4, maxBarThickness: 34 }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } } } });
+	const categoryCanvas = document.getElementById('categoryChart');
+	new Chart(categoryCanvas, { type: 'doughnut', data: { labels: JSON.parse(categoryCanvas.dataset.labels), datasets: [{ data: JSON.parse(categoryCanvas.dataset.values), backgroundColor: ['#176b50', '#d3e978', '#bd5d3b', '#588d79', '#bed4c7', '#e0aa63'], borderWidth: 0 }] }, options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, usePointStyle: true, padding: 15 } } } } });
+</script>
+</body></html>

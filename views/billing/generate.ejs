@@ -1,6 +1,6 @@
 <%- include('../partials/head', { title: 'Generate Bills' }) %>
 <%- include('../partials/navbar') %>
-<div class="container mt-4">
+<div class="fee-page-shell"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container mt-4">
   <h3>Generate Monthly Bills</h3>
   <form method="POST" action="/billing/generate" class="bg-white p-4 rounded shadow-sm">
     <div class="row g-3">
@@ -34,4 +34,5 @@
     <button class="btn btn-primary mt-4">Generate</button>
   </form>
 </div>
+ </main></div>
 <%- include('../partials/footer') %>

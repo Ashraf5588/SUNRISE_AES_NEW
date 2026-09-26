@@ -1,6 +1,6 @@
 <%- include('../partials/head', { title: student.name }) %>
 <%- include('../partials/navbar') %>
-<div class="container mt-4">
+<div class="fee-page-shell"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container mt-4">
   <div class="d-flex justify-content-between align-items-start mb-3">
     <div>
       <h3><%= student.name %> <small class="text-muted">(<%= student.studentCode %>)</small></h3>
@@ -80,4 +80,5 @@
     </div>
   </div>
 </div>
+ </main></div>
 <%- include('../partials/footer') %>

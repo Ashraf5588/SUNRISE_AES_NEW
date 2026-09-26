@@ -1,6 +1,6 @@
 <%- include('../partials/head', { title: 'School Settings' }) %>
 <%- include('../partials/navbar') %>
-<div class="container mt-4">
+<div class="fee-page-shell"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container mt-4">
   <h3>School Settings</h3>
   <form method="POST" action="/setup/school" class="bg-white p-4 rounded shadow-sm">
     <div class="row g-3">
@@ -22,4 +22,5 @@
     <button class="btn btn-primary mt-4">Save Settings</button>
   </form>
 </div>
+ </main></div>
 <%- include('../partials/footer') %>

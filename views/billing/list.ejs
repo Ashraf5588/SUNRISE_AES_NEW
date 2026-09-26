@@ -1,6 +1,6 @@
 <%- include('../partials/head', { title: 'Invoices' }) %>
 <%- include('../partials/navbar') %>
-<div class="container mt-4">
+<div class="fee-page-shell"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container mt-4">
   <div class="d-flex justify-content-between">
     <h3>Invoices</h3>
     <a href="/generate" class="btn btn-primary">Generate Bills</a>
@@ -29,4 +29,5 @@
     </tbody>
   </table>
 </div>
+ </main></div>
 <%- include('../partials/footer') %>

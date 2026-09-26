@@ -3,6 +3,7 @@ const student  = require('./routers/mainpage');
 const attendance  = require('./routers/attendance');
 const billing  = require('./routers/billing');
 const library  = require('./routers/libraryroute');
+const inventory = require('./routers/inventoryRoutes');
 const fs = require('fs');
 const admincontrol = require('./controller/admincontroller')
 const router = require('./routers/setupRoutes');
@@ -353,8 +354,9 @@ app.get('/convert-docx/:filename', (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
+app.use('/inventory', inventory);
 app.use('/setup', router);
+app.use('/', router);
 app.use(billing)
 app.use(library)
 

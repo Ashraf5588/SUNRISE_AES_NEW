@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Inventory quantity types</title><link rel="stylesheet" href="/inventory.css"></head>
+<body><div class="inventory-shell">
+	<%- include('inventorynav', { currentPath }) %>
+	<main class="inventory-main">
+		<header class="page-header"><div><p class="eyebrow">Catalog / Measurement</p><h1>Quantity types</h1><p class="page-subtitle">Define how inventory quantities are measured.</p></div></header>
+		<% if (message) { %><div class="notice"><%= message %></div><% } %>
+		<section class="form-layout">
+			<article class="panel"><div class="panel-heading"><div><h2>Add quantity type</h2><p>Examples: piece, box, bottle, pack.</p></div></div>
+				<form method="post" action="/inventory/quantity-types">
+					<div class="form-grid"><div class="field full"><label for="name">Unit name</label><input id="name" name="name" required maxlength="40" autocomplete="off"></div><div class="field full"><label for="abbreviation">Abbreviation</label><input id="abbreviation" name="abbreviation" maxlength="12" placeholder="e.g. pcs"></div></div>
+					<div class="form-actions"><button class="button" type="submit">Add quantity type</button></div>
+				</form>
+			</article>
+			<article class="panel"><div class="panel-heading"><div><h2>Available units</h2><p><%= quantityTypes.length %> quantity types</p></div></div>
+				<% if (quantityTypes.length) { %><div class="table-wrap"><table><thead><tr><th>Unit</th><th>Abbreviation</th><th>Created</th></tr></thead><tbody><% quantityTypes.forEach(unit => { %><tr><td><span class="cell-primary"><%= unit.name %></span></td><td><%= unit.abbreviation || '-' %></td><td><%= new Date(unit.createdAt).toLocaleDateString() %></td></tr><% }) %></tbody></table></div><% } else { %><div class="empty-state">No quantity types yet. Add the first one here.</div><% } %>
+			</article>
+		</section>
+	</main>
+</div></body></html>

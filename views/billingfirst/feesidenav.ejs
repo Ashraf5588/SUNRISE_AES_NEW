@@ -19,6 +19,13 @@
     .fee-nav { grid-template-columns: repeat(2, 1fr); }
   }
   @media (max-width: 480px) { .fee-nav { grid-template-columns: 1fr; } }
+  .fee-page-shell { min-height: 100vh; padding-left: 268px; background: #f4f7fb; }
+  .fee-page-main { max-width: 1500px; margin: 0 auto; padding: 34px 40px 46px; }
+  .fee-page-main > .container { max-width: none; margin: 0; padding: 0; }
+  @media (max-width: 760px) {
+    .fee-page-shell { padding-left: 0; }
+    .fee-page-main { padding: 25px 16px 35px; }
+  }
 </style>
 
 <aside class="fee-sidebar" aria-label="Fee management navigation">
@@ -30,6 +37,12 @@
     <a href="/feestructure" class="fee-nav-link"><span>◫</span>Fee Structure Setup</a>
     <a href="/fee-invoices" class="fee-nav-link"><span>▣</span>Demand Bills</a>
     <a href="/fee-payments" class="fee-nav-link"><span>▤</span>Fee Receipt</a>
+    <a href="/students" class="fee-nav-link"><span>♙</span>Students</a>
+    <a href="/payments" class="fee-nav-link"><span>↗</span>Payments</a>
+    <a href="/discount" class="fee-nav-link"><span>▣</span>Discount Setup</a>
+    <a href="/setup/classes" class="fee-nav-link"><span>◇</span>Class Setup</a>
+    <a href="/setup/sessions" class="fee-nav-link"><span>◷</span>Academic Sessions</a>
+    <a href="/setup/school" class="fee-nav-link"><span>⚙</span>School Settings</a>
   </nav>
   <div class="fee-sidebar-footer"><i></i>Finance workspace</div>
 </aside>

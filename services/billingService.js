@@ -1,14 +1,14 @@
 const mongoose = require('mongoose');
-const Student = require('../models/Student');
-const FeeStructure = require('../models/FeeStructure');
-const FeeCategory = require('../models/FeeCategory');
+const Student = require('../model/billingschema/Student');
+const FeeStructure = require('../model/billingschema/feestructureschema');
+
 const Discount = require('../model/billingschema/Discount');
-const Invoice = require('../models/Invoice');
-const Payment = require('../models/Payment');
-const LedgerEntry = require('../models/LedgerEntry');
-const OpeningBalance = require('../models/OpeningBalance');
-const School = require('../models/School');
-const { getNextSequence } = require('../models/Counter');
+const Invoice = require('../model/billingschema/Invoice');
+const Payment = require('../model/billingschema/Payment');
+const LedgerEntry = require('../model/billingschema/LedgerEntry');
+const OpeningBalance = require('../model/billingschema/OpeningBalance');
+const School = require('../model/billingschema/School');
+const { getNextSequence } = require('../model/billingschema/Counter');
 
 async function getCurrentBalance(studentId) {
   const result = await LedgerEntry.aggregate([

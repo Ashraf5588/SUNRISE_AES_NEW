@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Inventory overview</title>
+	<link rel="stylesheet" href="/inventory.css">
+	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="inventory-shell">
+	<%- include('inventorynav', { currentPath }) %>
+	<main class="inventory-main">
+		<header class="page-header">
+			<div><p class="eyebrow">Stock control / Overview</p><h1>Inventory overview</h1><p class="page-subtitle">A clear view of what's on hand and what has been issued.</p></div>
+			<a class="button" href="/inventory/sales">Record an issue</a>
+		</header>
+		<section class="dashboard-stats" aria-label="Inventory totals">
+			<article class="stat-card"><div class="stat-label">Units available</div><div class="stat-value"><%= Number(totalStock || 0).toLocaleString() %></div><p class="stat-note">Across active products</p></article>
+			<article class="stat-card"><div class="stat-label">Active products</div><div class="stat-value"><%= totalProducts || 0 %></div><p class="stat-note">In <%= categoryCount || 0 %> categories</p></article>
+			<article class="stat-card"><div class="stat-label">Low stock items</div><div class="stat-value"><%= lowStockItems.length %></div><p class="stat-note">At or below reorder threshold</p></article>
+		</section>
+		<section class="dashboard-grid">
+			<article class="panel">
+				<div class="panel-heading"><div><h2>Items issued</h2><p>Monthly quantity issued over the last six months</p></div><a class="panel-link" href="/inventory/analytics">All analytics</a></div>
+				<div class="chart-wrap"><canvas id="issueChart" data-labels="<%= JSON.stringify(chartLabels) %>" data-values="<%= JSON.stringify(chartValues) %>" aria-label="Monthly item issue chart"></canvas></div>
+			</article>
+			<article class="panel">
+				<div class="panel-heading"><div><h2>Low stock</h2><p>Items that need attention</p></div><a class="panel-link" href="/inventory/products">Products</a></div>
+				<% if (lowStockItems.length) { %>
+					<div class="table-wrap"><table><thead><tr><th>Product</th><th>Available</th></tr></thead><tbody>
+						<% lowStockItems.forEach(item => { %><tr><td><span class="cell-primary"><%= item.name %></span><span class="cell-secondary"><%= item.categoryName %></span></td><td><span class="pill"><%= item.quantity %> <%= item.quantityTypeName %></span><span class="cell-secondary">Threshold: <%= item.lowStockThreshold %></span></td></tr><% }) %>
+					</tbody></table></div>
+				<% } else { %><div class="empty-state">All stock levels are healthy.</div><% } %>
+			</article>
+		</section>
+		<% if (productRequestMessage) { %><div class="notice" style="margin-top:16px"><%= productRequestMessage %></div><% } %>
+		<% if (productRequests.length) { %>
+		<section class="panel request-dashboard-panel">
+			<div class="panel-heading"><div><h2><%= isInventoryManager ? 'Product requests to review' : 'My product requests' %></h2><p>Showing <%= totalProductRequests ? (requestsPage - 1) * 25 + 1 : 0 %>-<%= Math.min(requestsPage * 25, totalProductRequests) %> of <%= totalProductRequests %></p></div><a class="panel-link" href="/inventory/productrequests"><%= isInventoryManager ? 'Open request form' : 'Request a product' %></a></div>
+			<div class="table-wrap"><table class="request-table dashboard-request-table">
+				<thead><tr><th>Requested</th><% if (isInventoryManager) { %><th>Requester</th><% } %><th>Product</th><th>Quantity</th><th>Required by</th><% if (isInventoryManager) { %><th>Reason</th><th>Manager review</th><% } else { %><th>Status</th><% } %></tr></thead>
+				<tbody><% productRequests.forEach(request => { %>
+				<tr>
+					<td><%= request.requestedAtNepali %></td>
+					<% if (isInventoryManager) { %><td><span class="cell-primary"><%= request.requesterUsername %></span></td><% } %>
+					<td><span class="cell-primary"><%= request.productName %></span><span class="cell-secondary"><%= request.product ? `${request.availableQuantityAtRequest} ${request.quantityTypeName} available when requested` : 'Not listed in inventory' %><%= request.color || request.size ? ` / ${[request.color, request.size].filter(Boolean).join(' / ')}` : '' %></span></td>
+					<td>
+						<% if (isInventoryManager) { %>
+						<input class="review-quantity" form="requestReview-<%= request._id %>" type="number" name="quantity" min="1" step="1" value="<%= request.quantity %>" required aria-label="Approved quantity for <%= request.productName %>">
+						<span class="cell-secondary"><%= request.quantityTypeName %></span>
+						<% } else { %><%= request.quantity %> <%= request.quantityTypeName %><% } %>
+					</td>
+					<td><%= request.requiredByNepali %></td>
+					<% if (isInventoryManager) { %>
+					<td><%= request.reason %></td>
+					<td>
+						<form class="request-review-form" id="requestReview-<%= request._id %>" method="post" action="/inventory/productrequests/<%= request._id %>/review">
+							<input type="hidden" name="requestsPage" value="<%= requestsPage %>">
+							<div class="review-product-search search-field">
+								<input type="search" class="review-product-search-input" value="<%= linkedProductNames[String(request.product || '')] || '' %>" placeholder="Search inventory product" autocomplete="off" aria-label="Search product to link">
+								<input type="hidden" name="productId" class="review-product-id" value="<%= request.product || '' %>">
+								<div class="search-results review-product-results" hidden></div>
+							</div>
+							<select name="status" class="review-status" aria-label="Request status">
+								<option value="pending" <%= request.status === 'pending' ? 'selected' : '' %>>Pending</option>
+								<option value="approved" <%= request.status === 'approved' ? 'selected' : '' %>>Approved</option>
+								<option value="rejected" <%= request.status === 'rejected' ? 'selected' : '' %>>Rejected</option>
+							</select>
+							<textarea name="managerReason" class="review-reason" maxlength="500" placeholder="Reason required only to reject" aria-label="Rejection reason"><%= request.managerReason || '' %></textarea>
+							<span class="cell-secondary"><%= request.reviewedBy ? `Reviewed by ${request.reviewedBy}` : '' %><%= request.stockDeducted ? ' / stock deducted' : '' %></span>
+							<button class="button small" type="submit">Save review</button>
+						</form>
+					</td>
+					<% } else { %>
+					<td><span class="pill request-status <%= request.status %>"><%= request.status %></span><% if (request.status === 'rejected' && request.managerReason) { %><span class="cell-secondary request-rejection-reason"><%= request.managerReason %></span><% } %></td>
+					<% } %>
+				</tr>
+				<% }) %></tbody>
+			</table></div>
+			<% if (requestTotalPages > 1) { %><nav class="pagination" aria-label="Dashboard request pages"><span>Page <%= requestsPage %> of <%= requestTotalPages %></span><div><% if (requestsPage > 1) { %><a class="button secondary small" href="/inventory/?requestsPage=<%= requestsPage - 1 %>">Previous</a><% } %><% if (requestsPage < requestTotalPages) { %><a class="button secondary small" href="/inventory/?requestsPage=<%= requestsPage + 1 %>">Next</a><% } %></div></nav><% } %>
+		</section>
+		<% } %>
+		<section class="panel" style="margin-top:16px">
+			<div class="panel-heading"><div><h2>Recent transactions</h2><p>Latest item assignments</p></div><a class="panel-link" href="/inventory/sales">View all</a></div>
+			<% if (recentTransactions.length) { %>
+				<div class="table-wrap"><table><thead><tr><th>Transaction</th><th>Assigned to</th><th>Items</th><th>Assigned date</th><th></th></tr></thead><tbody>
+					<% recentTransactions.forEach(transaction => { %><tr><td><span class="cell-primary"><%= transaction.transactionNo %></span><span class="cell-secondary"><%= transaction.recipientType %></span></td><td><span class="cell-primary"><%= transaction.recipientName %></span><span class="cell-secondary"><%= transaction.assignedBy %></span></td><td><%= transaction.items.reduce((sum, item) => sum + item.quantity, 0) %> units</td><td><%= new Date(transaction.assignedAt).toLocaleDateString() %></td><td><a class="button secondary small" href="/inventory/transactions/<%= transaction._id %>/print">Print</a></td></tr><% }) %>
+				</tbody></table></div>
+			<% } else { %><div class="empty-state">No inventory transactions have been recorded yet.</div><% } %>
+		</section>
+	</main>
+</div>
+<script>
+	document.querySelectorAll('.request-review-form').forEach((form) => {
+		const status = form.querySelector('.review-status');
+		const reason = form.querySelector('.review-reason');
+		const productSearch = form.querySelector('.review-product-search-input');
+		const productId = form.querySelector('.review-product-id');
+		const productResults = form.querySelector('.review-product-results');
+		let productSearchTimer;
+		productSearch.addEventListener('input', () => {
+			clearTimeout(productSearchTimer);
+			productId.value = '';
+			const query = productSearch.value.trim();
+			if (query.length < 2) { productResults.hidden = true; return; }
+			productSearchTimer = window.setTimeout(async () => {
+				try {
+					const response = await fetch(`/inventory/search/products?q=${encodeURIComponent(query)}`);
+					if (!response.ok) throw new Error('Search failed');
+					const matches = await response.json();
+					productResults.replaceChildren();
+					matches.forEach((product) => {
+						const option = document.createElement('button');
+						option.type = 'button';
+						option.className = 'search-result';
+						const name = document.createElement('strong');
+						name.textContent = product.name;
+						const detail = document.createElement('small');
+						detail.textContent = `${product.quantity} ${product.unit} available`;
+						option.append(name, detail);
+						option.addEventListener('click', () => {
+							productSearch.value = product.name;
+							productId.value = product.id;
+							productResults.hidden = true;
+						});
+						productResults.appendChild(option);
+					});
+					if (!matches.length) {
+						const empty = document.createElement('div');
+						empty.className = 'empty-state';
+						empty.textContent = 'No matching products';
+						productResults.appendChild(empty);
+					}
+					productResults.hidden = false;
+				} catch (error) {
+					productResults.hidden = true;
+				}
+			}, 200);
+		});
+		const updateRequirements = () => {
+			reason.required = status.value === 'rejected';
+		};
+		status.addEventListener('change', updateRequirements);
+		form.addEventListener('submit', (event) => {
+			if (status.value === 'approved' && !productId.value) {
+				event.preventDefault();
+				productSearch.setCustomValidity('Choose a product from inventory search before approving.');
+				productSearch.reportValidity();
+				productSearch.addEventListener('input', () => productSearch.setCustomValidity(''), { once: true });
+			}
+		});
+		updateRequirements();
+	});
+	const issueCanvas = document.getElementById('issueChart');
+	new Chart(issueCanvas, {
+		type: 'line',
+		data: { labels: JSON.parse(issueCanvas.dataset.labels), datasets: [{ label: 'Units issued', data: JSON.parse(issueCanvas.dataset.values), borderColor: '#176b50', backgroundColor: 'rgba(23,107,80,.12)', fill: true, tension: .35, pointRadius: 3, pointBackgroundColor: '#d3e978' }] },
+		options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } } }
+	});
+</script>
+</body>
+</html>

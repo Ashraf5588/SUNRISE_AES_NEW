@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Inventory issue <%= transaction.transactionNo %></title><link rel="stylesheet" href="/inventory.css"></head>
+<body><div class="inventory-shell">
+  <%- include('inventorynav', { currentPath }) %>
+  <main class="inventory-main">
+    <div class="print-actions"><a class="button secondary" href="/inventory/sales">Back to transactions</a><button class="button" type="button" onclick="window.print()">Print bill</button></div>
+    <article class="print-page">
+      <header class="receipt-top"><div><div class="receipt-brand">Inventory issue</div><p class="page-subtitle" style="margin-top:6px">Stock assignment receipt</p></div><div style="text-align:right"><strong><%= transaction.transactionNo %></strong><div class="cell-secondary" style="margin-top:6px"><%= transaction.assignedNepaliDate || new Date(transaction.assignedAt).toLocaleString() %></div></div></header>
+      <section class="receipt-info">
+        <div><span>Assigned to</span><strong><%= transaction.recipientName %></strong><div class="cell-secondary"><%= transaction.recipientType %><%= transaction.recipientClass ? ` / ${transaction.recipientClass}` : '' %><%= transaction.recipientId ? ` / ${transaction.recipientId}` : '' %></div></div>
+        <div><span>Assigned by</span><strong><%= transaction.assignedBy %></strong></div>
+        <div><span>Reason</span><strong><%= transaction.reason %></strong></div>
+        <div><span>Assignment date</span><strong><%= transaction.assignedNepaliDate || new Date(transaction.assignedAt).toLocaleDateString() %></strong></div>
+      </section>
+      <div class="table-wrap"><table><thead><tr><th>#</th><th>Item</th><th>SKU</th><th>Quantity</th></tr></thead><tbody><% transaction.items.forEach((item, index) => { %><tr><td><%= index + 1 %></td><td><span class="cell-primary"><%= item.productName %></span></td><td><%= item.sku || '-' %></td><td><%= item.quantity %> <%= item.quantityTypeName %></td></tr><% }) %></tbody><tfoot><tr><td colspan="3" style="text-align:right;font-weight:700">Total units</td><td style="font-weight:700"><%= transaction.items.reduce((sum, item) => sum + item.quantity, 0) %></td></tr></tfoot></table></div>
+      <div class="receipt-signatures"><span>Received by: <%= transaction.recipientName %></span><span>Issued by: <%= transaction.assignedBy %></span></div>
+    </article>
+  </main>
+</div></body></html>

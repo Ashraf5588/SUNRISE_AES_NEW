@@ -20,7 +20,7 @@ const {authenticateToken} = require('../middleware/loginmiddleware')
 const {authenticateTokenStudent} = require('../middleware/loginmiddleware')
 const admincontrol = require('../controller/admincontroller');
 const { verify } = require('jsonwebtoken');
-const billingcontroller = require('../controller/billingcontroller');
+const billingcontroller = require('../controller/billingcontroller/billingcontroller')
 
 billing.get('/billingdashboard',verifytoken,authorized,isAdmin,billingcontroller.billingDashboard)
 billing.get('/feehead',verifytoken,authorized,isAdmin,billingcontroller.feeHead)

@@ -1,6 +1,6 @@
-const Student = require('../../models/Student');
-const Invoice = require('../../models/Invoice');
-const Payment = require('../../models/Payment');
+const Student = require('../../model/billingschema/Student');
+const Invoice = require('../../model/billingschema/Invoice');
+const Payment = require('../../model/billingschema/Payment');
 const { recordPayment } = require('../../services/billingService');
 
 exports.showPaymentForm = async (req, res) => {

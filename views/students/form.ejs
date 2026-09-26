@@ -1,7 +1,31 @@
 <%- include('../partials/head', { title: student ? 'Edit Student' : 'New Student' }) %>
 <%- include('../partials/navbar') %>
-<div class="container mt-4">
-  <h3><%= student ? 'Edit Student' : 'New Student' %></h3>
+<div class="fee-page-shell"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container mt-4">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <h3 class="mb-0"><%= student ? 'Edit Student' : 'New Student' %></h3>
+    <% if (!student) { %>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-primary" href="/students/import-template.csv">Download CSV Template</a>
+      <button class="btn btn-outline-success" type="button" data-bs-toggle="collapse" data-bs-target="#csvImportPanel">Upload CSV</button>
+    </div>
+    <% } %>
+  </div>
+  <% if (importResult) { %>
+  <div class="alert alert-<%= importResult.errors.length ? 'warning' : 'success' %>">
+    Imported <strong><%= importResult.inserted %></strong> student(s); skipped <strong><%= importResult.skipped %></strong>.
+    <% if (importResult.errors.length) { %><ul class="mb-0 mt-2"><% importResult.errors.slice(0, 10).forEach(error => { %><li><%= error %></li><% }) %></ul><% } %>
+  </div>
+  <% } %>
+  <% if (!student) { %>
+  <div id="csvImportPanel" class="collapse mb-3">
+    <form method="POST" action="/students/import-csv" enctype="multipart/form-data" class="bg-white p-3 rounded shadow-sm">
+      <label for="studentCsv" class="form-label">Student CSV file</label>
+      <input id="studentCsv" name="studentCsv" type="file" accept=".csv,text/csv" class="form-control" required>
+      <div class="form-text">Required columns: studentCode, name, class, admissionDateAD, academicSession. Class and academic session must match existing records.</div>
+      <button type="submit" class="btn btn-success mt-3">Import Students</button>
+    </form>
+  </div>
+  <% } %>
   <form method="POST" action="<%= student ? '/students/' + student._id : '/students' %>" class="bg-white p-4 rounded shadow-sm">
     <div class="row g-3">
       <div class="col-md-4">
@@ -85,4 +109,5 @@
     <button type="submit" class="btn btn-primary mt-4">Save Student</button>
   </form>
 </div>
+ </main></div>
 <%- include('../partials/footer') %>

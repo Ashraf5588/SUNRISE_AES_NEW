@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Issue inventory items</title><link rel="stylesheet" href="/inventory.css"><link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css"></head>
+<body><div class="inventory-shell">
+	<%- include('inventorynav', { currentPath }) %>
+	<main class="inventory-main">
+		<header class="page-header"><div><p class="eyebrow">Stock control / Issue items</p><h1>Assign inventory</h1><p class="page-subtitle">Record each issue and update available stock in one step.</p></div></header>
+		<% if (message) { %><div class="notice"><%= message %></div><% } %>
+		<section class="panel" style="margin-bottom:17px">
+			<div class="panel-heading"><div><h2>New assignment</h2><p>Select a recipient and add one or more products.</p></div></div>
+			<form method="post" action="/inventory/sales" id="issueForm" data-products-exist="<%= products.length ? 'true' : 'false' %>">
+				<div class="form-grid">
+					<div class="field"><label for="recipientType">Assign to</label><select id="recipientType" name="recipientType" required><option value="staff">Staff</option><option value="student">Student</option></select></div>
+					<div class="field search-field"><label for="recipientSearch">Search staff or student name</label><input id="recipientSearch" type="search" placeholder="Type at least 2 characters" autocomplete="off" required><div id="recipientResults" class="search-results" hidden></div><input id="recipientName" name="recipientName" type="hidden" required><input id="recipientId" name="recipientId" type="hidden"><input id="recipientClass" name="recipientClass" type="hidden"></div>
+					<div class="field"><label for="assignedNepaliDate">Assign date (BS)</label><input id="assignedNepaliDate" name="assignedNepaliDate" class="nepali-datepicker" type="text" value="<%= todayNepaliDate %>" placeholder="YYYY-MM-DD" required></div>
+					<div class="field"><label for="assignedBy">Assigned by</label><input id="assignedBy" name="assignedBy" value="<%= assignedBy %>" maxlength="100" required autocomplete="name" placeholder="Your name"></div>
+					<div class="field full"><label for="reason">Reason</label><input id="reason" name="reason" maxlength="240" required placeholder="For example: classroom supplies"></div>
+				</div>
+				<div style="margin-top:23px">
+					<div class="panel-heading"><div><h2>Items</h2><p>Available stock is shown beside each product.</p></div></div>
+					<div id="itemsContainer"></div>
+					<div class="item-actions"><button class="button secondary small" type="button" id="addItem">Add another item</button><span class="cell-secondary" id="itemCount">1 item</span></div>
+				</div>
+				<div class="form-actions"><button class="button" type="submit">Save assignment</button></div>
+			</form>
+		</section>
+		<section class="panel">
+			<div class="panel-heading"><div><h2>Recent transactions</h2><p>Assignments are saved as permanent issue records.</p></div></div>
+			<% if (recentTransactions.length) { %><div class="table-wrap"><table><thead><tr><th>Bill no.</th><th>Assigned to</th><th>Reason</th><th>Items</th><th>Date</th><th></th></tr></thead><tbody>
+				<% recentTransactions.forEach(transaction => { %><tr><td><span class="cell-primary"><%= transaction.transactionNo %></span><span class="cell-secondary">By <%= transaction.assignedBy %></span></td><td><span class="cell-primary"><%= transaction.recipientName %></span><span class="cell-secondary"><%= transaction.recipientType %><%= transaction.recipientClass ? ` / ${transaction.recipientClass}` : '' %></span></td><td><%= transaction.reason %></td><td><%= transaction.items.reduce((sum, item) => sum + item.quantity, 0) %> units</td><td><%= transaction.assignedNepaliDate || new Date(transaction.assignedAt).toLocaleDateString() %></td><td><a class="button secondary small" href="/inventory/transactions/<%= transaction._id %>/print">Print bill</a></td></tr><% }) %>
+			</tbody></table></div><% } else { %><div class="empty-state">No issue transactions recorded yet.</div><% } %>
+		</section>
+	</main>
+</div>
+<template id="itemRowTemplate">
+	<div class="item-row">
+		<div class="field search-field product-search-field"><label>Product</label><input class="product-search" type="search" placeholder="Search product name" autocomplete="off" role="combobox" aria-expanded="false" required><input class="product-id" type="hidden"><div class="search-results product-results" role="listbox" hidden></div><span class="item-stock">Choose a product</span></div>
+		<div class="field"><label>Quantity</label><input class="quantity-input" type="number" min="1" step="1" value="1" required><span class="item-stock quantity-stock">Available: select a product</span></div>
+		<button class="remove-item" type="button" aria-label="Remove item" title="Remove item">&times;</button>
+	</div>
+</template>
+<template id="productOptions"><% products.forEach(product => { %><button type="button" class="search-result product-option" role="option" data-id="<%= product._id %>" data-stock="<%= product.quantity %>" data-unit="<%= product.quantityTypeName %>" data-sku="<%= product.sku || '' %>"><strong><%= product.name %></strong><small><%= product.quantity %> <%= product.quantityTypeName %> available<%= product.sku ? ` · ${product.sku}` : '' %></small></button><% }) %></template>
+<script>
+	const productsExist = document.getElementById('issueForm').dataset.productsExist === 'true';
+	const rowsContainer = document.getElementById('itemsContainer');
+	const rowTemplate = document.getElementById('itemRowTemplate');
+	const productOptions = [...document.getElementById('productOptions').content.querySelectorAll('.product-option')];
+	const addItemButton = document.getElementById('addItem');
+	const itemCount = document.getElementById('itemCount');
+	const recipientType = document.getElementById('recipientType');
+	const recipientSearch = document.getElementById('recipientSearch');
+	const recipientResults = document.getElementById('recipientResults');
+	let searchTimer;
+	const assignmentDateInput = document.getElementById('assignedNepaliDate');
+	if (assignmentDateInput && typeof assignmentDateInput.nepaliDatePicker === 'function') {
+		assignmentDateInput.nepaliDatePicker({ dateFormat: 'YYYY-MM-DD', language: 'en' });
+	}
+
+	function refreshItemNames() {
+		const rows = [...rowsContainer.querySelectorAll('.item-row')];
+		rows.forEach((row, index) => {
+			row.querySelector('.product-id').name = `items[${index}][productId]`;
+			row.querySelector('.quantity-input').name = `items[${index}][quantity]`;
+		});
+		itemCount.textContent = `${rows.length} ${rows.length === 1 ? 'item' : 'items'}`;
+		addItemButton.disabled = !productsExist;
+	}
+
+	function addRow() {
+		const row = rowTemplate.content.firstElementChild.cloneNode(true);
+		const productSearch = row.querySelector('.product-search');
+		const productId = row.querySelector('.product-id');
+		const productResults = row.querySelector('.product-results');
+		const quantityInput = row.querySelector('.quantity-input');
+		function renderProductResults(query = '') {
+			document.querySelectorAll('.product-results').forEach((results) => {
+				if (results !== productResults) {
+					results.hidden = true;
+					results.closest('.product-search-field').querySelector('.product-search').setAttribute('aria-expanded', 'false');
+				}
+			});
+			productResults.replaceChildren();
+			const normalizedQuery = query.trim().toLowerCase();
+			const matchingOptions = productOptions.filter((option) => `${option.querySelector('strong').textContent} ${option.dataset.sku}`.toLowerCase().includes(normalizedQuery)).slice(0, 10);
+			matchingOptions.forEach((option) => {
+				const result = option.cloneNode(true);
+				result.addEventListener('click', () => {
+					productSearch.value = option.querySelector('strong').textContent;
+					productSearch.dataset.selectedName = productSearch.value;
+					productId.value = option.dataset.id;
+					row.querySelector('.item-stock').textContent = `${option.dataset.stock} ${option.dataset.unit} available`;
+					productResults.hidden = true;
+					productSearch.setAttribute('aria-expanded', 'false');
+					productSearch.setCustomValidity('');
+					refreshStockWarnings();
+				});
+				productResults.appendChild(result);
+			});
+			if (!matchingOptions.length) {
+				const empty = document.createElement('div');
+				empty.className = 'empty-state';
+				empty.textContent = 'No matching products';
+				productResults.appendChild(empty);
+			}
+			productResults.hidden = false;
+			productSearch.setAttribute('aria-expanded', 'true');
+		}
+		productSearch.addEventListener('focus', () => renderProductResults(productSearch.value === productSearch.dataset.selectedName ? '' : productSearch.value));
+		productSearch.addEventListener('input', () => {
+			productId.value = '';
+			productSearch.dataset.selectedName = '';
+			row.querySelector('.item-stock').textContent = 'Choose a product';
+			productSearch.setCustomValidity('Select a product from the suggestions.');
+			renderProductResults(productSearch.value);
+			refreshStockWarnings();
+		});
+		productSearch.addEventListener('change', () => {
+			if (productId.value) productSearch.dataset.selectedName = productSearch.value;
+		});
+		quantityInput.addEventListener('input', refreshStockWarnings);
+		row.querySelector('.remove-item').addEventListener('click', () => {
+			if (rowsContainer.children.length > 1) row.remove();
+			refreshItemNames();
+			refreshStockWarnings();
+		});
+		rowsContainer.appendChild(row);
+		refreshItemNames();
+	}
+
+	function refreshStockWarnings() {
+		const rows = [...rowsContainer.querySelectorAll('.item-row')];
+		const totals = new Map();
+		rows.forEach((row) => {
+			const id = row.querySelector('.product-id').value;
+			if (id) totals.set(id, (totals.get(id) || 0) + Number(row.querySelector('.quantity-input').value || 0));
+		});
+		rows.forEach((row) => {
+			const id = row.querySelector('.product-id').value;
+			const option = productOptions.find((candidate) => candidate.dataset.id === id);
+			const quantityInput = row.querySelector('.quantity-input');
+			const stockMessage = row.querySelector('.quantity-stock');
+			const stock = Number(option?.dataset.stock || 0);
+			const requested = totals.get(id) || 0;
+			const overStock = Boolean(id && requested > stock);
+			quantityInput.classList.toggle('stock-over', overStock);
+			quantityInput.setAttribute('aria-invalid', overStock ? 'true' : 'false');
+			quantityInput.setCustomValidity(overStock ? 'Combined quantity exceeds available stock.' : '');
+			stockMessage.textContent = !id ? 'Available: select a product' : overStock ? `Available: ${stock} ${option.dataset.unit} · requested: ${requested}` : `Available: ${stock} ${option.dataset.unit}`;
+			stockMessage.classList.toggle('stock-warning', overStock);
+		});
+	}
+
+	addItemButton.addEventListener('click', addRow);
+	addRow();
+	recipientType.addEventListener('change', () => {
+		recipientSearch.value = '';
+		document.getElementById('recipientName').value = '';
+		document.getElementById('recipientId').value = '';
+		document.getElementById('recipientClass').value = '';
+		recipientResults.hidden = true;
+		recipientSearch.placeholder = recipientType.value === 'student' ? 'Search student name' : 'Search staff name';
+	});
+	recipientSearch.addEventListener('input', () => {
+		clearTimeout(searchTimer);
+		document.getElementById('recipientName').value = '';
+		document.getElementById('recipientId').value = '';
+		document.getElementById('recipientClass').value = '';
+		const query = recipientSearch.value.trim();
+		if (query.length < 2) { recipientResults.hidden = true; return; }
+		searchTimer = setTimeout(async () => {
+			const params = new URLSearchParams({ type: recipientType.value, q: query });
+			try {
+				const response = await fetch(`/inventory/search/assignees?${params}`);
+				const results = await response.json();
+				recipientResults.replaceChildren();
+				results.forEach(person => {
+					const button = document.createElement('button');
+					button.type = 'button';
+					button.className = 'search-result';
+					const name = document.createElement('strong');
+					name.textContent = person.name;
+					const detail = document.createElement('small');
+					detail.textContent = person.studentClass || (person.id ? `Record ${person.id}` : 'Staff');
+					button.append(name, detail);
+					button.addEventListener('click', () => {
+						recipientSearch.value = person.name;
+						document.getElementById('recipientName').value = person.name;
+						document.getElementById('recipientId').value = person.id || '';
+						document.getElementById('recipientClass').value = person.studentClass || '';
+						recipientResults.hidden = true;
+					});
+					recipientResults.appendChild(button);
+				});
+				if (!results.length) {
+					const empty = document.createElement('div');
+					empty.className = 'empty-state';
+					empty.textContent = 'No matching records';
+					recipientResults.appendChild(empty);
+				}
+				recipientResults.hidden = false;
+			} catch (error) {
+				recipientResults.hidden = true;
+			}
+		}, 220);
+	});
+	document.addEventListener('click', event => {
+		if (!event.target.closest('.search-field')) recipientResults.hidden = true;
+		document.querySelectorAll('.product-search-field').forEach((field) => {
+			if (!field.contains(event.target)) {
+				const results = field.querySelector('.product-results');
+				results.hidden = true;
+				field.querySelector('.product-search').setAttribute('aria-expanded', 'false');
+		}
+		});
+	});
+	document.getElementById('issueForm').addEventListener('submit', event => {
+		if (!document.getElementById('recipientName').value) {
+			event.preventDefault();
+			recipientSearch.focus();
+			recipientSearch.setCustomValidity('Select a person from the search results.');
+			recipientSearch.reportValidity();
+			recipientSearch.addEventListener('input', () => recipientSearch.setCustomValidity(''), { once: true });
+			return;
+		}
+		const quantitiesByProduct = new Map();
+		rowsContainer.querySelectorAll('.item-row').forEach(row => {
+			const productId = row.querySelector('.product-id').value;
+			const quantity = Number(row.querySelector('.quantity-input').value);
+			if (productId) quantitiesByProduct.set(productId, (quantitiesByProduct.get(productId) || 0) + quantity);
+		});
+		let invalid = false;
+		rowsContainer.querySelectorAll('.item-row').forEach(row => {
+			const selectedId = row.querySelector('.product-id').value;
+			const searchInput = row.querySelector('.product-search');
+			const quantityInput = row.querySelector('.quantity-input');
+			const option = productOptions.find((candidate) => candidate.dataset.id === selectedId);
+			const stock = Number(option?.dataset.stock || 0);
+			if (!selectedId) {
+				searchInput.setCustomValidity('Select a product from the suggestions.');
+				searchInput.reportValidity();
+				invalid = true;
+			} else if ((quantitiesByProduct.get(selectedId) || 0) > stock) {
+				quantityInput.setCustomValidity('Combined quantity exceeds available stock.');
+				row.querySelector('.quantity-input').reportValidity();
+				invalid = true;
+			} else quantityInput.setCustomValidity('');
+		});
+		if (invalid) event.preventDefault();
+	});
+</script>
+</body></html>

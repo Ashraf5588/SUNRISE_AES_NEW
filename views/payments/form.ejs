@@ -1,6 +1,6 @@
 <%- include('../partials/head', { title: 'Record Payment' }) %>
 <%- include('../partials/navbar') %>
-<div class="container mt-4">
+<div class="fee-page-shell"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container mt-4">
   <h3>Record Payment - <%= student.name %> (<%= student.studentCode %>)</h3>
 
   <div class="card p-3 mb-3">
@@ -55,4 +55,5 @@
     <button class="btn btn-success mt-4">Record Payment</button>
   </form>
 </div>
+ </main></div>
 <%- include('../partials/footer') %>

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Inventory categories</title><link rel="stylesheet" href="/inventory.css"></head>
+<body><div class="inventory-shell">
+	<%- include('inventorynav', { currentPath }) %>
+	<main class="inventory-main">
+		<header class="page-header"><div><p class="eyebrow">Catalog / Organization</p><h1>Categories</h1><p class="page-subtitle">Group products so stock stays easy to scan.</p></div></header>
+		<% if (message) { %><div class="notice"><%= message %></div><% } %>
+		<section class="form-layout">
+			<article class="panel"><div class="panel-heading"><div><h2>Add category</h2><p>Set up a new product group.</p></div></div>
+				<form method="post" action="/inventory/categories">
+					<div class="form-grid"><div class="field full"><label for="name">Category name</label><input id="name" name="name" required maxlength="80" autocomplete="off"></div><div class="field full"><label for="description">Description</label><textarea id="description" name="description" maxlength="300"></textarea></div></div>
+					<div class="form-actions"><button class="button" type="submit">Add category</button></div>
+				</form>
+			</article>
+			<article class="panel"><div class="panel-heading"><div><h2>Active categories</h2><p><%= categories.length %> categories</p></div></div>
+				<% if (categories.length) { %><div class="table-wrap"><table><thead><tr><th>Name</th><th>Description</th><th>Created</th></tr></thead><tbody><% categories.forEach(category => { %><tr><td><span class="cell-primary"><%= category.name %></span></td><td><%= category.description || '-' %></td><td><%= new Date(category.createdAt).toLocaleDateString() %></td></tr><% }) %></tbody></table></div><% } else { %><div class="empty-state">No categories yet. Add the first one here.</div><% } %>
+			</article>
+		</section>
+	</main>
+</div></body></html>

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Inventory products</title><link rel="stylesheet" href="/inventory.css"><link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css"></head>
+<body><div class="inventory-shell">
+	<%- include('inventorynav', { currentPath }) %>
+	<main class="inventory-main">
+		<header class="page-header"><div><p class="eyebrow">Catalog / Stock</p><h1>Products</h1><p class="page-subtitle">Add items and keep opening quantities up to date.</p></div></header>
+		<% if (message) { %><div class="notice"><%= message %></div><% } %>
+		<section class="panel product-sheet-panel">
+			<div class="panel-heading"><div><h2>Product inventory</h2><p>Edit stock directly in the table or enter a new product in the last row.</p></div><span class="cell-secondary">Showing <%= totalProducts ? (page - 1) * 25 + 1 : 0 %>-<%= Math.min(page * 25, totalProducts) %> of <%= totalProducts %></span></div>
+			<div class="product-tools">
+				<a class="button secondary" href="/inventory/products/template.csv" download>Download CSV template</a>
+				<form id="csvUploadForm" class="csv-upload-form" enctype="multipart/form-data">
+					<label class="csv-file-label" for="productCsv">Choose CSV</label>
+					<input id="productCsv" name="productCsv" type="file" accept=".csv,text/csv" required>
+					<button class="button secondary" type="submit">Upload CSV</button>
+				</form>
+			</div>
+			<div class="upload-progress" id="uploadProgress" hidden aria-live="polite">
+				<div class="upload-progress-heading"><strong id="uploadStatus">Preparing upload</strong><span id="uploadPercent">0%</span></div>
+				<progress id="uploadProgressBar" max="100" value="0">0%</progress>
+				<p class="upload-message" id="uploadMessage"></p>
+			</div>
+				<% if (!quantityTypes.length) { %><div class="notice">Set up a <a class="panel-link" href="/inventory/quantity-types">quantity type</a> before adding products.</div><% } %>
+				<form method="post" action="/inventory/products/save" id="productForm" data-default-unit="<%= defaultQuantityTypeId %>">
+					<input type="hidden" name="page" value="<%= page %>">
+					<div class="product-entry-table-wrap"><table class="product-entry-table"><thead><tr><th>Entry date (BS)</th><th>Product name</th><th>Quantity</th><th>Unit</th><th>Price</th><th>Color</th><th>Size</th><th>SKU / code</th><th>Description</th><th>Barcode</th><th>Category <span>(optional)</span></th><th>Low-stock alert</th></tr></thead>
+						<tbody>
+						<% products.forEach((product, index) => { %>
+						<tr class="product-sheet-row" data-existing="true">
+							<td><input type="hidden" name="products[<%= index %>][productId]" value="<%= product._id %>"><input type="hidden" name="products[<%= index %>][touched]" value="1"><input class="sheet-input nepali-datepicker" name="products[<%= index %>][entryDateNepali]" type="text" value="<%= product.entryDateNepali || todayNepaliDate %>" placeholder="YYYY-MM-DD" required aria-label="Entry date in Nepali calendar"></td>
+							<td><input class="sheet-input" name="products[<%= index %>][name]" value="<%= product.name %>" required maxlength="120" aria-label="Product name"></td>
+							<td><input class="sheet-input" name="products[<%= index %>][quantity]" type="number" min="0" step="1" value="<%= product.quantity %>" required aria-label="Quantity"></td>
+							<td><select class="sheet-input" name="products[<%= index %>][quantityType]" required aria-label="Quantity unit"><% quantityTypes.forEach(unit => { %><option value="<%= unit._id %>" <%= String(product.quantityType || '') === String(unit._id) ? 'selected' : '' %>><%= unit.name %><%= unit.abbreviation ? ` (${unit.abbreviation})` : '' %></option><% }) %></select></td>
+							<td><input class="sheet-input" name="products[<%= index %>][price]" type="number" min="0" step="0.01" value="<%= product.price ?? 0 %>" required aria-label="Price"></td>
+							<td><input class="sheet-input" name="products[<%= index %>][color]" value="<%= product.color || '' %>" maxlength="40" aria-label="Color"></td>
+							<td><input class="sheet-input" name="products[<%= index %>][size]" value="<%= product.size || '' %>" maxlength="40" aria-label="Size"></td>
+							<td><input class="sheet-input" name="products[<%= index %>][sku]" value="<%= product.sku || '' %>" maxlength="60" aria-label="SKU or code"></td>
+							<td><input class="sheet-input" name="products[<%= index %>][description]" value="<%= product.description || '' %>" maxlength="400" aria-label="Description"></td>
+							<td><input class="sheet-input" name="products[<%= index %>][barcode]" value="<%= product.barcode || '' %>" maxlength="100" aria-label="Barcode"></td>
+							<td><select class="sheet-input" name="products[<%= index %>][category]" aria-label="Optional category"><option value="">No category</option><% categories.forEach(category => { %><option value="<%= category._id %>" <%= String(product.category || '') === String(category._id) ? 'selected' : '' %>><%= category.name %></option><% }) %></select></td>
+							<td><input class="sheet-input" name="products[<%= index %>][lowStockThreshold]" type="number" min="0" step="1" value="<%= product.lowStockThreshold %>" required aria-label="Low-stock alert"></td>
+						</tr>
+						<% }) %>
+						<% const newRowIndex = products.length; %>
+						<tr class="product-sheet-row new-product-row" data-existing="false">
+							<td><input type="hidden" name="products[<%= newRowIndex %>][touched]" value="0"><input class="sheet-input nepali-datepicker" name="products[<%= newRowIndex %>][entryDateNepali]" type="text" value="<%= todayNepaliDate %>" placeholder="YYYY-MM-DD" aria-label="New product entry date in Nepali calendar"></td>
+							<td><input class="sheet-input" name="products[<%= newRowIndex %>][name]" maxlength="120" placeholder="New product name" aria-label="New product name"></td>
+							<td><input class="sheet-input" name="products[<%= newRowIndex %>][quantity]" type="number" min="0" step="1" value="0" aria-label="New product quantity"></td>
+							<td><select class="sheet-input" name="products[<%= newRowIndex %>][quantityType]" aria-label="New product quantity unit"><% quantityTypes.forEach(unit => { %><option value="<%= unit._id %>" <%= String(unit._id) === defaultQuantityTypeId ? 'selected' : '' %>><%= unit.name %><%= unit.abbreviation ? ` (${unit.abbreviation})` : '' %></option><% }) %></select></td>
+							<td><input class="sheet-input" name="products[<%= newRowIndex %>][price]" type="number" min="0" step="0.01" value="0" aria-label="New product price"></td>
+							<td><input class="sheet-input" name="products[<%= newRowIndex %>][color]" maxlength="40" aria-label="New product color"></td>
+							<td><input class="sheet-input" name="products[<%= newRowIndex %>][size]" maxlength="40" aria-label="New product size"></td>
+							<td><input class="sheet-input" name="products[<%= newRowIndex %>][sku]" maxlength="60" aria-label="New product SKU or code"></td>
+							<td><input class="sheet-input" name="products[<%= newRowIndex %>][description]" maxlength="400" aria-label="New product description"></td>
+							<td><input class="sheet-input" name="products[<%= newRowIndex %>][barcode]" maxlength="100" aria-label="New product barcode"></td>
+							<td><select class="sheet-input" name="products[<%= newRowIndex %>][category]" aria-label="New product category"><option value="">No category</option><% categories.forEach(category => { %><option value="<%= category._id %>"><%= category.name %></option><% }) %></select></td>
+							<td><input class="sheet-input" name="products[<%= newRowIndex %>][lowStockThreshold]" type="number" min="0" step="1" value="5" aria-label="New product low-stock alert"></td>
+						</tr>
+						</tbody></table></div>
+					<div class="form-actions"><button class="button" type="submit" <%= !quantityTypes.length ? 'disabled' : '' %>>Save table</button></div>
+				</form>
+				<% if (totalPages > 1) { %><nav class="pagination" aria-label="Product pages"><span>Page <%= page %> of <%= totalPages %></span><div><% if (page > 1) { %><a class="button secondary small" href="/inventory/products?page=<%= page - 1 %>">Previous</a><% } %><% if (page < totalPages) { %><a class="button secondary small" href="/inventory/products?page=<%= page + 1 %>">Next</a><% } %></div></nav><% } %>
+		</section>
+	</main>
+</div>
+<script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
+<script>
+	const productForm = document.getElementById('productForm');
+	const csvUploadForm = document.getElementById('csvUploadForm');
+	const uploadProgress = document.getElementById('uploadProgress');
+	const uploadProgressBar = document.getElementById('uploadProgressBar');
+	const uploadPercent = document.getElementById('uploadPercent');
+	const uploadStatus = document.getElementById('uploadStatus');
+	const uploadMessage = document.getElementById('uploadMessage');
+	const newProductRow = document.querySelector('.new-product-row');
+	const markNewRowTouched = () => {
+		if (!newProductRow) return;
+		newProductRow.querySelector('[name$="[touched]"]').value = '1';
+		newProductRow.querySelector('[name$="[name]"]').required = true;
+		newProductRow.querySelector('[name$="[quantityType]"]').required = true;
+		newProductRow.querySelector('[name$="[quantity]"]').required = true;
+		newProductRow.querySelector('[name$="[lowStockThreshold]"]').required = true;
+		newProductRow.querySelector('[name$="[entryDateNepali]"]').required = true;
+	};
+	newProductRow?.querySelectorAll('.sheet-input').forEach((input) => {
+		input.addEventListener('input', markNewRowTouched);
+		input.addEventListener('change', markNewRowTouched);
+	});
+	csvUploadForm.addEventListener('submit', (event) => {
+		event.preventDefault();
+		const fileInput = document.getElementById('productCsv');
+		if (!fileInput.files.length) return;
+		const request = new XMLHttpRequest();
+		const formData = new FormData(csvUploadForm);
+		uploadProgress.hidden = false;
+		uploadProgress.classList.remove('upload-error', 'upload-success');
+		uploadProgressBar.value = 0;
+		uploadPercent.textContent = '0%';
+		uploadStatus.textContent = 'Uploading CSV';
+		uploadMessage.textContent = '';
+		csvUploadForm.querySelector('button').disabled = true;
+		request.upload.addEventListener('progress', (progressEvent) => {
+			if (!progressEvent.lengthComputable) return;
+			const percent = Math.min(95, Math.round(progressEvent.loaded / progressEvent.total * 95));
+			uploadProgressBar.value = percent;
+			uploadPercent.textContent = `${percent}%`;
+			if (percent >= 95) uploadStatus.textContent = 'Validating and saving products';
+		});
+		request.addEventListener('load', () => {
+			let result;
+			try { result = JSON.parse(request.responseText); }
+			catch (error) { result = { message: request.responseText || 'The server could not process this upload.' }; }
+			csvUploadForm.querySelector('button').disabled = false;
+			if (request.status >= 200 && request.status < 300) {
+				uploadProgress.classList.add('upload-success');
+				uploadProgressBar.value = 100;
+				uploadPercent.textContent = '100%';
+				uploadStatus.textContent = 'Upload complete';
+				uploadMessage.textContent = result.message || 'Products imported.';
+				window.setTimeout(() => window.location.reload(), 900);
+			} else {
+				uploadProgress.classList.add('upload-error');
+				uploadStatus.textContent = 'Upload failed';
+				uploadMessage.textContent = result.message || 'Check the CSV file and try again.';
+			}
+		});
+		request.addEventListener('error', () => {
+			csvUploadForm.querySelector('button').disabled = false;
+			uploadProgress.classList.add('upload-error');
+			uploadStatus.textContent = 'Upload failed';
+			uploadMessage.textContent = 'Network error. Check your connection and retry.';
+		});
+		request.open('POST', '/inventory/products/import-csv');
+		request.send(formData);
+	});
+	function initializeNepaliDatePickers(root = document) {
+		root.querySelectorAll('.nepali-datepicker:not([data-initialized])').forEach((dateInput) => {
+			if (typeof dateInput.nepaliDatePicker !== 'function') return;
+			dateInput.nepaliDatePicker({
+				dateFormat: 'YYYY-MM-DD',
+				language: 'en',
+				onSelect: function (selectedDate) {
+					if (typeof selectedDate === 'string') dateInput.value = selectedDate.trim();
+					else if (selectedDate && selectedDate.year && selectedDate.month && selectedDate.day) {
+						dateInput.value = `${selectedDate.year}-${String(selectedDate.month).padStart(2, '0')}-${String(selectedDate.day).padStart(2, '0')}`;
+					}
+					if (dateInput.closest('.new-product-row')) markNewRowTouched();
+				}
+			});
+			dateInput.dataset.initialized = 'true';
+		});
+	}
+	initializeNepaliDatePickers();
+</script>
+</body></html>

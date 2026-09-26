@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Product requests</title>
+	<link rel="stylesheet" href="/inventory.css">
+	<link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+<div class="inventory-shell">
+	<%- include('inventorynav', { currentPath }) %>
+	<main class="inventory-main">
+		<header class="page-header">
+			<div><p class="eyebrow">Inventory / Requests</p><h1>Product requests</h1><p class="page-subtitle">Request stock and follow its review status.</p></div>
+		</header>
+		<% if (message) { %><div class="notice"><%= message %></div><% } %>
+
+		<section class="panel request-panel">
+			<div class="panel-heading"><div><h2>Request an item</h2><p>Search current inventory or submit an item that is not listed.</p></div></div>
+			<form method="post" action="/inventory/productrequests" id="productRequestForm">
+				<div class="form-grid request-form-grid">
+					<div class="field"><label for="requesterUsername">Request by</label><input id="requesterUsername" value="<%= requesterUsername %>" readonly required><span class="item-stock">Signed-in user</span></div>
+					<div class="field"><label for="requestedAtNepali">Request date (BS)</label><input id="requestedAtNepali" name="requestedAtNepali" class="nepali-datepicker" type="text" value="<%= todayNepaliDate %>" placeholder="YYYY-MM-DD" required></div>
+					<div class="field"><label for="requiredByNepali">Required by (BS)</label><input id="requiredByNepali" name="requiredByNepali" class="nepali-datepicker" type="text" value="" placeholder="Select required date" required></div>
+					<div class="field request-product-field search-field">
+						<label for="productName">Product</label>
+						<input id="productName" name="productName" type="search" placeholder="Search inventory by product name or code" autocomplete="off" maxlength="120" required aria-autocomplete="list" aria-expanded="false">
+						<input id="productId" name="productId" type="hidden">
+						<div class="search-results" id="productSearchResults" role="listbox" hidden></div>
+						<span class="item-stock" id="productAvailability" aria-live="polite">Start typing to check available inventory.</span>
+					</div>
+					<div class="field"><label for="quantityTypeName">Unit</label><input id="quantityTypeName" name="quantityTypeName" value="pcs" maxlength="40" required></div>
+					<div class="field"><label for="quantity">Quantity</label><input id="quantity" name="quantity" type="number" min="1" step="1" value="1" required></div>
+					<div class="field"><label for="color">Color <span>(optional)</span></label><input id="color" name="color" maxlength="40"></div>
+					<div class="field"><label for="size">Size <span>(optional)</span></label><input id="size" name="size" maxlength="40"></div>
+					<div class="field full"><label for="reason">Reason for request</label><textarea id="reason" name="reason" maxlength="500" required placeholder="What is this item needed for?"></textarea></div>
+				</div>
+				<input type="hidden" id="newItemConfirmed" value="false">
+				<div class="request-submit-row"><span class="pill request-pending-pill">Status: Pending on submission</span><button class="button" type="submit">Submit request</button></div>
+			</form>
+		</section>
+
+		<section class="panel request-list-panel">
+			<div class="panel-heading"><div><h2>My requests</h2><p>Showing <%= totalRequests ? (page - 1) * 25 + 1 : 0 %>-<%= Math.min(page * 25, totalRequests) %> of <%= totalRequests %></p></div></div>
+			<% if (requests.length) { %>
+			<div class="table-wrap"><table class="request-table">
+				<thead><tr><th>Requested</th><th>Product</th><th>Quantity</th><th>Required by</th><th>Reason</th><th>Status</th></tr></thead>
+				<tbody>
+				<% requests.forEach(request => { %>
+				<tr>
+					<td><%= request.requestedAtNepali %></td>
+					<td><span class="cell-primary"><%= request.productName %></span><span class="cell-secondary"><%= request.product ? `${request.availableQuantityAtRequest} ${request.quantityTypeName} available when requested` : 'Not listed in inventory' %><%= request.color || request.size ? ` / ${[request.color, request.size].filter(Boolean).join(' / ')}` : '' %></span></td>
+					<td><%= request.quantity %> <%= request.quantityTypeName %></td>
+					<td><%= request.requiredByNepali %></td>
+					<td><%= request.reason %></td>
+					<td>
+						<span class="pill request-status <%= request.status %>"><%= request.status %></span>
+						<% if (request.status === 'rejected' && request.managerReason) { %><span class="cell-secondary request-rejection-reason"><%= request.managerReason %></span><% } %>
+					</td>
+				</tr>
+				<% }) %>
+				</tbody>
+			</table></div>
+			<% } else { %><div class="empty-state">No product requests yet.</div><% } %>
+			<% if (totalPages > 1) { %><nav class="pagination" aria-label="Request history pages"><span>Page <%= page %> of <%= totalPages %></span><div><% if (page > 1) { %><a class="button secondary small" href="/inventory/productrequests?page=<%= page - 1 %>">Previous</a><% } %><% if (page < totalPages) { %><a class="button secondary small" href="/inventory/productrequests?page=<%= page + 1 %>">Next</a><% } %></div></nav><% } %>
+		</section>
+	</main>
+</div>
+<script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
+<script>
+	const productNameInput = document.getElementById('productName');
+	const productIdInput = document.getElementById('productId');
+	const productUnitInput = document.getElementById('quantityTypeName');
+	const productAvailability = document.getElementById('productAvailability');
+	const productSearchResults = document.getElementById('productSearchResults');
+	const newItemConfirmed = document.getElementById('newItemConfirmed');
+	let productSearchTimer;
+
+	function showNewItemOption(query) {
+		const option = document.createElement('button');
+		option.type = 'button';
+		option.className = 'search-result';
+		const title = document.createElement('strong');
+		title.textContent = `Request "${query}" as a new item`;
+		const detail = document.createElement('small');
+		detail.textContent = 'This item is not listed in inventory';
+		option.append(title, detail);
+		option.addEventListener('click', () => {
+			productIdInput.value = '';
+			newItemConfirmed.value = 'true';
+			productUnitInput.readOnly = false;
+			productUnitInput.value = 'pcs';
+			productAvailability.textContent = 'Not available in inventory; the manager can link it after stock is added.';
+			productAvailability.classList.add('request-unavailable');
+			productSearchResults.hidden = true;
+			productNameInput.setCustomValidity('');
+		});
+		productSearchResults.appendChild(option);
+	}
+
+	productNameInput.addEventListener('input', () => {
+		clearTimeout(productSearchTimer);
+		productIdInput.value = '';
+		newItemConfirmed.value = 'false';
+		productUnitInput.readOnly = false;
+		productAvailability.textContent = 'Searching inventory...';
+		productAvailability.classList.remove('request-unavailable');
+		const query = productNameInput.value.trim();
+		if (query.length < 2) {
+			productSearchResults.hidden = true;
+			productAvailability.textContent = 'Type at least 2 characters to search inventory.';
+			return;
+		}
+		productSearchTimer = window.setTimeout(async () => {
+			try {
+				const response = await fetch(`/inventory/search/products?q=${encodeURIComponent(query)}`);
+				if (!response.ok) throw new Error('Search failed');
+				const products = await response.json();
+				productSearchResults.replaceChildren();
+				products.forEach((product) => {
+					const option = document.createElement('button');
+					option.type = 'button';
+					option.className = 'search-result';
+					const title = document.createElement('strong');
+					title.textContent = product.name;
+					const detail = document.createElement('small');
+					detail.textContent = `${product.quantity} ${product.unit} available${product.sku ? ` / ${product.sku}` : ''}`;
+					option.append(title, detail);
+					option.addEventListener('click', () => {
+						productNameInput.value = product.name;
+						productIdInput.value = product.id;
+						productUnitInput.value = product.unit;
+						productUnitInput.readOnly = true;
+						newItemConfirmed.value = 'false';
+						productAvailability.textContent = `${product.quantity} ${product.unit} currently available`;
+						productAvailability.classList.toggle('request-unavailable', product.quantity < 1);
+						productSearchResults.hidden = true;
+						productNameInput.setCustomValidity('');
+					});
+					productSearchResults.appendChild(option);
+				});
+				if (!products.length) {
+					const empty = document.createElement('div');
+					empty.className = 'empty-state';
+					empty.textContent = 'No matching inventory items';
+					productSearchResults.appendChild(empty);
+					showNewItemOption(query);
+				}
+				productSearchResults.hidden = false;
+				productNameInput.setAttribute('aria-expanded', 'true');
+			} catch (error) {
+				productAvailability.textContent = 'Could not search inventory. You can still request it as a new item.';
+				productSearchResults.replaceChildren();
+				showNewItemOption(query);
+				productSearchResults.hidden = false;
+			}
+		}, 220);
+	});
+	document.addEventListener('click', (event) => {
+		if (!event.target.closest('.request-product-field')) productSearchResults.hidden = true;
+	});
+	document.getElementById('productRequestForm').addEventListener('submit', (event) => {
+		if (!productIdInput.value && newItemConfirmed.value !== 'true') {
+			event.preventDefault();
+			productNameInput.setCustomValidity('Select a matching item or choose the new-item request option.');
+			productNameInput.reportValidity();
+		}
+	});
+	document.querySelectorAll('.nepali-datepicker').forEach((input) => {
+		if (typeof input.nepaliDatePicker === 'function') input.nepaliDatePicker({ dateFormat: 'YYYY-MM-DD', language: 'en' });
+	});
+</script>
+</body>
+</html>

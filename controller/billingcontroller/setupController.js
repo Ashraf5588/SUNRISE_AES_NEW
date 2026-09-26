@@ -1,12 +1,12 @@
-const Class = require('../../models/Class');
-const Student = require('../../models/Student');
-const FeeCategory = require('../../models/FeeCategory');
-const AcademicSession = require('../../models/AcademicSession');
-const FeeStructure = require('../../models/FeeStructure');
-const School = require('../../models/School');
+const Class = require('../../model/billingschema/Class');
+const Student = require('../../model/billingschema/Student');
+
+const AcademicSession = require('../../model/billingschema/AcademicSession');
+const FeeStructure = require('../../model/billingschema/feestructureschema');
+const School = require('../../model/billingschema/School');
 const Transport = require('../../model/billingschema/transport');
 const Discount = require('../../model/billingschema/Discount');
-const feeheadModel = require('../../model/billing/feeheadschema').feeheadModel;
+const feeheadModel = require('../../model/billingschema/feeheadschema').feeheadModel;
 // ---- Classes ----
 exports.listClasses = async (req, res) => {
   const classes = await Class.find().sort({ order: 1 });
@@ -61,9 +61,9 @@ exports.discountdata = async (req, res) => {
   const [discounts, students, feeCategories] = await Promise.all([
     Discount.find().sort({ createdAt: -1 })
       .populate('student', 'name')
-      .populate('title.feehead', 'name'),
+      .populate({ path: 'title.feehead', model: feeheadModel, select: 'feehead' }),
     Student.find().sort({ name: 1 }).select('_id name'),
-    FeeCategory.find().sort({ name: 1 }).select('_id name')
+    feeheadModel.find().sort({ feehead: 1 }).select('_id feehead frequency')
   ]);
 
   res.render('setup/discount', { discounts, students, feeCategories, feeHeads });

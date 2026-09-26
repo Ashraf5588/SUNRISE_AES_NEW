@@ -16,6 +16,20 @@
 		.fee-subtitle { margin:8px 0 0; color:var(--muted); font-size:14px; }
 		.fee-panel { border:1px solid var(--line); border-radius:14px; background:#fff; box-shadow:0 14px 34px rgba(13,35,71,.08); }
 		.fee-form-panel { padding:24px; }
+		.session-toolbar { display:flex; align-items:end; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+		.session-field { display:grid; gap:7px; min-width:280px; }
+		.session-field label { color:var(--muted); font-size:12px; font-weight:750; }
+		.session-field select { width:100%; padding:11px 13px; border:1px solid var(--line); border-radius:8px; color:var(--ink); font:inherit; outline:none; background:#fff; }
+		.matrix-scroll { overflow-x:auto; }
+		.matrix-table { width:100%; min-width:760px; border-collapse:collapse; font-size:12px; }
+		.matrix-table th { padding:13px 14px; background:#f7f9fc; color:var(--muted); font-size:10px; letter-spacing:.6px; text-align:left; text-transform:uppercase; white-space:nowrap; }
+		.matrix-table td { padding:10px 14px; border-top:1px solid var(--line); }
+		.matrix-table th:first-child, .matrix-table td:first-child { position:sticky; left:0; background:#fff; z-index:1; }
+		.matrix-table th:first-child { background:#f7f9fc; }
+		.matrix-class { color:var(--navy); font-weight:750; white-space:nowrap; }
+		.matrix-input { width:115px; padding:9px 10px; border:1px solid var(--line); border-radius:7px; color:var(--ink); font:inherit; }
+		.matrix-input:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(59,130,246,.12); outline:none; }
+		.matrix-empty { padding:30px; color:var(--muted); text-align:center; }
 		.fee-panel-title { margin:0 0 20px; color:var(--navy); font-size:16px; }
 		.fee-form-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:18px 22px; }
 		.fee-field { display:grid; gap:7px; }
@@ -53,24 +67,18 @@
 	<%- include('feesidenav') %>
 	<main class="fee-main">
 		<div class="fee-content">
-			<header class="fee-heading"><p class="fee-eyebrow">Fee management</p><h1>Fee structure</h1><p class="fee-subtitle">Set amounts and assign each fee to one or more classes.</p></header>
+			<header class="fee-heading"><p class="fee-eyebrow">Fee management</p><h1>Fee structure matrix</h1><p class="fee-subtitle">Choose an academic year, then enter each fee amount by class.</p></header>
 			<section class="fee-panel fee-form-panel">
-				<h2 class="fee-panel-title"><%= editFeeStructure ? 'Edit fee structure' : 'Add fee structure' %></h2>
-				<form action="<%= editFeeStructure ? '/feestructure/' + editFeeStructure._id + '/edit' : '/feestructure' %>" method="POST">
-					<div class="fee-form-grid">
-						<div class="fee-field"><label for="feeheadId">Fee head</label><select id="feeheadId" name="feeheadId" required><option value="">Select fee head</option><% feeheads.forEach((item) => { %><option value="<%= item._id %>" <%= editFeeStructure && String(editFeeStructure.feeheadId) === String(item._id) ? 'selected' : '' %>><%= item.feehead %></option><% }) %></select></div>
-						<div class="fee-field"><label for="amount">Amount</label><input type="number" id="amount" name="amount" min="0" step="0.01" value="<%= editFeeStructure ? editFeeStructure.amount : '' %>" placeholder="e.g. 2500" required></div>
-						<div class="fee-field"><label for="frequency">Frequency</label><select id="frequency" name="frequency" required><option value="">Select frequency</option><% ['monthly','quarterly','half-yearly','yearly','one-time'].forEach((item) => { %><option value="<%= item %>" <%= editFeeStructure && editFeeStructure.frequency === item ? 'selected' : '' %>><%= item.replace('-', ' ').replace(/\b\w/g, character => character.toUpperCase()) %></option><% }) %></select></div>
-						<div class="fee-field"><label for="group">Group</label><input type="text" id="group" name="group" value="<%= editFeeStructure ? editFeeStructure.group : '' %>" placeholder="e.g. Academic" required></div>
-						<div class="class-field full-width"><span class="field-label">Apply for class</span><div class="class-grid"><% classes.forEach((className) => { %><label class="class-option"><input type="checkbox" name="forClasses" value="<%= className %>" <%= editFeeStructure && (editFeeStructure.forClasses || []).includes(className) ? 'checked' : '' %>><span><%= className %></span></label><% }) %></div></div>
-						<div class="fee-field full-width"><label for="description">Description</label><textarea id="description" name="description" placeholder="Optional details"><%= editFeeStructure ? editFeeStructure.description || '' : '' %></textarea></div>
+					<div class="session-toolbar">
+						<form action="/feestructure" method="GET" class="session-field"><label for="academicSession">Academic year</label><select id="academicSession" name="academicSession" onchange="this.form.submit()" required><option value="">Select academic year</option><% sessions.forEach((session) => { %><option value="<%= session._id %>" <%= String(selectedSessionId) === String(session._id) ? 'selected' : '' %>><%= session.titleBS %></option><% }) %></select></form>
 					</div>
-					<div class="form-actions"><% if (editFeeStructure) { %><a class="button secondary" href="/feestructure">Cancel</a><% } %><button class="button" type="submit"><%= editFeeStructure ? 'Update fee structure' : 'Save fee structure' %></button></div>
-				</form>
-			</section>
-			<section class="fee-panel table-panel">
-				<div class="table-heading"><h2>Saved fee structures</h2><span><%= feeStructures.length %> saved</span></div>
-				<% if (feeStructures.length) { %><div class="table-scroll"><table class="fee-table"><thead><tr><th>SN</th><th>Fee head</th><th>Classes</th><th>Frequency</th><th>Group</th><th>Amount</th><th>Description</th><th>Actions</th></tr></thead><tbody><% feeStructures.forEach((item, index) => { %><tr><td><%= index + 1 %></td><td><strong><%= item.feehead %></strong></td><td class="classes"><%= (item.forClasses || []).join(', ') || '-' %></td><td><%= item.frequency %></td><td><%= item.group %></td><td><strong><%= Number(item.amount).toFixed(2) %></strong></td><td class="classes"><%= item.description || '-' %></td><td><div class="fee-actions"><a class="fee-action edit" href="/feestructure/<%= item._id %>/edit" title="Edit fee structure" aria-label="Edit fee structure">✎</a><form action="/feestructure/<%= item._id %>/delete" method="POST" onsubmit="return confirm('Delete this fee structure?');"><button class="fee-action delete" type="submit" title="Delete fee structure" aria-label="Delete fee structure">⌫</button></form></div></td></tr><% }) %></tbody></table></div><% } else { %><div class="empty-state">No fee structures have been added yet.</div><% } %>
+					<% if (selectedSessionId && classes.length && feeheads.length) { %>
+					<form action="/feestructure" method="POST">
+					<input type="hidden" name="academicSession" value="<%= selectedSessionId %>">
+					<div class="matrix-scroll" style="margin-top:24px"><table class="matrix-table"><thead><tr><th>Class</th><% feeheads.forEach((feehead) => { %><th><%= feehead.feehead %></th><% }) %></tr></thead><tbody><% classes.forEach((classItem) => { %><tr><td class="matrix-class"><%= classItem.name %></td><% feeheads.forEach((feehead) => { const key = `${classItem._id}:${feehead._id}`; %><td><input class="matrix-input" type="number" min="0" step="0.01" name="amounts[<%= classItem._id %>][<%= feehead._id %>]" value="<%= amounts[key] ?? '' %>" placeholder="0"></td><% }) %></tr><% }) %></tbody></table></div>
+					<div class="form-actions"><button class="button" type="submit">Save fee structure</button></div>
+					</form>
+					<% } else if (selectedSessionId) { %><div class="matrix-empty">Add classes and fee heads before entering fee amounts.</div><% } else { %><div class="matrix-empty">Select an academic year to load the fee matrix.</div><% } %>
 			</section>
 		</div>
 	</main>
