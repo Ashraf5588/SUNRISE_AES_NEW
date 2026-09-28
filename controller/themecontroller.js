@@ -2897,7 +2897,7 @@ students.forEach(student => {
     }
 };
 
-const THEME_COUNTER_CLASSES = ['one', '1', 'two', '2', 'three', '3'];
+const THEME_COUNTER_CLASSES = ['one', '1', 'two', '2', 'three', '3', 'four', '4', 'five', '5'];
 
 const getThemeCounterModel = (studentClass, academicYear) => {
   const collectionName = `themeForStudent-${studentClass}-${academicYear}`;
@@ -2913,7 +2913,7 @@ exports.themeAssessmentCounter = async (req, res) => {
     const selectedParts = selectedClassSection.split('|');
     const classFilter = String(req.query.studentClass || selectedParts[0] || '').trim();
     const sectionFilter = String(req.query.section || selectedParts[1] || '').trim();
-    const eligibleClassRows = (await studentClass.find({}).lean().sort({ studentClass: 1, section: 1 }))
+    const eligibleClassRows = (await studentClass.find({}).sort({ classorder: 1, studentClass: 1, section: 1 }).lean())
       .filter((item) => THEME_COUNTER_CLASSES.includes(String(item.studentClass || '').trim().toLowerCase()));
     const classRows = eligibleClassRows
       .filter((item) => !classFilter || String(item.studentClass) === classFilter)
