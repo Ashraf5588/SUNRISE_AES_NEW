@@ -14,7 +14,7 @@ const practical410controller = require('../controller/practical410controller')
 const themecontroller = require('../controller/themecontroller')
 const eventcontroller = require('../controller/eventcontroller')
 const ecdcontroller = require('../controller/ecdgradecontroller')
-const {verifytoken,authorized,isAdmin,isnewsAdmin}=require('../middleware/auth')
+const {verifytoken,authorized,isAdmin,isnewsAdmin,isAllowedHome}=require('../middleware/auth')
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -67,7 +67,7 @@ student.post('/reset-password', verifytoken, authorized, isAdmin, admincontrol.r
 student.get('/admin/login',admincontrol.adminlogin)
 student.post('/admin/login',admincontrol.adminloginpost)
 
-student.get('/',verifytoken,authorized,controller.homePage)
+student.get('/',verifytoken,authorized,isAllowedHome,controller.homePage)
 
 student.get('/admin/term/:terminal',verifytoken,authorized,isAdmin,admincontrol.admin)
 student.get('/analysisentrycounter',verifytoken,authorized,isAdmin,admincontrol.analysisEntryCounter)

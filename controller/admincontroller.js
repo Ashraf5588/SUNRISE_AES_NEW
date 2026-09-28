@@ -387,7 +387,8 @@ const token = generateToken(user);
   res.cookie("token", token, {
       httpOnly: true,  // prevent JavaScript access
       secure: false,   // change to true if using HTTPS
-      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+      // 365 days 
+      maxAge: 365 * 24 * 60 * 60 * 1000 // 365 days
     });
 
 
@@ -404,7 +405,7 @@ const token = generateToken(user);
   return res.redirect('/frontdesk');
   }
   else if (user.role === "LIBRARY") {
-  return res.redirect('/library');
+  return res.redirect('/library/dashboard');
   }
   else if (user.role === "STUDENT") {
   return res.redirect('/student');
@@ -428,9 +429,7 @@ exports.admin = async (req, res, next) => {
     const studentClasslist = await studentClass.find({});
     const terminal = req.params.terminal; // Get terminal from params
     
-    console.log(`🔍 Processing admin data for terminal: ${terminal}`);
-    console.log(`📚 Found ${subjects.length} subjects`);
-    console.log(`🏫 Found ${studentClasslist.length} class-sections`);
+  
 
     // Create subject mappings
     const subjectMappings = await subject.find({});

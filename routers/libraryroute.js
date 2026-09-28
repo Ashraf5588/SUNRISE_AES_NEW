@@ -14,7 +14,8 @@ const practical410controller = require('../controller/practical410controller')
 const themecontroller = require('../controller/themecontroller')
 const eventcontroller = require('../controller/eventcontroller')
 const ecdcontroller = require('../controller/ecdgradecontroller')
-const {verifytoken,authorized,isAdmin,isnewsAdmin}=require('../middleware/auth')
+const {verifytoken,authorized,isAdmin,isnewsAdmin,isLibrarian}=require('../middleware/auth')
+library.use(verifytoken, isLibrarian);
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {

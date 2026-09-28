@@ -52,6 +52,27 @@
     .home-button:hover {
       background-color: #3a6d99;
     }
+    .action-buttons {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .login-button {
+      display: inline-block;
+      background-color: #fff;
+      color: #4682b4;
+      border: 1px solid #4682b4;
+      text-decoration: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-weight: 500;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    .login-button:hover {
+      background-color: #4682b4;
+      color: #fff;
+    }
     .header {
       margin-bottom: 30px;
       color: #5a3921;
@@ -73,7 +94,11 @@
       Dear <span class="teacher-name"><%= teacherName %></span>,<br>
       Sorry, you are not allowed to access this page. This page is restricted to <%=role%>.Please contact the administrator if you believe this is an error.
     </div>
-    <a href="/" class="home-button">Return to Home</a>
+    
+    <div class="action-buttons">
+      <a href="<%= ({ NURSE: '/healthrecord', FRONTDESKOFFICER: '/frontdesk', LIBRARY: '/library/dashboard', NEWSADMIN: '/newsadmin' })[role] || '/' %>" class="home-button">Return to Home</a>
+      <a href="/admin/login" class="login-button">Login</a>
+    </div>
     <div class="footer">
       &copy; <%= new Date().getFullYear() %> Answer Analysis System
     </div>

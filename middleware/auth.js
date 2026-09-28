@@ -7,7 +7,7 @@ const generateToken = (user) => {
 
 
 const JWT_SECRET = process.env.JWT_SECRET || "aas_amedtech_solutions_789";  // use env var in production
-const JWT_EXPIRES_IN = "30d"; // 30 days, adjust as needed
+const JWT_EXPIRES_IN = "365d"; // 30 days, adjust as needed
 
   // Only include non-sensitive info
   const payload = {
@@ -104,6 +104,30 @@ const isAdmin = async (req, res, next) => {
   }
   next();
 };
+
+const isLibrarian = async (req, res, next) => {
+  const user = req.user;
+  if (user.role !== "LIBRARY" && user.role!=="ADMIN") {
+    return res.render("block",{teacherName: user.teacherName, username: user.username, role: user.role, allowedSubjects: user.allowedSubjects || []}); // Render a block page or redirect
+  }
+  next();
+};
+
+const isFrontdesk = async (req, res, next) => {
+  const user = req.user;
+  if (user.role !== "FRONTDESKOFFICER" && user.role!=="ADMIN") {
+    return res.render("block",{teacherName: user.teacherName, username: user.username, role: user.role, allowedSubjects: user.allowedSubjects || []}); // Render a block page or redirect
+  }
+  next();
+};
+
+const isNurse = async (req, res, next) => {
+  const user = req.user;
+  if (user.role !== "NURSE" && user.role!=="ADMIN") {
+    return res.render("block",{teacherName: user.teacherName, username: user.username, role: user.role, allowedSubjects: user.allowedSubjects || []}); // Render a block page or redirect
+  }
+  next();
+};
 const isnewsAdmin = async (req, res, next) => {
   const user = req.user;
   if (user.role !== "NEWSADMIN") {
@@ -112,7 +136,25 @@ const isnewsAdmin = async (req, res, next) => {
   next();
 };
 
+const isAllowedHome = (req, res, next) => {
+  const user = req.user;
+
+  const allowedRoles = [
+    "ADMIN",
+    "TEACHER",
+  ];
+
+  if (!allowedRoles.includes(user.role)) {
+    return res.render("block", {
+      teacherName: user.teacherName,
+      username: user.username,
+      role: user.role,
+      allowedSubjects: user.allowedSubjects || []
+    });
+  }
+
+  next();
+};
 
 
-
-module.exports = { generateToken, verifytoken, authorized, isAdmin, isnewsAdmin };
+module.exports = { generateToken, verifytoken, authorized, isAdmin, isnewsAdmin, isLibrarian, isFrontdesk,isNurse, isAllowedHome };
