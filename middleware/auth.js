@@ -47,6 +47,7 @@ const verifytoken = async (req, res, next) => {
    
   } catch (err) {
     console.error("Token verification failed:", err.message);
+     res.clearCookie("token");
     return res.redirect("/admin/login"); // Or res.status(403).json({ message: "Invalid token" })
   }
 };

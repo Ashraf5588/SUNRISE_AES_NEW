@@ -1,0 +1,30 @@
+<button class="library-nav-toggle" type="button" aria-label="Collapse navigation" aria-controls="librarySidebar" aria-expanded="true">
+  <span></span><span></span><span></span>
+</button>
+<button class="library-nav-overlay" type="button" aria-label="Close navigation"></button>
+<aside class="sidebar" id="librarySidebar">
+  <div class="brand">
+    <span class="brand-mark">L</span>
+    <span class="library-nav-text">Library</span>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label">Overview</div>
+    <% const libraryNavItems = [
+      { id: 'dashboard', label: 'Dashboard', href: '/library/dashboard', icon: 'D' },
+      { id: 'books', label: 'Books', href: '/library/books', icon: 'B' },
+      { id: 'categories', label: 'Categories', href: '/library/categories', icon: 'C' },
+      { id: 'members', label: 'Members', href: '/library/members', icon: 'M' },
+      { id: 'issues', label: 'Book Issue', href: '/library/issues', icon: 'I' },
+      { id: 'lost-books', label: 'Lost Books', href: '/library/lost-books', icon: 'L' },
+      { id: 'analytics', label: 'Analytics', href: '/library/analytics', icon: 'A' },
+      { id: 'inventory', label: 'Book Inventory', href: '/library/inventory', icon: 'V' },
+      { id: 'shelf-assignment', label: 'Assign Shelves', href: '/library/shelf-assignment', icon: 'S' }
+    ]; %>
+    <% libraryNavItems.forEach((item) => { %>
+      <a class="nav-item<%= activePage === item.id ? ' active' : '' %>" href="<%= item.href %>" title="<%= item.label %>" <%= activePage === item.id ? 'aria-current="page"' : '' %>>
+        <span class="library-nav-icon" aria-hidden="true"><%= item.icon %></span>
+        <span class="library-nav-text"><%= item.label %></span>
+      </a>
+    <% }); %>
+  </div>
+</aside>

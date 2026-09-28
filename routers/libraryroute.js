@@ -15,7 +15,7 @@ const themecontroller = require('../controller/themecontroller')
 const eventcontroller = require('../controller/eventcontroller')
 const ecdcontroller = require('../controller/ecdgradecontroller')
 const {verifytoken,authorized,isAdmin,isnewsAdmin,isLibrarian}=require('../middleware/auth')
-library.use(verifytoken, isLibrarian);
+library.use('/library', verifytoken, isLibrarian);
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -94,10 +94,10 @@ library.get("/library/lost-books", librarycontroller.listLostBooks);
 library.post("/library/lost-books", librarycontroller.reportLostBook);
 library.put("/library/lost-books/:id", librarycontroller.updateLostBook);
 
-library.get("/addbook", librarycontroller.listBooks);
-library.post("/addbook", librarycontroller.addBooks);
-library.get("/bookcategories", librarycontroller.listCategories);
-library.post("/bookcategories", librarycontroller.addCategory);
-library.get("/bookinventory", librarycontroller.inventoryPage);
+library.get("/addbook", verifytoken, isLibrarian, librarycontroller.listBooks);
+library.post("/addbook", verifytoken, isLibrarian, librarycontroller.addBooks);
+library.get("/bookcategories", verifytoken, isLibrarian, librarycontroller.listCategories);
+library.post("/bookcategories", verifytoken, isLibrarian, librarycontroller.addCategory);
+library.get("/bookinventory", verifytoken, isLibrarian, librarycontroller.inventoryPage);
 
 module.exports = library;
