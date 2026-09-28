@@ -35,26 +35,16 @@
     <div class="hm-main-wrap">
       <div class="hm-bg"></div>
       <div class="hm-page hm-analytics-page">
-        <header class="hm-hero">
+        <section class="hm-bmi-toolbar">
           <div>
             <p class="hm-kicker">School Health</p>
-            <h1>Health Analytics</h1>
-            <p class="hm-sub">Open BMI grouping and review students by nutritional category in four colored panels.</p>
-          </div>
-          <div class="hm-badge">
-            <span>Clinic</span>
-            <strong><%= totalWithBmi %> Students with BMI</strong>
-          </div>
-        </header>
-
-        <section class="hm-card hm-analytics-launcher">
-          <div>
-            <h2>BMI Grouping</h2>
-            <p class="hm-muted">Click to reveal the four-way BMI analysis view.</p>
+            <h1>Student BMI Report</h1>
+            <p class="hm-muted"><%= totalWithBmi %> students with BMI records</p>
           </div>
           <div class="hm-analytics-actions">
+            <button type="button" style="background-color:green !important;color:white;" class="hm-button hm-button-secondary" id="exportBmiExcelBtn">Export BMI to Excel</button>
+            <button type="button" class="hm-button hm-button-secondary" id="printBmiReportBtn">Print BMI Report</button>
             <button type="button" class="hm-button hm-button-secondary" id="printDiagnosisSummaryBtn">Print Summary</button>
-            <button type="button" class="hm-button" id="toggleBmiGroupingBtn">Open BMI Grouping</button>
           </div>
         </section>
 
@@ -100,7 +90,12 @@
           <% } %>
         </section>
 
-        <section class="hm-bmi-grouping-panel" id="bmiGroupingPanel" hidden>
+        <header class="hm-bmi-print-heading">
+          <h1>Student BMI Report</h1>
+          <p><%= totalWithBmi %> students with BMI records</p>
+        </header>
+
+        <section class="hm-bmi-grouping-panel" id="bmiGroupingPanel" aria-label="Students grouped by BMI category">
           <% bmiGroups.forEach(function(group, index) { %>
             <article class="hm-card hm-bmi-group-card hm-bmi-<%= group.color %>">
               <div class="hm-card-header hm-bmi-group-header">
@@ -111,13 +106,37 @@
                 <span class="hm-bmi-count"><%= group.count %></span>
               </div>
 
-              <div class="hm-bmi-student-list">
-                <% if (group.students.length) { %>
-                  <% group.students.forEach(function(student) { %>
-                    <div class="hm-bmi-student-row">
-                      <div class="hm-bmi-student-name"><%= student.name %></div>
-                      <div class="hm-bmi-student-meta">Class <%= student.studentClass %> | Section <%= student.section %> | BMI <%= student.bmi %></div>
-                    </div>
+              <div class="hm-bmi-class-groups">
+                <% if (group.classGroups.length) { %>
+                  <% group.classGroups.forEach(function(classGroup) { %>
+                    <section class="hm-bmi-class-group" data-class="<%= classGroup.studentClass %>" data-section="<%= classGroup.section %>">
+                      <div class="hm-bmi-class-heading">
+                        <h3>Class <%= classGroup.studentClass %> | Section <%= classGroup.section %></h3>
+                        <span><%= classGroup.students.length %> students</span>
+                      </div>
+                      <div class="hm-bmi-table-wrap">
+                        <table class="hm-bmi-table">
+                          <thead>
+                            <tr>
+                              <th scope="col">Roll</th>
+                              <th scope="col">Student</th>
+                              <th scope="col">Contact</th>
+                              <th scope="col">BMI</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <% classGroup.students.forEach(function(student) { %>
+                              <tr>
+                                <td><%= student.roll %></td>
+                                <td><%= student.name %></td>
+                                <td><%= student.contactNumber || 'Not available' %></td>
+                                <td><%= student.bmi %></td>
+                              </tr>
+                            <% }); %>
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
                   <% }); %>
                 <% } else { %>
                   <div class="hm-empty hm-bmi-empty">No students in this group.</div>

@@ -456,8 +456,23 @@ exports.showPadRecordForm = async (req, res) => {
 exports.showHealthAnalytics = async (req, res) => {
     try {
         const students = await StudentRecord.find({ bmi: { $nin: [null, ''] } })
-            .select('name studentClass section roll bmi')
+            .select('name studentClass section roll bmi numberofmobile fatherContact motherContact otherguardianContact')
             .lean();
+
+        const classOrderRows = await ClassList.find({})
+            .select('studentClass classorder')
+            .lean();
+        const classOrderByName = new Map();
+        for (const classRow of classOrderRows) {
+            const className = String(classRow.studentClass || '').trim().toLowerCase();
+            const classOrder = Number(classRow.classorder);
+            if (!className || !Number.isFinite(classOrder)) {
+                continue;
+            }
+            if (!classOrderByName.has(className) || classOrder < classOrderByName.get(className)) {
+                classOrderByName.set(className, classOrder);
+            }
+        }
 
         const healthRecords = await HealthRecord.find({})
             .select('diagnosis createdAt nepaliDate')
@@ -482,6 +497,7 @@ exports.showHealthAnalytics = async (req, res) => {
                 studentClass: student.studentClass || '-',
                 section: student.section || '-',
                 roll: student.roll || '-',
+                contactNumber: student.numberofmobile || student.fatherContact || student.motherContact || student.otherguardianContact || '',
                 bmi: parseBmiValue(student.bmi) !== null ? parseBmiValue(student.bmi).toFixed(2) : String(student.bmi || '-')
             });
         }
@@ -491,12 +507,38 @@ exports.showHealthAnalytics = async (req, res) => {
             { key: 'Normal', label: 'Normal', color: 'green' },
             { key: 'Overweight', label: 'Overweight', color: 'orange' },
             { key: 'Obese', label: 'Obese', color: 'red' }
-        ].map((group) => ({
-            ...group,
-            count: groups[group.key].length,
-            students: groups[group.key]
-                .sort((left, right) => naturalSort(left.name, right.name))
-        }));
+        ].map((group) => {
+            const classGroups = new Map();
+
+            for (const student of groups[group.key]) {
+                const classSectionKey = JSON.stringify([student.studentClass, student.section]);
+                if (!classGroups.has(classSectionKey)) {
+                    classGroups.set(classSectionKey, {
+                        studentClass: student.studentClass,
+                        section: student.section,
+                        students: []
+                    });
+                }
+                classGroups.get(classSectionKey).students.push(student);
+            }
+
+            const sortedClassGroups = [...classGroups.values()]
+                .sort((left, right) => {
+                    const leftOrder = classOrderByName.get(left.studentClass.toLowerCase()) ?? Number.MAX_SAFE_INTEGER;
+                    const rightOrder = classOrderByName.get(right.studentClass.toLowerCase()) ?? Number.MAX_SAFE_INTEGER;
+                    return leftOrder - rightOrder || naturalSort(left.studentClass, right.studentClass) || naturalSort(left.section, right.section);
+                })
+                .map((classGroup) => ({
+                    ...classGroup,
+                    students: classGroup.students.sort((left, right) => naturalSort(left.name, right.name))
+                }));
+
+            return {
+                ...group,
+                count: groups[group.key].length,
+                classGroups: sortedClassGroups
+            };
+        });
 
         const diagnosisSummary = buildDiagnosisSummary(healthRecords);
 
