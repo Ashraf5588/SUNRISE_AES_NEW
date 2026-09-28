@@ -13,6 +13,8 @@ inventory.get('/categories',verifytoken,isFrontdesk, inventoryController.categor
 inventory.post('/categories',verifytoken,isFrontdesk, inventoryController.createCategory);
 inventory.get('/quantity-types',verifytoken,isFrontdesk, inventoryController.quantityTypesPage);
 inventory.post('/quantity-types', verifytoken,isFrontdesk, inventoryController.createQuantityType);
+inventory.get('/suppliers', verifytoken,isFrontdesk, inventoryController.suppliersPage);
+inventory.post('/suppliers', verifytoken,isFrontdesk, inventoryController.createSupplier);
 inventory.get('/sales', verifytoken,isFrontdesk, inventoryController.salesPage);
 inventory.post('/sales', verifytoken,isFrontdesk, inventoryController.createTransaction);
 inventory.get('/productrequests', verifytoken,isFrontdesk, inventoryController.productRequestsPage);

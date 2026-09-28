@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Inventory suppliers</title>
+	<link rel="stylesheet" href="/inventory.css">
+</head>
+<body>
+<div class="inventory-shell">
+	<%- include('inventorynav', { currentPath }) %>
+	<main class="inventory-main">
+		<header class="page-header">
+			<div><p class="eyebrow">Catalog / Purchasing</p><h1>Suppliers</h1><p class="page-subtitle">Save supplier names for the product purchase-entry list.</p></div>
+			<a class="button secondary" href="/inventory/products">Back to products</a>
+		</header>
+		<% if (message) { %><div class="notice"><%= message %></div><% } %>
+		<section class="panel supplier-panel">
+			<div class="panel-heading"><div><h2>Add supplier</h2><p>Supplier names saved here appear in the “Buy from” suggestions.</p></div></div>
+			<form method="post" action="/inventory/suppliers" class="supplier-form">
+				<div class="field"><label for="supplierName">Supplier name</label><input id="supplierName" name="name" type="text" maxlength="120" autocomplete="organization" placeholder="Enter supplier or store name" required></div>
+				<button class="button" type="submit">Save supplier</button>
+			</form>
+		</section>
+		<section class="panel supplier-list-panel">
+			<div class="panel-heading"><div><h2>Saved suppliers</h2><p><%= suppliers.length %> available</p></div></div>
+			<% if (suppliers.length) { %>
+				<div class="table-wrap"><table><thead><tr><th>Supplier</th><th>Added</th></tr></thead><tbody>
+				<% suppliers.forEach(supplier => { %><tr><td><span class="cell-primary"><%= supplier.name %></span></td><td><%= new Date(supplier.createdAt).toLocaleDateString() %></td></tr><% }) %>
+				</tbody></table></div>
+			<% } else { %><div class="empty-state">No suppliers saved yet.</div><% } %>
+		</section>
+	</main>
+</div>
+</body>
+</html>

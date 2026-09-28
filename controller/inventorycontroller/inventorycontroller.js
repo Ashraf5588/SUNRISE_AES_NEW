@@ -10,6 +10,7 @@ const {
   inventoryTransactionSchema,
   inventoryProductRequestSchema
 } = require('../../model/inventoryschema/inventorySchema');
+const { inventorySupplierSchema } = require('../../model/inventoryschema/supplierSchema');
 const { teacherSchema } = require('../../model/admin');
 const { studentrecordschema } = require('../../model/adminschema');
 
@@ -18,11 +19,27 @@ const InventoryQuantityType = mongoose.models.inventoryQuantityType || mongoose.
 const InventoryProduct = mongoose.models.inventoryProduct || mongoose.model('inventoryProduct', inventoryProductSchema, 'inventoryProducts');
 const InventoryTransaction = mongoose.models.inventoryTransaction || mongoose.model('inventoryTransaction', inventoryTransactionSchema, 'inventoryTransactions');
 const InventoryProductRequest = mongoose.models.inventoryProductRequest || mongoose.model('inventoryProductRequest', inventoryProductRequestSchema, 'inventoryProductRequests');
+const InventorySupplier = mongoose.models.inventorySupplier || mongoose.model('inventorySupplier', inventorySupplierSchema, 'inventorySuppliers');
 const User = mongoose.models.inventoryUser || mongoose.model('inventoryUser', teacherSchema, 'users');
 const StudentRecord = mongoose.models.inventoryStudentRecord || mongoose.model('inventoryStudentRecord', studentrecordschema, 'studentrecord');
 const inventoryCsvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
 const PAGE_SIZE = 25;
 const parsePage = (value) => Math.max(1, Number.parseInt(value, 10) || 1);
+const saveSupplierName = async (value) => {
+  const name = String(value || '').trim().replace(/\s+/g, ' ');
+  if (!name) return '';
+  const normalizedName = name.toLowerCase();
+  try {
+    await InventorySupplier.updateOne(
+      { normalizedName },
+      { $setOnInsert: { name, normalizedName, active: true } },
+      { upsert: true }
+    );
+  } catch (error) {
+    if (error.code !== 11000) throw error;
+  }
+  return name;
+};
 
 const parseInventoryCsv = (buffer) => new Promise((resolve, reject) => {
   const rows = [];
@@ -275,10 +292,11 @@ exports.productsPage = async (req, res) => {
     const totalProducts = await InventoryProduct.countDocuments({ active: true });
     const totalPages = Math.max(1, Math.ceil(totalProducts / PAGE_SIZE));
     const page = Math.min(requestedPage, totalPages);
-    const [products, categories, quantityTypes] = await Promise.all([
+    const [products, categories, quantityTypes, suppliers] = await Promise.all([
       InventoryProduct.find({ active: true }).sort({ name: 1 }).skip((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).lean(),
       InventoryCategory.find({ active: true }).sort({ name: 1 }).lean(),
-      InventoryQuantityType.find({ active: true }).sort({ name: 1 }).lean()
+      InventoryQuantityType.find({ active: true }).sort({ name: 1 }).lean(),
+      InventorySupplier.find({ active: true }).sort({ name: 1 }).lean()
     ]);
     let defaultQuantityType = quantityTypes.find((unit) => /^(pcs?|pieces?)$/i.test(unit.name) || /^(pcs?|pieces?)$/i.test(unit.abbreviation || ''));
     if (!defaultQuantityType) {
@@ -291,6 +309,7 @@ exports.productsPage = async (req, res) => {
       page,
       totalPages,
       categories,
+      suppliers,
       quantityTypes,
       defaultQuantityTypeId: String(defaultQuantityType._id),
       todayNepaliDate: String(bs.ADToBS(new Date()) || '').trim(),
@@ -312,14 +331,18 @@ exports.createProduct = async (req, res) => {
     const quantity = Number(req.body.quantity);
     const price = Number(req.body.price || 0);
     const lowStockThreshold = Number(req.body.lowStockThreshold);
+    const supplierName = String(req.body.supplierName || '').trim();
     if (!Number.isInteger(quantity) || quantity < 0 || !Number.isFinite(price) || price < 0 || !Number.isFinite(lowStockThreshold) || lowStockThreshold < 0) {
       return res.status(400).send('Stock, price, and low-stock threshold must be valid and zero or greater.');
     }
+    if (supplierName.length > 120) return res.status(400).send('Supplier name must be 120 characters or fewer.');
+    if (supplierName) await saveSupplierName(supplierName);
     await InventoryProduct.create({
       name: req.body.name,
       sku: String(req.body.sku || '').trim() || undefined,
       category: category?._id,
       categoryName: category?.name || '',
+      supplierName,
       quantityType: quantityType._id,
       quantityTypeName: quantityType.name,
       quantity,
@@ -359,8 +382,9 @@ exports.saveProducts = async (req, res) => {
       const quantity = Number(row.quantity);
       const price = Number(row.price || 0);
       const lowStockThreshold = Number(row.lowStockThreshold);
+      const supplierName = String(row.supplierName || '').trim();
       const barcode = String(row.barcode || '').trim();
-      if (!name || name.length > 120 || sku.length > 60 || barcode.length > 100 || !Number.isInteger(quantity) || quantity < 0 || !Number.isFinite(price) || price < 0 || !Number.isInteger(lowStockThreshold) || lowStockThreshold < 0) {
+      if (!name || name.length > 120 || supplierName.length > 120 || sku.length > 60 || barcode.length > 100 || !Number.isInteger(quantity) || quantity < 0 || !Number.isFinite(price) || price < 0 || !Number.isInteger(lowStockThreshold) || lowStockThreshold < 0) {
         return res.status(400).send('Each changed row needs a product name, valid whole-number stock values, and a nonnegative price.');
       }
       if (sku && submittedSkus.has(sku.toLowerCase())) return res.status(409).send(`SKU ${sku} is repeated in the table.`);
@@ -378,6 +402,7 @@ exports.saveProducts = async (req, res) => {
         name,
         category: category?._id,
         categoryName: category?.name || '',
+        supplierName,
         quantityType: quantityType._id,
         quantityTypeName: quantityType.name,
         quantity,
@@ -411,6 +436,7 @@ exports.saveProducts = async (req, res) => {
       if (activeProducts !== productIds.length) return res.status(404).send('One or more products could not be found. Refresh and try again.');
     }
     await InventoryProduct.bulkWrite(operations, { ordered: true });
+    await Promise.all([...new Set(changedRows.map((row) => String(row.supplierName || '').trim()).filter(Boolean))].map(saveSupplierName));
     return res.redirect(`/inventory/products?saved=1&page=${page}`);
   } catch (error) {
     console.error('Unable to save inventory product rows:', error);
@@ -658,5 +684,30 @@ exports.printTransaction = async (req, res) => {
   } catch (error) {
     console.error('Unable to load inventory receipt:', error);
     res.status(500).send('Unable to load receipt');
+  }
+};
+
+exports.suppliersPage = async (req, res) => {
+  try {
+    const suppliers = await InventorySupplier.find({ active: true }).sort({ name: 1 }).lean();
+    renderPage(res, 'addstorename', {
+      suppliers,
+      message: req.query.saved ? 'Supplier saved and available in product entry.' : ''
+    });
+  } catch (error) {
+    console.error('Unable to load inventory suppliers:', error);
+    res.status(500).send('Unable to load inventory suppliers');
+  }
+};
+
+exports.createSupplier = async (req, res) => {
+  const name = String(req.body.name || '').trim().replace(/\s+/g, ' ');
+  if (!name || name.length > 120) return res.status(400).send('Enter a supplier name up to 120 characters.');
+  try {
+    await saveSupplierName(name);
+    return res.redirect('/inventory/suppliers?saved=1');
+  } catch (error) {
+    console.error('Unable to save inventory supplier:', error);
+    return res.status(500).send('Unable to save supplier. Please try again.');
   }
 };

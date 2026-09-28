@@ -18,6 +18,7 @@ const inventoryProductSchema = new mongoose.Schema({
   barcode: { type: String, trim: true, default: undefined, unique: true, sparse: true },
   category: { type: mongoose.Schema.Types.ObjectId, ref: 'inventoryCategory', default: undefined },
   categoryName: { type: String, trim: true, default: '' },
+  supplierName: { type: String, trim: true, maxlength: 120, default: '' },
   quantityType: { type: mongoose.Schema.Types.ObjectId, ref: 'inventoryQuantityType', required: true },
   quantityTypeName: { type: String, required: true, trim: true },
   quantity: { type: Number, required: true, min: 0, default: 0 },
