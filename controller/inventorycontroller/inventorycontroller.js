@@ -446,10 +446,10 @@ exports.saveProducts = async (req, res) => {
 };
 
 exports.downloadProductTemplate = (req, res) => {
-  const headers = ['entryDateNepali', 'name', 'quantity', 'unit', 'price', 'color', 'size', 'sku', 'description', 'barcode', 'category', 'lowStockThreshold'];
+  const headers = ['entryDateNepali', 'name', 'quantity', 'unit', 'supplierName', 'price', 'color', 'size', 'sku', 'description', 'barcode', 'category', 'lowStockThreshold'];
   res.type('text/csv');
   res.setHeader('Content-Disposition', 'attachment; filename="inventory-products-template.csv"');
-  res.send(`${headers.join(',')}\r\n${String(bs.ADToBS(new Date()) || '').trim()},Sample product,10,pcs,0,Blue,Medium,SKU-001,Product description,123456789012,,5\r\n`);
+  res.send(`${headers.join(',')}\r\n${String(bs.ADToBS(new Date()) || '').trim()},Sample product,10,pcs,,0,Blue,Medium,SKU-001,Product description,123456789012,,5\r\n`);
 };
 
 exports.importProductsCsv = [inventoryCsvUpload.single('productCsv'), async (req, res) => {
@@ -475,6 +475,7 @@ exports.importProductsCsv = [inventoryCsvUpload.single('productCsv'), async (req
       const rowNumber = index + 2;
       const name = String(row.name || '').trim();
       const unit = unitMap.get(String(row.unit || '').trim().toLowerCase());
+      const supplierName = String(row.supplierName || '').trim().replace(/\s+/g, ' ');
       const categoryName = String(row.category || '').trim();
       const category = categoryName ? categoryMap.get(categoryName.toLowerCase()) : null;
       const quantity = Number(row.quantity);
@@ -482,7 +483,7 @@ exports.importProductsCsv = [inventoryCsvUpload.single('productCsv'), async (req
       const lowStockThreshold = Number(row.lowStockThreshold || 5);
       const sku = String(row.sku || '').trim();
       const barcode = String(row.barcode || '').trim();
-      if (!name || name.length > 120 || !unit || (categoryName && !category) || !Number.isInteger(quantity) || quantity < 0 || !Number.isFinite(price) || price < 0 || !Number.isInteger(lowStockThreshold) || lowStockThreshold < 0) {
+      if (!name || name.length > 120 || supplierName.length > 120 || !unit || (categoryName && !category) || !Number.isInteger(quantity) || quantity < 0 || !Number.isFinite(price) || price < 0 || !Number.isInteger(lowStockThreshold) || lowStockThreshold < 0) {
         return res.status(400).json({ message: `CSV row ${rowNumber} has an invalid name, unit, category, quantity, price, or low-stock alert.` });
       }
       if (sku.length > 60 || barcode.length > 100 || String(row.color || '').length > 40 || String(row.size || '').length > 40 || String(row.description || '').length > 400 || String(row.entryDateNepali || '').length > 20) {
@@ -500,6 +501,7 @@ exports.importProductsCsv = [inventoryCsvUpload.single('productCsv'), async (req
         barcode: barcode || undefined,
         category: category?._id,
         categoryName: category?.name || '',
+        supplierName,
         quantityType: unit._id,
         quantityTypeName: unit.name,
         quantity,
@@ -511,6 +513,7 @@ exports.importProductsCsv = [inventoryCsvUpload.single('productCsv'), async (req
         description: String(row.description || '').trim()
       });
     }
+    await Promise.all([...new Set(documents.map((document) => document.supplierName).filter(Boolean))].map(saveSupplierName));
     await InventoryProduct.insertMany(documents, { ordered: true });
     return res.json({ message: `Imported ${documents.length} products successfully.`, imported: documents.length });
   } catch (error) {
