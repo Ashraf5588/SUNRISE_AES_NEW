@@ -137,11 +137,25 @@ function getCurrentBSDate() {
   return { year: 2083, month: 2, day: 15 };
 }
 
-async function getAttendanceDataFromApi(studentClass, section, academicYear) {
+async function getAttendanceDataFromApi(studentClass, section, academicYear, terminal) {
   const normalizedAcademicYear = String(academicYear || '').trim();
-  const bsDate = getCurrentBSDate();
-  const currentDay = 14
-  const currentMonthNumber = Number.isFinite(bsDate.month) ? bsDate.month : 0;
+  const marksheetSetupDoc = await marksheetSetup.findOne({ academicYear: normalizedAcademicYear }).lean();
+  const terminalData = marksheetSetupDoc?.terminals?.find((item) => normalizeText(item.name) === normalizeText(terminal));
+  const attendanceStart = parseBsDate(terminalData?.attendancestartdate);
+  const attendanceEnd = parseBsDate(terminalData?.attendanceenddate);
+  const getDateKey = (date) => date.year * 10000 + date.month * 100 + date.day;
+  const isValidAttendanceDate = (date) => date &&
+    date.year === Number(normalizedAcademicYear) &&
+    Boolean(NEPALI_MONTHS[BS_MONTH_NAMES[date.month]]) &&
+    date.day >= 1 && date.day <= getBsMonthLength(BS_MONTH_NAMES[date.month]);
+
+  if (!terminalData || !isValidAttendanceDate(attendanceStart) || !isValidAttendanceDate(attendanceEnd) || getDateKey(attendanceStart) > getDateKey(attendanceEnd)) {
+    return [];
+  }
+
+  const attendanceStartKey = getDateKey(attendanceStart);
+  const attendanceEndKey = getDateKey(attendanceEnd);
+  const totalWorkingDays = Math.max(Number(terminalData.workingDays) || 0, 0);
 
   const holidayDoc = await holiday.findOne({ academicYear: normalizedAcademicYear }).lean();
   const holidayMonthMap = new Map(
@@ -154,18 +168,6 @@ async function getAttendanceDataFromApi(studentClass, section, academicYear) {
         ])
       : []
   );
-
-  let totalWorkingDaysUptoToday = 0;
-  for (let monthIndex = 1; monthIndex <= currentMonthNumber; monthIndex += 1) {
-    const monthName = BS_MONTH_NAMES[monthIndex];
-    const monthLength = getBsMonthLength(monthName);
-    const monthDayLimit = monthIndex === currentMonthNumber ? currentDay : monthLength;
-    const holidayDaysForMonth = holidayMonthMap.get(getCanonicalMonthName(monthName)) || [];
-    const holidayDaysUntilLimit = holidayDaysForMonth.filter(
-      (dayValue) => Number.isFinite(dayValue) && dayValue <= monthDayLimit
-    );
-    totalWorkingDaysUptoToday += Math.max(monthDayLimit - holidayDaysUntilLimit.length, 0);
-  }
 
   const onlineAttendanceDocs = await onlineAttendance
     .find({
@@ -186,16 +188,12 @@ async function getAttendanceDataFromApi(studentClass, section, academicYear) {
 
       const entryMonthName = String(entry?.month || '').trim();
       const entryMonthNumber = getBsMonthNumber(entryMonthName);
-      if (!entryMonthNumber || entryMonthNumber > currentMonthNumber) return;
+      if (!entryMonthNumber) return;
 
       const entryDay = Number.parseInt(entry?.day, 10);
-      if (!Number.isFinite(entryDay) || entryDay <= 0) return;
-
-      const monthDayLimit =
-        entryMonthNumber === currentMonthNumber
-          ? Math.min(currentDay, getBsMonthLength(BS_MONTH_NAMES[entryMonthNumber]))
-          : getBsMonthLength(BS_MONTH_NAMES[entryMonthNumber]);
-      if (entryDay > monthDayLimit) return;
+      if (!Number.isFinite(entryDay) || entryDay < 1 || entryDay > getBsMonthLength(BS_MONTH_NAMES[entryMonthNumber])) return;
+      const entryDateKey = Number(entryAcademicYear) * 10000 + entryMonthNumber * 100 + entryDay;
+      if (entryDateKey < attendanceStartKey || entryDateKey > attendanceEndKey) return;
 
       const holidayDaysForMonth = holidayMonthMap.get(getCanonicalMonthName(entryMonthName)) || [];
       if (holidayDaysForMonth.includes(entryDay)) return;
@@ -207,7 +205,7 @@ async function getAttendanceDataFromApi(studentClass, section, academicYear) {
     });
 
     const absentDays = absentDayKeys.size;
-    const presentDays = Math.max(totalWorkingDaysUptoToday - absentDays, 0);
+    const presentDays = Math.max(totalWorkingDays - absentDays, 0);
 
     return {
       reg,
@@ -215,14 +213,17 @@ async function getAttendanceDataFromApi(studentClass, section, academicYear) {
       name: onlineDoc?.name || '',
       gender: onlineDoc?.gender || '',
       attendance: presentDays,
-      totalWorkingDaysUptoToday,
+      totalWorkingDaysUptoToday: totalWorkingDays,
+      terminal: terminalData.name,
+      attendanceStartDate: terminalData.attendancestartdate,
+      attendanceEndDate: terminalData.attendanceenddate,
       holidayDaysInAcademicYear: (holidayDoc?.month || []).reduce(
         (count, monthItem) => count + (Array.isArray(monthItem?.holidayDays) ? monthItem.holidayDays.length : 0),
         0
       ),
       absentDays,
-      currentMonth: BS_MONTH_NAMES[bsDate.month] || '',
-      currentDay,
+      currentMonth: BS_MONTH_NAMES[attendanceEnd.month] || '',
+      currentDay: attendanceEnd.day,
       currentAcademicYear: normalizedAcademicYear
     };
   });
@@ -289,6 +290,7 @@ exports.generateMarksheet = async (req, res, next) => {
           subjects: {
             $push: {
               subject: "$subject",
+              status: "$status",
               attendance: "$attendance",
               theorymarks: "$theorymarks",
               practicalmarks: "$practicalmarks",
@@ -310,9 +312,13 @@ exports.generateMarksheet = async (req, res, next) => {
     ]);
 
    
-    const attendanceData = await getAttendanceDataFromApi(studentClass, section, academicYear);
+    const attendanceData = await getAttendanceDataFromApi(studentClass, section, academicYear, terminal);
     const attendanceMap = new Map(attendanceData.map(item => [String(item.reg).trim(), item]));
-    const attendanceWorkingDays = attendanceData?.[0]?.totalWorkingDaysUptoToday || marksheetSetups?.[0]?.terminals?.[0]?.workingDays || 0;
+    const terminalWorkingDays = Number(marksheetSetups
+      .find((setup) => String(setup.academicYear) === String(academicYear))
+      ?.terminals?.find((item) => normalizeText(item.name) === normalizeText(terminal))
+      ?.workingDays) || 0;
+    const attendanceWorkingDays = terminalWorkingDays || attendanceData?.[0]?.totalWorkingDaysUptoToday || 0;
 
     studentWisedata.forEach((student) => {
       const reg = String(student._id || '').trim();
@@ -325,7 +331,8 @@ exports.generateMarksheet = async (req, res, next) => {
       studentWisedata.forEach((student) => {
       const reg = String(student._id || '').trim();
       const record = attendanceMap.get(reg);
-      const attendanceValue = record?.attendance ?? (student.subjects?.[0]?.attendance ?? 0);
+      const rawAttendanceValue = record?.attendance ?? (student.subjects?.[0]?.attendance ?? 0);
+      const attendanceValue = Math.min(Math.max(Number(rawAttendanceValue) || 0, 0), attendanceWorkingDays);
       student.subjects = student.subjects.map((sub) => ({ ...sub, attendance:attendanceValue }));
     });
     }

@@ -1,9 +1,11 @@
 const express = require('express');
 const student  = require('./routers/mainpage');
+const parentsPortal = require('./routers/parentsroute');
 const attendance  = require('./routers/attendance');
 const billing  = require('./routers/billing');
 const library  = require('./routers/libraryroute');
 const inventory = require('./routers/inventoryRoutes');
+const leave = require('./routers/leaveroute');
 const fs = require('fs');
 const admincontrol = require('./controller/admincontroller')
 const router = require('./routers/setupRoutes');
@@ -355,7 +357,9 @@ app.get('/convert-docx/:filename', (req, res) => {
   }
 });
 app.use('/inventory', inventory);
+app.use('/leave', leave);
 app.use('/setup', router);
+app.use('/parents', parentsPortal);
 app.use('/', router);
 app.use(billing)
 app.use(library)

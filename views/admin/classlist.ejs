@@ -435,6 +435,18 @@
                   value="<%= editing ? classedit.section : '' %>"
                 >
               </div>
+
+              <div class="form-group">
+                <label for="classorder">Class Order</label>
+                <input
+                  type="number"
+                  id="classorder"
+                  name="classorder"
+                  class="form-control"
+                  step="1"
+                  value="<%= editing ? classedit.classorder : '' %>"
+                >
+              </div>
             </div>
             
             <button type="submit" class="btn-primary">
@@ -460,6 +472,7 @@
                   <tr>
                     <th>Class</th>
                     <th>Section</th>
+                    <th>Class Order</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -468,6 +481,7 @@
                     <tr>
                       <td><%= studentclass.studentClass %></td>
                       <td><%= studentclass.section %></td>
+                      <td><%= studentclass.classorder ?? '-' %></td>
                       <td>
                         <div class="action-buttons">
                           <a href="/admin/editclass/<%= studentclass._id %>?editing=true" class="btn-edit">

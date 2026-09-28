@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parent Portal Accounts</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --ink:#182a2a; --muted:#667977; --green:#157765; --line:#dce7e4; }
+    * { box-sizing:border-box; }
+    body { margin:0; padding:24px 16px; background:#f2f6f4; color:var(--ink); font-family:'DM Sans',sans-serif; }
+    main { max-width:980px; margin:auto; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:8px; }
+    h1 { margin:0; font-size:24px; }
+    a { color:var(--green); font-weight:700; font-size:13px; text-decoration:none; }
+    .intro { margin:8px 0 20px; color:var(--muted); font-size:13px; line-height:1.5; }
+    .account-list { display:grid; gap:10px; }
+    .account-row { padding:15px; border:1px solid var(--line); border-radius:7px; background:#fff; }
+    .student { margin-bottom:13px; font-weight:700; font-size:14px; }
+    .student small { display:block; margin-top:4px; color:var(--muted); font-weight:500; font-size:11px; }
+    .fields { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    label { display:block; color:#526661; font-size:11px; font-weight:700; }
+    input[type=text],input[type=password] { display:block; width:100%; min-height:40px; margin-top:5px; padding:9px 10px; border:1px solid #c4d2ce; border-radius:4px; font:inherit; font-size:13px; }
+    .row-actions { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:12px; }
+    .active { display:flex; align-items:center; gap:7px; color:#465b55; font-size:12px; }
+    .active input { accent-color:var(--green); }
+    button { min-height:38px; padding:8px 14px; border:0; border-radius:4px; background:var(--green); color:#fff; font:700 12px 'DM Sans',sans-serif; cursor:pointer; }
+    button:hover { background:#105e50; }
+    .empty { padding:28px; border:1px dashed #c4d2ce; border-radius:7px; color:var(--muted); text-align:center; }
+    @media(min-width:760px) { .account-row { display:grid; grid-template-columns:1fr 2fr; column-gap:18px; align-items:start; } .student { margin:9px 0 0; } }
+    @media(max-width:440px) { body { padding:18px 12px; } header { align-items:flex-start; flex-direction:column; } .fields { grid-template-columns:1fr; } h1 { font-size:21px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header><h1>Parent Portal Accounts</h1><a href="/exammanagement">Back to exam management</a></header>
+    <p class="intro">Each account is linked to one student only. Share the username and password with that student's parent. Leave password blank to keep an existing password.</p>
+    <% if (saved) { %><p role="status" style="padding:10px 12px;background:#e2f3eb;color:#176044;border-radius:4px;font-size:13px">Parent account saved.</p><% } %>
+    <% if (rows.length) { %>
+      <section class="account-list">
+        <% rows.forEach((row) => { %>
+          <form class="account-row" method="POST" action="/parents/admin/accounts">
+            <div class="student"><%= row.name %><small><%= row.studentClass %> · <%= row.section %> · Reg <%= row.reg %></small></div>
+            <input type="hidden" name="studentReg" value="<%= row.reg %>">
+            <div>
+              <div class="fields">
+                <label>Username<input type="text" name="username" value="<%= row.parentAccount?.username || '' %>" required minlength="3" autocomplete="off"></label>
+                <label>Parent name<input type="text" name="displayName" value="<%= row.parentAccount?.displayName || row.fatherName || row.motherName || '' %>" placeholder="Shown in the portal"></label>
+                <label>Password<input type="password" name="password" <%= row.parentAccount ? '' : 'required minlength="8"' %> autocomplete="new-password" placeholder="<%= row.parentAccount ? 'Leave blank to keep current' : 'At least 8 characters' %>"></label>
+              </div>
+              <div class="row-actions">
+                <label class="active"><input type="checkbox" name="active" <%= !row.parentAccount || row.parentAccount.active ? 'checked' : '' %>> Portal access enabled</label>
+                <button type="submit"><%= row.parentAccount ? 'Save account' : 'Create account' %></button>
+              </div>
+            </div>
+          </form>
+        <% }) %>
+      </section>
+    <% } else { %><div class="empty">No student records found.</div><% } %>
+  </main>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parent Portal Accounts</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --ink:#182a2a; --muted:#647874; --green:#157765; --line:#dce7e4; --paper:#fff; }
+    * { box-sizing:border-box; }
+    body { margin:0; padding:24px 16px; background:#f3f7f5; color:var(--ink); font-family:'DM Sans',sans-serif; }
+    main { max-width:1160px; margin:auto; }
+    header { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:18px; }
+    h1 { margin:0; font-size:25px; }
+    a { color:var(--green); font-size:13px; font-weight:700; text-decoration:none; }
+    .intro { margin:6px 0 20px; color:var(--muted); font-size:14px; }
+    .search { width:100%; max-width:360px; min-height:42px; margin-bottom:14px; padding:10px 12px; border:1px solid #bfcec9; border-radius:5px; font:inherit; }
+    .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:7px; background:var(--paper); }
+    table { width:100%; min-width:960px; border-collapse:collapse; }
+    th,td { padding:11px 12px; border-bottom:1px solid #e7eeec; text-align:left; vertical-align:middle; }
+    th { background:#eaf2ef; color:#48605a; font-size:11px; text-transform:uppercase; }
+    td { font-size:13px; }
+    tbody tr:last-child td { border-bottom:0; }
+    .student { font-weight:700; }
+    .subline { display:block; margin-top:3px; color:var(--muted); font-size:11px; }
+    input[type=text],input[type=password] { width:100%; min-width:130px; min-height:38px; padding:8px; border:1px solid #c7d4d0; border-radius:4px; font:inherit; }
+    .active-cell { text-align:center; }
+    .active-cell input { width:17px; height:17px; accent-color:var(--green); }
+    button { border:0; border-radius:4px; padding:9px 13px; background:var(--green); color:#fff; font:700 12px 'DM Sans',sans-serif; cursor:pointer; white-space:nowrap; }
+    .empty { padding:32px; text-align:center; color:var(--muted); }
+    @media(max-width:640px) { body { padding:18px 12px; } header { align-items:flex-start; flex-direction:column; } h1 { font-size:22px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header><h1>Parent Portal Accounts</h1><a href="/exammanagement">Back to Exam Management</a></header>
+    <p class="intro">Each account is securely linked to one student registration. Leave password blank to keep an existing password.</p>
+    <input class="search" id="studentSearch" type="search" placeholder="Filter by student, class, or registration" aria-label="Filter students">
+    <div class="table-wrap">
+      <% if (rows.length) { %>
+        <table>
+          <thead><tr><th>Student</th><th>Username</th><th>Parent display name</th><th>Password</th><th>Active</th><th></th></tr></thead>
+          <tbody id="accountRows">
+            <% rows.forEach((row, index) => { const formId = `parent-account-${index}`; %>
+              <form id="<%= formId %>" method="POST" action="/parents/admin/accounts"></form>
+              <tr data-search="<%= `${row.name} ${row.reg} ${row.studentClass} ${row.section}`.toLowerCase() %>">
+                <td><span class="student"><%= row.name %></span><span class="subline"><%= row.studentClass %> · <%= row.section %> · <%= row.reg %></span><input type="hidden" form="<%= formId %>" name="studentReg" value="<%= row.reg %>"></td>
+                <td><input form="<%= formId %>" type="text" name="username" value="<%= row.parentAccount?.username || '' %>" autocomplete="off" required minlength="3" aria-label="Parent username for <%= row.name %>"></td>
+                <td><input form="<%= formId %>" type="text" name="displayName" value="<%= row.parentAccount?.displayName || row.fatherName || row.motherName || '' %>" aria-label="Parent display name for <%= row.name %>"></td>
+                <td><input form="<%= formId %>" type="password" name="password" autocomplete="new-password" placeholder="<%= row.parentAccount ? 'Keep current' : '8+ characters' %>" <%= row.parentAccount ? '' : 'required minlength="8"' %> aria-label="Parent password for <%= row.name %>"></td>
+                <td class="active-cell"><input form="<%= formId %>" type="checkbox" name="active" <%= row.parentAccount?.active ? 'checked' : '' %> aria-label="Enable parent account for <%= row.name %>"></td>
+                <td><button form="<%= formId %>" type="submit"><%= row.parentAccount ? 'Save' : 'Create' %></button></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } else { %><div class="empty">No student records found.</div><% } %>
+    </div>
+  </main>
+  <script>
+    document.getElementById('studentSearch').addEventListener('input', (event) => {
+      const query = event.target.value.trim().toLowerCase();
+      document.querySelectorAll('#accountRows tr').forEach((row) => {
+        row.hidden = query && !row.dataset.search.includes(query);
+      });
+    });
+  </script>
+</body>
+</html>

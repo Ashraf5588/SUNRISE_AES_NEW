@@ -747,9 +747,10 @@
         const studentClass = "<%= typeof studentClass !== 'undefined' ? studentClass : '' %>";
         const section = "<%= typeof section !== 'undefined' ? section : '' %>";
         const academicYear = "<%= typeof academicYear !== 'undefined' ? academicYear : '' %>";
-        if (!studentClass || !section || !academicYear) return;
+        const selectedTerminal = "<%= typeof terminal !== 'undefined' ? terminal : '' %>";
+        if (!studentClass || !section || !academicYear || !selectedTerminal) return;
 
-        const response = await fetch(`/getAttendanceData?studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}`);
+        const response = await fetch(`/getAttendanceData?studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}&terminal=${encodeURIComponent(selectedTerminal)}`);
         if (!response.ok) return;
 
         const attendanceList = await response.json();

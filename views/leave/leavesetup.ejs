@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Leave policy setup</title>
+	<link rel="stylesheet" href="/leave-management.css">
+</head>
+<body>
+	<div class="leave-shell">
+		<header class="leave-topbar">
+			<a class="leave-brand" href="/leave">Staff leave management</a>
+			<nav aria-label="Leave navigation"><a href="/leave">Applications</a><a class="active" href="/leave/setup">Leave setup</a></nav>
+		</header>
+		<main class="leave-main">
+			<header class="leave-page-heading"><div><p class="leave-eyebrow">Administration / Policies</p><h1>Leave setup</h1><p>Define eligible leave, pay rules, required documents, and usage limits.</p></div></header>
+			<% if (message) { %><div class="leave-notice"><%= message %></div><% } %>
+			<section class="leave-panel">
+				<div class="leave-section-heading"><div><h2>Add leave type</h2><p>Leave limits are measured using Nepali calendar years and months.</p></div></div>
+				<form method="post" action="/leave/setup" class="leave-policy-form">
+					<div class="leave-field-grid">
+						<div class="leave-field"><label for="newLeaveName">Leave name</label><input id="newLeaveName" name="leavename" maxlength="80" required placeholder="e.g. Annual leave"></div>
+						<div class="leave-field"><label for="newAnnualLimit">Maximum days per year</label><input id="newAnnualLimit" name="maxDaysPerYear" type="number" min="1" step="1" placeholder="No limit"></div>
+						<div class="leave-field"><label for="newMonthlyLimit">Maximum days per month</label><input id="newMonthlyLimit" name="maxDaysPerMonth" type="number" min="1" step="1" placeholder="No limit"></div>
+						<div class="leave-field leave-field-wide"><label for="newLeaveDescription">Description</label><input id="newLeaveDescription" name="description" maxlength="300" placeholder="Policy details for staff"></div>
+					</div>
+					<div class="leave-policy-options">
+						<label class="leave-check"><input type="checkbox" name="isPaid" checked><span>Paid leave</span></label>
+						<label class="leave-check"><input type="checkbox" name="requiresDocument"><span>Supporting document required</span></label>
+						<fieldset class="role-options"><legend>Applicable to</legend><label class="leave-check"><input type="checkbox" name="applicableTo" value="ALL" checked><span>All staff</span></label><label class="leave-check"><input type="checkbox" name="applicableTo" value="TEACHER"><span>Teachers</span></label><label class="leave-check"><input type="checkbox" name="applicableTo" value="STAFF"><span>Staff</span></label><label class="leave-check"><input type="checkbox" name="applicableTo" value="ADMIN"><span>Administrators</span></label></fieldset>
+					</div>
+					<div class="leave-form-actions"><button class="leave-button" type="submit">Add leave type</button></div>
+				</form>
+			</section>
+
+			<section class="leave-panel">
+				<div class="leave-section-heading"><div><h2>Leave policies</h2><p><%= leaveTypes.length %> configured leave types</p></div></div>
+				<% if (leaveTypes.length) { %>
+				<div class="policy-list">
+					<% leaveTypes.forEach(leaveType => { const applicable = leaveType.applicableTo || ['ALL']; %>
+					<form method="post" action="/leave/setup/<%= leaveType._id %>" class="policy-row">
+						<div class="leave-field"><label>Leave name</label><input name="leavename" value="<%= leaveType.leavename %>" maxlength="80" required></div>
+						<div class="leave-field"><label>Maximum / year</label><input name="maxDaysPerYear" type="number" min="1" step="1" value="<%= leaveType.maxDaysPerYear ?? '' %>" placeholder="No limit"></div>
+						<div class="leave-field"><label>Maximum / month</label><input name="maxDaysPerMonth" type="number" min="1" step="1" value="<%= leaveType.maxDaysPerMonth ?? '' %>" placeholder="No limit"></div>
+						<div class="leave-field leave-field-wide"><label>Description</label><input name="description" value="<%= leaveType.description || '' %>" maxlength="300"></div>
+						<div class="policy-row-options">
+							<label class="leave-check"><input type="checkbox" name="isPaid" <%= leaveType.isPaid ? 'checked' : '' %>><span>Paid</span></label>
+							<label class="leave-check"><input type="checkbox" name="requiresDocument" <%= leaveType.requiresDocument ? 'checked' : '' %>><span>Document required</span></label>
+							<label class="leave-check"><input type="checkbox" name="isActive" <%= leaveType.isActive ? 'checked' : '' %>><span>Active</span></label>
+							<fieldset class="role-options"><legend>Eligible roles</legend><label class="leave-check"><input type="checkbox" name="applicableTo" value="ALL" <%= applicable.includes('ALL') ? 'checked' : '' %>><span>All</span></label><label class="leave-check"><input type="checkbox" name="applicableTo" value="TEACHER" <%= applicable.includes('TEACHER') ? 'checked' : '' %>><span>Teachers</span></label><label class="leave-check"><input type="checkbox" name="applicableTo" value="STAFF" <%= applicable.includes('STAFF') ? 'checked' : '' %>><span>Staff</span></label><label class="leave-check"><input type="checkbox" name="applicableTo" value="ADMIN" <%= applicable.includes('ADMIN') ? 'checked' : '' %>><span>Admins</span></label></fieldset>
+						</div>
+						<div class="leave-form-actions"><button class="leave-button secondary" type="submit">Save policy</button></div>
+					</form>
+					<% }) %>
+				</div>
+				<% } else { %><div class="leave-empty">No leave types configured yet.</div><% } %>
+			</section>
+		</main>
+	</div>
+	<script>
+		document.querySelectorAll('.role-options').forEach((fieldset) => {
+			const checkboxes = [...fieldset.querySelectorAll('input[name="applicableTo"]')];
+			const allStaff = checkboxes.find((checkbox) => checkbox.value === 'ALL');
+			checkboxes.forEach((checkbox) => checkbox.addEventListener('change', () => {
+				if (checkbox === allStaff && checkbox.checked) checkboxes.filter((item) => item !== allStaff).forEach((item) => { item.checked = false; });
+				else if (checkbox.checked && allStaff) allStaff.checked = false;
+				if (!checkboxes.some((item) => item.checked) && allStaff) allStaff.checked = true;
+			}));
+		});
+	</script>
+</body>
+</html>

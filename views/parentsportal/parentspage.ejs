@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+	<meta name="theme-color" content="#f4f7f6">
+	<title>Parent Portal | <%= student.name %></title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+	<style>
+		:root { --ink:#182b2a; --muted:#6a7d79; --green:#147966; --green-pale:#e3f3ee; --coral:#df7358; --amber:#d39027; --blue:#457e9a; --line:#e1eae7; --white:#fff; --canvas:#f4f7f6; }
+		* { box-sizing:border-box; }
+		body { margin:0; background:var(--canvas); color:var(--ink); font-family:'DM Sans',sans-serif; padding-bottom:calc(86px + env(safe-area-inset-bottom)); }
+		button, input, textarea { font:inherit; }
+		.app-shell { width:min(100%,760px); min-height:100vh; margin:0 auto; background:var(--canvas); }
+		.topbar { display:flex; align-items:center; justify-content:space-between; padding:18px 18px 12px; }
+		.profile { display:flex; align-items:center; gap:11px; min-width:0; }
+		.avatar { width:44px; height:44px; flex:0 0 44px; display:grid; place-items:center; border-radius:50%; background:#d7eee7; color:#176b5c; font:800 14px 'Manrope',sans-serif; }
+		.profile-name { overflow:hidden; color:var(--ink); font-size:14px; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
+		.profile-label { margin-top:2px; color:var(--muted); font-size:11px; }
+		.logout { width:40px; height:40px; display:grid; place-items:center; border:1px solid var(--line); border-radius:7px; background:#fff; color:#526762; cursor:pointer; }
+		.logout svg,.feature-icon svg,.tab-icon svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+		.welcome { padding:5px 18px 17px; }
+		.welcome h1 { margin:0; font:800 25px/1.2 'Manrope',sans-serif; letter-spacing:0; }
+		.welcome p { margin:6px 0 0; color:var(--muted); font-size:13px; }
+		.student-card { position:relative; overflow:hidden; margin:0 16px 22px; padding:17px; border:1px solid #d9e8e3; border-radius:7px; background:linear-gradient(112deg,#fff 0%,#f3faf7 74%,#e1f2eb 100%); }
+		.student-card::after { position:absolute; right:-22px; bottom:-53px; width:140px; height:140px; border:1px solid rgba(20,121,102,.12); border-radius:50%; content:''; }
+		.student-card-label { color:var(--green); font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+		.student-card h2 { margin:7px 0 12px; font:800 18px/1.25 'Manrope',sans-serif; }
+		.student-meta { display:flex; flex-wrap:wrap; gap:7px 16px; color:#627671; font-size:12px; }
+		.student-meta strong { color:#283d38; }
+		.tab-panel { display:none; }
+		.tab-panel.active { display:block; }
+		.section-heading { display:flex; align-items:baseline; justify-content:space-between; margin:0 18px 11px; }
+		.section-heading h2 { margin:0; font:800 16px 'Manrope',sans-serif; }
+		.section-heading span { color:var(--muted); font-size:11px; }
+		.feature-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; padding:0 16px; }
+		.feature { min-width:0; min-height:96px; padding:12px 5px 10px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; border:1px solid var(--line); border-radius:7px; background:#fff; color:var(--ink); cursor:pointer; }
+		.feature:active { transform:scale(.98); }
+		.feature-icon { width:36px; height:36px; display:grid; place-items:center; border-radius:50%; }
+		.feature:nth-child(4n+1) .feature-icon { background:#e1f2ec; color:#157765; }
+		.feature:nth-child(4n+2) .feature-icon { background:#fff0e9; color:#c75c3d; }
+		.feature:nth-child(4n+3) .feature-icon { background:#e8f1f7; color:#39738d; }
+		.feature:nth-child(4n) .feature-icon { background:#fff4d9; color:#a66e0b; }
+		.feature-label { color:#344944; font-size:10px; font-weight:700; line-height:1.25; text-align:center; }
+		.home-summary { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:21px 16px 8px; }
+		.summary-card { min-height:94px; padding:13px; border:1px solid var(--line); border-radius:7px; background:#fff; }
+		.summary-label { color:var(--muted); font-size:11px; }
+		.summary-value { margin-top:7px; font:800 20px 'Manrope',sans-serif; }
+		.summary-foot { margin-top:2px; color:var(--muted); font-size:10px; }
+		.tab-content { padding:4px 16px 20px; }
+		.tab-content h2 { margin:8px 2px 13px; font:800 20px 'Manrope',sans-serif; }
+		.list-card,.detail-card { margin-bottom:9px; padding:14px; border:1px solid var(--line); border-radius:7px; background:#fff; }
+		.list-title { color:var(--ink); font-size:13px; font-weight:700; }
+		.list-meta { margin-top:4px; color:var(--muted); font-size:11px; }
+		.list-copy { margin-top:8px; color:#465a55; font-size:12px; line-height:1.5; white-space:pre-line; }
+		.empty-state { padding:26px 18px; border:1px dashed #c8d8d2; border-radius:7px; background:rgba(255,255,255,.7); color:var(--muted); font-size:13px; line-height:1.5; text-align:center; }
+		.detail-view { display:none; padding:3px 16px 24px; }
+		.detail-view.active { display:block; }
+		.back-button { display:inline-flex; align-items:center; gap:7px; margin:2px 0 13px; padding:7px 0; border:0; background:none; color:var(--green); font-size:12px; font-weight:700; cursor:pointer; }
+		.detail-view h2 { margin:0 0 13px; font:800 20px 'Manrope',sans-serif; }
+		.data-list { display:grid; gap:8px; }
+		.data-row { display:flex; justify-content:space-between; gap:12px; padding:10px 0; border-bottom:1px solid #edf1ef; font-size:12px; }
+		.data-row:last-child { border:0; }
+		.data-label { color:var(--muted); }
+		.data-value { color:var(--ink); font-weight:700; text-align:right; }
+		.grade-pill { display:inline-block; padding:4px 7px; border-radius:4px; background:#e2f2ec; color:#166653; font-size:10px; font-weight:700; }
+		.complaint-form { display:grid; gap:10px; margin:12px 0 16px; }
+		.complaint-form textarea { min-height:95px; resize:vertical; padding:11px; border:1px solid #c5d5d0; border-radius:5px; background:#fff; color:var(--ink); }
+		.complaint-form button { min-height:42px; border:0; border-radius:5px; background:var(--green); color:#fff; font-size:13px; font-weight:700; cursor:pointer; }
+		.success-note { padding:10px 12px; border-radius:5px; background:#e1f2e9; color:#176044; font-size:12px; }
+		.bottom-nav { position:fixed; z-index:10; right:0; bottom:0; left:0; display:grid; grid-template-columns:repeat(4,1fr); width:min(100%,760px); margin:0 auto; padding:8px 12px calc(8px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); background:rgba(255,255,255,.97); }
+		.tab-button { min-height:53px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; border:0; border-radius:5px; background:transparent; color:#788984; font-size:9px; font-weight:700; cursor:pointer; }
+		.tab-button.active { background:#e9f5f1; color:var(--green); }
+		.tab-icon { height:21px; }
+		@media(min-width:620px) { body { padding:24px 0; } .app-shell { min-height:calc(100vh - 48px); border:1px solid var(--line); border-radius:9px; box-shadow:0 15px 45px rgba(24,43,42,.06); } .bottom-nav { bottom:24px; border:1px solid var(--line); border-radius:0 0 9px 9px; } }
+		@media(max-width:360px) { .feature-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .welcome h1 { font-size:22px; } }
+	</style>
+</head>
+<body>
+	<main class="app-shell">
+		<header class="topbar">
+			<div class="profile">
+				<div class="avatar" aria-label="<%= parentName %>"><%= parentInitials %></div>
+				<div style="min-width:0"><div class="profile-name"><%= parentName %></div><div class="profile-label">Parent account</div></div>
+			</div>
+			<form action="/parents/logout" method="POST">
+				<button class="logout" type="submit" aria-label="Sign out" title="Sign out">
+					<svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3m9-9h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg>
+				</button>
+			</form>
+		</header>
+
+		<section class="welcome"><h1>Hello, <%= studentFirstName %></h1><p>Here is your school update.</p></section>
+		<section class="student-card" aria-label="Linked student">
+			<div class="student-card-label">Student profile</div>
+			<h2><%= student.name %></h2>
+			<div class="student-meta"><span>Class <strong><%= student.studentClass %></strong></span><span>Section <strong><%= student.section %></strong></span><span>Roll <strong><%= student.roll %></strong></span></div>
+		</section>
+
+		<section class="tab-panel active" id="tab-home">
+			<div id="homeLanding">
+				<div class="section-heading"><h2>Student services</h2><span>Tap to view</span></div>
+				<div class="feature-grid">
+					<button class="feature" data-detail="results"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M8 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3M8 3h8v4H8zM7 12h10M7 16h7"/></svg></span><span class="feature-label">Exam results</span></button>
+					<button class="feature" data-detail="portfolio"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 1 4 17.5zM4 6h13M8 10h8M8 14h6"/></svg></span><span class="feature-label">Portfolio / CAS</span></button>
+					<button class="feature" data-detail="events"><span class="feature-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h3M8 17h6"/></svg></span><span class="feature-label">Events</span></button>
+					<button class="feature" data-detail="assessment"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M5 3h14a2 2 0 0 1 2 2v16H3V5a2 2 0 0 1 2-2zM7 8h10M7 12h3M7 16h2M14 12l1.5 1.5L18 11"/></svg></span><span class="feature-label">Assessment</span></button>
+					<button class="feature" data-detail="attendance"><span class="feature-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4m8-4v4M3 9h18m-13 5 2 2 4-4"/></svg></span><span class="feature-label">Attendance</span></button>
+					<button class="feature" data-detail="library"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 1 4 17.5zM4 5h12M8 9h8M8 13h7"/></svg></span><span class="feature-label">Library</span></button>
+					<button class="feature" data-detail="fees"><span class="feature-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18m-13 5h4"/></svg></span><span class="feature-label">Fees</span></button>
+					<button class="feature" data-detail="homework"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M5 3h14v18H5zM8 7h8M8 11h8M8 15h5"/></svg></span><span class="feature-label">Homework</span></button>
+				</div>
+				<div class="home-summary">
+					<div class="summary-card"><div class="summary-label">Recent notices</div><div class="summary-value"><%= notices.length %></div><div class="summary-foot">School updates</div></div>
+					<div class="summary-card"><div class="summary-label">Upcoming events</div><div class="summary-value"><%= events.length %></div><div class="summary-foot">For <%= student.studentClass %></div></div>
+				</div>
+			</div>
+
+			<div id="homeDetail" class="detail-view">
+				<button class="back-button" id="detailBack" type="button">← <span>All services</span></button>
+				<div id="detailContent"></div>
+			</div>
+		</section>
+
+		<section class="tab-panel" id="tab-notices"><div class="tab-content"><h2>Notice</h2>
+			<% if (notices.length) { notices.forEach((notice) => { %>
+				<article class="list-card"><div class="list-title"><%= notice.headline || 'School notice' %></div><div class="list-meta"><%= notice.date ? new Date(notice.date).toLocaleDateString() : '' %></div><div class="list-copy"><%= notice.content || '' %></div></article>
+			<% }) } else { %><div class="empty-state">There are no recent notices.</div><% } %>
+		</div></section>
+
+		<section class="tab-panel" id="tab-homework"><div class="tab-content"><h2>Homework</h2><div class="empty-state">Homework updates will appear here when they are published for this student.</div></div></section>
+
+		<section class="tab-panel" id="tab-complaints"><div class="tab-content"><h2>Complaints</h2>
+			<% if (complaintSent) { %><div class="success-note">Your message was sent to the school.</div><% } %>
+			<form class="complaint-form" action="/parents/complaints" method="POST"><textarea name="complaint" maxlength="2000" required placeholder="Write a message for the school"></textarea><button type="submit">Send message</button></form>
+			<% const parentMessages = Array.isArray(portfolio.parentMeetings) ? portfolio.parentMeetings : []; %>
+			<% if (parentMessages.length) { parentMessages.slice().reverse().forEach((item) => { %>
+				<article class="list-card"><div class="list-title">Your message</div><div class="list-meta"><%= item.nepaliDate || (item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '') %></div><div class="list-copy"><%= item.parentComplaint || '' %></div><% if (item.schoolResponse) { %><div class="list-copy"><strong>School reply:</strong> <%= item.schoolResponse %></div><% } %></article>
+			<% }) } else { %><div class="empty-state">Your messages and school replies will appear here.</div><% } %>
+		</div></section>
+
+		<nav class="bottom-nav" aria-label="Main navigation">
+			<button class="tab-button active" data-tab="home" aria-selected="true"><span class="tab-icon"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg></span>Home</button>
+			<button class="tab-button" data-tab="notices" aria-selected="false"><span class="tab-icon"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 13h4"/></svg></span>Notice</button>
+			<button class="tab-button" data-tab="homework" aria-selected="false"><span class="tab-icon"><svg viewBox="0 0 24 24"><path d="M5 3h14v18H5zM8 7h8M8 11h8M8 15h5"/></svg></span>Homework</button>
+			<button class="tab-button" data-tab="complaints" aria-selected="false"><span class="tab-icon"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3 21l1.9-5.6A8.5 8.5 0 1 1 21 11.5zM8 11h8m-8 4h5"/></svg></span>Complaints</button>
+		</nav>
+	</main>
+
+	<template id="detail-results"><h2>Exam results</h2>
+		<% if (examResults.length) { examResults.forEach((result) => { %>
+			<article class="detail-card"><div class="list-title"><%= result.subject || 'Subject' %></div><div class="list-meta"><%= result.terminal || '' %> · <%= result.academicYear || '' %></div><div class="data-list"><div class="data-row"><span class="data-label">Theory</span><span class="data-value"><%= result.theorymarks ?? '—' %> / <%= result.theoryfullmarks ?? '—' %></span></div><div class="data-row"><span class="data-label">Practical</span><span class="data-value"><%= result.practicalmarks ?? '—' %> / <%= result.practicalfullmarks ?? '—' %></span></div><div class="data-row"><span class="data-label">Status</span><span class="data-value"><%= result.status || 'PRESENT' %></span></div></div></article>
+		<% }) } else { %><div class="empty-state">Exam results will appear here when released.</div><% } %>
+	</template>
+
+	<template id="detail-portfolio"><h2>Portfolio & CAS</h2>
+		<% const participationItems = Array.isArray(portfolio.participations) ? portfolio.participations : []; const awardItems = Array.isArray(portfolio.awards) ? portfolio.awards : []; const scholarshipItems = Array.isArray(portfolio.scholarships) ? portfolio.scholarships : []; %>
+		<% if (!participationItems.length && !awardItems.length && !scholarshipItems.length) { %><div class="empty-state">Portfolio activities and achievements will appear here.</div><% } %>
+		<% participationItems.forEach((item) => { %><article class="list-card"><div class="list-title"><%= item.event || 'Activity' %></div><div class="list-meta"><%= item.nepaliDate || '' %></div><div class="list-copy"><%= item.position || 'Participation' %></div></article><% }) %>
+		<% awardItems.forEach((item) => { %><article class="list-card"><div class="list-title"><%= item.event || 'Achievement' %></div><div class="list-meta"><%= item.nepaliDate || '' %></div><div class="list-copy"><%= item.position || '' %></div></article><% }) %>
+		<% scholarshipItems.forEach((item) => { %><article class="list-card"><div class="list-title">Scholarship · <%= item.reason || 'Award' %></div><div class="list-meta"><%= item.year || item.nepaliDate || '' %></div><div class="list-copy"><%= item.amount || '' %></div></article><% }) %>
+	</template>
+
+	<template id="detail-events"><h2>Events</h2>
+		<% if (events.length) { events.forEach((event) => { %><article class="list-card"><div class="list-title"><%= event.title %></div><div class="list-meta"><%= event.nepaliDate || (event.date ? new Date(event.date).toLocaleDateString() : '') %><%= event.time ? ` · ${event.time}` : '' %></div><div class="list-copy"><%= event.description || event.location || '' %></div></article><% }) } else { %><div class="empty-state">There are no upcoming class events.</div><% } %>
+	</template>
+
+	<template id="detail-assessment"><h2>Internal assessment</h2>
+		<% const assessmentResults = examResults.filter((item) => Number(item.totalWorksheet) > 0 || (Array.isArray(item.worksheetGrades) && item.worksheetGrades.length)); %>
+		<% if (assessmentResults.length) { assessmentResults.forEach((item) => { %><article class="list-card"><div class="list-title"><%= item.subject || 'Subject' %></div><div class="list-meta"><%= item.terminal || '' %> · <%= item.academicYear || '' %></div><div class="list-copy">Worksheets: <%= (item.worksheetGrades || []).filter(Boolean).join(', ') || 'No grades posted' %></div></article><% }) } else { %><div class="empty-state">Internal assessment updates will appear here when posted.</div><% } %>
+	</template>
+
+	<template id="detail-attendance"><h2>Attendance</h2>
+		<% if (attendance.length) { attendance.forEach((item) => { %><article class="list-card"><div class="data-row"><span class="data-label"><%= item.month || '' %> <%= item.day || '' %> · <%= item.academicYear || '' %></span><span class="grade-pill"><%= String(item.status || 'PRESENT').toUpperCase() %></span></div><% if (item.reason) { %><div class="list-copy"><%= item.reason %></div><% } %></article><% }) } else { %><div class="empty-state">Attendance records will appear here.</div><% } %>
+	</template>
+
+	<template id="detail-library"><h2>Library</h2>
+		<% if (libraryLoans.length) { libraryLoans.forEach((loan) => { %><article class="list-card"><div class="list-title"><%= loan.bookTitle %></div><div class="list-meta">Issued <%= loan.issuedAt ? new Date(loan.issuedAt).toLocaleDateString() : '' %> · Due <%= loan.dueDate ? new Date(loan.dueDate).toLocaleDateString() : '—' %></div><div class="list-copy">Status: <%= loan.status %><%= loan.fineAmount ? ` · Fine ${loan.fineAmount}` : '' %></div></article><% }) } else { %><div class="empty-state">No library loans are currently linked to this student.</div><% } %>
+	</template>
+
+	<template id="detail-fees"><h2>Fees</h2>
+		<% if (invoices.length) { invoices.forEach((invoice) => { %><article class="list-card"><div class="list-title"><%= invoice.invoiceNumber %></div><div class="list-meta"><%= invoice.billMonthBS %> · <%= invoice.billDateBS %></div><div class="data-list"><div class="data-row"><span class="data-label">Total</span><span class="data-value"><%= invoice.grandTotal %></span></div><div class="data-row"><span class="data-label">Balance due</span><span class="data-value"><%= invoice.balanceDue %></span></div><div class="data-row"><span class="data-label">Status</span><span class="data-value"><%= invoice.status %></span></div></div></article><% }) } else { %><div class="empty-state">No fee invoices are linked to this student account.</div><% } %>
+	</template>
+
+	<template id="detail-homework"><h2>Homework</h2><div class="empty-state">Homework updates will appear here when they are published for this student.</div></template>
+
+	<script>
+		const tabButtons = [...document.querySelectorAll('[data-tab]')];
+		const tabPanels = [...document.querySelectorAll('.tab-panel')];
+		function activateTab(tabName) {
+			tabButtons.forEach((button) => {
+				const active = button.dataset.tab === tabName;
+				button.classList.toggle('active', active);
+				button.setAttribute('aria-selected', String(active));
+			});
+			tabPanels.forEach((panel) => panel.classList.toggle('active', panel.id === `tab-${tabName}`));
+			document.getElementById('homeLanding').hidden = false;
+			document.getElementById('homeDetail').classList.remove('active');
+		}
+		tabButtons.forEach((button) => button.addEventListener('click', () => activateTab(button.dataset.tab)));
+
+		document.querySelectorAll('[data-detail]').forEach((button) => {
+			button.addEventListener('click', () => {
+				const template = document.getElementById(`detail-${button.dataset.detail}`);
+				document.getElementById('detailContent').replaceChildren(template.content.cloneNode(true));
+				document.getElementById('homeLanding').hidden = true;
+				document.getElementById('homeDetail').classList.add('active');
+				document.getElementById('detailBack').onclick = () => {
+					document.getElementById('homeDetail').classList.remove('active');
+					document.getElementById('homeLanding').hidden = false;
+				};
+				window.scrollTo({ top: 0, behavior: 'smooth' });
+			});
+		});
+
+		const requestedTab = new URLSearchParams(window.location.search).get('tab');
+		if (['notices', 'homework', 'complaints'].includes(requestedTab)) activateTab(requestedTab);
+	</script>
+</body>
+</html>

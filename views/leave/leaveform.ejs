@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Leave applications</title>
+	<link rel="stylesheet" href="/leave-management.css">
+	<link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css">
+</head>
+<body>
+	<div class="leave-shell">
+		<header class="leave-topbar">
+			<a class="leave-brand" href="/leave">Staff leave management</a>
+			<nav aria-label="Leave navigation"><a class="active" href="/leave">Applications</a><% if (isAdmin) { %><a href="/leave/setup">Leave setup</a><% } %></nav>
+		</header>
+		<main class="leave-main">
+			<header class="leave-page-heading"><div><p class="leave-eyebrow"><%= isAdmin ? 'Administration / Leave desk' : 'Staff / Leave' %></p><h1><%= isAdmin ? 'Leave management' : 'My leave' %></h1><p>Submit leave dates and follow decisions from the school administrator.</p></div></header>
+			<% if (message) { %><div class="leave-notice"><%= message %></div><% } %>
+
+			<section class="leave-panel">
+				<div class="leave-section-heading"><div><h2>New application</h2><p>Your name is taken from your signed-in account.</p></div></div>
+				<% if (leaveTypes.length) { %>
+				<form method="post" action="/leave" enctype="multipart/form-data" id="leaveApplicationForm">
+					<div class="leave-field-grid">
+						<div class="leave-field"><label for="employeeName">Applicant</label><input id="employeeName" value="<%= employeeName %>" readonly></div>
+						<div class="leave-field"><label for="employeeRole">Role</label><input id="employeeRole" value="<%= employeeRole %>" readonly></div>
+						<div class="leave-field"><label for="leaveType">Leave type</label><select id="leaveType" name="leaveType" required><option value="">Select leave type</option><% leaveTypes.forEach(type => { %><option value="<%= type._id %>" data-paid="<%= type.isPaid ? 'true' : 'false' %>" data-document="<%= type.requiresDocument ? 'true' : 'false' %>" data-annual="<%= type.maxDaysPerYear || '' %>" data-monthly="<%= type.maxDaysPerMonth || '' %>"><%= type.leavename %> / <%= type.isPaid ? 'Paid' : 'Unpaid' %></option><% }) %></select></div>
+						<div class="leave-field"><label for="startDateNepali">Start date (BS)</label><input id="startDateNepali" name="startDateNepali" class="nepali-datepicker" type="text" value="<%= todayNepaliDate %>" placeholder="YYYY-MM-DD" required></div>
+						<div class="leave-field"><label for="endDateNepali">End date (BS)</label><input id="endDateNepali" name="endDateNepali" class="nepali-datepicker" type="text" value="" placeholder="Select end date" required></div>
+						<div class="leave-field"><label>Duration</label><output class="leave-duration" id="durationPreview" aria-live="polite">Select dates to calculate duration</output></div>
+						<div class="leave-field leave-field-wide"><label for="reason">Reason</label><textarea id="reason" name="reason" maxlength="1000" required placeholder="Add details to support your application"></textarea></div>
+						<div class="leave-field leave-field-wide" id="documentField" hidden><label for="supportingDocument">Supporting document <span class="required-note">Required by this leave policy</span></label><input id="supportingDocument" name="supportingDocument" type="file" accept=".pdf,.jpg,.jpeg,.png,.docx"><small>PDF, JPG, PNG, or DOCX. Maximum 5 MB.</small></div>
+					</div>
+					<div class="leave-submit-row"><span class="leave-status pending">Submitted applications start as Pending</span><button class="leave-button" type="submit">Submit application</button></div>
+				</form>
+				<% } else { %><div class="leave-empty">No active leave types are available for your role. Contact the administrator.</div><% } %>
+			</section>
+
+		<section class="leave-panel">
+			<div class="leave-section-heading"><div><h2><%= isAdmin ? 'Applications for review' : 'Application history' %></h2><p><%= applications.length %> recent records</p></div></div>
+			<% if (applications.length) { %>
+			<div class="leave-table-wrap"><table class="leave-table">
+				<thead><tr><% if (isAdmin) { %><th>Applicant</th><% } %><th>Leave type</th><th>Dates (BS)</th><th>Days</th><th>Pay</th><th>Reason / document</th><th>Status / decision</th></tr></thead>
+				<tbody><% applications.forEach(application => { %>
+				<tr>
+					<% if (isAdmin) { %><td><strong><%= application.employeeName %></strong><small><%= application.username %> / <%= application.employeeRole %></small></td><% } %>
+					<td><strong><%= application.leaveTypeName %></strong></td>
+					<td><%= application.startDateNepali %> to <%= application.endDateNepali %></td>
+					<td><%= application.requestedDays %></td>
+					<td><span class="leave-status <%= application.isPaid ? 'approved' : 'unpaid' %>"><%= application.isPaid ? 'Paid' : 'Unpaid' %></span></td>
+					<td><span><%= application.reason %></span><% if (application.supportingDocumentName) { %><a class="document-link" href="/leave/<%= application._id %>/document"><%= application.supportingDocumentName %></a><% } %></td>
+					<td>
+						<% if (isAdmin && application.status === 'pending') { %>
+						<form class="leave-review-form" method="post" action="/leave/<%= application._id %>/review">
+							<select name="status" class="decision-select" aria-label="Leave decision"><option value="approved">Approve</option><option value="rejected">Reject</option></select>
+							<textarea name="reviewReason" class="review-reason" maxlength="1000" placeholder="Reason required only when rejecting" aria-label="Decision reason"></textarea>
+							<button class="leave-button secondary" type="submit">Save decision</button>
+						</form>
+						<% } else { %>
+							<span class="leave-status <%= application.status %>"><%= application.status %></span>
+							<% if (application.reviewReason) { %><small class="decision-reason"><%= application.reviewReason %></small><% } %>
+							<% if (application.reviewedBy) { %><small>Reviewed by <%= application.reviewedBy %></small><% } %>
+						<% } %>
+					</td>
+				</tr>
+				<% }) %></tbody>
+			</table></div>
+			<% } else { %><div class="leave-empty">No leave applications yet.</div><% } %>
+		</section>
+		</main>
+	</div>
+	<script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
+	<script>
+		const leaveTypeSelect = document.getElementById('leaveType');
+		const documentField = document.getElementById('documentField');
+		const documentInput = document.getElementById('supportingDocument');
+		const startDateInput = document.getElementById('startDateNepali');
+		const endDateInput = document.getElementById('endDateNepali');
+		const durationPreview = document.getElementById('durationPreview');
+		function updateLeaveTypeDetails() {
+			const selected = leaveTypeSelect?.selectedOptions[0];
+			const required = selected?.dataset.document === 'true';
+			if (documentField) documentField.hidden = !required;
+			if (documentInput) documentInput.required = required;
+		}
+		function updateDuration() {
+			if (!startDateInput || !endDateInput || !durationPreview) return;
+			if (!startDateInput.value || !endDateInput.value || typeof NepaliFunctions === 'undefined') {
+				durationPreview.textContent = 'Select dates to calculate duration';
+				return;
+			}
+			try {
+				const startAd = NepaliFunctions.BS2AD(startDateInput.value);
+				const endAd = NepaliFunctions.BS2AD(endDateInput.value);
+				const start = new Date(`${startAd}T00:00:00Z`);
+				const end = new Date(`${endAd}T00:00:00Z`);
+				const days = Math.round((end - start) / 86400000) + 1;
+				durationPreview.textContent = days > 0 ? `${days} ${days === 1 ? 'day' : 'days'} / inclusive of both dates` : 'End date must be on or after start date';
+			} catch (error) {
+				durationPreview.textContent = 'Select valid Nepali dates';
+			}
+		}
+		if (leaveTypeSelect) leaveTypeSelect.addEventListener('change', updateLeaveTypeDetails);
+		updateLeaveTypeDetails();
+		[startDateInput, endDateInput].filter(Boolean).forEach((input) => input.addEventListener('change', updateDuration));
+		document.querySelectorAll('.nepali-datepicker').forEach((input) => {
+			if (typeof input.nepaliDatePicker === 'function') input.nepaliDatePicker({ dateFormat: 'YYYY-MM-DD', language: 'en', onSelect: updateDuration });
+		});
+		document.querySelectorAll('.leave-review-form').forEach((form) => {
+			const decision = form.querySelector('.decision-select');
+			const reason = form.querySelector('.review-reason');
+			const updateReasonRequirement = () => { reason.required = decision.value === 'rejected'; };
+			decision.addEventListener('change', updateReasonRequirement);
+			updateReasonRequirement();
+		});
+	</script>
+</body>
+</html>

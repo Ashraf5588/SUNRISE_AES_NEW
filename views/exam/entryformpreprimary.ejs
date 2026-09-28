@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pre primary Entry Form</title>
+  <style>
+    .invalid-registration { color: red; }
+    .valid-registration { color: black; }
+  </style>
 </head>
 <body>
   <form action="/entryformpreprimary?studentClass=<%= studentClass %>&section=<%= section %>&terminal=<%= terminal %>&academicYear=<%= academicYear %>" method="POST" id="entryForm" >  
@@ -63,10 +67,11 @@
 
  
   Total Worksheet: <input type="number" name="totalWorksheet" value="<%= existingData[0]?.totalWorksheet || 1 %>" readonly>
+  <% const selectedWorksheet = Number(worksheet) || 1; %>
   <select name="worksheet">
-    <option selected disabled>Select Worksheet</option>
+    <option value="" disabled>Select Worksheet</option>
     <% for (let i = 1; i <= (existingData[0]?.totalWorksheet || 1); i++) { %>
-      <option value="<%= i %>" <%= existingData[0]?.worksheet === i ? 'selected' : '' %>>Worksheet <%= i %></option>
+      <option value="<%= i %>" <%= selectedWorksheet === i ? 'selected' : '' %>>Worksheet <%= i %></option>
     <% } %>
   </select>
 
@@ -85,11 +90,11 @@
      <input type="hidden" name="roll[<%= student.reg %>]" value="<%= student.roll %>">
       <input type="hidden" name="gender[<%= student.reg %>]" value="<%= student.gender %>">
 
-    <td style="color: <%= student.reg == '' || student.reg == null || student.reg == undefined || student.reg == 'N/A'|| !student.reg ? 'red' : 'black' %>">
+    <td class="<%= student.reg == '' || student.reg == null || student.reg == undefined || student.reg == 'N/A' || !student.reg ? 'invalid-registration' : 'valid-registration' %>">
       <input type="hidden" name="reg[<%= student.reg %>]" value="<%= student.reg %>">
       <input type="hidden" name="name[<%= student.reg %>]" value="<%= student.name %>">
       
-      <%=student.roll%>. <%= student.name %>  &ensp;Ab <input type="checkbox" placeholder="Ab" name="status[<%= student.reg %>]" value="1" <%= existingData.find(item => item.reg === student.reg)?.status === 1 ? 'checked' : '' %> > 
+      <%=student.roll%>. <%= student.name %>  &ensp;Ab <input type="checkbox" name="status[<%= student.reg %>]" value="ABSENT" data-reg="<%= student.reg %>" <%= ['ABSENT', '1'].includes(String(existingData.find(item => String(item.reg) === String(student.reg))?.status || '').toUpperCase()) ? 'checked' : '' %>>
     </td>
     <td>
   <select
@@ -107,10 +112,10 @@
     <option value="2.0">C</option>
     <option value="1.6">D</option>
     <option value="0.0">NG</option>
-    <option value="0.0">Absent</option>
+  
   </select>
 </td>
-    <td><select  class="worksheetGrade" id="worksheetgrade_<%= student._id %>" name="worksheetGrades[<%= student.reg %>]" data-reg = <%=student.reg%>  >
+    <td><select class="worksheetGrade" id="worksheetgrade_<%= student._id %>" name="worksheetGrades[<%= student.reg %>]" data-reg="<%= student.reg %>">
       <option selected disabled>Select Grade</option>
       <option value="A+" >A+</option>
       
@@ -248,7 +253,7 @@
     document.querySelectorAll('.worksheetGrade').forEach(select => {  
    const reg = select.dataset.reg;
 
-   const existingGrade = existingData.find(item => item.reg === reg)?.worksheetGrades[currentWorksheet-1];
+  const existingGrade = existingData.find(item => item.reg === reg)?.worksheetGrades?.[currentWorksheet - 1];
  
    if (existingGrade) {
      select.value = existingGrade;
@@ -260,91 +265,62 @@
     });
   </script>
 
-  <!-- script for autosave -->
-   <script>
-    async function autoSave() {
-      const form = document.getElementById('entryForm');
-     const reg = this.dataset.reg; // Get the reg value from the data attribute
-      const urlParams = new URLSearchParams(window.location.search);
-      const studentClass = urlParams.get('studentClass');
-      const section = urlParams.get('section');
-      const terminal = urlParams.get('terminal');
-      const academicYear = urlParams.get('academicYear');
- const studentInputs = form.querySelectorAll(
-        `[name$="[${reg}]"]`
-    );
+  <script>
+    const studentSaveTimers = new Map();
+
+    function autoSaveStudent(input) {
+      const reg = input?.dataset.reg;
+      if (!reg) return;
+
+      clearTimeout(studentSaveTimers.get(reg));
+      studentSaveTimers.set(reg, setTimeout(async () => {
+        const form = document.getElementById('entryForm');
+        const urlParams = new URLSearchParams(window.location.search);
+        const studentField = (field) => form.querySelector(`[name="${field}[${reg}]"]`);
+        const worksheet = form.querySelector('[name="worksheet"]').value || urlParams.get('worksheet');
+        if (!worksheet) return;
 
         const studentData = {
-        reg: reg,
-        studentClass: studentClass,
-        section: section,
-        terminal: terminal,
-        academicYear: academicYear,
-        subject: form.querySelector('[name="subject"]').value,
-        worksheet: form.querySelector('[name="worksheet"]').value,
-        totalWorksheet: form.querySelector('[name="totalWorksheet"]').value,
-        worksheetGrades: form.querySelector(`[name="worksheetGrades[${reg}]"]`).value,
-        theorymarks: form.querySelector(`[name="theorymarks[${reg}]"]`)?.value || 0, // Default to 0 if empty
-        attendance: form.querySelector(`[name="attendance[${reg}]"]`).value
+          reg,
+          studentClass: urlParams.get('studentClass'),
+          section: urlParams.get('section'),
+          terminal: urlParams.get('terminal'),
+          academicYear: urlParams.get('academicYear'),
+          subject: form.querySelector('[name="subject"]').value,
+          worksheet,
+          totalWorksheet: form.querySelector('[name="totalWorksheet"]').value,
+          worksheetGrades: studentField('worksheetGrades')?.value || '',
+          theorymarks: studentField('theorymarks')?.value || 0,
+          attendance: studentField('attendance')?.value || 0,
+          status: studentField('status')?.checked ? 'ABSENT' : 'PRESENT',
+          roll: studentField('roll')?.value || '',
+          gender: studentField('gender')?.value || '',
+          name: studentField('name')?.value || ''
+        };
 
-    };
-    console.log("Student data to be saved:", studentData);
-    studentInputs.forEach(input => {
-
-        const match = input.name.match(/^([^\[]+)\[([^\]]+)\]$/);
-
-        if (!match) return;
-
-        const field = match[1];
-
-        // Remove [REG] from field name
-        studentData[field] = input.value;
-    });
-
-    console.log("Saving ONLY student:", studentData);
-
-    try {
-
-        const response = await fetch(
-            `/entryformpreprimary?studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&terminal=${encodeURIComponent(terminal)}&academicYear=${encodeURIComponent(academicYear)}`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(studentData)
-            }
-        );
-
-        const data = await response.json();
-
-        console.log("Student auto-saved:", data);
-
-    } catch (error) {
-
-        console.error("Auto-save error:", error);
-
+        try {
+          const response = await fetch(`/entryformpreprimary?studentClass=${encodeURIComponent(studentData.studentClass)}&section=${encodeURIComponent(studentData.section)}&terminal=${encodeURIComponent(studentData.terminal)}&academicYear=${encodeURIComponent(studentData.academicYear)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(studentData)
+          });
+          const result = await response.json();
+          if (!response.ok || !result.success) throw new Error(result.message || 'Save failed');
+        } catch (error) {
+          console.error('Auto-save error:', error);
+        } finally {
+          studentSaveTimers.delete(reg);
+        }
+      }, 250));
     }
-}
-      
-   </script>
 
-   <!-- script to trigger auto-save -->
-    <script>
-      document.querySelector('input[name="totalWorksheet"]').addEventListener('change', autoSave);
-      document.querySelectorAll('.worksheetGrade').forEach(select => {
-        select.addEventListener('change', autoSave);
-      });
-      document.querySelectorAll('select[name^="theorymarks"]').forEach(select => {
-        select.addEventListener('change', autoSave);
-      });
-      document.querySelectorAll('input[name^="attendance"]').forEach(input => {
-        input.addEventListener('input', autoSave);
-      });
-      document.querySelector('select[name="worksheet"]').addEventListener('change', autoSave);
-      
-
-    </script>
+    document.querySelectorAll('.worksheetGrade, .theoryGrade, input[name^="status["]').forEach((input) => {
+      input.addEventListener('change', () => autoSaveStudent(input));
+    });
+    document.querySelectorAll('input[name^="attendance["]').forEach((input) => {
+      input.addEventListener('input', () => autoSaveStudent(input));
+    });
+  </script>
 
    <script>
   // Hide table only when no worksheet is selected

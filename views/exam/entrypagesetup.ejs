@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Entry Form Setup</title>
+	<style>
+		* { box-sizing: border-box; }
+		body { margin: 0; padding: 28px 16px; background: #f2f5f4; color: #1d2b2a; font-family: 'Segoe UI', sans-serif; }
+		main { max-width: 980px; margin: 0 auto; }
+		.page-header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 22px; }
+		h1 { margin: 0; font-size: 27px; }
+		.back-link { color: #176b5b; font-weight: 600; text-decoration: none; }
+		.table-shell { overflow-x: auto; background: #fff; border: 1px solid #dce5e2; border-radius: 8px; }
+		table { width: 100%; border-collapse: collapse; }
+		th, td { padding: 13px 16px; border-bottom: 1px solid #e4ebe9; text-align: left; }
+		th { background: #eaf2ef; color: #23423b; font-size: 12px; text-transform: uppercase; }
+		tbody tr:last-child td { border-bottom: 0; }
+		td:first-child { width: 72px; color: #657470; }
+		td:nth-child(2) { font-weight: 600; }
+		select { width: 100%; min-width: 240px; padding: 10px 12px; border: 1px solid #b9cac5; border-radius: 5px; background: #fff; color: #1d2b2a; font: inherit; }
+		.actions { display: flex; justify-content: flex-end; padding-top: 16px; }
+		button { border: 0; border-radius: 5px; padding: 11px 20px; background: #176b5b; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+		.saved { margin-bottom: 14px; padding: 11px 14px; border-left: 4px solid #23845f; background: #e6f5ec; color: #185a3e; }
+		.empty { padding: 24px; text-align: center; color: #657470; }
+		@media (max-width: 560px) { .page-header { align-items: flex-start; flex-direction: column; } th, td { padding: 10px; } }
+	</style>
+</head>
+<body>
+	<main>
+		<header class="page-header">
+			<h1>Entry Form Setup</h1>
+			<a class="back-link" href="/exammanagement">Back to Exam Management</a>
+		</header>
+
+		<% if (saved) { %>
+			<div class="saved" role="status">Entry form settings saved.</div>
+		<% } %>
+
+		<form action="/admin/entrypagesetup" method="POST">
+			<div class="table-shell">
+				<% if (classes.length) { %>
+					<table>
+						<thead>
+							<tr><th>SN</th><th>Class</th><th>Form Type</th></tr>
+						</thead>
+						<tbody>
+							<% classes.forEach((classItem, index) => { %>
+								<tr>
+									<td><%= index + 1 %></td>
+									<td>
+										<%= classItem.studentClass %>
+										<input type="hidden" name="classes[<%= index %>][studentClass]" value="<%= classItem.studentClass %>">
+									</td>
+									<td>
+										<select name="classes[<%= index %>][entryFormType]">
+											<option value="auto" <%= classItem.entryFormType === 'auto' ? 'selected' : '' %>>Automatic (current rules)</option>
+											<option value="entryform" <%= classItem.entryFormType === 'entryform' ? 'selected' : '' %>>Theory & Practical Entry Form</option>
+											<option value="entryformprimary" <%= classItem.entryFormType === 'entryformprimary' ? 'selected' : '' %>>Theory and Worksheet Entry Form</option>
+											<option value="entryformfourfive" <%= classItem.entryFormType === 'entryformfourfive' ? 'selected' : '' %>>Four/Five entry form</option>
+											<option value="entryformlocalsubject" <%= classItem.entryFormType === 'entryformlocalsubject' ? 'selected' : '' %>>Local subject entry form</option>
+											<option value="entryformpreprimary" <%= classItem.entryFormType === 'entryformpreprimary' ? 'selected' : '' %>>Only Worksheet select entry Form</option>
+										</select>
+									</td>
+								</tr>
+							<% }) %>
+						</tbody>
+					</table>
+				<% } else { %>
+					<div class="empty">No classes have been configured.</div>
+				<% } %>
+			</div>
+			<% if (classes.length) { %>
+				<div class="actions"><button type="submit">Save Form Setup</button></div>
+			<% } %>
+		</form>
+	</main>
+</body>
+</html>

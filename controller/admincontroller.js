@@ -1708,7 +1708,11 @@ exports.addClass = async (req, res, next) => {
   if (classId && !undefined) {
     await studentClass.findByIdAndUpdate(
       classId,
-      { studentClass: `${updateClass}`,section: `${req.body.section}` },
+      {
+        studentClass: `${updateClass}`,
+        section: `${req.body.section}`,
+        classorder: req.body.classorder === '' || req.body.classorder === undefined ? null : Number(req.body.classorder)
+      },
       { new: true, runValidators: true }
     );
    

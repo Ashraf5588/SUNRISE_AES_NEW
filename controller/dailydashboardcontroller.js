@@ -24,12 +24,14 @@ const terminalModel = mongoose.model("terminal", terminalSchema, "terminal");
 const { marksheetsetupschemaForAdmin ,routineSchema} = require("../model/marksheetschema");
 const teacherSchema = require("../model/admin").teacherSchema;
 const { onlineAttendanceSchema } = require("../model/onlineattendanceschema");
+const { leaveApplicationSchema } = require("../model/leaveschema/leavetypeschma");
 const { fail } = require("assert");
 const routineModel = mongoose.model("routine", routineSchema, "routine");
 const marksheetSetup = mongoose.model("marksheetSetup", marksheetsetupschemaForAdmin, "marksheetSetup");
 const Portfolio = require("../model/portfolio");
 const HealthRecord = require("../model/nurseschema");
 const onlineAttendance = mongoose.model("onlineAttendance", onlineAttendanceSchema, "onlineAttendance");
+const LeaveApplication = mongoose.models.LeaveApplication || mongoose.model("LeaveApplication", leaveApplicationSchema, "leaveApplications");
 app.set("view engine", "ejs");
 app.set("view", path.join(rootDir, "views"));
 const newsubject = mongoose.model("newsubject", newsubjectSchema, "newsubject");
@@ -144,6 +146,14 @@ exports.dailydashboard = async (req, res) => {
     const selectedMonth = Number.parseInt(req.query.month, 10) || currentDate.month;
     const selectedDay = Number.parseInt(req.query.day, 10) || currentDate.day;
     const selectedDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
+    const [staffOnLeave, pendingLeaveRequests] = await Promise.all([
+      LeaveApplication.find({
+        status: 'approved',
+        startDateNepali: { $lte: selectedDate },
+        endDateNepali: { $gte: selectedDate }
+      }).select('employeeName username employeeRole leaveTypeName startDateNepali endDateNepali requestedDays').sort({ employeeName: 1 }).lean(),
+      LeaveApplication.countDocuments({ status: 'pending' })
+    ]);
 
     const isAdmin = req.user && String(req.user.role || '').toUpperCase() === 'ADMIN';
     const viewerIdentities = new Set(
@@ -227,6 +237,8 @@ exports.dailydashboard = async (req, res) => {
       selectedDay,
       selectedDate,
       monthName,
+      staffOnLeave,
+      pendingLeaveRequests,
       bsMonthNames: BS_MONTH_NAMES,
       rows: activeRows,
       medicalRows,

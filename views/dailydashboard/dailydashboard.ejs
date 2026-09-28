@@ -50,7 +50,28 @@
 		.detail-btn:hover { background: #bfdbfe; color: #102d5a; }
 		.empty { color: var(--muted); }
 		.medical-table { min-width: 650px; } .medical-table th { background: #e9f5f2; }
+		.leave-dashboard-grid { display: grid; grid-template-columns: minmax(220px, .7fr) minmax(0, 1.5fr); gap: 14px; margin: 0 0 18px; }
+		.leave-dashboard-card { min-width: 0; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: #fff; box-shadow: 0 8px 22px rgba(30,41,59,.07); }
+		.leave-request-card { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; color: var(--ink); border-top: 4px solid var(--brand); }
+		.leave-request-card:hover { border-color: var(--brand); }
+		.leave-card-label { color: var(--muted); font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+		.leave-card-count { display: block; margin: 7px 0; color: var(--brand); font-size: 2rem; line-height: 1; }
+		.leave-card-detail { color: var(--muted); font-size: .84rem; }
+		.leave-card-action { margin-top: 15px; color: var(--brand); font-size: .84rem; font-weight: 700; }
+		.leave-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+		.leave-card-heading h2 { margin: 4px 0 0; font-size: 1rem; }
+		.leave-total-summary { display: flex; align-items: baseline; gap: 10px; margin: 7px 0 14px; padding: 12px 14px; border-left: 4px solid var(--brand); background: #eef8f5; }
+		.leave-total-summary strong { color: var(--brand); font-size: 1.8rem; line-height: 1; }
+		.leave-total-summary span { color: var(--muted); font-size: .84rem; font-weight: 700; }
+		.staff-leave-table-wrap { overflow-x: auto; }
+		.staff-leave-table { width: 100%; min-width: 560px; border-collapse: collapse; background: #fff; font-size: .84rem; }
+		.staff-leave-table th, .staff-leave-table td { padding: 10px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+		.staff-leave-table th { color: #115e59; background: #e9f5f2; font-size: .72rem; text-transform: uppercase; white-space: nowrap; }
+		.staff-leave-table td strong, .staff-leave-table td small { display: block; }
+		.staff-leave-table td small { margin-top: 3px; color: var(--muted); font-size: .75rem; }
+		.staff-leave-empty { margin: 8px 0 0; color: var(--muted); font-size: .86rem; }
 		@media (max-width: 950px) { .dashboard-grid { grid-template-columns: 1fr; } }
+		@media (max-width: 950px) { .leave-dashboard-grid { grid-template-columns: 1fr; } }
 		@media (max-width: 650px) { body { padding: 12px; } .toolbar { padding: 14px; } .date-form { width: 100%; } .date-form label, .date-form select, .date-form button { width: 100%; } .kpi-grid { grid-template-columns: 1fr; } }
 	</style>
 </head>
@@ -74,6 +95,29 @@
 				<button type="submit">Show Date</button>
 			</form>
 			<div class="date-chip">Selected date: <%= selectedDate %> (<%= monthName %>)</div>
+		</section>
+
+		<section class="leave-dashboard-grid" aria-label="Leave management">
+			<a class="leave-dashboard-card leave-request-card" href="/leave">
+				<span class="leave-card-label">Leave requests</span>
+				<strong class="leave-card-count"><%= pendingLeaveRequests %></strong>
+				<span class="leave-card-detail">Pending teacher and staff applications</span>
+				<span class="leave-card-action">Review requests <span aria-hidden="true">&rarr;</span></span>
+			</a>
+			<section class="leave-dashboard-card staff-leave-card">
+				<div class="leave-card-heading"><div><span class="leave-card-label">Selected date / <%= selectedDate %></span><h2>Staff on leave</h2></div></div>
+				<div class="leave-total-summary"><strong><%= staffOnLeave.length %></strong><span>Total staff on leave</span></div>
+				<% if (staffOnLeave.length) { %>
+				<div class="staff-leave-table-wrap"><table class="staff-leave-table">
+					<thead><tr><th>Staff member</th><th>Leave type</th><th>Leave dates</th><th>Duration</th></tr></thead>
+					<tbody>
+					<% staffOnLeave.forEach(application => { %>
+					<tr><td><strong><%= application.employeeName %></strong><small><%= application.employeeRole || application.username %></small></td><td><%= application.leaveTypeName %></td><td><%= application.startDateNepali %> to <%= application.endDateNepali %></td><td><%= application.requestedDays %> <%= application.requestedDays === 1 ? 'day' : 'days' %></td></tr>
+					<% }) %>
+					</tbody>
+				</table></div>
+				<% } else { %><p class="staff-leave-empty">No approved staff leave for this date.</p><% } %>
+			</section>
 		</section>
 
 		<section class="kpi-grid">

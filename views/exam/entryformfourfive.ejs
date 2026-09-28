@@ -264,7 +264,7 @@
           <input type="hidden" name="gender[<%=student.reg%>]" value="<%=student.gender%>" readonly>
           <input type="hidden" name="reg[<%=student.reg%>]" value="<%=student.reg%>" readonly>
           <td><input type="text" name="roll[<%=student.reg%>]" value="<%=student.roll%>" readonly></td>
-          <td><input type="text" name="name[<%=student.reg%>]" value="<%=student.name%>" readonly><label class="absent-toggle"><input type="checkbox" name="status[<%=student.reg%>]" value="ABSENT" data-reg="<%=student.reg%>" onchange="autoSave(this)" <%= theoryData.find(t => t.reg === student.reg)?.status === 'ABSENT' ? 'checked' : '' %>> Ab</label></td>
+          <td><input type="text" name="name[<%=student.reg%>]" value="<%=student.name%>" readonly><label class="absent-toggle"><input type="checkbox" name="status[<%=student.reg%>]" value="ABSENT" data-reg="<%=student.reg%>" onchange="autoSave(this)" <%= savedMarks.some(mark => String(mark.reg) === String(student.reg) && String(mark.status || '').toUpperCase() === 'ABSENT') ? 'checked' : '' %>> Ab</label></td>
           
           <td><input type="number" id="theorymarks" name="theorymarks[<%=student.reg%>]" value="<%= theoryData.find(t => t.reg === student.reg)?.totalMarks || '' %>" data-reg="<%= student.reg %>" min="0" max="<%=subjectData[0].theory%>" data-max="<%=subjectData[0].theory%>" oninput="handleTheoryChange(this)"></td>
           <td>
@@ -926,6 +926,7 @@
       }
         const response = await fetch(`/entryform?studentClass=${studentClass}&section=${section}&subject=${subject}&academicYear=${academicYear}&terminal=${terminal}`, {
           method: 'POST',
+          keepalive: el.type === 'checkbox',
           headers: {
             'Content-Type': 'application/json'
           },
@@ -963,7 +964,7 @@
       }
       
       saveTimers.delete(el);
-    }, 1000);
+    }, el.type === 'checkbox' ? 0 : 1000);
     
     saveTimers.set(el, timer);
   }
@@ -1104,7 +1105,7 @@
     console.log("Fetched Previous Marks:", previousMarksResult);
 
     // Fetch attendance data
-    const attendanceDataUrl = `/getAttendanceData?studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}`;
+    const attendanceDataUrl = `/getAttendanceData?studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}&terminal=${encodeURIComponent(terminal)}`;
     const attendanceResponse = await fetch(attendanceDataUrl);
     const attendanceResult = await attendanceResponse.json();
 

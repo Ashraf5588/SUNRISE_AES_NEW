@@ -810,8 +810,8 @@
 
   <div class="no-print control-panel">
     <div class="column-toggle-group">
-      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="theorymarks"> Th Marks</label>
-      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="prmarks"> Pr Marks</label>
+      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="theorymarks" checked> Th Marks</label>
+      <label class="column-toggle-item"><input type="checkbox" data-column-toggle="prmarks" checked> Pr Marks</label>
       <label class="column-toggle-item"><input type="checkbox" data-column-toggle="thgp"> Th GP</label>
       <label class="column-toggle-item"><input type="checkbox" data-column-toggle="prgp"> Pr GP</label>
       <label class="column-toggle-item"><input type="checkbox" data-column-toggle="finalgp"> Final GP</label>
@@ -819,7 +819,7 @@
       <label class="column-toggle-item"><input type="checkbox" data-column-toggle="obtainedgp"> Obtained GP</label>
       <label class="column-toggle-item"><input type="checkbox" data-column-toggle="remarks"> Remarks</label>
     </div>
-    <button onclick="window.print()">Print All</button>
+    <button onclick="printAllWithConfirmation()">Print All</button>
     <button onclick="downloadPdf()">Download PDF</button>
     <button onclick="exportToWord()" class="secondary">Download Word</button>
   </div>
@@ -918,6 +918,7 @@
             <% sortedSubjects.forEach((sub, index) => { 
               // Get display name for subject
               const displaySubjectName = getDisplaySubjectName(sub.subject);
+              const isAbsent = String(sub.status || '').trim().toUpperCase() === 'ABSENT';
               
               // Check if student has passed
               let isPassed = true;
@@ -965,7 +966,7 @@
                 let finalGrade = getGrade(finalGP);
                 
                 // Check if this subject has actual NG grade
-                if (finalGrade === 'NG') {
+                if (!isAbsent && finalGrade === 'NG') {
                   hasActualNG = true;
                 }
                 
@@ -976,16 +977,18 @@
                 <td><%= index + 1 %></td>
                 <td class="subject"><%= displaySubjectName %></td>
                 <td><%= totalCreditHour || 'N/A' %></td>
-                <td class="col-theorymarks"><%= sub.theorymarks %> <%= sub.theorymarks < sub.passMarks ? '*' : '' %></td>
-                <td class="col-prmarks"><%= practicalTotal.toFixed(2) %> <%= practicalTotal < sub.passMarks ? '*' : '' %></td>
-                <td class="col-finalgp"><%= finalGP.toFixed(2) %></td>
-                <td class="col-finalgrade"><%= finalGrade %></td>
-                <td class="col-obtainedgp"><%= obtainedGP %></td>
-                <td class="col-remarks"><%= getSubjectRemark(finalGrade) %></td>
+                <td class="col-theorymarks"><%= isAbsent ? 'Ab' : sub.theorymarks %> <%= !isAbsent && sub.theorymarks < sub.passMarks ? '*' : '' %></td>
+                <td class="col-prmarks"><%= isAbsent ? '-' : practicalTotal.toFixed(2) %> <%= !isAbsent && practicalTotal < sub.passMarks ? '*' : '' %></td>
+                <td class="col-finalgp"><%= isAbsent ? 'Ab' : finalGP.toFixed(2) %></td>
+                <td class="col-finalgrade"><%= isAbsent ? '-' : finalGrade %></td>
+                <td class="col-obtainedgp"><%= isAbsent ? '-' : obtainedGP %></td>
+                <td class="col-remarks"><%= isAbsent ? '-' : getSubjectRemark(finalGrade) %></td>
               </tr>
               <% 
-                totalCredit += totalCreditHour; 
-                totalGradePoints += (thGP * theoryCreditHour + prGP * practicalCreditHour);
+                if (!isAbsent) {
+                  totalCredit += totalCreditHour;
+                  totalGradePoints += (thGP * theoryCreditHour + prGP * practicalCreditHour);
+                }
                 totalAttendance = sub.attendance;
               %>
             <% }) %>
@@ -1170,6 +1173,18 @@
     });
 
     applyColumnVisibility();
+
+    function printAllWithConfirmation() {
+      const visibleMarks = [];
+      if (!document.querySelector('[data-column-toggle="theorymarks"]').checked) visibleMarks.push('theory marks');
+      if (!document.querySelector('[data-column-toggle="prmarks"]').checked) visibleMarks.push('practical marks');
+
+      if (visibleMarks.length && !window.confirm(`${visibleMarks.join(' and ')} are visible. Do you want to continue printing?`)) {
+        return;
+      }
+
+      window.print();
+    }
 
     // Download all marksheets as a single PDF
     function downloadPdf() {

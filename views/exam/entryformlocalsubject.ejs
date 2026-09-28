@@ -368,7 +368,7 @@ else if (terminal == "FINAL")
       console.log("Fetched Previous Marks:", result);
 
       // Fetch attendance data
-      const attendanceData = await fetch(`/getAttendanceData?studentClass=${studentClass}&section=${section}&academicYear=${academicYear}`);
+      const attendanceData = await fetch(`/getAttendanceData?studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}&terminal=${encodeURIComponent(terminal)}`);
       const attendanceResult = await attendanceData.json();
       console.log("Fetched Attendance Data:", attendanceResult);
 

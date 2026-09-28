@@ -49,6 +49,8 @@ const classSchema = new mongoose.Schema({
   
 "studentClass":{ type: String,required: false},
   "section":{ type: String,required: false},
+  "classorder":{ type: Number,required: false},
+  "entryFormType":{ type: String, enum: ['auto', 'entryform', 'entryformprimary', 'entryformfourfive', 'entryformlocalsubject', 'entryformpreprimary'], default: 'auto', required: false},
 
 })
 const terminalSchema = new mongoose.Schema({

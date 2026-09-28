@@ -247,11 +247,13 @@ margin-left:1rem;
   </form>
 </div>
 
-<% if (terminal == "FIRST") { workingDays = marksheetSetups[0].terminals[0].workingDays; }
-else if (terminal == "SECOND") { workingDays = marksheetSetups[0].terminals[1].workingDays; }
-else if (terminal == "THIRD") { workingDays = marksheetSetups[0].terminals[2].workingDays; }
-else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].workingDays; }%>
-<input type="hidden" id="workingDays" value="<%=workingDays%>">
+<% if (marksheetSetups) { %>
+  <% const terminalData = marksheetSetups[0].terminals.find(t => t.name === terminal); %>
+
+  <% if (terminalData) { %>
+    <input type="hidden" id="workingDays" value="<%=terminalData.workingDays%>">
+  <% } %>
+<% } %>
 
 <script>
   const terminal = document.getElementById('terminal').value;
@@ -709,7 +711,7 @@ else if (terminal == "FINAL") { workingDays = marksheetSetups[0].terminals[3].wo
     console.log("Fetched Previous Marks:", result);
 
     // Fetch attendance data
-    const attendanceDataUrl = `/getAttendanceData?studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}`;
+    const attendanceDataUrl = `/getAttendanceData?studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&academicYear=${encodeURIComponent(academicYear)}&terminal=${encodeURIComponent(terminal)}`;
     const attendanceResponse = await fetch(attendanceDataUrl);
     const attendanceResult = await attendanceResponse.json();
 

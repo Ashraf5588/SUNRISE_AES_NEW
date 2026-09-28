@@ -1018,6 +1018,7 @@
             <% sortedSubjects.forEach((sub, index) => { 
               // Get display name for subject
               const displaySubjectName = getDisplaySubjectName(sub.subject);
+              const isAbsent = String(sub.status || '').trim().toUpperCase() === 'ABSENT';
             %>
               <% 
                 let thP = (sub.theorymarks / sub.theoryfullmarks) * 100;
@@ -1044,14 +1045,14 @@
                 let finalGrade = getGrade(thGP);
                 
                 // Check if this subject has actual NG grade
-                if (finalGrade === 'NG') {
+                if (!isAbsent && finalGrade === 'NG') {
                   hasActualNG = true;
                 }
                 
                 let obtainedGP = getObtainedGPFromGrade(finalGrade);
                 
                 // Accumulate totals
-                if (theoryCreditHour > 0) {
+                if (!isAbsent && theoryCreditHour > 0) {
                   totalCredit += theoryCreditHour;
                   totalGradePoints += thGP * theoryCreditHour;
                 }
@@ -1066,11 +1067,11 @@
                 <td><%= index + 1 %></td>
                 <td class="subject"><%= displaySubjectName %></td>
                 <td><%= theoryCreditHour || 'N/A' %></td>
-                <td class="col-theorymarks"><%= sub.theorymarks %> <%= sub.theorymarks < sub.passMarks ? '*' : '' %></td>
-                <td class="col-gp"><%= thGP.toFixed(2) %></td>
-                <td class="col-grade"><%= finalGrade %></td>
-                <td class="col-finalgrade"><%= finalGrade %></td>
-                <td class="col-remarks"><%= getSubjectRemark(finalGrade) %></td>
+                <td class="col-theorymarks"><%= isAbsent ? 'Ab' : sub.theorymarks %> <%= !isAbsent && sub.theorymarks < sub.passMarks ? '*' : '' %></td>
+                <td class="col-gp"><%= isAbsent ? '-' : thGP.toFixed(2) %></td>
+                <td class="col-grade"><%= isAbsent ? '-' : finalGrade %></td>
+                <td class="col-finalgrade"><%= isAbsent ? '-' : finalGrade %></td>
+                <td class="col-remarks"><%= isAbsent ? '-' : getSubjectRemark(finalGrade) %></td>
               </tr>
             <% }) %>
             <tr>

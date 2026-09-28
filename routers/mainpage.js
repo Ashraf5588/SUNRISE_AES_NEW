@@ -365,6 +365,8 @@ student.post('/newsadmin/update', verifytoken, authorized, isnewsAdmin, upload.f
 
 //exam part started here
 student.get('/examform',verifytoken,authorized,examcontroller.loadForm)
+student.get('/admin/entrypagesetup',verifytoken,authorized,isAdmin,examcontroller.entryPageSetup)
+student.post('/admin/entrypagesetup',verifytoken,authorized,isAdmin,examcontroller.saveEntryPageSetup)
 student.get('/entryform',verifytoken,authorized,lockcontroller.checkEntryLocker,examcontroller.entryform)
 student.post('/entryform',verifytoken,authorized,lockcontroller.checkEntryLocker,examcontroller.saveEntryform)
 
