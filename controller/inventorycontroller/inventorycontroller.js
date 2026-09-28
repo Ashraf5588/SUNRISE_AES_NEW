@@ -448,6 +448,9 @@ exports.saveProducts = async (req, res) => {
 exports.downloadProductTemplate = (req, res) => {
   const headers = ['entryDateNepali', 'name', 'quantity', 'unit', 'supplierName', 'price', 'color', 'size', 'sku', 'description', 'barcode', 'category', 'lowStockThreshold'];
   res.type('text/csv');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   res.setHeader('Content-Disposition', 'attachment; filename="inventory-products-template.csv"');
   res.send(`${headers.join(',')}\r\n${String(bs.ADToBS(new Date()) || '').trim()},Sample product,10,pcs,,0,Blue,Medium,SKU-001,Product description,123456789012,,5\r\n`);
 };

@@ -9,7 +9,7 @@
 		<section class="panel product-sheet-panel">
 			<div class="panel-heading"><div><h2>Product inventory</h2><p>Edit stock directly in the table or enter a new product in the last row.</p></div><span class="cell-secondary">Showing <%= totalProducts ? (page - 1) * 25 + 1 : 0 %>-<%= Math.min(page * 25, totalProducts) %> of <%= totalProducts %></span></div>
 			<div class="product-tools">
-				<a class="button secondary" href="/inventory/products/template.csv" download>Download CSV template</a>
+				<a class="button secondary" href="/inventory/products/template.csv?v=2" download>Download CSV template</a>
 				<a class="button secondary" href="/inventory/suppliers">Manage suppliers</a>
 				<form id="csvUploadForm" class="csv-upload-form" enctype="multipart/form-data">
 					<label class="csv-file-label" for="productCsv">Choose CSV</label>
