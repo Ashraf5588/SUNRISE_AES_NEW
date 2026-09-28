@@ -2898,6 +2898,13 @@ students.forEach(student => {
 };
 
 const THEME_COUNTER_CLASSES = ['one', '1', 'two', '2', 'three', '3', 'four', '4', 'five', '5'];
+const THEME_COUNTER_CLASS_ORDER = new Map([
+  ['one', 1], ['1', 1],
+  ['two', 2], ['2', 2],
+  ['three', 3], ['3', 3],
+  ['four', 4], ['4', 4],
+  ['five', 5], ['5', 5]
+]);
 
 const getThemeCounterModel = (studentClass, academicYear) => {
   const collectionName = `themeForStudent-${studentClass}-${academicYear}`;
@@ -2914,7 +2921,16 @@ exports.themeAssessmentCounter = async (req, res) => {
     const classFilter = String(req.query.studentClass || selectedParts[0] || '').trim();
     const sectionFilter = String(req.query.section || selectedParts[1] || '').trim();
     const eligibleClassRows = (await studentClass.find({}).sort({ classorder: 1, studentClass: 1, section: 1 }).lean())
-      .filter((item) => THEME_COUNTER_CLASSES.includes(String(item.studentClass || '').trim().toLowerCase()));
+      .filter((item) => THEME_COUNTER_CLASSES.includes(String(item.studentClass || '').trim().toLowerCase()))
+      .sort((left, right) => {
+        const leftName = String(left.studentClass || '').trim().toLowerCase();
+        const rightName = String(right.studentClass || '').trim().toLowerCase();
+        const classDifference = THEME_COUNTER_CLASS_ORDER.get(leftName) - THEME_COUNTER_CLASS_ORDER.get(rightName);
+        if (classDifference) return classDifference;
+        const leftOrder = Number.isFinite(Number(left.classorder)) ? Number(left.classorder) : Number.MAX_SAFE_INTEGER;
+        const rightOrder = Number.isFinite(Number(right.classorder)) ? Number(right.classorder) : Number.MAX_SAFE_INTEGER;
+        return leftOrder - rightOrder || String(left.section || '').localeCompare(String(right.section || ''), undefined, { numeric: true, sensitivity: 'base' });
+      });
     const classRows = eligibleClassRows
       .filter((item) => !classFilter || String(item.studentClass) === classFilter)
       .filter((item) => !sectionFilter || String(item.section) === sectionFilter);
