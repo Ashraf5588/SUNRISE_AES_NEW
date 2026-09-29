@@ -44,7 +44,17 @@ const saveSupplierName = async (value) => {
 const parseInventoryCsv = (buffer) => new Promise((resolve, reject) => {
   const rows = [];
   const csvText = buffer.toString('utf8').replace(/^\uFEFF/, '');
-  Readable.from([csvText]).pipe(csvParser()).on('data', (row) => rows.push(row)).on('end', () => resolve(rows)).on('error', reject);
+  const headerNames = {
+    entrydatenepali: 'entryDateNepali',
+    suppliername: 'supplierName',
+    lowstockthreshold: 'lowStockThreshold'
+  };
+  Readable.from([csvText]).pipe(csvParser({
+    mapHeaders: ({ header }) => {
+      const normalizedHeader = String(header || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      return headerNames[normalizedHeader] || normalizedHeader;
+    }
+  })).on('data', (row) => rows.push(row)).on('end', () => resolve(rows)).on('error', reject);
 });
 
 const renderPage = (res, view, data = {}) => res.render(`inventory/${view}`, { ...data, currentPath: res.req.path });
@@ -486,8 +496,16 @@ exports.importProductsCsv = [inventoryCsvUpload.single('productCsv'), async (req
       const lowStockThreshold = Number(row.lowStockThreshold || 5);
       const sku = String(row.sku || '').trim();
       const barcode = String(row.barcode || '').trim();
-      if (!name || name.length > 120 || supplierName.length > 120 || !unit || (categoryName && !category) || !Number.isInteger(quantity) || quantity < 0 || !Number.isFinite(price) || price < 0 || !Number.isInteger(lowStockThreshold) || lowStockThreshold < 0) {
-        return res.status(400).json({ message: `CSV row ${rowNumber} has an invalid name, unit, category, quantity, price, or low-stock alert.` });
+      const invalidFields = [];
+      if (!name || name.length > 120) invalidFields.push('name');
+      if (supplierName.length > 120) invalidFields.push('supplier name');
+      if (!unit) invalidFields.push('unit');
+      if (categoryName && !category) invalidFields.push('category');
+      if (!Number.isInteger(quantity) || quantity < 0) invalidFields.push('quantity');
+      if (!Number.isFinite(price) || price < 0) invalidFields.push('price');
+      if (!Number.isInteger(lowStockThreshold) || lowStockThreshold < 0) invalidFields.push('low-stock alert');
+      if (invalidFields.length) {
+        return res.status(400).json({ message: `CSV row ${rowNumber} has invalid or unrecognized values for: ${invalidFields.join(', ')}.` });
       }
       if (sku.length > 60 || barcode.length > 100 || String(row.color || '').length > 40 || String(row.size || '').length > 40 || String(row.description || '').length > 400 || String(row.entryDateNepali || '').length > 20) {
         return res.status(400).json({ message: `CSV row ${rowNumber} contains a value that is too long.` });
