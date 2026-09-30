@@ -71,8 +71,8 @@
     </select>
     <select name="terminals" id="terminal">
       <option value="" selected disabled>Choose Terminal</option>
-      <%marksheetSetups[0].terminals.forEach((terminal)=>{%>
-        <option value="<%=terminal.name%>"><%=terminal.name%></option>
+      <%terminals.forEach((terminal)=>{%>
+        <option value="<%=terminal.terminal%>"><%=terminal.terminal%></option>
       <% }) %>
     </select>
 <select name="academicYear" id="academicYear">

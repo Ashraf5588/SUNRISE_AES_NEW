@@ -38,6 +38,26 @@
     .book-title { display:block; font-weight:700; }
     .book-meta { display:block; margin-top:3px; color:var(--muted); font-size:12px; }
     .selection-bar { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin:14px 0; color:var(--muted); font-size:13px; }
+    .shelf-overview { max-width:1000px; margin-top:22px; }
+    .overview-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:15px; }
+    .overview-heading h2 { margin:0; font-size:19px; }
+    .overview-heading p { margin:5px 0 0; color:var(--muted); font-size:13px; }
+    .shelf-table-wrap { width:100%; overflow-x:auto; }
+    .shelf-table { width:100%; min-width:820px; border-collapse:collapse; table-layout:fixed; }
+    .shelf-table th, .shelf-table td { padding:11px 12px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
+    .shelf-table th { background:#eff6ff; color:#334155; font-size:12px; text-transform:uppercase; }
+    .shelf-table th:nth-child(1) { width:150px; }
+    .shelf-table th:nth-child(2) { width:110px; }
+    .shelf-table th:nth-child(3), .shelf-table td:nth-child(3) { width:370px; }
+    .shelf-table th:nth-child(4) { width:auto; }
+    .shelf-book-count { color:var(--primary); font-weight:700; }
+    .shelf-book-name-scroll { width:345px; max-width:100%; height:132px; overflow:auto; border:1px solid var(--border); border-radius:8px; background:#fff; }
+    .shelf-book-name-list { margin:0; padding:4px 0; list-style:none; }
+    .shelf-book-name-list li { width:max-content; min-width:100%; padding:6px 10px; border-bottom:1px solid #eef2f7; font-weight:600; white-space:nowrap; }
+    .shelf-book-name-list li:last-child { border-bottom:0; }
+    .shelf-categories { display:flex; flex-wrap:wrap; gap:6px; }
+    .shelf-category-tag { padding:5px 8px; border-radius:6px; color:#1e40af; background:#eff6ff; font-size:12px; font-weight:600; }
+    .shelf-empty { padding:24px; color:var(--muted); text-align:center; }
     .message { padding:11px 13px; margin-bottom:14px; border-radius:9px; }
     .error { color:#991b1b; background:#fee2e2; }
     .success { color:#166534; background:#dcfce7; }
@@ -75,6 +95,30 @@
           <div style="margin-top:16px;"><button class="btn primary" type="submit">Save Shelf Assignment</button></div>
         </form>
       </div>
+
+      <section class="card shelf-overview" aria-labelledby="shelfOverviewTitle">
+        <div class="overview-heading">
+          <div><h2 id="shelfOverviewTitle">Current Shelf Assignments</h2><p>Book names scroll within a fixed-width column; each category is listed once per shelf.</p></div>
+          <strong><%= (shelfGroups || []).reduce((total, group) => total + group.totalBooks, 0) %> books total</strong>
+        </div>
+        <% if (shelfGroups && shelfGroups.length) { %>
+          <div class="shelf-table-wrap"><table class="shelf-table">
+            <thead><tr><th>Shelf No</th><th>Total Book</th><th>Book Name</th><th>Categories</th></tr></thead>
+            <tbody>
+              <% shelfGroups.forEach((group) => { %>
+                <tr>
+                  <td><strong><%= group.shelfNumber %></strong></td>
+                  <td class="shelf-book-count"><%= group.totalBooks %></td>
+                  <td><div class="shelf-book-name-scroll" tabindex="0" aria-label="Book names on shelf <%= group.shelfNumber %>"><ul class="shelf-book-name-list"><% group.books.forEach((book) => { %><li><%= book.title %></li><% }) %></ul></div></td>
+                  <td><div class="shelf-categories"><% group.categories.forEach((category) => { %><span class="shelf-category-tag"><%= category %></span><% }) %></div></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table></div>
+        <% } else { %>
+          <div class="shelf-empty">No books have been added to the library yet.</div>
+        <% } %>
+      </section>
     </main>
   </div>
   <script>

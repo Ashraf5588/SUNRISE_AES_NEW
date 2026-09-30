@@ -7,7 +7,7 @@
   <link rel="manifest" href="/site.webmanifest">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Grade Sheet</title>
+  <title>Test Marksheet</title>
 
   <style>
     /* Clean, professional marksheet styling for A4 printing */
@@ -846,22 +846,22 @@
           }
         %>
         <select name="classSection" id="classSection">
-          <option value="" selected disabled>Choose Class & Section</option>
+          <option value="" <%= studentClass && section ? '' : 'selected' %> disabled>Choose Class & Section</option>
           <% sortedClassSectionData.forEach((data)=>{%>
-            <option value="<%=data.studentClass%>-<%=data.section%>"><%=data.studentClass%> - <%=data.section%></option>
+            <option value="<%=data.studentClass%>-<%=data.section%>" <%= String(data.studentClass) === String(studentClass) && String(data.section) === String(section) ? 'selected' : '' %>><%=data.studentClass%> - <%=data.section%></option>
           <%})%>
         </select>
         <select name="terminals" id="terminal">
-          <option value="" selected disabled>Choose Terminal</option>
-          <% terminals.forEach((terminal)=>{%>
-            <option value="<%=terminal.terminal%>"><%=terminal.terminal%></option>
+          <option value="" <%= terminal ? '' : 'selected' %> disabled>Choose TEST Terminal</option>
+          <% terminals.forEach((terminalOption)=>{%>
+            <option value="<%=terminalOption.terminal%>" <%= String(terminalOption.terminal) === String(terminal) ? 'selected' : '' %>><%=terminalOption.terminal%></option>
           <% }) %>
         </select>
         <select name="academicYear" id="academicYear">
-          <option value="" selected disabled>Choose Academic Year</option>
+          <option value="" <%= academicYear ? '' : 'selected' %> disabled>Choose Academic Year</option>
           <% currentYear = Number(marksheetSetups[0].academicYear) %>;
           <% for (let i = 0; i < 5; i++) { %>
-            <option value="<%= currentYear - i %>"><%= currentYear - i %></option>
+            <option value="<%= currentYear - i %>" <%= String(currentYear - i) === String(academicYear) ? 'selected' : '' %>><%= currentYear - i %></option>
           <% } %>
         </select>
       </div>
@@ -876,7 +876,12 @@
       const section = classSection.split("-")[1];
       const academicYear = document.getElementById('academicYear').value;
       const terminal = document.getElementById('terminal').value;
-      window.location.href = `/generatemarksheet?studentClass=${studentClass}&section=${section}&format=${"theoryonly"}&terminal=${terminal}&academicYear=${academicYear}`;
+      if (!studentClass || !section || !terminal || !academicYear) {
+        alert('Choose a class, section, TEST terminal, and academic year.');
+        return;
+      }
+      const params = new URLSearchParams({ studentClass, section, format: 'test', terminal, academicYear });
+      window.location.href = `/generatemarksheet?${params}`;
     }
   </script>
 
@@ -979,7 +984,7 @@
             <div class="school-meta"><%= marksheetSetups[0].address %> &nbsp; | &nbsp; Phone: <%= marksheetSetups[0].phone %></div>
             <div class="report-title">
               <div>Grade Sheet</div>
-              <div style="font-size:13px; margin-top:3px; font-weight:600"><%= terminal %> Terminal Examination - <%= academicYear %></div>
+              <div style="font-size:13px; margin-top:3px; font-weight:600"><%= terminal %> Test Examination - <%= academicYear %> (Full Marks: <%= testFullMarks %>)</div>
             </div>
           </div>
           <div class="logo" style="border:none; visibility:hidden"></div>
@@ -1000,7 +1005,7 @@
               <th style="width:5%">S.N</th>
               <th style="width:25%">Subject</th>
               <th style="width:12%">Credit Hour</th>
-              <th class="col-theorymarks" style="width:15%">Obtained Th Marks</th>
+              <th class="col-theorymarks" style="width:15%">Obtained Marks / <%= testFullMarks %></th>
               <th>Grade Point</th>
               <th class="col-grade" style="width:12%">Grade</th>
               <th class="col-finalgrade" style="width:12%">Final Grade</th>
@@ -1019,9 +1024,10 @@
               // Get display name for subject
               const displaySubjectName = getDisplaySubjectName(sub.subject);
               const isAbsent = String(sub.status || '').trim().toUpperCase() === 'ABSENT';
+              const applicablePassMarks = Number(testPassMarks) > 0 ? Number(testPassMarks) : (Number(sub.passMarks) || 0);
             %>
               <% 
-                let thP = (sub.theorymarks / sub.theoryfullmarks) * 100;
+                let thP = testFullMarks > 0 ? (sub.theorymarks / testFullMarks) * 100 : 0;
                 let thGP = getGP(thP);
                 let theoryCreditHour = 0;
                 
@@ -1067,7 +1073,7 @@
                 <td><%= index + 1 %></td>
                 <td class="subject"><%= displaySubjectName %></td>
                 <td><%= theoryCreditHour || 'N/A' %></td>
-                <td class="col-theorymarks"><%= isAbsent ? 'Ab' : sub.theorymarks %> <%= !isAbsent && sub.theorymarks < sub.passMarks ? '*' : '' %></td>
+                <td class="col-theorymarks"><%= isAbsent ? 'Ab' : sub.theorymarks %> <%= !isAbsent && sub.theorymarks < applicablePassMarks ? '*' : '' %></td>
                 <td class="col-gp"><%= isAbsent ? '-' : thGP.toFixed(2) %></td>
                 <td class="col-grade"><%= isAbsent ? '-' : finalGrade %></td>
                 <td class="col-finalgrade"><%= isAbsent ? '-' : finalGrade %></td>

@@ -128,10 +128,22 @@ exports.libraryDashboard = async (req, res) => {
 
     const categorySummary = categories
       .map((category) => {
-        const count = books
-          .filter((book) => String(book.category || "") === String(category.name || ""))
-          .reduce((sum, book) => sum + (Number(book.totalQuantity) || 0), 0);
-        return { name: category.name, count };
+        const categoryBooks = books.filter((book) => String(book.category || "") === String(category.name || ""));
+        const totalCopies = categoryBooks.reduce((sum, book) => sum + (Number(book.totalQuantity) || 0), 0);
+        const availableCopies = categoryBooks.reduce((sum, book) => sum + (Number(book.availableQuantity) || 0), 0);
+        const requiredPercentage = Math.min(100, Math.max(0, Number(category.requiredPercentage) || 0));
+        const requiredCount = Math.ceil(totalCopies * requiredPercentage / 100);
+        const availablePercentage = totalCopies ? Math.round(availableCopies / totalCopies * 100) : 0;
+        return {
+          name: category.name,
+          count: totalCopies,
+          totalCopies,
+          availableCopies,
+          requiredCount,
+          requiredPercentage,
+          availablePercentage,
+          meetsRequirement: availableCopies >= requiredCount
+        };
       })
       .filter((item) => item.count > 0);
 
@@ -171,26 +183,48 @@ exports.libraryAnalytics = async (req, res) => {
       Member.find().sort({ membershipDate: -1, createdAt: -1 }).lean()
     ]);
 
-    const bookMap = new Map(books.map((book) => [String(book._id), book]));
-    const circulationCategories = issues.map((issue) => normalizeText(bookMap.get(String(issue.bookId))?.category) || 'Uncategorized');
-    const categoryNames = Array.from(new Set([
-      ...books.map((book) => normalizeText(book.category)).filter(Boolean),
-      ...circulationCategories
-    ])).sort();
+    const categoryNames = Array.from(new Set(books.map((book) => normalizeText(book.category) || 'Uncategorized'))).sort();
     const monthNames = ['Baisakh', 'Jestha', 'Ashadh', 'Shrawan', 'Bhadra', 'Ashwin', 'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'];
+    const currentNepaliYear = Number(String(bs.ADToBS(new Date()) || '').split('-')[0]) || new Date().getFullYear() + 57;
+    const selectedNepaliYear = String(Number.parseInt(req.query.nepaliYear, 10) || currentNepaliYear);
+    const nepaliYearOptions = Array.from({ length: 5 }, (_, index) => String(currentNepaliYear - index));
     const monthRows = monthNames.map((month, index) => {
-      const row = { month, categories: Object.fromEntries(categoryNames.map((category) => [category, 0])), total: 0 };
-      issues.forEach((issue) => {
-        if (!issue.issuedAt) return;
-        const bsValue = toNepaliDate(issue.issuedAt);
-        const monthNumber = Number(String(bsValue).split('-')[1]);
-        if (monthNumber !== index + 1) return;
-        const category = normalizeText(bookMap.get(String(issue.bookId))?.category) || 'Uncategorized';
-        if (row.categories[category] === undefined) row.categories[category] = 0;
-        row.categories[category] += Number(issue.quantity || 0);
-        row.total += Number(issue.quantity || 0);
-      });
+      const row = {
+        month,
+        categories: Object.fromEntries(categoryNames.map((category) => [category, 0])),
+        totalBooks: 0,
+        totalPrice: 0
+      };
       return row;
+    });
+    const parseBookPurchaseDate = (value) => {
+      const rawDate = normalizeText(value);
+      const separator = rawDate.includes('/') ? '/' : rawDate.includes('-') ? '-' : '';
+      if (!separator) return null;
+      const parts = rawDate.split(separator).map((part) => Number.parseInt(part.trim(), 10));
+      if (parts.length !== 3 || parts.some((part) => !Number.isInteger(part))) return null;
+      const [year, month] = separator === '/' ? [parts[2], parts[0]] : [parts[0], parts[1]];
+      if (month < 1 || month > 12) return null;
+      return { year: String(year), month };
+    };
+    const annualCategoryTotals = Object.fromEntries(categoryNames.map((category) => [category, 0]));
+    let purchaseTotalBooks = 0;
+    let purchaseTotalPrice = 0;
+    books.forEach((book) => {
+      const purchaseDate = parseBookPurchaseDate(book.date);
+      if (!purchaseDate || purchaseDate.year !== selectedNepaliYear) return;
+      const row = monthRows[purchaseDate.month - 1];
+      const category = normalizeText(book.category) || 'Uncategorized';
+      const quantity = Math.max(0, Number(book.totalQuantity) || 0);
+      const unitPrice = Math.max(0, Number(book.price) || 0);
+      const linePrice = quantity * unitPrice;
+      if (row.categories[category] === undefined) row.categories[category] = 0;
+      row.categories[category] += quantity;
+      row.totalBooks += quantity;
+      row.totalPrice += linePrice;
+      annualCategoryTotals[category] = (annualCategoryTotals[category] || 0) + quantity;
+      purchaseTotalBooks += quantity;
+      purchaseTotalPrice += linePrice;
     });
 
     const shelfMap = new Map();
@@ -235,6 +269,11 @@ exports.libraryAnalytics = async (req, res) => {
       shelfRows,
       categoryNames,
       monthRows,
+      selectedNepaliYear,
+      nepaliYearOptions,
+      annualCategoryTotals,
+      purchaseTotalBooks,
+      purchaseTotalPrice,
       dueBooks,
       feeRows,
       feeTotal,
@@ -362,7 +401,28 @@ exports.listBooks = async (req, res) => {
 exports.shelfAssignmentPage = async (req, res) => {
   try {
     const books = await Book.find().sort({ shelvesNo: 1, title: 1 }).lean();
-    res.render('library/shelfassignment', { books, error: '', success: '' });
+    const shelfGroupsByNumber = new Map();
+    books.forEach((book) => {
+      const shelfNumber = normalizeText(book.shelvesNo) || 'Unassigned';
+      if (!shelfGroupsByNumber.has(shelfNumber)) shelfGroupsByNumber.set(shelfNumber, []);
+      shelfGroupsByNumber.get(shelfNumber).push({
+        title: book.title || 'Untitled book',
+        category: normalizeText(book.category) || 'Uncategorized'
+      });
+    });
+    const shelfGroups = [...shelfGroupsByNumber.entries()]
+      .sort(([left], [right]) => {
+        if (left === 'Unassigned') return 1;
+        if (right === 'Unassigned') return -1;
+        return left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
+      })
+      .map(([shelfNumber, shelfBooks]) => ({
+        shelfNumber,
+        books: shelfBooks,
+        totalBooks: shelfBooks.length,
+        categories: [...new Set(shelfBooks.map((book) => book.category))]
+      }));
+    res.render('library/shelfassignment', { books, shelfGroups, error: '', success: '' });
   } catch (error) {
     console.error('Error loading shelf assignment page:', error);
     res.status(500).send('Error loading shelf assignment page.');
@@ -817,11 +877,32 @@ exports.listMembers = async (req, res) => {
 
 exports.listIssues = async (req, res) => {
   try {
-    const [issues, books, members] = await Promise.all([
-      BookIssue.find().sort({ issuedAt: -1 }).lean(),
+    const searchQuery = String(req.query.q || '').trim().slice(0, 100);
+    const pageSize = 25;
+    const requestedPage = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+    const escapedSearch = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const filter = searchQuery ? {
+      $or: [
+        { bookTitle: { $regex: escapedSearch, $options: 'i' } },
+        { bookCodes: { $regex: escapedSearch, $options: 'i' } },
+        { memberName: { $regex: escapedSearch, $options: 'i' } },
+        { memberType: { $regex: escapedSearch, $options: 'i' } },
+        { status: { $regex: escapedSearch, $options: 'i' } },
+        { conditionOnReturn: { $regex: escapedSearch, $options: 'i' } }
+      ]
+    } : {};
+    const [totalIssues, books, members] = await Promise.all([
+      BookIssue.countDocuments(filter),
       Book.find().sort({ title: 1 }).lean(),
       Member.find().sort({ createdAt: -1 }).lean()
     ]);
+    const totalPages = Math.max(1, Math.ceil(totalIssues / pageSize));
+    const page = Math.min(requestedPage, totalPages);
+    const issues = await BookIssue.find(filter)
+      .sort({ issuedAt: -1 })
+      .skip((page - 1) * pageSize)
+      .limit(pageSize)
+      .lean();
 
     const bookMap = new Map((books || []).map((book) => [String(book._id), book]));
 
@@ -840,6 +921,11 @@ exports.listIssues = async (req, res) => {
       issues: normalizedIssues,
       books,
       members,
+      searchQuery,
+      page,
+      pageSize,
+      totalPages,
+      totalIssues,
       error: "",
       success: ""
     });
@@ -886,6 +972,10 @@ exports.assignBook = async (req, res) => {
       .map((code) => String(code || '').trim())
       .filter(Boolean)
       .map((code) => code.toUpperCase());
+
+    if (!requestedCodes.length || requestedCodes.length !== quantity || new Set(requestedCodes).size !== requestedCodes.length) {
+      return res.status(400).json({ message: 'Enter one distinct available book code for each copy to issue.' });
+    }
 
     const availableCopies = (book.bookCodes || []).filter((copy) => copy.status === "available");
     if (availableCopies.length < quantity && requestedCodes.length === 0) {

@@ -230,12 +230,14 @@
 
     .bar-row {
       display: grid;
-      grid-template-columns: 90px 1fr 40px;
+      grid-template-columns: minmax(110px, .8fr) minmax(100px, 1.3fr) minmax(190px, 1fr);
       align-items: center;
       gap: 10px;
       font-size: 13px;
       color: var(--muted);
     }
+
+    .bar-category { color:var(--text); font-weight:700; overflow-wrap:anywhere; }
 
     .bar-track {
       position: relative;
@@ -251,6 +253,19 @@
       border-radius: 999px;
       background: linear-gradient(90deg, #60a5fa, #2563eb);
     }
+
+    .bar-fill.below-target { background:linear-gradient(90deg,#fbbf24,#d97706); }
+    .bar-target { position:absolute; z-index:1; top:-3px; bottom:-3px; width:3px; border-radius:2px; background:#b91c1c; transform:translateX(-50%); }
+    .category-metrics { display:grid; gap:3px; line-height:1.35; }
+    .category-metrics strong { color:var(--text); font-size:12px; }
+    .category-metrics span { font-size:11px; }
+    .category-status { justify-self:start; margin-top:2px; padding:3px 7px; border-radius:999px; font-size:10px !important; font-weight:700; }
+    .category-status.meets { color:#166534; background:var(--green-soft); }
+    .category-status.below { color:#92400e; background:var(--yellow-soft); }
+    .bar-legend { display:flex; align-items:center; gap:14px; margin-top:15px; color:var(--muted); font-size:11px; }
+    .bar-legend-item { display:inline-flex; align-items:center; gap:6px; }
+    .bar-legend-fill { width:17px; height:8px; border-radius:999px; background:#2563eb; }
+    .bar-legend-target { width:3px; height:14px; border-radius:2px; background:#b91c1c; }
 
     .donut-wrap {
       display: flex;
@@ -363,7 +378,8 @@
       }
       .content { padding: 18px; }
       .stats-grid { grid-template-columns: 1fr; }
-      .bar-row { grid-template-columns: 80px 1fr 34px; }
+      .bar-row { grid-template-columns: minmax(90px,.8fr) minmax(100px,1fr); align-items:start; }
+      .category-metrics { grid-column:2; }
     }
   </style>
   <link rel="stylesheet" href="/library-nav.css">
@@ -437,21 +453,24 @@
         <div class="card">
           <h3>Inventory by Category</h3>
           <% if (categorySummary && categorySummary.length) { %>
-            <%
-              const maxCategoryCount = categorySummary.reduce((max, item) => Math.max(max, Number(item.count) || 0), 1);
-            %>
+            <p class="title-sub">Available copies compared with each category’s configured minimum.</p>
             <div class="category-bars">
               <% categorySummary.forEach((item) => { %>
-                <% const percent = Math.max(10, ((Number(item.count) || 0) / maxCategoryCount) * 100); %>
                 <div class="bar-row">
-                  <span><%= item.name %></span>
-                  <div class="bar-track">
-                    <div class="bar-fill" style="width:<%= percent %>%"></div>
+                  <span class="bar-category"><%= item.name %></span>
+                  <div class="bar-track" role="img" aria-label="<%= item.name %>: <%= item.availablePercentage %>% available; <%= item.requiredPercentage %>% required">
+                    <div class="bar-fill <%= item.meetsRequirement ? '' : 'below-target' %>" data-available-percentage="<%= item.availablePercentage %>"></div>
+                    <div class="bar-target" data-required-percentage="<%= item.requiredPercentage %>"></div>
                   </div>
-                  <strong><%= item.count %></strong>
+                  <div class="category-metrics">
+                    <strong><%= item.availableCopies %> / <%= item.requiredCount %> copies available / required</strong>
+                    <span><%= item.availablePercentage %>% available / <%= item.requiredPercentage %>% required</span>
+                    <span class="category-status <%= item.meetsRequirement ? 'meets' : 'below' %>"><%= item.meetsRequirement ? 'Meets requirement' : 'Below requirement' %></span>
+                  </div>
                 </div>
               <% }); %>
             </div>
+            <div class="bar-legend"><span class="bar-legend-item"><span class="bar-legend-fill"></span> Available percentage</span><span class="bar-legend-item"><span class="bar-legend-target"></span> Required percentage</span></div>
           <% } else { %>
             <p>No category data available yet.</p>
           <% } %>
@@ -513,5 +532,15 @@
       </div>
     </main>
   </div>
+  <script>
+    document.querySelectorAll('[data-available-percentage]').forEach((bar) => {
+      const percentage = Math.min(100, Math.max(0, Number(bar.dataset.availablePercentage) || 0));
+      bar.style.width = `${percentage}%`;
+    });
+    document.querySelectorAll('[data-required-percentage]').forEach((marker) => {
+      const percentage = Math.min(100, Math.max(0, Number(marker.dataset.requiredPercentage) || 0));
+      marker.style.left = `${percentage}%`;
+    });
+  </script>
 </body>
 </html>

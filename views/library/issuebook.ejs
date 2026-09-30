@@ -39,6 +39,12 @@
     .table-scroll table { width:100%; min-width:900px; border-collapse:collapse; }
     .table-scroll th, .table-scroll td { padding:12px 14px; border-bottom:1px solid var(--border); text-align:left; }
     .table-scroll th { background:#eef5ff; color:#111827; }
+    .issue-list-tools { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+    .issue-search { display:flex; flex:1; min-width:min(100%,360px); max-width:680px; gap:8px; }
+    .issue-search input { flex:1; min-width:0; padding:10px 12px; border:1px solid var(--border); border-radius:9px; font:inherit; }
+    .issue-result-count { color:var(--muted); font-size:13px; }
+    .issue-pagination { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:14px; padding-top:12px; border-top:1px solid var(--border); color:var(--muted); font-size:13px; }
+    .issue-pagination-links { display:flex; gap:8px; }
     tbody tr:nth-child(even) { background:#f8fafc; }
     tbody tr:hover { background:#eff6ff; }
     .member-search-item:hover, .book-search-item:hover { background:#eff6ff; }
@@ -47,6 +53,12 @@
     .message { margin-top:12px; padding:10px 12px; border-radius:8px; font-size:14px; }
     .success { background:var(--green-soft); color:#166534; }
     .error { background:var(--red-soft); color:#991b1b; }
+    .book-code-error { display:none; padding:9px 11px; border:1px solid #fca5a5; border-radius:8px; color:#991b1b; background:#fef2f2; font-size:13px; font-weight:700; }
+    .book-code-error.visible { display:block; }
+    .field input.code-invalid { border-color:var(--red); background:var(--red-soft); box-shadow:0 0 0 3px rgba(239,68,68,.14); }
+    .field input.code-shake { animation:book-code-shake .32s ease; }
+    @keyframes book-code-shake { 20%,60% { transform:translateX(-5px); } 40%,80% { transform:translateX(5px); } }
+    @media (prefers-reduced-motion: reduce) { .field input.code-shake { animation:none; } }
     .return-modal-shell { background:#fff; width:min(760px, 100%); border-radius:18px; box-shadow:0 20px 48px rgba(15,23,42,0.2); padding:24px; position:relative; }
     .return-modal-header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; }
     .return-grid { display:grid; grid-template-columns:repeat(2, minmax(220px, 1fr)); gap:14px; }
@@ -119,35 +131,36 @@
             </div>
 
             <div class="field" style="grid-column: 1 / -1;">
-              <label for="bookSearch">Search Book by Title or Code</label>
-              <input type="text" id="bookSearch" placeholder="Type title or code like SAT-001" autocomplete="off" />
+              <label for="bookSearch">Book Copy Code</label>
+              <input type="text" id="bookSearch" placeholder="Type or scan a code like SAT-001" autocomplete="off" autocapitalize="characters" spellcheck="false" aria-describedby="bookCodeFeedback" required />
               <div id="bookSearchResults" style="display:none; border:1px solid var(--border); border-radius:10px; background:#fff; max-height:200px; overflow:auto; box-shadow:0 8px 20px rgba(15,23,42,0.08);"></div>
+              <div id="bookCodeFeedback" class="book-code-error" role="alert" aria-live="polite"></div>
             </div>
 
-            <div class="field" style="grid-column: 1 / -1;">
+            <div class="field" style="display:none;">
               <label for="bookId">Book</label>
-              <select name="bookId" id="bookId" required>
+              <select name="bookId" id="bookId">
                 <option value="">Select book</option>
                 <% if (books && books.length) { %>
                   <% books.forEach((book) => { %>
                     <% const availableCodes = (book.bookCodes || []).filter((copy) => copy.status === 'available').map((copy) => copy.code); %>
-                    <option value="<%= book._id %>" data-title="<%= book.title %>" data-book-code="<%= (book.bookCodePrefix || 'BK') %>" data-copy-codes='<%= JSON.stringify(availableCodes) %>' data-search-text="<%= [book.title, book.bookCodePrefix, ...(book.bookCodes || []).map((copy) => copy.code)].join(' ') %>"><%= book.title %> - <%= book.availableQuantity %> available</option>
+                    <option value="<%= book._id %>" data-title="<%= book.title %>" data-copy-codes='<%= JSON.stringify(availableCodes) %>'><%= book.title %> - <%= book.availableQuantity %> available</option>
                   <% }) %>
                 <% } %>
               </select>
             </div>
 
             <div class="field">
-              <label for="quantity">Quantity</label>
-              <input type="number" name="quantity" id="quantity" min="1" value="1" required />
+              <label for="quantity">Quantity (per copy code)</label>
+              <input type="number" name="quantity" id="quantity" min="1" max="1" value="1" readonly required />
             </div>
 
             <div class="field" style="grid-column: 1 / -1;">
-              <label for="scanBookCode">Scan / Search Book Code</label>
+              <label>Webcam barcode scanner</label>
               <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-                <input type="text" name="scanBookCode" id="scanBookCode" placeholder="Scan barcode or enter code like SAT-001" style="flex:1; min-width:200px;" />
                 <button type="button" id="startCameraScanBtn" class="btn btn-secondary">Use Webcam</button>
               </div>
+              <input type="hidden" name="scanBookCode" id="scanBookCode" />
               <video id="scannerVideo" autoplay playsinline muted style="display:none; width:100%; max-width:420px; border-radius:12px; border:1px solid var(--border); background:#111827; margin-top:8px;"></video>
             </div>
 
@@ -169,6 +182,14 @@
 
       <div class="card">
         <h3>Issued Books</h3>
+        <div class="issue-list-tools">
+          <form class="issue-search" method="get" action="/library/issues">
+            <input type="search" name="q" value="<%= searchQuery || '' %>" placeholder="Search all issues by book, member, copy code, status..." aria-label="Search all issued and returned books" />
+            <button class="btn btn-primary" type="submit">Search</button>
+            <% if (searchQuery) { %><a class="btn btn-secondary" href="/library/issues">Clear</a><% } %>
+          </form>
+          <span class="issue-result-count">Showing <%= totalIssues ? (page - 1) * pageSize + 1 : 0 %>-<%= Math.min(page * pageSize, totalIssues) %> of <%= totalIssues %></span>
+        </div>
         <div class="table-scroll">
           <table>
             <thead>
@@ -206,11 +227,20 @@
                 </tr>
               <% }) %>
             <% } else { %>
-              <tr><td colspan="9">No issued books yet.</td></tr>
+              <tr><td colspan="9"><%= searchQuery ? 'No issues match this search.' : 'No issued books yet.' %></td></tr>
             <% } %>
             </tbody>
           </table>
         </div>
+        <% if (totalPages > 1) { %>
+          <nav class="issue-pagination" aria-label="Issued book pages">
+            <span>Page <%= page %> of <%= totalPages %></span>
+            <div class="issue-pagination-links">
+              <% if (page > 1) { %><a class="btn btn-secondary" href="/library/issues?q=<%= encodeURIComponent(searchQuery) %>&page=<%= page - 1 %>">Previous</a><% } %>
+              <% if (page < totalPages) { %><a class="btn btn-secondary" href="/library/issues?q=<%= encodeURIComponent(searchQuery) %>&page=<%= page + 1 %>">Next</a><% } %>
+            </div>
+          </nav>
+        <% } %>
       </div>
     </main>
   </div>
@@ -230,14 +260,23 @@
     const returnModalContent = document.getElementById('returnModalContent');
     const scannerVideo = document.getElementById('scannerVideo');
     const startCameraScanBtn = document.getElementById('startCameraScanBtn');
+    const bookCodeFeedback = document.getElementById('bookCodeFeedback');
     let cameraStream = null;
     let cameraScanTimer = null;
-    const libraryBooks = <%- JSON.stringify((books || []).map((book) => ({
-      _id: book._id,
-      title: book.title,
-      bookCodePrefix: book.bookCodePrefix,
-      bookCodes: (book.bookCodes || []).map((copy) => copy.code)
-    }))) %>;
+    let selectedCopyCode = '';
+    const availableBookCodes = Array.from(bookSelect.options)
+      .filter((option) => option.value)
+      .flatMap((option) => {
+        try {
+          return (JSON.parse(option.dataset.copyCodes || '[]') || []).map((code) => ({
+            bookId: option.value,
+            title: option.dataset.title || 'Unknown book',
+            code: String(code || '').trim().toUpperCase()
+          }));
+        } catch (error) {
+          return [];
+        }
+      });
     const returnIssueData = <%- JSON.stringify((issues || []).map((issue) => ({
       _id: issue._id,
       bookTitle: issue.bookTitle,
@@ -352,125 +391,135 @@
     }
 
     function renderBookSearchResults() {
-      const searchText = String(bookSearch.value || '').trim().toLowerCase();
-      const matches = Array.from(bookSelect.options).filter((option) => option.value && (!searchText || String(option.dataset.searchText || '').toLowerCase().includes(searchText)));
+      const searchText = String(bookSearch.value || '').trim().toUpperCase();
+      const matches = availableBookCodes.filter((copy) => copy.code.startsWith(searchText));
 
       if (!searchText || !matches.length) {
-        bookSearchResults.innerHTML = '';
+        bookSearchResults.replaceChildren();
         bookSearchResults.style.display = 'none';
         return;
       }
 
-      bookSearchResults.innerHTML = matches.slice(0, 8).map((option) => {
-        const title = option.dataset.title || 'Unknown book';
-        const copyCodes = (JSON.parse(option.dataset.copyCodes || '[]') || []).slice(0, 3).join(', ');
-        return `
-          <div class="book-search-item" data-book-id="${option.value}" style="padding:10px 12px; border-bottom:1px solid #eef2f7; cursor:pointer;">
-            <div style="font-weight:700;">${title}</div>
-            <div style="font-size:12px; color:#64748b;">Code: ${option.dataset.bookCode || 'BK'} · Copies: ${copyCodes || 'No copies'}</div>
-          </div>
-        `;
-      }).join('');
-
-      bookSearchResults.style.display = 'block';
-
-      bookSearchResults.querySelectorAll('.book-search-item').forEach((item) => {
-        item.addEventListener('click', () => {
-          const selectedValue = item.dataset.bookId;
-          bookSelect.value = selectedValue;
-          const selectedOption = Array.from(bookSelect.options).find((option) => option.value === selectedValue);
-          if (selectedOption) {
-            bookSearch.value = selectedOption.dataset.title || '';
-          }
-          bookSearchResults.style.display = 'none';
-          refreshAvailableBookCopyCodes();
-        });
+      bookSearchResults.replaceChildren();
+      matches.slice(0, 8).forEach((copy) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'book-search-item';
+        button.style.cssText = 'display:block;width:100%;padding:10px 12px;border:0;border-bottom:1px solid #eef2f7;background:#fff;text-align:left;cursor:pointer;';
+        const code = document.createElement('strong');
+        code.textContent = copy.code;
+        const title = document.createElement('small');
+        title.textContent = `${copy.title} · Available copy`;
+        title.style.cssText = 'display:block;margin-top:3px;color:#64748b;';
+        button.append(code, title);
+        button.addEventListener('mousedown', (event) => event.preventDefault());
+        button.addEventListener('click', () => selectBookCopy(copy));
+        bookSearchResults.appendChild(button);
       });
+      bookSearchResults.style.display = 'block';
     }
 
     function applyBookSearchFilter() {
-      const searchText = String(bookSearch.value || '').trim().toLowerCase();
-      let visibleCount = 0;
-
-      Array.from(bookSelect.options).forEach((option) => {
-        if (!option.value) {
-          option.hidden = false;
-          return;
-        }
-
-        const searchableText = String(option.dataset.searchText || '').toLowerCase();
-        const match = !searchText || searchableText.includes(searchText);
-        option.hidden = !match;
-        if (match) visibleCount += 1;
-      });
-
-      renderBookSearchResults();
-
-      if (visibleCount === 1) {
-        const onlyMatch = Array.from(bookSelect.options).find((option) => option.value && !option.hidden);
-        if (onlyMatch) {
-          bookSelect.value = onlyMatch.value;
-        }
+      const cursor = bookSearch.selectionStart;
+      const uppercaseValue = String(bookSearch.value || '').toUpperCase();
+      if (bookSearch.value !== uppercaseValue) {
+        bookSearch.value = uppercaseValue;
+        bookSearch.setSelectionRange(cursor, cursor);
       }
-
-      refreshAvailableBookCopyCodes();
+      selectedCopyCode = '';
+      bookSelect.value = '';
+      scanBookCode.value = '';
+      copyCodeList.textContent = 'Enter an available book copy code.';
+      clearBookCodeError();
+      const exactMatch = availableBookCodes.find((copy) => copy.code === uppercaseValue.trim());
+      if (exactMatch) {
+        selectBookCopy(exactMatch);
+        return;
+      }
+      renderBookSearchResults();
     }
 
-    function refreshAvailableBookCopyCodes() {
-      const selectedOption = Array.from(bookSelect.options).find((option) => option.value === bookSelect.value && !option.hidden);
-      let codes = [];
-      try {
-        codes = JSON.parse(selectedOption?.dataset.copyCodes || '[]') || [];
-      } catch (error) {
-        codes = [];
-      }
+    function clearBookCodeError() {
+      bookSearch.classList.remove('code-invalid', 'code-shake');
+      bookCodeFeedback.classList.remove('visible');
+      bookCodeFeedback.textContent = '';
+    }
 
-      copyCodeList.textContent = codes.length ? codes.join(', ') : 'No available copies for this book.';
-      quantityInput.max = codes.length || 1;
-      if (Number(quantityInput.value) > Number(quantityInput.max)) {
-        quantityInput.value = Number(quantityInput.max) || 1;
-      }
+    function showBookCodeError(message, focusInput = false) {
+      bookSearch.classList.remove('code-shake');
+      void bookSearch.offsetWidth;
+      bookSearch.classList.add('code-invalid', 'code-shake');
+      bookCodeFeedback.textContent = message;
+      bookCodeFeedback.classList.add('visible');
+      if (focusInput) bookSearch.focus();
+    }
+
+    function selectBookCopy(copy) {
+      selectedCopyCode = copy.code;
+      bookSearch.value = copy.code;
+      bookSelect.value = copy.bookId;
+      scanBookCode.value = copy.code;
+      quantityInput.value = '1';
+      quantityInput.max = '1';
+      copyCodeList.textContent = `${copy.title} · ${copy.code} · Ready to issue`;
+      bookSearchResults.style.display = 'none';
+      clearBookCodeError();
     }
 
     function matchBookFromCode(codeValue) {
       const normalizedValue = String(codeValue || '').trim().toUpperCase();
-      if (!normalizedValue) return;
-
-      const matchedBook = libraryBooks.find((book) => (book.bookCodes || []).some((entry) => String(entry || '').toUpperCase() === normalizedValue));
-      if (!matchedBook) {
-        alert('This book code was not found in the library inventory.');
-        return;
+      const matchedCopy = availableBookCodes.find((copy) => copy.code === normalizedValue);
+      if (!matchedCopy) {
+        bookSearch.value = normalizedValue;
+        selectedCopyCode = '';
+        bookSelect.value = '';
+        scanBookCode.value = '';
+        showBookCodeError('Code not found or this copy is not available. Check the code and try again.');
+        return false;
       }
-
-      bookSearch.value = matchedBook.title;
-      bookSelect.value = matchedBook._id;
-      applyBookSearchFilter();
-      alert(`Book matched: ${matchedBook.title}`);
-      scanBookCode.value = normalizedValue;
+      selectBookCopy(matchedCopy);
       stopCameraScan();
+      return true;
     }
 
     document.getElementById('issueForm').addEventListener('submit', async function (event) {
       event.preventDefault();
-      const scannedCode = String(scanBookCode.value || '').trim();
+      const enteredCode = String(bookSearch.value || '').trim().toUpperCase();
+      const codeIsAvailable = availableBookCodes.some((copy) => copy.code === enteredCode);
+      if (!enteredCode || !selectedCopyCode || selectedCopyCode !== enteredCode || !codeIsAvailable || !bookSelect.value) {
+        showBookCodeError('Enter or select a valid available book copy code before issuing.', true);
+        return;
+      }
+      if (!memberIdSelect.value) {
+        alert('Select a member before issuing this book.');
+        memberSearchInput.focus();
+        return;
+      }
       const payload = {
-        memberId: document.getElementById('memberId').value,
-        bookId: document.getElementById('bookId').value,
-        quantity: document.getElementById('quantity').value,
+        memberId: memberIdSelect.value,
+        bookId: bookSelect.value,
+        quantity: 1,
         dueDateBS: document.getElementById('dueDateBS').value,
-        bookCode: scannedCode || '',
-        bookCodes: scannedCode ? [scannedCode] : []
+        bookCode: enteredCode,
+        bookCodes: [enteredCode]
       };
 
-      const response = await fetch('/library/issue-book', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const result = await response.json();
-      alert(result.message || 'Book issued successfully.');
-      if (response.ok) window.location.reload();
+      try {
+        const response = await fetch('/library/issue-book', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          showBookCodeError(result.message || 'Unable to issue this copy. Verify the code is available.');
+          return;
+        }
+        alert(result.message || 'Book issued successfully.');
+        window.location.reload();
+      } catch (error) {
+        showBookCodeError('Could not verify the book code. Check your connection and try again.');
+      }
     });
 
     function openReturnModal(issueId) {
@@ -692,12 +741,6 @@
       openReturnModal(issueId);
     }
 
-    scanBookCode.addEventListener('change', () => {
-      const scannedValue = String(scanBookCode.value || '').trim();
-      matchBookFromCode(scannedValue);
-      scanBookCode.value = '';
-    });
-
     const dueDateBSPicker = document.getElementById('dueDateBS');
     if (dueDateBSPicker) {
       const defaultDueDate = getTodayNepaliDate();
@@ -778,6 +821,16 @@
     startCameraScanBtn.addEventListener('click', startCameraScan);
     bookSearch.addEventListener('input', applyBookSearchFilter);
     bookSearch.addEventListener('focus', renderBookSearchResults);
+    bookSearch.addEventListener('blur', () => {
+      window.setTimeout(() => {
+        const searchText = String(bookSearch.value || '').trim().toUpperCase();
+        const hasAvailablePrefix = availableBookCodes.some((copy) => copy.code.startsWith(searchText));
+        if (searchText && !selectedCopyCode && !hasAvailablePrefix) {
+          showBookCodeError('No available copy matches this code.');
+        }
+        bookSearchResults.style.display = 'none';
+      }, 120);
+    });
     memberSearchInput.addEventListener('input', renderMemberSearchResults);
     document.addEventListener('click', (event) => {
       if (!bookSearchResults.contains(event.target) && event.target !== bookSearch) {
@@ -787,14 +840,10 @@
         memberSearchResults.style.display = 'none';
       }
     });
-    bookSelect.addEventListener('change', refreshAvailableBookCopyCodes);
-    quantityInput.addEventListener('input', () => {
-      const value = Number(quantityInput.value || 1);
-      const maxAllowed = Number(quantityInput.max || 1);
-      if (value < 1) quantityInput.value = 1;
-      if (value > maxAllowed) quantityInput.value = maxAllowed;
+    bookSelect.addEventListener('change', () => {
+      bookSelect.value = '';
+      selectedCopyCode = '';
     });
-    refreshAvailableBookCopyCodes();
     document.getElementById('closeReturnModal').addEventListener('click', () => {
       returnBookModal.style.display = 'none';
     });

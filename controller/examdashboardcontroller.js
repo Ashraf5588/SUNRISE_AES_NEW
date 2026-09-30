@@ -256,10 +256,44 @@ exports.generateMarksheet = async (req, res, next) => {
   try {
     const { studentClass, section, terminal, academicYear, format } = req.query;
     const studentClassdata = await studentClassModel.find({}).lean();
-    const terminals = await terminalModel.find({}).lean();
-    const user = req.user;
-    creditHourData = await newsubject.find({ forClass: studentClass }).lean();
+    const allTerminals = await terminalModel.find({}).lean();
+    const isTestFormat = String(format || '').trim().toLowerCase() === 'test';
+    const testTerminals = allTerminals.filter((item) => String(item.terminalType || '').trim().toUpperCase() === 'TEST');
+    const terminals = isTestFormat ? testTerminals : allTerminals;
     const marksheetSetups = await marksheetSetup.find({}).lean();
+    const user = req.user;
+
+    if (isTestFormat && (!studentClass || !section || !terminal || !academicYear)) {
+      return res.render('./exam/generatemarksheetTest', {
+        currentPage: 'exammanagement',
+        studentClassdata,
+        terminals,
+        studentWisedata: [],
+        studentClass: studentClass || '',
+        section: section || '',
+        terminal: terminal || '',
+        academicYear: academicYear || String(marksheetSetups[0]?.academicYear || ''),
+        creditHourData: [],
+        marksheetSetups,
+        testFullMarks: 0,
+        testPassMarks: 0,
+        user
+      });
+    }
+
+    let testFullMarks = 0;
+    let testPassMarks = 0;
+    if (isTestFormat) {
+      const selectedTestTerminal = testTerminals.find((item) => String(item.terminal) === String(terminal));
+      if (!selectedTestTerminal) return res.status(400).send('Choose a terminal whose type is TEST.');
+      testFullMarks = Number(selectedTestTerminal.fullMarks);
+      testPassMarks = Number(selectedTestTerminal.passMarks) || 0;
+      if (!Number.isFinite(testFullMarks) || testFullMarks <= 0) {
+        return res.status(400).send('The selected TEST terminal must have valid full marks.');
+      }
+    }
+
+    creditHourData = await newsubject.find({ forClass: studentClass }).lean();
     console.log("credit hour data", creditHourData);
 
     const model = getSlipModel();
@@ -338,7 +372,24 @@ exports.generateMarksheet = async (req, res, next) => {
     }
 
     // Use if-else if-else structure to prevent multiple renders
-    if (format == "practicalonly") {
+    if (isTestFormat) {
+      return res.render('./exam/generatemarksheetTest', {
+        currentPage: 'exammanagement',
+        studentClassdata,
+        terminals,
+        format,
+        studentWisedata,
+        studentClass,
+        section,
+        terminal,
+        academicYear,
+        creditHourData,
+        marksheetSetups,
+        testFullMarks,
+        testPassMarks,
+        user
+      });
+    } else if (format == "practicalonly") {
       if (studentClass < 1 || studentClass.toLowerCase() === "nursery" || studentClass.toLowerCase() === "playgroup" || studentClass.toLowerCase() === "lkg" || studentClass.toLowerCase() === "ukg") {
         return res.render("./exam/preprimarypr", {
           currentPage: "exammanagement",
