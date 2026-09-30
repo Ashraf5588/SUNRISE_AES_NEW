@@ -34,7 +34,13 @@ const OrganizationPreference = mongoose.models.organizationPreference
 const PROJECT_COUNTER_SUBJECTS = ['MATHEMATICS', 'HEALTH', 'NEPALI', 'ENGLISH', 'SOCIAL', 'SCIENCE'];
 const PROJECT_COUNTER_CLASSES = ['six', '6', 'seven', '7'];
 const PROJECT_LIST_SUBJECTS = ['MATHEMATICS', 'SCIENCE', 'ENGLISH', 'NEPALI', 'HEALTH', 'SOCIAL'];
-const PROJECT_LIST_CLASSES = ['Six', 'Seven'];
+const PROJECT_CLASS_WORDS = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+const normalizeProjectClassNumber = (value) => {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  if (/^(?:[1-9]|10)$/.test(normalized)) return Number(normalized);
+  const wordIndex = PROJECT_CLASS_WORDS.indexOf(normalized);
+  return wordIndex === -1 ? null : wordIndex + 1;
+};
 
 const { BlobServiceClient } = require("@azure/storage-blob");
 const sharp = require("sharp");
@@ -129,10 +135,11 @@ exports.projectList = async (req, res) => {
     const terminalOptions = [...new Set(terminalDocs.map((item) => item.terminal || item.name).filter(Boolean))];
     const selectedTerminal = String(req.query.terminal || terminalOptions[0] || 'FIRST');
     const query_subjects = PROJECT_LIST_SUBJECTS;
-    const query_classes = PROJECT_LIST_CLASSES;
-    const classSections = await studentClass.find({
-      studentClass: { $in: query_classes }
-    }).lean().sort({ studentClass: 1, section: 1 });
+    const classSections = (await studentClass.find({}).lean())
+      .filter((classItem) => normalizeProjectClassNumber(classItem.studentClass) !== null)
+      .sort((left, right) => normalizeProjectClassNumber(left.studentClass) - normalizeProjectClassNumber(right.studentClass)
+        || String(left.section || '').localeCompare(String(right.section || '')));
+    const query_classes = [...new Set(classSections.map((classItem) => classItem.studentClass))];
     const classTables = [];
 
     for (const classItem of classSections) {
