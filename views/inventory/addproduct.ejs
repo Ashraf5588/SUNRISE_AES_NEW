@@ -17,6 +17,12 @@
 					<button class="button secondary" type="submit">Upload CSV</button>
 				</form>
 			</div>
+				<form method="get" action="/inventory/products" class="product-search" role="search">
+					<label for="productSearch">Search products</label>
+					<input id="productSearch" style="border-color: #123e34;" class="product-search-input" name="search" type="search" value="<%= search %>" placeholder="Name, SKU, barcode, supplier..." autocomplete="off" maxlength="120">
+					<button class="button secondary" style="background-color: #123e34;color: #fff;" type="submit"><i class="fas fa-search"></i>&ensp;Search</button>
+					<% if (search) { %><a class="button secondary" href="/inventory/products">Clear</a><% } %>
+				</form>
 			<div class="upload-progress" id="uploadProgress" hidden aria-live="polite">
 				<div class="upload-progress-heading"><strong id="uploadStatus">Preparing upload</strong><span id="uploadPercent">0%</span></div>
 				<progress id="uploadProgressBar" max="100" value="0">0%</progress>
@@ -25,6 +31,7 @@
 				<% if (!quantityTypes.length) { %><div class="notice">Set up a <a class="panel-link" href="/inventory/quantity-types">quantity type</a> before adding products.</div><% } %>
 				<form method="post" action="/inventory/products/save" id="productForm" data-default-unit="<%= defaultQuantityTypeId %>">
 					<input type="hidden" name="page" value="<%= page %>">
+					<input type="hidden" name="search" value="<%= search %>">
 					<div class="product-entry-table-wrap"><table class="product-entry-table"><thead><tr><th>Entry date (BS)</th><th>Product name</th><th>Quantity</th><th>Unit</th><th>Price</th><th>Buy from</th><th>Color</th><th>Size</th><th>SKU / code</th><th>Description</th><th>Barcode</th><th>Category <span>(optional)</span></th><th>Low-stock alert</th></tr></thead>
 						<tbody>
 						<% products.forEach((product, index) => { %>
@@ -64,7 +71,7 @@
 					<datalist id="inventorySupplierOptions"><% suppliers.forEach(supplier => { %><option value="<%= supplier.name %>"></option><% }) %></datalist>
 					<div class="form-actions"><button class="button" type="submit" <%= !quantityTypes.length ? 'disabled' : '' %>>Save table</button></div>
 				</form>
-				<% if (totalPages > 1) { %><nav class="pagination" aria-label="Product pages"><span>Page <%= page %> of <%= totalPages %></span><div><% if (page > 1) { %><a class="button secondary small" href="/inventory/products?page=<%= page - 1 %>">Previous</a><% } %><% if (page < totalPages) { %><a class="button secondary small" href="/inventory/products?page=<%= page + 1 %>">Next</a><% } %></div></nav><% } %>
+				<% if (totalPages > 1) { %><nav class="pagination" aria-label="Product pages"><span>Page <%= page %> of <%= totalPages %></span><div><% if (page > 1) { %><a class="button secondary small" href="/inventory/products?page=<%= page - 1 %>&amp;search=<%= encodeURIComponent(search) %>">Previous</a><% } %><% if (page < totalPages) { %><a class="button secondary small" href="/inventory/products?page=<%= page + 1 %>&amp;search=<%= encodeURIComponent(search) %>">Next</a><% } %></div></nav><% } %>
 		</section>
 	</main>
 </div>

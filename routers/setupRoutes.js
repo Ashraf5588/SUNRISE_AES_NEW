@@ -19,5 +19,7 @@ router.post('/fee-structures', setupController.createFeeStructure);
 
 router.get('/school', setupController.getSchoolSettings);
 router.post('/school', setupController.updateSchoolSettings);
+router.get('/opening-balances', setupController.openingBalancesPage);
+router.post('/opening-balances', setupController.createOpeningBalance);
 
 module.exports = router;

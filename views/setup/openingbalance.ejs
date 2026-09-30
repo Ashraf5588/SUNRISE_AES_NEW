@@ -1,0 +1,102 @@
+<%- include('../partials/head', { title: 'Opening balances | FeeDesk' }) %>
+<%- include('../partials/navbar') %>
+<style>
+	.opening-page { min-height: calc(100vh - 70px); color: #18283f; background: #f3f6fa; }
+	.opening-page .opening-content { max-width: 1440px; margin: 0 auto; padding: 30px 36px 48px; }
+	.opening-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 22px; }
+	.opening-eyebrow { margin: 0 0 7px; color: #287a70; font-size: 11px; font-weight: 800; letter-spacing: 1.3px; text-transform: uppercase; }
+	.opening-heading h1 { margin: 0; color: #142942; font-size: 30px; font-weight: 800; }
+	.opening-heading p:last-child { margin: 7px 0 0; color: #63738a; }
+	.opening-layout { display: grid; grid-template-columns: minmax(310px, 390px) minmax(0, 1fr); align-items: start; gap: 18px; }
+	.opening-panel { min-width: 0; padding: 22px; border: 1px solid #e0e7ef; border-radius: 12px; background: #fff; box-shadow: 0 8px 24px rgba(16, 39, 66, .05); }
+	.opening-panel h2 { margin: 0; color: #172d47; font-size: 18px; font-weight: 750; }
+	.opening-panel-intro { margin: 6px 0 18px; color: #718096; font-size: 13px; line-height: 1.5; }
+	.opening-field { margin-bottom: 15px; }
+	.opening-field label { display: block; margin-bottom: 6px; color: #40546b; font-size: 12px; font-weight: 700; }
+	.opening-field select, .opening-field input, .opening-field textarea { width: 100%; min-height: 43px; padding: 10px 11px; border: 1px solid #d3dce7; border-radius: 7px; color: #20354e; background: #fff; font: inherit; font-size: 14px; }
+	.opening-field textarea { min-height: 82px; resize: vertical; }
+	.opening-field select:focus, .opening-field input:focus, .opening-field textarea:focus { border-color: #318a7a; outline: 3px solid rgba(49, 138, 122, .13); }
+	.opening-help { margin: 5px 0 0; color: #748398; font-size: 11px; }
+	.opening-submit { width: 100%; min-height: 44px; border: 0; border-radius: 7px; color: #fff; background: #176b5f; font-weight: 700; cursor: pointer; }
+	.opening-submit:hover { background: #11574e; }
+	.opening-alert { margin-bottom: 16px; padding: 12px 14px; border: 1px solid; border-radius: 8px; font-size: 13px; }
+	.opening-alert.error { border-color: #f1b7b2; color: #8e302b; background: #fff5f4; }
+	.opening-alert.success { border-color: #b9dfca; color: #246343; background: #f0faf4; }
+	.opening-list-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 15px; }
+	.opening-count { display: inline-flex; align-items: center; min-height: 27px; padding: 4px 9px; border-radius: 20px; color: #286c66; background: #e8f4f1; font-size: 11px; font-weight: 700; white-space: nowrap; }
+	.opening-table-wrap { overflow-x: auto; }
+	.opening-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+	.opening-table th { padding: 10px 11px; border-bottom: 1px solid #dce4ec; color: #65758a; background: #f7f9fc; font-size: 10px; text-align: left; text-transform: uppercase; white-space: nowrap; }
+	.opening-table td { padding: 11px; border-bottom: 1px solid #edf1f5; color: #34465c; vertical-align: top; }
+	.opening-student-name { display: block; color: #1b3049; font-weight: 700; }
+	.opening-secondary { display: block; margin-top: 3px; color: #78879a; font-size: 11px; }
+	.opening-amount { font-weight: 750; white-space: nowrap; }
+	.opening-amount.credit { color: #286f55; }
+	.opening-amount.due { color: #9a4c31; }
+	.opening-empty { padding: 34px 15px; color: #738196; text-align: center; }
+	@media (max-width: 900px) { .opening-layout { grid-template-columns: 1fr; } }
+	@media (max-width: 600px) { .opening-page .opening-content { padding: 22px 14px 32px; } .opening-heading { align-items: flex-start; flex-direction: column; } .opening-heading h1 { font-size: 25px; } .opening-panel { padding: 17px; } }
+</style>
+<div class="fee-page-shell opening-page">
+	<%- include('../billingfirst/feesidenav') %>
+	<main class="fee-page-main opening-content">
+		<header class="opening-heading">
+			<div><p class="opening-eyebrow">Fee management / Migration</p><h1>Opening balances</h1><p>Record each student's starting due or advance from the previous billing system.</p></div>
+		</header>
+
+		<% if (error) { %><div class="opening-alert error" role="alert"><%= error %></div><% } %>
+		<% if (saved) { %><div class="opening-alert success" role="status">Opening balance and matching ledger entry saved.</div><% } %>
+
+		<div class="opening-layout">
+			<section class="opening-panel" aria-labelledby="openingFormTitle">
+				<h2 id="openingFormTitle">Add opening balance</h2>
+				<p class="opening-panel-intro">One record per student. Positive amounts are due; negative amounts are advances or credits.</p>
+				<form method="post" action="/setup/opening-balances">
+					<div class="opening-field">
+						<label for="openingStudent">Student</label>
+						<select id="openingStudent" name="student" required>
+							<option value="">Select a student</option>
+							<% students.forEach((student) => { %>
+								<option value="<%= student._id %>" <%= formValues.student === String(student._id) ? 'selected' : '' %> <%= student.hasOpeningBalance ? 'disabled' : '' %>>
+									<%= student.name %> · <%= student.studentCode %><%= student.class?.name ? ` · ${student.class.name}` : '' %><%= student.section ? `-${student.section}` : '' %><%= student.hasOpeningBalance ? ' · Already entered' : '' %>
+								</option>
+							<% }); %>
+						</select>
+						<p class="opening-help">Students with an existing opening balance are disabled to prevent duplicate entries.</p>
+					</div>
+					<div class="opening-field">
+						<label for="openingAmount">Amount</label>
+						<input id="openingAmount" name="amount" type="number" step="0.01" inputmode="decimal" value="<%= formValues.amount || '' %>" placeholder="e.g. 2500 or -500" required>
+						<p class="opening-help">Positive = amount due. Negative = advance or credit. Zero is not a valid opening entry.</p>
+					</div>
+					<div class="opening-field">
+						<label for="asOfDateAD">Balance as of (AD)</label>
+						<input id="asOfDateAD" name="asOfDateAD" type="date" value="<%= formValues.asOfDateAD || todayAD %>" required>
+					</div>
+					<div class="opening-field">
+						<label for="sourceNote">Source note</label>
+						<textarea id="sourceNote" name="sourceNote" maxlength="300" required placeholder="Record source, migration batch, or supporting reference"><%= formValues.sourceNote || 'Migrated from previous billing software' %></textarea>
+					</div>
+					<button class="opening-submit" type="submit">Save opening balance</button>
+				</form>
+			</section>
+
+			<section class="opening-panel" aria-labelledby="openingListTitle">
+				<div class="opening-list-heading"><div><h2 id="openingListTitle">Recorded balances</h2><p class="opening-panel-intro" style="margin-bottom:0">Audit history for student starting balances.</p></div><span class="opening-count"><%= openingBalances.length %> entries</span></div>
+				<% if (openingBalances.length) { %>
+					<div class="opening-table-wrap"><table class="opening-table"><thead><tr><th>Student</th><th>As of</th><th>Opening balance</th><th>Source</th></tr></thead><tbody>
+						<% openingBalances.forEach((entry) => { const student = entry.student; %>
+							<tr>
+								<td><% if (student) { %><span class="opening-student-name"><%= student.name %></span><span class="opening-secondary"><%= student.studentCode %><%= student.class?.name ? ` · ${student.class.name}` : '' %><%= student.section ? `-${student.section}` : '' %></span><% } else { %>Student record unavailable<% } %></td>
+								<td><%= new Date(entry.asOfDateAD).toLocaleDateString() %></td>
+								<td class="opening-amount <%= entry.amount < 0 ? 'credit' : 'due' %>"><%= entry.amount < 0 ? 'Credit' : 'Due' %> <%= Math.abs(entry.amount).toFixed(2) %></td>
+								<td><%= entry.sourceNote || '-' %></td>
+							</tr>
+						<% }); %>
+					</tbody></table></div>
+				<% } else { %><div class="opening-empty">No opening balances recorded yet.</div><% } %>
+			</section>
+		</div>
+	</main>
+</div>
+<%- include('../partials/footer') %>

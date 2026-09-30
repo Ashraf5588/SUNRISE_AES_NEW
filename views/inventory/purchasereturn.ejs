@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Purchase returns</title><link rel="stylesheet" href="/inventory.css"><link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css"></head>
+<body><div class="inventory-shell">
+	<%- include('inventorynav', { currentPath }) %>
+	<main class="inventory-main">
+		<header class="page-header"><div><p class="eyebrow">Stock control / Purchase returns</p><h1>Purchase returns</h1><p class="page-subtitle">Record items sent back to a supplier and deduct them from available stock.</p></div></header>
+		<% if (message) { %><div class="notice"><%= message %></div><% } %>
+		<section class="panel" style="margin-bottom:17px">
+			<div class="panel-heading"><div><h2>Record a purchase return</h2><p>Available stock is checked again when the return is saved.</p></div></div>
+			<% if (products.length) { %>
+			<form method="post" action="/inventory/purchasereturns">
+				<div class="form-grid">
+					<div class="field full search-field"><label for="productSearch">Item</label><input id="productSearch" type="search" placeholder="Type an item name or SKU" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="productResults" required><div id="productResults" class="search-results" role="listbox" hidden></div><input id="productId" name="productId" type="hidden"><span id="availableQuantity" class="item-stock">Search and choose an item.</span></div>
+					<div class="field"><label for="returnNepaliDate">Return date (BS)</label><input id="returnNepaliDate" name="returnNepaliDate" class="nepali-datepicker" type="text" value="<%= todayNepaliDate %>" placeholder="YYYY-MM-DD" required></div>
+					<div class="field"><label for="quantity">Quantity</label><input id="quantity" name="quantity" type="number" min="1" step="1" required></div>
+					<div class="field"><label for="supplierName">Supplier</label><input id="supplierName" name="supplierName" list="supplierNames" maxlength="120" required placeholder="Supplier name"><datalist id="supplierNames"><% suppliers.forEach(supplier => { %><option value="<%= supplier %>"><% }) %></datalist></div>
+					<div class="field"><label for="referenceNo">Purchase reference</label><input id="referenceNo" name="referenceNo" maxlength="100" placeholder="Invoice or purchase reference"></div>
+					<div class="field full"><label for="reason">Reason</label><input id="reason" name="reason" maxlength="500" required placeholder="For example: damaged goods or supplier exchange"></div>
+				</div>
+				<div class="form-actions"><button class="button" type="submit">Record return</button></div>
+			</form>
+			<% } else { %><div class="empty-state">No items have available stock to return to a supplier.</div><% } %>
+		</section>
+		<section class="panel">
+			<div class="panel-heading"><div><h2>Purchase return history</h2><p>Each row records an item, return date, quantity, supplier, and reference.</p></div><span class="cell-secondary">Showing <%= totalReturns ? (page - 1) * 25 + 1 : 0 %>-<%= Math.min(page * 25, totalReturns) %> of <%= totalReturns %></span></div>
+			<% if (returns.length) { %><div class="table-wrap"><table><thead><tr><th>Date</th><th>Item</th><th>Quantity</th><th>Supplier</th><th>Purchase reference</th><th>Reason</th><th>Recorded by</th></tr></thead><tbody>
+				<% returns.forEach(entry => { %><tr><td><%= entry.returnNepaliDate %></td><td><span class="cell-primary"><%= entry.productName %></span><% if (entry.sku) { %><span class="cell-secondary"><%= entry.sku %></span><% } %></td><td><%= entry.quantity %> <%= entry.quantityTypeName %></td><td><%= entry.counterpartyName %></td><td><%= entry.referenceNo || '—' %></td><td><%= entry.reason %></td><td><%= entry.returnedBy %></td></tr><% }) %>
+			</tbody></table></div><% } else { %><div class="empty-state">No purchase returns have been recorded.</div><% } %>
+			<% if (totalPages > 1) { %><nav class="pagination" aria-label="Purchase return pages"><span>Page <%= page %> of <%= totalPages %></span><div><% if (page > 1) { %><a class="button secondary small" href="/inventory/purchasereturns?page=<%= page - 1 %>">Previous</a><% } %><% if (page < totalPages) { %><a class="button secondary small" href="/inventory/purchasereturns?page=<%= page + 1 %>">Next</a><% } %></div></nav><% } %>
+		</section>
+	</main>
+</div>
+<template id="productOptions"><% products.forEach(product => { %><button type="button" class="search-result" role="option" data-product-id="<%= product._id %>" data-stock="<%= product.quantity %>" data-unit="<%= product.quantityTypeName %>" data-supplier="<%= product.supplierName || '' %>"><strong><%= product.name %></strong><small><%= product.sku ? `${product.sku} · ` : '' %><%= product.quantity %> <%= product.quantityTypeName %> in stock</small></button><% }) %></template>
+<script>
+	const productSearch = document.getElementById('productSearch');
+	if (productSearch) {
+		const productResults = document.getElementById('productResults');
+		const productId = document.getElementById('productId');
+		const quantityInput = document.getElementById('quantity');
+		const availableQuantity = document.getElementById('availableQuantity');
+		const supplierInput = document.getElementById('supplierName');
+		const products = [...document.getElementById('productOptions').content.querySelectorAll('.search-result')];
+		const renderProductResults = (query = '') => {
+			const normalizedQuery = query.trim().toLowerCase();
+			productResults.replaceChildren();
+			const matches = products.filter(option => `${option.querySelector('strong').textContent} ${option.querySelector('small').textContent}`.toLowerCase().includes(normalizedQuery)).slice(0, 12);
+			matches.forEach(option => {
+				const result = option.cloneNode(true);
+				result.addEventListener('click', () => {
+					productSearch.value = `${option.querySelector('strong').textContent} · ${option.querySelector('small').textContent}`;
+					productId.value = option.dataset.productId;
+					quantityInput.max = option.dataset.stock;
+					quantityInput.value = '';
+					availableQuantity.textContent = `${option.dataset.stock} ${option.dataset.unit} available`;
+					if (option.dataset.supplier) supplierInput.value = option.dataset.supplier;
+					productSearch.setCustomValidity('');
+					productSearch.setAttribute('aria-expanded', 'false');
+					productResults.hidden = true;
+				});
+				productResults.appendChild(result);
+			});
+			if (!matches.length) {
+				const empty = document.createElement('div');
+				empty.className = 'empty-state';
+				empty.textContent = 'No matching products';
+				productResults.appendChild(empty);
+			}
+			productResults.hidden = false;
+			productSearch.setAttribute('aria-expanded', 'true');
+		};
+		productSearch.addEventListener('focus', () => renderProductResults(productId.value ? '' : productSearch.value));
+		productSearch.addEventListener('input', () => {
+			productId.value = '';
+			quantityInput.max = '';
+			quantityInput.value = '';
+			availableQuantity.textContent = 'Choose an item to see available stock.';
+			productSearch.setCustomValidity('Select an item from the suggestions.');
+			renderProductResults(productSearch.value);
+		});
+		productSearch.addEventListener('keydown', event => {
+			if (event.key === 'Escape') {
+				productResults.hidden = true;
+				productSearch.setAttribute('aria-expanded', 'false');
+			}
+		});
+		document.querySelector('form').addEventListener('submit', (event) => {
+			if (!productId.value) {
+				event.preventDefault();
+				productSearch.setCustomValidity('Select an item from the suggestions.');
+				productSearch.reportValidity();
+				return;
+			}
+			if (Number(quantityInput.value) > Number(quantityInput.max)) {
+				event.preventDefault();
+				quantityInput.setCustomValidity('Quantity exceeds available stock.');
+				quantityInput.reportValidity();
+			}
+		});
+		quantityInput.addEventListener('input', () => quantityInput.setCustomValidity(''));
+		document.addEventListener('click', event => {
+			if (!event.target.closest('.search-field')) {
+				productResults.hidden = true;
+				productSearch.setAttribute('aria-expanded', 'false');
+			}
+		});
+	}
+	const returnDateInput = document.getElementById('returnNepaliDate');
+	if (returnDateInput && typeof returnDateInput.nepaliDatePicker === 'function') returnDateInput.nepaliDatePicker({ dateFormat: 'YYYY-MM-DD', language: 'en' });
+</script>
+</body></html>

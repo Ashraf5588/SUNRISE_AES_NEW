@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Sales returns</title><link rel="stylesheet" href="/inventory.css"><link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css"></head>
+<body><div class="inventory-shell">
+	<%- include('inventorynav', { currentPath }) %>
+	<main class="inventory-main">
+		<header class="page-header"><div><p class="eyebrow">Stock control / Sales returns</p><h1>Sales returns</h1><p class="page-subtitle">Record returned items against an issued transaction and restore stock.</p></div></header>
+		<% if (message) { %><div class="notice"><%= message %></div><% } %>
+		<section class="panel" style="margin-bottom:17px">
+			<div class="panel-heading"><div><h2>Record a sales return</h2><p>Only the unreturned quantity from an issued item can be returned.</p></div></div>
+			<% if (sourceItems.length) { %>
+			<form method="post" action="/inventory/salesreturns">
+				<div class="form-grid">
+					<div class="field full search-field"><label for="sourceItemSearch">Issued item</label><input id="sourceItemSearch" type="search" placeholder="Type an item, transaction, or recipient" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="sourceItemResults" required><div id="sourceItemResults" class="search-results" role="listbox" hidden></div><input id="sourceTransactionId" name="sourceTransactionId" type="hidden"><input id="sourceItemId" name="sourceItemId" type="hidden"><span id="returnableQuantity" class="item-stock">Search and choose the issued item.</span></div>
+					<div class="field"><label for="returnNepaliDate">Return date (BS)</label><input id="returnNepaliDate" name="returnNepaliDate" class="nepali-datepicker" type="text" value="<%= todayNepaliDate %>" placeholder="YYYY-MM-DD" required></div>
+					<div class="field"><label for="quantity">Quantity</label><input id="quantity" name="quantity" type="number" min="1" step="1" required></div>
+					<div class="field"><label for="returnedBy">Returned by (assigned recipient)</label><input id="returnedBy" placeholder="Select an issued item" readonly></div>
+					<div class="field full"><label for="reason">Reason</label><input id="reason" name="reason" maxlength="500" required placeholder="For example: damaged or unused item"></div>
+				</div>
+				<div class="form-actions"><button class="button" type="submit">Record return</button></div>
+			</form>
+			<% } else { %><div class="empty-state">There are no issued item quantities available to return.</div><% } %>
+		</section>
+		<section class="panel">
+			<div class="panel-heading"><div><h2>Sales return history</h2><p>Each row records an item, return date, quantity, and source transaction.</p></div><span class="cell-secondary">Showing <%= totalReturns ? (page - 1) * 25 + 1 : 0 %>-<%= Math.min(page * 25, totalReturns) %> of <%= totalReturns %></span></div>
+			<% if (returns.length) { %><div class="table-wrap"><table><thead><tr><th>Date</th><th>Item</th><th>Quantity</th><th>Returned by</th><th>Source issue</th><th>Reason</th><th>Recorded by</th></tr></thead><tbody>
+				<% returns.forEach(entry => { %><tr><td><%= entry.returnNepaliDate %></td><td><span class="cell-primary"><%= entry.productName %></span><% if (entry.sku) { %><span class="cell-secondary"><%= entry.sku %></span><% } %></td><td><%= entry.quantity %> <%= entry.quantityTypeName %></td><td><span class="cell-primary"><%= entry.counterpartyName %></span><span class="cell-secondary"><%= entry.counterpartyType %><%= entry.counterpartyClass ? ` / ${entry.counterpartyClass}` : '' %></span></td><td><span class="cell-primary"><%= entry.referenceNo || entry.sourceTransactionNo %></span><span class="cell-secondary"><%= entry.sourceDateNepali %></span></td><td><%= entry.reason %></td><td><%= entry.returnedBy %></td></tr><% }) %>
+			</tbody></table></div><% } else { %><div class="empty-state">No sales returns have been recorded.</div><% } %>
+			<% if (totalPages > 1) { %><nav class="pagination" aria-label="Sales return pages"><span>Page <%= page %> of <%= totalPages %></span><div><% if (page > 1) { %><a class="button secondary small" href="/inventory/salesreturns?page=<%= page - 1 %>">Previous</a><% } %><% if (page < totalPages) { %><a class="button secondary small" href="/inventory/salesreturns?page=<%= page + 1 %>">Next</a><% } %></div></nav><% } %>
+		</section>
+	</main>
+</div>
+<template id="sourceItemOptions"><% sourceItems.forEach(source => { const assigned = Number(source.items.quantity) || 0; const remaining = assigned - Number(source.items.returnedQuantity || 0); const issueDate = source.assignedNepaliDate || new Date(source.assignedAt).toLocaleDateString(); %><button type="button" class="search-result" role="option" data-transaction-id="<%= source._id %>" data-item-id="<%= source.items._id %>" data-recipient="<%= source.recipientName %>" data-assigned-quantity="<%= assigned %>" data-remaining="<%= remaining %>"><strong><%= source.items.productName %></strong><small><%= source.transactionNo %> · Assigned to: <%= source.recipientName %> · Issue date: <%= issueDate %> · Assigned: <%= assigned %> <%= source.items.quantityTypeName %> · Returnable: <%= remaining %></small></button><% }) %></template>
+<script>
+	const sourceSearch = document.getElementById('sourceItemSearch');
+	if (sourceSearch) {
+		const sourceResults = document.getElementById('sourceItemResults');
+		const sourceItemId = document.getElementById('sourceItemId');
+		const sourceTransactionId = document.getElementById('sourceTransactionId');
+		const quantityInput = document.getElementById('quantity');
+		const returnedByInput = document.getElementById('returnedBy');
+		const returnableQuantity = document.getElementById('returnableQuantity');
+		const sourceOptions = [...document.getElementById('sourceItemOptions').content.querySelectorAll('.search-result')];
+		const renderSourceResults = (query = '') => {
+			const normalizedQuery = query.trim().toLowerCase();
+			sourceResults.replaceChildren();
+			const matches = sourceOptions.filter(option => option.textContent.toLowerCase().includes(normalizedQuery)).slice(0, 12);
+			matches.forEach(option => {
+				const result = option.cloneNode(true);
+				result.addEventListener('click', () => {
+					sourceSearch.value = `${option.querySelector('strong').textContent} · ${option.querySelector('small').textContent}`;
+					sourceTransactionId.value = option.dataset.transactionId;
+					sourceItemId.value = option.dataset.itemId;
+					returnedByInput.value = option.dataset.recipient;
+					quantityInput.max = option.dataset.remaining;
+					quantityInput.value = option.dataset.remaining;
+					returnableQuantity.textContent = `${option.dataset.remaining} available to return`;
+					sourceSearch.setCustomValidity('');
+					sourceSearch.setAttribute('aria-expanded', 'false');
+					sourceResults.hidden = true;
+				});
+				sourceResults.appendChild(result);
+			});
+			if (!matches.length) {
+				const empty = document.createElement('div');
+				empty.className = 'empty-state';
+				empty.textContent = 'No matching issued items';
+				sourceResults.appendChild(empty);
+			}
+			sourceResults.hidden = false;
+			sourceSearch.setAttribute('aria-expanded', 'true');
+		};
+		sourceSearch.addEventListener('focus', () => renderSourceResults(sourceTransactionId.value ? '' : sourceSearch.value));
+		sourceSearch.addEventListener('input', () => {
+			sourceTransactionId.value = '';
+			sourceItemId.value = '';
+			quantityInput.max = '';
+			quantityInput.value = '';
+			returnableQuantity.textContent = 'Choose an issued item to see the returnable quantity.';
+			sourceSearch.setCustomValidity('Select an issued item from the suggestions.');
+			renderSourceResults(sourceSearch.value);
+		});
+		sourceSearch.addEventListener('keydown', event => {
+			if (event.key === 'Escape') {
+				sourceResults.hidden = true;
+				sourceSearch.setAttribute('aria-expanded', 'false');
+			}
+		});
+		document.querySelector('form').addEventListener('submit', (event) => {
+			if (!sourceTransactionId.value || !sourceItemId.value) {
+				event.preventDefault();
+				sourceSearch.setCustomValidity('Select an issued item from the suggestions.');
+				sourceSearch.reportValidity();
+				return;
+			}
+			if (Number(quantityInput.value) > Number(quantityInput.max)) {
+				event.preventDefault();
+				quantityInput.setCustomValidity('Quantity exceeds the amount still available to return.');
+				quantityInput.reportValidity();
+			}
+		});
+		quantityInput.addEventListener('input', () => quantityInput.setCustomValidity(''));
+		document.addEventListener('click', event => {
+			if (!event.target.closest('.search-field')) {
+				sourceResults.hidden = true;
+				sourceSearch.setAttribute('aria-expanded', 'false');
+			}
+		});
+	}
+	const returnDateInput = document.getElementById('returnNepaliDate');
+	if (returnDateInput && typeof returnDateInput.nepaliDatePicker === 'function') returnDateInput.nepaliDatePicker({ dateFormat: 'YYYY-MM-DD', language: 'en' });
+</script>
+</body></html>

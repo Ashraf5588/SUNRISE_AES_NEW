@@ -8,6 +8,7 @@ const {
   inventoryQuantityTypeSchema,
   inventoryProductSchema,
   inventoryTransactionSchema,
+  inventoryReturnSchema,
   inventoryProductRequestSchema
 } = require('../../model/inventoryschema/inventorySchema');
 const { inventorySupplierSchema } = require('../../model/inventoryschema/supplierSchema');
@@ -18,13 +19,83 @@ const InventoryCategory = mongoose.models.inventoryCategory || mongoose.model('i
 const InventoryQuantityType = mongoose.models.inventoryQuantityType || mongoose.model('inventoryQuantityType', inventoryQuantityTypeSchema, 'inventoryQuantityTypes');
 const InventoryProduct = mongoose.models.inventoryProduct || mongoose.model('inventoryProduct', inventoryProductSchema, 'inventoryProducts');
 const InventoryTransaction = mongoose.models.inventoryTransaction || mongoose.model('inventoryTransaction', inventoryTransactionSchema, 'inventoryTransactions');
+const InventoryReturn = mongoose.models.inventoryReturn || mongoose.model('inventoryReturn', inventoryReturnSchema, 'inventoryReturns');
 const InventoryProductRequest = mongoose.models.inventoryProductRequest || mongoose.model('inventoryProductRequest', inventoryProductRequestSchema, 'inventoryProductRequests');
 const InventorySupplier = mongoose.models.inventorySupplier || mongoose.model('inventorySupplier', inventorySupplierSchema, 'inventorySuppliers');
 const User = mongoose.models.inventoryUser || mongoose.model('inventoryUser', teacherSchema, 'users');
 const StudentRecord = mongoose.models.inventoryStudentRecord || mongoose.model('inventoryStudentRecord', studentrecordschema, 'studentrecord');
 const inventoryCsvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
+const transactionCsvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
 const PAGE_SIZE = 25;
 const parsePage = (value) => Math.max(1, Number.parseInt(value, 10) || 1);
+const standardizeProductName = (value) => String(value ?? '').trim().replace(/\s+/g, ' ').replace(/^./, (character) => character.toUpperCase());
+const normalizeProductIdentityValue = (value) => String(value ?? '').trim().toLowerCase();
+const productIdentityKey = (product) => JSON.stringify([
+  standardizeProductName(product.name).replace(/\s+/g, '').toLowerCase(),
+  normalizeProductIdentityValue(product.categoryName),
+  normalizeProductIdentityValue(product.quantityTypeName),
+  normalizeProductIdentityValue(product.color),
+  normalizeProductIdentityValue(product.size),
+  normalizeProductIdentityValue(product.sku),
+  normalizeProductIdentityValue(product.barcode),
+  normalizeProductIdentityValue(product.description),
+  Number(product.price) || 0,
+  Number(product.lowStockThreshold) || 0
+]);
+const groupInventoryProducts = (products) => {
+  const groups = new Map();
+  for (const product of products) {
+    const key = productIdentityKey(product);
+    let group = groups.get(key);
+    if (!group) {
+      group = { ...product, quantity: 0, stockRecords: [] };
+      groups.set(key, group);
+    }
+    group.quantity += Number(product.quantity) || 0;
+    group.stockRecords.push(product);
+  }
+  return [...groups.values()];
+};
+const decrementGroupedProductStock = async (products, requestedQuantities, decremented) => {
+  const groups = groupInventoryProducts(products);
+  const groupByKey = new Map(groups.map((group) => [productIdentityKey(group), group]));
+  const productById = new Map(products.map((product) => [String(product._id), product]));
+  const requestedByGroup = new Map();
+
+  for (const [productId, quantity] of requestedQuantities) {
+    const product = productById.get(String(productId));
+    if (!product) throw new Error('PRODUCT_MISSING');
+    const key = productIdentityKey(product);
+    requestedByGroup.set(key, (requestedByGroup.get(key) || 0) + quantity);
+  }
+
+  for (const [key, totalQuantity] of requestedByGroup) {
+    const group = groupByKey.get(key);
+    let remaining = totalQuantity;
+    const stockRecords = [...group.stockRecords].sort((left, right) => {
+      const leftDate = new Date(left.createdAt || 0).getTime() || 0;
+      const rightDate = new Date(right.createdAt || 0).getTime() || 0;
+      return leftDate - rightDate || String(left._id).localeCompare(String(right._id));
+    });
+
+    for (const stockRecord of stockRecords) {
+      const available = Number(stockRecord.quantity) || 0;
+      const deduction = Math.min(available, remaining);
+      if (deduction <= 0) continue;
+      const updated = await InventoryProduct.findOneAndUpdate(
+        { _id: stockRecord._id, active: true, quantity: { $gte: deduction } },
+        { $inc: { quantity: -deduction } },
+        { new: true }
+      );
+      if (!updated) continue;
+      decremented.push({ productId: String(stockRecord._id), quantity: deduction });
+      remaining -= deduction;
+      if (remaining === 0) break;
+    }
+
+    if (remaining > 0) throw new Error('INSUFFICIENT_STOCK');
+  }
+};
 const saveSupplierName = async (value) => {
   const name = String(value || '').trim().replace(/\s+/g, ' ');
   if (!name) return '';
@@ -47,7 +118,16 @@ const parseInventoryCsv = (buffer) => new Promise((resolve, reject) => {
   const headerNames = {
     entrydatenepali: 'entryDateNepali',
     suppliername: 'supplierName',
-    lowstockthreshold: 'lowStockThreshold'
+    lowstockthreshold: 'lowStockThreshold',
+    assignmentref: 'assignmentRef',
+    recipienttype: 'recipientType',
+    recipientname: 'recipientName',
+    recipientid: 'recipientId',
+    recipientclass: 'recipientClass',
+    assignednepalidate: 'assignedNepaliDate',
+    assignedby: 'assignedBy',
+    productsku: 'productSku',
+    productname: 'productName'
   };
   Readable.from([csvText]).pipe(csvParser({
     mapHeaders: ({ header }) => {
@@ -299,11 +379,19 @@ exports.dashboard = async (req, res) => {
 exports.productsPage = async (req, res) => {
   try {
     const requestedPage = parsePage(req.query.page);
-    const totalProducts = await InventoryProduct.countDocuments({ active: true });
+    const search = String(req.query.search || '').trim().slice(0, 120);
+    const productFilter = { active: true };
+    if (search) {
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+      productFilter.$or = ['name', 'sku', 'barcode', 'supplierName', 'color', 'size', 'description', 'categoryName', 'quantityTypeName']
+        .map((field) => ({ [field]: searchRegex }));
+    }
+    const totalProducts = await InventoryProduct.countDocuments(productFilter);
     const totalPages = Math.max(1, Math.ceil(totalProducts / PAGE_SIZE));
     const page = Math.min(requestedPage, totalPages);
     const [products, categories, quantityTypes, suppliers] = await Promise.all([
-      InventoryProduct.find({ active: true }).sort({ name: 1 }).skip((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).lean(),
+      InventoryProduct.find(productFilter).sort({ name: 1 }).skip((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).lean(),
       InventoryCategory.find({ active: true }).sort({ name: 1 }).lean(),
       InventoryQuantityType.find({ active: true }).sort({ name: 1 }).lean(),
       InventorySupplier.find({ active: true }).sort({ name: 1 }).lean()
@@ -318,6 +406,7 @@ exports.productsPage = async (req, res) => {
       totalProducts,
       page,
       totalPages,
+      search,
       categories,
       suppliers,
       quantityTypes,
@@ -348,7 +437,7 @@ exports.createProduct = async (req, res) => {
     if (supplierName.length > 120) return res.status(400).send('Supplier name must be 120 characters or fewer.');
     if (supplierName) await saveSupplierName(supplierName);
     await InventoryProduct.create({
-      name: req.body.name,
+      name: standardizeProductName(req.body.name),
       sku: String(req.body.sku || '').trim() || undefined,
       category: category?._id,
       categoryName: category?.name || '',
@@ -374,8 +463,10 @@ exports.createProduct = async (req, res) => {
 exports.saveProducts = async (req, res) => {
   const rows = Array.isArray(req.body.products) ? req.body.products : [];
   const page = parsePage(req.body.page);
+  const search = String(req.body.search || '').trim().slice(0, 120);
+  const returnUrl = `/inventory/products?saved=1&page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}`;
   const changedRows = rows.filter((row) => row.productId || row.touched === '1');
-  if (!changedRows.length) return res.redirect(`/inventory/products?saved=1&page=${page}`);
+  if (!changedRows.length) return res.redirect(returnUrl);
 
   try {
     const productIds = changedRows.map((row) => String(row.productId || '').trim()).filter(Boolean);
@@ -387,7 +478,7 @@ exports.saveProducts = async (req, res) => {
     const submittedSkus = new Set();
     const submittedBarcodes = new Set();
     for (const row of changedRows) {
-      const name = String(row.name || '').trim();
+      const name = standardizeProductName(row.name);
       const sku = String(row.sku || '').trim();
       const quantity = Number(row.quantity);
       const price = Number(row.price || 0);
@@ -447,7 +538,7 @@ exports.saveProducts = async (req, res) => {
     }
     await InventoryProduct.bulkWrite(operations, { ordered: true });
     await Promise.all([...new Set(changedRows.map((row) => String(row.supplierName || '').trim()).filter(Boolean))].map(saveSupplierName));
-    return res.redirect(`/inventory/products?saved=1&page=${page}`);
+    return res.redirect(returnUrl);
   } catch (error) {
     console.error('Unable to save inventory product rows:', error);
     if (error.code === 11000) return res.status(409).send('A product SKU is already in use. Review the table and try again.');
@@ -486,7 +577,7 @@ exports.importProductsCsv = [inventoryCsvUpload.single('productCsv'), async (req
     for (let index = 0; index < rows.length; index += 1) {
       const row = rows[index];
       const rowNumber = index + 2;
-      const name = String(row.name || '').trim();
+      const name = standardizeProductName(row.name);
       const unit = unitMap.get(String(row.unit || '').trim().toLowerCase());
       const supplierName = String(row.supplierName || '').trim().replace(/\s+/g, ' ');
       const categoryName = String(row.category || '').trim();
@@ -548,7 +639,12 @@ exports.importProductsCsv = [inventoryCsvUpload.single('productCsv'), async (req
 exports.categoriesPage = async (req, res) => {
   try {
     const categories = await InventoryCategory.find({ active: true }).sort({ name: 1 }).lean();
-    renderPage(res, 'addcategory', { categories, message: req.query.saved ? 'Category added.' : '' });
+    const message = req.query.error === 'in-use'
+      ? 'This category is used by products and cannot be deleted.'
+      : req.query.saved === 'edited' ? 'Category updated.'
+        : req.query.saved === 'deleted' ? 'Category deleted.'
+          : req.query.saved ? 'Category added.' : '';
+    renderPage(res, 'addcategory', { categories, message });
   } catch (error) {
     console.error('Unable to load inventory categories:', error);
     res.status(500).send('Unable to load inventory categories');
@@ -565,10 +661,44 @@ exports.createCategory = async (req, res) => {
   }
 };
 
+exports.editCategory = async (req, res) => {
+  const name = String(req.body.name || '').trim().replace(/\s+/g, ' ');
+  const description = String(req.body.description || '').trim();
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Category not found.');
+  if (!name || name.length > 80 || description.length > 300) return res.status(400).send('Enter a category name up to 80 characters and description up to 300 characters.');
+  try {
+    const category = await InventoryCategory.findByIdAndUpdate(req.params.id, { name, description }, { new: true, runValidators: true });
+    if (!category) return res.status(404).send('Category not found.');
+    await InventoryProduct.updateMany({ category: category._id }, { $set: { categoryName: category.name } });
+    return res.redirect('/inventory/categories?saved=edited');
+  } catch (error) {
+    console.error('Unable to update inventory category:', error);
+    return res.status(error.code === 11000 ? 409 : 400).send(error.code === 11000 ? 'That category already exists.' : 'Unable to update category.');
+  }
+};
+
+exports.deleteCategory = async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Category not found.');
+  try {
+    if (await InventoryProduct.exists({ category: req.params.id })) return res.redirect('/inventory/categories?error=in-use');
+    const category = await InventoryCategory.findByIdAndDelete(req.params.id);
+    if (!category) return res.status(404).send('Category not found.');
+    return res.redirect('/inventory/categories?saved=deleted');
+  } catch (error) {
+    console.error('Unable to delete inventory category:', error);
+    return res.status(500).send('Unable to delete category.');
+  }
+};
+
 exports.quantityTypesPage = async (req, res) => {
   try {
     const quantityTypes = await InventoryQuantityType.find({ active: true }).sort({ name: 1 }).lean();
-    renderPage(res, 'quantitytype', { quantityTypes, message: req.query.saved ? 'Unit added.' : '' });
+    const message = req.query.error === 'in-use'
+      ? 'This unit is used by products and cannot be deleted.'
+      : req.query.saved === 'edited' ? 'Quantity type updated.'
+        : req.query.saved === 'deleted' ? 'Quantity type deleted.'
+          : req.query.saved ? 'Unit added.' : '';
+    renderPage(res, 'quantitytype', { quantityTypes, message });
   } catch (error) {
     console.error('Unable to load inventory quantity types:', error);
     res.status(500).send('Unable to load quantity types');
@@ -585,15 +715,57 @@ exports.createQuantityType = async (req, res) => {
   }
 };
 
+exports.editQuantityType = async (req, res) => {
+  const name = String(req.body.name || '').trim().replace(/\s+/g, ' ');
+  const abbreviation = String(req.body.abbreviation || '').trim();
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Quantity type not found.');
+  if (!name || name.length > 40 || abbreviation.length > 12) return res.status(400).send('Enter a unit name up to 40 characters and abbreviation up to 12 characters.');
+  try {
+    const quantityType = await InventoryQuantityType.findByIdAndUpdate(req.params.id, { name, abbreviation }, { new: true, runValidators: true });
+    if (!quantityType) return res.status(404).send('Quantity type not found.');
+    await InventoryProduct.updateMany({ quantityType: quantityType._id }, { $set: { quantityTypeName: quantityType.name } });
+    return res.redirect('/inventory/quantity-types?saved=edited');
+  } catch (error) {
+    console.error('Unable to update inventory quantity type:', error);
+    return res.status(error.code === 11000 ? 409 : 400).send(error.code === 11000 ? 'That unit already exists.' : 'Unable to update quantity type.');
+  }
+};
+
+exports.deleteQuantityType = async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Quantity type not found.');
+  try {
+    if (await InventoryProduct.exists({ quantityType: req.params.id })) return res.redirect('/inventory/quantity-types?error=in-use');
+    const quantityType = await InventoryQuantityType.findByIdAndDelete(req.params.id);
+    if (!quantityType) return res.status(404).send('Quantity type not found.');
+    return res.redirect('/inventory/quantity-types?saved=deleted');
+  } catch (error) {
+    console.error('Unable to delete inventory quantity type:', error);
+    return res.status(500).send('Unable to delete quantity type.');
+  }
+};
+
 exports.salesPage = async (req, res) => {
   try {
-    const [products, recentTransactions] = await Promise.all([
-      InventoryProduct.find({ active: true, quantity: { $gt: 0 } }).sort({ name: 1 }).lean(),
-      InventoryTransaction.find().sort({ assignedAt: -1 }).limit(20).lean()
+    const requestedPage = parsePage(req.query.page);
+    const [products, issueCount] = await Promise.all([
+      InventoryProduct.find({ active: true }).sort({ name: 1 }).lean(),
+      InventoryTransaction.aggregate([{ $unwind: '$items' }, { $count: 'total' }])
+    ]);
+    const totalIssueItems = issueCount[0]?.total || 0;
+    const totalIssuePages = Math.max(1, Math.ceil(totalIssueItems / PAGE_SIZE));
+    const issuePage = Math.min(requestedPage, totalIssuePages);
+    const issueItems = await InventoryTransaction.aggregate([
+      { $unwind: '$items' },
+      { $sort: { assignedAt: -1, _id: -1 } },
+      { $skip: (issuePage - 1) * PAGE_SIZE },
+      { $limit: PAGE_SIZE }
     ]);
     renderPage(res, 'salesproduct', {
-      products,
-      recentTransactions,
+      products: groupInventoryProducts(products).filter((product) => product.quantity > 0),
+      issueItems,
+      totalIssueItems,
+      issuePage,
+      totalIssuePages,
       todayNepaliDate: String(bs.ADToBS(new Date()) || '').trim(),
       assignedBy: String(req.user?.teacherName || req.user?.username || '').trim(),
       message: req.query.saved ? 'Transaction recorded and stock updated.' : ''
@@ -601,6 +773,193 @@ exports.salesPage = async (req, res) => {
   } catch (error) {
     console.error('Unable to load inventory transactions:', error);
     res.status(500).send('Unable to load inventory transactions');
+  }
+};
+
+const returnPageData = async (returnType, page) => {
+  const totalReturns = await InventoryReturn.countDocuments({ returnType });
+  const totalPages = Math.max(1, Math.ceil(totalReturns / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const returns = await InventoryReturn.find({ returnType })
+    .sort({ returnedAt: -1, _id: -1 })
+    .skip((currentPage - 1) * PAGE_SIZE)
+    .limit(PAGE_SIZE)
+    .lean();
+  return { returns, totalReturns, page: currentPage, totalPages };
+};
+
+exports.salesReturnsPage = async (req, res) => {
+  try {
+    const [history, sourceItems] = await Promise.all([
+      returnPageData('sales', parsePage(req.query.page)),
+      InventoryTransaction.aggregate([
+        { $unwind: '$items' },
+        { $match: { $expr: { $lt: [{ $ifNull: ['$items.returnedQuantity', 0] }, '$items.quantity'] } } },
+        { $sort: { assignedAt: -1, _id: -1 } },
+        { $limit: 500 }
+      ])
+    ]);
+    renderPage(res, 'salesreturn', {
+      ...history,
+      sourceItems,
+      todayNepaliDate: String(bs.ADToBS(new Date()) || '').trim(),
+      returnedBy: String(req.user?.teacherName || req.user?.username || '').trim(),
+      message: req.query.saved ? 'Sales return recorded and stock restored.' : ''
+    });
+  } catch (error) {
+    console.error('Unable to load sales returns:', error);
+    res.status(500).send('Unable to load sales returns');
+  }
+};
+
+exports.createSalesReturn = async (req, res) => {
+  const sourceTransactionId = String(req.body.sourceTransactionId || '').trim();
+  const sourceItemId = String(req.body.sourceItemId || '').trim();
+  const returnNepaliDate = String(req.body.returnNepaliDate || '').trim();
+  const quantity = Number(req.body.quantity);
+  const reason = String(req.body.reason || '').trim();
+  if (!mongoose.isValidObjectId(sourceTransactionId) || !mongoose.isValidObjectId(sourceItemId)
+    || !/^\d{4}-\d{2}-\d{2}$/.test(returnNepaliDate) || !Number.isInteger(quantity) || quantity < 1
+    || !reason || reason.length > 500) {
+    return res.status(400).send('Choose an issued item, valid return date, whole-number quantity, and reason.');
+  }
+
+  let sourceTransaction;
+  let sourceItem;
+  let previousReturned;
+  let reservedSourceQuantity = false;
+  let restoredStock = false;
+  let productId;
+  try {
+    sourceTransaction = await InventoryTransaction.findById(sourceTransactionId);
+    if (!sourceTransaction) return res.status(404).send('The source issue was not found.');
+    sourceItem = sourceTransaction.items.id(sourceItemId);
+    if (!sourceItem) return res.status(404).send('The source item was not found.');
+    previousReturned = Number(sourceItem.returnedQuantity) || 0;
+    const sourceQuantity = Number(sourceItem.quantity) || 0;
+    if (quantity > sourceQuantity - previousReturned) {
+      return res.status(409).send(`Only ${sourceQuantity - previousReturned} ${sourceItem.quantityTypeName} remain available to return.`);
+    }
+    productId = sourceItem.product;
+    const itemReturnFilter = {
+      _id: sourceItemId,
+      product: productId,
+      quantity: sourceQuantity,
+      $or: [{ returnedQuantity: previousReturned }]
+    };
+    if (previousReturned === 0) itemReturnFilter.$or.push({ returnedQuantity: { $exists: false } });
+    const sourceUpdate = await InventoryTransaction.updateOne(
+      { _id: sourceTransaction._id, items: { $elemMatch: itemReturnFilter } },
+      { $inc: { 'items.$.returnedQuantity': quantity } }
+    );
+    if (!sourceUpdate.modifiedCount) return res.status(409).send('This item was returned by another user. Refresh the page and try again.');
+    reservedSourceQuantity = true;
+
+    const stockUpdate = await InventoryProduct.updateOne({ _id: productId }, { $inc: { quantity } });
+    if (!stockUpdate.matchedCount) throw new Error('RETURN_PRODUCT_MISSING');
+    restoredStock = true;
+    await InventoryReturn.create({
+      returnType: 'sales',
+      returnNo: `SR-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`,
+      returnedAt: new Date(),
+      returnNepaliDate,
+      product: productId,
+      productName: sourceItem.productName,
+      sku: sourceItem.sku || '',
+      quantityTypeName: sourceItem.quantityTypeName,
+      quantity,
+      sourceQuantity: sourceQuantity,
+      previouslyReturned: previousReturned,
+      sourceTransaction: sourceTransaction._id,
+      sourceItemId: sourceItem._id,
+      sourceTransactionNo: sourceTransaction.transactionNo,
+      sourceDateNepali: sourceTransaction.assignedNepaliDate || '',
+      counterpartyName: sourceTransaction.recipientName,
+      counterpartyType: sourceTransaction.recipientType,
+      counterpartyClass: sourceTransaction.recipientClass || '',
+      referenceNo: sourceTransaction.transactionNo,
+      reason,
+      returnedBy: String(req.user?.teacherName || req.user?.username || 'Inventory').trim()
+    });
+    return res.redirect('/inventory/salesreturns?saved=1');
+  } catch (error) {
+    if (restoredStock) await InventoryProduct.updateOne({ _id: productId, quantity: { $gte: quantity } }, { $inc: { quantity: -quantity } });
+    if (reservedSourceQuantity) await InventoryTransaction.updateOne(
+      { _id: sourceTransaction._id, items: { $elemMatch: { _id: sourceItemId, returnedQuantity: previousReturned + quantity } } },
+      { $inc: { 'items.$.returnedQuantity': -quantity } }
+    );
+    console.error('Unable to record sales return:', error);
+    return res.status(400).send('Unable to record sales return. Stock and source quantities were restored.');
+  }
+};
+
+exports.purchaseReturnsPage = async (req, res) => {
+  try {
+    const [history, stockRecords, suppliers] = await Promise.all([
+      returnPageData('purchase', parsePage(req.query.page)),
+      InventoryProduct.find({ active: true }).sort({ name: 1 }).lean(),
+      InventorySupplier.find({ active: true }).sort({ name: 1 }).select('name').lean()
+    ]);
+    renderPage(res, 'purchasereturn', {
+      ...history,
+      products: groupInventoryProducts(stockRecords).filter((product) => product.quantity > 0),
+      suppliers: suppliers.map((supplier) => supplier.name),
+      todayNepaliDate: String(bs.ADToBS(new Date()) || '').trim(),
+      returnedBy: String(req.user?.teacherName || req.user?.username || '').trim(),
+      message: req.query.saved ? 'Purchase return recorded and stock reduced.' : ''
+    });
+  } catch (error) {
+    console.error('Unable to load purchase returns:', error);
+    res.status(500).send('Unable to load purchase returns');
+  }
+};
+
+exports.createPurchaseReturn = async (req, res) => {
+  const productId = String(req.body.productId || '').trim();
+  const returnNepaliDate = String(req.body.returnNepaliDate || '').trim();
+  const quantity = Number(req.body.quantity);
+  const supplierName = String(req.body.supplierName || '').trim().replace(/\s+/g, ' ');
+  const referenceNo = String(req.body.referenceNo || '').trim();
+  const reason = String(req.body.reason || '').trim();
+  if (!mongoose.isValidObjectId(productId) || !/^\d{4}-\d{2}-\d{2}$/.test(returnNepaliDate)
+    || !Number.isInteger(quantity) || quantity < 1 || !supplierName || supplierName.length > 120
+    || referenceNo.length > 100 || !reason || reason.length > 500) {
+    return res.status(400).send('Choose an item, valid return date, whole-number quantity, supplier, and reason.');
+  }
+
+  const decremented = [];
+  try {
+    const products = await InventoryProduct.find({ active: true }).lean();
+    const product = products.find((record) => String(record._id) === productId);
+    if (!product) return res.status(404).send('The selected inventory item is no longer available.');
+    await saveSupplierName(supplierName);
+    await decrementGroupedProductStock(products, new Map([[productId, quantity]]), decremented);
+    await InventoryReturn.create({
+      returnType: 'purchase',
+      returnNo: `PR-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`,
+      returnedAt: new Date(),
+      returnNepaliDate,
+      product: product._id,
+      productName: product.name,
+      sku: product.sku || '',
+      quantityTypeName: product.quantityTypeName,
+      quantity,
+      sourceQuantity: Number(product.quantity) || 0,
+      previouslyReturned: 0,
+      counterpartyName: supplierName,
+      counterpartyType: 'supplier',
+      referenceNo,
+      reason,
+      returnedBy: String(req.user?.teacherName || req.user?.username || 'Inventory').trim()
+    });
+    return res.redirect('/inventory/purchasereturns?saved=1');
+  } catch (error) {
+    await Promise.all(decremented.map(({ productId: decrementedProductId, quantity: decrementedQuantity }) =>
+      InventoryProduct.updateOne({ _id: decrementedProductId }, { $inc: { quantity: decrementedQuantity } })
+    ));
+    if (error.message === 'INSUFFICIENT_STOCK') return res.status(409).send('The requested quantity exceeds available stock. Stock was not changed.');
+    console.error('Unable to record purchase return:', error);
+    return res.status(400).send('Unable to record purchase return. Stock was restored.');
   }
 };
 
@@ -622,6 +981,151 @@ exports.searchAssignees = async (req, res) => {
   }
 };
 
+exports.downloadTransactionTemplate = (req, res) => {
+  const headers = ['assignmentRef', 'recipientType', 'recipientName', 'recipientId', 'recipientClass', 'assignedNepaliDate', 'assignedBy', 'reason', 'productSku', 'productName', 'quantity'];
+  res.type('text/csv');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Content-Disposition', 'attachment; filename="inventory-issue-template.csv"');
+  res.send(`${headers.join(',')}\r\n`);
+};
+
+exports.importTransactionsCsv = [transactionCsvUpload.single('transactionCsv'), async (req, res) => {
+  try {
+    if (!req.file?.buffer) return res.status(400).json({ message: 'Choose a CSV file to upload.' });
+    const rows = await parseInventoryCsv(req.file.buffer);
+    if (!rows.length) return res.status(400).json({ message: 'The CSV file has no issue rows.' });
+    if (rows.length > 1000) return res.status(400).json({ message: 'Import no more than 1,000 issue item rows at a time.' });
+
+    const products = await InventoryProduct.find({ active: true }).lean();
+    const productGroups = groupInventoryProducts(products);
+    const productsBySku = new Map(productGroups.filter((product) => product.sku).map((product) => [String(product.sku).trim().toLowerCase(), product]));
+    const productsByName = new Map();
+    productGroups.forEach((product) => {
+      const key = standardizeProductName(product.name).replace(/\s+/g, '').toLowerCase();
+      if (!productsByName.has(key)) productsByName.set(key, []);
+      productsByName.get(key).push(product);
+    });
+
+    const assignments = new Map();
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      const rowNumber = index + 2;
+      const assignmentRef = String(row.assignmentRef || `row-${rowNumber}`).trim();
+      const recipientType = String(row.recipientType || '').trim().toLowerCase();
+      const recipientName = String(row.recipientName || '').trim();
+      const recipientId = String(row.recipientId || '').trim();
+      const recipientClass = String(row.recipientClass || '').trim();
+      const assignedNepaliDate = String(row.assignedNepaliDate || '').trim();
+      const assignedBy = String(row.assignedBy || '').trim();
+      const reason = String(row.reason || '').trim();
+      const productSku = String(row.productSku || '').trim().toLowerCase();
+      const productName = String(row.productName || '').trim();
+      const quantity = Number(row.quantity);
+      const invalidFields = [];
+      if (!assignmentRef || assignmentRef.length > 100) invalidFields.push('assignmentRef');
+      if (!['staff', 'student'].includes(recipientType)) invalidFields.push('recipientType');
+      if (!recipientName) invalidFields.push('recipientName');
+      if (!assignedNepaliDate) invalidFields.push('assignedNepaliDate');
+      if (!assignedBy) invalidFields.push('assignedBy');
+      if (!reason) invalidFields.push('reason');
+      if (!Number.isInteger(quantity) || quantity < 1) invalidFields.push('quantity');
+      if (!productSku && !productName) invalidFields.push('productSku or productName');
+      if (invalidFields.length) {
+        return res.status(400).json({ message: `CSV row ${rowNumber} is missing or has invalid fields: ${invalidFields.join(', ')}.` });
+      }
+
+      const skuMatch = productSku ? productsBySku.get(productSku) : null;
+      const nameMatches = productName ? (productsByName.get(standardizeProductName(productName).replace(/\s+/g, '').toLowerCase()) || []) : [];
+      const productGroups = skuMatch ? [skuMatch] : nameMatches;
+      if (!productGroups.length) {
+        const problem = productSku && !skuMatch ? `SKU ${productSku} was not found` : `Product ${productName || productSku} was not found`;
+        return res.status(400).json({ message: `CSV row ${rowNumber}: ${problem}.` });
+      }
+      if (skuMatch && productName && standardizeProductName(skuMatch.name).replace(/\s+/g, '').toLowerCase() !== standardizeProductName(productName).replace(/\s+/g, '').toLowerCase()) {
+        return res.status(400).json({ message: `CSV row ${rowNumber}: productName does not match productSku.` });
+      }
+
+      const assignmentDetails = { recipientType, recipientName, recipientId, recipientClass, assignedNepaliDate, assignedBy, reason };
+      let assignment = assignments.get(assignmentRef);
+      if (!assignment) {
+        assignment = { ...assignmentDetails, items: [] };
+        assignments.set(assignmentRef, assignment);
+      } else if (Object.keys(assignmentDetails).some((key) => assignment[key] !== assignmentDetails[key])) {
+        return res.status(400).json({ message: `CSV row ${rowNumber}: assignmentRef ${assignmentRef} has conflicting recipient or assignment details.` });
+      }
+
+      assignment.items.push({ productGroups, productName: productName || productGroups[0].name, quantity });
+    }
+
+    const requestedQuantities = new Map();
+    for (const assignment of assignments.values()) {
+      for (const item of assignment.items) {
+        const candidateGroups = [...item.productGroups].sort((left, right) => {
+          const leftDate = Math.min(...left.stockRecords.map((record) => new Date(record.createdAt || 0).getTime() || 0));
+          const rightDate = Math.min(...right.stockRecords.map((record) => new Date(record.createdAt || 0).getTime() || 0));
+          return leftDate - rightDate || String(left._id).localeCompare(String(right._id));
+        });
+        let remaining = item.quantity;
+        item.allocations = [];
+        for (const productGroup of candidateGroups) {
+          const productId = String(productGroup._id);
+          const alreadyRequested = requestedQuantities.get(productId) || 0;
+          const available = Math.max(0, (Number(productGroup.quantity) || 0) - alreadyRequested);
+          const allocated = Math.min(available, remaining);
+          if (!allocated) continue;
+          requestedQuantities.set(productId, alreadyRequested + allocated);
+          item.allocations.push({ product: productGroup, quantity: allocated });
+          remaining -= allocated;
+          if (!remaining) break;
+        }
+        if (remaining) {
+          return res.status(409).json({ message: `Not enough stock for ${item.productName}; ${remaining} more units are needed. No assignments were imported.` });
+        }
+      }
+    }
+
+    const decremented = [];
+    const transactionNumbers = [...assignments.keys()].map((_, index) => `INV-${Date.now()}-${index}-${Math.floor(Math.random() * 900 + 100)}`);
+    try {
+      await decrementGroupedProductStock(products, requestedQuantities, decremented);
+
+      const transactions = [...assignments.values()].map((assignment, index) => ({
+        transactionNo: transactionNumbers[index],
+        assignedAt: new Date(),
+        assignedNepaliDate: assignment.assignedNepaliDate,
+        recipientType: assignment.recipientType,
+        recipientName: assignment.recipientName,
+        recipientId: assignment.recipientId,
+        recipientClass: assignment.recipientClass,
+        reason: assignment.reason,
+        assignedBy: assignment.assignedBy,
+        items: assignment.items.flatMap((item) => item.allocations.map(({ product, quantity }) => ({
+          product: product._id,
+          productName: product.name,
+          sku: product.sku || '',
+          quantity,
+          quantityTypeName: product.quantityTypeName
+        })))
+      }));
+      await InventoryTransaction.insertMany(transactions, { ordered: true });
+      return res.json({ message: `Imported ${transactions.length} assignments with ${rows.length} item rows.`, imported: transactions.length });
+    } catch (error) {
+      await Promise.all([
+        ...decremented.map(({ productId, quantity }) => InventoryProduct.updateOne({ _id: productId }, { $inc: { quantity } })),
+        InventoryTransaction.deleteMany({ transactionNo: { $in: transactionNumbers } })
+      ]);
+      if (error.message === 'INSUFFICIENT_STOCK') return res.status(409).json({ message: 'One or more products do not have enough stock for this CSV. No assignments were imported.' });
+      throw error;
+    }
+  } catch (error) {
+    console.error('Unable to import inventory issue CSV:', error);
+    if (error instanceof multer.MulterError) return res.status(400).json({ message: 'CSV upload must be smaller than 2 MB.' });
+    return res.status(400).json({ message: 'Unable to import issue CSV. Check the template and values.' });
+  }
+}];
+
 exports.createTransaction = async (req, res) => {
   const items = Array.isArray(req.body.items) ? req.body.items : [];
   if (!['staff', 'student'].includes(req.body.recipientType) || !req.body.recipientName || !req.body.assignedNepaliDate || !req.body.reason || !req.body.assignedBy || !items.length) {
@@ -635,18 +1139,9 @@ exports.createTransaction = async (req, res) => {
   normalizedItems.forEach((item) => quantities.set(item.productId, (quantities.get(item.productId) || 0) + item.quantity));
   const decremented = [];
   try {
-    for (const [productId, quantity] of quantities) {
-      const product = await InventoryProduct.findOneAndUpdate(
-        { _id: productId, active: true, quantity: { $gte: quantity } },
-        { $inc: { quantity: -quantity } },
-        { new: true }
-      );
-      if (!product) throw new Error('INSUFFICIENT_STOCK');
-      decremented.push({ productId, quantity });
-    }
-    const productMap = new Map();
-    const products = await InventoryProduct.find({ _id: { $in: [...quantities.keys()] } }).lean();
-    products.forEach((product) => productMap.set(String(product._id), product));
+    const products = await InventoryProduct.find({ active: true }).lean();
+    const productMap = new Map(products.map((product) => [String(product._id), product]));
+    await decrementGroupedProductStock(products, quantities, decremented);
     const transactionItems = normalizedItems.map((item) => {
       const product = productMap.get(item.productId);
       if (!product) throw new Error('PRODUCT_MISSING');
@@ -676,8 +1171,8 @@ exports.createTransaction = async (req, res) => {
 
 exports.analyticsPage = async (req, res) => {
   try {
-    const [products, monthly, categoryStock] = await Promise.all([
-      InventoryProduct.find({ active: true }).sort({ quantity: 1 }).lean(),
+    const [stockRecords, monthly, categoryStock] = await Promise.all([
+      InventoryProduct.find({ active: true }).lean(),
       InventoryTransaction.aggregate([
         { $match: { assignedAt: { $gte: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000) } } },
         { $unwind: '$items' },
@@ -686,6 +1181,7 @@ exports.analyticsPage = async (req, res) => {
       ]),
       InventoryProduct.aggregate([{ $match: { active: true } }, { $group: { _id: '$categoryName', quantity: { $sum: '$quantity' } } }, { $sort: { quantity: -1 } }])
     ]);
+    const products = groupInventoryProducts(stockRecords).sort((left, right) => left.quantity - right.quantity || left.name.localeCompare(right.name));
     renderPage(res, 'analytics', {
       products,
       monthlyLabels: monthly.map((row) => row._id),
@@ -716,7 +1212,9 @@ exports.suppliersPage = async (req, res) => {
     const suppliers = await InventorySupplier.find({ active: true }).sort({ name: 1 }).lean();
     renderPage(res, 'addstorename', {
       suppliers,
-      message: req.query.saved ? 'Supplier saved and available in product entry.' : ''
+      message: req.query.saved === 'edited' ? 'Supplier updated.'
+        : req.query.saved === 'deleted' ? 'Supplier deleted.'
+          : req.query.saved ? 'Supplier saved and available in product entry.' : ''
     });
   } catch (error) {
     console.error('Unable to load inventory suppliers:', error);
@@ -733,5 +1231,39 @@ exports.createSupplier = async (req, res) => {
   } catch (error) {
     console.error('Unable to save inventory supplier:', error);
     return res.status(500).send('Unable to save supplier. Please try again.');
+  }
+};
+
+exports.editSupplier = async (req, res) => {
+  const name = String(req.body.name || '').trim().replace(/\s+/g, ' ');
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Supplier not found.');
+  if (!name || name.length > 120) return res.status(400).send('Enter a supplier name up to 120 characters.');
+  try {
+    const existingSupplier = await InventorySupplier.findById(req.params.id);
+    if (!existingSupplier) return res.status(404).send('Supplier not found.');
+    const supplier = await InventorySupplier.findByIdAndUpdate(req.params.id, {
+      name,
+      normalizedName: name.toLowerCase()
+    }, { new: true, runValidators: true });
+    if (!supplier) return res.status(404).send('Supplier not found.');
+    if (existingSupplier.name !== supplier.name) {
+      await InventoryProduct.updateMany({ supplierName: existingSupplier.name }, { $set: { supplierName: supplier.name } });
+    }
+    return res.redirect('/inventory/suppliers?saved=edited');
+  } catch (error) {
+    console.error('Unable to update inventory supplier:', error);
+    return res.status(error.code === 11000 ? 409 : 400).send(error.code === 11000 ? 'That supplier already exists.' : 'Unable to update supplier.');
+  }
+};
+
+exports.deleteSupplier = async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Supplier not found.');
+  try {
+    const supplier = await InventorySupplier.findByIdAndDelete(req.params.id);
+    if (!supplier) return res.status(404).send('Supplier not found.');
+    return res.redirect('/inventory/suppliers?saved=deleted');
+  } catch (error) {
+    console.error('Unable to delete inventory supplier:', error);
+    return res.status(500).send('Unable to delete supplier.');
   }
 };

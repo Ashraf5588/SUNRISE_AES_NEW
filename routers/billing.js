@@ -36,10 +36,10 @@ billing.post('/feestructure/:id/edit',verifytoken,authorized,isAdmin,billingcont
 billing.post('/feestructure/:id/delete',verifytoken,authorized,isAdmin,billingcontroller.deleteFeeStructure)
 
 // Operational billing routes
-billing.get('/fee-invoices',verifytoken,authorized,isAdmin,billingcontroller.feeInvoices)
-billing.post('/fee-invoices',verifytoken,authorized,isAdmin,billingcontroller.addFeeInvoice)
-billing.get('/fee-invoices/:id',verifytoken,authorized,isAdmin,billingcontroller.viewFeeInvoice)
-billing.post('/fee-invoices/:id/delete',verifytoken,authorized,isAdmin,billingcontroller.deleteFeeInvoice)
+// billing.get('/fee-invoices',verifytoken,authorized,isAdmin,billingcontroller.feeInvoices)
+// billing.post('/fee-invoices',verifytoken,authorized,isAdmin,billingcontroller.addFeeInvoice)
+// billing.get('/fee-invoices/:id',verifytoken,authorized,isAdmin,billingcontroller.viewFeeInvoice)
+// billing.post('/fee-invoices/:id/delete',verifytoken,authorized,isAdmin,billingcontroller.deleteFeeInvoice)
 billing.get('/fee-payments',verifytoken,authorized,isAdmin,billingcontroller.feePayments)
 billing.post('/fee-payments',verifytoken,authorized,isAdmin,billingcontroller.addFeePayment)
 billing.get('/fee-receipts/:id',verifytoken,authorized,isAdmin,billingcontroller.viewFeeReceipt)

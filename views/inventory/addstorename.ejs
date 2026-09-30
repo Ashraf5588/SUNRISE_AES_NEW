@@ -25,8 +25,8 @@
 		<section class="panel supplier-list-panel">
 			<div class="panel-heading"><div><h2>Saved suppliers</h2><p><%= suppliers.length %> available</p></div></div>
 			<% if (suppliers.length) { %>
-				<div class="table-wrap"><table><thead><tr><th>Supplier</th><th>Added</th></tr></thead><tbody>
-				<% suppliers.forEach(supplier => { %><tr><td><span class="cell-primary"><%= supplier.name %></span></td><td><%= new Date(supplier.createdAt).toLocaleDateString() %></td></tr><% }) %>
+				<div class="table-wrap"><table><thead><tr><th>Supplier</th><th>Added</th><th>Actions</th></tr></thead><tbody>
+				<% suppliers.forEach(supplier => { %><tr><td><span class="cell-primary"><%= supplier.name %></span></td><td><%= new Date(supplier.createdAt).toLocaleDateString() %></td><td><div class="row-actions"><details class="row-edit"><summary class="button secondary small">Edit</summary><form class="row-edit-form" method="post" action="/inventory/suppliers/<%= supplier._id %>/edit"><div class="field"><label for="supplier-name-<%= supplier._id %>">Supplier name</label><input id="supplier-name-<%= supplier._id %>" name="name" value="<%= supplier.name %>" required maxlength="120"></div><div class="form-actions"><button class="button small" type="submit">Save</button><button class="button secondary small" type="button" onclick="this.closest('details').open = false">Cancel</button></div></form></details><form method="post" action="/inventory/suppliers/<%= supplier._id %>/delete" onsubmit="return confirm('Delete this supplier from the suggestions?')"><button class="button danger small" type="submit">Delete</button></form></div></td></tr><% }) %>
 				</tbody></table></div>
 			<% } else { %><div class="empty-state">No suppliers saved yet.</div><% } %>
 		</section>

@@ -474,18 +474,6 @@ exports.generateBills = async (req, res) => {
   }
 };
 
-exports.viewInvoice = async (req, res) => {
-  try {
-    const invoice = await Invoice.findById(req.params.id).lean();
-    if (!invoice) return res.status(404).send('Invoice not found');
-    return res.render('billing/invoice', { title: invoice.invoiceNumber, invoice, school: { name: 'School' } });
-  } catch (error) {
-    console.error('Error loading invoice:', error);
-    res.status(500).send('Internal Server Error');
-  }
-};
-
-
 exports.listInvoices = async (req, res) => {
   const invoices = await Invoice.find().populate('student').sort({ billDateAD: -1 }).limit(200);
   res.render('billing/list', { invoices });
@@ -529,11 +517,22 @@ exports.generateBills = async (req, res) => {
 };
 
 exports.viewInvoice = async (req, res) => {
-  const invoice = await Invoice.findById(req.params.id)
-    .populate({ path: 'student', populate: { path: 'class' } })
-    .populate('academicSession');
-  const school = await School.findOne();
-  res.render('billing/invoice', { invoice, school });
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return res.status(404).send('Invoice not found');
+  }
+
+  try {
+    const invoice = await Invoice.findById(req.params.id)
+      .populate({ path: 'student', populate: { path: 'class' } })
+      .populate('academicSession');
+    if (!invoice) return res.status(404).send('Invoice not found');
+
+    const school = await School.findOne();
+    return res.render('billing/invoice', { invoice, school });
+  } catch (error) {
+    console.error('Error loading invoice:', error);
+    return res.status(500).send('Unable to load invoice.');
+  }
 };
 
 module.exports = {

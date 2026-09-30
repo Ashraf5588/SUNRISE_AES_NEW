@@ -46,7 +46,7 @@
 }
 
 .library-nav-icon {
-  display: none;
+  display: inline-flex;
   flex: 0 0 28px;
   width: 28px;
   height: 28px;

@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Class = require('../../model/billingschema/Class');
 const Student = require('../../model/billingschema/Student');
 
@@ -6,7 +7,99 @@ const FeeStructure = require('../../model/billingschema/feestructureschema');
 const School = require('../../model/billingschema/School');
 const Transport = require('../../model/billingschema/transport');
 const Discount = require('../../model/billingschema/Discount');
+const OpeningBalance = require('../../model/billingschema/OpeningBalance');
 const feeheadModel = require('../../model/billingschema/feeheadschema').feeheadModel;
+const { importOpeningBalance } = require('../../services/billingService');
+
+const loadOpeningBalanceData = async () => {
+  const [students, openingBalances] = await Promise.all([
+    Student.find().populate('class', 'name').populate('academicSession', 'titleBS').sort({ name: 1 }).lean(),
+    OpeningBalance.find()
+      .populate({ path: 'student', select: 'studentCode name class section', populate: { path: 'class', select: 'name' } })
+      .sort({ createdAt: -1 })
+      .lean()
+  ]);
+  const studentsWithOpeningBalance = new Set(
+    openingBalances.filter((entry) => entry.student?._id).map((entry) => String(entry.student._id))
+  );
+  return {
+    students: students.map((student) => ({
+      ...student,
+      hasOpeningBalance: studentsWithOpeningBalance.has(String(student._id))
+    })),
+    openingBalances,
+    todayAD: new Date().toISOString().slice(0, 10)
+  };
+};
+
+exports.openingBalancesPage = async (req, res) => {
+  try {
+    res.render('setup/openingbalance', {
+      ...(await loadOpeningBalanceData()),
+      formValues: {},
+      error: '',
+      saved: req.query.saved === '1'
+    });
+  } catch (error) {
+    console.error('Unable to load opening balances:', error);
+    res.status(500).send('Unable to load opening balances.');
+  }
+};
+
+exports.createOpeningBalance = async (req, res) => {
+  const formValues = {
+    student: String(req.body.student || '').trim(),
+    amount: String(req.body.amount || '').trim(),
+    asOfDateAD: String(req.body.asOfDateAD || '').trim(),
+    sourceNote: String(req.body.sourceNote || '').trim()
+  };
+  const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+  const asOfDateAD = new Date(`${formValues.asOfDateAD}T00:00:00.000Z`);
+  const validDate = datePattern.test(formValues.asOfDateAD) &&
+    !Number.isNaN(asOfDateAD.getTime()) &&
+    asOfDateAD.toISOString().slice(0, 10) === formValues.asOfDateAD;
+  const validAmount = /^-?\d+(?:\.\d{1,2})?$/.test(formValues.amount) &&
+    Number.isFinite(Number(formValues.amount)) && Number(formValues.amount) !== 0;
+
+  let error = '';
+  if (!mongoose.isValidObjectId(formValues.student)) error = 'Choose a student from the list.';
+  else if (!validAmount) error = 'Enter a non-zero amount with no more than two decimal places. Use a negative amount for an advance or credit.';
+  else if (!validDate) error = 'Enter a valid as-of date.';
+  else if (!formValues.sourceNote || formValues.sourceNote.length > 300) error = 'Enter a source note up to 300 characters.';
+
+  if (error) {
+    return res.status(400).render('setup/openingbalance', {
+      ...(await loadOpeningBalanceData()), formValues, error, saved: false
+    });
+  }
+
+  try {
+    const student = await Student.findById(formValues.student).lean();
+    if (!student) {
+      return res.status(400).render('setup/openingbalance', {
+        ...(await loadOpeningBalanceData()), formValues, error: 'The selected student was not found.', saved: false
+      });
+    }
+    await importOpeningBalance({
+      studentId: student._id,
+      amount: Number(formValues.amount),
+      asOfDateAD,
+      sourceNote: formValues.sourceNote,
+      enteredBy: req.user?.teacherName || req.user?.username || req.body.enteredBy || 'Billing administrator'
+    });
+    return res.redirect('/setup/opening-balances?saved=1');
+  } catch (submitError) {
+    const duplicate = submitError.code === 'OPENING_BALANCE_EXISTS' || submitError.code === 11000;
+    console.error('Unable to save opening balance:', submitError);
+    return res.status(duplicate ? 409 : 400).render('setup/openingbalance', {
+      ...(await loadOpeningBalanceData()),
+      formValues,
+      error: duplicate ? 'This student already has an opening balance. Each student can have only one.' : 'Unable to save the opening balance. No changes were saved.',
+      saved: false
+    });
+  }
+};
+
 // ---- Classes ----
 exports.listClasses = async (req, res) => {
   const classes = await Class.find().sort({ order: 1 });

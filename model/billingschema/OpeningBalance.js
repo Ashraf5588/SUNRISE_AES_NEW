@@ -18,4 +18,6 @@ const openingBalanceSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+openingBalanceSchema.index({ student: 1 }, { unique: true });
+
 module.exports = mongoose.models.OpeningBalance || mongoose.model('OpeningBalance', openingBalanceSchema);

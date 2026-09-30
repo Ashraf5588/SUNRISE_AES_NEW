@@ -26,25 +26,48 @@ async function getCurrentBalance(studentId) {
 }
 
 async function importOpeningBalance({ studentId, amount, asOfDateAD, sourceNote, enteredBy }) {
-  const opening = await OpeningBalance.create({
-    student: studentId,
-    amount,
-    asOfDateAD,
-    sourceNote,
-    enteredBy,
-  });
+  if (!mongoose.isValidObjectId(studentId)) throw new Error('Select a valid student.');
+  if (!Number.isFinite(Number(amount)) || Number(amount) === 0) throw new Error('Opening balance must be a non-zero amount.');
+  const asOfDate = new Date(asOfDateAD);
+  if (Number.isNaN(asOfDate.getTime())) throw new Error('Enter a valid as-of date.');
+  if (await OpeningBalance.exists({ student: studentId })) {
+    const error = new Error('An opening balance already exists for this student.');
+    error.code = 'OPENING_BALANCE_EXISTS';
+    throw error;
+  }
 
-  if (amount !== 0) {
+  const opening = new OpeningBalance({
+    student: studentId,
+    amount: Number(amount),
+    asOfDateAD: asOfDate,
+    sourceNote: String(sourceNote || '').trim() || 'Migrated from previous billing software',
+    enteredBy: String(enteredBy || '').trim(),
+  });
+  try {
+    await opening.save();
+  } catch (error) {
+    if (error.code === 11000) {
+      const duplicateError = new Error('An opening balance already exists for this student.');
+      duplicateError.code = 'OPENING_BALANCE_EXISTS';
+      throw duplicateError;
+    }
+    throw error;
+  }
+
+  try {
     await LedgerEntry.create({
       student: studentId,
-      date: asOfDateAD,
-      type: amount > 0 ? 'DEBIT' : 'CREDIT',
-      amount: Math.abs(amount),
+      date: asOfDate,
+      type: Number(amount) > 0 ? 'DEBIT' : 'CREDIT',
+      amount: Math.abs(Number(amount)),
       referenceType: 'OPENING_BALANCE',
       referenceId: opening._id,
-      description: sourceNote || 'Opening balance from old system',
-      runningBalance: amount,
+      description: opening.sourceNote,
+      runningBalance: Number(amount),
     });
+  } catch (error) {
+    await OpeningBalance.deleteOne({ _id: opening._id });
+    throw error;
   }
 
   return opening;

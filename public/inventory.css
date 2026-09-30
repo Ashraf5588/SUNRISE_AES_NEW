@@ -55,6 +55,8 @@ h1 { margin-bottom: 5px; font-size: clamp(25px, 3vw, 34px); line-height: 1.16; }
 .button { display: inline-flex; justify-content: center; align-items: center; min-height: 39px; padding: 0 15px; border: 0; border-radius: 6px; color: #fff; background: var(--green); font-size: 12px; font-weight: 700; cursor: pointer; }
 .button:hover { background: #10583f; }
 .button.secondary { border: 1px solid var(--line); color: var(--ink); background: #fff; }
+.button.danger { border: 1px solid #e8c8c4; color: #a61b1b; background: #fff; }
+.button.danger:hover { background: #fff3f2; }
 .button.small { min-height: 31px; padding: 0 10px; font-size: 11px; }
 .dashboard-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-bottom: 17px; }
 .stat-card, .panel { border: 1px solid var(--line); border-radius: 8px; background: var(--white); box-shadow: var(--shadow); }
@@ -77,6 +79,11 @@ td { padding: 13px 10px; border-bottom: 1px solid #edf0ed; color: #45514e; font-
 tbody tr:last-child td { border-bottom: 0; }
 .cell-primary { display: block; color: var(--ink); font-weight: 700; }
 .cell-secondary { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
+.row-actions { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px; }
+.row-edit > summary { list-style: none; cursor: pointer; }
+.row-edit > summary::-webkit-details-marker { display: none; }
+.row-edit-form { display: grid; width: min(300px, calc(100vw - 36px)); gap: 10px; margin-top: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 6px; background: #fff; box-shadow: var(--shadow); }
+.row-edit-form .form-actions { flex-wrap: wrap; margin-top: 0; }
 .pill { display: inline-block; padding: 4px 8px; border-radius: 20px; color: #8f482d; background: #fff0e9; font-size: 10px; font-weight: 700; white-space: nowrap; }
 .pill.ok { color: var(--green); background: var(--green-soft); }
 .empty-state { padding: 24px 8px; color: var(--muted); font-size: 12px; text-align: center; }
@@ -127,6 +134,10 @@ tbody tr:last-child td { border-bottom: 0; }
 .product-entry-table .new-product-row input:focus, .product-entry-table .new-product-row select:focus { background: #fff; }
 .product-entry-table input:focus, .product-entry-table select:focus { position: relative; z-index: 1; outline: 2px solid var(--green); outline-offset: -2px; }
 .product-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 14px; }
+.product-search { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 14px; }
+.product-search label { color: var(--ink); font-size: 13px; font-weight: 700; }
+.product-search-input { width: min(420px, 100%); min-height: 42px; padding: 9px 11px; border: 1px solid #dce4de; border-radius: 5px; color: var(--ink); background: #fff; font-size: 14px; }
+.product-search-input:focus { border-color: var(--green); outline: 2px solid rgba(23,107,80,.14); }
 .supplier-panel, .supplier-list-panel { margin-bottom: 17px; }
 .supplier-form { display: grid; grid-template-columns: minmax(260px, 480px) auto; align-items: end; gap: 12px; }
 .supplier-form .field { margin: 0; }

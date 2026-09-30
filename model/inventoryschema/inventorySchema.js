@@ -47,10 +47,37 @@ const inventoryTransactionSchema = new mongoose.Schema({
     productName: { type: String, required: true, trim: true },
     sku: { type: String, trim: true, default: '' },
     quantity: { type: Number, required: true, min: 1 },
+    returnedQuantity: { type: Number, min: 0, default: 0 },
     quantityTypeName: { type: String, required: true, trim: true }
   }]
 }, { timestamps: true });
 inventoryTransactionSchema.index({ assignedAt: -1 });
+
+const inventoryReturnSchema = new mongoose.Schema({
+  returnType: { type: String, enum: ['sales', 'purchase'], required: true, index: true },
+  returnNo: { type: String, required: true, unique: true },
+  returnedAt: { type: Date, required: true, default: Date.now },
+  returnNepaliDate: { type: String, required: true, trim: true },
+  product: { type: mongoose.Schema.Types.ObjectId, ref: 'inventoryProduct', required: true },
+  productName: { type: String, required: true, trim: true },
+  sku: { type: String, trim: true, default: '' },
+  quantityTypeName: { type: String, required: true, trim: true },
+  quantity: { type: Number, required: true, min: 1 },
+  sourceQuantity: { type: Number, required: true, min: 0 },
+  previouslyReturned: { type: Number, min: 0, default: 0 },
+  sourceTransaction: { type: mongoose.Schema.Types.ObjectId, ref: 'inventoryTransaction', default: undefined },
+  sourceItemId: { type: mongoose.Schema.Types.ObjectId, default: undefined },
+  sourceTransactionNo: { type: String, trim: true, default: '' },
+  sourceDateNepali: { type: String, trim: true, default: '' },
+  counterpartyName: { type: String, required: true, trim: true },
+  counterpartyType: { type: String, trim: true, default: '' },
+  counterpartyClass: { type: String, trim: true, default: '' },
+  referenceNo: { type: String, trim: true, default: '' },
+  reason: { type: String, required: true, trim: true },
+  returnedBy: { type: String, required: true, trim: true }
+}, { timestamps: true });
+inventoryReturnSchema.index({ returnType: 1, returnedAt: -1 });
+inventoryReturnSchema.index({ sourceTransaction: 1, sourceItemId: 1 });
 
 const inventoryProductRequestSchema = new mongoose.Schema({
   requesterId: { type: mongoose.Schema.Types.ObjectId, required: true },
@@ -79,5 +106,6 @@ module.exports = {
   inventoryQuantityTypeSchema,
   inventoryProductSchema,
   inventoryTransactionSchema,
+  inventoryReturnSchema,
   inventoryProductRequestSchema
 };

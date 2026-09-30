@@ -1,3 +1,5 @@
+ <script src="https://cdn.lordicon.com/lordicon.js"></script>
+    <script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
 <button class="library-nav-toggle" type="button" aria-label="Collapse navigation" aria-controls="librarySidebar" aria-expanded="true">
   <span></span><span></span><span></span>
 </button>
@@ -10,19 +12,19 @@
   <div class="nav-group">
     <div class="nav-label">Overview</div>
     <% const libraryNavItems = [
-      { id: 'dashboard', label: 'Dashboard', href: '/library/dashboard', icon: 'D' },
-      { id: 'books', label: 'Books', href: '/library/books', icon: 'B' },
-      { id: 'categories', label: 'Categories', href: '/library/categories', icon: 'C' },
-      { id: 'members', label: 'Members', href: '/library/members', icon: 'M' },
-      { id: 'issues', label: 'Book Issue', href: '/library/issues', icon: 'I' },
-      { id: 'lost-books', label: 'Lost Books', href: '/library/lost-books', icon: 'L' },
-      { id: 'analytics', label: 'Analytics', href: '/library/analytics', icon: 'A' },
-      { id: 'inventory', label: 'Book Inventory', href: '/library/inventory', icon: 'V' },
-      { id: 'shelf-assignment', label: 'Assign Shelves', href: '/library/shelf-assignment', icon: 'S' }
+      { id: 'dashboard', label: 'Dashboard', href: '/library/dashboard', icon: '<i class="fa-solid fa-house" style="color: rgb(255, 255, 255);"></i>' },
+      { id: 'books', label: 'Books', href: '/library/books', icon: '<i class="fa-solid fa-book" style="color: rgb(255, 255, 255);"></i>' },
+      { id: 'categories', label: 'Categories', href: '/library/categories', icon: '<i class="fa-solid fa-tags" style="color: rgb(255, 255, 255);"></i>' },
+      { id: 'members', label: 'Members', href: '/library/members', icon: '<i class="fa-solid fa-users" style="color: rgb(255, 255, 255);"></i>' },
+      { id: 'issues', label: 'Book Issue', href: '/library/issues', icon: '<i class="fa-solid fa-hand-holding-dollar" style="color: rgb(255, 255, 255);"></i>' },
+      { id: 'lost-books', label: 'Lost Books', href: '/library/lost-books', icon: '<i class="fa-solid fa-question-circle" style="color: rgb(255, 255, 255);"></i>' },
+      { id: 'analytics', label: 'Analytics', href: '/library/analytics', icon: '<i class="fa-solid fa-chart-line" style="color: rgb(255, 255, 255);"></i>' },
+      { id: 'inventory', label: 'Book Inventory', href: '/library/inventory', icon: '<i class="fa-solid fa-warehouse" style="color: rgb(255, 255, 255);"></i>' },
+      { id: 'shelf-assignment', label: 'Assign Shelves', href: '/library/shelf-assignment', icon: '<i class="fa-solid fa-bars-progress" style="color: rgb(255, 255, 255);"></i>' }
     ]; %>
     <% libraryNavItems.forEach((item) => { %>
       <a class="nav-item<%= activePage === item.id ? ' active' : '' %>" href="<%= item.href %>" title="<%= item.label %>" <%= activePage === item.id ? 'aria-current="page"' : '' %>>
-        <span class="library-nav-icon" aria-hidden="true"><%= item.icon %></span>
+        <span class="library-nav-icon" aria-hidden="true"><%- item.icon %></span>
         <span class="library-nav-text"><%= item.label %></span>
       </a>
     <% }); %>

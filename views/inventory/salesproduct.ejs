@@ -7,6 +7,22 @@
 		<header class="page-header"><div><p class="eyebrow">Stock control / Issue items</p><h1>Assign inventory</h1><p class="page-subtitle">Record each issue and update available stock in one step.</p></div></header>
 		<% if (message) { %><div class="notice"><%= message %></div><% } %>
 		<section class="panel" style="margin-bottom:17px">
+			<div class="panel-heading"><div><h2>Import assignments</h2><p>Template headings cover recipient, assignment, product, and quantity fields. Use one product per row; repeat an assignment reference to group items on one bill.</p></div></div>
+			<div class="product-tools">
+				<a class="button secondary" href="/inventory/sales/template.csv?v=1" download>Download CSV template</a>
+				<form id="transactionCsvUploadForm" class="csv-upload-form" enctype="multipart/form-data">
+					<label class="csv-file-label" for="transactionCsv">Choose CSV</label>
+					<input id="transactionCsv" name="transactionCsv" type="file" accept=".csv,text/csv" required>
+					<button class="button secondary" type="submit">Upload CSV</button>
+				</form>
+			</div>
+			<div class="upload-progress" id="issueCsvUploadProgress" hidden aria-live="polite">
+				<div class="upload-progress-heading"><strong id="issueCsvUploadStatus">Preparing upload</strong><span id="issueCsvUploadPercent">0%</span></div>
+				<progress id="issueCsvUploadProgressBar" max="100" value="0">0%</progress>
+				<p class="upload-message" id="issueCsvUploadMessage"></p>
+			</div>
+		</section>
+		<section class="panel" style="margin-bottom:17px">
 			<div class="panel-heading"><div><h2>New assignment</h2><p>Select a recipient and add one or more products.</p></div></div>
 			<form method="post" action="/inventory/sales" id="issueForm" data-products-exist="<%= products.length ? 'true' : 'false' %>">
 				<div class="form-grid">
@@ -25,10 +41,11 @@
 			</form>
 		</section>
 		<section class="panel">
-			<div class="panel-heading"><div><h2>Recent transactions</h2><p>Assignments are saved as permanent issue records.</p></div></div>
-			<% if (recentTransactions.length) { %><div class="table-wrap"><table><thead><tr><th>Bill no.</th><th>Assigned to</th><th>Reason</th><th>Items</th><th>Date</th><th></th></tr></thead><tbody>
-				<% recentTransactions.forEach(transaction => { %><tr><td><span class="cell-primary"><%= transaction.transactionNo %></span><span class="cell-secondary">By <%= transaction.assignedBy %></span></td><td><span class="cell-primary"><%= transaction.recipientName %></span><span class="cell-secondary"><%= transaction.recipientType %><%= transaction.recipientClass ? ` / ${transaction.recipientClass}` : '' %></span></td><td><%= transaction.reason %></td><td><%= transaction.items.reduce((sum, item) => sum + item.quantity, 0) %> units</td><td><%= transaction.assignedNepaliDate || new Date(transaction.assignedAt).toLocaleDateString() %></td><td><a class="button secondary small" href="/inventory/transactions/<%= transaction._id %>/print">Print bill</a></td></tr><% }) %>
-			</tbody></table></div><% } else { %><div class="empty-state">No issue transactions recorded yet.</div><% } %>
+			<div class="panel-heading"><div><h2>Issued items</h2><p>Assignments are saved as permanent issue records.</p></div><span class="cell-secondary">Showing <%= totalIssueItems ? (issuePage - 1) * 25 + 1 : 0 %>-<%= Math.min(issuePage * 25, totalIssueItems) %> of <%= totalIssueItems %></span></div>
+			<% if (issueItems.length) { %><div class="table-wrap"><table><thead><tr><th>Date</th><th>Product</th><th>Quantity</th><th>Assigned to</th><th>Reason</th><th>Bill no.</th><th>Assigned by</th><th></th></tr></thead><tbody>
+				<% issueItems.forEach(issue => { %><tr><td><%= issue.assignedNepaliDate || new Date(issue.assignedAt).toLocaleDateString() %></td><td><span class="cell-primary"><%= issue.items.productName %></span><% if (issue.items.sku) { %><span class="cell-secondary"><%= issue.items.sku %></span><% } %></td><td><%= issue.items.quantity %> <%= issue.items.quantityTypeName %></td><td><span class="cell-primary"><%= issue.recipientName %></span><span class="cell-secondary"><%= issue.recipientType %><%= issue.recipientClass ? ` / ${issue.recipientClass}` : '' %></span></td><td><%= issue.reason %></td><td><%= issue.transactionNo %></td><td><%= issue.assignedBy %></td><td><a class="button secondary small" href="/inventory/transactions/<%= issue._id %>/print">Print bill</a></td></tr><% }) %>
+			</tbody></table></div><% } else { %><div class="empty-state">No issue items recorded yet.</div><% } %>
+			<% if (totalIssuePages > 1) { %><nav class="pagination" aria-label="Issue item pages"><span>Page <%= issuePage %> of <%= totalIssuePages %></span><div><% if (issuePage > 1) { %><a class="button secondary small" href="/inventory/sales?page=<%= issuePage - 1 %>">Previous</a><% } %><% if (issuePage < totalIssuePages) { %><a class="button secondary small" href="/inventory/sales?page=<%= issuePage + 1 %>">Next</a><% } %></div></nav><% } %>
 		</section>
 	</main>
 </div>
@@ -41,6 +58,59 @@
 </template>
 <template id="productOptions"><% products.forEach(product => { %><button type="button" class="search-result product-option" role="option" data-id="<%= product._id %>" data-stock="<%= product.quantity %>" data-unit="<%= product.quantityTypeName %>" data-sku="<%= product.sku || '' %>"><strong><%= product.name %></strong><small><%= product.quantity %> <%= product.quantityTypeName %> available<%= product.sku ? ` · ${product.sku}` : '' %></small></button><% }) %></template>
 <script>
+	const transactionCsvUploadForm = document.getElementById('transactionCsvUploadForm');
+	const issueCsvUploadProgress = document.getElementById('issueCsvUploadProgress');
+	const issueCsvUploadProgressBar = document.getElementById('issueCsvUploadProgressBar');
+	const issueCsvUploadPercent = document.getElementById('issueCsvUploadPercent');
+	const issueCsvUploadStatus = document.getElementById('issueCsvUploadStatus');
+	const issueCsvUploadMessage = document.getElementById('issueCsvUploadMessage');
+	transactionCsvUploadForm.addEventListener('submit', (event) => {
+		event.preventDefault();
+		if (!document.getElementById('transactionCsv').files.length) return;
+		const request = new XMLHttpRequest();
+		const uploadButton = transactionCsvUploadForm.querySelector('button');
+		issueCsvUploadProgress.hidden = false;
+		issueCsvUploadProgress.classList.remove('upload-error', 'upload-success');
+		issueCsvUploadProgressBar.value = 0;
+		issueCsvUploadPercent.textContent = '0%';
+		issueCsvUploadStatus.textContent = 'Uploading CSV';
+		issueCsvUploadMessage.textContent = '';
+		uploadButton.disabled = true;
+		request.upload.addEventListener('progress', (progressEvent) => {
+			if (!progressEvent.lengthComputable) return;
+			const percent = Math.min(95, Math.round(progressEvent.loaded / progressEvent.total * 95));
+			issueCsvUploadProgressBar.value = percent;
+			issueCsvUploadPercent.textContent = `${percent}%`;
+			if (percent >= 95) issueCsvUploadStatus.textContent = 'Validating stock and saving assignments';
+		});
+		request.addEventListener('load', () => {
+			let result;
+			try { result = JSON.parse(request.responseText); }
+			catch (error) { result = { message: request.responseText || 'The server could not process this upload.' }; }
+			uploadButton.disabled = false;
+			if (request.status >= 200 && request.status < 300) {
+				issueCsvUploadProgress.classList.add('upload-success');
+				issueCsvUploadProgressBar.value = 100;
+				issueCsvUploadPercent.textContent = '100%';
+				issueCsvUploadStatus.textContent = 'Upload complete';
+				issueCsvUploadMessage.textContent = result.message || 'Assignments imported.';
+				window.setTimeout(() => window.location.assign('/inventory/sales?saved=1'), 900);
+			} else {
+				issueCsvUploadProgress.classList.add('upload-error');
+				issueCsvUploadStatus.textContent = 'Upload failed';
+				issueCsvUploadMessage.textContent = result.message || 'Check the CSV file and try again.';
+			}
+		});
+		request.addEventListener('error', () => {
+			uploadButton.disabled = false;
+			issueCsvUploadProgress.classList.add('upload-error');
+			issueCsvUploadStatus.textContent = 'Upload failed';
+			issueCsvUploadMessage.textContent = 'Network error. Check your connection and retry.';
+		});
+		request.open('POST', '/inventory/sales/import-csv');
+		request.send(new FormData(transactionCsvUploadForm));
+	});
+
 	const productsExist = document.getElementById('issueForm').dataset.productsExist === 'true';
 	const rowsContainer = document.getElementById('itemsContainer');
 	const rowTemplate = document.getElementById('itemRowTemplate');
