@@ -133,7 +133,7 @@ exports.libraryDashboard = async (req, res) => {
         const availableCopies = categoryBooks.reduce((sum, book) => sum + (Number(book.availableQuantity) || 0), 0);
         const requiredPercentage = Math.min(100, Math.max(0, Number(category.requiredPercentage) || 0));
         const requiredCount = Math.ceil(totalBooks * requiredPercentage / 100);
-        const availablePercentage = totalCopies ? Math.round(availableCopies / totalCopies * 100) : 0;
+        const availablePercentage = totalBooks ? Number((availableCopies / totalBooks * 100).toFixed(2)) : 0;
         return {
           name: category.name,
           count: totalCopies,
