@@ -24,6 +24,12 @@ const {themeSchemaFor1,scienceSchema,FinalPracticalSlipSchema} = require("../mod
 const { get } = require("http");
 const {marksheetsetupschemaForAdmin} = require("../model/masrksheetschema");
 const marksheetSetup = mongoose.models.marksheetSetup || mongoose.model("marksheetSetup", marksheetsetupschemaForAdmin, "marksheetSetup");
+const organizationPreferenceSchema = new mongoose.Schema({
+  _id: { type: String, default: 'nepali-project-form' },
+  nepaliProjectFormMaximumMarksOnly: { type: Boolean, default: false }
+}, { timestamps: true });
+const OrganizationPreference = mongoose.models.organizationPreference
+  || mongoose.model('organizationPreference', organizationPreferenceSchema, 'organizationPreferences');
 
 const PROJECT_COUNTER_SUBJECTS = ['MATHEMATICS', 'HEALTH', 'NEPALI', 'ENGLISH', 'SOCIAL', 'SCIENCE'];
 const PROJECT_COUNTER_CLASSES = ['six', '6', 'seven', '7'];
@@ -444,6 +450,7 @@ const attendanceData = await attendancemodel.find({}).lean();
 
       
     } 
+
    else if (subject === "MATHEMATICS" ) {
       console.log('🔬 === SUBJECT DETECTED ===');      
       console.log('=== SEARCHING FOR SCIENCE DATA ===');
@@ -549,6 +556,7 @@ const attendanceData = await attendancemodel.find({}).lean();
       
       console.log('🎨 Rendering practicalprojectform...');
 
+      const maximumMarksPreference = await OrganizationPreference.findById('nepali-project-form').lean();
       return res.render("theme/nepaliProjectForm", {
         ...await getSidenavData(req),
         editing: false,
@@ -564,6 +572,8 @@ const attendanceData = await attendancemodel.find({}).lean();
           attendanceData,
         marksheetSetting,
         subjectMarksData,
+        maximumMarksOnly: maximumMarksPreference?.nepaliProjectFormMaximumMarksOnly === true,
+        canManageMaximumMarksOnly: String(req.user?.role || '').toUpperCase() === 'ADMIN',
       });
 
       
@@ -801,7 +811,25 @@ const attendanceData = await attendancemodel.find({}).lean();
     });
   }
 };
-exports.savepracticalDetailForm = async (req, res) => { 
+exports.saveMaximumMarksPreference = async (req, res) => {
+  if (String(req.user?.role || '').toUpperCase() !== 'ADMIN') {
+    return res.status(403).json({ saved: false, message: 'Only admins can change this organization preference.' });
+  }
+  const enabled = req.body.enabled === true || req.body.enabled === 'true';
+  try {
+    await OrganizationPreference.findOneAndUpdate(
+      { _id: 'nepali-project-form' },
+      { $set: { nepaliProjectFormMaximumMarksOnly: enabled } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    return res.json({ saved: true, enabled });
+  } catch (error) {
+    console.error('Unable to save organization maximum-marks preference:', error);
+    return res.status(500).json({ saved: false, message: 'Unable to save this preference.' });
+  }
+};
+
+exports.savepracticalDetailForm = async (req, res) => {
 
    try {
     const { subject,roll, name, studentClass, section, terminal } = req.body;

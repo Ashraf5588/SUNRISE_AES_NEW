@@ -514,6 +514,7 @@ student.post('/test-form-data', (req, res) => {
   res.json({ received: req.body });
 });
 student.post('/scienceData', verifytoken, authorized, practical410controller.saveScienceData);
+student.post('/practicalprojectform/maximum-marks-preference', verifytoken, authorized, isAdmin, practical410controller.saveMaximumMarksPreference);
 student.post('/practicalprojectform', verifytoken, authorized, practical410controller.savepracticalprojectform);
 student.post('/upload-project-image', verifytoken, authorized, upload.array('image', 10), practical410controller.uploadProjectImage);
 student.get('sciencepractical',verifytoken,authorized,practical410controller.sciencepracticalForm)
