@@ -134,6 +134,9 @@ exports.libraryDashboard = async (req, res) => {
         const requiredPercentage = Math.min(100, Math.max(0, Number(category.requiredPercentage) || 0));
         const requiredCount = Math.ceil(totalBooks * requiredPercentage / 100);
         const availablePercentage = totalBooks ? Number((availableCopies / totalBooks * 100).toFixed(2)) : 0;
+        const requirementProgressPercentage = requiredCount
+          ? Math.min(100, Number((availableCopies / requiredCount * 100).toFixed(2)))
+          : (availableCopies > 0 ? 100 : 0);
         return {
           name: category.name,
           count: totalCopies,
@@ -142,6 +145,9 @@ exports.libraryDashboard = async (req, res) => {
           requiredCount,
           requiredPercentage,
           availablePercentage,
+          requirementProgressPercentage,
+          copiesOverRequired: Math.max(0, availableCopies - requiredCount),
+          copiesNeeded: Math.max(0, requiredCount - availableCopies),
           meetsRequirement: availableCopies >= requiredCount
         };
       })
