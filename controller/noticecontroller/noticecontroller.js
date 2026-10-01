@@ -336,7 +336,7 @@ exports.updateNotice = async (req, res) => {
 
 		notice.set({ ...validation.values, images: [...(notice.images || []), ...uploadedImages] });
 		await notice.save();
-		return res.redirect('/notice?updated=1');
+		return res.redirect(`/notice/${notice._id}?updated=1`);
 	} catch (error) {
 		await deleteNoticeImages(uploadedImages);
 		console.error('Unable to update notice:', error);
@@ -390,7 +390,7 @@ const renderNotice = async (req, res, isPublicShare) => {
 		shareUrl,
 		ogImageUrl,
 		facebookShareUrl: getFacebookShareUrl(baseUrl, notice._id),
-		message: req.query.created ? 'Notice published successfully.' : ''
+		message: req.query.created ? 'Notice published successfully.' : req.query.updated ? 'Notice updated.' : ''
 	});
 };
 
