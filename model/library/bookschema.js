@@ -27,6 +27,7 @@ const bookSchema = new mongoose.Schema({
   }],
   bookCodes: [{
     code: { type: String, required: true },
+    shelvesNo: { type: String, trim: true, default: '' },
     status: {
       type: String,
       enum: ['available', 'issued', 'returned', 'damaged', 'lost'],

@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Homework</title>
+	<link rel="stylesheet" href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css">
+	<style>
+		:root { --ink:#172033; --muted:#64748b; --line:#dbe3ee; --brand:#0f766e; --blue:#2563eb; --paper:#f5f8fa; --white:#fff; --red:#b42318; }
+		* { box-sizing:border-box; }
+		body { margin:0; padding:26px; color:var(--ink); background:linear-gradient(145deg,#edf3f7,#f9fbfc 56%,#edf6f2); font-family:Arial,sans-serif; }
+		a { color:inherit; text-decoration:none; }
+		.page { max-width:1280px; margin:0 auto; }
+		.page-header { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:20px; }
+		.eyebrow { margin:0 0 6px; color:var(--brand); font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+		h1 { margin:0; font-size:28px; }
+		.subtitle { margin:6px 0 0; color:var(--muted); font-size:14px; }
+		.header-actions { display:flex; gap:8px; }
+		.button { display:inline-flex; min-height:39px; align-items:center; justify-content:center; padding:0 14px; border:1px solid transparent; border-radius:6px; color:#fff; background:var(--brand); font-size:13px; font-weight:700; cursor:pointer; }
+		.button.secondary { border-color:var(--line); color:var(--ink); background:#fff; }
+		.button.danger { border-color:#f1c4c0; color:var(--red); background:#fff; }
+		.panel { margin-bottom:18px; padding:20px; border:1px solid var(--line); border-radius:8px; background:var(--white); box-shadow:0 8px 22px rgba(23,32,51,.05); }
+		.panel-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:16px; }
+		.panel-heading h2 { margin:0; font-size:18px; }
+		.panel-heading p { margin:5px 0 0; color:var(--muted); font-size:13px; }
+		.form-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+		.field { min-width:0; }
+		.field.wide { grid-column:1 / -1; }
+		.field label, .section-selector legend { display:block; margin-bottom:6px; color:#334155; font-size:12px; font-weight:700; }
+		.field input, .field select { width:100%; min-height:42px; padding:9px 11px; border:1px solid #cbd5e1; border-radius:5px; color:var(--ink); background:#fff; font:inherit; font-size:14px; }
+		.field input:focus, .field select:focus { outline:2px solid rgba(15,118,110,.15); border-color:var(--brand); }
+		.field input[readonly] { color:var(--muted); background:#f8fafc; }
+		.section-selector { min-width:0; margin:0; padding:10px 12px; border:1px solid var(--line); border-radius:6px; }
+		.section-choices { display:flex; flex-wrap:wrap; gap:8px; }
+		.section-choice { display:inline-flex; align-items:center; gap:7px; padding:7px 10px; border:1px solid var(--line); border-radius:5px; background:#f8fafc; color:#334155; font-size:13px; cursor:pointer; }
+		.section-choice input { width:15px; min-height:auto; height:15px; margin:0; accent-color:var(--brand); }
+		.section-empty { color:var(--muted); font-size:13px; }
+		.field input[type=file] { padding:8px; }
+		.field small { display:block; margin-top:5px; color:var(--muted); font-size:11px; }
+		.existing-images { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+		.existing-images img { width:74px; height:60px; border:1px solid var(--line); border-radius:4px; object-fit:cover; }
+		.form-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+		.notice { margin-bottom:16px; padding:11px 13px; border:1px solid #b8ddc5; border-radius:5px; color:#166534; background:#f0fdf4; font-size:14px; }
+		.table-tools { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; color:var(--muted); font-size:13px; }
+		.table-wrap { width:100%; overflow-x:auto; }
+		table { width:100%; min-width:980px; border-collapse:collapse; text-align:left; }
+		th { padding:10px 9px; border-bottom:1px solid var(--line); color:#475569; background:#f1f5f9; font-size:11px; text-transform:uppercase; white-space:nowrap; }
+		td { padding:11px 9px; border-bottom:1px solid #edf1f4; color:#334155; font-size:13px; vertical-align:top; }
+		tbody tr:hover { background:#f8fbfc; }
+		.homework-title { color:var(--ink); font-weight:700; }
+		.homework-subtext { display:block; margin-top:4px; color:var(--muted); font-size:11px; }
+		.type-badge { display:inline-block; padding:4px 7px; border-radius:4px; color:#1d4ed8; background:#eff6ff; font-size:11px; font-weight:700; text-transform:capitalize; }
+		.type-badge.write { color:#854d0e; background:#fef3c7; }
+		.image-list { display:flex; flex-wrap:wrap; gap:5px; max-width:150px; }
+		.image-list img { width:42px; height:38px; border:1px solid var(--line); border-radius:3px; object-fit:cover; }
+		.row-actions { display:flex; gap:6px; }
+		.empty { padding:24px; color:var(--muted); text-align:center; }
+		@media (max-width:900px) { body { padding:16px; } .form-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+		@media (max-width:600px) { body { padding:10px; } .panel { padding:14px; } .page-header { align-items:flex-start; flex-direction:column; } .header-actions { width:100%; } .header-actions .button { flex:1; } .form-grid { grid-template-columns:1fr; } .field.wide { grid-column:auto; } .table-tools { align-items:flex-start; flex-direction:column; } }
+	</style>
+</head>
+<body>
+	<main class="page">
+		<header class="page-header">
+			<div><p class="eyebrow">Teaching tools / Assignments</p><h1>Homework</h1><p class="subtitle">Assign reading or writing work to one or more sections.</p></div>
+			<div class="header-actions"><a class="button secondary" href="/">Dashboard</a></div>
+		</header>
+		<% if (message) { %><div class="notice" role="status"><%= message %></div><% } %>
+
+		<section class="panel">
+			<div class="panel-heading"><div><h2><%= editingHomework ? 'Edit homework' : 'Give homework' %></h2><p>Given by <strong><%= givenBy %></strong></p></div></div>
+			<% if (classOptions.length) { %>
+			<form method="post" enctype="multipart/form-data" action="<%= editingHomework ? `/homework/${editingHomework._id}/edit` : '/homework' %>" id="homeworkForm" data-class-options="<%= JSON.stringify(classOptions) %>" data-editing-sections="<%= JSON.stringify(editingHomework?.sections || []) %>" data-editing-subject="<%= editingHomework?.subject || '' %>">
+				<div class="form-grid">
+					<div class="field"><label for="studentClass">Class</label><select id="studentClass" name="studentClass" required><option value="">Choose class</option><% classOptions.forEach((classOption) => { %><option value="<%= classOption.studentClass %>" <%= editingHomework && editingHomework.studentClass === classOption.studentClass ? 'selected' : '' %>><%= classOption.studentClass %></option><% }) %></select></div>
+					<div class="field"><label for="subject">Subject</label><select id="subject" name="subject" required disabled><option value="">Choose class and section first</option></select></div>
+					<div class="field"><label for="homeworkType">Homework type</label><select id="homeworkType" name="homeworkType" required><option value="">Choose type</option><option value="read" <%= editingHomework?.homeworkType === 'read' ? 'selected' : '' %>>Read</option><option value="write" <%= editingHomework?.homeworkType === 'write' ? 'selected' : '' %>>Write</option></select></div>
+					<fieldset class="section-selector field wide"><legend>Sections <span>(select one or more)</span></legend><div id="sectionChoices" class="section-choices"><span class="section-empty">Choose a class to see available sections.</span></div></fieldset>
+					<div class="field"><label for="homeworkGivenDate">Given date (BS)</label><input id="homeworkGivenDate" name="homeworkGivenDate" class="nepali-datepicker" value="<%= editingHomework?.homeworkGivenDate || todayNepaliDate %>" placeholder="YYYY-MM-DD" required></div>
+					<div class="field"><label for="dueDate">Due date (BS)</label><input id="dueDate" name="dueDate" class="nepali-datepicker" value="<%= editingHomework?.dueDate || '' %>" placeholder="YYYY-MM-DD" required></div>
+					<div class="field"><label for="estimatedMinutes">Estimated time <span>(optional, minutes)</span></label><input id="estimatedMinutes" name="estimatedMinutes" type="number" min="1" max="1440" step="1" value="<%= editingHomework?.estimatedMinutes || '' %>" placeholder="e.g. 30"></div>
+					<div class="field wide"><label for="title">Homework title</label><input id="title" name="title" maxlength="180" value="<%= editingHomework?.title || '' %>" placeholder="Enter homework title" required></div>
+					<div class="field wide"><label for="givenBy">Given by (username)</label><input id="givenBy" value="<%= editingHomework?.givenBy || givenBy %>" readonly></div>
+					<div class="field wide"><label for="homeworkImages">Upload images <span>(optional, up to 5 images)</span></label><input id="homeworkImages" name="homeworkImages" type="file" accept="image/*" multiple><small>Images are resized and stored in the school Azure container. Max 5 MB each.</small>
+						<% if (editingHomework?.images?.length) { %><div class="existing-images"><% editingHomework.images.forEach((image) => { %><a href="<%= image.url %>" target="_blank" rel="noopener"><img src="<%= image.url %>" alt="Homework attachment"></a><% }) %></div><% } %>
+					</div>
+				</div>
+				<div class="form-actions"><% if (editingHomework) { %><a class="button secondary" href="/homework">Cancel</a><% } %><button class="button" type="submit"><%= editingHomework ? 'Save changes' : 'Give homework' %></button></div>
+			</form>
+			<% } else { %><div class="empty">No permitted class/section/subject combinations are available for your account.</div><% } %>
+		</section>
+
+		<section class="panel">
+			<div class="panel-heading"><div><h2>Homework history</h2><p><%= homeworks.length %> most recent assignments, newest first.</p></div></div>
+			<% if (homeworks.length) { %><div class="table-wrap"><table><thead><tr><th>Given date</th><th>Due date</th><th>Class / sections</th><th>Subject</th><th>Type</th><th>Homework</th><th>Estimate</th><th>Given by</th><th>Images</th><th></th></tr></thead><tbody>
+				<% homeworks.forEach((homework) => { %><tr>
+					<td><%= homework.homeworkGivenDate %></td><td><%= homework.dueDate %></td>
+					<td><strong><%= homework.studentClass %></strong><span class="homework-subtext"><%= homework.sections.join(', ') %></span></td>
+					<td><%= homework.subject %></td><td><span class="type-badge <%= homework.homeworkType %>"><%= homework.homeworkType %></span></td>
+					<td><span class="homework-title"><%= homework.title %></span></td>
+					<td><%= homework.estimatedMinutes ? `${homework.estimatedMinutes} min` : '—' %></td><td><%= homework.givenBy %></td>
+					<td><div class="image-list"><% (homework.images || []).forEach((image) => { %><a href="<%= image.url %>" target="_blank" rel="noopener"><img src="<%= image.url %>" alt="Homework image"></a><% }) %><% if (!homework.images?.length) { %>—<% } %></div></td>
+					<td><% if (isAdmin || String(homework.createdBy) === String(currentUserId)) { %><div class="row-actions"><a class="button secondary" href="/homework/<%= homework._id %>/edit">Edit</a><form method="post" action="/homework/<%= homework._id %>/delete" onsubmit="return confirm('Delete this homework and its images?')"><button class="button danger" type="submit">Delete</button></form></div><% } %></td>
+				</tr><% }) %>
+			</tbody></table></div><% } else { %><div class="empty">No homework has been given yet.</div><% } %>
+		</section>
+	</main>
+	<script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js"></script>
+	<script>
+		const homeworkForm = document.getElementById('homeworkForm');
+		const classOptions = JSON.parse(homeworkForm?.dataset.classOptions || '[]');
+		const editingSections = JSON.parse(homeworkForm?.dataset.editingSections || '[]');
+		const editingSubject = homeworkForm?.dataset.editingSubject || '';
+		const classSelect = document.getElementById('studentClass');
+		const sectionChoices = document.getElementById('sectionChoices');
+		const subjectSelect = document.getElementById('subject');
+		const getSelectedSections = () => sectionChoices ? [...sectionChoices.querySelectorAll('input[name="sections"]:checked')].map((input) => input.value) : [];
+		function updateSubjects(preferredSubject = '') {
+			if (!classSelect || !sectionChoices || !subjectSelect) return;
+			const classOption = classOptions.find((option) => option.studentClass === classSelect.value);
+			const selectedNames = getSelectedSections();
+			const selectedSections = classOption?.sections.filter((section) => selectedNames.includes(section.name)) || [];
+			let subjects = [];
+			if (selectedSections.length) {
+				subjects = selectedSections[0].subjects.filter((subject) => selectedSections.every((section) => section.subjects.includes(subject)));
+			}
+			subjectSelect.replaceChildren();
+			const placeholder = document.createElement('option');
+			placeholder.value = '';
+			placeholder.textContent = selectedSections.length ? 'Choose subject' : 'Choose section(s) first';
+			subjectSelect.appendChild(placeholder);
+			subjects.forEach((subject) => {
+				const option = document.createElement('option');
+				option.value = subject;
+				option.textContent = subject;
+				subjectSelect.appendChild(option);
+			});
+			subjectSelect.disabled = !subjects.length;
+			if (subjects.includes(preferredSubject)) subjectSelect.value = preferredSubject;
+		}
+		function renderSections(selected = []) {
+			if (!classSelect || !sectionChoices || !subjectSelect) return;
+			sectionChoices.replaceChildren();
+			const classOption = classOptions.find((option) => option.studentClass === classSelect.value);
+			if (!classOption?.sections.length) {
+				const empty = document.createElement('span');
+				empty.className = 'section-empty';
+				empty.textContent = 'No sections are available for this class.';
+				sectionChoices.appendChild(empty);
+				updateSubjects('');
+				return;
+			}
+			classOption.sections.forEach((section) => {
+				const label = document.createElement('label');
+				label.className = 'section-choice';
+				const checkbox = document.createElement('input');
+				checkbox.type = 'checkbox';
+				checkbox.name = 'sections';
+				checkbox.value = section.name;
+				checkbox.checked = selected.includes(section.name);
+				checkbox.addEventListener('change', () => updateSubjects(subjectSelect.value));
+				const text = document.createElement('span');
+				text.textContent = section.name;
+				label.append(checkbox, text);
+				sectionChoices.appendChild(label);
+			});
+			updateSubjects(selected.length ? editingSubject : '');
+		}
+		classSelect?.addEventListener('change', () => renderSections([]));
+		subjectSelect?.addEventListener('change', () => { subjectSelect.setCustomValidity(''); });
+		classSelect?.addEventListener('change', () => classSelect.setCustomValidity(''));
+		if (classSelect && sectionChoices && subjectSelect && classSelect.value) renderSections(editingSections);
+		else updateSubjects('');
+		document.querySelectorAll('.nepali-datepicker').forEach((input) => {
+			if (typeof input.nepaliDatePicker === 'function') input.nepaliDatePicker({ dateFormat:'YYYY-MM-DD', language:'en' });
+		});
+		document.getElementById('homeworkForm')?.addEventListener('submit', (event) => {
+			if (!getSelectedSections().length) {
+				event.preventDefault();
+				const sectionInput = sectionChoices.querySelector('input[type="checkbox"]');
+				if (sectionInput) sectionInput.focus();
+				else alert('Choose at least one section.');
+			} else if (!subjectSelect.value) {
+				event.preventDefault();
+				subjectSelect.focus();
+			}
+		});
+	</script>
+</body>
+</html>

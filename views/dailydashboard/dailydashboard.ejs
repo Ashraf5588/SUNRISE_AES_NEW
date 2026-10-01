@@ -4,37 +4,54 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Daily Portfolio Dashboard</title>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 	<style>
-		:root { --ink: #172033; --muted: #64748b; --line: #dbe3ee; --brand: #0f766e; --soft: #f8fafc; --blue: #2563eb; --amber: #d97706; }
+		:root { --ink: #172033; --muted: #64748b; --line: #dbe3ee; --brand: #0f766e; --soft: #f8fafc; --blue: #2563eb; --amber: #b45309; --green: #15803d; --rose: #b54738; }
 		* { box-sizing: border-box; }
-		body { margin: 0; padding: 28px; background: linear-gradient(135deg, #e8f0f7 0%, #f7fafc 48%, #e9f5f2 100%); color: var(--ink); font-family: Arial, sans-serif; }
-		.page { max-width: 1400px; margin: 0 auto; }
-		.toolbar { background: rgba(255,255,255,.92); border: 1px solid var(--line); padding: 22px; margin-bottom: 18px; display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap; align-items: end; box-shadow: 0 10px 28px rgba(30, 41, 59, .08); }
-		h1 { margin: 0 0 6px; font-size: 1.45rem; }
-		.subtitle { color: var(--muted); margin: 0; font-size: .9rem; }
-		.date-form { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
-		label { display: grid; gap: 5px; color: var(--muted); font-size: .75rem; font-weight: 700; }
-		select, button { min-height: 38px; border: 1px solid var(--line); padding: 8px 11px; font: inherit; }
+		body { margin: 0; padding: 28px; background: linear-gradient(135deg, #edf2f7 0%, #f8fafc 52%, #e8f4f0 100%); color: var(--ink); font-family: Arial, sans-serif; }
+		.page { max-width: 1480px; margin: 0 auto; }
+		.toolbar { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; margin-bottom: 18px; display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap; align-items: center; box-shadow: 0 8px 24px rgba(30, 41, 59, .06); }
+		.toolbar-heading { min-width: 230px; flex: 1; }
+		.toolbar-title { display:flex; align-items:center; gap:12px; }
+		.page-icon { display:grid; width:42px; height:42px; flex:0 0 42px; place-items:center; border-radius:10px; color:var(--brand); background:#e5f3ef; font-size:18px; }
+		h1 { margin: 0 0 5px; font-size: 1.45rem; }
+		.subtitle { color: var(--muted); margin: 0; font-size: .88rem; }
+		.date-form { display: flex; gap: 9px; align-items: end; flex-wrap: wrap; }
+		label { display: grid; gap: 5px; color: var(--muted); font-size: .72rem; font-weight: 700; }
+		select, button { min-height: 38px; border: 1px solid var(--line); border-radius:7px; padding: 8px 11px; font: inherit; }
+		.date-form select { background:#fff; color:var(--ink); }
 		button { background: var(--brand); color: #fff; border-color: var(--brand); cursor: pointer; font-weight: 700; }
-		.date-chip { width: 100%; color: var(--brand); font-weight: 700; font-size: .95rem; }
-		.kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 18px; }
-		.kpi { background: #fff; border: 1px solid var(--line); padding: 18px; box-shadow: 0 8px 22px rgba(30, 41, 59, .07); border-top: 4px solid var(--brand); border-radius: 12px; display: flex; flex-direction: column; justify-content: space-between; }
-		.kpi.blue { border-top-color: var(--blue); } .kpi.amber { border-top-color: var(--amber); }
-		.kpi-label { color: var(--muted); font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
-		.kpi-value { display: block; font-size: 2rem; margin: 7px 0 10px; } .kpi a { color: var(--brand); font-size: .82rem; font-weight: 700; text-decoration: none; }
+		button:hover { filter:brightness(.95); }
+		.date-chip { display:flex; align-items:center; gap:8px; width:100%; padding-top:12px; border-top:1px solid #eef2f6; color: var(--brand); font-weight: 700; font-size: .84rem; }
+		.kpi-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+		.kpi { --kpi-accent:var(--brand); --kpi-tint:#e5f3ef; min-width:0; min-height:158px; background:#fff; border:1px solid var(--line); border-top:3px solid var(--kpi-accent); padding:16px; box-shadow:0 6px 18px rgba(30,41,59,.05); border-radius:12px; display:flex; flex-direction:column; align-items:flex-start; }
+		.kpi.blue { --kpi-accent:var(--blue); --kpi-tint:#eaf1ff; }
+		.kpi.amber { --kpi-accent:var(--amber); --kpi-tint:#fff3df; }
+		.kpi.green { --kpi-accent:var(--green); --kpi-tint:#e8f5eb; }
+		.kpi.rose { --kpi-accent:var(--rose); --kpi-tint:#fff0ec; }
+		.kpi.leave-kpi { color:var(--ink); text-decoration:none; transition:transform .16s ease, box-shadow .16s ease; }
+		.kpi.leave-kpi:hover { transform:translateY(-2px); box-shadow:0 12px 26px rgba(30,41,59,.12); }
+		.kpi.staff-leave-kpi { --kpi-accent:#0f766e; --kpi-tint:#e5f3ef; scroll-margin-top:16px; }
+		.kpi-top { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; }
+		.kpi-icon { display:grid; width:36px; height:36px; flex:0 0 36px; place-items:center; border-radius:9px; color:var(--kpi-accent); background:var(--kpi-tint); font-size:15px; }
+		.kpi-label { color: var(--muted); font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+		.kpi-value { display: block; margin: auto 0 3px; color:var(--ink); font-size: 1.9rem; line-height:1; }
+		.kpi-detail { color:var(--muted); font-size:.75rem; line-height:1.35; }
+		.kpi-action { margin-top:10px; color:var(--kpi-accent); font-size:.78rem; font-weight:700; }
+		.kpi a:not(.kpi) { color:var(--kpi-accent); font-size:.78rem; font-weight:700; text-decoration:none; }
 		.dashboard-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(360px, .9fr); gap: 18px; align-items: start; }
-		.panel { background: #fff; border: 1px solid var(--line); box-shadow: 0 10px 26px rgba(30, 41, 59, .07); overflow: hidden; }
-		.complaint-panel { background: #f8fbff; border: 1px solid #b9c9df; border-radius: 14px; box-shadow: 0 14px 30px rgba(15, 36, 72, .14); overflow: hidden; }
-		.panel-header { padding: 17px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-		.complaint-panel .panel-header { background: #102d5a; color: #fff; border-bottom-color: #244a80; }
-		.complaint-panel .panel-count { color: #bfdbfe; }
+		.panel { background: #fff; border: 1px solid var(--line); border-radius:12px; box-shadow: 0 8px 22px rgba(30, 41, 59, .06); overflow: hidden; }
+		.complaint-panel { background: #fff; border: 1px solid #e8cfc7; border-radius: 12px; box-shadow: 0 8px 22px rgba(30,41,59,.06); overflow: hidden; }
+		.panel-header { padding: 15px 18px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 10px; background:#f8fafc; }
+		.complaint-panel .panel-header { background: #fff2ed; color: #823f32; border-bottom-color: #ead5cf; }
+		.complaint-panel .panel-count { color: #823f32; }
 		.panel-title { font-size: 1rem; font-weight: 700; } .panel-count { color: var(--brand); font-weight: 700; font-size: .82rem; }
 		.table-wrap { overflow-x: auto; background: #fff; border: 1px solid var(--line); }
 		table { width: 100%; min-width: 1050px; border-collapse: collapse; font-size: .86rem; }
 		th, td { padding: 12px 10px; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
-		th { background: #e8f3f1; color: #115e59; text-transform: uppercase; font-size: .72rem; letter-spacing: .03em; white-space: nowrap; }
+		th { background: #eef3f7; color: #334155; text-transform: uppercase; font-size: .72rem; letter-spacing: .03em; white-space: nowrap; }
 		.complaint-panel .table-wrap { border: 0; border-radius: 0 0 14px 14px; }
-		.complaint-panel th { background: #183b70; color: #e5efff; }
+		.complaint-panel th { background: #f8e9e4; color: #713b31; }
 		tbody tr:hover { background: var(--soft); }
 		.sn, .class-cell { text-align: center; }
 		.student { font-weight: 700; }
@@ -50,37 +67,31 @@
 		.detail-btn:hover { background: #bfdbfe; color: #102d5a; }
 		.empty { color: var(--muted); }
 		.medical-table { min-width: 650px; } .medical-table th { background: #e9f5f2; }
-		.leave-dashboard-grid { display: grid; grid-template-columns: minmax(220px, .7fr) minmax(0, 1.5fr); gap: 14px; margin: 0 0 18px; }
 		.leave-dashboard-card { min-width: 0; padding: 18px; border: 1px solid var(--line); border-radius: 8px; background: #fff; box-shadow: 0 8px 22px rgba(30,41,59,.07); }
-		.leave-request-card { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; color: var(--ink); border-top: 4px solid var(--brand); }
-		.leave-request-card:hover { border-color: var(--brand); }
 		.leave-card-label { color: var(--muted); font-size: .76rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
-		.leave-card-count { display: block; margin: 7px 0; color: var(--brand); font-size: 2rem; line-height: 1; }
-		.leave-card-detail { color: var(--muted); font-size: .84rem; }
-		.leave-card-action { margin-top: 15px; color: var(--brand); font-size: .84rem; font-weight: 700; }
+		.staff-leave-card { width:50%; margin:0 0 18px; scroll-margin-top:18px; }
 		.leave-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
 		.leave-card-heading h2 { margin: 4px 0 0; font-size: 1rem; }
 		.leave-total-summary { display: flex; align-items: baseline; gap: 10px; margin: 7px 0 14px; padding: 12px 14px; border-left: 4px solid var(--brand); background: #eef8f5; }
 		.leave-total-summary strong { color: var(--brand); font-size: 1.8rem; line-height: 1; }
 		.leave-total-summary span { color: var(--muted); font-size: .84rem; font-weight: 700; }
 		.staff-leave-table-wrap { overflow-x: auto; }
-		.staff-leave-table { width: 100%; min-width: 560px; border-collapse: collapse; background: #fff; font-size: .84rem; }
+		.staff-leave-table { width: 100%; min-width: 0; border-collapse: collapse; background: #fff; font-size: .84rem; }
 		.staff-leave-table th, .staff-leave-table td { padding: 10px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
-		.staff-leave-table th { color: #115e59; background: #e9f5f2; font-size: .72rem; text-transform: uppercase; white-space: nowrap; }
+		.staff-leave-table th { color: #334155; background: #eef3f7; font-size: .72rem; text-transform: uppercase; white-space: nowrap; }
 		.staff-leave-table td strong, .staff-leave-table td small { display: block; }
 		.staff-leave-table td small { margin-top: 3px; color: var(--muted); font-size: .75rem; }
 		.staff-leave-empty { margin: 8px 0 0; color: var(--muted); font-size: .86rem; }
-		@media (max-width: 950px) { .dashboard-grid { grid-template-columns: 1fr; } }
-		@media (max-width: 950px) { .leave-dashboard-grid { grid-template-columns: 1fr; } }
+		@media (max-width: 1250px) { .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+		@media (max-width: 950px) { .dashboard-grid { grid-template-columns: 1fr; } .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .staff-leave-card { width:100%; } }
 		@media (max-width: 650px) { body { padding: 12px; } .toolbar { padding: 14px; } .date-form { width: 100%; } .date-form label, .date-form select, .date-form button { width: 100%; } .kpi-grid { grid-template-columns: 1fr; } }
 	</style>
 </head>
 <body>
 	<main class="page">
 		<section class="toolbar">
-			<div>
-				<h1>Day Dashboard</h1>
-				<p class="subtitle">Complaints and parent calls for the selected Bikram Sambat date</p>
+			<div class="toolbar-heading">
+				<div class="toolbar-title"><span class="page-icon" aria-hidden="true"><i class="fa-solid fa-gauge-high"></i></span><div><h1>Daily Operations</h1><p class="subtitle">School activity overview for the selected Bikram Sambat date</p></div></div>
 			</div>
 			<form class="date-form" method="get" action="/dailydashboard">
 				<label>Year
@@ -94,38 +105,38 @@
 				</label>
 				<button type="submit">Show Date</button>
 			</form>
-			<div class="date-chip">Selected date: <%= selectedDate %> (<%= monthName %>)</div>
+			<div class="date-chip"><i class="fa-regular fa-calendar" aria-hidden="true"></i><span>Selected date: <%= selectedDate %> / <%= monthName %></span></div>
 		</section>
 
-		<section class="leave-dashboard-grid" aria-label="Leave management">
-			<a class="leave-dashboard-card leave-request-card" href="/leave">
-				<span class="leave-card-label">Leave requests</span>
-				<strong class="leave-card-count"><%= pendingLeaveRequests %></strong>
-				<span class="leave-card-detail">Pending teacher and staff applications</span>
-				<span class="leave-card-action">Review requests <span aria-hidden="true">&rarr;</span></span>
+		<section class="kpi-grid" aria-label="Daily summary">
+			<a class="kpi leave-kpi staff-leave-kpi" href="#staff-on-leave" aria-label="<%= staffOnLeave.length %> staff on leave on <%= selectedDate %>; view staff list">
+				<span class="kpi-top"><span class="kpi-label">Staff on leave</span><span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-user-clock"></i></span></span>
+				<strong class="kpi-value"><%= staffOnLeave.length %></strong>
+				<span class="kpi-detail"><%= selectedDate %> / <%= monthName %></span>
+				<span class="kpi-action">View staff list <span aria-hidden="true">&darr;</span></span>
 			</a>
-			<section class="leave-dashboard-card staff-leave-card">
+			<a class="kpi leave-kpi" href="/leave">
+				<span class="kpi-top"><span class="kpi-label">Leave requests</span><span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-calendar-check"></i></span></span>
+				<strong class="kpi-value"><%= pendingLeaveRequests %></strong>
+				<span class="kpi-detail">Pending teacher and staff applications</span>
+				<span class="kpi-action">Review requests <span aria-hidden="true">&rarr;</span></span>
+			</a>
+			<div class="kpi rose"><span class="kpi-top"><span class="kpi-label">Complaints today</span><span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-comments"></i></span></span><strong class="kpi-value"><%= totalComplaintToday %></strong><span class="kpi-detail">Selected date activity</span></div>
+			<a class="kpi green leave-kpi" href="/healthrecord"><span class="kpi-top"><span class="kpi-label">Medical cases</span><span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-briefcase-medical"></i></span></span><strong class="kpi-value"><%= totalMedicalToday %></strong><span class="kpi-action">See medical details <span aria-hidden="true">&rarr;</span></span></a>
+			<a class="kpi blue leave-kpi" href="/frontdesk"><span class="kpi-top"><span class="kpi-label">Calls completed</span><span class="kpi-icon" aria-hidden="true"><i class="fa-solid fa-phone-volume"></i></span></span><strong class="kpi-value"><%= totalCallToday %></strong><span class="kpi-action">See call records <span aria-hidden="true">&rarr;</span></span></a>
+		</section>
+		<section class="leave-dashboard-card staff-leave-card" id="staff-on-leave">
 				<div class="leave-card-heading"><div><span class="leave-card-label">Selected date / <%= selectedDate %></span><h2>Staff on leave</h2></div></div>
 				<div class="leave-total-summary"><strong><%= staffOnLeave.length %></strong><span>Total staff on leave</span></div>
-				<% if (staffOnLeave.length) { %>
 				<div class="staff-leave-table-wrap"><table class="staff-leave-table">
 					<thead><tr><th>Staff member</th><th>Leave type</th><th>Leave dates</th><th>Duration</th></tr></thead>
 					<tbody>
-					<% staffOnLeave.forEach(application => { %>
+					<% if (staffOnLeave.length) { staffOnLeave.forEach(application => { %>
 					<tr><td><strong><%= application.employeeName %></strong><small><%= application.employeeRole || application.username %></small></td><td><%= application.leaveTypeName %></td><td><%= application.startDateNepali %> to <%= application.endDateNepali %></td><td><%= application.requestedDays %> <%= application.requestedDays === 1 ? 'day' : 'days' %></td></tr>
-					<% }) %>
+					<% }) } else { %><tr><td colspan="4" class="staff-leave-empty">No approved staff leave for this date.</td></tr><% } %>
 					</tbody>
 				</table></div>
-				<% } else { %><p class="staff-leave-empty">No approved staff leave for this date.</p><% } %>
 			</section>
-		</section>
-
-		<section class="kpi-grid">
-			<div class="kpi"><span class="kpi-label">Medical cases today</span><strong class="kpi-value"><%= totalMedicalToday %></strong><a href="/healthrecord">See medical details</a></div>
-			<div class="kpi blue"><span class="kpi-label">Calls completed today</span><strong class="kpi-value"><%= totalCallToday %></strong><a href="/frontdesk">See call records</a></div>
-			<div class="kpi amber"><span class="kpi-label">Complaints today</span><strong class="kpi-value"><%= totalComplaintToday %></strong><span class="kpi-label">Selected BS date</span></div>
-		</section>
-
 		<section class="dashboard-grid">
 		<section class="panel complaint-panel">
 			<div class="panel-header"><span class="panel-title">Complaints and parent calls</span><span class="panel-count"><%= totalComplaintToday %> complaint(s)</span></div>

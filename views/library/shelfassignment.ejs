@@ -85,12 +85,12 @@
           </div>
           <div class="selection-bar"><span id="selectedCount">0 books selected</span><button type="button" class="btn secondary" id="toggleVisibleBtn">Select visible</button></div>
           <div class="book-picker"><div class="book-list" id="bookList">
-            <% (books || []).forEach((book) => { %>
-              <label class="book-option" data-search="<%= [book.title, book.author, book.category, book.shelvesNo, ...(book.bookCodes || []).map((copy) => copy.code || copy)].join(' ').toLowerCase() %>">
-                <input type="checkbox" name="bookIds" value="<%= book._id %>">
-                <span class="book-info"><span class="book-title"><%= book.title %></span><span class="book-meta">Code: <%= (book.bookCodes || []).map((copy) => copy.code || copy).join(', ') || '—' %> | Current shelf: <%= book.shelvesNo || 'Unassigned' %></span></span>
+            <% (books || []).forEach((book) => { const copies = Array.isArray(book.bookCodes) && book.bookCodes.length ? book.bookCodes : [{ code: book.bookCodePrefix || 'No code', shelvesNo: book.shelvesNo }]; copies.forEach((copy) => { const copyCode = String(copy.code || 'No code'); const currentShelf = copy.shelvesNo || book.shelvesNo || 'Unassigned'; %>
+              <label class="book-option" data-search="<%= [book.title, book.author, book.category, currentShelf, copyCode].join(' ').toLowerCase() %>">
+                <input type="checkbox" name="copySelections" value="<%= book._id %>:<%= copyCode %>" data-book-id="<%= book._id %>" data-copy-code="<%= copyCode %>">
+                <span class="book-info"><span class="book-title"><%= book.title %> (<%= copyCode %>)</span><span class="book-meta"><%= book.category || 'Uncategorized' %> | Current shelf: <%= currentShelf %></span></span>
               </label>
-            <% }) %>
+            <% }) }) %>
           </div></div>
           <div style="margin-top:16px;"><button class="btn primary" type="submit">Save Shelf Assignment</button></div>
         </form>
@@ -109,7 +109,7 @@
                 <tr>
                   <td><strong><%= group.shelfNumber %></strong></td>
                   <td class="shelf-book-count"><%= group.totalBooks %></td>
-                  <td><div class="shelf-book-name-scroll" tabindex="0" aria-label="Book names on shelf <%= group.shelfNumber %>"><ul class="shelf-book-name-list"><% group.books.forEach((book) => { %><li><%= book.title %></li><% }) %></ul></div></td>
+                  <td><div class="shelf-book-name-scroll" tabindex="0" aria-label="Book names on shelf <%= group.shelfNumber %>"><ul class="shelf-book-name-list"><% group.books.forEach((book) => { %><li><%= book.title %> (<%= book.code %>)</li><% }) %></ul></div></td>
                   <td><div class="shelf-categories"><% group.categories.forEach((category) => { %><span class="shelf-category-tag"><%= category %></span><% }) %></div></td>
                 </tr>
               <% }) %>
@@ -130,8 +130,8 @@
     const shelfSuggestions = document.getElementById('shelfSuggestions');
 
     function updateSelection() {
-      const count = document.querySelectorAll('input[name="bookIds"]:checked').length;
-      selectedCount.textContent = `${count} book${count === 1 ? '' : 's'} selected`;
+      const count = document.querySelectorAll('input[name="copySelections"]:checked').length;
+      selectedCount.textContent = `${count} cop${count === 1 ? 'y' : 'ies'} selected`;
     }
     function showMessage(text, type) {
       message.hidden = false;
@@ -157,9 +157,9 @@
     });
     document.getElementById('shelfForm').addEventListener('submit', async (event) => {
       event.preventDefault();
-      const ids = Array.from(document.querySelectorAll('input[name="bookIds"]:checked')).map((input) => input.value);
-      if (!ids.length) return showMessage('Select at least one book.', 'error');
-      const response = await fetch('/library/shelf-assignment', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ shelvesNo:shelfInput.value.trim(), bookIds:ids }) });
+      const assignments = Array.from(document.querySelectorAll('input[name="copySelections"]:checked')).map((input) => ({ bookId: input.dataset.bookId, code: input.dataset.copyCode }));
+      if (!assignments.length) return showMessage('Select at least one book copy.', 'error');
+      const response = await fetch('/library/shelf-assignment', { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ shelvesNo:shelfInput.value.trim(), assignments }) });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) return showMessage(result.message || 'Could not save shelf assignment.', 'error');
       showMessage(result.message || 'Shelf assignment saved.', 'success');

@@ -29,10 +29,10 @@ inventory.get('/salesreturns', verifytoken,isFrontdesk, inventoryController.sale
 inventory.post('/salesreturns', verifytoken,isFrontdesk, inventoryController.createSalesReturn);
 inventory.get('/purchasereturns', verifytoken,isFrontdesk, inventoryController.purchaseReturnsPage);
 inventory.post('/purchasereturns', verifytoken,isFrontdesk, inventoryController.createPurchaseReturn);
-inventory.get('/productrequests', verifytoken,isFrontdesk, inventoryController.productRequestsPage);
-inventory.post('/productrequests', verifytoken,isFrontdesk, inventoryController.createProductRequest);
-inventory.post('/productrequests/:id/review', verifytoken,isFrontdesk, inventoryController.requireInventoryManager, inventoryController.reviewProductRequest);
-inventory.get('/search/products', verifytoken,isFrontdesk, inventoryController.searchRequestProducts);
+inventory.get('/productrequests', verifytoken, inventoryController.productRequestsPage);
+inventory.post('/productrequests', verifytoken, inventoryController.createProductRequest);
+inventory.post('/productrequests/:id/review', verifytoken, inventoryController.requireInventoryManager, inventoryController.reviewProductRequest);
+inventory.get('/search/products', verifytoken, inventoryController.searchRequestProducts);
 inventory.get('/analytics',verifytoken,isFrontdesk, inventoryController.analyticsPage);
 inventory.get('/search/assignees', verifytoken,isFrontdesk, inventoryController.searchAssignees);
 inventory.get('/transactions/:id/print', verifytoken,isFrontdesk, inventoryController.printTransaction);

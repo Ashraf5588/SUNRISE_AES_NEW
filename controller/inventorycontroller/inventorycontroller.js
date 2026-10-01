@@ -146,7 +146,8 @@ exports.requireInventoryManager = requireInventoryManager;
 
 exports.productRequestsPage = async (req, res) => {
   try {
-    const filter = { requesterId: req.user._id };
+    const manager = isInventoryManager(req.user);
+    const filter = manager ? {} : { requesterId: req.user._id };
     const requestedPage = parsePage(req.query.page);
     const totalRequests = await InventoryProductRequest.countDocuments(filter);
     const totalPages = Math.max(1, Math.ceil(totalRequests / PAGE_SIZE));
@@ -157,7 +158,9 @@ exports.productRequestsPage = async (req, res) => {
       page,
       totalPages,
       totalRequests,
-      requesterUsername: String(req.user.username || '').trim(),
+      requesterUsername: String(req.user.teacherName || '').trim(),
+      isInventoryManager: manager,
+      showInventoryNavigation: ['ADMIN', 'FRONTDESKOFFICER', 'FRONTDESK'].includes(String(req.user.role || '').trim().toUpperCase()),
       todayNepaliDate: String(bs.ADToBS(new Date()) || '').trim(),
       message: req.query.saved ? 'Product request submitted.' : req.query.reviewed ? 'Request review saved.' : ''
     });

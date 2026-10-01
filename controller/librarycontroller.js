@@ -409,11 +409,17 @@ exports.shelfAssignmentPage = async (req, res) => {
     const books = await Book.find().sort({ shelvesNo: 1, title: 1 }).lean();
     const shelfGroupsByNumber = new Map();
     books.forEach((book) => {
-      const shelfNumber = normalizeText(book.shelvesNo) || 'Unassigned';
-      if (!shelfGroupsByNumber.has(shelfNumber)) shelfGroupsByNumber.set(shelfNumber, []);
-      shelfGroupsByNumber.get(shelfNumber).push({
-        title: book.title || 'Untitled book',
-        category: normalizeText(book.category) || 'Uncategorized'
+      const copies = Array.isArray(book.bookCodes) && book.bookCodes.length
+        ? book.bookCodes
+        : [{ code: book.bookCodePrefix || 'No code', shelvesNo: book.shelvesNo }];
+      copies.forEach((copy) => {
+        const shelfNumber = normalizeText(copy.shelvesNo) || normalizeText(book.shelvesNo) || 'Unassigned';
+        if (!shelfGroupsByNumber.has(shelfNumber)) shelfGroupsByNumber.set(shelfNumber, []);
+        shelfGroupsByNumber.get(shelfNumber).push({
+          title: book.title || 'Untitled book',
+          code: normalizeText(copy.code) || 'No code',
+          category: normalizeText(book.category) || 'Uncategorized'
+        });
       });
     });
     const shelfGroups = [...shelfGroupsByNumber.entries()]
@@ -439,11 +445,54 @@ exports.assignShelfToBooks = async (req, res) => {
   try {
     const shelfNumber = normalizeText(req.body.shelvesNo);
     const bookIds = Array.isArray(req.body.bookIds) ? req.body.bookIds : [];
+    const requestedAssignments = Array.isArray(req.body.assignments) ? req.body.assignments : [];
     if (!shelfNumber) return res.status(400).json({ message: 'Shelf number is required.' });
-    if (!bookIds.length) return res.status(400).json({ message: 'Select at least one book.' });
+    if (!requestedAssignments.length && bookIds.length) {
+      const result = await Book.updateMany({ _id: { $in: bookIds } }, { $set: { shelvesNo: shelfNumber } });
+      return res.json({ message: `${result.modifiedCount || result.nModified || 0} book(s) assigned to shelf ${shelfNumber}.` });
+    }
+    if (!requestedAssignments.length) return res.status(400).json({ message: 'Select at least one book copy.' });
 
-    const result = await Book.updateMany({ _id: { $in: bookIds } }, { $set: { shelvesNo: shelfNumber } });
-    res.json({ message: `${result.modifiedCount || result.nModified || 0} book(s) assigned to shelf ${shelfNumber}.` });
+    const assignments = requestedAssignments.map((assignment) => ({
+      bookId: String(assignment?.bookId || '').trim(),
+      code: normalizeText(assignment?.code).toUpperCase()
+    }));
+    if (assignments.some((assignment) => !mongoose.isValidObjectId(assignment.bookId) || !assignment.code)) {
+      return res.status(400).json({ message: 'Each selected copy must have a valid book and barcode.' });
+    }
+    const uniqueAssignments = [...new Map(assignments.map((assignment) => [`${assignment.bookId}:${assignment.code}`, assignment])).values()];
+    const books = await Book.find({ _id: { $in: [...new Set(uniqueAssignments.map((assignment) => assignment.bookId))] } })
+      .select('bookCodes shelvesNo')
+      .lean();
+    const bookMap = new Map(books.map((book) => [String(book._id), book]));
+    for (const assignment of uniqueAssignments) {
+      const book = bookMap.get(assignment.bookId);
+      if (!book || !(book.bookCodes || []).some((copy) => String(copy.code || '').trim().toUpperCase() === assignment.code)) {
+        return res.status(400).json({ message: `Book copy ${assignment.code} was not found.` });
+      }
+    }
+
+    const assignmentsByBook = new Map();
+    uniqueAssignments.forEach((assignment) => {
+      if (!assignmentsByBook.has(assignment.bookId)) assignmentsByBook.set(assignment.bookId, new Set());
+      assignmentsByBook.get(assignment.bookId).add(assignment.code);
+    });
+    const operations = [...assignmentsByBook.entries()].map(([bookId, selectedCodes]) => {
+      const book = bookMap.get(bookId);
+      const setFields = {};
+      const effectiveShelves = (book.bookCodes || []).map((copy, index) => {
+        const code = String(copy.code || '').trim().toUpperCase();
+        const assignedShelf = selectedCodes.has(code) ? shelfNumber : (normalizeText(copy.shelvesNo) || normalizeText(book.shelvesNo));
+        setFields[`bookCodes.${index}.shelvesNo`] = assignedShelf;
+        return assignedShelf;
+      });
+      const uniqueShelfValues = [...new Set(effectiveShelves)];
+      setFields.shelvesNo = uniqueShelfValues.length === 1 ? uniqueShelfValues[0] : '';
+      return { updateOne: { filter: { _id: book._id }, update: { $set: setFields } } };
+    });
+    await Book.bulkWrite(operations);
+
+    return res.json({ message: `${uniqueAssignments.length} book copy/copies assigned to shelf ${shelfNumber}.` });
   } catch (error) {
     console.error('Error assigning shelf to books:', error);
     res.status(500).json({ message: 'Error assigning shelf to books.' });

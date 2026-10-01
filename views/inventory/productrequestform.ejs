@@ -6,10 +6,15 @@
 	<title>Product requests</title>
 	<link rel="stylesheet" href="/inventory.css">
 	<link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css">
+	<style>
+		.inventory-shell.request-standalone { min-height:100vh; padding-left:0; }
+		.inventory-shell.request-standalone .inventory-main { width:100%; max-width:1240px; margin:0 auto; padding:34px clamp(16px,4vw,48px) 48px; }
+		@media (max-width:650px) { .inventory-shell.request-standalone .inventory-main { padding:20px 12px 32px; } }
+	</style>
 </head>
 <body>
-<div class="inventory-shell">
-	<%- include('inventorynav', { currentPath }) %>
+<div class="inventory-shell <%= showInventoryNavigation ? '' : 'request-standalone' %>">
+	<% if (showInventoryNavigation) { %><%- include('inventorynav', { currentPath }) %><% } %>
 	<main class="inventory-main">
 		<header class="page-header">
 			<div><p class="eyebrow">Inventory / Requests</p><h1>Product requests</h1><p class="page-subtitle">Request stock and follow its review status.</p></div>
@@ -42,7 +47,7 @@
 		</section>
 
 		<section class="panel request-list-panel">
-			<div class="panel-heading"><div><h2>My requests</h2><p>Showing <%= totalRequests ? (page - 1) * 25 + 1 : 0 %>-<%= Math.min(page * 25, totalRequests) %> of <%= totalRequests %></p></div></div>
+			<div class="panel-heading"><div><h2><%= isInventoryManager ? 'All requests' : 'My requests' %></h2><p>Showing <%= totalRequests ? (page - 1) * 25 + 1 : 0 %>-<%= Math.min(page * 25, totalRequests) %> of <%= totalRequests %></p></div></div>
 			<% if (requests.length) { %>
 			<div class="table-wrap"><table class="request-table">
 				<thead><tr><th>Requested</th><th>Product</th><th>Quantity</th><th>Required by</th><th>Reason</th><th>Status</th></tr></thead>

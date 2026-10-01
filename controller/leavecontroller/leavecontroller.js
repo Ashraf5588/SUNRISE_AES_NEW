@@ -2,9 +2,11 @@ const mongoose = require('mongoose');
 const multer = require('multer');
 const bs = require('bikram-sambat-js');
 const { leaveSchema, leaveApplicationSchema } = require('../../model/leaveschema/leavetypeschma');
+const { teacherSchema } = require('../../model/admin');
 
 const LeaveType = mongoose.models.LeaveType || mongoose.model('LeaveType', leaveSchema, 'leaveTypes');
 const LeaveApplication = mongoose.models.LeaveApplication || mongoose.model('LeaveApplication', leaveApplicationSchema, 'leaveApplications');
+const User = mongoose.models.userlist || mongoose.model('userlist', teacherSchema, 'users');
 const DAY_MS = 24 * 60 * 60 * 1000;
 const uploadLeaveDocument = multer({
 	storage: multer.memoryStorage(),
@@ -128,17 +130,25 @@ exports.leavePage = async (req, res) => {
 	try {
 		const admin = isAdmin(req.user);
 		const userFilter = admin ? {} : { requester: req.user._id };
-		const [leaveTypes, applications] = await Promise.all([
+		const [allLeaveTypes, applications, employees] = await Promise.all([
 			LeaveType.find({ isActive: true }).sort({ leavename: 1 }).lean(),
-			LeaveApplication.find(userFilter).sort({ createdAt: -1 }).limit(admin ? 200 : 100).lean()
+			LeaveApplication.find(userFilter).sort({ createdAt: -1 }).limit(admin ? 200 : 100).lean(),
+			admin ? User.find({}).select('teacherName username role').sort({ teacherName: 1, username: 1 }).lean() : Promise.resolve([])
 		]);
 		renderPage(res, 'leaveform', {
-			leaveTypes: leaveTypes.filter((type) => appliesToUser(type, req.user)),
+			leaveTypes: admin ? allLeaveTypes : allLeaveTypes.filter((type) => appliesToUser(type, req.user)),
 			applications,
+			employees: employees.map((employee) => ({
+				id: String(employee._id),
+				name: String(employee.teacherName || employee.username || '').trim(),
+				username: String(employee.username || '').trim(),
+				role: getRole(employee)
+			})),
 			isAdmin: admin,
 			username: String(req.user.username || '').trim(),
 			employeeName: String(req.user.teacherName || req.user.username || '').trim(),
 			employeeRole: getRole(req.user),
+			selectedEmployeeId: String(req.user._id),
 			todayNepaliDate: String(bs.ADToBS(new Date()) || '').trim(),
 			message: req.query.saved ? 'Leave application submitted.' : req.query.reviewed ? 'Leave decision saved.' : ''
 		});
@@ -148,12 +158,82 @@ exports.leavePage = async (req, res) => {
 	}
 };
 
+exports.leaveUsage = async (req, res) => {
+	try {
+		const admin = isAdmin(req.user);
+		let applicant = req.user;
+		if (admin) {
+			const employeeId = String(req.query.employeeId || '').trim();
+			if (!mongoose.isValidObjectId(employeeId)) return res.status(400).json({ message: 'Choose an employee.' });
+			applicant = await User.findById(employeeId).select('teacherName username role').lean();
+			if (!applicant) return res.status(404).json({ message: 'Employee not found.' });
+		}
+
+		const leaveTypeId = String(req.query.leaveType || '').trim();
+		const leaveType = mongoose.isValidObjectId(leaveTypeId)
+			? await LeaveType.findOne({ _id: leaveTypeId, isActive: true }).lean()
+			: null;
+		if (!leaveType || !appliesToUser(leaveType, applicant)) return res.status(400).json({ message: 'Choose a leave type available to this employee.' });
+
+		const startDateNepali = String(req.query.startDateNepali || '').trim();
+		const endDateNepali = String(req.query.endDateNepali || '').trim();
+		const startDate = parseNepaliDate(startDateNepali);
+		const endDate = parseNepaliDate(endDateNepali);
+		if (!startDate || !endDate || endDate < startDate || (endDate.getTime() - startDate.getTime()) / DAY_MS + 1 > 366) {
+			return res.status(400).json({ message: 'Choose valid Nepali dates.' });
+		}
+
+		const allocations = getDateAllocations(startDate, endDate);
+		const activeStatuses = ['pending', 'approved'];
+		const quotaRecords = await LeaveApplication.find({
+			requester: applicant._id,
+			leaveType: leaveType._id,
+			status: { $in: activeStatuses },
+			startDateNepali: { $lte: endDateNepali },
+			endDateNepali: { $gte: startDateNepali }
+		}).select('startDateNepali endDateNepali').lean();
+		const usedMonths = new Map();
+		const usedYears = new Map();
+		quotaRecords.forEach((record) => {
+			const previousStart = parseNepaliDate(record.startDateNepali);
+			const previousEnd = parseNepaliDate(record.endDateNepali);
+			if (!previousStart || !previousEnd) return;
+			const previousAllocation = getDateAllocations(previousStart, previousEnd);
+			previousAllocation.months.forEach((days, key) => usedMonths.set(key, (usedMonths.get(key) || 0) + days));
+			previousAllocation.years.forEach((days, key) => usedYears.set(key, (usedYears.get(key) || 0) + days));
+		});
+
+		const monthly = [...allocations.months].map(([period, requestedDays]) => {
+			const usedDays = usedMonths.get(period) || 0;
+			const limit = Number(leaveType.maxDaysPerMonth) || null;
+			return { period, requestedDays, usedDays, limit, remainingDays: limit ? Math.max(0, limit - usedDays) : null, exceeds: Boolean(limit && usedDays + requestedDays > limit) };
+		});
+		const yearly = [...allocations.years].map(([period, requestedDays]) => {
+			const usedDays = usedYears.get(period) || 0;
+			const limit = Number(leaveType.maxDaysPerYear) || null;
+			return { period, requestedDays, usedDays, limit, remainingDays: limit ? Math.max(0, limit - usedDays) : null, exceeds: Boolean(limit && usedDays + requestedDays > limit) };
+		});
+		return res.json({ monthly, yearly, exceedsLimits: monthly.some((entry) => entry.exceeds) || yearly.some((entry) => entry.exceeds) });
+	} catch (error) {
+		console.error('Unable to calculate leave usage:', error);
+		return res.status(500).json({ message: 'Unable to calculate leave availability.' });
+	}
+};
+
 exports.submitLeaveApplication = [handleLeaveDocumentUpload, async (req, res) => {
 	try {
+		const admin = isAdmin(req.user);
+		let applicant = req.user;
+		if (admin) {
+			const employeeId = String(req.body.employeeId || '').trim();
+			if (!mongoose.isValidObjectId(employeeId)) return res.status(400).send('Choose an applicant.');
+			applicant = await User.findById(employeeId).select('teacherName username role').lean();
+			if (!applicant) return res.status(404).send('Selected applicant was not found.');
+		}
 		const leaveType = mongoose.isValidObjectId(req.body.leaveType)
 			? await LeaveType.findOne({ _id: req.body.leaveType, isActive: true }).lean()
 			: null;
-		if (!leaveType || !appliesToUser(leaveType, req.user)) return res.status(400).send('Choose an active leave type available to your role.');
+		if (!leaveType || !appliesToUser(leaveType, applicant)) return res.status(400).send('Choose an active leave type available to the applicant.');
 
 		const startDateNepali = String(req.body.startDateNepali || '').trim();
 		const endDateNepali = String(req.body.endDateNepali || '').trim();
@@ -170,16 +250,16 @@ exports.submitLeaveApplication = [handleLeaveDocumentUpload, async (req, res) =>
 		const requestedDays = [...allocations.years.values()].reduce((sum, days) => sum + days, 0);
 		const activeStatuses = ['pending', 'approved'];
 		const overlapping = await LeaveApplication.find({
-			requester: req.user._id,
+			requester: applicant._id,
 			status: { $in: activeStatuses },
 			startDateNepali: { $lte: endDateNepali },
 			endDateNepali: { $gte: startDateNepali }
 		}).select('startDateNepali endDateNepali').lean();
 		if (overlapping.length) return res.status(409).send('You already have a pending or approved leave request that overlaps these dates.');
 
-		if (leaveType.maxDaysPerYear || leaveType.maxDaysPerMonth) {
+		if (!admin && (leaveType.maxDaysPerYear || leaveType.maxDaysPerMonth)) {
 			const quotaRecords = await LeaveApplication.find({
-				requester: req.user._id,
+				requester: applicant._id,
 				leaveType: leaveType._id,
 				status: { $in: activeStatuses },
 				startDateNepali: { $lte: endDateNepali },
@@ -208,10 +288,13 @@ exports.submitLeaveApplication = [handleLeaveDocumentUpload, async (req, res) =>
 		}
 
 		await LeaveApplication.create({
-			requester: req.user._id,
-			username: String(req.user.username || '').trim(),
-			employeeName: String(req.user.teacherName || req.user.username || '').trim(),
-			employeeRole: getRole(req.user),
+			requester: applicant._id,
+			username: String(applicant.username || '').trim(),
+			employeeName: String(applicant.teacherName || applicant.username || '').trim(),
+			employeeRole: getRole(applicant),
+			status: admin ? 'approved' : 'pending',
+			reviewedBy: admin ? String(req.user.username || req.user.teacherName || '').trim() : '',
+			reviewedAt: admin ? new Date() : null,
 			leaveType: leaveType._id,
 			leaveTypeName: leaveType.leavename,
 			isPaid: leaveType.isPaid,
