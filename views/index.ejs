@@ -566,6 +566,298 @@
                 font-size: 0.68rem;
             }
         }
+
+        .mobile-dashboard { display: none; }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 0 0 calc(82px + env(safe-area-inset-bottom));
+                background: #f2f5f1;
+            }
+
+            body > header,
+            #side-nav,
+            #sidebarToggle,
+            .mobile-nav-toggle,
+            body > .container,
+            body > footer { display: none !important; }
+
+            .mobile-dashboard {
+                display: grid;
+                gap: 12px;
+                width: min(100%, 640px);
+                margin: 0 auto;
+                padding: 16px 16px 24px;
+                color: #1d2925;
+                font-family: 'Lexend', sans-serif;
+            }
+
+            .mobile-dashboard [hidden] { display: none !important; }
+
+            .mobile-welcome {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                min-width: 0;
+                margin: 0;
+                padding: 0;
+                border: 0;
+                border-radius: 0;
+                background: transparent;
+                box-shadow: none;
+            }
+
+            .mobile-user-avatar {
+                display: grid;
+                width: 52px;
+                height: 52px;
+                flex: 0 0 52px;
+                place-items: center;
+                border: 2px solid #fff;
+                border-radius: 50%;
+                background: #1954a6;
+                box-shadow: 0 3px 12px rgba(25, 84, 166, .2);
+                color: #fff;
+                font-size: 17px;
+                font-weight: 800;
+            }
+
+            .mobile-welcome-copy { min-width: 0; flex: 1; text-align: left; }
+            .mobile-logout-button {
+                display: grid;
+                width: 40px;
+                height: 40px;
+                flex: 0 0 40px;
+                place-items: center;
+                border: 1px solid #d5e2f2;
+                border-radius: 9px;
+                background: #fff;
+                color: #3269ae;
+                font-size: 16px;
+                text-decoration: none;
+                -webkit-tap-highlight-color: transparent;
+            }
+            .mobile-logout-button:focus-visible { outline: 2px solid #3269ae; outline-offset: 2px; }
+            .mobile-welcome-kicker { display: block; color: #78857f; font-size: 9px; font-weight: 800; }
+            .mobile-welcome h1 { margin: 2px 0 5px; font-size: 15px; font-weight: 500; line-height: 1.25; }
+            .mobile-welcome h1 strong { color: #14231e; font-size: 19px; font-weight: 800; overflow-wrap: anywhere; }
+
+            .mobile-role {
+                display: inline-flex;
+                align-items: center;
+                min-height: 19px;
+                padding: 2px 8px;
+                border: 1px solid #d8e6de;
+                border-radius: 999px;
+                background: #e8f2ec;
+                color: #272860;
+                font-size: 9px;
+                font-weight: 700;
+            }
+
+            .mobile-ad-card {
+                position: relative;
+                display: flex;
+                min-height: 106px;
+                align-items: center;
+                justify-content: space-between;
+                overflow: hidden;
+                padding: 18px;
+                border: 1px solid rgba(255, 255, 255, .12);
+                border-radius: 8px;
+                background: repeating-linear-gradient(135deg, transparent 0 18px, rgba(255,255,255,.035) 18px 19px), linear-gradient(115deg, #132da1 0%, #0846aa 58%, #b85c36 150%);
+                color: #fff;
+            }
+
+            .mobile-ad-copy { position: relative; z-index: 1; max-width: 75%; }
+            .mobile-ad-label { margin: 0 0 9px; color: #c4e4d7; font-size: 9px; font-weight: 800; }
+            .mobile-ad-card h2 { margin: 0 0 5px; color: #fff; font-size: 19px; font-weight: 800; }
+            .mobile-ad-card p:last-child { margin: 0; color: rgba(255,255,255,.78); font-size: 10px; }
+            .mobile-ad-mark { display: grid; width: 44px; height: 34px; place-items: center; border: 1px solid rgba(255,255,255,.48); border-radius: 5px; color: rgba(255,255,255,.9); font-size: 11px; font-weight: 800; letter-spacing: 1px; }
+
+            .mobile-search-wrap { position: relative; }
+            .mobile-search-icon { position: absolute; top: 50%; left: 15px; transform: translateY(-50%); color: #718078; font-size: 14px; }
+            .mobile-search {
+                width: 100%;
+                height: 46px;
+                padding: 0 14px 0 42px;
+                border: 1px solid #dce4de;
+                border-radius: 8px;
+                outline: none;
+                background: #fff;
+                color: #1d2925;
+                font: 500 12px 'Lexend', sans-serif;
+                box-shadow: 0 2px 8px rgba(33, 50, 41, .035);
+            }
+            .mobile-search:focus { border-color: #39836b; box-shadow: 0 0 0 3px rgba(57, 131, 107, .12); }
+
+            .mobile-section-heading { margin: 0 0 10px; color: #25342e; font-size: 13px; font-weight: 800; }
+
+            .mobile-app-grid,
+            .mobile-module-grid {
+                display: grid;
+                grid-template-columns: repeat(5, minmax(0, 1fr));
+                gap: 6px;
+            }
+
+            .mobile-app-tile {
+                display: flex;
+                min-width: 0;
+                min-height: 75px;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 5px;
+                padding: 7px 3px;
+                border: 1px solid #e4e9e5;
+                border-radius: 8px;
+                background: #fff;
+                color: #293730;
+                text-align: center;
+                text-decoration: none;
+                -webkit-tap-highlight-color: transparent;
+            }
+
+            .mobile-app-icon {
+                display: grid;
+                width: 32px;
+                height: 32px;
+                flex: 0 0 32px;
+                place-items: center;
+                border-radius: 8px;
+                color: #fff;
+                font-size: 16px;
+            }
+
+            .mobile-app-tile:nth-child(5n + 1) .mobile-app-icon { background: #24745c; }
+            .mobile-app-tile:nth-child(5n + 2) .mobile-app-icon { background: #d56842; }
+            .mobile-app-tile:nth-child(5n + 3) .mobile-app-icon { background: #3566a0; }
+            .mobile-app-tile:nth-child(5n + 4) .mobile-app-icon { background: #bd8a2b; }
+            .mobile-app-tile:nth-child(5n) .mobile-app-icon { background: #397f83; }
+
+            .mobile-app-name {
+                display: -webkit-box;
+                width: 100%;
+                overflow: hidden;
+                color: inherit;
+                font-size: 9px;
+                font-weight: 700;
+                line-height: 1.2;
+                overflow-wrap: anywhere;
+                -webkit-box-orient: vertical;
+                line-clamp: 3;
+                -webkit-line-clamp: 3;
+            }
+
+            .mobile-module-panel {
+                padding: 10px 8px 8px;
+                border: 1px solid #d5e2f2;
+                border-radius: 8px;
+                background: rgba(244,248,255,.9);
+            }
+
+            .mobile-module-slider {
+                overflow-x: auto;
+                overflow-y: hidden;
+                overscroll-behavior-x: contain;
+                scrollbar-width: none;
+                scroll-snap-type: x mandatory;
+                touch-action: pan-x pan-y;
+            }
+            .mobile-module-slider::-webkit-scrollbar { display: none; }
+            .mobile-module-track { display: flex; align-items: stretch; }
+            .mobile-module-slide { flex: 0 0 100%; min-width: 100%; scroll-snap-align: start; scroll-snap-stop: always; }
+            .mobile-module-grid { gap: 4px 2px; }
+            .mobile-slider-dots { display: flex; min-height: 20px; align-items: center; justify-content: center; gap: 8px; padding-top: 5px; }
+            .mobile-slider-dot { width: 8px; height: 8px; flex: 0 0 8px; padding: 0; border: 0; border-radius: 50%; background: #b4c9e4; }
+            .mobile-slider-dot[aria-selected="true"] { background: #3269ae; transform: scale(1.25); }
+            .mobile-slider-dot:focus-visible { outline: 2px solid #3269ae; outline-offset: 3px; }
+            .mobile-slider-dot[hidden] { display: none; }
+            .mobile-module-link {
+                display: flex;
+                min-width: 0;
+                min-height: 60px;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 4px;
+                padding: 6px 2px;
+                border: 1px solid transparent;
+                border-radius: 7px;
+                color: #30445f;
+                text-align: center;
+                text-decoration: none;
+                -webkit-tap-highlight-color: transparent;
+            }
+            .mobile-module-link:active { border-color: #c5d9f3; background: #edf4ff; }
+            .mobile-module-link i { color: #3269ae; font-size: 20px; }
+            .mobile-module-link span { font-size: 9px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+
+            .mobile-no-results { margin: 10px 0 0; color: #718078; font-size: 11px; }
+
+            .mobile-notice-list {
+                display: grid;
+                max-height: 150px;
+                min-height: 64px;
+                gap: 8px;
+                overflow-y: auto;
+                overscroll-behavior: contain;
+                padding: 10px;
+                border: 1px solid #e0e6e1;
+                border-radius: 8px;
+                background: #fff;
+                scrollbar-color: #a8b9ae transparent;
+                scrollbar-width: thin;
+            }
+            .mobile-notice-empty { display: grid; min-height: 56px; margin: 0; place-items: center; color: #78857e; font-size: 11px; }
+
+            .mobile-subject-dialog {
+                width: min(calc(100% - 32px), 380px);
+                padding: 20px;
+                border: 1px solid #dfe6e0;
+                border-radius: 10px;
+                color: #1d2925;
+                box-shadow: 0 20px 60px rgba(15, 30, 22, .24);
+            }
+            .mobile-subject-dialog::backdrop { background: rgba(18, 31, 24, .48); }
+            .mobile-subject-dialog h2 { margin: 0 0 16px; font-size: 18px; font-weight: 800; }
+            .mobile-subject-dialog label { display: block; margin-bottom: 6px; font-size: 11px; font-weight: 700; }
+            .mobile-subject-dialog select { width: 100%; min-height: 44px; padding: 8px; border: 1px solid #cfdad2; border-radius: 7px; background: #fff; font: 12px 'Lexend', sans-serif; }
+            .mobile-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+            .mobile-dialog-actions button { min-height: 40px; padding: 0 13px; border: 1px solid #ccd8d0; border-radius: 7px; background: #fff; color: #31433a; font: 700 11px 'Lexend', sans-serif; }
+            .mobile-dialog-actions button[type="submit"] { border-color: #1954a6; background: #1954a6; color: #fff; }
+        }
+
+        @media (max-width: 768px) and (max-height: 600px) {
+            .mobile-dashboard { gap: 2px; padding-top: 8px; }
+            .mobile-welcome-kicker { font-size: 8px; }
+            .mobile-welcome h1 { font-size: 13px; }
+            .mobile-welcome h1 strong { font-size: 16px; }
+            .mobile-role { min-height: 17px; font-size: 8px; }
+            .mobile-user-avatar { width: 42px; height: 42px; flex-basis: 42px; font-size: 15px; }
+            .mobile-ad-card { min-height: 58px; padding: 9px 13px; }
+            .mobile-ad-label { margin-bottom: 4px; }
+            .mobile-ad-card h2 { margin-bottom: 3px; font-size: 15px; }
+            .mobile-ad-card p:last-child { font-size: 9px; }
+            .mobile-ad-mark { width: 36px; height: 28px; font-size: 9px; }
+            .mobile-search { height: 36px; }
+            .mobile-app-grid { gap: 4px; }
+            .mobile-app-tile { min-height: 58px; gap: 4px; padding: 5px 2px; }
+            .mobile-app-icon { width: 27px; height: 27px; flex-basis: 27px; font-size: 12px; }
+            .mobile-app-name { font-size: 8px; }
+            .mobile-module-panel { padding: 4px 6px; }
+            .mobile-slider-dots { min-height: 12px; padding-top: 0; }
+            .mobile-module-panel .mobile-section-heading { display: none; }
+            .mobile-module-panel .mobile-section-heading,
+            #mobileNoticesHeading { margin-bottom: 4px; }
+            .mobile-module-grid { gap: 2px; }
+            .mobile-module-link { min-height: 42px; gap: 2px; padding: 4px 2px; }
+            .mobile-module-link i { font-size: 17px; }
+            .mobile-module-link span { font-size: 8px; }
+            .mobile-notice-list { min-height: 34px; padding: 4px; }
+            .mobile-notice-empty { min-height: 24px; font-size: 10px; }
+        }
     </style>
 </head>
 <body>
@@ -582,6 +874,135 @@
         studentClassdata: studentClassdata,
         terminals: terminals 
     }) %>
+
+    <% const mobileTeacherName = typeof teacherName === 'string' && teacherName.trim() ? teacherName.trim() : 'Teacher'; %>
+    <% const mobileNameParts = mobileTeacherName.split(/\s+/).filter(Boolean); %>
+    <% const mobileInitials = mobileNameParts.length > 1 ? `${mobileNameParts[0][0]}${mobileNameParts[mobileNameParts.length - 1][0]}` : (mobileNameParts[0]?.[0] || 'T'); %>
+    <main class="mobile-dashboard" aria-label="Home dashboard">
+        <header class="mobile-welcome">
+            <div class="mobile-user-avatar" aria-hidden="true"><%= mobileInitials.toUpperCase() %></div>
+            <div class="mobile-welcome-copy">
+                <span class="mobile-welcome-kicker">WELCOME,</span>
+                <h1><strong><%= mobileTeacherName %></strong></h1>
+                <span class="mobile-role"><%= userrole === 'ADMIN' ? 'Administrator' : 'Teacher' %></span>
+            </div>
+            <a class="mobile-logout-button" href="/admin/login" aria-label="Log out" title="Log out"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i></a>
+        </header>
+
+        <section class="mobile-ad-card" aria-label="Advertisement space">
+            <div class="mobile-ad-copy">
+                <p class="mobile-ad-label">FEATURED SPACE</p>
+                <h2>United English Boarding School</h2>
+                <p>School announcements and promotions</p>
+            </div>
+            <div class="mobile-ad-mark" aria-hidden="true">AES</div>
+        </section>
+
+        <div class="mobile-search-wrap">
+            <i class="fa-solid fa-magnifying-glass mobile-search-icon" aria-hidden="true"></i>
+            <input class="mobile-search" id="mobileAppSearch" type="search" placeholder="Search apps and modules" aria-label="Search apps and modules" autocomplete="off">
+        </div>
+        <p class="mobile-no-results" id="mobileSearchNoResults" role="status" hidden>No matching apps or modules.</p>
+
+        <section aria-label="Primary apps">
+            <div class="mobile-app-grid">
+                <a class="mobile-app-tile" data-app-link data-search="attendance" href="/onlineattendance" aria-label="Attendance">
+                    <span class="mobile-app-icon"><i class="fa-solid fa-clipboard-check" aria-hidden="true"></i></span><span class="mobile-app-name">Attendance</span>
+                </a>
+                <a class="mobile-app-tile" data-app-link data-search="internal assessment" href="/class" aria-label="Internal Assessment">
+                    <span class="mobile-app-icon"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i></span><span class="mobile-app-name">Internal Assessment</span>
+                </a>
+                <a class="mobile-app-tile" data-app-link data-search="exam marks marks entry" href="/examform" aria-label="Exam Marks">
+                    <span class="mobile-app-icon"><i class="fa-solid fa-file-signature" aria-hidden="true"></i></span><span class="mobile-app-name">Exam Marks</span>
+                </a>
+                <a class="mobile-app-tile" data-app-link data-search="add chapter chapter name" href="/addchapterselect" aria-label="Add Chapter">
+                    <span class="mobile-app-icon"><i class="fa-solid fa-book-open" aria-hidden="true"></i></span><span class="mobile-app-name">Add Chapter</span>
+                </a>
+                <a class="mobile-app-tile" data-app-link data-search="question format question paper" href="/admin/subject" aria-label="Question Format">
+                    <span class="mobile-app-icon"><i class="fa-solid fa-list-check" aria-hidden="true"></i></span><span class="mobile-app-name">Question Format</span>
+                </a>
+            </div>
+        </section>
+
+        <section class="mobile-module-panel" aria-label="More modules">
+            <h2 class="mobile-section-heading" id="mobileModulesHeading">More modules</h2>
+            <div class="mobile-module-slider" id="mobileModuleSlider" aria-label="Swipe to browse modules">
+                <div class="mobile-module-track">
+                    <div class="mobile-module-slide" data-module-slide="0" role="tabpanel" aria-label="Modules page 1">
+                        <div class="mobile-module-grid">
+                <a class="mobile-module-link" data-app-link data-search="enter analysis data entry" href="#" data-subject-action="enter"><i class="fa-solid fa-chart-column" aria-hidden="true"></i><span>Enter Analysis</span></a>
+                <a class="mobile-module-link" data-app-link data-search="view report analysis reports" href="#" data-subject-action="report"><i class="fa-solid fa-chart-line" aria-hidden="true"></i><span>View Report</span></a>
+                <a class="mobile-module-link" data-app-link data-search="leave form request" href="/leave"><i class="fa-solid fa-file-circle-check" aria-hidden="true"></i><span>Leave Form</span></a>
+                <a class="mobile-module-link" data-app-link data-search="product request inventory" href="/inventory/productrequests"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i><span>Product Request</span></a>
+                <a class="mobile-module-link" data-app-link data-search="events event list" href="/createevent"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i><span>Events</span></a>
+                <a class="mobile-module-link" data-app-link data-search="event create event" href="/lessonplanselect"><i class="fa-solid fa-calendar-plus" aria-hidden="true"></i><span>Lesson Plan</span></a>
+                <a class="mobile-module-link" data-app-link data-search="student update transfer" href="/student-transfer"><i class="fa-solid fa-user-pen" aria-hidden="true"></i><span>Student Update</span></a>
+                <a class="mobile-module-link" data-app-link data-search="attendance summary monthly" href="/attendance-summary"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i><span>Attendance Summary</span></a>
+                <a class="mobile-module-link" data-app-link data-search="homework assignments" href="/homework"><i class="fa-solid fa-book" aria-hidden="true"></i><span>Homework</span></a>
+                <a class="mobile-module-link" data-app-link data-search="portfolio student" href="/studentportfolio"><i class="fa-solid fa-address-card" aria-hidden="true"></i><span>Portfolio</span></a>
+                        </div>
+                    </div>
+                    <% if (userrole === 'ADMIN') { %>
+                    <div class="mobile-module-slide" data-module-slide="1" role="tabpanel" aria-label="Admin modules page 1">
+                        <div class="mobile-module-grid">
+                            <a class="mobile-module-link" data-app-link data-search="absent record" href="/absent-record"><i class="fa-solid fa-user-clock" aria-hidden="true"></i><span>Absent Record</span></a>
+                            <a class="mobile-module-link" data-app-link data-search="library dashboard" href="/library/dashboard"><i class="fa-solid fa-book-open" aria-hidden="true"></i><span>Library Dashboard</span></a>
+                            <a class="mobile-module-link" data-app-link data-search="inventory stock" href="/inventory"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i><span>Inventory</span></a>
+                            <a class="mobile-module-link" data-app-link data-search="call response frontdesk" href="/frontdesk"><i class="fa-solid fa-phone" aria-hidden="true"></i><span>Call Response</span></a>
+                            <a class="mobile-module-link" data-app-link data-search="teacher record" href="/teacher-record"><i class="fa-solid fa-user" aria-hidden="true"></i><span>Teacher Record</span></a>
+                            <a class="mobile-module-link" data-app-link data-search="health record" href="/healthrecord"><i class="fa-solid fa-kit-medical" aria-hidden="true"></i><span>Health Record</span></a>
+                            <a class="mobile-module-link" data-app-link data-search="day dashboard daily dashboard" href="/dailydashboard"><i class="fa-solid fa-chart-pie" aria-hidden="true"></i><span>Day Dashboard</span></a>
+                            <a class="mobile-module-link" data-app-link data-search="cas counter" href="/cascounter"><i class="fa-solid fa-clipboard-list" aria-hidden="true"></i><span>CAS Counter</span></a>
+                            <a class="mobile-module-link" data-app-link data-search="project work counter" href="/projectcounter"><i class="fa-solid fa-list-ol" aria-hidden="true"></i><span>Project Counter</span></a>
+                            <a class="mobile-module-link" data-app-link data-search="project work list" href="/projectlist"><i class="fa-solid fa-list-check" aria-hidden="true"></i><span>Project List</span></a>
+                        </div>
+                    </div>
+                    <div class="mobile-module-slide" data-module-slide="2" role="tabpanel" aria-label="Admin modules page 2">
+                        <div class="mobile-module-grid">
+                            <a class="mobile-module-link" data-app-link data-search="entry form locker" href="/entryformlocker"><i class="fa-solid fa-lock" aria-hidden="true"></i><span>Entry Form Locker</span></a>
+                            <a class="mobile-module-link" data-app-link data-search="print portfolio" href="/printportfolio"><i class="fa-solid fa-print" aria-hidden="true"></i><span>Print Portfolio</span></a>
+                            <a class="mobile-module-link" data-app-link data-search="analysis entry counter" href="/analysisentrycounter"><i class="fa-solid fa-chart-column" aria-hidden="true"></i><span>Analysis Counter</span></a>
+                            <a class="mobile-module-link" data-app-link data-search="principal dashboard" href="/principaldashboard"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i><span>Principal Dashboard</span></a>
+                            <a class="mobile-module-link" data-app-link data-search="admin dashboard terminal" href="/admin/term/FIRST"><i class="fa-solid fa-user-gear" aria-hidden="true"></i><span>Admin Dashboard</span></a>
+                            <a class="mobile-module-link" data-app-link data-search="exam management dashboard" href="/exammanagement"><i class="fa-solid fa-graduation-cap" aria-hidden="true"></i><span>Exam Management</span></a>
+                        </div>
+                    </div>
+                    <% } %>
+                </div>
+            </div>
+            <% if (userrole === 'ADMIN') { %>
+            <div class="mobile-slider-dots" id="mobileModuleDots" role="tablist" aria-label="Module pages">
+                <button class="mobile-slider-dot" type="button" role="tab" aria-label="Show module page 1" aria-selected="true" data-module-dot="0"></button>
+                <button class="mobile-slider-dot" type="button" role="tab" aria-label="Show admin module page 1" aria-selected="false" data-module-dot="1"></button>
+                <button class="mobile-slider-dot" type="button" role="tab" aria-label="Show admin module page 2" aria-selected="false" data-module-dot="2"></button>
+            </div>
+            <% } %>
+        </section>
+
+        <section aria-labelledby="mobileNoticesHeading">
+            <h2 class="mobile-section-heading" id="mobileNoticesHeading">Recent notices</h2>
+            <div class="mobile-notice-list" role="region" aria-label="Recent notices" tabindex="0">
+                <p class="mobile-notice-empty">No notices yet</p>
+            </div>
+        </section>
+    </main>
+
+    <dialog class="mobile-subject-dialog" id="mobileSubjectDialog" aria-labelledby="mobileSubjectDialogTitle">
+        <form id="mobileSubjectForm">
+            <h2 id="mobileSubjectDialogTitle">Choose a subject</h2>
+            <label for="mobileSubjectSelect">Subject</label>
+            <select id="mobileSubjectSelect" required>
+                <option value="" selected disabled>Choose a subject</option>
+                <% [...new Set(subjects.map(item => item.subject))].filter(Boolean).forEach((sub) => { %>
+                    <option value="<%= sub.trim() %>"><%= sub %></option>
+                <% }) %>
+            </select>
+            <div class="mobile-dialog-actions">
+                <button type="button" id="mobileSubjectCancel">Cancel</button>
+                <button type="submit" id="mobileSubjectContinue">Continue</button>
+            </div>
+        </form>
+    </dialog>
    
  
 
@@ -796,6 +1217,7 @@
           
           
     </div>
+            </div>
 
     
     <footer>
@@ -845,6 +1267,93 @@
     </script>
     
     <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                const searchInput = document.getElementById('mobileAppSearch');
+                const appLinks = Array.from(document.querySelectorAll('.mobile-dashboard [data-app-link]'));
+                const noResults = document.getElementById('mobileSearchNoResults');
+                const moduleSlider = document.getElementById('mobileModuleSlider');
+                const moduleSlides = Array.from(document.querySelectorAll('[data-module-slide]'));
+                const moduleDots = Array.from(document.querySelectorAll('[data-module-dot]'));
+                const subjectDialog = document.getElementById('mobileSubjectDialog');
+                const subjectForm = document.getElementById('mobileSubjectForm');
+                const subjectSelect = document.getElementById('mobileSubjectSelect');
+                let subjectAction = 'enter';
+
+                const visibleModuleSlides = () => moduleSlides.filter((slide) => !slide.hidden);
+                const updateActiveModuleDot = () => {
+                    if (!moduleSlider || !moduleDots.length) return;
+                    const visibleSlides = visibleModuleSlides();
+                    if (!visibleSlides.length) return;
+                    const visibleIndex = Math.min(
+                        Math.round(moduleSlider.scrollLeft / moduleSlider.clientWidth),
+                        visibleSlides.length - 1
+                    );
+                    const activeSlideIndex = visibleSlides[visibleIndex].dataset.moduleSlide;
+                    moduleDots.forEach((dot) => {
+                        dot.setAttribute('aria-selected', String(dot.dataset.moduleDot === activeSlideIndex));
+                    });
+                };
+
+                if (moduleSlider) {
+                    moduleSlider.addEventListener('scroll', updateActiveModuleDot, { passive: true });
+                }
+
+                moduleDots.forEach((dot) => {
+                    dot.addEventListener('click', function() {
+                        const visibleSlides = visibleModuleSlides();
+                        const visibleIndex = visibleSlides.findIndex((slide) => slide.dataset.moduleSlide === this.dataset.moduleDot);
+                        if (visibleIndex < 0) return;
+                        moduleSlider.scrollTo({ left: visibleIndex * moduleSlider.clientWidth, behavior: 'smooth' });
+                    });
+                });
+
+                searchInput.addEventListener('input', function() {
+                    const query = this.value.trim().toLocaleLowerCase();
+                    let visibleCount = 0;
+                    appLinks.forEach((link) => {
+                        const searchText = `${link.dataset.search || ''} ${link.textContent}`.toLocaleLowerCase();
+                        const matches = !query || searchText.includes(query);
+                        link.hidden = !matches;
+                        if (matches) visibleCount += 1;
+                    });
+                    moduleSlides.forEach((slide) => {
+                        const hasMatches = Array.from(slide.querySelectorAll('[data-app-link]')).some((link) => !link.hidden);
+                        slide.hidden = query.length > 0 && !hasMatches;
+                    });
+                    moduleDots.forEach((dot) => {
+                        const slide = moduleSlides.find((item) => item.dataset.moduleSlide === dot.dataset.moduleDot);
+                        dot.hidden = !slide || slide.hidden;
+                    });
+                    if (moduleSlider) moduleSlider.scrollTo({ left: 0, behavior: 'auto' });
+                    updateActiveModuleDot();
+                    noResults.hidden = visibleCount > 0;
+                });
+
+                document.querySelectorAll('[data-subject-action]').forEach((link) => {
+                    link.addEventListener('click', function(event) {
+                        event.preventDefault();
+                        subjectAction = this.dataset.subjectAction;
+                        document.getElementById('mobileSubjectDialogTitle').textContent = subjectAction === 'report' ? 'View report' : 'Enter analysis';
+                        document.getElementById('mobileSubjectContinue').textContent = subjectAction === 'report' ? 'View Report' : 'Enter Data';
+                        if (typeof subjectDialog.showModal === 'function') subjectDialog.showModal();
+                        else subjectDialog.setAttribute('open', '');
+                        subjectSelect.focus();
+                    });
+                });
+
+                document.getElementById('mobileSubjectCancel').addEventListener('click', function() {
+                    if (typeof subjectDialog.close === 'function') subjectDialog.close();
+                    else subjectDialog.removeAttribute('open');
+                });
+
+                subjectForm.addEventListener('submit', function(event) {
+                    event.preventDefault();
+                    if (!subjectSelect.value) return subjectSelect.reportValidity();
+                    const subject = encodeURIComponent(subjectSelect.value.trim());
+                    window.location.href = subjectAction === 'report' ? `/teacher/${subject}/findData` : `/forms/${subject}`;
+                });
+            });
+
       // Home page loader handling
       document.addEventListener('DOMContentLoaded', function() {
         // Show loader for subject cards

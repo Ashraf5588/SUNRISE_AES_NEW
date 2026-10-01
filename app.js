@@ -90,7 +90,8 @@ app.engine('ejs', (filePath, options, callback) => {
     if (error) return callback(error);
 
     const bodyCloseIndex = html.toLowerCase().lastIndexOf('</body>');
-    if (bodyCloseIndex === -1 || html.includes('class="mobile-bottom-nav"')) {
+    const isAdminLoginPage = path.resolve(filePath) === path.join(__dirname, 'views', 'admin', 'login.ejs');
+    if (isAdminLoginPage || bodyCloseIndex === -1 || html.includes('class="mobile-bottom-nav"')) {
       return callback(null, html);
     }
 

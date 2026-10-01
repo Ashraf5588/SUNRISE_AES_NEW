@@ -66,6 +66,10 @@ student.post('/reset-password', verifytoken, authorized, isAdmin, admincontrol.r
 
 student.get('/admin/login',admincontrol.adminlogin)
 student.post('/admin/login',admincontrol.adminloginpost)
+student.get('/admin/logout', (req, res) => {
+  res.clearCookie('token');
+  return res.redirect('/admin/login');
+});
 
 student.get('/',verifytoken,authorized,isAllowedHome,controller.homePage)
 

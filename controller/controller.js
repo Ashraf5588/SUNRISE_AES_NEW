@@ -306,6 +306,7 @@ exports.homePage = async (req, res, next) => {
     terminals,
     marksheetSetups,
     userrole: user.role,
+    teacherName: user.teacherName || user.username,
   });
 };
 // Edit student (get data for the form)
