@@ -8,6 +8,7 @@ const inventory = require('./routers/inventoryRoutes');
 const leave = require('./routers/leaveroute');
 const homework = require('./routers/homeworkRoute');
 const fs = require('fs');
+const ejs = require('ejs');
 const admincontrol = require('./controller/admincontroller')
 const router = require('./routers/setupRoutes');
 const cirriculum = require('./routers/cirriculum');
@@ -83,6 +84,24 @@ const cookieParser = require("cookie-parser");
 
 app.set('view engine','ejs')
 app.set('views',path.join(__dirname,'views'))
+const renderEjs = ejs.__express;
+app.engine('ejs', (filePath, options, callback) => {
+  renderEjs(filePath, options, (error, html) => {
+    if (error) return callback(error);
+
+    const bodyCloseIndex = html.toLowerCase().lastIndexOf('</body>');
+    if (bodyCloseIndex === -1 || html.includes('class="mobile-bottom-nav"')) {
+      return callback(null, html);
+    }
+
+    const mobileNavPath = path.join(__dirname, 'views', 'partials', 'mobile-bottom-nav.ejs');
+    renderEjs(mobileNavPath, options, (navError, mobileNav) => {
+      if (navError) return callback(navError);
+
+      callback(null, `${html.slice(0, bodyCloseIndex)}${mobileNav}\n${html.slice(bodyCloseIndex)}`);
+    });
+  });
+});
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json())
 app.use(cookieParser());

@@ -1,0 +1,75 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  .mobile-bottom-nav { display:none; }
+  @media (max-width:768px) {
+    body { padding-bottom:calc(82px + env(safe-area-inset-bottom)); }
+    .mobile-bottom-nav {
+      position:fixed;
+      inset:auto 0 0;
+      z-index:1100;
+      display:grid;
+      grid-template-columns:repeat(5,minmax(0,1fr));
+      align-items:end;
+      min-height:68px;
+      padding:7px 8px calc(7px + env(safe-area-inset-bottom));
+      border-top:1px solid rgba(148,163,184,.28);
+      background:rgba(255,255,255,.97);
+      box-shadow:0 -8px 26px rgba(15,23,42,.12);
+      backdrop-filter:blur(14px);
+    }
+    .mobile-bottom-nav a {
+      display:flex;
+      min-width:0;
+      min-height:48px;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:4px;
+      color:#050505;
+      font:700 10px/1.1 'Lexend',Arial,sans-serif;
+      text-align:center;
+      text-decoration:none !important;
+      -webkit-tap-highlight-color:transparent;
+    }
+    .mobile-bottom-nav a > i { font-size:20px; line-height:1; }
+    .mobile-bottom-nav a:focus-visible { outline:2px solid #1954a6; outline-offset:2px; border-radius:8px; }
+    .mobile-bottom-nav a:active { color:#1954a6; }
+    .mobile-bottom-nav .mobile-home-link { position:relative; gap:2px; color:#1954a6; }
+    .mobile-bottom-nav .mobile-home-icon {
+      display:grid;
+      width:56px;
+      height:56px;
+      margin-top:-30px;
+      place-items:center;
+      border:4px solid #fff;
+      border-radius:50%;
+      color:#fff;
+      background:linear-gradient(145deg,#2563eb,#0e2c5c);
+      box-shadow:0 6px 0 rgba(14,44,92,.22),0 12px 20px rgba(25,84,166,.3);
+      font-size:20px;
+    }
+    .mobile-bottom-nav .mobile-home-link > span:last-child { padding-bottom:1px; }
+  }
+  @media (prefers-reduced-motion:no-preference) and (max-width:768px) {
+    .mobile-bottom-nav .mobile-home-icon { transition:transform .16s ease,box-shadow .16s ease; }
+    .mobile-bottom-nav .mobile-home-link:active .mobile-home-icon { transform:translateY(2px); box-shadow:0 3px 9px rgba(25,84,166,.25); }
+  }
+  @media print { .mobile-bottom-nav { display:none !important; } }
+</style>
+<nav class="mobile-bottom-nav" aria-label="Mobile navigation">
+  <a href="/newsdescription" aria-label="Notice">
+    <i class="fa-solid fa-bell" aria-hidden="true"></i><span>Notice</span>
+  </a>
+  <a href="/homework" aria-label="Homework">
+    <i class="fa-solid fa-book-open" aria-hidden="true"></i><span>Homework</span>
+  </a>
+  <a class="mobile-home-link" href="/" aria-label="Home">
+    <span class="mobile-home-icon"><i class="fa-solid fa-house" aria-hidden="true"></i></span><span>Home</span>
+  </a>
+  <a href="/onlineattendance" aria-label="Attendance">
+    <i class="fa-solid fa-clipboard-check" aria-hidden="true"></i><span>Attendance</span>
+  </a>
+  <a href="/studentportfolio" aria-label="Portfolio">
+    <i class="fa-solid fa-address-card" aria-hidden="true"></i><span>Portfolio</span>
+  </a>
+</nav>
