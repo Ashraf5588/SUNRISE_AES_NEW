@@ -43,20 +43,24 @@ self.addEventListener('message', function(event) {
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
 
-  const urlToOpen = '/createevent';
+  const notificationUrl = event.notification && event.notification.data && event.notification.data.url;
+  let urlToOpen = new URL(notificationUrl || '/createevent', self.location.origin);
+  if (urlToOpen.origin !== self.location.origin) {
+    urlToOpen = new URL('/notice', self.location.origin);
+  }
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
       // Check if there's already a window/tab with the target URL open and focused
       for (let i = 0; i < clientList.length; i++) {
         const client = clientList[i];
-        if (client.url === urlToOpen && 'focus' in client) {
+        if (client.url === urlToOpen.href && 'focus' in client) {
           return client.focus();
         }
       }
       // If not, open a new window/tab with the target URL
       if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
+        return clients.openWindow(urlToOpen.href);
       }
     })
   );

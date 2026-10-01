@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title><%= editingNotice ? 'Edit notice' : 'Add notice' %> | eAnalyst</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+	<link rel="stylesheet" href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css">
+	<style>
+		:root { --ink:#172638; --muted:#687b8f; --line:#dce5ee; --blue:#1954a6; --blue-soft:#eff6ff; --green:#18745b; --paper:#f3f7fb; --white:#fff; --red:#a52828; }
+		* { box-sizing:border-box; }
+		body { margin:0; padding:24px; color:var(--ink); background:linear-gradient(145deg,#edf4fa,#f8fafc 55%,#eef5f5); font-family:'Lexend',sans-serif; }
+		a { color:inherit; text-decoration:none; }
+		.page { width:min(100%,1040px); margin:0 auto; }
+		.page-header { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; margin-bottom:20px; }
+		.eyebrow { margin:0 0 5px; color:var(--blue); font-size:10px; font-weight:800; text-transform:uppercase; }
+		h1 { margin:0; font-size:25px; font-weight:800; }
+		.subtitle { margin:6px 0 0; color:var(--muted); font-size:12px; }
+		.actions { display:flex; flex-wrap:wrap; gap:8px; }
+		.button { display:inline-flex; min-height:39px; align-items:center; justify-content:center; gap:8px; padding:0 13px; border:1px solid transparent; border-radius:6px; color:#fff; background:var(--blue); font:700 12px 'Lexend',sans-serif; cursor:pointer; }
+		.button.secondary { border-color:var(--line); color:#34485d; background:#fff; }
+		.button:focus-visible, input:focus-visible, textarea:focus-visible { outline:2px solid #82b1e4; outline-offset:2px; }
+		.panel { margin-bottom:16px; padding:18px; border:1px solid var(--line); border-radius:8px; background:var(--white); box-shadow:0 8px 22px rgba(24,48,72,.045); }
+		.panel-title { margin:0 0 14px; font-size:16px; font-weight:800; }
+		.message { margin-bottom:14px; padding:10px 12px; border:1px solid #c7e3d3; border-radius:6px; color:#17613e; background:#f0faf4; font-size:12px; }
+		.message.error { border-color:#f0caca; color:#8a2525; background:#fff6f6; }
+		.form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+		.field { min-width:0; }
+		.field.wide { grid-column:1/-1; }
+		.field label, .roles legend { display:block; margin-bottom:6px; color:#34485d; font-size:11px; font-weight:700; }
+		.field input, .field textarea { width:100%; min-height:42px; padding:9px 11px; border:1px solid #cbd8e5; border-radius:5px; color:var(--ink); background:#fff; font:400 12px 'Lexend',sans-serif; }
+		.field textarea { min-height:118px; resize:vertical; line-height:1.55; }
+		.field input[readonly] { color:#53687e; background:#f6f8fa; }
+		.field small { display:block; margin-top:5px; color:var(--muted); font-size:10px; line-height:1.45; }
+		.roles { grid-column:1/-1; margin:0; padding:12px; border:1px solid var(--line); border-radius:6px; }
+		.role-options { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; }
+		.role-choice { display:flex; min-width:0; min-height:36px; align-items:center; gap:7px; padding:7px 9px; border:1px solid #e2e9f0; border-radius:5px; color:#34485d; background:#f8fafc; font-size:10px; cursor:pointer; }
+		.role-choice input { width:14px; height:14px; flex:0 0 14px; margin:0; accent-color:var(--blue); }
+		.share-choice { display:flex; align-items:flex-start; gap:9px; padding:11px 12px; border:1px solid #d7e4f3; border-radius:6px; background:#f5f9ff; color:#324c68; font-size:11px; line-height:1.45; }
+		.share-choice input { width:15px; height:15px; flex:0 0 15px; margin:1px 0 0; accent-color:var(--blue); }
+		.form-footer { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:16px; }
+		.form-footer small { color:var(--muted); font-size:10px; }
+		.table-wrap { width:100%; overflow-x:auto; }
+		table { width:100%; min-width:640px; border-collapse:collapse; text-align:left; }
+		th { padding:9px; border-bottom:1px solid var(--line); color:#52677d; background:#f4f7fa; font-size:9px; text-transform:uppercase; }
+		td { padding:10px 9px; border-bottom:1px solid #edf1f4; color:#34485d; font-size:11px; vertical-align:top; }
+		.notice-title { color:#1d3f69; font-weight:700; }
+		.badge { display:inline-flex; padding:4px 6px; border-radius:4px; color:#275b91; background:#eaf3ff; font-size:9px; font-weight:700; }
+		.empty { padding:20px; color:var(--muted); text-align:center; font-size:12px; }
+		@media(max-width:650px) { body { padding:14px 10px 90px; } .page-header { flex-direction:column; } .form-grid { grid-template-columns:1fr; } .field.wide,.roles { grid-column:auto; } .role-options { grid-template-columns:repeat(2,minmax(0,1fr)); } .panel { padding:13px; } .form-footer { align-items:stretch; flex-direction:column; } .form-footer .button { width:100%; } }
+	</style>
+</head>
+<body>
+	<main class="page">
+		<header class="page-header">
+				<div><p class="eyebrow">Administration / Communications</p><h1><%= editingNotice ? 'Edit notice' : 'Add a notice' %></h1><p class="subtitle">Publish a dated notice to selected school roles.</p></div>
+			<div class="actions"><a class="button secondary" href="/notice"><i class="fa-solid fa-bell" aria-hidden="true"></i> Notices</a><a class="button secondary" href="/"><i class="fa-solid fa-house" aria-hidden="true"></i> Home</a></div>
+		</header>
+
+		<% if (message) { %><div class="message" role="status"><%= message %></div><% } %>
+		<% if (error) { %><div class="message error" role="alert"><%= error %></div><% } %>
+
+		<section class="panel">
+			<h2 class="panel-title">Notice details</h2>
+			<form id="noticeForm" action="<%= editingNotice ? `/notice/${editingNotice._id}/edit` : '/notice/add' %>" method="post" enctype="multipart/form-data">
+				<div class="form-grid">
+					  <div class="field"><label for="noticeDate">Notice date (BS)</label><input id="noticeDate" class="nepali-datepicker" name="noticeDate" value="<%= formValues?.noticeDate || editingNotice?.noticeDate || todayNepaliDate %>" placeholder="YYYY-MM-DD" autocomplete="off" required><small>Today's Nepali date is selected by default.</small></div>
+					  <div class="field"><label for="addedBy">Notice added by</label><input id="addedBy" value="<%= editingNotice?.addedBy || addedBy %>" readonly></div>
+					  <div class="field wide"><label for="title">Notice title</label><input id="title" name="title" value="<%= formValues?.title || editingNotice?.title || '' %>" maxlength="180" placeholder="Write a short, clear title" required></div>
+					  <div class="field wide"><label for="description">Description <span>(optional)</span></label><textarea id="description" name="description" maxlength="5000" placeholder="Add details for recipients"><%= formValues?.description || editingNotice?.description || '' %></textarea></div>
+
+					<fieldset class="roles">
+						<legend>Send to roles</legend>
+						<div class="role-options" id="roleOptions">
+							<label class="role-choice"><input type="checkbox" name="recipientRoles" value="ALL" data-all-roles <%= !(formValues?.recipientRoles || editingNotice?.recipientRoles)?.length || (formValues?.recipientRoles || editingNotice?.recipientRoles || ['ALL']).includes('ALL') ? 'checked' : '' %>><span>All roles</span></label>
+							<% roleOptions.forEach((role) => { %>
+								<label class="role-choice"><input type="checkbox" name="recipientRoles" value="<%= role.value %>" data-recipient-role <%= (formValues?.recipientRoles || editingNotice?.recipientRoles || []).includes(role.value) ? 'checked' : '' %>><span><%= role.label %></span></label>
+							<% }) %>
+						</div>
+						<small>All roles is selected by default. Choose individual roles to target only those accounts.</small>
+					</fieldset>
+
+					<div class="field wide"><label for="noticeImages">Images <span>(optional, up to 5 total)</span></label><input id="noticeImages" name="noticeImages" type="file" accept="image/*" multiple><small>Images are resized and stored in Azure Blob Storage. Maximum 5 MB per image.<% if (editingNotice?.images?.length) { %> Existing images are kept; <%= editingNotice.images.length %> already attached.<% } %></small>
+						<% if (editingNotice?.images?.length) { %><div class="existing-images"><% editingNotice.images.forEach((image, index) => { %><a href="<%= image.url %>" target="_blank" rel="noopener noreferrer"><img src="<%= image.url %>" alt="Existing notice image <%= index + 1 %>"></a><% }) %></div><% } %>
+					</div>
+					<label class="share-choice field wide"><input type="checkbox" name="shareToFacebook" <%= (formValues?.shareToFacebook ?? editingNotice?.shareToFacebook) ? 'checked' : '' %>><span><strong>Allow Facebook sharing</strong><br>Creates a public share preview with Open Graph title, description, and image. Role-only notices stay private unless you enable this.</span></label>
+				</div>
+				<div class="form-footer"><small>Images upload to the configured school Azure container.</small><button class="button" type="submit"><i class="fa-solid <%= editingNotice ? 'fa-floppy-disk' : 'fa-paper-plane' %>" aria-hidden="true"></i> <%= editingNotice ? 'Save changes' : 'Publish notice' %></button></div>
+			</form>
+		</section>
+
+		<section class="panel">
+			<h2 class="panel-title">Recent notices</h2>
+			<% if (notices.length) { %>
+				<div class="table-wrap"><table><thead><tr><th>Notice</th><th>Date (BS)</th><th>Audience</th><th>Added by</th><th>Images</th><th>Sharing</th></tr></thead><tbody>
+					<% notices.forEach((notice) => { %>
+						<tr>
+							<td><a class="notice-title" href="/notice/<%= notice._id %>"><%= notice.title %></a></td>
+							<td><%= notice.noticeDate %></td>
+							<td><%= notice.recipientRoles.includes('ALL') ? 'All roles' : notice.recipientRoles.map(role => roleOptions.find(option => option.value === role)?.label || role).join(', ') %></td>
+							<td><%= notice.addedBy %></td>
+							<td><%= notice.images?.length || 0 %></td>
+							<td><span class="badge"><%= notice.shareToFacebook ? 'Facebook enabled' : 'Private' %></span></td>
+						</tr>
+					<% }) %>
+				</tbody></table></div>
+			<% } else { %><div class="empty">No notices have been published yet.</div><% } %>
+		</section>
+	</main>
+	<script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js"></script>
+	<script>
+		const allRolesCheckbox = document.querySelector('[data-all-roles]');
+		const roleCheckboxes = [...document.querySelectorAll('[data-recipient-role]')];
+		allRolesCheckbox.addEventListener('change', () => {
+			if (allRolesCheckbox.checked) roleCheckboxes.forEach(checkbox => { checkbox.checked = false; });
+		});
+		roleCheckboxes.forEach(checkbox => checkbox.addEventListener('change', () => {
+			if (checkbox.checked) allRolesCheckbox.checked = false;
+		}));
+		document.querySelectorAll('.nepali-datepicker').forEach(input => {
+			if (typeof input.nepaliDatePicker === 'function') input.nepaliDatePicker({ dateFormat: 'YYYY-MM-DD', language: 'en' });
+		});
+		document.getElementById('noticeForm').addEventListener('submit', event => {
+			if (!allRolesCheckbox.checked && !roleCheckboxes.some(checkbox => checkbox.checked)) {
+				event.preventDefault();
+				alert('Choose at least one recipient role or select All roles.');
+			}
+		});
+	</script>
+</body>
+</html>

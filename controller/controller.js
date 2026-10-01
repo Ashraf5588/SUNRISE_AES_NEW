@@ -17,6 +17,7 @@ const studentClass = mongoose.model("studentClass", classSchema, "classlist");
 const studentRecord = mongoose.model("studentRecord", studentrecordschema, "studentrecord");
 const bcrypt = require("bcrypt");
 const terminal = mongoose.model("terminal", terminalSchema, "terminal");
+const noticecontroller = require('./noticecontroller/noticecontroller');
 app.set("view engine", "ejs");
 app.set("view", path.join(rootDir, "views"));
 const { addChapterSchema } = require("../model/addchapterschema");
@@ -278,6 +279,7 @@ exports.homePage = async (req, res, next) => {
   const marksheetSetups = await marksheetSetup.find({}).lean();
   const terminals = await terminal.find({}).lean();
   const user = req.user;
+  const recentNotices = await noticecontroller.getRecentNotices(user, 6);
   let accessibleSubject =[];
   let accessibleClass=[];
   if(user.role==="ADMIN")
@@ -305,6 +307,7 @@ exports.homePage = async (req, res, next) => {
     studentClassdata:accessibleClass,
     terminals,
     marksheetSetups,
+    recentNotices,
     userrole: user.role,
     teacherName: user.teacherName || user.username,
   });

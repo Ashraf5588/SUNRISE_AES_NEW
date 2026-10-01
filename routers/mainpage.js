@@ -6,6 +6,7 @@ const newscontroller = require('../controller/newscontroller')
 const examcontroller = require('../controller/examconntroller')
 const lockcontroller = require('../controller/lockcontroller')
 const nursecontroller = require('../controller/nursecontroller')
+const noticecontroller = require('../controller/noticecontroller/noticecontroller')
 const multer  = require('multer')
 const newthemecontroller = require('../controller/newthemecontroller')
 const examdashboardcontroller = require('../controller/examdashboardcontroller')
@@ -356,6 +357,16 @@ student.post(
 
 student.get('/news', newscontroller.getNewsJson);
 student.get('/newsdescription', newscontroller.getNewsPage);
+
+student.get('/notice', verifytoken, authorized, noticecontroller.noticeList);
+student.get('/notice/unread-count', verifytoken, authorized, noticecontroller.unreadNoticeCount);
+student.get('/notice/add', verifytoken, authorized, isAdmin, noticecontroller.addNoticePage);
+student.post('/notice/add', verifytoken, authorized, isAdmin, noticecontroller.uploadNoticeImages, noticecontroller.createNotice);
+student.get('/notice/share/:id', noticecontroller.publicNoticeShare);
+student.get('/notice/:id/edit', verifytoken, authorized, isAdmin, noticecontroller.editNoticePage);
+student.post('/notice/:id/edit', verifytoken, authorized, isAdmin, noticecontroller.uploadNoticeImages, noticecontroller.updateNotice);
+student.post('/notice/:id/delete', verifytoken, authorized, isAdmin, noticecontroller.deleteNotice);
+student.get('/notice/:id', verifytoken, authorized, noticecontroller.noticeDescription);
 
 // Support both POST and DELETE for news deletion (AJAX prefers DELETE)
 student.delete('/newsadmin/delete/:id', verifytoken, authorized, isnewsAdmin, newscontroller.deleteNews);

@@ -32,6 +32,23 @@
       -webkit-tap-highlight-color:transparent;
     }
     .mobile-bottom-nav a > i { font-size:20px; line-height:1; }
+    .mobile-bottom-nav .mobile-notice-link { position:relative; }
+    .mobile-bottom-nav .mobile-notice-badge {
+      position:absolute;
+      top:0;
+      right:calc(50% - 23px);
+      display:grid;
+      min-width:17px;
+      height:17px;
+      padding:0 4px;
+      place-items:center;
+      border:2px solid #fff;
+      border-radius:999px;
+      color:#fff;
+      background:#d83b48;
+      font:800 8px/1 'Lexend',Arial,sans-serif;
+    }
+    .mobile-bottom-nav .mobile-notice-badge[hidden] { display:none; }
     .mobile-bottom-nav a:focus-visible { outline:2px solid #1954a6; outline-offset:2px; border-radius:8px; }
     .mobile-bottom-nav a:active { color:#1954a6; }
     .mobile-bottom-nav .mobile-home-link { position:relative; gap:2px; color:#1954a6; }
@@ -57,8 +74,9 @@
   @media print { .mobile-bottom-nav { display:none !important; } }
 </style>
 <nav class="mobile-bottom-nav" aria-label="Mobile navigation">
-  <a href="/newsdescription" aria-label="Notice">
+  <a class="mobile-notice-link" id="mobileNoticeLink" href="/notice" aria-label="Notice">
     <i class="fa-solid fa-bell" aria-hidden="true"></i><span>Notice</span>
+    <span class="mobile-notice-badge" id="mobileNoticeBadge" aria-live="polite" hidden></span>
   </a>
   <a href="/homework" aria-label="Homework">
     <i class="fa-solid fa-book-open" aria-hidden="true"></i><span>Homework</span>
@@ -73,3 +91,36 @@
     <i class="fa-solid fa-address-card" aria-hidden="true"></i><span>Portfolio</span>
   </a>
 </nav>
+<script>
+  (() => {
+    const noticeLink = document.getElementById('mobileNoticeLink');
+    const badge = document.getElementById('mobileNoticeBadge');
+    if (!noticeLink || !badge) return;
+
+    const storageKey = 'aas-notices-last-seen-at';
+    let noticePressed = false;
+    const updateBadge = (count) => {
+      if (noticePressed) return;
+      const unreadCount = Math.max(0, Number(count) || 0);
+      badge.hidden = unreadCount === 0;
+      badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
+      noticeLink.setAttribute('aria-label', unreadCount ? `Notice, ${unreadCount} unread` : 'Notice');
+    };
+
+    noticeLink.addEventListener('click', () => {
+      noticePressed = true;
+      try { localStorage.setItem(storageKey, new Date().toISOString()); } catch (error) {}
+      badge.hidden = true;
+      badge.textContent = '';
+      noticeLink.setAttribute('aria-label', 'Notice');
+    });
+
+    let since = '';
+    try { since = localStorage.getItem(storageKey) || ''; } catch (error) {}
+    const query = since ? `?since=${encodeURIComponent(since)}` : '';
+    fetch(`/notice/unread-count${query}`, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+      .then(response => response.ok ? response.json() : { count: 0 })
+      .then(data => updateBadge(data.count))
+      .catch(() => updateBadge(0));
+  })();
+</script>
