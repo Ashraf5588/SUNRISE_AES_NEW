@@ -8,7 +8,7 @@ const mongoose = require('mongoose');
 // actually owed right now.
 const invoiceItemSchema = new mongoose.Schema(
   {
-    feeCategory: { type: mongoose.Schema.Types.ObjectId, ref: 'FeeCategory' },
+    feeCategory: { type: mongoose.Schema.Types.ObjectId, ref: 'feehead' },
     label: String, // e.g. "Tuition Fee - Baishakh", "Admission Fee"
     amount: Number,
   },

@@ -41,7 +41,7 @@ exports.listStudents = async (req, res) => {
 
 exports.newStudentForm = async (req, res) => {
   try {
-    res.render('students/form', { student: null, ...(await loadStudentFormData()) });
+    res.render('students/form', { student: null, importResult: null, ...(await loadStudentFormData()) });
   } catch (error) {
     console.error('Error loading student form:', error);
     res.status(500).send('Internal Server Error');
@@ -159,7 +159,7 @@ exports.editStudentForm = async (req, res) => {
     }
 
     const student = await Student.findById(req.params.id).lean();
-    res.render('students/form', { student, ...(await loadStudentFormData()) });
+    res.render('students/form', { student, importResult: null, ...(await loadStudentFormData()) });
   } catch (error) {
     console.error('Error loading student edit form:', error);
     res.status(500).send('Internal Server Error');

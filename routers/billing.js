@@ -49,6 +49,10 @@ billing.get('/bill', verifytoken, authorized, isAdmin, billingcontroller.listInv
 billing.get('/generate', verifytoken, authorized, isAdmin, billingcontroller.showGenerateForm)
 billing.post('/billing/generate', verifytoken, authorized, isAdmin, billingcontroller.generateBills)
 billing.get('/invoice/:id', verifytoken, authorized, isAdmin, billingcontroller.viewInvoice)
+billing.get('/invoicelist', verifytoken, authorized, isAdmin, billingcontroller.listInvoices)
+
+
+
 
 
 

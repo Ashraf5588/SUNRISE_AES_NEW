@@ -58,7 +58,7 @@
 							<option value="">Select a student</option>
 							<% students.forEach((student) => { %>
 								<option value="<%= student._id %>" <%= formValues.student === String(student._id) ? 'selected' : '' %> <%= student.hasOpeningBalance ? 'disabled' : '' %>>
-									<%= student.name %> · <%= student.studentCode %><%= student.class?.name ? ` · ${student.class.name}` : '' %><%= student.section ? `-${student.section}` : '' %><%= student.hasOpeningBalance ? ' · Already entered' : '' %>
+									<%= student.name %> · <%= student.studentCode %><%= (student.class?.studentClass || student.class?.name) ? ` · ${student.class.studentClass || student.class.name}` : '' %><%= student.section ? `-${student.section}` : '' %><%= student.hasOpeningBalance ? ' · Already entered' : '' %>
 								</option>
 							<% }); %>
 						</select>
@@ -87,7 +87,7 @@
 					<div class="opening-table-wrap"><table class="opening-table"><thead><tr><th>Student</th><th>As of</th><th>Opening balance</th><th>Source</th></tr></thead><tbody>
 						<% openingBalances.forEach((entry) => { const student = entry.student; %>
 							<tr>
-								<td><% if (student) { %><span class="opening-student-name"><%= student.name %></span><span class="opening-secondary"><%= student.studentCode %><%= student.class?.name ? ` · ${student.class.name}` : '' %><%= student.section ? `-${student.section}` : '' %></span><% } else { %>Student record unavailable<% } %></td>
+								<td><% if (student) { %><span class="opening-student-name"><%= student.name %></span><span class="opening-secondary"><%= student.studentCode %><%= (student.class?.studentClass || student.class?.name) ? ` · ${student.class.studentClass || student.class.name}` : '' %><%= student.section ? `-${student.section}` : '' %></span><% } else { %>Student record unavailable<% } %></td>
 								<td><%= new Date(entry.asOfDateAD).toLocaleDateString() %></td>
 								<td class="opening-amount <%= entry.amount < 0 ? 'credit' : 'due' %>"><%= entry.amount < 0 ? 'Credit' : 'Due' %> <%= Math.abs(entry.amount).toFixed(2) %></td>
 								<td><%= entry.sourceNote || '-' %></td>

@@ -13,7 +13,7 @@ const { importOpeningBalance } = require('../../services/billingService');
 
 const loadOpeningBalanceData = async () => {
   const [students, openingBalances] = await Promise.all([
-    Student.find().populate('class', 'name').populate('academicSession', 'titleBS').sort({ name: 1 }).lean(),
+    Student.find().populate('class', 'name studentClass').populate('academicSession', 'titleBS').sort({ name: 1 }).lean(),
     OpeningBalance.find()
       .populate({ path: 'student', select: 'studentCode name class section', populate: { path: 'class', select: 'name' } })
       .sort({ createdAt: -1 })

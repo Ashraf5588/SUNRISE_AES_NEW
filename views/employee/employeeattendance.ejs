@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head><title>Attendance Dashboard</title></head>
+<body>
+  <h1>ZKTeco Attendance</h1>
+  <p>Device: <%= deviceSN %></p>
+  <table border="1" cellpadding="5">
+    <tr><th>Student ID</th><th>Name</th><th>Time</th><th>Mode</th></tr>
+    <% attendances.forEach(attendance => { %>
+      <tr>
+        <td><%= attendance.pin %></td>
+        <td><%= attendance.name %></td>
+        <td><%= new Date(attendance.punchTime).toLocaleString() %></td>
+        <td><%= attendance.verifyMode %></td>
+      </tr>
+    <% }) %>
+  </table>
+</body>
+</html>   

@@ -20,7 +20,7 @@
       </div>
       <div class="col-md-6 text-md-end">
         <p class="mb-1"><strong>Student:</strong> <%= invoice.studentName || (invoice.student && invoice.student.name) || '-' %></p>
-        <p class="mb-1"><strong>Class:</strong> <%= invoice.studentClass || (invoice.student && invoice.student.class && invoice.student.class.name) || '' %></p>
+        <p class="mb-1"><strong>Class:</strong> <%= invoice.studentClass || (invoice.student && invoice.student.class && (invoice.student.class.studentClass || invoice.student.class.name)) || '' %></p>
         <p class="mb-1"><strong>Section:</strong> <%= invoice.section || (invoice.student && invoice.student.section) || '' %></p>
       </div>
     </div>

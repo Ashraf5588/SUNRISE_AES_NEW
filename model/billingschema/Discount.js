@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const discountEntrySchema = new mongoose.Schema({
-  feehead: { type: mongoose.Schema.Types.ObjectId, ref: 'FeeCategory', required: true },
+  feehead: { type: mongoose.Schema.Types.ObjectId, ref: 'feehead', required: true },
   discountType: { type: String, enum: ['PERCENTAGE', 'FLAT'], required: true },
   value: { type: Number, required: true },
   validFromAD: Date,

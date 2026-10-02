@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Student = require('../model/billingschema/Student');
 const FeeStructure = require('../model/billingschema/feestructureschema');
+const { feeheadModel } = require('../model/billingschema/feeheadschema');
 
 const Discount = require('../model/billingschema/Discount');
 const Invoice = require('../model/billingschema/Invoice');
@@ -9,6 +10,11 @@ const LedgerEntry = require('../model/billingschema/LedgerEntry');
 const OpeningBalance = require('../model/billingschema/OpeningBalance');
 const School = require('../model/billingschema/School');
 const { getNextSequence } = require('../model/billingschema/Counter');
+
+const normalizeMonth = (month) => {
+  const normalized = String(month || '').trim().toLowerCase();
+  return normalized === 'baishakh' ? 'baisakh' : normalized;
+};
 
 async function getCurrentBalance(studentId) {
   const result = await LedgerEntry.aggregate([
@@ -86,37 +92,46 @@ async function generateMonthlyInvoice({ studentId, billMonthBS, billDateAD, bill
   const structures = await FeeStructure.find({
     academicSession: student.academicSession,
     class: student.class._id,
-  }).populate('feeCategory');
+  }).populate({ path: 'feeCategory', model: feeheadModel });
 
-  const discounts = await Discount.find({
-    student: studentId,
-    $or: [{ validToAD: { $exists: false } }, { validToAD: { $gte: billDateAD } }],
+  const discounts = await Discount.find({ student: studentId }).lean();
+  const discountEntries = discounts.flatMap((discount) => discount.title || []).filter((entry) => {
+    const startsOnOrBeforeBillDate = !entry.validFromAD || entry.validFromAD <= billDateAD;
+    const endsOnOrAfterBillDate = !entry.validToAD || entry.validToAD >= billDateAD;
+    return startsOnOrBeforeBillDate && endsOnOrAfterBillDate;
   });
 
   const currentItems = [];
 
   for (const fs of structures) {
-    const feeCategory = fs.feeCategory;
-    if (!feeCategory) continue;
+    const feeHead = fs.feeCategory;
+    if (!feeHead) continue;
 
-    const freq = feeCategory.frequency;
-    const include = freq === 'MONTHLY' || (freq === 'ONE_TIME' && isAdmissionMonth);
+    const frequency = String(feeHead.frequency || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+    const appliedMonths = Array.isArray(feeHead.appliedmonth)
+      ? feeHead.appliedmonth.map(normalizeMonth)
+      : [];
+    const normalizedBillMonth = normalizeMonth(billMonthBS);
+    const isOneTime = ['one_time', 'onetime', 'annual', 'yearly'].includes(frequency);
+    const include = appliedMonths.length
+      ? appliedMonths.includes(normalizedBillMonth)
+      : frequency === 'monthly' || (isOneTime && isAdmissionMonth);
     if (!include) continue;
 
     let amount = fs.amount;
-    const matchingDiscount = discounts.find(
-      (d) => !d.feeCategory || String(d.feeCategory) === String(feeCategory._id)
+    const matchingDiscount = discountEntries.find(
+      (entry) => String(entry.feehead) === String(feeHead._id)
     );
     if (matchingDiscount) {
       amount =
-        matchingDiscount.type === 'PERCENTAGE'
+        matchingDiscount.discountType === 'PERCENTAGE'
           ? amount - (amount * matchingDiscount.value) / 100
           : amount - matchingDiscount.value;
     }
 
     currentItems.push({
-      feeCategory: feeCategory._id,
-      label: `${feeCategory.name}${freq === 'MONTHLY' ? ' - ' + billMonthBS : ''}`,
+      feeCategory: feeHead._id,
+      label: `${feeHead.feehead || feeHead.name || 'Fee'}${appliedMonths.length > 1 || frequency === 'monthly' ? ' - ' + billMonthBS : ''}`,
       amount,
     });
   }

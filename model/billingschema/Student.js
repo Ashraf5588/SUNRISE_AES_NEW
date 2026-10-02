@@ -4,7 +4,7 @@ const studentSchema = new mongoose.Schema(
   {
     studentCode: { type: String, required: true, unique: true }, // reuse old software's roll/ID for traceability
     name: { type: String, required: true },
-    class: { type: mongoose.Schema.Types.ObjectId, ref: 'Class', required: true },
+    class: { type: mongoose.Schema.Types.ObjectId, ref: 'studentClass', required: true },
     section: String,
     guardianName: String,
     guardianPhone: String,

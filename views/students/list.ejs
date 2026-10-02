@@ -14,7 +14,7 @@
       <tr>
         <td><%= s.studentCode %></td>
         <td><%= s.name %></td>
-        <td><%= s.class ? s.class.name : '-' %></td>
+        <td><%= s.class ? (s.class.studentClass || s.class.name || '-') : '-' %></td>
         <td><%= s.admissionDateAD.toDateString() %></td>
         <td><span class="badge bg-<%= s.status === 'ACTIVE' ? 'success' : 'secondary' %>"><%= s.status %></span></td>
         <td><a href="/students/<%= s._id %>">View</a></td>

@@ -465,14 +465,7 @@ exports.showGenerateForm = async (req, res) => {
   }
 };
 
-exports.generateBills = async (req, res) => {
-  try {
-    return res.status(501).send('Legacy billing generation route is disabled. Use the fee invoice flow instead.');
-  } catch (error) {
-    console.error('Error generating bills:', error);
-    res.status(500).send('Internal Server Error');
-  }
-};
+
 
 exports.listInvoices = async (req, res) => {
   const invoices = await Invoice.find().populate('student').sort({ billDateAD: -1 }).limit(200);
