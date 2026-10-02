@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Employee list</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+	<style>
+		:root { color-scheme: light; --ink:#1b2940; --muted:#6a7585; --line:#dce2e9; --paper:#fff; --canvas:#f1f3f6; --blue:#24477b; font-family:'DM Sans',sans-serif; color:var(--ink); background:var(--canvas); }
+		* { box-sizing:border-box; }
+		body { margin:0; min-height:100vh; background:var(--canvas); }
+		.page-shell { width:min(1500px,calc(100% - 34px)); margin:0 auto; padding:28px 0 52px; }
+		h1,h2 { font-family:'Manrope',sans-serif; }
+		h1 { margin:0; font-size:1.6rem; }
+		.page-header,.panel-heading { display:flex; align-items:center; justify-content:space-between; gap:14px; }
+		.page-header { margin-bottom:20px; }
+		.muted { margin:6px 0 0; color:var(--muted); }
+		.panel { overflow:hidden; border:1px solid var(--line); border-radius:6px; background:var(--paper); }
+		.panel-heading { padding:16px 18px; border-bottom:1px solid var(--line); }
+		.panel-heading h2 { margin:0; font-size:1rem; }
+		.controls { display:flex; gap:9px; }
+		input { min-height:38px; width:min(320px,45vw); padding:8px 10px; border:1px solid #cbd4df; border-radius:4px; }
+		.button { display:inline-flex; align-items:center; gap:8px; min-height:38px; padding:0 13px; border:1px solid var(--blue); border-radius:4px; background:var(--blue); color:#fff; text-decoration:none; font-weight:700; }
+		.table-wrap { overflow:auto; }
+		table { width:100%; border-collapse:collapse; white-space:nowrap; font-size:.83rem; }
+		th,td { padding:11px 14px; border-bottom:1px solid #e9edf2; text-align:left; }
+		th { background:#f5f7fa; color:var(--muted); font-size:.68rem; text-transform:uppercase; }
+		tbody tr:last-child td { border-bottom:0; }
+		.employee-code { color:var(--blue); font-weight:800; }
+		.status { color:#285c47; font-weight:700; }
+		.empty { padding:28px; color:var(--muted); text-align:center; }
+		@media(max-width:700px) { .page-shell { width:calc(100% - 20px); padding-top:18px; } .page-header,.panel-heading { align-items:flex-start; flex-direction:column; } .controls { width:100%; } input { flex:1; width:auto; } }
+	</style>
+</head>
+<body>
+	<%- include('employeesidenav', { currentPage, selectedEmployee }) %>
+	<main class="page-shell">
+		<header class="page-header"><div><p class="muted">People / Employee management</p><h1>Employee list</h1></div><a class="button" href="/employeedetail?new=1"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add employee</a></header>
+		<section class="panel"><div class="panel-heading"><h2><%= employees.length %> employees</h2><div class="controls"><input id="employeeSearch" type="search" placeholder="Search employees" aria-label="Search employees"><a class="button" href="/employeeattendance"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i> Attendance</a></div></div>
+			<% if (employees.length) { %><div class="table-wrap"><table id="employeeList"><thead><tr><th>S.N</th><th>Employee code</th><th>Name</th><th>Designation</th><th>Department</th><th>Branch</th><th>Contact</th><th>Office email</th><th>Status</th><th>Profile</th></tr></thead><tbody><% employees.forEach((employee,index) => { %><tr><td><%= index+1 %></td><td class="employee-code"><%= employee.employeeCode %></td><td><%= employee.staffName %></td><td><%= employee.designation || '-' %></td><td><%= employee.department || '-' %></td><td><%= employee.branchName || '-' %></td><td><%= employee.mobileNumber || '-' %></td><td><%= employee.officeEmail || employee.email || '-' %></td><td class="status"><%= employee.jobStatus || employee.employmentStatus || 'Active' %></td><td><a href="/employeedetail?employeeId=<%= employee._id %>">Open profile</a></td></tr><% }) %></tbody></table></div><% } else { %><div class="empty">No employee profiles have been added yet.</div><% } %>
+		</section>
+	</main>
+	<script>document.getElementById('employeeSearch').addEventListener('input',event=>{const query=event.target.value.trim().toLowerCase();document.querySelectorAll('#employeeList tbody tr').forEach(row=>row.hidden=!row.textContent.toLowerCase().includes(query));});</script>
+</body>
+</html>

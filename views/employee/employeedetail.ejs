@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Employee Profiles</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+	<link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css">
+	<style>
+		:root {
+			color-scheme: light;
+			--ink: #20342e;
+			--muted: #667871;
+			--line: #dce6df;
+			--paper: #fff;
+			--canvas: #f1f5f1;
+			--green: #17694d;
+			--green-dark: #10563d;
+			--green-soft: #e7f2eb;
+			--orange: #d66b3d;
+			--red: #a53535;
+			font-family: 'DM Sans', sans-serif;
+			color: var(--ink);
+			background: var(--canvas);
+		}
+
+		* { box-sizing: border-box; }
+
+		body {
+			margin: 0;
+			min-height: 100vh;
+			background-color: var(--canvas);
+			background-image: linear-gradient(135deg, rgba(23, 105, 77, .035) 25%, transparent 25%, transparent 50%, rgba(23, 105, 77, .035) 50%, rgba(23, 105, 77, .035) 75%, transparent 75%, transparent);
+			background-size: 28px 28px;
+		}
+
+		button, input, select, textarea { font: inherit; }
+
+		.page-shell { width: min(1160px, calc(100% - 40px)); margin: 0 auto; padding: 38px 0 64px; }
+		.page-header { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 24px; }
+		.eyebrow { margin: 0 0 8px; color: var(--orange); font-size: .72rem; font-weight: 800; text-transform: uppercase; }
+		h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+		h1 { margin: 0; font-size: clamp(1.7rem, 4vw, 2.35rem); line-height: 1.15; }
+		.page-intro { margin: 8px 0 0; color: var(--muted); }
+		.header-link { color: var(--green-dark); font-weight: 700; text-decoration-thickness: 1px; text-underline-offset: 4px; white-space: nowrap; }
+
+		.notice { margin: 0 0 18px; padding: 13px 16px; border-radius: 6px; font-weight: 600; }
+		.notice-error { border: 1px solid #edc8c3; background: #fff2ef; color: var(--red); }
+		.notice-success { border: 1px solid #b8d8c4; background: #edf8f0; color: var(--green-dark); }
+
+		.form-panel, .directory-panel { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; }
+		.form-panel { overflow: hidden; }
+		.panel-heading { padding: 20px 24px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+		.panel-heading h2 { margin: 0; font-size: 1.12rem; }
+		.required-note { color: var(--muted); font-size: .8rem; }
+		.required-note span { color: var(--orange); font-weight: 800; }
+		form { padding: 4px 24px 24px; }
+		fieldset { min-width: 0; margin: 0; padding: 22px 0; border: 0; border-bottom: 1px solid var(--line); }
+		fieldset:last-of-type { border-bottom: 0; }
+		legend { margin-bottom: 15px; padding: 0; font-family: 'Manrope', sans-serif; font-size: .96rem; font-weight: 800; }
+		.field-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+		.field { min-width: 0; }
+		.field-wide { grid-column: span 2; }
+		label { display: block; margin-bottom: 6px; color: #455a51; font-size: .82rem; font-weight: 700; }
+		label span { color: var(--orange); }
+		input, select, textarea { width: 100%; min-height: 43px; padding: 10px 11px; border: 1px solid #cddad1; border-radius: 5px; background: #fff; color: var(--ink); }
+		textarea { min-height: 88px; resize: vertical; }
+		input:focus, select:focus, textarea:focus { outline: 3px solid rgba(23, 105, 77, .16); border-color: var(--green); }
+		.form-actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 20px; }
+		.button { min-height: 42px; padding: 0 18px; border: 1px solid transparent; border-radius: 5px; cursor: pointer; font-weight: 700; }
+		.button-secondary { background: #f3f6f3; border-color: var(--line); color: var(--ink); }
+		.button-primary { display: inline-flex; align-items: center; gap: 9px; background: var(--green); color: #fff; }
+		.button-primary:hover { background: var(--green-dark); }
+		.tab-list { display: flex; gap: 4px; overflow-x: auto; padding: 10px 16px 0; border-bottom: 1px solid var(--line); }
+		.tab-button { flex: 0 0 auto; padding: 11px 14px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--muted); cursor: pointer; font-weight: 700; }
+		.tab-button[aria-selected="true"] { border-color: var(--green); color: var(--green-dark); }
+		.tab-panel { padding: 22px 24px; }
+		.tab-panel[hidden] { display: none; }
+		.sub-tabs { padding: 0; margin: 0 0 20px; border-bottom: 1px solid var(--line); }
+		.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+		.section-heading h3 { margin: 0; font-size: 1rem; }
+		.repeat-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 5px; }
+		.repeat-table { min-width: 1120px; }
+		.repeat-table th { position: sticky; top: 0; }
+		.repeat-table input, .repeat-table textarea { min-width: 115px; min-height: 38px; padding: 7px 8px; }
+		.repeat-table textarea { min-height: 40px; }
+		.row-action { min-width: 34px; min-height: 34px; padding: 0 8px; border: 1px solid #e5c6c2; border-radius: 4px; background: #fff7f5; color: var(--red); cursor: pointer; }
+		.add-row { min-height: 36px; margin-top: 12px; padding: 0 12px; border: 1px solid var(--green); border-radius: 4px; background: var(--green-soft); color: var(--green-dark); cursor: pointer; font-weight: 700; }
+		.health-grid, .bank-grid { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+		.document-list { display: grid; gap: 0; }
+		.document-entry { display: grid; grid-template-columns: minmax(180px, .8fr) minmax(240px, 1.2fr) auto; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+		.document-entry input[type="file"] { min-height: 40px; padding: 6px; }
+		.document-entry input[type="text"] { min-height: 40px; }
+		.document-entry:last-child { border-bottom: 0; }
+		.document-hint { margin: 0 0 12px; color: var(--muted); font-size: .8rem; }
+		.bmi-readout { display: flex; align-items: center; gap: 10px; }
+		.bmi-readout output { color: var(--green-dark); font-weight: 800; }
+		.form-actions { padding: 20px 24px 24px; border-top: 1px solid var(--line); }
+
+		.directory-panel { margin-top: 24px; overflow: hidden; }
+		.directory-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 20px 24px; border-bottom: 1px solid var(--line); }
+		.directory-heading h2 { margin: 0; font-size: 1.08rem; }
+		.directory-count { color: var(--muted); font-size: .82rem; }
+		.table-wrap { overflow-x: auto; }
+		table { width: 100%; border-collapse: collapse; white-space: nowrap; font-size: .84rem; }
+		th, td { padding: 12px 16px; border-bottom: 1px solid #e9efea; text-align: left; }
+		th { background: #f7faf7; color: var(--muted); font-size: .7rem; font-weight: 800; text-transform: uppercase; }
+		tbody tr:last-child td { border-bottom: 0; }
+		.employee-name { color: var(--ink); font-weight: 700; }
+		.employee-code { color: var(--green-dark); font-weight: 800; }
+		.status { display: inline-block; padding: 4px 8px; border-radius: 999px; background: var(--green-soft); color: var(--green-dark); font-size: .75rem; font-weight: 700; }
+		.empty-state { padding: 28px 24px; color: var(--muted); text-align: center; }
+
+		@media (max-width: 760px) {
+			.page-shell { width: min(100% - 24px, 600px); padding-top: 24px; }
+			.page-header { align-items: flex-start; flex-direction: column; gap: 14px; }
+			.field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+			.panel-heading, .directory-heading { padding: 17px; }
+			.tab-panel { padding: 18px 17px; }
+			form { padding: 0 0 18px; }
+		}
+
+		@media (max-width: 480px) {
+			.field-grid { grid-template-columns: 1fr; }
+			.field-wide { grid-column: auto; }
+			.required-note { font-size: .72rem; }
+			.form-actions { flex-direction: column-reverse; padding: 18px 17px; }
+			.form-actions .button { width: 100%; justify-content: center; }
+			.panel-heading { align-items: flex-start; flex-direction: column; }
+			.document-entry { grid-template-columns: 1fr auto; }
+			.document-entry input[type="text"], .document-entry input[type="file"] { grid-column: 1 / -1; }
+		}
+	</style>
+</head>
+<body>
+	<%- include('employeesidenav', { currentPage: 'profile', selectedEmployee: null }) %>
+	<main class="page-shell">
+		<header class="page-header">
+			<div>
+				<p class="eyebrow">People / Staff records</p>
+				<h1>Employee profiles</h1>
+				<p class="page-intro">Maintain employment, contact, and emergency information.</p>
+			</div>
+			<a class="header-link" href="/employeeattendance">View attendance logs</a>
+		</header>
+
+		<% if (error) { %>
+			<div class="notice notice-error" role="alert"><%= error %></div>
+		<% } %>
+		<% if (saved) { %>
+			<div class="notice notice-success" role="status">Employee profile saved.</div>
+		<% } %>
+
+		<section class="form-panel" aria-labelledby="profile-form-title">
+			<div class="panel-heading">
+				<h2 id="profile-form-title">Add employee</h2>
+				<div class="required-note"><span>*</span> Required fields</div>
+			</div>
+			<form action="/employeedetail" method="post" enctype="multipart/form-data" id="employeeProfileForm">
+				<input type="hidden" name="qualificationCount" id="qualificationCount" value="<%= formData.qualifications?.length || 1 %>">
+				<input type="hidden" name="experienceCount" id="experienceCount" value="<%= formData.experiences?.length || 1 %>">
+				<input type="hidden" name="skillCount" id="skillCount" value="<%= formData.skills?.length || 1 %>">
+				<input type="hidden" name="trainingCount" id="trainingCount" value="<%= formData.trainings?.length || 1 %>">
+				<input type="hidden" name="familyCount" id="familyCount" value="<%= formData.familyMembers?.length || 1 %>">
+				<input type="hidden" name="documentCount" id="documentCount" value="<%= formData.documentRows?.length || defaultDocuments.length %>">
+				<input type="hidden" name="qualification" value="<%= formData.qualification || '' %>">
+				<nav class="tab-list" role="tablist" aria-label="Employee profile sections" data-tab-group="main">
+					<button class="tab-button" type="button" role="tab" aria-selected="true" data-tab-target="generalPanel">General Information</button>
+					<button class="tab-button" type="button" role="tab" aria-selected="false" data-tab-target="qualificationPanel">Qualification &amp; Skills</button>
+					<button class="tab-button" type="button" role="tab" aria-selected="false" data-tab-target="familyPanel">Family Info</button>
+					<button class="tab-button" type="button" role="tab" aria-selected="false" data-tab-target="healthPanel">Health Info</button>
+					<button class="tab-button" type="button" role="tab" aria-selected="false" data-tab-target="documentsPanel">Documents</button>
+					<button class="tab-button" type="button" role="tab" aria-selected="false" data-tab-target="othersPanel">Others</button>
+				</nav>
+
+				<section class="tab-panel" id="generalPanel" role="tabpanel">
+					<fieldset><legend>Employment details</legend><div class="field-grid">
+						<div class="field"><label for="employeeCode">Employee code <span>*</span></label><input id="employeeCode" name="employeeCode" value="<%= formData.employeeCode || '' %>" maxlength="30" autocomplete="off" required></div>
+						<div class="field"><label for="staffName">Full name <span>*</span></label><input id="staffName" name="staffName" value="<%= formData.staffName || '' %>" maxlength="120" autocomplete="name" required></div>
+						<div class="field"><label for="designation">Designation <span>*</span></label><input id="designation" name="designation" value="<%= formData.designation || '' %>" maxlength="100" required></div>
+						<div class="field"><label for="department">Department <span>*</span></label><input id="department" name="department" value="<%= formData.department || '' %>" maxlength="100" required></div>
+						<div class="field"><label for="branchName">Branch name</label><input id="branchName" name="branchName" value="<%= formData.branchName || '' %>" maxlength="100"></div>
+						<div class="field"><label for="dateOfJoiningBs">Date of joining (BS) <span>*</span></label><input id="dateOfJoiningBs" class="nepali-date-input" name="dateOfJoiningBs" value="<%= formData.dateOfJoiningBs || '' %>" placeholder="YYYY-MM-DD" required></div>
+						<div class="field"><label for="plannedIn">Planned in</label><input id="plannedIn" name="plannedIn" type="time" value="<%= formData.plannedIn || '09:00' %>" required></div>
+						<div class="field"><label for="plannedOut">Planned out</label><input id="plannedOut" name="plannedOut" type="time" value="<%= formData.plannedOut || '17:00' %>" required></div>
+						<div class="field"><label for="employmentType">Employment type</label><select id="employmentType" name="employmentType"><% ['Permanent', 'Contract', 'Temporary', 'Part-time', 'Intern'].forEach((value) => { %><option value="<%= value %>" <%= (formData.employmentType || 'Permanent') === value ? 'selected' : '' %>><%= value %></option><% }) %></select></div>
+						<div class="field"><label for="employmentStatus">Employment status</label><select id="employmentStatus" name="employmentStatus"><% ['Active', 'On leave', 'Resigned', 'Terminated'].forEach((value) => { %><option value="<%= value %>" <%= (formData.employmentStatus || 'Active') === value ? 'selected' : '' %>><%= value %></option><% }) %></select></div>
+					</div></fieldset>
+					<fieldset><legend>Personal and contact information</legend><div class="field-grid">
+						<div class="field"><label for="dateOfBirthBs">Date of birth (BS)</label><input id="dateOfBirthBs" class="nepali-date-input" name="dateOfBirthBs" value="<%= formData.dateOfBirthBs || '' %>" placeholder="YYYY-MM-DD"></div>
+						<div class="field"><label for="gender">Gender</label><select id="gender" name="gender"><option value="">Select</option><% ['Female', 'Male', 'Non-binary', 'Prefer not to say'].forEach((value) => { %><option value="<%= value %>" <%= formData.gender === value ? 'selected' : '' %>><%= value %></option><% }) %></select></div>
+						<div class="field"><label for="maritalStatus">Marital status</label><select id="maritalStatus" name="maritalStatus"><option value="">Select</option><% ['Single', 'Married', 'Other', 'Prefer not to say'].forEach((value) => { %><option value="<%= value %>" <%= formData.maritalStatus === value ? 'selected' : '' %>><%= value %></option><% }) %></select></div>
+						<div class="field"><label for="mobileNumber">Mobile number <span>*</span></label><input id="mobileNumber" name="mobileNumber" type="tel" value="<%= formData.mobileNumber || '' %>" maxlength="30" required></div>
+						<div class="field"><label for="alternateMobile">Alternate number</label><input id="alternateMobile" name="alternateMobile" type="tel" value="<%= formData.alternateMobile || '' %>" maxlength="30"></div>
+						<div class="field"><label for="email">Email address <span>*</span></label><input id="email" name="email" type="email" value="<%= formData.email || '' %>" maxlength="160" required></div>
+						<div class="field field-wide"><label for="address">Residential address <span>*</span></label><textarea id="address" name="address" maxlength="500" required><%= formData.address || '' %></textarea></div>
+						<div class="field"><label for="emergencyContactName">Emergency contact name <span>*</span></label><input id="emergencyContactName" name="emergencyContactName" value="<%= formData.emergencyContactName || '' %>" maxlength="120" required></div>
+						<div class="field"><label for="emergencyContactRelation">Emergency contact relation</label><input id="emergencyContactRelation" name="emergencyContactRelation" value="<%= formData.emergencyContactRelation || '' %>" maxlength="60"></div>
+						<div class="field"><label for="emergencyContactNumber">Emergency contact number <span>*</span></label><input id="emergencyContactNumber" name="emergencyContactNumber" type="tel" value="<%= formData.emergencyContactNumber || '' %>" maxlength="30" required></div>
+					</div></fieldset>
+					<fieldset class="bank-grid"><legend>Bank and identification</legend><div class="field-grid">
+						<div class="field"><label for="bankName">Bank name</label><input id="bankName" name="bankName" value="<%= formData.bankName || '' %>" maxlength="120"></div>
+						<div class="field"><label for="bankAccountNumber">Bank account number</label><input id="bankAccountNumber" name="bankAccountNumber" value="<%= formData.bankAccountNumber || '' %>" maxlength="80"></div>
+						<div class="field"><label for="panNumber">PAN number</label><input id="panNumber" name="panNumber" value="<%= formData.panNumber || '' %>" maxlength="50"></div>
+						<div class="field"><label for="ssfNumber">SSF number</label><input id="ssfNumber" name="ssfNumber" value="<%= formData.ssfNumber || '' %>" maxlength="50"></div>
+					</div></fieldset>
+				</section>
+
+				<section class="tab-panel" id="qualificationPanel" role="tabpanel" hidden>
+					<nav class="tab-list sub-tabs" role="tablist" aria-label="Qualifications and skills" data-tab-group="qualification">
+						<button class="tab-button" type="button" role="tab" aria-selected="true" data-tab-target="qualificationEntriesPanel">Qualification</button>
+						<button class="tab-button" type="button" role="tab" aria-selected="false" data-tab-target="experienceEntriesPanel">Experience</button>
+						<button class="tab-button" type="button" role="tab" aria-selected="false" data-tab-target="skillsEntriesPanel">Skills</button>
+						<button class="tab-button" type="button" role="tab" aria-selected="false" data-tab-target="trainingEntriesPanel">Training</button>
+					</nav>
+					<section class="sub-panel" id="qualificationEntriesPanel" role="tabpanel">
+						<div class="section-heading"><h3>Qualification records</h3><button class="add-row" type="button" data-add-row="qualification">+ Add qualification</button></div>
+						<div class="repeat-table-wrap"><table class="repeat-table"><thead><tr><th>S.N</th><th>Degree</th><th>Level</th><th>Faculty</th><th>Institution</th><th>Affiliation</th><th>Country</th><th>Passed Year (BS)</th><th>Passed Year (AD)</th><th>Result</th><th>Major Subjects</th><th>Description</th><th>Action</th></tr></thead><tbody id="qualificationRows" data-row-prefix="qualification">
+							<% const qualificationRows = formData.qualifications?.length ? formData.qualifications : [{}]; qualificationRows.forEach((row, index) => { %><tr data-repeat-row><td class="row-number"><%= index + 1 %></td><td><input name="qualification_<%= index %>_degree" value="<%= row.degree || '' %>" aria-label="Degree"></td><td><input name="qualification_<%= index %>_level" value="<%= row.level || '' %>" aria-label="Level"></td><td><input name="qualification_<%= index %>_faculty" value="<%= row.faculty || '' %>" aria-label="Faculty"></td><td><input name="qualification_<%= index %>_institution" value="<%= row.institution || '' %>" aria-label="Institution"></td><td><input name="qualification_<%= index %>_affiliation" value="<%= row.affiliation || '' %>" aria-label="Affiliation"></td><td><input name="qualification_<%= index %>_country" value="<%= row.country || '' %>" aria-label="Country"></td><td><input name="qualification_<%= index %>_passedYearBs" value="<%= row.passedYearBs || '' %>" aria-label="Passed year BS"></td><td><input name="qualification_<%= index %>_passedYearAd" value="<%= row.passedYearAd || '' %>" aria-label="Passed year AD"></td><td><input name="qualification_<%= index %>_result" value="<%= row.result || '' %>" aria-label="Result"></td><td><input name="qualification_<%= index %>_majorSubjects" value="<%= row.majorSubjects || '' %>" aria-label="Major subjects"></td><td><input name="qualification_<%= index %>_description" value="<%= row.description || '' %>" aria-label="Description"></td><td><button class="row-action" type="button" data-remove-row aria-label="Remove qualification">Remove</button></td></tr><% }) %>
+						</tbody></table></div>
+					</section>
+					<section class="sub-panel" id="experienceEntriesPanel" role="tabpanel" hidden>
+						<div class="section-heading"><h3>Experience records</h3><button class="add-row" type="button" data-add-row="experience">+ Add experience</button></div>
+						<div class="repeat-table-wrap"><table class="repeat-table"><thead><tr><th>S.N</th><th>Title</th><th>Organization</th><th>Began on (BS)</th><th>Ended on (BS)</th><th>Description</th><th>Action</th></tr></thead><tbody id="experienceRows" data-row-prefix="experience">
+							<% const experienceRows = formData.experiences?.length ? formData.experiences : [{}]; experienceRows.forEach((row, index) => { %><tr data-repeat-row><td class="row-number"><%= index + 1 %></td><td><input name="experience_<%= index %>_title" value="<%= row.title || '' %>" aria-label="Experience title"></td><td><input name="experience_<%= index %>_organization" value="<%= row.organization || '' %>" aria-label="Organization"></td><td><input class="nepali-date-input" name="experience_<%= index %>_beganOn" value="<%= row.beganOn || '' %>" placeholder="YYYY-MM-DD" aria-label="Began on"></td><td><input class="nepali-date-input" name="experience_<%= index %>_endedOn" value="<%= row.endedOn || '' %>" placeholder="YYYY-MM-DD" aria-label="Ended on"></td><td><input name="experience_<%= index %>_description" value="<%= row.description || '' %>" aria-label="Description"></td><td><button class="row-action" type="button" data-remove-row aria-label="Remove experience">Remove</button></td></tr><% }) %>
+						</tbody></table></div>
+					</section>
+					<section class="sub-panel" id="skillsEntriesPanel" role="tabpanel" hidden>
+						<div class="section-heading"><h3>Skills</h3><button class="add-row" type="button" data-add-row="skill">+ Add skill</button></div>
+						<div class="repeat-table-wrap"><table class="repeat-table"><thead><tr><th>S.N</th><th>Code</th><th>Name</th><th>Description</th><th>Action</th></tr></thead><tbody id="skillRows" data-row-prefix="skill">
+							<% const skillRows = formData.skills?.length ? formData.skills : [{}]; skillRows.forEach((row, index) => { %><tr data-repeat-row><td class="row-number"><%= index + 1 %></td><td><input name="skill_<%= index %>_code" value="<%= row.code || '' %>" aria-label="Skill code"></td><td><input name="skill_<%= index %>_name" value="<%= row.name || '' %>" aria-label="Skill name"></td><td><input name="skill_<%= index %>_description" value="<%= row.description || '' %>" aria-label="Skill description"></td><td><button class="row-action" type="button" data-remove-row aria-label="Remove skill">Remove</button></td></tr><% }) %>
+						</tbody></table></div>
+					</section>
+					<section class="sub-panel" id="trainingEntriesPanel" role="tabpanel" hidden>
+						<div class="section-heading"><h3>Training records</h3><button class="add-row" type="button" data-add-row="training">+ Add training</button></div>
+						<div class="repeat-table-wrap"><table class="repeat-table"><thead><tr><th>S.N</th><th>Training name</th><th>From date (BS)</th><th>To date (BS)</th><th>Description</th><th>Action</th></tr></thead><tbody id="trainingRows" data-row-prefix="training">
+							<% const trainingRows = formData.trainings?.length ? formData.trainings : [{}]; trainingRows.forEach((row, index) => { %><tr data-repeat-row><td class="row-number"><%= index + 1 %></td><td><input name="training_<%= index %>_trainingName" value="<%= row.trainingName || '' %>" aria-label="Training name"></td><td><input class="nepali-date-input" name="training_<%= index %>_fromDate" value="<%= row.fromDate || '' %>" placeholder="YYYY-MM-DD" aria-label="From date"></td><td><input class="nepali-date-input" name="training_<%= index %>_toDate" value="<%= row.toDate || '' %>" placeholder="YYYY-MM-DD" aria-label="To date"></td><td><input name="training_<%= index %>_description" value="<%= row.description || '' %>" aria-label="Description"></td><td><button class="row-action" type="button" data-remove-row aria-label="Remove training">Remove</button></td></tr><% }) %>
+						</tbody></table></div>
+					</section>
+				</section>
+
+				<section class="tab-panel" id="familyPanel" role="tabpanel" hidden>
+					<div class="section-heading"><h3>Family information</h3><button class="add-row" type="button" data-add-row="family">+ Add family member</button></div>
+					<div class="repeat-table-wrap"><table class="repeat-table"><thead><tr><th>S.N</th><th>Name</th><th>Relation</th><th>Note</th><th>Action</th></tr></thead><tbody id="familyRows" data-row-prefix="family">
+						<% const familyRows = formData.familyMembers?.length ? formData.familyMembers : [{}]; familyRows.forEach((row, index) => { %><tr data-repeat-row><td class="row-number"><%= index + 1 %></td><td><input name="family_<%= index %>_name" value="<%= row.name || '' %>" aria-label="Family member name"></td><td><input name="family_<%= index %>_relation" value="<%= row.relation || '' %>" aria-label="Relation"></td><td><input name="family_<%= index %>_note" value="<%= row.note || '' %>" aria-label="Note"></td><td><button class="row-action" type="button" data-remove-row aria-label="Remove family member">Remove</button></td></tr><% }) %>
+						</tbody></table></div>
+				</section>
+
+				<section class="tab-panel" id="healthPanel" role="tabpanel" hidden>
+					<div class="section-heading"><h3>Health information</h3></div>
+					<div class="field-grid health-grid">
+						<div class="field"><label for="healthHeightCm">Height (cm)</label><input id="healthHeightCm" name="healthHeightCm" type="number" min="0" step="0.1" value="<%= formData.health?.heightCm || '' %>"></div>
+						<div class="field"><label for="healthWeightKg">Weight (kg)</label><input id="healthWeightKg" name="healthWeightKg" type="number" min="0" step="0.1" value="<%= formData.health?.weightKg || '' %>"></div>
+						<div class="field"><label>BMI</label><div class="bmi-readout"><output id="bmiPreview"><%= formData.health?.bmi || '-' %></output><span class="count">Calculated from height and weight</span></div></div>
+						<div class="field"><label for="healthBloodGroup">Blood group</label><select id="healthBloodGroup" name="healthBloodGroup"><option value="">Select</option><% ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].forEach((value) => { %><option value="<%= value %>" <%= (formData.health?.bloodGroup || formData.bloodGroup) === value ? 'selected' : '' %>><%= value %></option><% }) %></select></div>
+						<div class="field"><label for="healthBloodPressure">Blood pressure</label><input id="healthBloodPressure" name="healthBloodPressure" value="<%= formData.health?.bloodPressure || formData.bloodPressure || '' %>" placeholder="e.g. 120/80"></div>
+						<div class="field"><label for="healthMedications">Medication</label><input id="healthMedications" name="healthMedications" value="<%= formData.health?.medications || '' %>"></div>
+						<div class="field"><label for="healthMedicalConditions">Medical conditions</label><input id="healthMedicalConditions" name="healthMedicalConditions" value="<%= formData.health?.medicalConditions || '' %>"></div>
+						<div class="field"><label for="healthAllergies">Allergies</label><input id="healthAllergies" name="healthAllergies" value="<%= formData.health?.allergies || '' %>"></div>
+						<div class="field field-wide"><label for="healthNotes">Health notes</label><textarea id="healthNotes" name="healthNotes"><%= formData.health?.notes || '' %></textarea></div>
+					</div>
+				</section>
+
+				<section class="tab-panel" id="documentsPanel" role="tabpanel" hidden>
+					<div class="section-heading"><h3>Employee documents</h3><button class="add-row" type="button" id="addEmployeeDocument">+ Add other document</button></div>
+					<p class="document-hint">Upload PDF, JPG, PNG, WebP, or GIF files. Maximum 10 MB per file. Files are stored in Azure.</p>
+					<div class="document-list" id="employeeDocumentRows">
+						<% const currentDocumentRows = formData.documentRows?.length ? formData.documentRows : defaultDocuments.map((name, index) => ({ index, name })); currentDocumentRows.forEach((row, index) => { %>
+							<div class="document-entry" data-repeat-row><span class="row-number"><%= index + 1 %></span><input type="text" name="documentName_<%= index %>" value="<%= row.name || '' %>" aria-label="Document name" maxlength="120" required><input type="file" name="documentFile_<%= index %>" accept="application/pdf,image/jpeg,image/png,image/webp,image/gif" aria-label="Upload <%= row.name || 'document' %>"><button class="row-action" type="button" data-remove-row aria-label="Remove document">Remove</button></div>
+						<% }) %>
+					</div>
+				</section>
+
+				<section class="tab-panel" id="othersPanel" role="tabpanel" hidden>
+					<div class="field"><label for="otherInformation">Other information</label><textarea id="otherInformation" name="otherInformation" maxlength="3000" placeholder="Additional employment notes"><%= formData.otherInformation || '' %></textarea></div>
+				</section>
+
+				<template id="qualificationRowTemplate"><tr data-repeat-row><td class="row-number"></td><td><input name="qualification___index___degree" aria-label="Degree"></td><td><input name="qualification___index___level" aria-label="Level"></td><td><input name="qualification___index___faculty" aria-label="Faculty"></td><td><input name="qualification___index___institution" aria-label="Institution"></td><td><input name="qualification___index___affiliation" aria-label="Affiliation"></td><td><input name="qualification___index___country" aria-label="Country"></td><td><input name="qualification___index___passedYearBs" aria-label="Passed year BS"></td><td><input name="qualification___index___passedYearAd" aria-label="Passed year AD"></td><td><input name="qualification___index___result" aria-label="Result"></td><td><input name="qualification___index___majorSubjects" aria-label="Major subjects"></td><td><input name="qualification___index___description" aria-label="Description"></td><td><button class="row-action" type="button" data-remove-row aria-label="Remove qualification">Remove</button></td></tr></template>
+				<template id="experienceRowTemplate"><tr data-repeat-row><td class="row-number"></td><td><input name="experience___index___title" aria-label="Title"></td><td><input name="experience___index___organization" aria-label="Organization"></td><td><input class="nepali-date-input" name="experience___index___beganOn" placeholder="YYYY-MM-DD" aria-label="Began on"></td><td><input class="nepali-date-input" name="experience___index___endedOn" placeholder="YYYY-MM-DD" aria-label="Ended on"></td><td><input name="experience___index___description" aria-label="Description"></td><td><button class="row-action" type="button" data-remove-row aria-label="Remove experience">Remove</button></td></tr></template>
+				<template id="skillRowTemplate"><tr data-repeat-row><td class="row-number"></td><td><input name="skill___index___code" aria-label="Code"></td><td><input name="skill___index___name" aria-label="Name"></td><td><input name="skill___index___description" aria-label="Description"></td><td><button class="row-action" type="button" data-remove-row aria-label="Remove skill">Remove</button></td></tr></template>
+				<template id="trainingRowTemplate"><tr data-repeat-row><td class="row-number"></td><td><input name="training___index___trainingName" aria-label="Training name"></td><td><input class="nepali-date-input" name="training___index___fromDate" placeholder="YYYY-MM-DD" aria-label="From date"></td><td><input class="nepali-date-input" name="training___index___toDate" placeholder="YYYY-MM-DD" aria-label="To date"></td><td><input name="training___index___description" aria-label="Description"></td><td><button class="row-action" type="button" data-remove-row aria-label="Remove training">Remove</button></td></tr></template>
+				<template id="familyRowTemplate"><tr data-repeat-row><td class="row-number"></td><td><input name="family___index___name" aria-label="Name"></td><td><input name="family___index___relation" aria-label="Relation"></td><td><input name="family___index___note" aria-label="Note"></td><td><button class="row-action" type="button" data-remove-row aria-label="Remove family member">Remove</button></td></tr></template>
+				<template id="documentRowTemplate"><div class="document-entry" data-repeat-row><span class="row-number"></span><input type="text" name="documentName___index__" placeholder="Document name" aria-label="Document name" maxlength="120" required><input type="file" name="documentFile___index__" accept="application/pdf,image/jpeg,image/png,image/webp,image/gif" aria-label="Upload document"><button class="row-action" type="button" data-remove-row aria-label="Remove document">Remove</button></div></template>
+				<div class="form-actions"><button class="button button-secondary" type="reset">Clear form</button><button class="button button-primary" type="submit">Save employee</button></div>
+			</form>
+		</section>
+
+		<section class="directory-panel" aria-labelledby="employee-list-title">
+			<div class="directory-heading">
+				<h2 id="employee-list-title">Employee directory</h2>
+				<span class="directory-count"><%= employees.length %> profile<%= employees.length === 1 ? '' : 's' %></span>
+			</div>
+			<% if (employees.length) { %>
+				<div class="table-wrap">
+					<table>
+						<thead>
+							<tr><th>Employee code</th><th>Name</th><th>Designation</th><th>Department</th><th>Mobile</th><th>Email</th><th>Documents</th><th>Status</th></tr>
+						</thead>
+						<tbody>
+							<% employees.forEach((employee) => { %>
+								<tr>
+									<td class="employee-code"><%= employee.employeeCode %></td>
+									<td class="employee-name"><%= employee.staffName %></td>
+									<td><%= employee.designation || '-' %></td>
+									<td><%= employee.department || '-' %></td>
+									<td><%= employee.mobileNumber || '-' %></td>
+									<td><%= employee.email || '-' %></td>
+									<td><% if (employee.documents?.length) { %><% employee.documents.forEach((document, index) => { %><a href="<%= document.url %>" target="_blank" rel="noopener"><%= document.documentName %></a><%= index < employee.documents.length - 1 ? ', ' : '' %><% }) %><% } else { %>-<% } %></td>
+									<td><span class="status"><%= employee.employmentStatus || 'Active' %></span></td>
+								</tr>
+							<% }) %>
+						</tbody>
+					</table>
+				</div>
+			<% } else { %>
+				<div class="empty-state">No employee profiles have been added yet.</div>
+			<% } %>
+		</section>
+	</main>
+	<script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
+	<script>
+		const initializeDatePickers = root => {
+			root.querySelectorAll('.nepali-date-input').forEach(input => {
+				if (typeof input.NepaliDatePicker === 'function' && !input.dataset.datePickerReady) {
+					input.NepaliDatePicker({ dateFormat: 'YYYY-MM-DD', language: 'english' });
+					input.dataset.datePickerReady = 'true';
+				}
+			});
+		};
+
+		const activateTab = button => {
+			const group = button.closest('[data-tab-group]');
+			group.querySelectorAll('.tab-button').forEach(tab => {
+				tab.setAttribute('aria-selected', String(tab === button));
+			});
+			group.querySelectorAll('[data-tab-target]').forEach(tab => {
+				document.getElementById(tab.dataset.tabTarget).hidden = tab !== button;
+			});
+			const target = document.getElementById(button.dataset.tabTarget);
+			if (target) initializeDatePickers(target);
+		};
+
+		document.querySelectorAll('.tab-button').forEach(button => button.addEventListener('click', () => activateTab(button)));
+		initializeDatePickers(document.getElementById('generalPanel'));
+
+		function reindexRows(container) {
+			const prefix = container.dataset.rowPrefix;
+			const rows = Array.from(container.querySelectorAll('[data-repeat-row]'));
+			rows.forEach((row, index) => {
+				const number = row.querySelector('.row-number');
+				if (number) number.textContent = String(index + 1);
+				row.querySelectorAll('[name]').forEach(input => {
+					input.name = prefix === 'document'
+						? input.name.replace(/^document(Name|File)_\d+$/, (_, type) => `document${type}_${index}`)
+						: input.name.replace(new RegExp(`^${prefix}_\\d+_`), `${prefix}_${index}_`);
+				});
+			});
+			const countInput = document.getElementById(`${prefix}Count`);
+			if (countInput) countInput.value = String(rows.length);
+		}
+
+		document.querySelectorAll('[data-add-row]').forEach(button => button.addEventListener('click', () => {
+			const prefix = button.dataset.addRow;
+			const container = document.getElementById(`${prefix}Rows`);
+			const template = document.getElementById(`${prefix}RowTemplate`);
+			const nextIndex = container.querySelectorAll('[data-repeat-row]').length;
+			const rowTemplate = document.createElement('template');
+			rowTemplate.innerHTML = template.innerHTML.replaceAll('__index__', String(nextIndex));
+			container.append(rowTemplate.content.cloneNode(true));
+			reindexRows(container);
+			initializeDatePickers(container);
+		}));
+
+		document.addEventListener('click', event => {
+			const removeButton = event.target.closest('[data-remove-row]');
+			if (!removeButton) return;
+			const row = removeButton.closest('[data-repeat-row]');
+			const container = removeButton.closest('[data-row-prefix]');
+			if (row && container) {
+				row.remove();
+				reindexRows(container);
+			}
+		});
+
+		const heightInput = document.getElementById('healthHeightCm');
+		const weightInput = document.getElementById('healthWeightKg');
+		const bmiPreview = document.getElementById('bmiPreview');
+		const updateBmi = () => {
+			const height = Number(heightInput.value) / 100;
+			const weight = Number(weightInput.value);
+			bmiPreview.textContent = height > 0 && weight > 0 ? (weight / (height * height)).toFixed(1) : '-';
+		};
+		heightInput.addEventListener('input', updateBmi);
+		weightInput.addEventListener('input', updateBmi);
+
+		document.querySelector('#employeeProfileForm').addEventListener('submit', event => {
+			event.currentTarget.querySelectorAll('.nepali-date-input').forEach(input => {
+				const match = input.value.match(/^([0-9०-९]{4})-([0-9०-९]{1,2})-([0-9०-९]{1,2})$/);
+				if (!match) return;
+				const zero = /[०-९]/.test(input.value) ? '०' : '0';
+				input.value = `${match[1]}-${match[2].padStart(2, zero)}-${match[3].padStart(2, zero)}`;
+			});
+		});
+	</script>
+</body>
+</html>

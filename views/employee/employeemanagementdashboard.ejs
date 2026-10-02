@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Employee dashboard</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+	<style>
+		:root { color-scheme: light; --ink: #1b2940; --muted: #6a7585; --line: #dce2e9; --paper: #fff; --canvas: #f1f3f6; --blue: #24477b; --blue-soft: #e8eef7; font-family: 'DM Sans', sans-serif; color: var(--ink); background: var(--canvas); }
+		* { box-sizing: border-box; }
+		body { margin: 0; min-height: 100vh; background: var(--canvas); }
+		.page-shell { width: min(1500px, calc(100% - 34px)); margin: 0 auto; padding: 28px 0 52px; }
+		h1,h2 { font-family: 'Manrope',sans-serif; }
+		h1 { margin: 0; font-size: 1.6rem; }
+		.page-header { display:flex; align-items:end; justify-content:space-between; gap:16px; margin-bottom:20px; }
+		.muted { margin:6px 0 0; color:var(--muted); }
+		.metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin-bottom:20px; }
+		.metric,.panel { border:1px solid var(--line); border-radius:6px; background:var(--paper); }
+		.metric { padding:18px; }
+		.metric-label { color:var(--muted); font-size:.8rem; font-weight:700; }
+		.metric-value { display:block; margin-top:8px; color:var(--blue); font-family:'Manrope',sans-serif; font-size:1.7rem; font-weight:800; }
+		.panel-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 18px; border-bottom:1px solid var(--line); }
+		.panel-heading h2 { margin:0; font-size:1rem; }
+		.button { display:inline-flex; align-items:center; gap:8px; min-height:38px; padding:0 13px; border:1px solid var(--blue); border-radius:4px; background:var(--blue); color:white; text-decoration:none; font-weight:700; }
+		table { width:100%; border-collapse:collapse; white-space:nowrap; font-size:.83rem; }
+		th,td { padding:11px 14px; border-bottom:1px solid #e9edf2; text-align:left; }
+		th { background:#f5f7fa; color:var(--muted); font-size:.68rem; text-transform:uppercase; }
+		.employee-code { color:var(--blue); font-weight:800; }
+		tbody tr:last-child td { border-bottom:0; }
+		.table-wrap { overflow-x:auto; }
+		.empty { padding:26px; color:var(--muted); text-align:center; }
+		@media(max-width:700px) { .page-shell { width:calc(100% - 20px); padding-top:18px; } .metrics { grid-template-columns:1fr; } .page-header { align-items:flex-start; flex-direction:column; } }
+	</style>
+</head>
+<body>
+	<%- include('employeesidenav', { currentPage, selectedEmployee }) %>
+	<main class="page-shell">
+		<header class="page-header"><div><p class="muted">People / Human resources</p><h1>Employee dashboard</h1></div><a class="button" href="/employeedetail?new=1"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add employee</a></header>
+		<section class="metrics" aria-label="Employee summary">
+			<div class="metric"><span class="metric-label">Employee profiles</span><strong class="metric-value"><%= employees.length %></strong></div>
+			<div class="metric"><span class="metric-label">Active employees</span><strong class="metric-value"><%= activeEmployees %></strong></div>
+			<div class="metric"><span class="metric-label">Departments</span><strong class="metric-value"><%= new Set(employees.map(employee => employee.department).filter(Boolean)).size %></strong></div>
+		</section>
+		<section class="panel"><div class="panel-heading"><h2>Employees</h2><a class="button" href="/employeedata"><i class="fa-solid fa-list" aria-hidden="true"></i> Employee list</a></div>
+			<% if (employees.length) { %><div class="table-wrap"><table><thead><tr><th>Employee code</th><th>Name</th><th>Designation</th><th>Department</th><th>Contact</th><th>Status</th></tr></thead><tbody><% employees.slice(0,10).forEach(employee => { %><tr><td class="employee-code"><%= employee.employeeCode %></td><td><a href="/employeedetail?employeeId=<%= employee._id %>"><%= employee.staffName %></a></td><td><%= employee.designation || '-' %></td><td><%= employee.department || '-' %></td><td><%= employee.mobileNumber || '-' %></td><td><%= employee.jobStatus || employee.employmentStatus || 'Active' %></td></tr><% }) %></tbody></table></div><% } else { %><div class="empty">No employee profiles have been added.</div><% } %>
+		</section>
+	</main>
+</body>
+</html>

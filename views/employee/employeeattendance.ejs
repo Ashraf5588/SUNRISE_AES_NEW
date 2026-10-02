@@ -1,19 +1,183 @@
 <!DOCTYPE html>
-<html>
-<head><title>Attendance Dashboard</title></head>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Employee attendance</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+	<link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css">
+	<style>
+		:root { color-scheme: light; --ink: #20342e; --muted: #667871; --line: #dce6df; --paper: #fff; --canvas: #f1f5f1; --green: #17694d; --green-dark: #10563d; --green-soft: #e7f2eb; --orange: #d66b3d; --red: #a53535; font-family: 'DM Sans', sans-serif; color: var(--ink); background: var(--canvas); }
+		* { box-sizing: border-box; }
+		body { margin: 0; min-height: 100vh; background-color: var(--canvas); background-image: linear-gradient(135deg, rgba(23, 105, 77, .035) 25%, transparent 25%, transparent 50%, rgba(23, 105, 77, .035) 50%, rgba(23, 105, 77, .035) 75%, transparent 75%, transparent); background-size: 28px 28px; }
+		button, input, select { font: inherit; }
+		.page-shell { width: min(1440px, calc(100% - 40px)); margin: 0 auto; padding: 34px 0 60px; }
+		.page-header, .toolbar, .table-heading, .pagination { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+		.page-header { margin-bottom: 22px; }
+		.eyebrow { margin: 0 0 6px; color: var(--orange); font-size: .72rem; font-weight: 800; text-transform: uppercase; }
+		h1, h2 { font-family: 'Manrope', sans-serif; }
+		h1 { margin: 0; font-size: 1.9rem; }
+		.page-intro { margin: 6px 0 0; color: var(--muted); }
+		.panel { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; }
+		.toolbar { justify-content: flex-start; flex-wrap: wrap; padding: 16px; border-bottom: 1px solid var(--line); }
+		.filter { display: flex; align-items: center; gap: 8px; }
+		label { color: var(--muted); font-size: .78rem; font-weight: 700; }
+		input, select { min-height: 39px; padding: 8px 10px; border: 1px solid #cddad1; border-radius: 5px; background: #fff; color: var(--ink); }
+		input:focus, select:focus, button:focus-visible, a:focus-visible { outline: 3px solid rgba(23, 105, 77, .18); outline-offset: 2px; }
+		.button { display: inline-flex; align-items: center; justify-content: center; min-height: 39px; padding: 0 14px; border: 1px solid transparent; border-radius: 5px; cursor: pointer; font-weight: 700; text-decoration: none; }
+		.button-primary { background: var(--green); color: #fff; }
+		.button-primary:hover { background: var(--green-dark); }
+		.button-secondary { border-color: var(--line); background: #f4f7f4; color: var(--ink); }
+		.table-heading { padding: 17px 18px; }
+		h2 { margin: 0; font-size: 1rem; }
+		.count { color: var(--muted); font-size: .82rem; }
+		.table-wrap { overflow: auto; max-height: 70vh; }
+		table { width: 100%; border-collapse: collapse; white-space: nowrap; font-size: .8rem; }
+		th, td { padding: 10px 12px; border-bottom: 1px solid #e9efea; text-align: left; }
+		th { position: sticky; top: 0; z-index: 1; padding: 0; background: #f5f8f5; color: var(--muted); font-size: .69rem; text-transform: uppercase; }
+		.sort-button { width: 100%; min-height: 40px; padding: 8px 12px; border: 0; background: transparent; color: inherit; text-align: left; font-size: inherit; font-weight: 800; text-transform: inherit; cursor: pointer; }
+		tbody tr:hover { background: #f8fbf8; }
+		.employee-name { font-weight: 700; }
+		.employee-code { color: var(--green-dark); font-weight: 800; }
+		.status-late { color: #9b4c16; font-weight: 700; }
+		.status-missed { color: var(--red); font-weight: 700; }
+		.status-on-time { color: var(--green-dark); }
+		.pagination { justify-content: flex-end; padding: 12px 16px; color: var(--muted); font-size: .82rem; }
+		.page-controls { display: flex; align-items: center; gap: 8px; }
+		.page-controls button { min-height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 5px; background: #fff; color: var(--ink); cursor: pointer; }
+		.page-controls button:disabled { opacity: .45; cursor: not-allowed; }
+		.empty-state { padding: 30px; color: var(--muted); text-align: center; }
+		@media (max-width: 700px) { .page-shell { width: calc(100% - 24px); padding-top: 22px; } .page-header { align-items: flex-start; flex-direction: column; } .toolbar { align-items: stretch; } .filter { justify-content: space-between; width: 100%; } .filter input { flex: 1; } .table-heading { align-items: flex-start; flex-direction: column; } .pagination { align-items: flex-start; flex-direction: column; } }
+	</style>
+</head>
 <body>
-  <h1>ZKTeco Attendance</h1>
-  <p>Device: <%= deviceSN %></p>
-  <table border="1" cellpadding="5">
-    <tr><th>Student ID</th><th>Name</th><th>Time</th><th>Mode</th></tr>
-    <% attendances.forEach(attendance => { %>
-      <tr>
-        <td><%= attendance.pin %></td>
-        <td><%= attendance.name %></td>
-        <td><%= new Date(attendance.punchTime).toLocaleString() %></td>
-        <td><%= attendance.verifyMode %></td>
-      </tr>
-    <% }) %>
-  </table>
+	<%- include('employeesidenav', { currentPage: 'attendance', selectedEmployee: null }) %>
+	<main class="page-shell">
+		<header class="page-header">
+			<div>
+				<p class="eyebrow">People / Attendance</p>
+				<h1>Employee attendance</h1>
+				<p class="page-intro">Choose the attendance range using Bikram Sambat dates.</p>
+			</div>
+			<% if (deviceSN) { %><span class="count">Device SN: <%= deviceSN %></span><% } %>
+		</header>
+		<section class="panel" aria-label="Attendance report">
+			<form class="toolbar" method="get" action="/employeeattendance">
+				<div class="filter"><label for="startDateBs">From (BS)</label><input id="startDateBs" class="nepali-date-input" name="startDateBs" type="text" inputmode="numeric" autocomplete="off" placeholder="YYYY-MM-DD" value="<%= startDateBs %>" required></div>
+				<div class="filter"><label for="endDateBs">To (BS)</label><input id="endDateBs" class="nepali-date-input" name="endDateBs" type="text" inputmode="numeric" autocomplete="off" placeholder="YYYY-MM-DD" value="<%= endDateBs %>" required></div>
+				<button class="button button-secondary" type="submit">Apply dates</button>
+				<a class="button button-primary" href="/employeeattendance/export?startDateBs=<%= encodeURIComponent(startDateBs) %>&amp;endDateBs=<%= encodeURIComponent(endDateBs) %>" download>Export to Excel</a>
+			</form>
+			<div class="table-heading">
+				<h2>Daily attendance details</h2>
+				<span class="count"><span id="totalRows"><%= reportRows.length %></span> records</span>
+			</div>
+			<% if (reportRows.length) { %>
+				<div class="table-wrap">
+					<table id="attendanceTable">
+						<thead><tr>
+							<% [['sn', 'SN'], ['employeeName', 'Employee name'], ['employeeCode', 'Code'], ['branchName', 'Branch name'], ['department', 'Department'], ['nepaliDate', 'Date (BS)'], ['plannedIn', 'Planned in'], ['plannedOut', 'Planned out'], ['actualIn', 'Actual in'], ['actualOut', 'Actual out'], ['lateInStatus', 'Late in status'], ['earlyOutStatus', 'Early out status'], ['leaveType', 'Leave type'], ['remarks', 'Remarks']].forEach(([key, label]) => { %>
+								<th scope="col"><button class="sort-button" type="button" data-sort="<%= key %>" aria-label="Sort by <%= label %>"><%= label %> <span aria-hidden="true">↕</span></button></th>
+							<% }) %>
+						</tr></thead>
+						<tbody>
+							<% reportRows.forEach((row, index) => { %>
+								<tr>
+									<td data-value="<%= index + 1 %>"><%= index + 1 %></td>
+									<td class="employee-name" data-value="<%= row.employeeName %>"><%= row.employeeName %></td>
+									<td class="employee-code" data-value="<%= row.employeeCode %>"><%= row.employeeCode %></td>
+									<td data-value="<%= row.branchName %>"><%= row.branchName %></td>
+									<td data-value="<%= row.department %>"><%= row.department %></td>
+									<td data-value="<%= row.date %>"><%= row.nepaliDate %></td>
+									<td data-value="<%= row.plannedIn %>"><%= row.plannedIn %></td>
+									<td data-value="<%= row.plannedOut %>"><%= row.plannedOut %></td>
+									<td data-value="<%= row.actualIn %>" class="<%= row.actualIn.startsWith('Missed') ? 'status-missed' : '' %>"><%= row.actualIn %></td>
+									<td data-value="<%= row.actualOut %>" class="<%= row.actualOut.startsWith('Missed') ? 'status-missed' : '' %>"><%= row.actualOut %></td>
+									<td data-value="<%= row.lateMinutes %>" class="<%= row.lateMinutes ? 'status-late' : row.actualIn.startsWith('Missed') ? 'status-missed' : 'status-on-time' %>"><%= row.lateInStatus %></td>
+									<td data-value="<%= row.earlyMinutes %>" class="<%= row.earlyMinutes ? 'status-late' : row.actualOut.startsWith('Missed') ? 'status-missed' : 'status-on-time' %>"><%= row.earlyOutStatus %></td>
+									<td data-value="<%= row.leaveType %>"><%= row.leaveType %></td>
+									<td data-value="<%= row.remarks %>"><%= row.remarks %></td>
+								</tr>
+							<% }) %>
+						</tbody>
+					</table>
+				</div>
+				<div class="pagination">
+					<label>Rows per page <select id="pageSize"><option>25</option><option>50</option><option>100</option><option value="all">All</option></select></label>
+					<div class="page-controls"><span id="pageSummary"></span><button id="previousPage" type="button" aria-label="Previous page">Previous</button><button id="nextPage" type="button" aria-label="Next page">Next</button></div>
+				</div>
+			<% } else { %>
+				<div class="empty-state">No attendance records or employee profiles were found for this date range.</div>
+			<% } %>
+		</section>
+	</main>
+	<script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
+	<script>
+		document.querySelectorAll('.nepali-date-input').forEach(input => {
+			if (typeof input.NepaliDatePicker === 'function') {
+				input.NepaliDatePicker({ dateFormat: 'YYYY-MM-DD', language: 'english' });
+			}
+		});
+		document.querySelector('.toolbar').addEventListener('submit', event => {
+			event.currentTarget.querySelectorAll('.nepali-date-input').forEach(input => {
+				const match = input.value.match(/^([0-9०-९]{4})-([0-9०-९]{1,2})-([0-9०-९]{1,2})$/);
+				if (!match) return;
+				const zero = /[०-९]/.test(input.value) ? '०' : '0';
+				input.value = `${match[1]}-${match[2].padStart(2, zero)}-${match[3].padStart(2, zero)}`;
+			});
+		});
+
+		const table = document.getElementById('attendanceTable');
+		if (table) {
+			const body = table.tBodies[0];
+			const pageSizeSelect = document.getElementById('pageSize');
+			const pageSummary = document.getElementById('pageSummary');
+			const previousButton = document.getElementById('previousPage');
+			const nextButton = document.getElementById('nextPage');
+			let rows = Array.from(body.rows);
+			let page = 0;
+			let sortKey = '';
+			let sortDirection = 1;
+
+			function renderPage() {
+				const size = pageSizeSelect.value === 'all' ? rows.length : Number(pageSizeSelect.value);
+				const pageCount = Math.max(1, Math.ceil(rows.length / size));
+				page = Math.min(page, pageCount - 1);
+				rows.forEach((row, index) => {
+					row.cells[0].textContent = String(index + 1);
+					row.hidden = index < page * size || index >= (page + 1) * size;
+				});
+				pageSummary.textContent = `${page + 1} / ${pageCount}`;
+				previousButton.disabled = page === 0;
+				nextButton.disabled = page >= pageCount - 1;
+			}
+
+			table.querySelectorAll('[data-sort]').forEach(button => button.addEventListener('click', () => {
+				const key = button.dataset.sort;
+				const column = Array.from(table.tHead.rows[0].cells).indexOf(button.closest('th'));
+				sortDirection = sortKey === key ? -sortDirection : 1;
+				sortKey = key;
+				rows.sort((first, second) => {
+					const firstValue = first.cells[column].dataset.value || first.cells[column].textContent;
+					const secondValue = second.cells[column].dataset.value || second.cells[column].textContent;
+					const firstNumber = Number(firstValue);
+					const secondNumber = Number(secondValue);
+					return (Number.isFinite(firstNumber) && Number.isFinite(secondNumber)
+						? firstNumber - secondNumber
+						: firstValue.localeCompare(secondValue, undefined, { numeric: true, sensitivity: 'base' })) * sortDirection;
+				});
+				rows.forEach(row => body.appendChild(row));
+				page = 0;
+				renderPage();
+			}));
+
+			pageSizeSelect.addEventListener('change', () => { page = 0; renderPage(); });
+			previousButton.addEventListener('click', () => { page -= 1; renderPage(); });
+			nextButton.addEventListener('click', () => { page += 1; renderPage(); });
+			renderPage();
+		}
+	</script>
 </body>
-</html>   
+</html>

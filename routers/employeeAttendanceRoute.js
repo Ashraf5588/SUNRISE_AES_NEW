@@ -2,8 +2,14 @@ const express = require('express');
 const employee = express.Router();
 
 const employeeController = require('../controller/employeeController/employeeController');
+const { verifytoken, isAdmin } = require('../middleware/auth');
 
 
+employee.get('/employeedetail', verifytoken, isAdmin, employeeController.showEmployeeDetails);
+employee.get('/employeemanagementdashboard', verifytoken, isAdmin, employeeController.showEmployeeManagementDashboard);
+employee.get('/employeedata', verifytoken, isAdmin, employeeController.showEmployeeData);
+employee.post('/employeedetail', verifytoken, isAdmin, employeeController.uploadEmployeeDocuments, employeeController.createEmployeeDetails);
+employee.post('/employeedetail/:id', verifytoken, isAdmin, employeeController.uploadEmployeeDocuments, employeeController.updateEmployeeDetails);
 employee.post(
 	'/iclock/cdata',
 	express.text({ type: ['text/plain', 'application/octet-stream'] }),
@@ -35,6 +41,7 @@ employee.get('/iclock/cdata', (req, res) => {
 employee.all('/iclock/cdata', (req, res) => {
 	res.set('Allow', 'POST').sendStatus(405);
 });
+employee.get('/employeeattendance/export', employeeController.exportEmployeeAttendance);
 employee.get('/employeeattendance', employeeController.getEmployeeAttendance);
 
 module.exports = employee;
