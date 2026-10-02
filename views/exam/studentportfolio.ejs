@@ -1899,6 +1899,8 @@
          <label class="filter-checkbox"><input type="checkbox" class="export-field" value="roll" checked /> Roll</label>
          <label class="filter-checkbox"><input type="checkbox" class="export-field" value="class" checked /> Class</label>
          <label class="filter-checkbox"><input type="checkbox" class="export-field" value="section" checked /> Section</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="address" /> Address</label>
+         <label class="filter-checkbox"><input type="checkbox" class="export-field" value="busStop" /> Bus Stop</label>
          <label class="filter-checkbox"><input type="checkbox" class="export-field" value="gender" /> Gender</label>
          <label class="filter-checkbox"><input type="checkbox" class="export-field" value="age" /> Age</label>
          <label class="filter-checkbox"><input type="checkbox" class="export-field" value="dob" /> Date of Birth</label>
@@ -3086,6 +3088,8 @@
             roll: roster.roll || '',
             class: roster.studentClass || '',
             section: roster.section || '',
+            address: roster.address || '',
+            busStop: roster.busStop || '',
             gender: roster.gender || '',
             age: roster.age || '',
             dob: roster.dob ? formatDateOnly(roster.dob) : '',
@@ -3148,6 +3152,8 @@
          roll: 'Roll',
          class: 'Class',
          section: 'Section',
+         address: 'Address',
+         busStop: 'Bus Stop',
          gender: 'Gender',
          age: 'Age',
          dob: 'Date of Birth',

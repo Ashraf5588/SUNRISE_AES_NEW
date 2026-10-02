@@ -16,6 +16,7 @@ const aspectRouter = require('./routers/aspect');
 const app = express();
 const {verifytoken} = require('./middleware/auth');
 const cors = require("cors");
+const employee = require('./routers/employeeAttendanceRoute');
 
 app.use(cors({
   origin: [
@@ -111,6 +112,8 @@ app.use(express.urlencoded({
   // Allow dots in field names to be part of the field name and not create nested objects
   allowDots: true
 }))
+app.use(express.text({ type: 'text/plain' }));
+app.use(employee);
 
 app.get('/site.webmanifest', (req, res) => {
   res.type('application/manifest+json');
@@ -377,6 +380,7 @@ app.get('/convert-docx/:filename', (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 app.use('/inventory', inventory);
 app.use('/leave', leave);
 app.use('/homework', homework);
