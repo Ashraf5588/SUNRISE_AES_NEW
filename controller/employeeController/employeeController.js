@@ -272,7 +272,7 @@ exports.getEmployeeAttendance = async (req, res) => {
             .sort({ punchTime: -1 })
             .lean();
 
-        return res.render('employee/employeeAttendance', {
+        return res.render('employee/employeeattendance', {
             attendances,
             startDate: startDate || '',
             endDate: endDate || '',
