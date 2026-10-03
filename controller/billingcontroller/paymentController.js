@@ -30,10 +30,21 @@ exports.createPayment = async (req, res) => {
 };
 
 exports.viewReceipt = async (req, res) => {
-  const payment = await Payment.findById(req.params.id)
-    .populate('student')
-    .populate('allocations.invoice');
-  res.render('payments/receipt', { payment });
+  if (!/^[0-9a-fA-F]{24}$/.test(req.params.id)) {
+    return res.sendStatus(404);
+  }
+
+  try {
+    const payment = await Payment.findById(req.params.id)
+      .populate('student')
+      .populate('allocations.invoice');
+
+    if (!payment) return res.sendStatus(404);
+    return res.render('payments/receipt', { payment });
+  } catch (error) {
+    console.error('Failed to load payment receipt:', error);
+    return res.sendStatus(500);
+  }
 };
 
 exports.listPayments = async (req, res) => {

@@ -5,6 +5,6 @@ const paymentController = require('../controller/billingcontroller/paymentContro
 router.get('/', paymentController.listPayments);
 router.get('/new/:studentId', paymentController.showPaymentForm);
 router.post('/', paymentController.createPayment);
-router.get('/:id', paymentController.viewReceipt);
+router.get('/:id([0-9a-fA-F]{24})', paymentController.viewReceipt);
 
 module.exports = router;

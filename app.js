@@ -149,6 +149,10 @@ app.use('/uploads', (req, res, next) => {
   next();
 });
 
+app.use('/uploads', (req, res) => {
+  res.sendStatus(404);
+});
+
 // Dedicated PDF viewing route for better VM compatibility
 app.get('/view-pdf/:filename', (req, res) => {
   try {
