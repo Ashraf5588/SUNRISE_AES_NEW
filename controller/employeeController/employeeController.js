@@ -8,8 +8,61 @@ const path = require('path');
 const { BlobServiceClient } = require('@azure/storage-blob');
 const { staffSchema } = require('../../model/staffschema');
 const { leaveApplicationSchema } = require('../../model/leaveschema/leavetypeschma');
+const Event = require('../../model/eventmodel');
+const { getRecentNotices } = require('../noticecontroller/noticecontroller');
+const ManualPunchRequest = require('../../model/employeeSchema/manualPunchRequestSchema');
+const { Branch, Department, DepartmentSection, Designation, Shift } = require('../../model/employeeSchema/employeeSetupSchema');
 const Staff = mongoose.models.staff || mongoose.model('staff', staffSchema, 'staff');
 const LeaveApplication = mongoose.models.LeaveApplication || mongoose.model('LeaveApplication', leaveApplicationSchema, 'leaveApplications');
+const employeeSetupConfigs = {
+    branches: {
+        title: 'Branch setup', singular: 'Branch', path: '/branchsetup', view: 'employee/branchsetup', Model: Branch,
+        fields: [
+            { name: 'code', label: 'Code', required: true }, { name: 'name', label: 'Name', required: true },
+            { name: 'parentBranchName', label: 'Parent branch name', type: 'branch' }, { name: 'branchHead', label: 'Branch head' },
+            { name: 'branchAssistantHead', label: 'Branch assistant head' }, { name: 'address', label: 'Address' },
+            { name: 'contactNumber', label: 'Contact number', type: 'tel' }, { name: 'email', label: 'Email', type: 'email' }
+        ],
+        isInUse: async record => Boolean(await Staff.exists({ branchName: record.name }) || await Branch.exists({ parentBranchName: record.name }))
+    },
+    departments: {
+        title: 'Department setup', singular: 'Department', path: '/departmentsetup', view: 'employee/departmentsetup', Model: Department,
+        fields: [
+            { name: 'code', label: 'Code', required: true }, { name: 'name', label: 'Name', required: true },
+            { name: 'nameNp', label: 'Name (Nepali)' }
+        ],
+        isInUse: async record => Boolean(await Staff.exists({ department: record.name }) || await DepartmentSection.exists({ department: record._id }))
+    },
+    sections: {
+        title: 'Department section setup', singular: 'Section', path: '/sectionsetup', view: 'employee/sectionsetup', Model: DepartmentSection,
+        fields: [
+            { name: 'code', label: 'Code', required: true }, { name: 'name', label: 'Section name', required: true },
+            { name: 'nameNp', label: 'Section name (Nepali)' }, { name: 'departmentId', label: 'Department', type: 'department', required: true }
+        ],
+        isInUse: record => Staff.exists({ section: record.name })
+    },
+    designations: {
+        title: 'Designation setup', singular: 'Designation', path: '/designationsetup', view: 'employee/desgination', Model: Designation,
+        fields: [
+            { name: 'code', label: 'Code', required: true }, { name: 'name', label: 'Name', required: true },
+            { name: 'nameNp', label: 'Name (Nepali)' }, { name: 'designationLevel', label: 'Designation level' },
+            { name: 'maxSalary', label: 'Max salary', type: 'number', min: 0 }, { name: 'minSalary', label: 'Min salary', type: 'number', min: 0 },
+            { name: 'salaryBasis', label: 'Salary basis', type: 'select', options: ['Monthly', 'Daily', 'Hourly', 'Yearly'], required: true }
+        ],
+        isInUse: record => Staff.exists({ designation: record.name })
+    },
+    shifts: {
+        title: 'Shift setup', singular: 'Shift', path: '/shiftsetup', view: 'employee/shiftsetup', Model: Shift,
+        fields: [
+            { name: 'code', label: 'Code', required: true }, { name: 'name', label: 'Name', required: true },
+            { name: 'nameNp', label: 'Name (Nepali)' }, { name: 'shiftStart', label: 'Shift start', type: 'time', required: true },
+            { name: 'shiftEnd', label: 'Shift end', type: 'time', required: true }, { name: 'lunchStart', label: 'Lunch start', type: 'time' },
+            { name: 'lunchEnd', label: 'Lunch end time', type: 'time' },
+            { name: 'shiftType', label: 'Shift type', type: 'select', options: ['Fixed', 'Rotational', 'Flexible'], required: true }
+        ],
+        isInUse: record => Staff.exists({ shiftName: record.name })
+    }
+};
 const DEFAULT_EMPLOYEE_DOCUMENTS = [
     'Citizenship',
     'PAN card',
@@ -69,6 +122,136 @@ const getEmployeeProfiles = () => Staff.find({
     employeeCode: { $exists: true, $ne: '' }
 }).sort({ staffName: 1 }).lean();
 
+const getEmployeeSetupOptions = async () => {
+    const [branches, departments, sections, designations, shifts] = await Promise.all([
+        Branch.find({}).sort({ name: 1 }).lean(),
+        Department.find({}).sort({ name: 1 }).lean(),
+        DepartmentSection.find({}).sort({ name: 1 }).lean(),
+        Designation.find({}).sort({ name: 1 }).lean(),
+        Shift.find({}).sort({ name: 1 }).lean()
+    ]);
+    return { branches, departments, departmentSections: sections, designations, shifts };
+};
+
+const employeeIdentifierIsUsed = async (field, value, excludeEmployeeId) => {
+    const storedValue = {
+        $toLower: {
+            $trim: {
+                input: {
+                    $convert: {
+                        input: { $ifNull: [`$${field}`, ''] },
+                        to: 'string',
+                        onError: '',
+                        onNull: ''
+                    }
+                }
+            }
+        }
+    };
+    const filter = {
+        $expr: { $eq: [storedValue, String(value || '').trim().toLowerCase()] }
+    };
+    if (mongoose.isValidObjectId(excludeEmployeeId)) {
+        filter._id = { $ne: new mongoose.Types.ObjectId(excludeEmployeeId) };
+    }
+    return Boolean(await Staff.collection.findOne(filter, { projection: { _id: 1 } }));
+};
+
+const findDuplicateEmployeeIdentifier = async (formData, excludeEmployeeId) => {
+    for (const field of ['employeeCode', 'deviceCode']) {
+        const value = String(formData[field] || '').trim();
+        if (value && await employeeIdentifierIsUsed(field, value, excludeEmployeeId)) return field;
+    }
+    return '';
+};
+
+exports.checkEmployeeIdentifier = async (req, res) => {
+    const field = String(req.query.field || '');
+    const value = String(req.query.value || '').trim();
+    if (!['employeeCode', 'deviceCode'].includes(field)) {
+        return res.status(400).json({ error: 'Choose an employee code field.' });
+    }
+    if (!value) return res.json({ available: true });
+
+    try {
+        const available = !(await employeeIdentifierIsUsed(field, value, req.query.employeeId));
+        return res.json({ available });
+    } catch (error) {
+        console.error('Unable to check employee code availability:', error);
+        return res.status(500).json({ error: 'Unable to check this code right now.' });
+    }
+};
+
+const findEmployeeByNormalizedValue = (field, value) => {
+    const normalizedValue = String(value || '').trim().toLowerCase();
+    if (!normalizedValue) return null;
+    const storedValue = {
+        $toLower: {
+            $trim: {
+                input: {
+                    $convert: {
+                        input: { $ifNull: [`$${field}`, ''] },
+                        to: 'string',
+                        onError: '',
+                        onNull: ''
+                    }
+                }
+            }
+        }
+    };
+    return Staff.collection.findOne({
+        employeeCode: { $exists: true, $nin: ['', null] },
+        $expr: { $eq: [storedValue, normalizedValue] }
+    });
+};
+
+const findEmployeeForUser = async user => {
+    const linkedEmployee = await findEmployeeByNormalizedValue('employeeCode', user?.employeeCode);
+    if (linkedEmployee) return linkedEmployee;
+
+    const names = [...new Set([user?.teacherName, user?.username]
+        .map(value => String(value || '').trim().toLowerCase())
+        .filter(Boolean))];
+    for (const name of names) {
+        const employee = await findEmployeeByNormalizedValue('staffName', name);
+        if (employee) return employee;
+    }
+    return findEmployeeByNormalizedValue('employeeCode', user?.username);
+};
+
+const getEmployeeMidTime = employee => {
+    if (getMinutes(employee?.midTime) !== null) return employee.midTime;
+    const plannedIn = getMinutes(employee?.plannedIn || '09:00');
+    const plannedOut = getMinutes(employee?.plannedOut || '17:00');
+    const midpoint = plannedIn !== null && plannedOut !== null
+        ? Math.floor((plannedIn + plannedOut) / 2)
+        : 13 * 60;
+    return `${String(Math.floor(midpoint / 60)).padStart(2, '0')}:${String(midpoint % 60).padStart(2, '0')}`;
+};
+
+const renderManualPunchPage = async (req, res, options = {}) => {
+    const isAdminUser = req.user?.role === 'ADMIN';
+    const employee = await findEmployeeForUser(req.user);
+    const employees = isAdminUser ? await getEmployeeProfiles() : [];
+    const requestFilter = isAdminUser ? {} : { requesterUserId: req.user._id };
+    const requests = await ManualPunchRequest.find(requestFilter).sort({ createdAt: -1 }).lean();
+    const todayBs = getNepaliDate(new Date()).slice(0, 10);
+    return res.status(options.status || 200).render('employee/manualpunch', {
+        employee,
+        employees,
+        requests,
+        isAdmin: isAdminUser,
+        currentPage: 'manual-punch',
+        selectedEmployee: null,
+        todayBs,
+        formValues: options.formValues || {},
+        error: options.error || '',
+        message: req.query.requested ? 'Your manual punch request was submitted.'
+            : req.query.reviewed ? `Request ${req.query.reviewed}.`
+                : req.query.error ? 'Unable to complete that action.' : ''
+    });
+};
+
 const toEmployeeFormData = employee => {
     if (!employee) return {};
     return {
@@ -79,13 +262,14 @@ const toEmployeeFormData = employee => {
 };
 
 const renderEmployeeDetails = async (res, options = {}) => {
-    const employees = await getEmployeeProfiles();
+    const [employees, setupOptions] = await Promise.all([getEmployeeProfiles(), getEmployeeSetupOptions()]);
     const selectedEmployee = options.employee
         || employees.find(employee => String(employee._id) === String(options.employeeId || ''))
         || (options.newEmployee ? null : employees[0])
         || null;
     return res.status(options.status || 200).render('employee/employeeworkspace', {
         employees,
+        ...setupOptions,
         selectedEmployee,
         activeModule: options.activeModule || 'profile',
         defaultDocuments: DEFAULT_EMPLOYEE_DOCUMENTS,
@@ -112,15 +296,245 @@ exports.showEmployeeDetails = async (req, res) => {
 exports.showEmployeeManagementDashboard = async (req, res) => {
     try {
         const employees = await getEmployeeProfiles();
+        const activeEmployees = employees.filter(employee => employee.isActive !== false && !['Resigned', 'Terminated'].includes(employee.employmentStatus));
+        const today = new Date();
+        const todayStart = new Date(today);
+        todayStart.setHours(0, 0, 0, 0);
+        const todayNepali = getNepaliDate(todayStart).slice(0, 10);
+        const selectedDate = parseNepaliDateKey(req.query.dateBs || todayNepali) || new Date(todayStart);
+        selectedDate.setHours(0, 0, 0, 0);
+        const selectedDateBs = getNepaliDate(selectedDate).slice(0, 10);
+        const nextDate = new Date(selectedDate);
+        nextDate.setDate(nextDate.getDate() + 1);
+        const selectedDateNepali = getNepaliDate(selectedDate).slice(0, 10);
+        const weekStart = new Date(selectedDate);
+        weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 7);
+
+        const [punches, approvedLeaves, notices, events, manualPunchRequestCount] = await Promise.all([
+            employeeAttendance.find({ punchTime: { $gte: selectedDate, $lt: nextDate } }).select('pin punchTime').sort({ punchTime: 1 }).lean(),
+            LeaveApplication.find({
+                status: 'approved',
+                startDateNepali: { $lte: selectedDateNepali },
+                endDateNepali: { $gte: selectedDateNepali }
+            }).select('employeeName leaveTypeName startDateNepali endDateNepali').lean(),
+            getRecentNotices(req.user, 5),
+            Event.find({ date: { $gte: selectedDate, $lt: weekEnd }, status: { $nin: ['cancelled', 'completed'] } })
+                .sort({ date: 1 }).limit(6).lean(),
+            ManualPunchRequest.countDocuments({ status: 'pending' })
+        ]);
+
+        const employeesByCode = new Map(activeEmployees.map(employee => [String(employee.employeeCode || '').trim().toUpperCase(), employee]));
+        const punchesByCode = new Map();
+        punches.forEach(punch => {
+            const code = String(punch.pin || '').trim().toUpperCase();
+            if (!punchesByCode.has(code)) punchesByCode.set(code, []);
+            punchesByCode.get(code).push(punch);
+        });
+        const leavesByName = new Map(approvedLeaves.map(leave => [normalizeEmployeeName(leave.employeeName), leave]));
+        const attendanceLists = { present: [], onLeave: [], absent: [], late: [] };
+
+        activeEmployees.forEach(employee => {
+            const employeeCode = String(employee.employeeCode || '').trim().toUpperCase();
+            const employeePunches = punchesByCode.get(employeeCode) || [];
+            const leave = leavesByName.get(normalizeEmployeeName(employee.staffName));
+            const contact = employee.mobileNumber || employee.officeContact || '-';
+            const employeeSummary = {
+                name: employee.staffName,
+                code: employee.employeeCode || '-',
+                department: employee.department || employee.designation || 'Employee',
+                contact
+            };
+
+            if (!employeePunches.length) {
+                if (leave) attendanceLists.onLeave.push({ ...employeeSummary, leaveType: leave.leaveTypeName, through: leave.endDateNepali });
+                else attendanceLists.absent.push(employeeSummary);
+                return;
+            }
+
+            attendanceLists.present.push(employeeSummary);
+            const midTimeMinutes = getMinutes(getEmployeeMidTime(employee));
+            const getPunchMinutes = punch => getMinutes(formatPunchTime(new Date(punch.punchTime)));
+            const isAfterMidTime = punch => {
+                const punchMinutes = getPunchMinutes(punch);
+                return punchMinutes !== null && midTimeMinutes !== null && punchMinutes >= midTimeMinutes;
+            };
+            const isExplicitCheckIn = punch => punch.manualPunchType === 'Check-in' || Number(punch.status) === 0;
+            const isExplicitCheckOut = punch => punch.manualPunchType === 'Check-out' || Number(punch.status) === 1;
+            const morningPunches = employeePunches.filter(punch => !isAfterMidTime(punch)
+                && (isExplicitCheckIn(punch) || !isExplicitCheckOut(punch)));
+            if (!morningPunches.length) return;
+
+            const actualIn = morningPunches[morningPunches.length - 1].punchTime;
+            const actualMinutes = getMinutes(formatPunchTime(new Date(actualIn)));
+            const plannedMinutes = getMinutes(employee.plannedIn || '09:00');
+            if (actualMinutes !== null && plannedMinutes !== null && actualMinutes > plannedMinutes) {
+                attendanceLists.late.push({
+                    ...employeeSummary,
+                    actualIn: formatPunchTime(new Date(actualIn)),
+                    plannedIn: employee.plannedIn || '09:00',
+                    lateMinutes: actualMinutes - plannedMinutes
+                });
+            }
+        });
+
+        const birthdays = activeEmployees.filter(employee => {
+            if (!employee.dateOfBirth) return false;
+            const dateOfBirth = new Date(employee.dateOfBirth);
+            return dateOfBirth.getMonth() === selectedDate.getMonth() && dateOfBirth.getDate() === selectedDate.getDate();
+        }).map(employee => ({
+            name: employee.staffName,
+            dateOfBirth: new Date(employee.dateOfBirth).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+            contact: employee.mobileNumber || employee.officeContact || '-'
+        }));
+
         return res.render('employee/employeemanagementdashboard', {
-            employees,
-            activeEmployees: employees.filter(employee => employee.isActive !== false && employee.employmentStatus !== 'Resigned' && employee.employmentStatus !== 'Terminated').length,
+            totalEmployees: activeEmployees.length,
+            attendanceLists,
+            manualPunchRequestCount,
+            birthdays,
+            notices,
+            events,
+            selectedDateBs,
+            dashboardDate: selectedDate.toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }),
             currentPage: 'dashboard',
             selectedEmployee: null
         });
     } catch (error) {
         console.error('Unable to load employee dashboard:', error);
         return res.status(500).send('Unable to load employee dashboard.');
+    }
+};
+
+exports.showManualPunchPage = async (req, res) => {
+    try {
+        return await renderManualPunchPage(req, res);
+    } catch (error) {
+        console.error('Unable to load manual punch requests:', error);
+        return res.status(500).send('Unable to load manual punch requests.');
+    }
+};
+
+exports.createManualPunchRequest = async (req, res) => {
+    const formValues = {
+        punchType: String(req.body.punchType || ''),
+        punchDateBs: String(req.body.punchDateBs || '').trim(),
+        punchTime: String(req.body.punchTime || '').trim(),
+        latitude: String(req.body.latitude || '').trim(),
+        longitude: String(req.body.longitude || '').trim(),
+        employeeId: String(req.body.employeeId || '').trim()
+    };
+
+    try {
+        const employee = req.user?.role === 'ADMIN'
+            ? mongoose.isValidObjectId(formValues.employeeId)
+                ? await Staff.findOne({ _id: formValues.employeeId, employeeCode: { $exists: true, $ne: '' } }).lean()
+                : null
+            : await findEmployeeForUser(req.user);
+        if (!employee) {
+            return await renderManualPunchPage(req, res, {
+                status: req.user?.role === 'ADMIN' ? 400 : 403,
+                error: req.user?.role === 'ADMIN'
+                    ? 'Select an employee profile for this request.'
+                    : 'Your login is not linked to an employee profile. Contact an administrator.',
+                formValues
+            });
+        }
+
+        const punchDateBs = normalizeNepaliDigits(formValues.punchDateBs);
+        const punchDateAd = parseNepaliDateKey(punchDateBs);
+        const timeMatch = formValues.punchTime.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+        const latitude = Number(formValues.latitude);
+        const longitude = Number(formValues.longitude);
+        const accuracyMeters = Number(req.body.accuracyMeters);
+        const allowedPunchTypes = ['Check-in', 'Check-out', 'Field visit'];
+
+        if (!allowedPunchTypes.includes(formValues.punchType)) {
+            return await renderManualPunchPage(req, res, { status: 400, error: 'Select a valid punch type.', formValues });
+        }
+        if (!punchDateAd) {
+            return await renderManualPunchPage(req, res, { status: 400, error: 'Select a valid Bikram Sambat date.', formValues });
+        }
+        if (!timeMatch) {
+            return await renderManualPunchPage(req, res, { status: 400, error: 'Enter a valid punch time.', formValues });
+        }
+        if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90
+            || !Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
+            return await renderManualPunchPage(req, res, { status: 400, error: 'Pin your current location before submitting.', formValues });
+        }
+
+        const punchDateTime = new Date(punchDateAd);
+        punchDateTime.setHours(Number(timeMatch[1]), Number(timeMatch[2]), 0, 0);
+        const request = await ManualPunchRequest.create({
+            requesterUserId: req.user._id,
+            requesterUsername: String(req.user.username || req.user.teacherName || '').trim(),
+            employeeId: employee._id,
+            employeeCode: employee.employeeCode,
+            employeeName: employee.staffName,
+            branchName: employee.branchName || '',
+            designation: employee.designation || '',
+            department: employee.department || '',
+            punchType: formValues.punchType,
+            punchDateBs: punchDateBs.slice(0, 10),
+            punchDateAd,
+            punchTime: formValues.punchTime,
+            punchDateTime,
+            location: {
+                latitude,
+                longitude,
+                accuracyMeters: Number.isFinite(accuracyMeters) && accuracyMeters > 0 ? accuracyMeters : null
+            }
+        });
+
+        return res.redirect('/manualpunch?requested=1');
+    } catch (error) {
+        console.error('Unable to submit manual punch request:', error);
+        return res.status(500).send('Unable to submit manual punch request.');
+    }
+};
+
+exports.reviewManualPunchRequest = async (req, res) => {
+    const decision = String(req.body.decision || '').toLowerCase();
+    if (!['approved', 'rejected'].includes(decision) || !mongoose.isValidObjectId(req.params.id)) {
+        return res.redirect('/manualpunch?error=review');
+    }
+
+    try {
+        const reviewedBy = String(req.user.username || req.user.teacherName || 'Administrator').trim();
+        const request = await ManualPunchRequest.findOneAndUpdate(
+            { _id: req.params.id, status: 'pending' },
+            { $set: { status: decision, reviewedBy, reviewedAt: new Date() } },
+            { new: true }
+        );
+        if (!request) return res.redirect('/manualpunch?error=review');
+
+        if (decision === 'approved') {
+            try {
+                await employeeAttendance.create({
+                    sn: 'MANUAL',
+                    pin: request.employeeCode,
+                    name: request.employeeName,
+                    punchTime: request.punchDateTime,
+                    source: 'Manual',
+                    manualPunchType: request.punchType,
+                    manualPunchRequestId: request._id,
+                    status: request.punchType === 'Check-in' ? 0 : request.punchType === 'Check-out' ? 1 : undefined,
+                    verifyMode: 0
+                });
+            } catch (error) {
+                await ManualPunchRequest.updateOne(
+                    { _id: request._id, status: 'approved' },
+                    { $set: { status: 'pending', reviewedBy: '', reviewedAt: null } }
+                );
+                throw error;
+            }
+        }
+
+        return res.redirect(`/manualpunch?reviewed=${decision}`);
+    } catch (error) {
+        console.error('Unable to review manual punch request:', error);
+        return res.redirect('/manualpunch?error=review');
     }
 };
 
@@ -137,6 +551,210 @@ exports.showEmployeeData = async (req, res) => {
         return res.status(500).send('Unable to load employee list.');
     }
 };
+
+exports.showEmployeeAttendanceSetup = async (req, res) => {
+    try {
+        const employees = (await getEmployeeProfiles()).map(employee => ({
+            ...employee,
+            midTime: getEmployeeMidTime(employee)
+        }));
+        return res.render('employee/employeeattendancesetup', {
+            employees,
+            currentPage: 'attendance-setup',
+            selectedEmployee: null,
+            error: '',
+            saved: req.query.saved === '1'
+        });
+    } catch (error) {
+        console.error('Unable to load employee attendance setup:', error);
+        return res.status(500).send('Unable to load employee attendance setup.');
+    }
+};
+
+exports.saveEmployeeAttendanceSetup = async (req, res) => {
+    try {
+        const profiles = await getEmployeeProfiles();
+        const employees = profiles.map(employee => ({
+            ...employee,
+            plannedIn: String(req.body[`plannedIn_${employee._id}`] || '').trim(),
+            plannedOut: String(req.body[`plannedOut_${employee._id}`] || '').trim(),
+            midTime: String(req.body[`midTime_${employee._id}`] || '').trim()
+        }));
+        const validTime = value => /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+
+        if (employees.some(employee => !validTime(employee.plannedIn) || !validTime(employee.plannedOut) || !validTime(employee.midTime))) {
+            return res.status(400).render('employee/employeeattendancesetup', {
+                employees,
+                currentPage: 'attendance-setup',
+                selectedEmployee: null,
+                error: 'Enter valid planned in, planned out, and mid-time values for every employee.',
+                saved: false
+            });
+        }
+
+        await Promise.all(employees.map(employee => Staff.updateOne(
+            { _id: employee._id },
+            { $set: { plannedIn: employee.plannedIn, plannedOut: employee.plannedOut, midTime: employee.midTime } }
+        )));
+        return res.redirect('/employeeattendancesetup?saved=1');
+    } catch (error) {
+        console.error('Unable to save employee attendance setup:', error);
+        return res.status(500).send('Unable to save employee attendance setup.');
+    }
+};
+
+const renderEmployeeSetupPage = async (type, req, res, options = {}) => {
+    const config = employeeSetupConfigs[type];
+    const [records, departments, branches] = await Promise.all([
+        config.Model.find({}).sort({ name: 1 }).lean(),
+        type === 'sections' ? Department.find({}).sort({ name: 1 }).lean() : Promise.resolve([]),
+        Branch.find({}).sort({ name: 1 }).lean()
+    ]);
+    let record = options.record || null;
+    if (!record && req.query.edit && mongoose.isValidObjectId(req.query.edit)) {
+        record = await config.Model.findById(req.query.edit).lean();
+        if (record && type === 'sections') record.departmentId = String(record.department || '');
+    }
+    return res.status(options.status || 200).render(config.view, {
+        config,
+        records,
+        departments,
+        branches,
+        record,
+        currentPage: `setup-${type}`,
+        selectedEmployee: null,
+        error: options.error || '',
+        message: req.query.saved ? `${config.singular} saved.` : req.query.deleted ? `${config.singular} deleted.` : '',
+        isEditing: Boolean(record)
+    });
+};
+
+const saveEmployeeSetupRecord = async (type, req, res) => {
+    const config = employeeSetupConfigs[type];
+    const recordId = String(req.body.recordId || '').trim();
+    const isEditing = Boolean(recordId);
+    try {
+        if (req.body.action === 'delete') {
+            if (!mongoose.isValidObjectId(recordId)) return res.redirect(`${config.path}?error=invalid`);
+            const record = await config.Model.findById(recordId).lean();
+            if (!record) return res.redirect(`${config.path}?error=missing`);
+            if (await config.isInUse(record)) {
+                return renderEmployeeSetupPage(type, req, res, {
+                    status: 409,
+                    error: `Cannot delete ${config.singular.toLowerCase()} while employee profiles or setup records use it.`
+                });
+            }
+            await config.Model.deleteOne({ _id: recordId });
+            return res.redirect(`${config.path}?deleted=1`);
+        }
+
+        if (isEditing && !mongoose.isValidObjectId(recordId)) {
+            return res.status(400).send('Invalid setup record.');
+        }
+        const record = {};
+        for (const field of config.fields) {
+            if (field.type === 'department') continue;
+            const value = String(req.body[field.name] || '').trim();
+            record[field.name] = field.type === 'number'
+                ? (value ? Number(value) : null)
+                : field.name === 'code' ? value.toUpperCase() : value;
+        }
+        const missingField = config.fields.find(field => field.required && !(field.name === 'departmentId' ? req.body.departmentId : record[field.name] !== null && record[field.name] !== undefined && record[field.name] !== ''));
+        if (missingField) {
+            return renderEmployeeSetupPage(type, req, res, {
+                status: 400,
+                record: { ...record, departmentId: String(req.body.departmentId || '') },
+                error: `Enter ${missingField.label.toLowerCase()}.`
+            });
+        }
+        const invalidNumberField = config.fields.find(field => field.type === 'number'
+            && (Number.isNaN(record[field.name]) || (record[field.name] !== null && record[field.name] < (field.min ?? 0))));
+        if (invalidNumberField) {
+            return renderEmployeeSetupPage(type, req, res, {
+                status: 400,
+                record: { ...record, departmentId: String(req.body.departmentId || '') },
+                error: `Enter a valid number for ${invalidNumberField.label.toLowerCase()}.`
+            });
+        }
+        if (type === 'sections') {
+            const department = await Department.findById(req.body.departmentId).lean();
+            if (!department) {
+                return renderEmployeeSetupPage(type, req, res, {
+                    status: 400,
+                    record: { ...record, departmentId: String(req.body.departmentId || '') },
+                    error: 'Select a valid department.'
+                });
+            }
+            record.department = department._id;
+            record.departmentName = department.name;
+        }
+        if (type === 'shifts') {
+            const validTime = value => /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+            if (!validTime(record.shiftStart) || !validTime(record.shiftEnd)
+                || (record.lunchStart && !validTime(record.lunchStart))
+                || (record.lunchEnd && !validTime(record.lunchEnd))) {
+                return renderEmployeeSetupPage(type, req, res, { status: 400, record, error: 'Enter valid shift and lunch times.' });
+            }
+        }
+        if (type === 'designations' && record.minSalary !== null && record.maxSalary !== null && record.minSalary > record.maxSalary) {
+            return renderEmployeeSetupPage(type, req, res, { status: 400, record, error: 'Minimum salary cannot exceed maximum salary.' });
+        }
+
+        const escapedCode = record.code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const duplicateFilter = { code: { $regex: `^${escapedCode}$`, $options: 'i' } };
+        if (isEditing) duplicateFilter._id = { $ne: new mongoose.Types.ObjectId(recordId) };
+        if (await config.Model.exists(duplicateFilter)) {
+            return renderEmployeeSetupPage(type, req, res, {
+                status: 409,
+                record: { ...record, departmentId: String(req.body.departmentId || '') },
+                error: `Code ${record.code} is already in use.`
+            });
+        }
+
+        if (isEditing) {
+            const previous = await config.Model.findById(recordId).lean();
+            if (!previous) return res.status(404).send(`${config.singular} not found.`);
+            await config.Model.updateOne({ _id: recordId }, { $set: record }, { runValidators: true });
+            if (previous.name !== record.name) {
+                if (type === 'branches') {
+                    await Promise.all([
+                        Staff.updateMany({ branchName: previous.name }, { $set: { branchName: record.name } }),
+                        Branch.updateMany({ parentBranchName: previous.name }, { $set: { parentBranchName: record.name } })
+                    ]);
+                } else if (type === 'departments') {
+                    await Promise.all([
+                        Staff.updateMany({ department: previous.name }, { $set: { department: record.name } }),
+                        DepartmentSection.updateMany({ department: previous._id }, { $set: { departmentName: record.name } })
+                    ]);
+                } else if (type === 'sections') {
+                    await Staff.updateMany({ section: previous.name }, { $set: { section: record.name } });
+                } else if (type === 'designations') {
+                    await Staff.updateMany({ designation: previous.name }, { $set: { designation: record.name } });
+                } else if (type === 'shifts') {
+                    await Staff.updateMany({ shiftName: previous.name }, { $set: { shiftName: record.name } });
+                }
+            }
+        } else await config.Model.create(record);
+        return res.redirect(`${config.path}?saved=1`);
+    } catch (error) {
+        console.error(`Unable to save ${config.singular.toLowerCase()} setup:`, error);
+        return res.status(500).send(`Unable to save ${config.singular.toLowerCase()} setup.`);
+    }
+};
+
+const registerEmployeeSetupHandlers = (type, prefix) => {
+    exports[`show${prefix}Setup`] = (req, res) => renderEmployeeSetupPage(type, req, res).catch(error => {
+        console.error(`Unable to load ${employeeSetupConfigs[type].singular.toLowerCase()} setup:`, error);
+        return res.status(500).send(`Unable to load ${employeeSetupConfigs[type].singular.toLowerCase()} setup.`);
+    });
+    exports[`save${prefix}Setup`] = (req, res) => saveEmployeeSetupRecord(type, req, res);
+};
+
+registerEmployeeSetupHandlers('branches', 'Branch');
+registerEmployeeSetupHandlers('departments', 'Department');
+registerEmployeeSetupHandlers('sections', 'Section');
+registerEmployeeSetupHandlers('designations', 'Designation');
+registerEmployeeSetupHandlers('shifts', 'Shift');
 
 const getText = (value, maxLength = 500) => String(value || '').trim().slice(0, maxLength);
 const getBoolean = value => ['true', '1', 'yes', 'on', 'approved'].includes(String(value || '').trim().toLowerCase());
@@ -424,6 +1042,16 @@ exports.createEmployeeDetails = async (req, res) => {
     let uploadedPhoto = null;
     let uploadedTdsDocument = null;
     try {
+        const duplicateField = await findDuplicateEmployeeIdentifier(formData);
+        if (duplicateField) {
+            const label = duplicateField === 'employeeCode' ? 'Employee code' : 'Device code';
+            return renderEmployeeDetails(res, {
+                status: 409,
+                newEmployee: true,
+                error: `${label} is already in use.`,
+                formData
+            });
+        }
         uploadedDocuments = await uploadDocumentsToAzure(req.files, formData);
         uploadedPhoto = await uploadEmployeePhotoToAzure((req.files || []).find(file => file.fieldname === 'employeePhoto'), formData.employeeCode);
         uploadedTdsDocument = await uploadPreviousTdsDocumentToAzure((req.files || []).find(file => file.fieldname === 'previousTdsDocument'), formData.employeeCode);
@@ -476,6 +1104,17 @@ exports.updateEmployeeDetails = async (req, res) => {
     try {
         const existingEmployee = await Staff.findById(employeeId).lean();
         if (!existingEmployee) return res.status(404).send('Employee profile not found.');
+        const duplicateField = await findDuplicateEmployeeIdentifier(formData, employeeId);
+        if (duplicateField) {
+            const label = duplicateField === 'employeeCode' ? 'Employee code' : 'Device code';
+            return renderEmployeeDetails(res, {
+                status: 409,
+                employeeId,
+                activeModule,
+                error: `${label} is already in use.`,
+                formData
+            });
+        }
         uploadedDocuments = await uploadDocumentsToAzure(req.files, formData);
         uploadedPhoto = await uploadEmployeePhotoToAzure((req.files || []).find(file => file.fieldname === 'employeePhoto'), formData.employeeCode);
         uploadedTdsDocument = await uploadPreviousTdsDocumentToAzure((req.files || []).find(file => file.fieldname === 'previousTdsDocument'), formData.employeeCode);
@@ -783,6 +1422,14 @@ function getMinutes(value) {
     return match ? Number(match[1]) * 60 + Number(match[2]) : null;
 }
 
+function formatDurationMinutes(minutes) {
+    const totalMinutes = Math.max(0, Number(minutes) || 0);
+    if (totalMinutes < 60) return `${totalMinutes} min`;
+    const hours = Math.floor(totalMinutes / 60);
+    const remainingMinutes = totalMinutes % 60;
+    return remainingMinutes ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
+}
+
 function getNepaliDate(date) {
     if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
     try {
@@ -876,8 +1523,18 @@ async function buildEmployeeAttendanceReport(queryParams) {
             const employee = employeeByCode.get(code) || {};
             const dayPunches = punchesByDateAndCode.get(`${dateKey}|${code}`) || [];
             const employeeName = employee.staffName || dayPunches.find(punch => punch.name)?.name || 'Employee not mapped';
-            const morningPunches = dayPunches.filter(punch => new Date(punch.punchTime).getHours() < 12);
-            const eveningPunches = dayPunches.filter(punch => new Date(punch.punchTime).getHours() >= 12);
+            const midTimeMinutes = getMinutes(getEmployeeMidTime(employee));
+            const getPunchMinutes = punch => getMinutes(formatPunchTime(new Date(punch.punchTime)));
+            const isAfterMidTime = punch => {
+                const punchMinutes = getPunchMinutes(punch);
+                return punchMinutes !== null && midTimeMinutes !== null && punchMinutes >= midTimeMinutes;
+            };
+            const isExplicitCheckIn = punch => punch.manualPunchType === 'Check-in' || Number(punch.status) === 0;
+            const isExplicitCheckOut = punch => punch.manualPunchType === 'Check-out' || Number(punch.status) === 1;
+            const morningPunches = dayPunches.filter(punch => !isAfterMidTime(punch)
+                && (isExplicitCheckIn(punch) || !isExplicitCheckOut(punch)));
+            const eveningPunches = dayPunches.filter(punch => isAfterMidTime(punch)
+                || isExplicitCheckOut(punch));
             const actualIn = morningPunches.length ? formatPunchTime(new Date(morningPunches[morningPunches.length - 1].punchTime)) : '';
             const actualOut = eveningPunches.length ? formatPunchTime(new Date(eveningPunches[eveningPunches.length - 1].punchTime)) : '';
             const plannedIn = employee.plannedIn || '09:00';
@@ -937,7 +1594,8 @@ exports.getEmployeeAttendance = async (req, res) => {
         const report = await buildEmployeeAttendanceReport(req.query);
         return res.render('employee/employeeattendance', {
             ...report,
-            deviceSN: req.query.SN || ''
+            deviceSN: req.query.SN || '',
+            isAdmin: true
         });
     } catch (error) {
         console.error('getEmployeeAttendance error:', error);
@@ -980,5 +1638,214 @@ exports.exportEmployeeAttendance = async (req, res) => {
     } catch (error) {
         console.error('exportEmployeeAttendance error:', error);
         return res.status(error.status || 500).send(error.message || 'Unable to export attendance.');
+    }
+};
+
+exports.showMyAttendance = async (req, res) => {
+    try {
+        const employee = await findEmployeeForUser(req.user);
+        if (!employee) {
+            return res.status(403).send('Your login is not linked to an employee profile.');
+        }
+
+        const currentBs = getNepaliDate(new Date()).slice(0, 10);
+        const nepaliMonths = ['Baisakh', 'Jestha', 'Asar', 'Shrawan', 'Bhadra', 'Ashwin', 'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'];
+        const requestedMonth = /^\d{4}-\d{2}$/.test(String(req.query.monthBs || ''))
+            ? String(req.query.monthBs)
+            : currentBs.slice(0, 7);
+        const [year, month] = requestedMonth.split('-').map(Number);
+        const start = parseNepaliDateKey(`${year}-${String(month).padStart(2, '0')}-01`);
+        const nextMonth = month === 12 ? `${year + 1}-01` : `${year}-${String(month + 1).padStart(2, '0')}`;
+        const endExclusive = parseNepaliDateKey(`${nextMonth}-01`);
+        if (!start || !endExclusive) return res.status(400).send('Invalid Nepali month.');
+
+        const through = new Date(endExclusive);
+        through.setMilliseconds(through.getMilliseconds() - 1);
+        const employeeCode = String(employee.employeeCode || '').trim().toUpperCase();
+        const [punches, approvedLeaves] = await Promise.all([
+            employeeAttendance.find({
+                pin: employeeCode,
+                punchTime: { $gte: start, $lt: endExclusive }
+            }).sort({ punchTime: 1 }).lean(),
+            LeaveApplication.find({
+                status: 'approved',
+                employeeName: employee.staffName,
+                startDateNepali: { $lte: getNepaliDate(through).slice(0, 10) },
+                endDateNepali: { $gte: requestedMonth + '-01' }
+            }).select('leaveTypeName isPaid startDateNepali endDateNepali requestedDays').lean()
+        ]);
+
+        const leavesByDate = new Map();
+        approvedLeaves.forEach(leave => {
+            const leaveStart = parseNepaliDateKey(leave.startDateNepali);
+            const leaveEnd = parseNepaliDateKey(leave.endDateNepali);
+            if (!leaveStart || !leaveEnd) return;
+            for (let cursor = new Date(Math.max(start, leaveStart)); cursor <= Math.min(through, leaveEnd); cursor.setDate(cursor.getDate() + 1)) {
+                leavesByDate.set(formatDateKey(cursor), leave);
+            }
+        });
+
+        const punchesByDate = new Map();
+        punches.forEach(punch => {
+            const key = formatDateKey(new Date(punch.punchTime));
+            if (!punchesByDate.has(key)) punchesByDate.set(key, []);
+            punchesByDate.get(key).push(punch);
+        });
+
+        const rows = [];
+        let lateCount = 0;
+        let earlyOutCount = 0;
+        let leaveDays = 0;
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        const midTimeMinutes = getMinutes(getEmployeeMidTime(employee));
+        const plannedIn = employee.plannedIn || '09:00';
+        const plannedOut = employee.plannedOut || '17:00';
+        const plannedInMinutes = getMinutes(plannedIn);
+        const plannedOutMinutes = getMinutes(plannedOut);
+
+        for (let date = new Date(start); date < endExclusive; date.setDate(date.getDate() + 1)) {
+            const dateKey = formatDateKey(date);
+            const dayPunches = punchesByDate.get(dateKey) || [];
+            const isAfterMidTime = punch => {
+                const minutes = getMinutes(formatPunchTime(new Date(punch.punchTime)));
+                return minutes !== null && midTimeMinutes !== null && minutes >= midTimeMinutes;
+            };
+            const isCheckIn = punch => punch.manualPunchType === 'Check-in' || Number(punch.status) === 0;
+            const isCheckOut = punch => punch.manualPunchType === 'Check-out' || Number(punch.status) === 1;
+            const checkIns = dayPunches.filter(punch => !isAfterMidTime(punch) && (isCheckIn(punch) || !isCheckOut(punch)));
+            const checkOuts = dayPunches.filter(punch => isAfterMidTime(punch) || isCheckOut(punch));
+            const actualIn = checkIns.length ? new Date(checkIns[checkIns.length - 1].punchTime) : null;
+            const actualOut = checkOuts.length ? new Date(checkOuts[checkOuts.length - 1].punchTime) : null;
+            const leave = leavesByDate.get(dateKey);
+            const isFuture = date > today;
+            let status = isFuture ? 'Upcoming' : 'Absent';
+            if (leave && !actualIn && !actualOut) {
+                status = `On leave - ${leave.leaveTypeName}`;
+                leaveDays += 1;
+            } else if (actualIn || actualOut) {
+                status = actualIn && actualOut ? 'Present' : actualIn ? 'Check-in only' : 'Check-out only';
+            }
+            const actualInMinutes = actualIn ? getMinutes(formatPunchTime(actualIn)) : null;
+            const actualOutMinutes = actualOut ? getMinutes(formatPunchTime(actualOut)) : null;
+            const lateMinutes = actualInMinutes !== null && plannedInMinutes !== null ? Math.max(0, actualInMinutes - plannedInMinutes) : 0;
+            const earlyMinutes = actualOutMinutes !== null && plannedOutMinutes !== null ? Math.max(0, plannedOutMinutes - actualOutMinutes) : 0;
+            if (lateMinutes) lateCount += 1;
+            if (earlyMinutes) earlyOutCount += 1;
+            rows.push({
+                date: getNepaliDate(date).slice(0, 10),
+                checkIn: actualIn ? formatPunchTime(actualIn) : '-',
+                checkOut: actualOut ? formatPunchTime(actualOut) : '-',
+                status,
+                lateMinutes,
+                earlyMinutes,
+                lateDuration: lateMinutes ? formatDurationMinutes(lateMinutes) : '-',
+                earlyDuration: earlyMinutes ? formatDurationMinutes(earlyMinutes) : '-'
+            });
+        }
+
+        return res.render('employee/myAttendance', {
+            employee,
+            rows,
+            monthBs: requestedMonth,
+            monthLabel: `${nepaliMonths[month - 1]} ${year} BS`,
+            lateCount,
+            leaveDays,
+            earlyOutCount,
+            currentPage: 'my-attendance',
+            selectedEmployee: null
+        });
+    } catch (error) {
+        console.error('Unable to load personal attendance:', error);
+        return res.status(500).send('Unable to load your attendance.');
+    }
+};
+
+const teacherProfileFields = [
+    'dateOfBirth', 'dateOfBirthBs', 'maritalStatus', 'gender', 'bloodGroup', 'mobileNumber', 'alternateMobile',
+    'email', 'country', 'religion', 'passportNumber', 'citizenNumber', 'citizenshipIssueDate', 'citizenshipIssueOffice',
+    'panNumber', 'fatherName', 'motherName', 'isDifferentlyAbled', 'permanentAddress', 'permanentDistrict',
+    'permanentMunicipality', 'permanentWard', 'permanentAddressNepali', 'temporaryAddress', 'temporaryDistrict',
+    'temporaryMunicipality', 'temporaryWard', 'temporaryAddressNepali', 'sameAddressAsPermanent', 'address',
+    'emergencyContactName', 'emergencyContactRelation', 'emergencyContactNumber', 'emergencyContactAddress',
+    'health', 'qualifications', 'experiences', 'skills', 'trainings', 'familyMembers'
+];
+
+const renderTeacherProfileFillup = async (req, res, options = {}) => {
+    const employee = options.employee || await findEmployeeForUser(req.user);
+    if (!employee) return res.status(403).send('Your login is not linked to an employee profile.');
+    return res.status(options.status || 200).render('employee/employeprofilefillupform', {
+        employee,
+        formData: options.formData || toEmployeeFormData(employee),
+        error: options.error || '',
+        saved: options.saved || false
+    });
+};
+
+const mergeTeacherProfileFormData = (employee, submitted) => {
+    const existing = toEmployeeFormData(employee);
+    const merged = { ...existing, ...submitted };
+    Object.keys(existing).forEach(key => {
+        const submittedValue = submitted[key];
+        if (submittedValue === undefined || submittedValue === '') merged[key] = existing[key];
+    });
+    merged.health = { ...(existing.health || {}), ...(submitted.health || {}) };
+    return merged;
+};
+
+exports.showEmployeeProfileFillup = async (req, res) => {
+    try {
+        return await renderTeacherProfileFillup(req, res, { saved: req.query.saved === '1' });
+    } catch (error) {
+        console.error('Unable to load teacher profile form:', error);
+        return res.status(500).send('Unable to load your profile form.');
+    }
+};
+
+exports.saveEmployeeProfileFillup = async (req, res) => {
+    const formData = buildEmployeeFormData(req.body);
+    const employee = await findEmployeeForUser(req.user);
+    if (!employee) return res.status(403).send('Your login is not linked to an employee profile.');
+    const errorFormData = mergeTeacherProfileFormData(employee, formData);
+    const requiredFields = [
+        ['staffName', 'Name'],
+        ['gender', 'Gender'],
+        ['mobileNumber', 'Mobile number'],
+        ['email', 'Personal email'],
+        ['permanentAddress', 'Permanent address'],
+        ['emergencyContactName', 'Emergency contact name'],
+        ['emergencyContactNumber', 'Emergency contact phone number']
+    ];
+    const missingFields = requiredFields
+        .filter(([field]) => !String(formData[field] || '').trim())
+        .map(([, label]) => label);
+    if (missingFields.length) {
+        return renderTeacherProfileFillup(req, res, {
+            status: 400,
+            error: `Please complete: ${missingFields.join(', ')}.`,
+            employee,
+            formData: errorFormData
+        });
+    }
+    try {
+        const uploadedDocuments = await uploadDocumentsToAzure(req.files, formData);
+        const uploadedPhoto = await uploadEmployeePhotoToAzure((req.files || []).find(file => file.fieldname === 'employeePhoto'), employee.employeeCode);
+        const updates = {};
+        teacherProfileFields.forEach(field => {
+            if (formData[field] !== undefined) updates[field] = formData[field];
+        });
+        updates.documents = [...(employee.documents || []), ...uploadedDocuments];
+        if (uploadedPhoto) updates.employeePhoto = uploadedPhoto;
+        updates.staffName = employee.staffName;
+        await Staff.updateOne({ _id: employee._id }, { $set: updates }, { runValidators: true });
+        return res.redirect('/employeeprofile?saved=1');
+    } catch (error) {
+        console.error('Unable to save teacher profile:', error);
+        return renderTeacherProfileFillup(req, res, {
+            status: 400,
+            employee,
+            error: 'Unable to save your profile. Check the entered values and try again.',
+            formData: errorFormData
+        });
     }
 };

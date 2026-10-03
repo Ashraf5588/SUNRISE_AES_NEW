@@ -146,8 +146,7 @@ exports.requireInventoryManager = requireInventoryManager;
 
 exports.productRequestsPage = async (req, res) => {
   try {
-    const manager = isInventoryManager(req.user);
-    const filter = manager ? {} : { requesterId: req.user._id };
+    const filter = { requesterId: req.user._id };
     const requestedPage = parsePage(req.query.page);
     const totalRequests = await InventoryProductRequest.countDocuments(filter);
     const totalPages = Math.max(1, Math.ceil(totalRequests / PAGE_SIZE));
@@ -158,9 +157,7 @@ exports.productRequestsPage = async (req, res) => {
       page,
       totalPages,
       totalRequests,
-      requesterUsername: String(req.user.teacherName || '').trim(),
-      isInventoryManager: manager,
-      showInventoryNavigation: ['ADMIN', 'FRONTDESKOFFICER', 'FRONTDESK'].includes(String(req.user.role || '').trim().toUpperCase()),
+      requesterUsername: String(req.user.username || '').trim(),
       todayNepaliDate: String(bs.ADToBS(new Date()) || '').trim(),
       message: req.query.saved ? 'Product request submitted.' : req.query.reviewed ? 'Request review saved.' : ''
     });
@@ -776,193 +773,6 @@ exports.salesPage = async (req, res) => {
   } catch (error) {
     console.error('Unable to load inventory transactions:', error);
     res.status(500).send('Unable to load inventory transactions');
-  }
-};
-
-const returnPageData = async (returnType, page) => {
-  const totalReturns = await InventoryReturn.countDocuments({ returnType });
-  const totalPages = Math.max(1, Math.ceil(totalReturns / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const returns = await InventoryReturn.find({ returnType })
-    .sort({ returnedAt: -1, _id: -1 })
-    .skip((currentPage - 1) * PAGE_SIZE)
-    .limit(PAGE_SIZE)
-    .lean();
-  return { returns, totalReturns, page: currentPage, totalPages };
-};
-
-exports.salesReturnsPage = async (req, res) => {
-  try {
-    const [history, sourceItems] = await Promise.all([
-      returnPageData('sales', parsePage(req.query.page)),
-      InventoryTransaction.aggregate([
-        { $unwind: '$items' },
-        { $match: { $expr: { $lt: [{ $ifNull: ['$items.returnedQuantity', 0] }, '$items.quantity'] } } },
-        { $sort: { assignedAt: -1, _id: -1 } },
-        { $limit: 500 }
-      ])
-    ]);
-    renderPage(res, 'salesreturn', {
-      ...history,
-      sourceItems,
-      todayNepaliDate: String(bs.ADToBS(new Date()) || '').trim(),
-      returnedBy: String(req.user?.teacherName || req.user?.username || '').trim(),
-      message: req.query.saved ? 'Sales return recorded and stock restored.' : ''
-    });
-  } catch (error) {
-    console.error('Unable to load sales returns:', error);
-    res.status(500).send('Unable to load sales returns');
-  }
-};
-
-exports.createSalesReturn = async (req, res) => {
-  const sourceTransactionId = String(req.body.sourceTransactionId || '').trim();
-  const sourceItemId = String(req.body.sourceItemId || '').trim();
-  const returnNepaliDate = String(req.body.returnNepaliDate || '').trim();
-  const quantity = Number(req.body.quantity);
-  const reason = String(req.body.reason || '').trim();
-  if (!mongoose.isValidObjectId(sourceTransactionId) || !mongoose.isValidObjectId(sourceItemId)
-    || !/^\d{4}-\d{2}-\d{2}$/.test(returnNepaliDate) || !Number.isInteger(quantity) || quantity < 1
-    || !reason || reason.length > 500) {
-    return res.status(400).send('Choose an issued item, valid return date, whole-number quantity, and reason.');
-  }
-
-  let sourceTransaction;
-  let sourceItem;
-  let previousReturned;
-  let reservedSourceQuantity = false;
-  let restoredStock = false;
-  let productId;
-  try {
-    sourceTransaction = await InventoryTransaction.findById(sourceTransactionId);
-    if (!sourceTransaction) return res.status(404).send('The source issue was not found.');
-    sourceItem = sourceTransaction.items.id(sourceItemId);
-    if (!sourceItem) return res.status(404).send('The source item was not found.');
-    previousReturned = Number(sourceItem.returnedQuantity) || 0;
-    const sourceQuantity = Number(sourceItem.quantity) || 0;
-    if (quantity > sourceQuantity - previousReturned) {
-      return res.status(409).send(`Only ${sourceQuantity - previousReturned} ${sourceItem.quantityTypeName} remain available to return.`);
-    }
-    productId = sourceItem.product;
-    const itemReturnFilter = {
-      _id: sourceItemId,
-      product: productId,
-      quantity: sourceQuantity,
-      $or: [{ returnedQuantity: previousReturned }]
-    };
-    if (previousReturned === 0) itemReturnFilter.$or.push({ returnedQuantity: { $exists: false } });
-    const sourceUpdate = await InventoryTransaction.updateOne(
-      { _id: sourceTransaction._id, items: { $elemMatch: itemReturnFilter } },
-      { $inc: { 'items.$.returnedQuantity': quantity } }
-    );
-    if (!sourceUpdate.modifiedCount) return res.status(409).send('This item was returned by another user. Refresh the page and try again.');
-    reservedSourceQuantity = true;
-
-    const stockUpdate = await InventoryProduct.updateOne({ _id: productId }, { $inc: { quantity } });
-    if (!stockUpdate.matchedCount) throw new Error('RETURN_PRODUCT_MISSING');
-    restoredStock = true;
-    await InventoryReturn.create({
-      returnType: 'sales',
-      returnNo: `SR-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`,
-      returnedAt: new Date(),
-      returnNepaliDate,
-      product: productId,
-      productName: sourceItem.productName,
-      sku: sourceItem.sku || '',
-      quantityTypeName: sourceItem.quantityTypeName,
-      quantity,
-      sourceQuantity: sourceQuantity,
-      previouslyReturned: previousReturned,
-      sourceTransaction: sourceTransaction._id,
-      sourceItemId: sourceItem._id,
-      sourceTransactionNo: sourceTransaction.transactionNo,
-      sourceDateNepali: sourceTransaction.assignedNepaliDate || '',
-      counterpartyName: sourceTransaction.recipientName,
-      counterpartyType: sourceTransaction.recipientType,
-      counterpartyClass: sourceTransaction.recipientClass || '',
-      referenceNo: sourceTransaction.transactionNo,
-      reason,
-      returnedBy: String(req.user?.teacherName || req.user?.username || 'Inventory').trim()
-    });
-    return res.redirect('/inventory/salesreturns?saved=1');
-  } catch (error) {
-    if (restoredStock) await InventoryProduct.updateOne({ _id: productId, quantity: { $gte: quantity } }, { $inc: { quantity: -quantity } });
-    if (reservedSourceQuantity) await InventoryTransaction.updateOne(
-      { _id: sourceTransaction._id, items: { $elemMatch: { _id: sourceItemId, returnedQuantity: previousReturned + quantity } } },
-      { $inc: { 'items.$.returnedQuantity': -quantity } }
-    );
-    console.error('Unable to record sales return:', error);
-    return res.status(400).send('Unable to record sales return. Stock and source quantities were restored.');
-  }
-};
-
-exports.purchaseReturnsPage = async (req, res) => {
-  try {
-    const [history, stockRecords, suppliers] = await Promise.all([
-      returnPageData('purchase', parsePage(req.query.page)),
-      InventoryProduct.find({ active: true }).sort({ name: 1 }).lean(),
-      InventorySupplier.find({ active: true }).sort({ name: 1 }).select('name').lean()
-    ]);
-    renderPage(res, 'purchasereturn', {
-      ...history,
-      products: groupInventoryProducts(stockRecords).filter((product) => product.quantity > 0),
-      suppliers: suppliers.map((supplier) => supplier.name),
-      todayNepaliDate: String(bs.ADToBS(new Date()) || '').trim(),
-      returnedBy: String(req.user?.teacherName || req.user?.username || '').trim(),
-      message: req.query.saved ? 'Purchase return recorded and stock reduced.' : ''
-    });
-  } catch (error) {
-    console.error('Unable to load purchase returns:', error);
-    res.status(500).send('Unable to load purchase returns');
-  }
-};
-
-exports.createPurchaseReturn = async (req, res) => {
-  const productId = String(req.body.productId || '').trim();
-  const returnNepaliDate = String(req.body.returnNepaliDate || '').trim();
-  const quantity = Number(req.body.quantity);
-  const supplierName = String(req.body.supplierName || '').trim().replace(/\s+/g, ' ');
-  const referenceNo = String(req.body.referenceNo || '').trim();
-  const reason = String(req.body.reason || '').trim();
-  if (!mongoose.isValidObjectId(productId) || !/^\d{4}-\d{2}-\d{2}$/.test(returnNepaliDate)
-    || !Number.isInteger(quantity) || quantity < 1 || !supplierName || supplierName.length > 120
-    || referenceNo.length > 100 || !reason || reason.length > 500) {
-    return res.status(400).send('Choose an item, valid return date, whole-number quantity, supplier, and reason.');
-  }
-
-  const decremented = [];
-  try {
-    const products = await InventoryProduct.find({ active: true }).lean();
-    const product = products.find((record) => String(record._id) === productId);
-    if (!product) return res.status(404).send('The selected inventory item is no longer available.');
-    await saveSupplierName(supplierName);
-    await decrementGroupedProductStock(products, new Map([[productId, quantity]]), decremented);
-    await InventoryReturn.create({
-      returnType: 'purchase',
-      returnNo: `PR-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`,
-      returnedAt: new Date(),
-      returnNepaliDate,
-      product: product._id,
-      productName: product.name,
-      sku: product.sku || '',
-      quantityTypeName: product.quantityTypeName,
-      quantity,
-      sourceQuantity: Number(product.quantity) || 0,
-      previouslyReturned: 0,
-      counterpartyName: supplierName,
-      counterpartyType: 'supplier',
-      referenceNo,
-      reason,
-      returnedBy: String(req.user?.teacherName || req.user?.username || 'Inventory').trim()
-    });
-    return res.redirect('/inventory/purchasereturns?saved=1');
-  } catch (error) {
-    await Promise.all(decremented.map(({ productId: decrementedProductId, quantity: decrementedQuantity }) =>
-      InventoryProduct.updateOne({ _id: decrementedProductId }, { $inc: { quantity: decrementedQuantity } })
-    ));
-    if (error.message === 'INSUFFICIENT_STOCK') return res.status(409).send('The requested quantity exceeds available stock. Stock was not changed.');
-    console.error('Unable to record purchase return:', error);
-    return res.status(400).send('Unable to record purchase return. Stock was restored.');
   }
 };
 

@@ -4,6 +4,9 @@ const EmployeeAttendanceSchema = new mongoose.Schema({
   pin:        { type: String, required: true },
   name:       { type: String },
   punchTime:  { type: Date, required: true },
+  source:     { type: String, enum: ['Device', 'Manual'], default: 'Device' },
+  manualPunchType: { type: String },
+  manualPunchRequestId: { type: mongoose.Schema.Types.ObjectId, ref: 'ManualPunchRequest', unique: true, sparse: true },
   status:     { type: Number },   // 0=In, 1=Out, 2=BreakOut, 3=BreakIn, 4=OTIn, 5=OTOut
   verifyMode: { type: Number },   // 1=Finger, 4=Card, 15=Face, 25=Palm
 

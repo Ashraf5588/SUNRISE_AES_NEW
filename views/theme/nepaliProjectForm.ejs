@@ -178,27 +178,6 @@
       display: none;
     }
 
-    .maximum-marks-setting {
-      display: flex;
-      justify-content: flex-end;
-      margin: 0 0 18px;
-    }
-
-    .maximum-marks-setting label {
-      display: inline-flex;
-      align-items: center;
-      gap: 9px;
-      color: var(--primary-color);
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .maximum-marks-setting input {
-      width: 18px;
-      height: 18px;
-      accent-color: var(--secondary-color);
-    }
-
     .radio-group label {
       margin: 0;
       font-weight: 600;
@@ -567,17 +546,15 @@
       <p>Complete evaluation form for practical and project work assessment</p>
     </div>
 
-    <div class="form-content" data-maximum-marks-only="<%= maximumMarksOnly ? 'true' : 'false' %>">
+    <div class="form-content">
       <form action="/practicalprojectform?studentClass=<%= studentClass %>&section=<%= section %>&subject=<%= subject %>&terminal=<%= terminal %>" method="POST">
-    <% if (canManageMaximumMarksOnly) { %><div class="maximum-marks-setting"><label for="maximumMarksOnly"><input type="checkbox" id="maximumMarksOnly" <%= maximumMarksOnly ? 'checked' : '' %>> Show only the highest mark option in each criterion for all users</label></div><% } %>
         
         <!-- Student Information Section -->
         <div class="section">
           <div class="section-header">Student Information</div>
           <div class="section-content">
             <div class="student-list-container">
-              <% sortedByRoll = studentData.sort((a, b) => Number(a.roll) - Number(b.roll)); %>
-             <% sortedByRoll.forEach((studentname) => { %>
+             <% studentData.forEach((studentname) => { %>
                 <button type="button" class="student-btn" id="studentData<%= studentname.roll %>" onclick="fill('<%= studentname.roll %>','<%= studentname.name %>','<%= studentname.reg %>')">
                   <span class="roll"><%=studentname.roll%></span> <%= studentname.name %>
                 </button>
@@ -1090,45 +1067,6 @@
         document.getElementById('attendanceMarks').value = 0;
       }
     }
-
-    const maximumMarksOnlyToggle = document.getElementById('maximumMarksOnly');
-    const maximumMarksOnlyPreferenceUrl = '/practicalprojectform/maximum-marks-preference';
-    let showMaximumMarksOnly = document.querySelector('.form-content').dataset.maximumMarksOnly === 'true';
-
-    function applyMaximumMarksOnly() {
-      document.querySelectorAll('.radio-group').forEach(group => {
-        const radios = [...group.querySelectorAll('input[type="radio"]')];
-        const maximumMark = Math.max(...radios.map(radio => Number.parseFloat(radio.value.split('||')[0]) || 0));
-        radios.forEach(radio => {
-          const label = radio.nextElementSibling;
-          if (label && label.tagName === 'LABEL') {
-            label.hidden = showMaximumMarksOnly
-              && Number.parseFloat(radio.value.split('||')[0]) !== maximumMark;
-          }
-        });
-      });
-    }
-
-    if (maximumMarksOnlyToggle) maximumMarksOnlyToggle.checked = showMaximumMarksOnly;
-    applyMaximumMarksOnly();
-    maximumMarksOnlyToggle?.addEventListener('change', async () => {
-      const enabled = maximumMarksOnlyToggle.checked;
-      showMaximumMarksOnly = enabled;
-      applyMaximumMarksOnly();
-      try {
-        const response = await fetch(maximumMarksOnlyPreferenceUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({ enabled })
-        });
-        if (!response.ok) throw new Error('Preference save failed');
-      } catch (error) {
-        showMaximumMarksOnly = !enabled;
-        maximumMarksOnlyToggle.checked = showMaximumMarksOnly;
-        applyMaximumMarksOnly();
-        alert('Could not save this preference. Please try again.');
-      }
-    });
 
     // Update practical total
     function updatePracticalTotal(group) {

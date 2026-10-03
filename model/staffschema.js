@@ -217,6 +217,7 @@ const staffSchema = new mongoose.Schema(
     branchName: { type: String, default: '', trim: true },
     plannedIn: { type: String, default: '09:00', trim: true },
     plannedOut: { type: String, default: '17:00', trim: true },
+    midTime: { type: String, default: '13:00', trim: true },
     punchMethod: { type: String, default: 'Two Punch', trim: true },
     allowMobilePunch: { type: Boolean, default: false },
     shiftType: { type: String, default: 'Fixed', trim: true },

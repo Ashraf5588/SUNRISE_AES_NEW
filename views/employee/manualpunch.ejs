@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Manual punch requests</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+	<link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css">
+	<style>
+		:root { color-scheme:light; --ink:#1b2940; --muted:#66758a; --line:#d7e1ed; --blue:#24477b; --blue-dark:#18375f; --blue-soft:#eaf1fa; --canvas:#eaf0f7; --white:#fff; --green:#13734f; --green-soft:#e8f5ef; --red:#b4404d; --red-soft:#fcedef; font-family:'DM Sans',sans-serif; color:var(--ink); background:var(--canvas); }
+		* { box-sizing:border-box; }
+		body { margin:0; min-height:100vh; background:linear-gradient(145deg,#eef3f9,#e6edf6); }
+		button,input,select { font:inherit; }
+		.page-shell { width:min(1440px,calc(100% - 34px)); margin:0 auto; padding:28px 0 48px; }
+		h1,h2,h3 { font-family:'Manrope',sans-serif; }
+		h1 { margin:0; font-size:1.6rem; }
+		.page-header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:19px; }
+		.eyebrow { margin:0 0 5px; color:var(--blue); font-size:.68rem; font-weight:800; text-transform:uppercase; }
+		.page-copy { margin:6px 0 0; color:var(--muted); font-size:.84rem; }
+		.header-actions { display:flex; align-items:center; gap:10px; }
+		.button-primary,.button-secondary,.location-button,.review-button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:38px; padding:0 13px; border:1px solid transparent; border-radius:5px; cursor:pointer; font-size:.8rem; font-weight:800; text-decoration:none; }
+		.button-primary { background:var(--blue); color:#fff; }
+		.button-primary:hover { background:var(--blue-dark); }
+		.button-secondary { border-color:var(--line); background:#f5f8fc; color:var(--ink); }
+		.panel { overflow:hidden; border:1px solid var(--line); border-radius:7px; background:var(--white); }
+		.table-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:15px 17px; border-bottom:1px solid var(--line); background:#f4f7fc; }
+		.table-heading h2 { margin:0; font-size:.95rem; }
+		.table-heading p { margin:4px 0 0; color:var(--muted); font-size:.73rem; }
+		.summary { display:flex; align-items:center; gap:7px; color:var(--muted); font-size:.76rem; font-weight:700; }
+		.summary strong { display:grid; place-items:center; min-width:27px; height:27px; padding:0 6px; border-radius:5px; background:var(--blue-soft); color:var(--blue); }
+		.table-wrap { overflow-x:auto; }
+		.staff-request-panel { margin-top:15px; }
+		.staff-request-table table { min-width:650px; }
+		table { width:100%; border-collapse:collapse; font-size:.77rem; white-space:nowrap; }
+		th,td { padding:11px 12px; border-bottom:1px solid #e9eef4; text-align:left; }
+		th { background:#f8fafd; color:var(--muted); font-size:.65rem; font-weight:800; text-transform:uppercase; }
+		tbody tr:hover { background:#f8fafd; }
+		tbody tr:last-child td { border-bottom:0; }
+		.employee-code { color:var(--blue); font-weight:800; }
+		.employee-name { font-weight:800; }
+		.cell-subtext { display:block; margin-top:3px; color:var(--muted); font-size:.68rem; }
+		.status { display:inline-flex; align-items:center; gap:6px; padding:5px 8px; border-radius:4px; font-size:.68rem; font-weight:800; text-transform:capitalize; }
+		.status::before { width:6px; height:6px; border-radius:50%; background:currentColor; content:''; }
+		.status-pending { background:#fff5df; color:#93600a; }
+		.status-approved { background:var(--green-soft); color:var(--green); }
+		.status-rejected { background:var(--red-soft); color:var(--red); }
+		.row-actions { display:flex; align-items:center; gap:6px; }
+		.review-button { min-height:30px; padding:0 9px; font-size:.7rem; }
+		.review-approve { background:var(--green-soft); color:var(--green); }
+		.review-reject { background:var(--red-soft); color:var(--red); }
+		.map-link { display:inline-grid; place-items:center; width:30px; height:30px; border:1px solid var(--line); border-radius:4px; background:#f7f9fc; color:var(--blue); text-decoration:none; }
+		.empty { padding:38px 20px; color:var(--muted); font-size:.82rem; text-align:center; }
+		.flash { margin-bottom:14px; padding:11px 13px; border:1px solid #bedccc; border-radius:5px; background:#edf8f1; color:#145b3f; font-size:.8rem; font-weight:700; }
+		.flash-error { border-color:#ebc9ce; background:#fff1f2; color:#97313b; }
+		.no-profile { margin-bottom:15px; padding:12px 14px; border:1px solid #ebc9ce; border-radius:5px; background:#fff1f2; color:#97313b; font-size:.8rem; }
+		dialog { width:min(760px,calc(100% - 24px)); max-width:760px; max-height:calc(100vh - 28px); padding:0; border:1px solid #cbd7e6; border-radius:9px; background:#fff; color:var(--ink); box-shadow:0 24px 75px rgba(17,36,64,.25); }
+		dialog::backdrop { background:rgba(18,34,56,.52); backdrop-filter:blur(2px); }
+		.modal-close { position:sticky; top:8px; z-index:2; display:flex; justify-content:flex-end; height:0; padding:8px 10px 0; }
+		.modal-close button { display:grid; place-items:center; width:32px; height:32px; border:1px solid var(--line); border-radius:5px; background:#fff; color:var(--muted); cursor:pointer; }
+		.request-form { padding:18px 22px 20px; }
+		.form-intro { display:flex; align-items:center; gap:12px; margin-bottom:18px; padding-right:34px; }
+		.form-icon { display:grid; place-items:center; flex:0 0 42px; width:42px; height:42px; border-radius:7px; background:var(--blue-soft); color:var(--blue); }
+		.form-intro h2 { margin:0; font-size:1.05rem; }
+		.form-intro p:last-child { margin:4px 0 0; color:var(--muted); font-size:.76rem; }
+		.form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+		.form-grid label { display:grid; gap:6px; color:#46566c; font-size:.72rem; font-weight:800; }
+		.form-grid input,.form-grid select { width:100%; min-height:39px; padding:8px 10px; border:1px solid #ccd8e6; border-radius:5px; background:#fff; color:var(--ink); font-size:.8rem; }
+		.form-grid input[readonly] { background:#f4f7fb; color:#526278; }
+		.form-grid input:focus,.form-grid select:focus { outline:2px solid rgba(36,71,123,.2); outline-offset:1px; }
+		.location-section { margin-top:17px; padding:13px; border:1px solid #dce5f0; border-radius:6px; background:#f7f9fc; }
+		.location-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+		.location-heading h3 { margin:0; font-size:.83rem; }
+		.location-heading p { margin:4px 0 0; color:var(--muted); font-size:.71rem; }
+		.location-button { min-height:34px; padding:0 10px; background:var(--blue); color:#fff; white-space:nowrap; }
+		.location-status { margin:10px 0; color:#69788d; font-size:.72rem; }
+		.location-status.is-ready { color:var(--green); font-weight:800; }
+		.location-status.is-error { color:var(--red); font-weight:800; }
+		#manualPunchMap { display:block; width:100%; height:180px; border:1px solid #d5dfeb; border-radius:5px; background:#e6edf6; }
+		.form-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:17px; }
+		@media(max-width:760px) { .page-shell { width:calc(100% - 20px); padding-top:18px; } .page-header { align-items:flex-start; flex-direction:column; } .header-actions { width:100%; justify-content:space-between; } .table-heading { padding:12px; } .table-wrap { max-height:calc(100vh - 245px); } }
+		@media(max-width:520px) { .form-grid { grid-template-columns:1fr; gap:10px; } .request-form { padding:15px; } .location-heading { align-items:flex-start; flex-direction:column; } .location-button { width:100%; } #manualPunchMap { height:155px; } .row-actions { flex-wrap:wrap; } }
+	</style>
+</head>
+<body>
+	<% if (isAdmin) { %><%- include('employeesidenav', { currentPage, selectedEmployee, isAdmin: true }) %><% } %>
+	<main class="page-shell">
+		<header class="page-header">
+			<div><p class="eyebrow">People / Attendance</p><h1>Manual punch requests</h1><p class="page-copy"><%= isAdmin ? 'Review staff attendance corrections.' : 'Submit a location-verified attendance correction for review.' %></p></div>
+			<div class="header-actions"><% if (isAdmin) { %><button class="button-primary" id="openManualPunch" type="button"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add manual punch</button><span class="summary"><strong><%= requests.filter(request => request.status === 'pending').length %></strong> pending</span><% } else { %><a class="button-primary" href="/myattendance"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i> My attendance</a><% } %></div>
+		</header>
+		<% if (message) { %><div class="flash"><%= message %></div><% } %>
+		<% if (error) { %><div class="flash flash-error"><%= error %></div><% } %>
+		<% if (!employee && !isAdmin) { %><div class="no-profile">Your login is not linked to an employee profile. Contact an administrator to connect your account.</div><% } %>
+		<% if (isAdmin) { %>
+		<section class="panel">
+			<div class="table-heading"><div><h2>All manual punch requests</h2><p>Requests are added to attendance only after approval.</p></div><span class="summary"><strong><%= requests.length %></strong> requests</span></div>
+			<% if (requests.length) { %>
+			<div class="table-wrap"><table>
+				<thead><tr><th>S.N.</th><th>Employee Code</th><th>Employee Name</th><th>Date</th><th>Time</th><th>Punch Type</th><th>Approved?</th><th>Approved By</th><th>Action</th></tr></thead>
+				<tbody>
+					<% requests.forEach((request, index) => { %>
+					<tr>
+						<td><%= index + 1 %></td>
+						<td class="employee-code"><%= request.employeeCode %></td>
+						<td class="employee-name"><%= request.employeeName %><span class="cell-subtext"><%= [request.branchName, request.designation, request.department].filter(Boolean).join(' / ') %></span></td>
+						<td><%= request.punchDateBs %><span class="cell-subtext"><%= new Date(request.punchDateAd).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) %></span></td>
+						<td><%= request.punchTime %></td>
+						<td><%= request.punchType %></td>
+						<td><span class="status status-<%= request.status %>"><%= request.status %></span></td>
+						<td><%= request.reviewedBy || '-' %></td>
+						<td><div class="row-actions">
+							<% if (request.location && Number.isFinite(request.location.latitude) && Number.isFinite(request.location.longitude)) { %><a class="map-link" href="https://www.google.com/maps?q=<%= request.location.latitude %>,<%= request.location.longitude %>" target="_blank" rel="noopener noreferrer" title="View pinned location" aria-label="View pinned location"><i class="fa-solid fa-location-dot" aria-hidden="true"></i></a><% } %>
+							<% if (isAdmin && request.status === 'pending') { %><form method="post" action="/manualpunch/<%= request._id %>/review"><button class="review-button review-approve" type="submit" name="decision" value="approved">Approve</button></form><form method="post" action="/manualpunch/<%= request._id %>/review"><button class="review-button review-reject" type="submit" name="decision" value="rejected">Reject</button></form><% } else { %><span class="cell-subtext"><%= request.status === 'pending' ? 'Awaiting review' : request.status === 'approved' ? 'Recorded' : 'Closed' %></span><% } %>
+						</div></td>
+					</tr>
+					<% }) %>
+				</tbody>
+			</table></div>
+			<% } else { %><div class="empty">No manual punch requests yet.</div><% } %>
+		</section>
+		<% } else if (employee) { %>
+		<section class="panel direct-punch-panel"><%- include('manualpunchform', { employee, employees, isAdmin: false, todayBs, todayTime: new Date().toTimeString().slice(0, 5), formValues }) %></section>
+		<section class="panel staff-request-panel" aria-labelledby="my-requests-heading">
+			<div class="table-heading"><div><h2 id="my-requests-heading">My manual punch requests</h2><p>Only your submitted requests are shown here.</p></div><span class="summary"><strong><%= requests.length %></strong> requests</span></div>
+			<% if (requests.length) { %>
+			<div class="table-wrap staff-request-table"><table>
+				<thead><tr><th>S.N.</th><th>Date</th><th>Time</th><th>Punch type</th><th>Status</th><th>Approved by</th><th>Location</th></tr></thead>
+				<tbody><% requests.forEach((request, index) => { %><tr>
+					<td><%= index + 1 %></td>
+					<td><%= request.punchDateBs %><span class="cell-subtext"><%= new Date(request.punchDateAd).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) %></span></td>
+					<td><%= request.punchTime %></td>
+					<td><%= request.punchType %></td>
+					<td><span class="status status-<%= request.status %>"><%= request.status %></span></td>
+					<td><%= request.reviewedBy || 'Awaiting review' %></td>
+					<td><% if (request.location && Number.isFinite(request.location.latitude) && Number.isFinite(request.location.longitude)) { %><a class="map-link" href="https://www.google.com/maps?q=<%= request.location.latitude %>,<%= request.location.longitude %>" target="_blank" rel="noopener noreferrer" title="View pinned location" aria-label="View pinned location"><i class="fa-solid fa-location-dot" aria-hidden="true"></i></a><% } else { %>-<% } %></td>
+				</tr><% }) %></tbody>
+			</table></div>
+			<% } else { %><div class="empty">You have not submitted a manual punch request yet.</div><% } %>
+		</section>
+		<% } %>
+	</main>
+	<% if (isAdmin && (employee || isAdmin)) { %>
+	<dialog id="manualPunchDialog" aria-labelledby="manualPunchDialogTitle" data-has-error="<%= error ? 'true' : 'false' %>">
+		<form method="dialog" class="modal-close"><button type="submit" aria-label="Close form"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></form>
+		<%- include('manualpunchform', { employee, employees, isAdmin, todayBs, todayTime: new Date().toTimeString().slice(0, 5), formValues }) %>
+	</dialog>
+	<% } %>
+	<script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
+	<script>
+		const punchDialog = document.getElementById('manualPunchDialog');
+		const openPunchButton = document.getElementById('openManualPunch');
+		if (punchDialog && openPunchButton) openPunchButton.addEventListener('click', () => punchDialog.showModal());
+		if (punchDialog) {
+			punchDialog.querySelectorAll('[data-close-punch-modal]').forEach(button => button.addEventListener('click', () => punchDialog.close()));
+		}
+		const dateInput = document.getElementById('manualPunchDateBs');
+		if (dateInput && typeof dateInput.NepaliDatePicker === 'function') dateInput.NepaliDatePicker({ dateFormat:'YYYY-MM-DD', language:'english' });
+		const locationButton = document.getElementById('manualPunchLocate');
+		if (locationButton) locationButton.addEventListener('click', () => {
+			const status = document.getElementById('manualPunchLocationStatus');
+			if (!navigator.geolocation) {
+				status.textContent = 'This browser does not provide location access.';
+				status.className = 'location-status is-error';
+				return;
+			}
+			status.textContent = 'Finding your location...';
+			status.className = 'location-status';
+			locationButton.disabled = true;
+			navigator.geolocation.getCurrentPosition(position => {
+				const { latitude, longitude, accuracy } = position.coords;
+				document.getElementById('manualPunchLatitude').value = latitude;
+				document.getElementById('manualPunchLongitude').value = longitude;
+				document.getElementById('manualPunchAccuracy').value = accuracy;
+				document.getElementById('manualPunchMap').src = `https://maps.google.com/maps?q=${latitude},${longitude}&z=17&output=embed`;
+				status.textContent = `Location pinned (accuracy about ${Math.round(accuracy)} m).`;
+				status.className = 'location-status is-ready';
+				locationButton.disabled = false;
+			}, error => {
+				status.textContent = error.code === 1 ? 'Location permission was denied. Allow access and try again.' : 'Unable to determine location. Please try again outdoors.';
+				status.className = 'location-status is-error';
+				locationButton.disabled = false;
+			}, { enableHighAccuracy:true, timeout:15000, maximumAge:0 });
+		});
+		if (punchDialog && punchDialog.dataset.hasError === 'true') punchDialog.showModal();
+	</script>
+</body>
+</html>

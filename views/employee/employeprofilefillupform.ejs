@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Complete my profile</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+	<link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css">
+	<style>
+		:root { color-scheme:light; --ink:#1b2940; --muted:#65748a; --line:#d7e1ed; --blue:#24477b; --blue-dark:#18375f; --blue-soft:#eaf1fa; --green:#16805b; --red:#b4404d; --canvas:#edf2f8; --paper:#fff; font-family:'DM Sans',sans-serif; color:var(--ink); background:var(--canvas); }
+		* { box-sizing:border-box; }
+		body { margin:0; min-height:100vh; background:linear-gradient(145deg,#f2f6fb,#e7eef7); }
+		button,input,select,textarea { font:inherit; }
+		.page-shell { width:min(1060px,calc(100% - 24px)); margin:0 auto; padding:22px 0 45px; }
+		h1,h2,h3 { font-family:'Manrope',sans-serif; }
+		h1 { margin:0; font-size:1.55rem; }
+		h2 { margin:0; font-size:1rem; }
+		h3 { margin:0; font-size:.9rem; }
+		.header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+		.eyebrow { margin:0 0 5px; color:var(--blue); font-size:.68rem; font-weight:800; text-transform:uppercase; }
+		.intro { margin:5px 0 0; color:var(--muted); font-size:.78rem; }
+		.header-actions { display:flex; gap:8px; }
+		.link-button,.save-button,.add-button { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:38px; padding:0 12px; border:1px solid var(--blue); border-radius:5px; background:var(--blue); color:#fff; font-size:.76rem; font-weight:800; text-decoration:none; cursor:pointer; }
+		.link-button:hover,.save-button:hover { background:var(--blue-dark); color:#fff; }
+		.notice { margin-bottom:14px; padding:11px 13px; border:1px solid #c8dfd1; border-radius:5px; background:#edf8f1; color:var(--green); font-size:.78rem; font-weight:700; }
+		.notice-error { border-color:#ebc9ce; background:#fff1f2; color:var(--red); }
+		.form-panel { overflow:hidden; border:1px solid var(--line); border-radius:8px; background:var(--paper); }
+		.form-section { padding:17px; border-bottom:1px solid var(--line); }
+		.form-section:last-of-type { border-bottom:0; }
+		.section-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:13px; }
+		.section-heading p { margin:3px 0 0; color:var(--muted); font-size:.7rem; }
+		.form-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:11px; }
+		.field { display:grid; gap:5px; min-width:0; }
+		.field-wide { grid-column:span 2; }
+		label { color:#46566c; font-size:.72rem; font-weight:800; }
+		.required { color:var(--red); }
+		input,select,textarea { width:100%; min-height:39px; padding:8px 9px; border:1px solid #cbd8e6; border-radius:5px; background:#fff; color:var(--ink); font-size:.78rem; }
+		.invalid-field { border-color:var(--red) !important; background:#fff7f7 !important; box-shadow:0 0 0 2px rgba(180,64,77,.12); }
+		input[readonly] { background:#f3f6fa; color:#5c6d82; }
+		textarea { min-height:75px; resize:vertical; }
+		input:focus,select:focus,textarea:focus { outline:2px solid rgba(36,71,123,.18); border-color:var(--blue); }
+		.profile-photo { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+		.photo-preview { display:grid; place-items:center; width:62px; height:62px; overflow:hidden; border-radius:7px; background:var(--blue-soft); color:var(--blue); font-size:1.2rem; }
+		.photo-preview img { width:100%; height:100%; object-fit:cover; }
+		.photo-copy { color:var(--muted); font-size:.72rem; }
+		.check-line { display:flex; align-items:center; gap:8px; min-height:39px; padding-top:20px; color:#46566c; font-size:.75rem; font-weight:700; }
+		.check-line input { width:17px; min-height:17px; accent-color:var(--blue); }
+		.repeat-wrap { overflow-x:auto; border:1px solid var(--line); border-radius:5px; }
+		.repeat-table { width:100%; min-width:650px; border-collapse:collapse; font-size:.72rem; }
+		.repeat-table th,.repeat-table td { padding:8px; border-bottom:1px solid #e9eef4; text-align:left; }
+		.repeat-table th { background:#f7f9fc; color:var(--muted); font-size:.63rem; text-transform:uppercase; }
+		.repeat-table input { min-width:110px; min-height:34px; }
+		.remove-button { min-height:30px; padding:0 8px; border:1px solid #efc9ce; border-radius:4px; background:#fff2f3; color:var(--red); cursor:pointer; font-size:.68rem; }
+		.add-button { min-height:32px; padding:0 10px; background:var(--blue-soft); color:var(--blue-dark); border-color:#cbd8e6; }
+		.documents { display:grid; gap:8px; }
+		.document-row { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:center; }
+		.document-row input[type=file] { padding:5px; }
+		.form-actions { display:flex; justify-content:flex-end; gap:8px; padding:15px 17px; background:#f8fafc; }
+		@media(max-width:760px) { .header { align-items:flex-start; flex-direction:column; } .header-actions { width:100%; } .header-actions a { flex:1; } .form-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .field-wide { grid-column:span 2; } }
+		@media(max-width:520px) { .page-shell { width:calc(100% - 18px); padding-top:14px; } h1 { font-size:1.3rem; } .form-grid { grid-template-columns:1fr; } .field-wide { grid-column:auto; } .form-section { padding:13px 11px; } .section-heading { align-items:flex-start; flex-direction:column; } .document-row { grid-template-columns:1fr; } .document-row .remove-button { width:100%; } .form-actions { flex-direction:column; padding:13px 11px; } .form-actions .save-button { width:100%; } }
+	</style>
+</head>
+<body data-has-error="<%= error ? 'true' : 'false' %>">
+	<main class="page-shell">
+		<header class="header"><div><p class="eyebrow">People / My profile</p><h1>Complete my profile</h1><p class="intro">Keep your personal, contact, family, health, and document information up to date.</p></div><div class="header-actions"><a class="link-button" href="/myattendance"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i> My attendance</a><a class="link-button" href="/manualpunch"><i class="fa-solid fa-fingerprint" aria-hidden="true"></i> Manual punch</a></div></header>
+		<% if (error) { %><div class="notice notice-error" role="alert"><%= error %></div><% } %>
+		<% if (saved) { %><div class="notice" role="status">Your profile was saved successfully.</div><% } %>
+		<form class="form-panel" method="post" action="/employeeprofile" enctype="multipart/form-data" id="teacherProfileForm" novalidate>
+			<input type="hidden" name="staffName" value="<%= employee.staffName %>">
+			<input type="hidden" name="qualificationCount" id="qualificationCount" value="<%= formData.qualifications?.length || 1 %>">
+			<input type="hidden" name="experienceCount" id="experienceCount" value="<%= formData.experiences?.length || 1 %>">
+			<input type="hidden" name="skillCount" id="skillCount" value="<%= formData.skills?.length || 1 %>">
+			<input type="hidden" name="trainingCount" id="trainingCount" value="<%= formData.trainings?.length || 1 %>">
+			<input type="hidden" name="familyCount" id="familyCount" value="<%= formData.familyMembers?.length || 1 %>">
+			<input type="hidden" name="documentCount" id="documentCount" value="1">
+			<section class="form-section"><div class="section-heading"><div><h2>Basic information</h2><p>Your employment identity is maintained by administration.</p></div></div><div class="profile-photo"><span class="photo-preview"><% if (employee.employeePhoto?.url) { %><img id="photoPreview" src="<%= employee.employeePhoto.url %>" alt="Profile photo"><% } else { %><i id="photoPlaceholder" class="fa-solid fa-user" aria-hidden="true"></i><img id="photoPreview" alt="Profile photo" hidden><% } %></span><div class="photo-copy"><label for="employeePhoto">Profile photo</label><input id="employeePhoto" name="employeePhoto" type="file" accept="image/jpeg,image/png,image/webp,image/gif"><span>JPG, PNG, WebP, or GIF.</span></div></div><div class="form-grid"><div class="field"><label>Name</label><input value="<%= employee.staffName %>" readonly></div><div class="field"><label>Employee code</label><input value="<%= employee.employeeCode %>" readonly></div><div class="field"><label>Designation</label><input value="<%= employee.designation || '-' %>" readonly></div><div class="field"><label>Department</label><input value="<%= employee.department || '-' %>" readonly></div></div></section>
+			<section class="form-section"><div class="section-heading"><div><h2>Personal and contact information</h2><p>Fields marked <span class="required">*</span> are required.</p></div></div><div class="form-grid"><div class="field"><label for="dateOfBirthBs">Date of birth (BS)</label><input id="dateOfBirthBs" class="nepali-date-input" name="dateOfBirthBs" value="<%= formData.dateOfBirthBs || '' %>" placeholder="YYYY-MM-DD"></div><div class="field"><label for="maritalStatus">Marital status</label><select id="maritalStatus" name="maritalStatus"><% ['Unmarried','Married','Other'].forEach(value => { %><option value="<%= value %>" <%= (formData.maritalStatus || 'Unmarried') === value ? 'selected' : '' %>><%= value %></option><% }) %></select></div><div class="field"><label for="gender">Gender <span class="required">*</span></label><select id="gender" name="gender" required><option value="">Select gender</option><% ['Male','Female','Other'].forEach(value => { %><option value="<%= value %>" <%= formData.gender === value ? 'selected' : '' %>><%= value %></option><% }) %></select></div><div class="field"><label for="bloodGroup">Blood group</label><select id="bloodGroup" name="bloodGroup"><option value="">Select</option><% ['A+','A-','B+','B-','AB+','AB-','O+','O-'].forEach(value => { %><option value="<%= value %>" <%= (formData.bloodGroup || formData.health?.bloodGroup) === value ? 'selected' : '' %>><%= value %></option><% }) %></select></div><div class="field"><label for="mobileNumber">Mobile number <span class="required">*</span></label><input id="mobileNumber" name="mobileNumber" type="tel" value="<%= formData.mobileNumber || '' %>" required></div><div class="field"><label for="email">Personal email <span class="required">*</span></label><input id="email" name="email" type="email" value="<%= formData.email || '' %>" required></div><div class="field"><label for="country">Country</label><input id="country" name="country" value="<%= formData.country || 'Nepal' %>"></div><div class="field"><label for="religion">Religion</label><input id="religion" name="religion" value="<%= formData.religion || '' %>"></div><div class="field"><label for="passportNumber">Passport number</label><input id="passportNumber" name="passportNumber" value="<%= formData.passportNumber || '' %>"></div><div class="field"><label for="citizenNumber">Citizen number</label><input id="citizenNumber" name="citizenNumber" value="<%= formData.citizenNumber || '' %>"></div><div class="field"><label for="citizenshipIssueDate">Issue date (BS)</label><input id="citizenshipIssueDate" name="citizenshipIssueDate" class="nepali-date-input" value="<%= formData.citizenshipIssueDate || '' %>" placeholder="YYYY-MM-DD"></div><div class="field"><label for="citizenshipIssueOffice">Issue district / office</label><input id="citizenshipIssueOffice" name="citizenshipIssueOffice" value="<%= formData.citizenshipIssueOffice || '' %>"></div><div class="field"><label for="panNumber">PAN number</label><input id="panNumber" name="panNumber" value="<%= formData.panNumber || '' %>"></div><div class="field"><label for="fatherName">Father name</label><input id="fatherName" name="fatherName" value="<%= formData.fatherName || '' %>"></div><div class="field"><label for="motherName">Mother name</label><input id="motherName" name="motherName" value="<%= formData.motherName || '' %>"></div><label class="check-line"><input type="checkbox" name="isDifferentlyAbled" value="true" <%= formData.isDifferentlyAbled ? 'checked' : '' %>> Is differently abled</label></div></section>
+			<section class="form-section"><div class="section-heading"><div><h2>Addresses</h2><p>Keep your permanent and temporary addresses current.</p></div></div><div class="form-grid"><div class="field field-wide"><label for="address">Permanent address <span class="required">*</span></label><textarea id="address" name="address" required><%= formData.permanentAddress || formData.address || '' %></textarea></div><div class="field"><label for="permanentDistrict">District</label><input id="permanentDistrict" name="permanentDistrict" value="<%= formData.permanentDistrict || '' %>"></div><div class="field"><label for="permanentMunicipality">Municipality</label><input id="permanentMunicipality" name="permanentMunicipality" value="<%= formData.permanentMunicipality || '' %>"></div><div class="field"><label for="permanentWard">Ward</label><input id="permanentWard" name="permanentWard" value="<%= formData.permanentWard || '' %>"></div><div class="field field-wide"><label for="permanentAddressNepali">Permanent address (Nepali)</label><textarea id="permanentAddressNepali" name="permanentAddressNepali"><%= formData.permanentAddressNepali || '' %></textarea></div><label class="check-line"><input type="checkbox" id="sameAddressAsPermanent" name="sameAddressAsPermanent" value="true" <%= formData.sameAddressAsPermanent ? 'checked' : '' %>> Same as permanent address</label><div class="field field-wide"><label for="temporaryAddress">Temporary address</label><textarea id="temporaryAddress" name="temporaryAddress"><%= formData.temporaryAddress || '' %></textarea></div><div class="field"><label for="temporaryDistrict">District</label><input id="temporaryDistrict" name="temporaryDistrict" value="<%= formData.temporaryDistrict || '' %>"></div><div class="field"><label for="temporaryMunicipality">Municipality</label><input id="temporaryMunicipality" name="temporaryMunicipality" value="<%= formData.temporaryMunicipality || '' %>"></div><div class="field"><label for="temporaryWard">Ward</label><input id="temporaryWard" name="temporaryWard" value="<%= formData.temporaryWard || '' %>"></div><div class="field field-wide"><label for="temporaryAddressNepali">Temporary address (Nepali)</label><textarea id="temporaryAddressNepali" name="temporaryAddressNepali"><%= formData.temporaryAddressNepali || '' %></textarea></div></div></section>
+			<section class="form-section"><div class="section-heading"><h2>Bank information</h2></div><div class="form-grid"><div class="field"><label for="bankName">Bank</label><input id="bankName" name="bankName" value="<%= formData.bankName || '' %>"></div><div class="field"><label for="bankBranch">Branch</label><input id="bankBranch" name="bankBranch" value="<%= formData.bankBranch || '' %>"></div><div class="field"><label for="bankAccountNumber">Bank account</label><input id="bankAccountNumber" name="bankAccountNumber" value="<%= formData.bankAccountNumber || '' %>"></div></div></section>
+			<section class="form-section"><div class="section-heading"><h2>Emergency contact</h2></div><div class="form-grid"><div class="field"><label for="emergencyContactName">Contact person name <span class="required">*</span></label><input id="emergencyContactName" name="emergencyContactName" value="<%= formData.emergencyContactName || '' %>" required></div><div class="field"><label for="emergencyContactRelation">Relation</label><input id="emergencyContactRelation" name="emergencyContactRelation" value="<%= formData.emergencyContactRelation || '' %>"></div><div class="field"><label for="emergencyContactNumber">Phone number <span class="required">*</span></label><input id="emergencyContactNumber" name="emergencyContactNumber" type="tel" value="<%= formData.emergencyContactNumber || '' %>" required></div><div class="field field-wide"><label for="emergencyContactAddress">Address</label><textarea id="emergencyContactAddress" name="emergencyContactAddress"><%= formData.emergencyContactAddress || '' %></textarea></div></div></section>
+			<% const repeatSections = [{key:'qualifications',prefix:'qualification',title:'Qualification',fields:['degree','level','faculty','institution','affiliation','country']},{key:'experiences',prefix:'experience',title:'Experience',fields:['title','organization','beganOn','endedOn','description']},{key:'skills',prefix:'skill',title:'Skills',fields:['code','name','description']},{key:'trainings',prefix:'training',title:'Training',fields:['trainingName','fromDate','toDate','description']},{key:'familyMembers',prefix:'family',title:'Family info',fields:['name','relation','note']}]; repeatSections.forEach(section => { %><section class="form-section repeat-section" data-repeat-section="<%= section.key %>"><div class="section-heading"><h2><%= section.title %></h2><button class="add-button" type="button" data-add-repeat="<%= section.key %>"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add</button></div><div class="repeat-wrap"><table class="repeat-table"><thead><tr><% section.fields.forEach(field => { %><th><%= field %></th><% }) %><th></th></tr></thead><tbody data-repeat-body="<%= section.key %>"><% (formData[section.key]?.length ? formData[section.key] : [{}]).forEach((row,index) => { %><tr data-repeat-row><% section.fields.forEach(field => { %><td><input name="<%= section.prefix %>_<%= index %>_<%= field %>" value="<%= row[field] || '' %>"></td><% }) %><td><button class="remove-button" type="button" data-remove-repeat>Remove</button></td></tr><% }) %></tbody></table></div></section><% }) %>
+			<section class="form-section"><div class="section-heading"><h2>Health information</h2></div><div class="form-grid"><div class="field"><label for="healthHeightCm">Height (cm)</label><input id="healthHeightCm" name="healthHeightCm" type="number" step=".1" value="<%= formData.health?.heightCm || '' %>"></div><div class="field"><label for="healthWeightKg">Weight (kg)</label><input id="healthWeightKg" name="healthWeightKg" type="number" step=".1" value="<%= formData.health?.weightKg || '' %>"></div><div class="field"><label for="healthBloodPressure">Blood pressure</label><input id="healthBloodPressure" name="healthBloodPressure" value="<%= formData.health?.bloodPressure || '' %>"></div><div class="field field-wide"><label for="healthNotes">Health notes</label><textarea id="healthNotes" name="healthNotes"><%= formData.health?.notes || '' %></textarea></div></div></section>
+			<section class="form-section"><div class="section-heading"><div><h2>Documents</h2><p>Upload documents for your profile. Existing documents stay attached.</p></div><button class="add-button" type="button" id="addDocument">+ Add document</button></div><div class="documents" id="documents"><div class="document-row"><input name="documentName_0" placeholder="Document name"><input type="file" name="documentFile_0" accept="application/pdf,image/jpeg,image/png,image/webp,image/gif"><button class="remove-button" type="button" data-remove-document>Remove</button></div></div></section>
+			<div class="form-actions"><button class="save-button" type="submit"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save my profile</button></div>
+		</form>
+	</main>
+	<script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js"></script>
+	<script>
+		document.querySelectorAll('.nepali-date-input').forEach(input => { if (typeof input.NepaliDatePicker === 'function') input.NepaliDatePicker({ dateFormat:'YYYY-MM-DD', language:'english' }); });
+		const profileForm=document.getElementById('teacherProfileForm');
+		const markInvalidFields=()=>{
+			profileForm.querySelectorAll('.invalid-field').forEach(field=>field.classList.remove('invalid-field'));
+			const invalid=[...profileForm.querySelectorAll('input:invalid,select:invalid,textarea:invalid')];
+			invalid.forEach(field=>{field.classList.add('invalid-field');field.setAttribute('aria-invalid','true');});
+			return invalid;
+		};
+		profileForm.addEventListener('input',event=>{if(event.target.matches('input,select,textarea')&&event.target.checkValidity()){event.target.classList.remove('invalid-field');event.target.removeAttribute('aria-invalid');}});
+		profileForm.addEventListener('change',event=>{if(event.target.matches('input,select,textarea')&&event.target.checkValidity()){event.target.classList.remove('invalid-field');event.target.removeAttribute('aria-invalid');}});
+		profileForm.addEventListener('submit',event=>{
+			const invalid=markInvalidFields();
+			if(!invalid.length)return;
+			event.preventDefault();
+			requestAnimationFrame(()=>{invalid[0].scrollIntoView({behavior:'smooth',block:'center'});invalid[0].focus({preventScroll:true});});
+		});
+		if(document.body.dataset.hasError === 'true'){
+			const invalid=markInvalidFields();
+			if(invalid.length)requestAnimationFrame(()=>invalid[0].scrollIntoView({behavior:'smooth',block:'center'}));
+		}
+		const sameAddress=document.getElementById('sameAddressAsPermanent');
+		const addressPairs=[['address','temporaryAddress'],['permanentDistrict','temporaryDistrict'],['permanentMunicipality','temporaryMunicipality'],['permanentWard','temporaryWard'],['permanentAddressNepali','temporaryAddressNepali']];
+		function syncAddress(){ const checked=sameAddress.checked; addressPairs.forEach(([from,to])=>{const source=document.getElementById(from),target=document.getElementById(to);target.readOnly=checked;if(checked)target.value=source.value;}); }
+		sameAddress.addEventListener('change',syncAddress); if(sameAddress.checked)syncAddress();
+		const photoInput=document.getElementById('employeePhoto'); photoInput.addEventListener('change',()=>{const file=photoInput.files[0];if(!file)return;document.getElementById('photoPreview').src=URL.createObjectURL(file);document.getElementById('photoPreview').hidden=false;document.getElementById('photoPlaceholder')?.setAttribute('hidden','');});
+		const updateRepeatCount=key=>{const countName=key === 'familyMembers' ? 'familyCount' : `${key.slice(0,-1)}Count`;const count=document.getElementById(countName);const body=document.querySelector(`[data-repeat-body="${key}"]`);if(count&&body)count.value=body.querySelectorAll('[data-repeat-row]').length;};
+		document.querySelectorAll('[data-add-repeat]').forEach(button=>button.addEventListener('click',()=>{const key=button.dataset.addRepeat,body=document.querySelector(`[data-repeat-body="${key}"]`),row=body.querySelector('[data-repeat-row]').cloneNode(true),index=body.children.length;row.querySelectorAll('[name]').forEach(input=>input.value='');row.querySelectorAll('[name]').forEach(input=>{input.name=input.name.replace(/_\d+_/,`_${index}_`);});body.append(row);updateRepeatCount(key);}));
+		document.addEventListener('click',event=>{const removeRepeat=event.target.closest('[data-remove-repeat]');if(removeRepeat){const row=removeRepeat.closest('[data-repeat-row]'),body=removeRepeat.closest('[data-repeat-body]');const key=body?.dataset.repeatBody;row?.remove();if(key)updateRepeatCount(key);}if(event.target.closest('[data-remove-document]'))event.target.closest('.document-row').remove();});
+		let documentIndex=1; document.getElementById('addDocument').addEventListener('click',()=>{const row=document.createElement('div');row.className='document-row';row.innerHTML=`<input name="documentName_${documentIndex}" placeholder="Document name"><input type="file" name="documentFile_${documentIndex}" accept="application/pdf,image/jpeg,image/png,image/webp,image/gif"><button class="remove-button" type="button" data-remove-document>Remove</button>`;document.getElementById('documents').append(row);documentIndex+=1;});
+	</script>
+</body>
+</html>

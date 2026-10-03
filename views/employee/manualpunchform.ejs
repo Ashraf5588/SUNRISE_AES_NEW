@@ -1,0 +1,29 @@
+<form class="request-form" method="post" action="/manualpunch">
+	<div class="form-intro"><span class="form-icon"><i class="fa-solid fa-fingerprint" aria-hidden="true"></i></span><div><p class="eyebrow">Attendance correction</p><h2 id="manualPunchDialogTitle">Manual punch request</h2><p>Submit a location-verified punch for administrator review.</p></div></div>
+	<div class="form-grid">
+		<% if (isAdmin) { %>
+		<label>Employee<select name="employeeId" required><option value="">Select employee</option><% employees.forEach(option => { %><option value="<%= option._id %>" <%= formValues.employeeId === String(option._id) ? 'selected' : '' %>><%= option.staffName %> - <%= option.employeeCode %></option><% }) %></select></label>
+		<% } else { %>
+		<label>Employee name<input type="text" value="<%= employee.staffName %>" readonly></label>
+		<label>Employee code<input type="text" value="<%= employee.employeeCode %>" readonly></label>
+		<label>Branch<input type="text" value="<%= employee.branchName || '-' %>" readonly></label>
+		<label>Designation<input type="text" value="<%= employee.designation || '-' %>" readonly></label>
+		<label>Department<input type="text" value="<%= employee.department || '-' %>" readonly></label>
+		<% } %>
+		<label>Punch type<select name="punchType" required>
+			<option value="">Select punch type</option>
+			<% [['Check-in', 'Check-in'], ['Check-out', 'Check-out'], ['Field visit', 'Field visit']].forEach(([value, label]) => { %><option value="<%= value %>" <%= formValues.punchType === value ? 'selected' : '' %>><%= label %></option><% }) %>
+		</select></label>
+		<label>Date (BS)<input id="manualPunchDateBs" class="nepali-date-input" name="punchDateBs" type="text" value="<%= formValues.punchDateBs || todayBs %>" placeholder="YYYY-MM-DD" inputmode="numeric" autocomplete="off" required></label>
+		<label>Time<input name="punchTime" type="time" value="<%= formValues.punchTime || todayTime %>" required></label>
+	</div>
+	<section class="location-section" aria-labelledby="location-heading">
+		<div class="location-heading"><div><h3 id="location-heading">Location pin</h3><p>Allow location access to pin where this punch occurred.</p></div><button class="location-button" id="manualPunchLocate" type="button"><i class="fa-solid fa-location-crosshairs" aria-hidden="true"></i> Use current location</button></div>
+		<p class="location-status" id="manualPunchLocationStatus" role="status">Location is required before submitting.</p>
+		<iframe id="manualPunchMap" title="Map showing manual punch location" src="https://maps.google.com/maps?q=United%20English%20Boarding%20School%20Nepal&amp;z=14&amp;output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+		<input type="hidden" name="latitude" id="manualPunchLatitude" value="<%= formValues.latitude || '' %>">
+		<input type="hidden" name="longitude" id="manualPunchLongitude" value="<%= formValues.longitude || '' %>">
+		<input type="hidden" name="accuracyMeters" id="manualPunchAccuracy" value="">
+	</section>
+	<div class="form-actions"><% if (isAdmin) { %><button class="button-secondary" type="button" data-close-punch-modal>Cancel</button><% } %><button class="button-primary" type="submit"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Submit request</button></div>
+</form>

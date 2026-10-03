@@ -1,26 +1,26 @@
 <style>
 	:root { --employee-nav-width: 246px; }
-	.employee-sidenav { position: fixed; inset: 0 auto 0 0; z-index: 20; display: flex; flex-direction: column; width: var(--employee-nav-width); padding: 14px 10px; border-right: 1px solid #d9e1ec; background: #f4f6fa; transition: width .18s ease; }
+	.employee-sidenav { position: fixed; inset: 0 auto 0 0; z-index: 20; display: flex; flex-direction: column; width: var(--employee-nav-width); padding: 14px 10px; border-right: 1px solid #d9e1ec; background: #003091; transition: width .18s ease;color:white }
 	.employee-sidenav-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #dfe5ed; }
-	.employee-sidenav-brand { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 9px; color: #18375f; font-family: 'Manrope', sans-serif; font-weight: 800; text-decoration: none; }
+	.employee-sidenav-brand { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 9px; color: #fafafa; font-family: 'Manrope', sans-serif; font-weight: 800; text-decoration: none; }
 	.employee-sidenav-brand i { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 5px; background: #24477b; color: white; }
 	.employee-sidenav-toggle { display: grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; border: 1px solid #d6dfeb; border-radius: 5px; background: #fff; color: #24477b; cursor: pointer; transition: background .14s ease, color .14s ease, border-color .14s ease; }
 	.employee-sidenav-toggle:hover { border-color: #24477b; background: #24477b; color: #fff; }
 	.employee-sidenav-links { display: grid; gap: 4px; align-content: start; overflow-y: auto; }
-	.employee-nav-link, .employee-nav-section { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 42px; padding: 0 12px; border: 0; border-radius: 5px; background: transparent; color: #34445a; text-align: left; text-decoration: none; cursor: pointer; font: inherit; font-size: .86rem; font-weight: 700; transition: background .14s ease, color .14s ease; }
-	.employee-nav-link i, .employee-nav-section i:first-child { display: inline-grid; place-items: center; flex: 0 0 18px; width: 18px; color: #5e6d82; }
-	.employee-nav-link:hover, .employee-nav-section:hover, .employee-nav-section[aria-expanded="true"] { background: #24477b; color: #fff; box-shadow: 0 2px 5px rgba(24,55,95,.12); }
-	.employee-nav-link:active, .employee-nav-section:active, .employee-nav-link:focus-visible, .employee-nav-section:focus-visible { background: #24477b; color: #fff; }
+	.employee-nav-link, .employee-nav-section { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 42px; padding: 0 12px; border: 0; border-radius: 5px; background: transparent; color: #f5f5f5; text-align: left; text-decoration: none; cursor: pointer; font: inherit; font-size: .86rem; font-weight: 700; transition: background .14s ease, color .14s ease; }
+	.employee-nav-link i, .employee-nav-section i:first-child { display: inline-grid; place-items: center; flex: 0 0 18px; width: 18px; color: #ffffff; }
+	.employee-nav-link:hover, .employee-nav-section:hover, .employee-nav-section[aria-expanded="true"] { background: #639bef; color: #fff; box-shadow: 0 2px 5px rgba(24,55,95,.12); }
+	.employee-nav-link:active, .employee-nav-section:active, .employee-nav-link:focus-visible, .employee-nav-section:focus-visible { background: #639bef; color: #fff; }
 	.employee-nav-link:hover i, .employee-nav-section:hover i, .employee-nav-section[aria-expanded="true"] i { color: #fff; }
-	.employee-nav-link[aria-current="page"] { background: #24477b; color: #fff; }
+	.employee-nav-link[aria-current="page"] { background: #5496ff; color: #fff; }
 	.employee-nav-link[aria-current="page"] i { color: white; }
 	.employee-nav-section .employee-nav-chevron { margin-left: auto; transition: transform .18s ease; }
 	.employee-nav-section[aria-expanded="true"] .employee-nav-chevron { transform: rotate(180deg); }
 	.employee-nav-submenu { display: grid; gap: 3px; margin: 0 0 7px 28px; padding-left: 8px; border-left: 1px solid #c6d3e4; }
 	.employee-nav-submenu[hidden] { display: none; }
-	.employee-nav-submenu .employee-nav-link { min-height: 36px; padding-left: 10px; color: #5b6878; font-size: .82rem; }
+	.employee-nav-submenu .employee-nav-link { min-height: 36px; padding-left: 10px; color: #ffffff; font-size: .82rem; }
 	.employee-nav-submenu .employee-nav-link[aria-current="page"] { background: #24477b; color: #fff; }
-	.employee-nav-submenu .employee-nav-link:hover, .employee-nav-submenu .employee-nav-link:active { background: #24477b; color: #fff; }
+	.employee-nav-submenu .employee-nav-link:hover, .employee-nav-submenu .employee-nav-link:active { background: #94b1dc; color: #fff; }
 	.employee-nav-submenu .employee-nav-link:hover i, .employee-nav-submenu .employee-nav-link:active i { color: #fff; }
 	.employee-nav-divider { height: 1px; margin: 7px 8px; background: #e4e8ee; }
 	body.employee-nav-collapsed { --employee-nav-width: 68px; }
@@ -32,9 +32,11 @@
 	body.employee-nav-collapsed .employee-nav-link i, body.employee-nav-collapsed .employee-nav-section i:first-child { flex-basis: auto; }
 	body.employee-nav-collapsed .employee-nav-submenu { display: none; }
 	body.employee-nav-visible .page-shell { width: calc(100% - var(--employee-nav-width) - 34px); margin-left: calc(var(--employee-nav-width) + 18px); }
+	body.employee-nav-visible .leave-shell { width: calc(100% - var(--employee-nav-width)); margin-left: var(--employee-nav-width); transition: margin-left .18s ease, width .18s ease; }
 	@media (max-width: 760px) {
 		:root { --employee-nav-width: 68px; }
 		body.employee-nav-visible .page-shell { width: calc(100% - 88px); margin-left: 76px; }
+		body.employee-nav-visible .leave-shell { width: calc(100% - 68px); margin-left: 68px; }
 		.employee-sidenav { padding-inline: 8px; }
 		.employee-sidenav-top { flex-direction: column; }
 		.employee-sidenav-brand { padding: 6px 0; }
@@ -43,9 +45,11 @@
 		.employee-nav-link i, .employee-nav-section i:first-child { flex-basis: auto; }
 		.employee-nav-submenu { display: none; }
 		body.employee-nav-collapsed .page-shell { width: calc(100% - 88px); margin-left: 76px; }
+		body.employee-nav-collapsed .leave-shell { width: calc(100% - 68px); margin-left: 68px; }
 	}
 </style>
 <script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
+<% const canManageEmployeeNavigation = typeof isAdmin === 'undefined' ? true : isAdmin; %>
 <aside class="employee-sidenav" aria-label="Employee navigation">
 	<div class="employee-sidenav-top">
 		<a class="employee-sidenav-brand" href="/employeemanagementdashboard" title="Employee dashboard"><i class="fa-solid fa-building-user" aria-hidden="true"></i><span>Sunrise HR</span></a>
@@ -53,12 +57,29 @@
 	</div>
 	<nav class="employee-sidenav-links">
 		<a class="employee-nav-link" href="/employeemanagementdashboard" aria-current="<%= currentPage === 'dashboard' ? 'page' : 'false' %>" title="Dashboard"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i><span class="employee-nav-label">Dashboard</span></a>
-		<button class="employee-nav-section" type="button" id="employeeManagementToggle" aria-expanded="<%= ['employee-list','attendance','profile'].includes(currentPage) ? 'true' : 'false' %>" title="Employee Management"><i class="fa-solid fa-users" aria-hidden="true"></i><span class="employee-nav-label">Employee Management</span><i class="fa-solid fa-chevron-down employee-nav-chevron" aria-hidden="true"></i></button>
+		<a class="employee-nav-link" href="/manualpunch" aria-current="<%= currentPage === 'manual-punch' ? 'page' : 'false' %>" title="Manual punch request"><i class="fa-solid fa-fingerprint" aria-hidden="true"></i><span class="employee-nav-label">Manual punch request</span></a>
+		<a class="employee-nav-link" href="/myattendance" aria-current="<%= currentPage === 'my-attendance' ? 'page' : 'false' %>" title="My attendance"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i><span class="employee-nav-label">My attendance</span></a>
+		<button class="employee-nav-section" type="button" id="leaveToggle" aria-expanded="<%= ['leave','leave-setup'].includes(currentPage) ? 'true' : 'false' %>" title="Leave"><i class="fa-solid fa-plane-departure" aria-hidden="true"></i><span class="employee-nav-label">Leave</span><i class="fa-solid fa-chevron-down employee-nav-chevron" aria-hidden="true"></i></button>
+		<div class="employee-nav-submenu" id="leaveSubmenu" <%= ['leave','leave-setup'].includes(currentPage) ? '' : 'hidden' %>>
+			<a class="employee-nav-link" href="/leave" aria-current="<%= currentPage === 'leave' ? 'page' : 'false' %>" title="Leave request"><i class="fa-solid fa-file-circle-plus" aria-hidden="true"></i><span class="employee-nav-label">Leave request</span></a>
+			<% if (canManageEmployeeNavigation) { %><a class="employee-nav-link" href="/leave/setup" aria-current="<%= currentPage === 'leave-setup' ? 'page' : 'false' %>" title="Leave management"><i class="fa-solid fa-sliders" aria-hidden="true"></i><span class="employee-nav-label">Leave management</span></a><% } %>
+		</div>
+		<% if (canManageEmployeeNavigation) { %><button class="employee-nav-section" type="button" id="employeeManagementToggle" aria-expanded="<%= ['employee-list','attendance','profile'].includes(currentPage) ? 'true' : 'false' %>" title="Employee Management"><i class="fa-solid fa-users" aria-hidden="true"></i><span class="employee-nav-label">Employee Management</span><i class="fa-solid fa-chevron-down employee-nav-chevron" aria-hidden="true"></i></button>
 		<div class="employee-nav-submenu" id="employeeManagementSubmenu" <%= ['employee-list','attendance','profile'].includes(currentPage) ? '' : 'hidden' %>>
 			<a class="employee-nav-link" href="/employeedata" aria-current="<%= currentPage === 'employee-list' ? 'page' : 'false' %>" title="Employee list"><i class="fa-solid fa-list" aria-hidden="true"></i><span class="employee-nav-label">Employee list</span></a>
 			<a class="employee-nav-link" href="/employeeattendance" aria-current="<%= currentPage === 'attendance' ? 'page' : 'false' %>" title="Employee attendance"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i><span class="employee-nav-label">Employee attendance</span></a>
 			<a class="employee-nav-link" href="<%= selectedEmployee ? `/employeedetail?employeeId=${selectedEmployee._id}` : '/employeedetail' %>" aria-current="<%= currentPage === 'profile' ? 'page' : 'false' %>" title="Employee profile"><i class="fa-regular fa-id-card" aria-hidden="true"></i><span class="employee-nav-label">Employee profile</span></a>
 		</div>
+		<button class="employee-nav-section" type="button" id="basicSetupToggle" aria-expanded="<%= ['setup-branches','setup-departments','setup-sections','setup-designations','setup-shifts','attendance-setup'].includes(currentPage) ? 'true' : 'false' %>" title="Basic Setup"><i class="fa-solid fa-cog" aria-hidden="true"></i><span class="employee-nav-label">Basic Setup</span><i class="fa-solid fa-chevron-down employee-nav-chevron" aria-hidden="true"></i></button>
+		<div class="employee-nav-submenu" id="basicSetupSubmenu" <%= ['setup-branches','setup-departments','setup-sections','setup-designations','setup-shifts','attendance-setup'].includes(currentPage) ? '' : 'hidden' %>>
+			<a class="employee-nav-link" href="/branchsetup" aria-current="<%= currentPage === 'setup-branches' ? 'page' : 'false' %>" title="Branch setup"><i class="fa-solid fa-building" aria-hidden="true"></i><span class="employee-nav-label">Branch setup</span></a>
+			<a class="employee-nav-link" href="/departmentsetup" aria-current="<%= currentPage === 'setup-departments' ? 'page' : 'false' %>" title="Department setup"><i class="fa-solid fa-sitemap" aria-hidden="true"></i><span class="employee-nav-label">Department setup</span></a>
+			<a class="employee-nav-link" href="/sectionsetup" aria-current="<%= currentPage === 'setup-sections' ? 'page' : 'false' %>" title="Section setup"><i class="fa-solid fa-layer-group" aria-hidden="true"></i><span class="employee-nav-label">Section setup</span></a>
+			<a class="employee-nav-link" href="/designationsetup" aria-current="<%= currentPage === 'setup-designations' ? 'page' : 'false' %>" title="Designation setup"><i class="fa-solid fa-id-card" aria-hidden="true"></i><span class="employee-nav-label">Designation setup</span></a>
+			<a class="employee-nav-link" href="/shiftsetup" aria-current="<%= currentPage === 'setup-shifts' ? 'page' : 'false' %>" title="Shift setup"><i class="fa-solid fa-clock" aria-hidden="true"></i><span class="employee-nav-label">Shift setup</span></a>
+			<a class="employee-nav-link" href="/employeeattendancesetup" aria-current="<%= currentPage === 'attendance-setup' ? 'page' : 'false' %>" title="Employee time setup"><i class="fa-solid fa-user-clock" aria-hidden="true"></i><span class="employee-nav-label">Employee time setup</span></a>
+		</div>
+		<% } %>
 	</nav>
 </aside>
 <script>
@@ -67,6 +88,10 @@
 		const toggle = document.getElementById('employeeSidenavToggle');
 		const managementToggle = document.getElementById('employeeManagementToggle');
 		const submenu = document.getElementById('employeeManagementSubmenu');
+		const basicSetupToggle = document.getElementById('basicSetupToggle');
+		const basicSetupSubmenu = document.getElementById('basicSetupSubmenu');
+		const leaveToggle = document.getElementById('leaveToggle');
+		const leaveSubmenu = document.getElementById('leaveSubmenu');
 		body.classList.add('employee-nav-visible');
 		try { if (localStorage.getItem('employee-nav-collapsed') === 'true') body.classList.add('employee-nav-collapsed'); } catch (error) {}
 		toggle.addEventListener('click', () => {
@@ -76,10 +101,20 @@
 			toggle.title = collapsed ? 'Expand navigation' : 'Collapse navigation';
 			try { localStorage.setItem('employee-nav-collapsed', String(collapsed)); } catch (error) {}
 		});
-		managementToggle.addEventListener('click', () => {
+		managementToggle?.addEventListener('click', () => {
 			const expanded = managementToggle.getAttribute('aria-expanded') === 'true';
 			managementToggle.setAttribute('aria-expanded', String(!expanded));
 			submenu.hidden = expanded;
+		});
+		basicSetupToggle?.addEventListener('click', () => {
+			const expanded = basicSetupToggle.getAttribute('aria-expanded') === 'true';
+			basicSetupToggle.setAttribute('aria-expanded', String(!expanded));
+			basicSetupSubmenu.hidden = expanded;
+		});
+		leaveToggle?.addEventListener('click', () => {
+			const expanded = leaveToggle.getAttribute('aria-expanded') === 'true';
+			leaveToggle.setAttribute('aria-expanded', String(!expanded));
+			leaveSubmenu.hidden = expanded;
 		});
 	})();
 </script>

@@ -7,45 +7,153 @@
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+	<link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css">
 	<style>
-		:root { color-scheme: light; --ink: #1b2940; --muted: #6a7585; --line: #dce2e9; --paper: #fff; --canvas: #f1f3f6; --blue: #24477b; --blue-soft: #e8eef7; font-family: 'DM Sans', sans-serif; color: var(--ink); background: var(--canvas); }
+		:root { color-scheme: light; --ink: #1b2940; --muted: #65748a; --line: #d5dfeb; --paper: #fff; --canvas: #eaf0f7; --blue: #24477b; --blue-soft: #eaf1fa; --green: #16805b; --green-soft: #e8f5ef; --amber: #a76c09; --amber-soft: #fff5df; --red: #b4404d; --red-soft: #fcedef; font-family: 'DM Sans', sans-serif; color: var(--ink); background: var(--canvas); }
 		* { box-sizing: border-box; }
-		body { margin: 0; min-height: 100vh; background: var(--canvas); }
-		.page-shell { width: min(1500px, calc(100% - 34px)); margin: 0 auto; padding: 28px 0 52px; }
+		body { margin: 0; min-height: 100vh; background: linear-gradient(145deg, #eef3f9 0%, #e6edf6 100%); }
+		button, input { font: inherit; }
+		.page-shell { width: min(1500px, calc(100% - 34px)); margin: 0 auto; padding: 25px 0 44px; }
 		h1,h2 { font-family: 'Manrope',sans-serif; }
-		h1 { margin: 0; font-size: 1.6rem; }
-		.page-header { display:flex; align-items:end; justify-content:space-between; gap:16px; margin-bottom:20px; }
-		.muted { margin:6px 0 0; color:var(--muted); }
-		.metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin-bottom:20px; }
-		.metric,.panel { border:1px solid var(--line); border-radius:6px; background:var(--paper); }
-		.metric { padding:18px; }
-		.metric-label { color:var(--muted); font-size:.8rem; font-weight:700; }
-		.metric-value { display:block; margin-top:8px; color:var(--blue); font-family:'Manrope',sans-serif; font-size:1.7rem; font-weight:800; }
-		.panel-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px 18px; border-bottom:1px solid var(--line); }
-		.panel-heading h2 { margin:0; font-size:1rem; }
-		.button { display:inline-flex; align-items:center; gap:8px; min-height:38px; padding:0 13px; border:1px solid var(--blue); border-radius:4px; background:var(--blue); color:white; text-decoration:none; font-weight:700; }
-		table { width:100%; border-collapse:collapse; white-space:nowrap; font-size:.83rem; }
-		th,td { padding:11px 14px; border-bottom:1px solid #e9edf2; text-align:left; }
-		th { background:#f5f7fa; color:var(--muted); font-size:.68rem; text-transform:uppercase; }
-		.employee-code { color:var(--blue); font-weight:800; }
-		tbody tr:last-child td { border-bottom:0; }
-		.table-wrap { overflow-x:auto; }
-		.empty { padding:26px; color:var(--muted); text-align:center; }
-		@media(max-width:700px) { .page-shell { width:calc(100% - 20px); padding-top:18px; } .metrics { grid-template-columns:1fr; } .page-header { align-items:flex-start; flex-direction:column; } }
+		h1 { margin:0; font-size:1.55rem; }
+		h2 { margin:0; font-size:.96rem; }
+		.page-header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:19px; }
+		.breadcrumb { margin:0 0 5px; color:var(--muted); font-size:.77rem; font-weight:700; }
+		.header-actions { display:flex; align-items:center; gap:10px; }
+		.dashboard-asof { margin:6px 0 0; color:var(--muted); font-size:.78rem; }
+		.date-filter { display:flex; align-items:center; gap:7px; padding:4px 5px 4px 10px; border:1px solid #cdd9e8; border-radius:6px; background:#f8fbff; }
+		.date-filter label { color:var(--muted); font-size:.72rem; font-weight:800; white-space:nowrap; }
+		.date-filter input { width:125px; min-height:32px; padding:5px 7px; border:1px solid #d5dfeb; border-radius:4px; background:#fff; color:var(--ink); font-size:.78rem; }
+		.date-filter input:focus { outline:2px solid rgba(36,71,123,.2); outline-offset:1px; }
+		.date-filter button { display:grid; place-items:center; flex:0 0 32px; width:32px; height:32px; border:0; border-radius:4px; background:var(--blue); color:#fff; cursor:pointer; }
+		.date-filter button:hover { background:#18375f; }
+		.button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:38px; padding:0 13px; border:1px solid var(--blue); border-radius:5px; background:var(--blue); color:white; text-decoration:none; font-size:.82rem; font-weight:700; white-space:nowrap; }
+		.button:hover { background:#18375f; }
+		.metrics { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:11px; margin-bottom:11px; }
+		.secondary-metrics { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:11px; margin-bottom:17px; }
+		.metric,.panel { min-width:0; border:1px solid var(--line); border-radius:7px; background:var(--paper); }
+		.metric { display:flex; align-items:center; gap:12px; min-height:91px; padding:15px; border-color:#d4dfed; background:#f5f8fd; }
+		.metric.present { border-color:#cfe6d9; background:#eff8f3; }
+		.metric.leave { border-color:#efdfb7; background:#fff9eb; }
+		.metric.absent { border-color:#efd6da; background:#fff3f4; }
+		.metric.late { border-color:#f0ddc7; background:#fff6ed; }
+		.metric.missed { border-color:#efd6da; background:#fff3f4; }
+		.metric.requests { border-color:#d6dcef; background:#f5f5fc; }
+		.metric-icon { display:grid; place-items:center; flex:0 0 42px; width:42px; height:42px; border-radius:7px; background:var(--blue-soft); color:var(--blue); font-size:1rem; }
+		.metric.present .metric-icon { background:var(--green-soft); color:var(--green); }
+		.metric.leave .metric-icon { background:var(--amber-soft); color:var(--amber); }
+		.metric.absent .metric-icon { background:var(--red-soft); color:var(--red); }
+		.metric.late .metric-icon { background:#fff0e4; color:#ae5b1c; }
+		.metric-label { display:block; color:var(--muted); font-size:.72rem; font-weight:700; }
+		.metric-value { display:block; margin-top:3px; color:var(--ink); font-family:'Manrope',sans-serif; font-size:1.45rem; font-weight:800; line-height:1.1; }
+		.content-grid { display:grid; grid-template-columns:minmax(0,1.7fr) minmax(280px,.9fr); align-items:start; gap:15px; }
+		.left-column,.right-column { display:grid; gap:15px; min-width:0; }
+		.section-heading { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin:0 0 10px; }
+		.section-heading p { margin:0; color:var(--muted); font-size:.75rem; }
+		.attendance-lists { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
+		.panel { overflow:hidden; }
+		.panel-heading { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:49px; padding:11px 13px; border-bottom:1px solid var(--line); }
+		.panel-heading h2 { font-size:.86rem; }
+		.count { display:grid; place-items:center; min-width:25px; height:25px; padding:0 6px; border-radius:5px; background:var(--blue-soft); color:var(--blue); font-size:.74rem; font-weight:800; }
+		.list-body { padding:0 12px; }
+		.list-item { display:flex; justify-content:space-between; gap:8px; margin:7px 0; padding:8px; border:1px solid #e6edf6; border-radius:5px; background:#f5f8fc; }
+		.attendance-lists > .panel:nth-child(1) { border-color:#efdadd; background:#fffafb; }
+		.attendance-lists > .panel:nth-child(2) { border-color:#eee1c3; background:#fffdf7; }
+		.attendance-lists > .panel:nth-child(3) { border-color:#efdece; background:#fffaf5; }
+		.person-name { display:block; overflow:hidden; color:var(--ink); font-size:.78rem; font-weight:800; text-overflow:ellipsis; white-space:nowrap; }
+		.person-detail { display:block; margin-top:3px; overflow:hidden; color:var(--muted); font-size:.69rem; text-overflow:ellipsis; white-space:nowrap; }
+		.contact { flex:0 0 auto; align-self:center; color:var(--blue); font-size:.68rem; font-weight:700; text-decoration:none; }
+		.empty { padding:19px 10px; color:var(--muted); font-size:.75rem; text-align:center; }
+		.side-panel .panel-heading { padding:13px 15px; }
+		.side-panel .list-body { padding:0 15px; }
+		.birthday-row { align-items:center; background:#fff5f6; border-color:#f1dfe2; }
+		.birthday-mark { display:grid; place-items:center; flex:0 0 34px; width:34px; height:34px; border-radius:6px; background:#fcecef; color:#b4404d; }
+		.birthday-info { flex:1; min-width:0; }
+		.notice-title,.event-title { display:block; color:var(--ink); font-size:.78rem; font-weight:800; text-decoration:none; }
+		.notice-copy { display:-webkit-box; overflow:hidden; margin:4px 0 0; color:var(--muted); font-size:.7rem; line-height:1.45; -webkit-box-orient:vertical; line-clamp:2; -webkit-line-clamp:2; }
+		.item-date { display:block; margin-top:4px; color:var(--muted); font-size:.68rem; }
+		.event-date { flex:0 0 43px; align-self:flex-start; padding:5px 3px; border-radius:5px; background:var(--blue-soft); color:var(--blue); font-size:.64rem; font-weight:800; text-align:center; }
+		.event-date strong { display:block; font-size:.95rem; }
+		.missed-panel { margin-top:15px; margin-bottom:0; border-color:#efdadd; background:#fffafb; }
+		.missed-list { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; padding:8px 12px 12px; }
+		.missed-list .list-item { margin:0; }
+		@media(max-width:1250px) { .metrics { grid-template-columns:repeat(5,minmax(0,1fr)); } }
+		@media(max-width:1100px) { .metrics { grid-template-columns:repeat(3,minmax(0,1fr)); } .content-grid { grid-template-columns:minmax(0,1.35fr) minmax(250px,.9fr); } .attendance-lists { grid-template-columns:1fr; } }
+		@media(max-width:760px) { .page-shell { width:calc(100% - 20px); padding-top:18px; } .page-header { align-items:flex-start; flex-direction:column; } .header-actions { width:100%; justify-content:space-between; flex-wrap:wrap; } .metrics { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; } .metric { min-height:78px; gap:9px; padding:11px; } .metric-icon { flex-basis:36px; width:36px; height:36px; } .metric-label { font-size:.68rem; } .metric-value { font-size:1.25rem; } .content-grid { grid-template-columns:1fr; } .attendance-lists { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+		@media(max-width:520px) { .attendance-lists { grid-template-columns:1fr; } .date-filter { flex:1; min-width:0; } .date-filter input { flex:1; min-width:0; } .button { padding:0 10px; font-size:.75rem; } }
 	</style>
 </head>
 <body>
 	<%- include('employeesidenav', { currentPage, selectedEmployee }) %>
 	<main class="page-shell">
-		<header class="page-header"><div><p class="muted">People / Human resources</p><h1>Employee dashboard</h1></div><a class="button" href="/employeedetail?new=1"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add employee</a></header>
-		<section class="metrics" aria-label="Employee summary">
-			<div class="metric"><span class="metric-label">Employee profiles</span><strong class="metric-value"><%= employees.length %></strong></div>
-			<div class="metric"><span class="metric-label">Active employees</span><strong class="metric-value"><%= activeEmployees %></strong></div>
-			<div class="metric"><span class="metric-label">Departments</span><strong class="metric-value"><%= new Set(employees.map(employee => employee.department).filter(Boolean)).size %></strong></div>
+		<header class="page-header">
+			<div><p class="breadcrumb">People / Human resources</p><h1>Employee dashboard</h1><p class="dashboard-asof">Showing attendance for <strong><%= dashboardDate %></strong></p></div>
+			<div class="header-actions">
+				<form class="date-filter" method="get" action="/employeemanagementdashboard">
+					<label for="dashboardDateBs">Date (BS)</label>
+					<input id="dashboardDateBs" class="nepali-date-input" type="text" name="dateBs" value="<%= selectedDateBs %>" placeholder="YYYY-MM-DD" inputmode="numeric" autocomplete="off" pattern="[0-9०-९]{4}-[0-9०-९]{1,2}-[0-9०-९]{1,2}" required>
+					<button type="submit" title="Apply selected date" aria-label="Apply selected date"><i class="fa-solid fa-filter" aria-hidden="true"></i></button>
+				</form>
+				<a class="button" href="/employeeattendancesetup"><i class="fa-solid fa-sliders" aria-hidden="true"></i> Attendance setup</a>
+				<a class="button" href="/employeeattendance"><i class="fa-solid fa-chart-line" aria-hidden="true"></i> Attendance report</a>
+			</div>
+		</header>
+		<section class="metrics" aria-label="Today's attendance summary">
+			<div class="metric"><span class="metric-icon"><i class="fa-solid fa-users" aria-hidden="true"></i></span><div><span class="metric-label">Total employees</span><strong class="metric-value"><%= totalEmployees %></strong></div></div>
+			<div class="metric present"><span class="metric-icon"><i class="fa-solid fa-user-check" aria-hidden="true"></i></span><div><span class="metric-label">Present today</span><strong class="metric-value"><%= attendanceLists.present.length %></strong></div></div>
+			<div class="metric leave"><span class="metric-icon"><i class="fa-solid fa-person-walking-arrow-right" aria-hidden="true"></i></span><div><span class="metric-label">On leave</span><strong class="metric-value"><%= attendanceLists.onLeave.length %></strong></div></div>
+			<div class="metric absent"><span class="metric-icon"><i class="fa-solid fa-user-xmark" aria-hidden="true"></i></span><div><span class="metric-label">Absent</span><strong class="metric-value"><%= attendanceLists.absent.length %></strong></div></div>
+			<div class="metric late"><span class="metric-icon"><i class="fa-regular fa-clock" aria-hidden="true"></i></span><div><span class="metric-label">Late in</span><strong class="metric-value"><%= attendanceLists.late.length %></strong></div></div>
 		</section>
-		<section class="panel"><div class="panel-heading"><h2>Employees</h2><a class="button" href="/employeedata"><i class="fa-solid fa-list" aria-hidden="true"></i> Employee list</a></div>
-			<% if (employees.length) { %><div class="table-wrap"><table><thead><tr><th>Employee code</th><th>Name</th><th>Designation</th><th>Department</th><th>Contact</th><th>Status</th></tr></thead><tbody><% employees.slice(0,10).forEach(employee => { %><tr><td class="employee-code"><%= employee.employeeCode %></td><td><a href="/employeedetail?employeeId=<%= employee._id %>"><%= employee.staffName %></a></td><td><%= employee.designation || '-' %></td><td><%= employee.department || '-' %></td><td><%= employee.mobileNumber || '-' %></td><td><%= employee.jobStatus || employee.employmentStatus || 'Active' %></td></tr><% }) %></tbody></table></div><% } else { %><div class="empty">No employee profiles have been added.</div><% } %>
+		<section class="secondary-metrics" aria-label="Additional attendance summary">
+			<div class="metric missed"><span class="metric-icon"><i class="fa-solid fa-user-clock" aria-hidden="true"></i></span><div><span class="metric-label">Missed attendance</span><strong class="metric-value"><%= attendanceLists.absent.length %></strong></div></div>
+			<div class="metric requests"><span class="metric-icon"><i class="fa-solid fa-file-circle-check" aria-hidden="true"></i></span><div><span class="metric-label">Manual Punch requests</span><strong class="metric-value"><%= manualPunchRequestCount %></strong></div></div>
 		</section>
+		<div class="content-grid">
+			<section class="left-column" aria-labelledby="attendance-heading">
+				<div class="section-heading"><h2 id="attendance-heading">Attendance exceptions</h2><p>Today</p></div>
+				<div class="attendance-lists">
+					<section class="panel"><div class="panel-heading"><h2>Absent</h2><span class="count"><%= attendanceLists.absent.length %></span></div><div class="list-body">
+						<% if (attendanceLists.absent.length) { attendanceLists.absent.slice(0, 7).forEach(employee => { %><div class="list-item"><div><strong class="person-name"><%= employee.name %></strong><span class="person-detail"><%= employee.code %> - <%= employee.department %></span></div><span class="contact"><%= employee.contact %></span></div><% }) } else { %><div class="empty">No absent employees</div><% } %>
+					</div></section>
+					<section class="panel"><div class="panel-heading"><h2>On leave</h2><span class="count"><%= attendanceLists.onLeave.length %></span></div><div class="list-body">
+						<% if (attendanceLists.onLeave.length) { attendanceLists.onLeave.slice(0, 7).forEach(employee => { %><div class="list-item"><div><strong class="person-name"><%= employee.name %></strong><span class="person-detail"><%= employee.leaveType %> - through <%= employee.through %></span></div><span class="contact"><%= employee.contact %></span></div><% }) } else { %><div class="empty">No approved leave today</div><% } %>
+					</div></section>
+					<section class="panel"><div class="panel-heading"><h2>Late in</h2><span class="count"><%= attendanceLists.late.length %></span></div><div class="list-body">
+						<% if (attendanceLists.late.length) { attendanceLists.late.slice(0, 7).forEach(employee => { %><div class="list-item"><div><strong class="person-name"><%= employee.name %></strong><span class="person-detail">In <%= employee.actualIn %> - late by <%= employee.lateMinutes >= 60 ? `${Math.floor(employee.lateMinutes / 60)}h ${employee.lateMinutes % 60 ? `${employee.lateMinutes % 60}m` : ''}` : `${employee.lateMinutes} min` %></span></div></div><% }) } else { %><div class="empty">No late arrivals</div><% } %>
+					</div></section>
+				</div>
+				<section class="panel missed-panel" aria-labelledby="missed-attendance-heading">
+					<div class="panel-heading"><h2 id="missed-attendance-heading">Missed attendance</h2><span class="count"><%= attendanceLists.absent.length %></span></div>
+					<div class="missed-list"><% if (attendanceLists.absent.length) { attendanceLists.absent.forEach(employee => { %><div class="list-item"><div><strong class="person-name"><%= employee.name %></strong><span class="person-detail"><%= employee.code %> - <%= employee.department %></span></div></div><% }) } else { %><div class="empty">No missed attendance today</div><% } %></div>
+				</section>
+			</section>
+			<aside class="right-column" aria-label="Employee updates">
+				<section class="panel side-panel"><div class="panel-heading"><h2>Birthdays today</h2><span class="count"><%= birthdays.length %></span></div><div class="list-body">
+					<% if (birthdays.length) { birthdays.forEach(employee => { %><div class="list-item birthday-row"><span class="birthday-mark"><i class="fa-solid fa-cake-candles" aria-hidden="true"></i></span><div class="birthday-info"><strong class="person-name"><%= employee.name %></strong><span class="person-detail">Born <%= employee.dateOfBirth %></span></div><span class="contact"><%= employee.contact %></span></div><% }) } else { %><div class="empty">No birthdays today</div><% } %>
+				</div></section>
+				<section class="panel side-panel"><div class="panel-heading"><h2>Notices</h2><a class="contact" href="/notice">View all</a></div><div class="list-body">
+					<% if (notices.length) { notices.forEach(notice => { const noticeDate = notice.noticeDate || notice.createdAt; %><div class="list-item"><div><a class="notice-title" href="/notice/<%= notice._id %>"><%= notice.title %></a><% if (notice.description) { %><p class="notice-copy"><%= notice.description %></p><% } %><span class="item-date"><%= noticeDate ? new Date(noticeDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : '' %></span></div></div><% }) } else { %><div class="empty">No notices to show</div><% } %>
+				</div></section>
+				<section class="panel side-panel"><div class="panel-heading"><h2>This week's events</h2><a class="contact" href="/events">View all</a></div><div class="list-body">
+					<% if (events.length) { events.forEach(event => { const eventDate = new Date(event.date); %><div class="list-item"><span class="event-date"><strong><%= eventDate.toLocaleDateString('en-GB', { day: '2-digit' }) %></strong><%= eventDate.toLocaleDateString('en-GB', { month: 'short' }) %></span><div><strong class="event-title"><%= event.title %></strong><span class="person-detail"><%= event.time %><%= event.location ? ` - ${event.location}` : '' %></span></div></div><% }) } else { %><div class="empty">No upcoming events this week</div><% } %>
+				</div></section>
+			</aside>
+		</div>
 	</main>
+	<script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
+	<script>
+		const dashboardDateInput = document.getElementById('dashboardDateBs');
+		if (dashboardDateInput && typeof dashboardDateInput.NepaliDatePicker === 'function') {
+			dashboardDateInput.NepaliDatePicker({ dateFormat: 'YYYY-MM-DD', language: 'english' });
+		}
+		document.querySelector('.date-filter').addEventListener('submit', event => {
+			const input = event.currentTarget.querySelector('input[name="dateBs"]');
+			const digits = '०१२३४५६७८९';
+			input.value = input.value.replace(/[०-९]/g, digit => String(digits.indexOf(digit)));
+			const match = input.value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+			if (match) input.value = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+		});
+	</script>
 </body>
 </html>

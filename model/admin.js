@@ -16,6 +16,7 @@ const superadminSchema = new mongoose.Schema({
 const teacherSchema = new mongoose.Schema({
   "teacherName": String,
   "teacherId": String,
+  employeeCode: { type: String, trim: true, uppercase: true, default: '' },
   "role": String,
   "allowedSubjects": [{
     "subject": String,

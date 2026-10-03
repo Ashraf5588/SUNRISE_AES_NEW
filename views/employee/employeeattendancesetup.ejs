@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Attendance setup</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+	<style>
+		:root { color-scheme:light; --ink:#1b2940; --muted:#66758a; --line:#d8e2ee; --blue:#24477b; --blue-dark:#18375f; --blue-soft:#eaf1fa; --canvas:#edf2f8; --paper:#fff; --green:#1c7655; --red:#b4404d; font-family:'DM Sans',sans-serif; color:var(--ink); background:var(--canvas); }
+		* { box-sizing:border-box; }
+		body { margin:0; min-height:100vh; background:linear-gradient(145deg,#f2f6fb,#e7eef7); }
+		button,input { font:inherit; }
+		.page-shell { width:min(1320px,calc(100% - 34px)); margin:0 auto; padding:28px 0 48px; }
+		h1,h2 { font-family:'Manrope',sans-serif; }
+		h1 { margin:0; font-size:1.55rem; }
+		.page-header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:18px; }
+		.eyebrow { margin:0 0 5px; color:var(--blue); font-size:.7rem; font-weight:800; text-transform:uppercase; }
+		.page-copy { margin:6px 0 0; color:var(--muted); font-size:.83rem; }
+		.header-link,.save-button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:39px; padding:0 13px; border:1px solid var(--blue); border-radius:5px; background:var(--blue); color:#fff; font-size:.8rem; font-weight:800; text-decoration:none; cursor:pointer; }
+		.header-link:hover,.save-button:hover { background:var(--blue-dark); color:#fff; }
+		.notice { margin-bottom:13px; padding:11px 13px; border:1px solid #c8dfd1; border-radius:5px; background:#edf8f1; color:var(--green); font-size:.8rem; font-weight:700; }
+		.notice-error { border-color:#ebc9ce; background:#fff1f2; color:var(--red); }
+		.panel { overflow:hidden; border:1px solid var(--line); border-radius:7px; background:var(--paper); }
+		.panel-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; border-bottom:1px solid var(--line); background:#f7f9fc; }
+		.panel-heading h2 { margin:0; font-size:.95rem; }
+		.panel-heading span { color:var(--muted); font-size:.75rem; }
+		.table-wrap { overflow-x:auto; }
+		table { width:100%; border-collapse:collapse; white-space:nowrap; font-size:.8rem; }
+		th,td { padding:10px 13px; border-bottom:1px solid #e9eef4; text-align:left; }
+		th { background:#f8fafd; color:var(--muted); font-size:.67rem; font-weight:800; text-transform:uppercase; }
+		tbody tr:last-child td { border-bottom:0; }
+		tbody tr:hover { background:#f9fbfe; }
+		.employee-code { color:var(--blue); font-weight:800; }
+		.employee-cell { display:flex; align-items:center; gap:10px; min-width:220px; }
+		.employee-photo { display:grid; place-items:center; flex:0 0 40px; width:40px; height:40px; overflow:hidden; border-radius:6px; background:var(--blue-soft); color:var(--blue); }
+		.employee-photo img { width:100%; height:100%; object-fit:cover; }
+		.employee-name { display:block; color:var(--ink); font-weight:800; }
+		.employee-meta { display:block; margin-top:2px; color:var(--muted); font-size:.7rem; }
+		.time-input { width:124px; min-height:37px; padding:6px 8px; border:1px solid #cbd7e5; border-radius:5px; background:#fff; color:var(--ink); }
+		.time-input:focus { outline:2px solid rgba(36,71,123,.2); border-color:var(--blue); }
+		.table-footer { display:flex; justify-content:flex-end; padding:13px 16px; border-top:1px solid var(--line); background:#fafbfd; }
+		.empty-state { padding:34px 20px; color:var(--muted); text-align:center; }
+		@media(max-width:700px) { .page-shell { width:calc(100% - 20px); padding-top:18px; } .page-header { align-items:flex-start; flex-direction:column; } .panel-heading { align-items:flex-start; flex-direction:column; } .table-footer .save-button { width:100%; } }
+	</style>
+</head>
+<body>
+	<%- include('employeesidenav', { currentPage, selectedEmployee }) %>
+	<main class="page-shell">
+		<header class="page-header">
+			<div><p class="eyebrow">People / Attendance</p><h1>Attendance setup</h1><p class="page-copy">Set each employee's planned times and mid-time cutoff.</p></div>
+			<a class="header-link" href="/employeeattendance"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i> Attendance report</a>
+		</header>
+		<% if (saved) { %><div class="notice" role="status">Attendance settings saved.</div><% } %>
+		<% if (error) { %><div class="notice notice-error" role="alert"><%= error %></div><% } %>
+		<section class="panel" aria-labelledby="setup-table-title">
+			<div class="panel-heading"><h2 id="setup-table-title">Employee punch schedule</h2><span><%= employees.length %> employees</span></div>
+			<% if (employees.length) { %>
+			<form method="post" action="/employeeattendancesetup">
+				<div class="table-wrap"><table>
+					<thead><tr><th>S.N.</th><th>Employee code</th><th>Employee name</th><th>Planned in</th><th>Planned out</th><th>Mid time</th></tr></thead>
+					<tbody><% employees.forEach((employee,index) => { %>
+						<tr>
+							<td><%= index + 1 %></td>
+							<td class="employee-code"><%= employee.employeeCode %></td>
+							<td><div class="employee-cell"><span class="employee-photo"><% if (employee.employeePhoto?.url) { %><img src="<%= employee.employeePhoto.url %>" alt="<%= employee.staffName %>" loading="lazy"><% } else { %><i class="fa-solid fa-user" aria-hidden="true"></i><% } %></span><span><strong class="employee-name"><%= employee.staffName %></strong><span class="employee-meta"><%= [employee.designation,employee.department,employee.branchName].filter(Boolean).join(' / ') %></span></span></div></td>
+							<td><input class="time-input" type="time" name="plannedIn_<%= employee._id %>" value="<%= employee.plannedIn || '09:00' %>" required aria-label="Planned in for <%= employee.staffName %>"></td>
+							<td><input class="time-input" type="time" name="plannedOut_<%= employee._id %>" value="<%= employee.plannedOut || '17:00' %>" required aria-label="Planned out for <%= employee.staffName %>"></td>
+							<td><input class="time-input" type="time" name="midTime_<%= employee._id %>" value="<%= employee.midTime %>" required aria-label="Mid time for <%= employee.staffName %>"></td>
+						</tr>
+					<% }) %></tbody>
+				</table></div>
+				<div class="table-footer"><button class="save-button" type="submit"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save attendance setup</button></div>
+			</form>
+			<% } else { %><div class="empty-state">No employee profiles found.</div><% } %>
+		</section>
+	</main>
+</body>
+</html>

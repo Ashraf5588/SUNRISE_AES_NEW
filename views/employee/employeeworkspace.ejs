@@ -47,6 +47,16 @@
 		form.profile-form { padding: 0; }
 		form.employee-switcher { margin: 0; padding: 0; }
 		input, select, textarea { width: 100%; min-height: 40px; padding: 9px 10px; border: 1px solid #cddad1; border-radius: 4px; background: white; color: var(--ink); }
+		.identifier-duplicate { border-color: var(--red) !important; background: #fff5f5 !important; box-shadow: 0 0 0 1px rgba(165,53,53,.16); }
+		.identifier-shake { animation: identifier-shake .36s ease-in-out; }
+		.identifier-feedback { min-height: 0; margin-top: 4px; color: var(--muted); font-size: .72rem; }
+		.identifier-feedback:not(:empty) { min-height: 16px; }
+		.identifier-feedback.is-available { color: #286247; }
+		.identifier-feedback.is-duplicate { color: var(--red); font-weight: 800; }
+		@keyframes identifier-shake { 0%,100% { transform:translateX(0); } 25% { transform:translateX(-5px); } 50% { transform:translateX(5px); } 75% { transform:translateX(-3px); } }
+		@media(prefers-reduced-motion:reduce) { .identifier-shake { animation:none; } }
+		input.required-invalid, select.required-invalid, textarea.required-invalid { border-color: var(--red); background: #fff7f7; box-shadow: 0 0 0 1px rgba(165,53,53,.16); }
+		.field.has-invalid > label { color: var(--red); }
 		textarea { min-height: 78px; resize: vertical; }
 		input:focus, select:focus, textarea:focus, button:focus-visible, a:focus-visible { outline: 3px solid rgba(23,105,77,.18); outline-offset: 2px; }
 		label { display: block; margin-bottom: 5px; color: #455a51; font-size: .78rem; font-weight: 700; }
@@ -56,6 +66,7 @@
 		.tab-list { display: flex; gap: 4px; overflow-x: auto; padding: 7px 16px 0; border-bottom: 1px solid var(--line); }
 		.tab-button { flex: 0 0 auto; min-height: 42px; padding: 9px 13px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--muted); cursor: pointer; font-size: .84rem; font-weight: 700; }
 		.tab-button[aria-selected="true"] { border-color: var(--blue); color: var(--blue-dark); }
+		.tab-button.tab-invalid { border-bottom-color: var(--red); background: #fff1f1; color: var(--red); }
 		.tab-panel { padding: 20px; }
 		.tab-panel[hidden], .module-panel[hidden], .sub-panel[hidden] { display: none; }
 		.sub-tabs { margin-bottom: 18px; padding: 0; }
@@ -189,7 +200,7 @@ const activeModuleName = activeModule || 'profile';
 
 		<section class="workspace-panel" aria-label="Employee records">
 			<div class="panel-heading"><h2 id="workspaceTitle"><%= selectedEmployee ? `${selectedEmployee.staffName} / ${selectedEmployee.employeeCode}` : 'Add employee profile' %></h2><span class="required-note"><span>*</span> Required fields</span></div>
-			<form class="profile-form" action="<%= selectedEmployee ? `/employeedetail/${selectedEmployee._id}` : '/employeedetail' %>" method="post" enctype="multipart/form-data" id="employeeProfileForm">
+			<form class="profile-form" action="<%= selectedEmployee ? `/employeedetail/${selectedEmployee._id}` : '/employeedetail' %>" method="post" enctype="multipart/form-data" id="employeeProfileForm" data-employee-id="<%= selectedEmployee?._id || '' %>" novalidate>
 				<input type="hidden" name="activeModule" id="activeModule" value="<%= activeModuleName %>">
 				<input type="hidden" name="qualificationCount" id="qualificationCount" value="<%= formData.qualifications?.length || 1 %>">
 				<input type="hidden" name="experienceCount" id="experienceCount" value="<%= formData.experiences?.length || 1 %>">
@@ -245,17 +256,17 @@ const activeModuleName = activeModule || 'profile';
 						<section class="office-panel" id="officeRecordPanel" role="tabpanel">
 							<div class="field-grid">
 								<div class="field"><label for="companyName">Company name</label><input id="companyName" name="companyName" value="<%= formData.companyName || 'United English Boarding School' %>"></div>
-								<div class="field"><label for="branchName">Select branch</label><input id="branchName" name="branchName" value="<%= formData.branchName || '' %>"></div>
-								<div class="field"><label for="employeeCode">Employee code <span>*</span></label><input id="employeeCode" name="employeeCode" value="<%= formData.employeeCode || '' %>" required></div>
-								<div class="field"><label for="deviceCode">Employee device code <span>*</span></label><input id="deviceCode" name="deviceCode" value="<%= formData.deviceCode || formData.employeeCode || '' %>" required></div>
+								<div class="field"><label for="branchName">Select branch</label><select id="branchName" name="branchName"><option value="">Select branch</option><% if (formData.branchName && !branches.some(branch => branch.name === formData.branchName)) { %><option value="<%= formData.branchName %>" selected><%= formData.branchName %> (existing)</option><% } %><% branches.forEach(branch => { %><option value="<%= branch.name %>" <%= formData.branchName === branch.name ? 'selected' : '' %>><%= branch.name %></option><% }) %></select></div>
+								<div class="field"><label for="employeeCode">Employee code <span>*</span></label><input id="employeeCode" name="employeeCode" value="<%= formData.employeeCode || '' %>" aria-describedby="employeeCodeAvailability" required><span class="identifier-feedback" id="employeeCodeAvailability" role="status"></span></div>
+								<div class="field"><label for="deviceCode">Employee device code <span>*</span></label><input id="deviceCode" name="deviceCode" value="<%= formData.deviceCode || formData.employeeCode || '' %>" aria-describedby="deviceCodeAvailability" required><span class="identifier-feedback" id="deviceCodeAvailability" role="status"></span></div>
 								<div class="field"><label for="staffName">Name <span>*</span></label><input id="staffName" name="staffName" value="<%= formData.staffName || '' %>" required></div>
 								<div class="field"><label for="officeEmail">Office email</label><input id="officeEmail" name="officeEmail" type="email" value="<%= formData.officeEmail || '' %>"></div>
 								<div class="field"><label for="officeContact">Office contact</label><input id="officeContact" name="officeContact" value="<%= formData.officeContact || '' %>"></div>
 								<div class="field"><label for="nameNepali">Name (Nepali)</label><input id="nameNepali" name="nameNepali" value="<%= formData.nameNepali || '' %>"></div>
 								<div class="field"><label for="dateOfJoiningBs">Joining date (BS) <span>*</span></label><input id="dateOfJoiningBs" class="nepali-date-input" name="dateOfJoiningBs" value="<%= formData.dateOfJoiningBs || '' %>" placeholder="YYYY-MM-DD" required></div>
-								<div class="field"><label for="designation">Staff designation <span>*</span></label><input id="designation" name="designation" value="<%= formData.designation || '' %>" required></div>
-								<div class="field"><label for="department">Department <span>*</span></label><input id="department" name="department" value="<%= formData.department || '' %>" required></div>
-								<div class="field"><label for="section">Section</label><input id="section" name="section" value="<%= formData.section || '' %>"></div>
+								<div class="field"><label for="designation">Staff designation <span>*</span></label><select id="designation" name="designation" required><option value="">Select designation</option><% if (formData.designation && !designations.some(item => item.name === formData.designation)) { %><option value="<%= formData.designation %>" selected><%= formData.designation %> (existing)</option><% } %><% designations.forEach(item => { %><option value="<%= item.name %>" <%= formData.designation === item.name ? 'selected' : '' %>><%= item.name %></option><% }) %></select></div>
+								<div class="field"><label for="department">Department <span>*</span></label><select id="department" name="department" required><option value="">Select department</option><% if (formData.department && !departments.some(item => item.name === formData.department)) { %><option value="<%= formData.department %>" selected><%= formData.department %> (existing)</option><% } %><% departments.forEach(item => { %><option value="<%= item.name %>" <%= formData.department === item.name ? 'selected' : '' %>><%= item.name %></option><% }) %></select></div>
+								<div class="field"><label for="section">Department section</label><select id="section" name="section"><option value="">Select section</option><% if (formData.section && !departmentSections.some(item => item.name === formData.section && item.departmentName === formData.department)) { %><option value="<%= formData.section %>" data-department-name="<%= formData.department || '' %>" selected><%= formData.section %> (existing)</option><% } %><% departmentSections.forEach(item => { %><option value="<%= item.name %>" data-department-name="<%= item.departmentName %>" <%= formData.section === item.name ? 'selected' : '' %>><%= item.name %> / <%= item.departmentName %></option><% }) %></select></div>
 								<div class="field"><label for="gradeLevel">Grade level</label><input id="gradeLevel" name="gradeLevel" value="<%= formData.gradeLevel || '' %>"></div>
 								<div class="field"><label for="jobStatus">Job status</label><select id="jobStatus" name="jobStatus"><% ['Active','Probation','On Leave','Resigned','Terminated'].forEach(value => { %><option value="<%= value %>" <%= (formData.jobStatus || formData.employmentStatus || 'Active') === value ? 'selected' : '' %>><%= value %></option><% }) %></select></div>
 								<label class="switch-row"><input type="checkbox" name="isManager" value="true" <%= formData.isManager ? 'checked' : '' %>> Is manager</label>
@@ -301,7 +312,7 @@ const activeModuleName = activeModule || 'profile';
 							<div class="photo-upload"><label for="employeePhoto">Employee picture</label><input id="employeePhoto" type="file" name="employeePhoto" accept="image/*"><span class="muted-copy">Choose an image to replace the profile photo.</span></div>
 						</section>
 						<section class="office-panel" id="punchManagementPanel" role="tabpanel" hidden><h3>Time Punch Management</h3><div class="field-grid"><div class="field"><label for="punchMethod">Punch method</label><select id="punchMethod" name="punchMethod"><% ['No Punch','Single Punch','Two Punch','Four Punch','Any Time Punch'].forEach(value => { %><option value="<%= value %>" <%= (formData.punchMethod || 'Two Punch') === value ? 'selected' : '' %>><%= value %></option><% }) %></select></div><label class="switch-row"><input type="checkbox" name="allowMobilePunch" value="true" <%= formData.allowMobilePunch ? 'checked' : '' %>> Allow mobile punch</label><div class="field"><label for="plannedIn">Planned in</label><input id="plannedIn" name="plannedIn" type="time" value="<%= formData.plannedIn || '09:00' %>"></div><div class="field"><label for="plannedOut">Planned out</label><input id="plannedOut" name="plannedOut" type="time" value="<%= formData.plannedOut || '17:00' %>"></div></div></section>
-						<section class="office-panel" id="shiftManagementPanel" role="tabpanel" hidden><h3>Shift / Week Off / Management</h3><div class="field-grid"><div class="field"><label for="shiftType">Shift type</label><select id="shiftType" name="shiftType"><% ['Fixed','Rotational'].forEach(value => { %><option value="<%= value %>" <%= (formData.shiftType || 'Fixed') === value ? 'selected' : '' %>><%= value %></option><% }) %></select></div><div class="field"><label for="shiftName">Shift</label><select id="shiftName" name="shiftName"><option value="">Select shift</option><% ['Kitchen and Non Teaching Shift','Teaching Shift','Morning Shift','Day Shift','Evening Shift'].forEach(value => { %><option value="<%= value %>" <%= formData.shiftName === value ? 'selected' : '' %>><%= value %></option><% }) %></select></div></div><p class="muted-copy" style="margin-top:18px">To change current week off, select active days and an effective date. Adding a new rule preserves the previous rule in history.</p><div class="section-heading"><h3>Active week off</h3><button class="add-row" type="button" id="addWeekOffRule"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add New</button></div><div class="day-options"><% ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].forEach(day => { %><label class="day-option"><input type="checkbox" name="activeWeekOff" value="<%= day %>" <%= (formData.activeWeekOff || []).includes(day) ? 'checked' : '' %>><%= day %></label><% }) %></div><div class="field" style="max-width:320px;margin-top:14px"><label for="weekOffEffectiveFrom">Effective from (BS)</label><input id="weekOffEffectiveFrom" class="nepali-date-input" name="weekOffEffectiveFrom" value="<%= formData.weekOffEffectiveFrom || '' %>" placeholder="YYYY-MM-DD"></div><div class="section-heading" style="margin-top:24px"><h3>Week Off History</h3></div><div class="repeat-table-wrap"><table><thead><tr><th>Off days</th><th>From date</th><th>To date</th></tr></thead><tbody><% if (selectedEmployee?.weekOffHistory?.length) { selectedEmployee.weekOffHistory.forEach(entry => { %><tr><td><%= (entry.offDays || []).join(', ') %></td><td><%= entry.fromDate || '-' %></td><td><%= entry.toDate || '-' %></td></tr><% }) %><% } else { %><tr><td colspan="3">No history found.</td></tr><% } %></tbody></table></div></section>
+								<section class="office-panel" id="shiftManagementPanel" role="tabpanel" hidden><h3>Shift / Week Off / Management</h3><div class="field-grid"><div class="field"><label for="shiftType">Shift type</label><select id="shiftType" name="shiftType"><% ['Fixed','Rotational'].forEach(value => { %><option value="<%= value %>" <%= (formData.shiftType || 'Fixed') === value ? 'selected' : '' %>><%= value %></option><% }) %></select></div><div class="field"><label for="shiftName">Shift</label><select id="shiftName" name="shiftName"><option value="">Select shift</option><% if (formData.shiftName && !shifts.some(item => item.name === formData.shiftName)) { %><option value="<%= formData.shiftName %>" selected><%= formData.shiftName %> (existing)</option><% } %><% shifts.forEach(item => { %><option value="<%= item.name %>" <%= formData.shiftName === item.name ? 'selected' : '' %>><%= item.name %> (<%= item.shiftStart %>-<%= item.shiftEnd %>)</option><% }) %></select></div></div><p class="muted-copy" style="margin-top:18px">To change current week off, select active days and an effective date. Adding a new rule preserves the previous rule in history.</p><div class="section-heading"><h3>Active week off</h3><button class="add-row" type="button" id="addWeekOffRule"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add New</button></div><div class="day-options"><% ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].forEach(day => { %><label class="day-option"><input type="checkbox" name="activeWeekOff" value="<%= day %>" <%= (formData.activeWeekOff || []).includes(day) ? 'checked' : '' %>><%= day %></label><% }) %></div><div class="field" style="max-width:320px;margin-top:14px"><label for="weekOffEffectiveFrom">Effective from (BS)</label><input id="weekOffEffectiveFrom" class="nepali-date-input" name="weekOffEffectiveFrom" value="<%= formData.weekOffEffectiveFrom || '' %>" placeholder="YYYY-MM-DD"></div><div class="section-heading" style="margin-top:24px"><h3>Week Off History</h3></div><div class="repeat-table-wrap"><table><thead><tr><th>Off days</th><th>From date</th><th>To date</th></tr></thead><tbody><% if (selectedEmployee?.weekOffHistory?.length) { selectedEmployee.weekOffHistory.forEach(entry => { %><tr><td><%= (entry.offDays || []).join(', ') %></td><td><%= entry.fromDate || '-' %></td><td><%= entry.toDate || '-' %></td></tr><% }) %><% } else { %><tr><td colspan="3">No history found.</td></tr><% } %></tbody></table></div></section>
 						<section class="office-panel" id="taxContributionsPanel" role="tabpanel" hidden><h3>Social Security &amp; Tax</h3><div class="field-grid"><label class="switch-row"><input type="checkbox" name="ssnEnabled" value="true" <%= formData.socialSecurityTax?.enabled ? 'checked' : '' %>> Enable SSN</label><div class="field"><label for="ssnNumber">SSN number</label><input id="ssnNumber" name="ssnNumber" value="<%= formData.socialSecurityTax?.number || '' %>"></div><div class="field"><label for="ssfEffectiveDate">SSF effective date (BS)</label><input id="ssfEffectiveDate" class="nepali-date-input" name="ssfEffectiveDate" value="<%= formData.socialSecurityTax?.effectiveDate || '' %>" placeholder="YYYY-MM-DD"></div></div><fieldset><legend>Provident Fund</legend><div class="field-grid"><label class="switch-row"><input type="checkbox" name="pfEnabled" value="true" <%= formData.providentFund?.enabled ? 'checked' : '' %>> Enable PF</label><div class="field"><label for="pfCalculationType">Calculation</label><select id="pfCalculationType" name="pfCalculationType"><% ['Flat','Percent'].forEach(value => { %><option value="<%= value %>" <%= (formData.providentFund?.calculationType || 'Flat') === value ? 'selected' : '' %>><%= value %></option><% }) %></select></div><div class="field"><label for="pfNumber">PF number</label><input id="pfNumber" name="pfNumber" value="<%= formData.providentFund?.number || '' %>"></div><div class="field"><label for="pfEmployeeAmount">Employee amount (Rs.)</label><input id="pfEmployeeAmount" type="number" min="0" step="any" name="pfEmployeeAmount" value="<%= formData.providentFund?.employeeAmount ?? '' %>"></div><div class="field"><label for="pfEmployeeRate">Employee rate (%)</label><input id="pfEmployeeRate" type="number" min="0" step="any" name="pfEmployeeRate" value="<%= formData.providentFund?.employeeRate ?? '' %>"></div><div class="field"><label for="pfEmployerRate">Employer rate (%)</label><input id="pfEmployerRate" type="number" min="0" step="any" name="pfEmployerRate" value="<%= formData.providentFund?.employerRate ?? '' %>"></div></div></fieldset><fieldset><legend>Citizen Investment Trust</legend><div class="field-grid"><label class="switch-row"><input type="checkbox" name="citEnabled" value="true" <%= formData.citizenInvestmentTrust?.enabled ? 'checked' : '' %>> Enable CIT</label><div class="field"><label for="citCalculationType">Calculation</label><select id="citCalculationType" name="citCalculationType"><% ['Flat','Percent'].forEach(value => { %><option value="<%= value %>" <%= (formData.citizenInvestmentTrust?.calculationType || 'Flat') === value ? 'selected' : '' %>><%= value %></option><% }) %></select></div><div class="field"><label for="citNumber">CIT number</label><input id="citNumber" name="citNumber" value="<%= formData.citizenInvestmentTrust?.number || '' %>"></div><div class="field"><label for="citAmount">CIT amount (Rs.)</label><input id="citAmount" type="number" min="0" step="any" name="citAmount" value="<%= formData.citizenInvestmentTrust?.amount ?? '' %>"></div></div></fieldset><fieldset><legend>Gratuity</legend><label class="switch-row"><input type="checkbox" name="gratuityEnabled" value="true" <%= formData.gratuity?.enabled ? 'checked' : '' %>> Enable gratuity</label></fieldset><fieldset><legend>Previous Company TDS Entry Setup</legend><p class="muted-copy">Enter data for the current fiscal year only. Include previous-employer salary and TDS already deducted.</p><div class="field-grid"><div class="field"><label for="previousCompanyName">Old company name</label><input id="previousCompanyName" name="previousCompanyName" value="<%= formData.previousCompanyTds?.companyName || '' %>"></div><div class="field"><label for="previousTotalSalary">Total salary amount (Rs.)</label><input id="previousTotalSalary" name="previousTotalSalary" type="number" min="0" step="any" value="<%= formData.previousCompanyTds?.totalSalary ?? '' %>"></div><div class="field"><label for="previousTotalTds">Total TDS amount (Rs.)</label><input id="previousTotalTds" name="previousTotalTds" type="number" min="0" step="any" value="<%= formData.previousCompanyTds?.totalTds ?? '' %>"></div><div class="field"><label for="previousFiscalYear">Fiscal year</label><input id="previousFiscalYear" name="previousFiscalYear" value="<%= formData.previousCompanyTds?.fiscalYear || '' %>"></div><div class="field"><label for="previousTdsDocumentName">Document name</label><input id="previousTdsDocumentName" name="previousTdsDocumentName" value="<%= formData.previousCompanyTds?.documentName || '' %>"></div><div class="field"><label for="previousTdsDocument">Upload document</label><input id="previousTdsDocument" type="file" name="previousTdsDocument" accept="application/pdf,image/*"></div><% if (formData.previousCompanyTds?.url) { %><div class="field"><label>Current document</label><a href="<%= formData.previousCompanyTds.url %>" target="_blank" rel="noopener">Open document</a><input type="hidden" name="previousTdsDocumentUrl" value="<%= formData.previousCompanyTds.url %>"><input type="hidden" name="previousTdsDocumentBlobName" value="<%= formData.previousCompanyTds.blobName || '' %>"></div><% } %></div></fieldset></section>
 						<div class="form-actions"><button class="button button-secondary" type="button" data-close-basic-dialog>Cancel</button><button class="button button-primary" type="submit"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save employee record</button></div>
 				</dialog>
@@ -331,6 +342,70 @@ const activeModuleName = activeModule || 'profile';
 	document.querySelectorAll('[data-tab-group] .tab-button').forEach(button=>button.addEventListener('click',()=>activateTab(button)));
 	function initializeDatePickers(root=document){if(!root)return;root.querySelectorAll('.nepali-date-input').forEach(input=>{if(typeof input.NepaliDatePicker==='function'&&!input.dataset.pickerReady){input.NepaliDatePicker({dateFormat:'YYYY-MM-DD',language:'english'});input.dataset.pickerReady='true';}});}
 	initializeDatePickers(document.querySelector('[data-module="<%= activeModuleName %>"]')||document);
+	const profileDepartment=document.getElementById('department');
+	const profileSection=document.getElementById('section');
+	function filterProfileSections(){
+		if(!profileDepartment||!profileSection)return;
+		const departmentName=profileDepartment.value.trim().toLowerCase();
+		Array.from(profileSection.options).forEach(option=>{
+			if(!option.value||!option.dataset.departmentName)return;
+			option.hidden=Boolean(departmentName)&&option.dataset.departmentName.trim().toLowerCase()!==departmentName;
+		});
+		if(profileSection.selectedOptions[0]?.hidden)profileSection.value='';
+	}
+	profileDepartment?.addEventListener('change',filterProfileSections);
+	filterProfileSections();
+	const identifierInputs=[...profileForm.querySelectorAll('#employeeCode,#deviceCode')];
+	const identifierTimers=new WeakMap();
+	const identifierVersions=new WeakMap();
+	function setIdentifierFeedback(input,message,state=''){
+		const feedback=document.getElementById(`${input.id}Availability`);
+		if(!feedback)return;
+		feedback.textContent=message;
+		feedback.className=`identifier-feedback${state?` is-${state}`:''}`;
+	}
+	function clearIdentifierWarning(input){
+		input.setCustomValidity('');
+		input.classList.remove('identifier-duplicate','identifier-shake');
+		setIdentifierFeedback(input,'');
+	}
+	async function checkIdentifierAvailability(input,version){
+		const value=input.value.trim();
+		if(!value||identifierVersions.get(input)!==version)return;
+		try{
+			const query=new URLSearchParams({field:input.name,value,employeeId:profileForm.dataset.employeeId||''});
+			const response=await fetch(`/employeedetail/check-code?${query}`,{headers:{Accept:'application/json'}});
+			if(!response.ok)throw new Error('Availability check failed.');
+			const result=await response.json();
+			if(identifierVersions.get(input)!==version)return;
+			if(result.available){
+				clearIdentifierWarning(input);
+				setIdentifierFeedback(input,'Available','available');
+				return;
+			}
+			input.setCustomValidity('This code is already used.');
+			input.classList.remove('identifier-shake');
+			input.classList.add('identifier-duplicate');
+			void input.offsetWidth;
+			input.classList.add('identifier-shake');
+			setIdentifierFeedback(input,'Already used','duplicate');
+		}catch(error){
+			if(identifierVersions.get(input)===version)setIdentifierFeedback(input,'Could not check right now');
+		}
+	}
+	function scheduleIdentifierCheck(input,delay){
+		clearTimeout(identifierTimers.get(input));
+		const version=(identifierVersions.get(input)||0)+1;
+		identifierVersions.set(input,version);
+		clearIdentifierWarning(input);
+		if(!input.value.trim())return;
+		setIdentifierFeedback(input,'Checking...');
+		identifierTimers.set(input,setTimeout(()=>checkIdentifierAvailability(input,version),delay));
+	}
+	identifierInputs.forEach(input=>{
+		input.addEventListener('input',()=>scheduleIdentifierCheck(input,350));
+		input.addEventListener('blur',()=>scheduleIdentifierCheck(input,0));
+	});
 	const sameAddressToggle=document.getElementById('sameAddressAsPermanent');
 	const syncTemporaryAddress=()=>{const isSame=sameAddressToggle.checked;[['address','temporaryAddress'],['permanentDistrict','temporaryDistrict'],['permanentMunicipality','temporaryMunicipality'],['permanentWard','temporaryWard'],['permanentAddressNepali','temporaryAddressNepali']].forEach(([from,to])=>{const source=document.getElementById(from);const target=document.getElementById(to);target.readOnly=isSame;if(isSame)target.value=source.value;});};
 	sameAddressToggle.addEventListener('change',syncTemporaryAddress);
@@ -345,7 +420,48 @@ const activeModuleName = activeModule || 'profile';
 	document.getElementById('healthHeightCm').addEventListener('input',updateBmi);document.getElementById('healthWeightKg').addEventListener('input',updateBmi);
 	function updateBmi(){const height=Number(document.getElementById('healthHeightCm').value)/100;const weight=Number(document.getElementById('healthWeightKg').value);document.getElementById('bmiPreview').textContent=height>0&&weight>0?(weight/(height*height)).toFixed(1):'-';}
 	const joined=document.querySelector('.service-period')?.dataset.joinDate;if(joined){const start=new Date(`${joined}T00:00:00`);const now=new Date();let years=now.getFullYear()-start.getFullYear();let months=now.getMonth()-start.getMonth();let days=now.getDate()-start.getDate();if(days<0){months--;days+=new Date(now.getFullYear(),now.getMonth(),0).getDate();}if(months<0){years--;months+=12;}document.querySelector('.service-period').textContent=`${years}y ${months}m ${days}d`;}
-	profileForm.addEventListener('submit',()=>{profileForm.querySelectorAll('.nepali-date-input').forEach(input=>{const match=input.value.match(/^([0-9०-९]{4})-([0-9०-९]{1,2})-([0-9०-९]{1,2})$/);if(!match)return;const zero=/[०-९]/.test(input.value)?'०':'0';input.value=`${match[1]}-${match[2].padStart(2,zero)}-${match[3].padStart(2,zero)}`;});});
+	let validationAttempted=false;
+	function updateInvalidHighlights(){
+		profileForm.querySelectorAll('.required-invalid').forEach(input=>input.classList.remove('required-invalid'));
+		profileForm.querySelectorAll('.field.has-invalid').forEach(field=>field.classList.remove('has-invalid'));
+		document.querySelectorAll('.tab-button.tab-invalid').forEach(button=>button.classList.remove('tab-invalid'));
+		return [...profileForm.querySelectorAll('input:invalid,select:invalid,textarea:invalid')].map(input=>{
+			input.classList.add('required-invalid');
+			input.closest('.field')?.classList.add('has-invalid');
+			let panel=input.closest('[role="tabpanel"]');
+			while(panel&&profileForm.contains(panel)){
+				const tabButton=[...document.querySelectorAll('.tab-button[data-tab-target]')].find(button=>button.dataset.tabTarget===panel.id);
+				if(tabButton)tabButton.classList.add('tab-invalid');
+				panel=panel.parentElement.closest('[role="tabpanel"]');
+			}
+			return input;
+		});
+	}
+	profileForm.addEventListener('input',()=>{if(validationAttempted)updateInvalidHighlights();});
+	profileForm.addEventListener('change',()=>{if(validationAttempted)updateInvalidHighlights();});
+	profileForm.addEventListener('reset',()=>{validationAttempted=false;setTimeout(updateInvalidHighlights);});
+	profileForm.addEventListener('submit',event=>{
+		validationAttempted=true;
+		const invalidInputs=updateInvalidHighlights();
+		if(invalidInputs.length){
+			event.preventDefault();
+			const firstInvalid=invalidInputs[0];
+			const modulePanel=firstInvalid.closest('[data-module]');
+			if(modulePanel?.hidden)activateModule(modulePanel.dataset.module);
+			const dialog=firstInvalid.closest('dialog');
+			if(dialog&&!dialog.open)dialog.showModal();
+			const tabPanels=[];
+			let panel=firstInvalid.closest('[role="tabpanel"]');
+			while(panel&&profileForm.contains(panel)){tabPanels.unshift(panel);panel=panel.parentElement.closest('[role="tabpanel"]');}
+			tabPanels.forEach(tabPanel=>{
+				const button=[...document.querySelectorAll('.tab-button[data-tab-target]')].find(tab=>tab.dataset.tabTarget===tabPanel.id);
+				if(button)activateTab(button);
+			});
+			requestAnimationFrame(()=>{firstInvalid.focus();firstInvalid.scrollIntoView({block:'center',behavior:'smooth'});});
+			return;
+		}
+		profileForm.querySelectorAll('.nepali-date-input').forEach(input=>{const match=input.value.match(/^([0-9०-९]{4})-([0-9०-९]{1,2})-([0-9०-९]{1,2})$/);if(!match)return;const zero=/[०-९]/.test(input.value)?'०':'0';input.value=`${match[1]}-${match[2].padStart(2,zero)}-${match[3].padStart(2,zero)}`;});
+	});
 </script>
 </body>
 </html>

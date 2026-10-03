@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title><%= config.title %></title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+	<style>
+		:root { color-scheme:light; --ink:#1b2940; --muted:#66758a; --line:#d8e2ee; --blue:#24477b; --blue-dark:#18375f; --blue-soft:#eaf1fa; --canvas:#edf2f8; --paper:#fff; --green:#1c7655; --red:#b4404d; font-family:'DM Sans',sans-serif; color:var(--ink); background:var(--canvas); }
+		* { box-sizing:border-box; }
+		body { margin:0; min-height:100vh; background:linear-gradient(145deg,#f2f6fb,#e7eef7); }
+		button,input,select,textarea { font:inherit; }
+		.page-shell { width:min(1480px,calc(100% - 34px)); margin:0 auto; padding:28px 0 48px; }
+		h1,h2 { font-family:'Manrope',sans-serif; }
+		h1 { margin:0; font-size:1.55rem; }
+		.page-header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:18px; }
+		.eyebrow { margin:0 0 5px; color:var(--blue); font-size:.7rem; font-weight:800; text-transform:uppercase; }
+		.page-copy { margin:6px 0 0; color:var(--muted); font-size:.82rem; }
+		.header-link,.primary-button,.secondary-button,.delete-button { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:36px; padding:0 11px; border:1px solid var(--blue); border-radius:5px; background:var(--blue); color:#fff; font-size:.76rem; font-weight:800; text-decoration:none; cursor:pointer; }
+		.header-link:hover,.primary-button:hover { background:var(--blue-dark); color:#fff; }
+		.secondary-button { border-color:var(--line); background:#f5f8fc; color:var(--ink); }
+		.delete-button { min-height:31px; padding:0 9px; border-color:#efc9ce; background:#fff2f3; color:var(--red); }
+		.panel { overflow:hidden; margin-bottom:15px; border:1px solid var(--line); border-radius:7px; background:var(--paper); }
+		.panel-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 16px; border-bottom:1px solid var(--line); background:#f7f9fc; }
+		.panel-heading h2 { margin:0; font-size:.92rem; }
+		.panel-heading span { color:var(--muted); font-size:.74rem; }
+		.setup-form { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; padding:15px 16px; }
+		.form-field { display:grid; align-content:start; gap:5px; min-width:0; }
+		.form-field label { color:#46566c; font-size:.71rem; font-weight:800; }
+		.form-field input,.form-field select,.form-field textarea { width:100%; min-height:37px; padding:7px 9px; border:1px solid #ccd8e6; border-radius:5px; background:#fff; color:var(--ink); font-size:.78rem; }
+		.form-field textarea { min-height:54px; resize:vertical; }
+		.form-field input:focus,.form-field select:focus,.form-field textarea:focus { outline:2px solid rgba(36,71,123,.18); border-color:var(--blue); }
+		.form-actions { display:flex; align-items:center; gap:8px; grid-column:1/-1; justify-content:flex-end; padding-top:4px; }
+		.notice { margin:12px 0; padding:10px 12px; border:1px solid #c8dfd1; border-radius:5px; background:#edf8f1; color:var(--green); font-size:.78rem; font-weight:700; }
+		.notice-error { border-color:#ebc9ce; background:#fff1f2; color:var(--red); }
+		.table-wrap { overflow:auto; }
+		table { width:100%; border-collapse:collapse; white-space:nowrap; font-size:.75rem; }
+		th,td { padding:9px 11px; border-bottom:1px solid #e9eef4; text-align:left; }
+		th { background:#f8fafd; color:var(--muted); font-size:.65rem; font-weight:800; text-transform:uppercase; }
+		tbody tr:hover { background:#f8fbff; }
+		tbody tr:last-child td { border-bottom:0; }
+		.code-cell { color:var(--blue); font-weight:800; }
+		.row-actions { display:flex; align-items:center; gap:6px; }
+		.row-actions form { margin:0; }
+		.edit-link { display:inline-grid; place-items:center; width:31px; height:31px; border:1px solid #cbd8e6; border-radius:4px; background:#f5f8fc; color:var(--blue); text-decoration:none; }
+		.empty-state { padding:30px 20px; color:var(--muted); text-align:center; font-size:.8rem; }
+		@media(max-width:900px) { .setup-form { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+		@media(max-width:620px) { .page-shell { width:calc(100% - 20px); padding-top:18px; } .page-header { align-items:flex-start; flex-direction:column; } .setup-form { grid-template-columns:1fr; } .form-actions { justify-content:stretch; } .form-actions button,.form-actions a { flex:1; } }
+	</style>
+</head>
+<body>
+	<%- include('employeesidenav', { currentPage, selectedEmployee }) %>
+	<main class="page-shell">
+		<header class="page-header"><div><p class="eyebrow">People / Basic setup</p><h1><%= config.title %></h1><p class="page-copy">Manage the shared values used by employee profiles.</p></div><a class="header-link" href="/employeemanagementdashboard"><i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Employee dashboard</a></header>
+		<% if (message) { %><div class="notice" role="status"><%= message %></div><% } %>
+		<% if (error) { %><div class="notice notice-error" role="alert"><%= error %></div><% } %>
+		<section class="panel" aria-labelledby="setup-form-title">
+			<div class="panel-heading"><h2 id="setup-form-title"><%= isEditing ? `Edit ${config.singular.toLowerCase()}` : `Add ${config.singular.toLowerCase()}` %></h2><span><%= isEditing ? 'Update values and save changes' : 'Required fields are marked by the form' %></span></div>
+			<form class="setup-form" method="post" action="<%= config.path %>">
+				<input type="hidden" name="recordId" value="<%= record?._id || '' %>">
+				<% config.fields.forEach(field => { %>
+				<div class="form-field"><label for="setup_<%= field.name %>"><%= field.label %><%= field.required ? ' *' : '' %></label>
+					<% if (field.type === 'department') { %>
+					<select id="setup_<%= field.name %>" name="departmentId" <%= field.required ? 'required' : '' %>><option value="">Select department</option><% departments.forEach(department => { %><option value="<%= department._id %>" <%= String(record?.departmentId || '') === String(department._id) ? 'selected' : '' %>><%= department.name %></option><% }) %></select>
+					<% } else if (field.type === 'branch') { %>
+					<select id="setup_<%= field.name %>" name="<%= field.name %>"><option value="">No parent branch</option><% branches.filter(branch => String(branch._id) !== String(record?._id || '')).forEach(branch => { %><option value="<%= branch.name %>" <%= (record?.[field.name] || '') === branch.name ? 'selected' : '' %>><%= branch.name %></option><% }) %></select>
+					<% } else if (field.type === 'select') { %>
+					<select id="setup_<%= field.name %>" name="<%= field.name %>" <%= field.required ? 'required' : '' %>><% field.options.forEach(option => { %><option value="<%= option %>" <%= (record?.[field.name] || (field.name === 'salaryBasis' ? 'Monthly' : 'Fixed')) === option ? 'selected' : '' %>><%= option %></option><% }) %></select>
+					<% } else if (field.type === 'textarea') { %>
+					<textarea id="setup_<%= field.name %>" name="<%= field.name %>" <%= field.required ? 'required' : '' %>><%= record?.[field.name] || '' %></textarea>
+					<% } else { %>
+					<input id="setup_<%= field.name %>" name="<%= field.name %>" type="<%= field.type || 'text' %>" value="<%= record?.[field.name] ?? '' %>" <%= field.required ? 'required' : '' %> <%= field.type === 'number' ? `min="${field.min ?? 0}" step="any"` : '' %>>
+					<% } %>
+				</div>
+				<% }) %>
+				<div class="form-actions"><% if (isEditing) { %><a class="secondary-button" href="<%= config.path %>">Cancel edit</a><% } %><button class="primary-button" type="submit"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> <%= isEditing ? 'Save changes' : `Add ${config.singular.toLowerCase()}` %></button></div>
+			</form>
+		</section>
+		<section class="panel" aria-labelledby="setup-list-title">
+			<div class="panel-heading"><h2 id="setup-list-title"><%= config.title %> records</h2><span><%= records.length %> records</span></div>
+			<% if (records.length) { %><div class="table-wrap"><table><thead><tr><th>S.N.</th><% config.fields.forEach(field => { %><th><%= field.label %></th><% }) %><th>Action</th></tr></thead><tbody>
+				<% records.forEach((item,index) => { %><tr><td><%= index + 1 %></td><% config.fields.forEach(field => { const value = field.name === 'departmentId' ? item.departmentName : item[field.name]; %><td class="<%= field.name === 'code' ? 'code-cell' : '' %>"><%= value === null || value === undefined || value === '' ? '-' : value %></td><% }) %><td><div class="row-actions"><a class="edit-link" href="<%= config.path %>?edit=<%= item._id %>" aria-label="Edit <%= item.name %>" title="Edit"><i class="fa-solid fa-pen" aria-hidden="true"></i></a><form method="post" action="<%= config.path %>" onsubmit="return confirm('Delete this <%= config.singular.toLowerCase() %>?')"><input type="hidden" name="recordId" value="<%= item._id %>"><input type="hidden" name="action" value="delete"><button class="delete-button" type="submit">Delete</button></form></div></td></tr><% }) %>
+			</tbody></table></div><% } else { %><div class="empty-state">No <%= config.singular.toLowerCase() %> records have been added.</div><% } %>
+		</section>
+	</main>
+</body>
+</html>

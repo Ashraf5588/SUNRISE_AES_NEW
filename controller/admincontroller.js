@@ -2451,13 +2451,20 @@ exports.showuser = async (req, res, next) => {
 
     const subjects = await subject.find({}).lean();
     const classlist = await studentClass.find({}).lean();
-const aasuser = await userlist.find();
+    const [aasuser, employeeProfiles] = await Promise.all([
+      userlist.find().lean(),
+      Staff.find({ employeeCode: { $exists: true, $ne: '' } })
+        .select('employeeCode staffName designation department branchName mobileNumber officeContact permanentAddress address employeePhoto.url')
+        .sort({ staffName: 1 })
+        .lean()
+    ]);
 
     const sidenavData = await getSidenavData(req);
     res.render("admin/user", {
       editing: false,
       subjects,
       classlist,
+      employeeProfiles,
       userlist: aasuser,
       ...sidenavData,
       currentPage: 'adminUser'
@@ -2483,10 +2490,22 @@ exports.saveuser = async (req, res, next) => {
     const teacherName = req.body.teacherName.toUpperCase().trim();
     const role = req.body.role.toUpperCase().trim();
     const username = req.body.username.toLowerCase().trim();
+    const employeeCode = String(req.body.employeeCode || '').trim().toUpperCase();
+
+    if (employeeCode) {
+      const employeeProfile = await Staff.findOne({ employeeCode }).select('_id').lean();
+      if (!employeeProfile) return res.status(400).send('Select a valid employee profile.');
+
+      const assignedUserFilter = { employeeCode };
+      if (editing) assignedUserFilter._id = { $ne: userId };
+      const assignedUser = await userlist.findOne(assignedUserFilter).select('_id').lean();
+      if (assignedUser) return res.status(409).send('This employee profile is already linked to another user.');
+    }
 
     // Only handle password if it's provided in the request
     let updateData = {
       teacherName,
+      employeeCode,
       teacherID: req.body.teacherID,
       role,
       allowedSubjects,
@@ -3761,8 +3780,13 @@ exports.editTeacher = async (req, res, next) => {
     const { editing } = req.query;
     const classlist = await studentClass.find({}).lean();
     const userData = await userlist.findOne({ _id: userId }).lean();
-    
-    const users = await userlist.find({}).lean();
+    const [users, employeeProfiles] = await Promise.all([
+      userlist.find({}).lean(),
+      Staff.find({ employeeCode: { $exists: true, $ne: '' } })
+        .select('employeeCode staffName designation department branchName mobileNumber officeContact permanentAddress address employeePhoto.url')
+        .sort({ staffName: 1 })
+        .lean()
+    ]);
     
     if (!userData) {
       return res.status(404).send("User not found");
@@ -3776,6 +3800,7 @@ exports.editTeacher = async (req, res, next) => {
       userId,
       userData,
       userlist:users,
+      employeeProfiles,
       classlist,
       ...sidenavData
     });

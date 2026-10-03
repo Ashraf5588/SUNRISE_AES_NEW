@@ -18,7 +18,14 @@ const uploadLeaveDocument = multer({
 });
 
 const isAdmin = (user) => String(user?.role || '').toUpperCase() === 'ADMIN';
-const renderPage = (res, view, data) => res.render(`leave/${view}`, { ...data, currentPath: res.req.path });
+const renderPage = (res, view, data = {}) => {
+	const userIsAdmin = typeof data.isAdmin !== 'undefined' ? data.isAdmin : isAdmin(res.req?.user);
+	return res.render(`leave/${view}`, {
+		isAdmin: userIsAdmin,
+		...data,
+		currentPath: res.req.path
+	});
+};
 
 const parseNepaliDate = (value) => {
 	const normalized = String(value || '').trim();
@@ -64,6 +71,7 @@ exports.setupPage = async (req, res) => {
 		const leaveTypes = await LeaveType.find().sort({ leavename: 1 }).lean();
 		renderPage(res, 'leavesetup', {
 			leaveTypes,
+			isAdmin: isAdmin(req.user),
 			message: req.query.saved ? 'Leave policy saved.' : ''
 		});
 	} catch (error) {

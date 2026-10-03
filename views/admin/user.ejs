@@ -196,6 +196,29 @@
       position: relative;
       margin-bottom: 0;
     }
+
+    .employee-picker { position:relative; }
+    .employee-picker-trigger { display:flex; align-items:center; gap:11px; width:100%; min-height:82px; padding:10px 12px; border:1px solid #cbd8e6; border-radius:7px; background:#f7faff; color:#1e2f45; text-align:left; }
+    .employee-picker-trigger:hover,.employee-picker-trigger[aria-expanded="true"] { border-color:var(--primary); background:#f0f8fd; }
+    .employee-picker-avatar { display:grid; place-items:center; flex:0 0 56px; width:56px; height:56px; overflow:hidden; border-radius:6px; background:#e1ebf6; color:#31547d; font-size:1.2rem; }
+    .employee-picker-avatar img,.employee-option-avatar img { width:100%; height:100%; object-fit:cover; }
+    .employee-picker-details { flex:1; min-width:0; }
+    .employee-picker-name { display:block; color:#1e2f45; font-size:.86rem; font-weight:700; }
+    .employee-picker-meta { display:block; margin-top:3px; color:#62748a; font-size:.72rem; overflow-wrap:anywhere; }
+    .employee-picker-chevron { flex:0 0 auto; color:#526b86; }
+    .employee-picker-menu { position:absolute; top:calc(100% + 5px); right:0; left:0; z-index:20; overflow:hidden; border:1px solid #cbd8e6; border-radius:7px; background:#fff; box-shadow:0 12px 28px rgba(26,49,77,.18); }
+    .employee-picker-menu[hidden] { display:none; }
+    .employee-picker-search { padding:9px; border-bottom:1px solid #e2e9f1; background:#f7f9fc; }
+    .employee-picker-search input { width:100%; min-height:38px; padding:8px 10px; border:1px solid #d1dce9; border-radius:5px; }
+    .employee-picker-options { max-height:330px; overflow-y:auto; padding:5px; }
+    .employee-option { display:flex; align-items:center; gap:10px; width:100%; padding:9px; border:0; border-radius:5px; background:#fff; color:#1e2f45; text-align:left; cursor:pointer; }
+    .employee-option:hover,.employee-option[aria-selected="true"] { background:#edf5fc; }
+    .employee-option-avatar { display:grid; place-items:center; flex:0 0 44px; width:44px; height:44px; overflow:hidden; border-radius:5px; background:#e1ebf6; color:#31547d; }
+    .employee-option-details { min-width:0; }
+    .employee-option-name { display:block; font-size:.8rem; font-weight:700; }
+    .employee-option-meta { display:block; margin-top:2px; color:#62748a; font-size:.69rem; overflow-wrap:anywhere; }
+    .employee-picker-none { display:block; width:100%; padding:10px; border:0; border-top:1px solid #e2e9f1; background:#fbfcfe; color:#62748a; text-align:left; cursor:pointer; }
+    .employee-picker-empty { padding:16px 10px; color:#62748a; font-size:.78rem; text-align:center; }
     
     .select-icon {
       position: absolute;
@@ -253,6 +276,34 @@
                   <span class="input-group-text bg-white"><i class="fas fa-user text-primary"></i></span>
                   <input type="text" class="form-control" name="teacherName" id="teacherName" placeholder="Enter full name" value="<%= editing?userData.teacherName:'' %>" required>
                 </div>
+              </div>
+
+              <div class="mb-3">
+                <% const linkedEmployeeCode = editing ? String(userData.employeeCode || '').trim().toUpperCase() : ''; %>
+                <% const linkedEmployeeProfile = (employeeProfiles || []).find(employee => String(employee.employeeCode || '').trim().toUpperCase() === linkedEmployeeCode); %>
+                <label for="employeeCode" class="form-label">Linked employee profile</label>
+                <div class="employee-picker" id="employeePicker">
+                  <input type="hidden" name="employeeCode" id="employeeCode" value="<%= linkedEmployeeProfile?.employeeCode || '' %>">
+                  <button class="employee-picker-trigger" id="employeePickerTrigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-controls="employeePickerOptions">
+                    <span class="employee-picker-avatar"><% if (linkedEmployeeProfile?.employeePhoto?.url) { %><img id="employeePickerPhoto" src="<%= linkedEmployeeProfile.employeePhoto.url %>" alt="<%= linkedEmployeeProfile.staffName %> profile photo"><i id="employeePickerFallback" class="fas fa-user" aria-hidden="true" hidden></i><% } else { %><img id="employeePickerPhoto" alt="" hidden><i id="employeePickerFallback" class="fas fa-user" aria-hidden="true"></i><% } %></span>
+                    <span class="employee-picker-details"><strong class="employee-picker-name" id="employeePickerName"><%= linkedEmployeeProfile ? `${linkedEmployeeProfile.staffName} / ${linkedEmployeeProfile.employeeCode}` : 'Choose an employee profile' %></strong><span class="employee-picker-meta" id="employeePickerRole"><%= linkedEmployeeProfile ? [linkedEmployeeProfile.designation, linkedEmployeeProfile.department, linkedEmployeeProfile.branchName].filter(Boolean).join(' / ') : 'Employee code, address, and contact appear here' %></span><span class="employee-picker-meta" id="employeePickerContact"><%= linkedEmployeeProfile ? `Contact: ${linkedEmployeeProfile.mobileNumber || linkedEmployeeProfile.officeContact || '-'}` : '' %></span><span class="employee-picker-meta" id="employeePickerAddress"><%= linkedEmployeeProfile ? `Address: ${linkedEmployeeProfile.permanentAddress || linkedEmployeeProfile.address || '-'}` : '' %></span></span>
+                    <i class="fas fa-chevron-down employee-picker-chevron" aria-hidden="true"></i>
+                  </button>
+                  <div class="employee-picker-menu" id="employeePickerMenu" hidden>
+                    <div class="employee-picker-search"><input id="employeePickerSearch" type="search" placeholder="Search name, code, contact, or address" aria-label="Search employee profiles"></div>
+                    <div class="employee-picker-options" id="employeePickerOptions" role="listbox" aria-label="Employee profiles">
+                      <% (employeeProfiles || []).forEach(employee => { %>
+                      <button class="employee-option" type="button" role="option" aria-selected="<%= linkedEmployeeProfile && String(linkedEmployeeProfile._id) === String(employee._id) ? 'true' : 'false' %>" data-code="<%= employee.employeeCode %>" data-name="<%= employee.staffName %>" data-role="<%= [employee.designation, employee.department, employee.branchName].filter(Boolean).join(' / ') %>" data-contact="<%= employee.mobileNumber || employee.officeContact || '' %>" data-address="<%= employee.permanentAddress || employee.address || '' %>" data-photo="<%= employee.employeePhoto?.url || '' %>">
+                        <span class="employee-option-avatar"><% if (employee.employeePhoto?.url) { %><img src="<%= employee.employeePhoto.url %>" alt="" loading="lazy"><% } else { %><i class="fas fa-user" aria-hidden="true"></i><% } %></span>
+                        <span class="employee-option-details"><strong class="employee-option-name"><%= employee.staffName %> / <%= employee.employeeCode %></strong><span class="employee-option-meta"><%= [employee.designation, employee.department, employee.branchName].filter(Boolean).join(' / ') || 'Employee' %></span><span class="employee-option-meta">Contact: <%= employee.mobileNumber || employee.officeContact || '-' %></span><span class="employee-option-meta">Address: <%= employee.permanentAddress || employee.address || '-' %></span></span>
+                      </button>
+                      <% }) %>
+                    </div>
+                    <div class="employee-picker-empty" id="employeePickerEmpty" hidden>No matching employee profiles.</div>
+                    <button class="employee-picker-none" id="employeePickerNone" type="button">Remove employee link</button>
+                  </div>
+                </div>
+                <small class="form-text text-muted">Links this login to the matching employee profile for manual punch autofill.</small>
               </div>
               
           
@@ -510,6 +561,7 @@ document.addEventListener("DOMContentLoaded", preloadSubjects);
                 <thead>
                   <tr>
                     <th><i class="fas fa-user me-1"></i> Name</th>
+                    <th><i class="fas fa-id-badge me-1"></i> Employee code</th>
                     
                     <th><i class="fas fa-user-tag me-1"></i> Role</th>
                     <th><i class="fas fa-book me-1"></i> Subjects</th>
@@ -524,6 +576,7 @@ document.addEventListener("DOMContentLoaded", preloadSubjects);
                   
                   <tr>
                     <td class="fw-medium"><%= user.teacherName %></td>
+                    <td><%= user.employeeCode || '-' %></td>
                     
                     <td><span class="badge badge-role-teacher"><%= user.role %></span></td>
                     <td>
@@ -639,6 +692,83 @@ document.addEventListener("DOMContentLoaded", preloadSubjects);
   <!-- Custom Script -->
   <script>
     document.addEventListener('DOMContentLoaded', function() {
+      const employeeCodeInput = document.getElementById('employeeCode');
+      const employeePicker = document.getElementById('employeePicker');
+      const employeePickerTrigger = document.getElementById('employeePickerTrigger');
+      const employeePickerMenu = document.getElementById('employeePickerMenu');
+      const employeePickerSearch = document.getElementById('employeePickerSearch');
+      const employeePickerOptions = [...document.querySelectorAll('.employee-option')];
+      const employeePickerName = document.getElementById('employeePickerName');
+      const employeePickerRole = document.getElementById('employeePickerRole');
+      const employeePickerContact = document.getElementById('employeePickerContact');
+      const employeePickerAddress = document.getElementById('employeePickerAddress');
+      const employeePickerPhoto = document.getElementById('employeePickerPhoto');
+      const employeePickerFallback = document.getElementById('employeePickerFallback');
+      const employeePickerEmpty = document.getElementById('employeePickerEmpty');
+
+      function updateEmployeePicker(option) {
+        const isLinked = Boolean(option?.dataset.code);
+        employeeCodeInput.value = isLinked ? option.dataset.code : '';
+        employeePickerName.textContent = isLinked ? `${option.dataset.name} / ${option.dataset.code}` : 'Choose an employee profile';
+        employeePickerRole.textContent = isLinked ? option.dataset.role || 'Employee' : 'Employee code, address, and contact appear here';
+        employeePickerContact.textContent = isLinked ? `Contact: ${option.dataset.contact || '-'}` : '';
+        employeePickerAddress.textContent = isLinked ? `Address: ${option.dataset.address || '-'}` : '';
+        employeePickerOptions.forEach(item => item.setAttribute('aria-selected', String(item === option)));
+
+        if (isLinked && option.dataset.photo) {
+          employeePickerPhoto.src = option.dataset.photo;
+          employeePickerPhoto.alt = `${option.dataset.name} profile photo`;
+          employeePickerPhoto.hidden = false;
+          employeePickerFallback.hidden = true;
+        } else {
+          employeePickerPhoto.removeAttribute('src');
+          employeePickerPhoto.alt = '';
+          employeePickerPhoto.hidden = true;
+          employeePickerFallback.hidden = false;
+        }
+      }
+
+      function setEmployeePickerOpen(open) {
+        employeePickerMenu.hidden = !open;
+        employeePickerTrigger.setAttribute('aria-expanded', String(open));
+        if (open) employeePickerSearch.focus();
+      }
+
+      employeePickerTrigger.addEventListener('click', () => setEmployeePickerOpen(employeePickerMenu.hidden));
+      employeePickerOptions.forEach(option => option.addEventListener('click', () => {
+        updateEmployeePicker(option);
+        employeePickerSearch.value = '';
+        employeePickerOptions.forEach(item => { item.hidden = false; });
+        employeePickerEmpty.hidden = true;
+        setEmployeePickerOpen(false);
+      }));
+      document.getElementById('employeePickerNone').addEventListener('click', () => {
+        updateEmployeePicker(null);
+        employeePickerSearch.value = '';
+        employeePickerOptions.forEach(item => { item.hidden = false; });
+        employeePickerEmpty.hidden = true;
+        setEmployeePickerOpen(false);
+      });
+      employeePickerSearch.addEventListener('input', () => {
+        const query = employeePickerSearch.value.trim().toLowerCase();
+        let visibleCount = 0;
+        employeePickerOptions.forEach(option => {
+          option.hidden = !option.textContent.toLowerCase().includes(query);
+          if (!option.hidden) visibleCount += 1;
+        });
+        employeePickerEmpty.hidden = visibleCount !== 0;
+      });
+      document.addEventListener('click', event => {
+        if (!employeePicker.contains(event.target)) setEmployeePickerOpen(false);
+      });
+      employeePicker.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && !employeePickerMenu.hidden) {
+          setEmployeePickerOpen(false);
+          employeePickerTrigger.focus();
+        }
+      });
+      employeePickerOptions.find(option => option.dataset.code === employeeCodeInput.value)?.click();
+
       // Toggle password visibility
       const togglePassword = document.getElementById('togglePassword');
       const passwordInput = document.getElementById('password');

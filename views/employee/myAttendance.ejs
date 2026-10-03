@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>My attendance</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+	<style>
+		:root { color-scheme:light; --ink:#1b2940; --muted:#65748a; --line:#d7e1ed; --blue:#24477b; --blue-dark:#18375f; --blue-soft:#eaf1fa; --green:#16805b; --green-soft:#e8f5ef; --amber:#a76c09; --amber-soft:#fff5df; --red:#b4404d; --red-soft:#fcedef; --canvas:#edf2f8; --paper:#fff; font-family:'DM Sans',sans-serif; color:var(--ink); background:var(--canvas); }
+		* { box-sizing:border-box; }
+		body { margin:0; min-height:100vh; background:linear-gradient(145deg,#f2f6fb,#e7eef7); }
+		button,input { font:inherit; }
+		.page-shell { width:min(1280px,calc(100% - 32px)); margin:0 auto; padding:28px 0 48px; }
+		h1,h2 { font-family:'Manrope',sans-serif; }
+		h1 { margin:0; font-size:1.55rem; }
+		h2 { margin:0; font-size:.95rem; }
+		.page-header { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:18px; }
+		.eyebrow { margin:0 0 5px; color:var(--blue); font-size:.69rem; font-weight:800; text-transform:uppercase; }
+		.page-copy { margin:6px 0 0; color:var(--muted); font-size:.8rem; }
+		.header-actions { display:flex; align-items:center; gap:9px; }
+		.button { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:38px; padding:0 12px; border:1px solid var(--blue); border-radius:5px; background:var(--blue); color:#fff; font-size:.78rem; font-weight:800; text-decoration:none; white-space:nowrap; }
+		.button:hover { background:var(--blue-dark); color:#fff; }
+		.panel { overflow:hidden; margin-bottom:15px; border:1px solid var(--line); border-radius:7px; background:var(--paper); }
+		.toolbar { display:flex; align-items:end; justify-content:space-between; gap:12px; padding:13px 15px; border-bottom:1px solid var(--line); background:#f7f9fc; }
+		.month-control { display:flex; align-items:end; gap:8px; }
+		.month-control label { display:grid; gap:5px; color:var(--muted); font-size:.7rem; font-weight:800; }
+		.month-control input,.month-control select { width:145px; min-height:37px; padding:7px 9px; border:1px solid #cbd8e6; border-radius:5px; background:#fff; color:var(--ink); font-size:.78rem; }
+		.month-control button { min-height:37px; padding:0 12px; border:1px solid var(--blue); border-radius:5px; background:var(--blue); color:#fff; cursor:pointer; font-size:.76rem; font-weight:800; }
+		.metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; padding:13px 15px; }
+		.metric { display:flex; align-items:center; gap:10px; min-height:74px; padding:12px; border:1px solid var(--line); border-radius:6px; background:#f7faff; }
+		.metric.late { border-color:#efdece; background:#fffaf5; }
+		.metric.leave { border-color:#eee1c3; background:#fffdf7; }
+		.metric.early { border-color:#efdadd; background:#fffafb; }
+		.metric-icon { display:grid; place-items:center; flex:0 0 35px; width:35px; height:35px; border-radius:6px; background:var(--blue-soft); color:var(--blue); }
+		.metric.late .metric-icon { background:#fff0e4; color:#ae5b1c; }
+		.metric.leave .metric-icon { background:var(--amber-soft); color:var(--amber); }
+		.metric.early .metric-icon { background:var(--red-soft); color:var(--red); }
+		.metric-label { display:block; color:var(--muted); font-size:.68rem; font-weight:700; }
+		.metric-value { display:block; margin-top:2px; font-family:'Manrope',sans-serif; font-size:1.25rem; font-weight:800; }
+		.table-heading { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:13px 15px; border-bottom:1px solid var(--line); background:#f7f9fc; }
+		.table-heading p { margin:4px 0 0; color:var(--muted); font-size:.72rem; }
+		.table-wrap { overflow-x:auto; }
+		table { width:100%; border-collapse:collapse; white-space:nowrap; font-size:.78rem; }
+		th,td { padding:11px 13px; border-bottom:1px solid #e9eef4; text-align:left; }
+		th { background:#fbfcfe; color:var(--muted); font-size:.66rem; font-weight:800; text-transform:uppercase; }
+		tbody tr:last-child td { border-bottom:0; }
+		tbody tr:hover { background:#f8fbff; }
+		.status { display:inline-flex; padding:5px 8px; border-radius:4px; font-size:.68rem; font-weight:800; }
+		.status-present,.status-check-in-only,.status-check-out-only { background:var(--green-soft); color:var(--green); }
+		.status-on-leave { background:var(--amber-soft); color:var(--amber); }
+		.status-absent { background:var(--red-soft); color:var(--red); }
+		.status-upcoming { background:var(--blue-soft); color:var(--blue); }
+		.attendance-note { font-size:.7rem; font-weight:700; }
+		.late-note { color:#ae5b1c; }
+		.early-note { color:var(--red); }
+		.missed-time { color:var(--red); font-weight:800; }
+		.muted { color:var(--muted); }
+		.empty { padding:34px 15px; color:var(--muted); text-align:center; font-size:.8rem; }
+		@media(max-width:760px) { .page-shell { width:calc(100% - 20px); padding-top:18px; } .page-header { align-items:flex-start; flex-direction:column; } .header-actions { width:100%; } .header-actions .button { flex:1; } .toolbar { align-items:stretch; flex-direction:column; } .month-control { width:100%; } .month-control input,.month-control select { flex:1; width:auto; } .metrics { grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; padding:10px; } .metric { min-height:68px; gap:7px; padding:9px 7px; } .metric-icon { flex-basis:30px; width:30px; height:30px; font-size:.8rem; } .metric-label { font-size:.61rem; } .metric-value { font-size:1.1rem; } table { table-layout:fixed; white-space:normal; font-size:.64rem; } th,td { padding:8px 4px; overflow-wrap:anywhere; word-break:break-word; } th { font-size:.57rem; } .status { padding:4px 3px; font-size:.57rem; line-height:1.15; } .attendance-note { display:block; font-size:.57rem; line-height:1.15; } }
+		@media(max-width:430px) { .month-control { align-items:stretch; flex-direction:column; } .month-control button { width:100%; } }
+	</style>
+</head>
+<body>
+	<main class="page-shell">
+		<header class="page-header"><div><p class="eyebrow">People / Attendance</p><h1>My attendance</h1><p class="page-copy"><%= employee.staffName %> / <%= employee.employeeCode %> - <%= monthLabel %></p></div><div class="header-actions"><a class="button" href="/manualpunch"><i class="fa-solid fa-fingerprint" aria-hidden="true"></i> Request manual punch</a></div></header>
+		<section class="panel">
+			<form class="toolbar" method="get" action="/myattendance">
+				<div class="month-control"><label for="monthBs">Nepali month (BS)<select id="monthBs" name="monthBs" required><% const monthNames = ['Baisakh','Jestha','Asar','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra']; const selectedMonthNumber = monthBs.slice(-2); monthNames.forEach((monthName, index) => { const monthValue = String(index + 1).padStart(2, '0'); %><option value="<%= monthBs.slice(0, 5) + monthValue %>" <%= selectedMonthNumber === monthValue ? 'selected' : '' %>><%= monthName %> </option><% }) %></select></label><button type="submit"><i class="fa-solid fa-filter" aria-hidden="true"></i> Show month</button></div>
+				
+			</form>
+			<div class="metrics" aria-label="Monthly attendance summary">
+				<div class="metric late"><span class="metric-icon"><i class="fa-regular fa-clock" aria-hidden="true"></i></span><div><span class="metric-label">Total late in</span><strong class="metric-value"><%= lateCount %></strong></div></div>
+			<a href="/leave" style="text-decoration: none;color: inherit;">
+				<div class="metric leave"><span class="metric-icon"><i class="fa-solid fa-person-walking-arrow-right" aria-hidden="true"></i></span><div><span class="metric-label">Leave days</span><strong class="metric-value"><%= leaveDays %></strong></div></div>
+			</a>
+				<div class="metric early"><span class="metric-icon"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i></span><div><span class="metric-label">Early out</span><strong class="metric-value"><%= earlyOutCount %></strong></div></div>
+				<div class="metric"><span class="metric-icon"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i></span><div><span class="metric-label">Month</span><strong class="metric-value"><%= monthBs %></strong></div></div>
+			</div>
+		</section>
+		<section class="panel" aria-labelledby="attendance-table-heading"><div class="table-heading"><div><h2 id="attendance-table-heading">Daily attendance</h2><p>Date, check-in, check-out, and status for your selected month.</p></div></div>
+			<% if (rows.length) { %><div class="table-wrap"><table><thead><tr><th>Date (BS)</th><th>Check in</th><th>Check out</th><th>Status</th></tr></thead><tbody><% rows.forEach(row => { const statusClass = row.status.toLowerCase().replace(/[^a-z]+/g, '-'); const isUpcoming = row.status === 'Upcoming'; %><tr><td><%= row.date %></td><td class="<%= !isUpcoming && row.checkIn === '-' ? 'missed-time' : '' %>"><%= isUpcoming ? '-' : row.checkIn === '-' ? 'Missed' : row.checkIn %><% if (!isUpcoming && row.lateDuration !== '-') { %> <span class="attendance-note late-note">(late by <%= row.lateDuration %>)</span><% } %></td><td class="<%= !isUpcoming && row.checkOut === '-' ? 'missed-time' : '' %>"><%= isUpcoming ? '-' : row.checkOut === '-' ? 'Missed' : row.checkOut %><% if (!isUpcoming && row.earlyDuration !== '-') { %> <span class="attendance-note early-note">(<%= row.earlyDuration %> early)</span><% } %></td><td><span class="status status-<%= statusClass %>"><%= row.status %></span></td></tr><% }) %></tbody></table></div><% } else { %><div class="empty">No attendance records for this Nepali month.</div><% } %>
+		</section>
+	</main>
+</body>
+</html>

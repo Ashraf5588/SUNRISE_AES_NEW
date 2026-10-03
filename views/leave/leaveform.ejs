@@ -5,25 +5,28 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Leave applications</title>
 	<link rel="stylesheet" href="/leave-management.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 	<link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css">
 </head>
 <body>
+	<% const isUserAdmin = typeof isAdmin !== 'undefined' ? Boolean(isAdmin) : false; %>
+	<% if (isUserAdmin) { %><%- include('../employee/employeesidenav', { currentPage: 'leave', selectedEmployee: null, isAdmin: true }) %><% } %>
 	<div class="leave-shell">
 		<header class="leave-topbar">
 			<a class="leave-brand" href="/leave">Staff leave management</a>
-			<nav aria-label="Leave navigation"><a class="active" href="/leave">Applications</a><% if (isAdmin) { %><a href="/leave/setup">Leave setup</a><% } %></nav>
+			<nav aria-label="Leave navigation"><a class="active" href="/leave">Applications</a><% if (isUserAdmin) { %><a href="/leave/setup">Leave setup</a><% } %></nav>
 		</header>
 		<main class="leave-main">
-			<header class="leave-page-heading"><div><p class="leave-eyebrow"><%= isAdmin ? 'Administration / Leave desk' : 'Staff / Leave' %></p><h1><%= isAdmin ? 'Leave management' : 'My leave' %></h1><p>Submit leave dates and follow decisions from the school administrator.</p></div></header>
+			<header class="leave-page-heading"><div><p class="leave-eyebrow"><%= isUserAdmin ? 'Administration / Leave desk' : 'Staff / Leave' %></p><h1><%= isUserAdmin ? 'Leave management' : 'My leave' %></h1><p>Submit leave dates and follow decisions from the school administrator.</p></div></header>
 			<% if (message) { %><div class="leave-notice"><%= message %></div><% } %>
 
 			<section class="leave-panel">
-				<div class="leave-section-heading"><div><h2>New application</h2><p><%= isAdmin ? 'Choose the staff member applying for leave.' : 'Your name is taken from your signed-in account.' %></p></div></div>
+				<div class="leave-section-heading"><div><h2>New application</h2><p><%= isUserAdmin ? 'Choose the staff member applying for leave.' : 'Your name is taken from your signed-in account.' %></p></div></div>
 				<% if (leaveTypes.length) { %>
-				<form method="post" action="/leave" enctype="multipart/form-data" id="leaveApplicationForm" data-is-admin="<%= isAdmin ? 'true' : 'false' %>">
+				<form method="post" action="/leave" enctype="multipart/form-data" id="leaveApplicationForm" data-is-admin="<%= isUserAdmin ? 'true' : 'false' %>">
 					<div class="leave-field-grid">
 						<div class="leave-field"><label for="employeeId">Applicant</label>
-							<% if (isAdmin) { %><select id="employeeId" name="employeeId" required><option value="">Select applicant</option><% employees.forEach(employee => { %><option value="<%= employee.id %>" data-role="<%= employee.role %>" <%= employee.id === selectedEmployeeId ? 'selected' : '' %>><%= employee.name %> / <%= employee.role %> (<%= employee.username %>)</option><% }) %></select>
+							<% if (isUserAdmin) { %><select id="employeeId" name="employeeId" required><option value="">Select applicant</option><% employees.forEach(employee => { %><option value="<%= employee.id %>" data-role="<%= employee.role %>" <%= employee.id === selectedEmployeeId ? 'selected' : '' %>><%= employee.name %> / <%= employee.role %> (<%= employee.username %>)</option><% }) %></select>
 							<% } else { %><input id="employeeId" type="hidden" value="<%= selectedEmployeeId %>"><input id="employeeName" value="<%= employeeName %>" readonly><% } %>
 						</div>
 						<div class="leave-field"><label for="employeeRole">Role</label><input id="employeeRole" value="<%= employeeRole %>" readonly></div>
@@ -41,20 +44,20 @@
 			</section>
 
 		<section class="leave-panel">
-			<div class="leave-section-heading"><div><h2><%= isAdmin ? 'Applications for review' : 'Application history' %></h2><p><%= applications.length %> recent records</p></div></div>
+			<div class="leave-section-heading"><div><h2><%= isUserAdmin ? 'Applications for review' : 'Application history' %></h2><p><%= applications.length %> recent records</p></div></div>
 			<% if (applications.length) { %>
 			<div class="leave-table-wrap"><table class="leave-table">
-				<thead><tr><% if (isAdmin) { %><th>Applicant</th><% } %><th>Leave type</th><th>Dates (BS)</th><th>Days</th><th>Pay</th><th>Reason / document</th><th>Status / decision</th></tr></thead>
+				<thead><tr><% if (isUserAdmin) { %><th>Applicant</th><% } %><th>Leave type</th><th>Dates (BS)</th><th>Days</th><th>Pay</th><th>Reason / document</th><th>Status / decision</th></tr></thead>
 				<tbody><% applications.forEach(application => { %>
 				<tr>
-					<% if (isAdmin) { %><td><strong><%= application.employeeName %></strong><small><%= application.username %> / <%= application.employeeRole %></small></td><% } %>
+					<% if (isUserAdmin) { %><td><strong><%= application.employeeName %></strong><small><%= application.username %> / <%= application.employeeRole %></small></td><% } %>
 					<td><strong><%= application.leaveTypeName %></strong></td>
 					<td><strong class="leave-date-range"><%= application.startDateNepali %> to <%= application.endDateNepali %></strong></td>
 					<td><strong class="leave-duration-days"><%= application.requestedDays %> <%= application.requestedDays === 1 ? 'day' : 'days' %></strong></td>
 					<td><span class="leave-status <%= application.isPaid ? 'approved' : 'unpaid' %>"><%= application.isPaid ? 'Paid' : 'Unpaid' %></span></td>
 					<td><span><%= application.reason %></span><% if (application.supportingDocumentName) { %><a class="document-link" href="/leave/<%= application._id %>/document"><%= application.supportingDocumentName %></a><% } %></td>
 					<td>
-						<% if (isAdmin && application.status === 'pending') { %>
+						<% if (isUserAdmin && application.status === 'pending') { %>
 						<form class="leave-review-form" method="post" action="/leave/<%= application._id %>/review">
 							<select name="status" class="decision-select" aria-label="Leave decision"><option value="" selected disabled>Pending - select decision</option><option value="approved">Approve</option><option value="rejected">Reject</option></select>
 							<textarea name="reviewReason" class="review-reason" maxlength="1000" placeholder="Reason required only when rejecting" aria-label="Decision reason"></textarea>
