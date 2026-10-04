@@ -93,6 +93,16 @@
 		.notice { margin: 14px 18px 0; padding: 11px 14px; border-radius: 4px; font-size: .86rem; font-weight: 600; }
 		.notice-error { border: 1px solid #edc8c3; background: #fff2ef; color: #a53535; }
 		.notice-success { border: 1px solid #bfd0e5; background: #eef3fa; color: var(--blue-dark); }
+		.csv-tools { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 14px; margin: 14px 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 5px; background: var(--paper); }
+		.csv-tools h2 { margin: 0 0 4px; font-size: .95rem; }
+		.csv-tools p { margin: 0; color: var(--muted); font-size: .78rem; }
+		.csv-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+		.csv-upload { display: flex; align-items: center; gap: 8px; }
+		.csv-upload input { width: min(260px, 45vw); min-height: 38px; padding: 5px; }
+		.csv-result { margin: 14px 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 5px; background: var(--paper); }
+		.csv-result h2 { margin: 0 0 6px; font-size: .95rem; }
+		.csv-result p { margin: 0; color: var(--muted); font-size: .84rem; }
+		.csv-error-list { display: grid; gap: 5px; max-height: 260px; margin: 10px 0 0; padding-left: 24px; overflow: auto; color: #8a3030; font-size: .82rem; }
 		.document-list { display: grid; }
 		.document-entry { display: grid; grid-template-columns: 30px minmax(170px, .8fr) minmax(240px, 1.2fr) auto; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 		.document-entry:last-child { border-bottom: 0; }
@@ -126,7 +136,7 @@
 		.management-target span { margin-top: 4px; color: var(--muted); font-size: .8rem; }
 		.empty-state { padding: 20px; color: var(--muted); text-align: center; }
 		@media (max-width: 980px) { .workspace { grid-template-columns: 250px minmax(0, 1fr); } .field-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-		@media (max-width: 700px) { .page-shell { width: calc(100% - 20px); padding-top: 16px; } .workspace { grid-template-columns: 1fr; } .left-rail { position: static; grid-template-columns: 1fr; } .profile-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .profile-fact { grid-template-columns: 1fr; gap: 2px; } .tab-panel { padding: 16px 12px; } .field-grid { grid-template-columns: 1fr; } .field-wide { grid-column: auto; } .document-entry { grid-template-columns: 28px 1fr auto; } .document-entry input[type="file"] { grid-column: 2 / -1; } .panel-heading { padding: 15px; } }
+		@media (max-width: 700px) { .page-shell { width: calc(100% - 20px); padding-top: 16px; } .workspace { grid-template-columns: 1fr; } .left-rail { position: static; grid-template-columns: 1fr; } .profile-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } .profile-fact { grid-template-columns: 1fr; gap: 2px; } .tab-panel { padding: 16px 12px; } .field-grid { grid-template-columns: 1fr; } .field-wide { grid-column: auto; } .document-entry { grid-template-columns: 28px 1fr auto; } .document-entry input[type="file"] { grid-column: 2 / -1; } .panel-heading { padding: 15px; } .csv-tools { grid-template-columns: 1fr; } .csv-actions, .csv-upload { align-items: stretch; justify-content: flex-start; flex-direction: column; } .csv-upload input { width: 100%; } }
 	</style>
 </head>
 <body>
@@ -168,6 +178,20 @@ const activeModuleName = activeModule || 'profile';
 	<header class="page-header"><div><p class="eyebrow">People / Human resources</p><h1>Employee management</h1><p class="page-intro">Profile, compensation, office history, assets, and reporting.</p></div><a class="button button-secondary" href="/employeeattendance">Attendance</a></header>
 	<% if (error) { %><div class="notice notice-error" role="alert"><%= error %></div><% } %>
 	<% if (saved) { %><div class="notice notice-success" role="status">Employee record saved.</div><% } %>
+	<section class="csv-tools" aria-labelledby="employee-csv-title">
+		<div><h2 id="employee-csv-title">Bulk employee profiles</h2><p>Blank cells are saved as empty values; employee name is required. Collections use JSON arrays, for example [{"degree":"BA"}]. Nested objects use JSON objects. Upload binary employee documents from each profile after import.</p></div>
+		<div class="csv-actions">
+			<a class="button button-secondary" href="/employeedetail/csv-template"><i class="fa-solid fa-download" aria-hidden="true"></i> Download CSV template</a>
+			<form class="csv-upload" action="/employeedetail/import-csv" method="post" enctype="multipart/form-data"><input type="file" name="employeeCsv" accept=".csv,text/csv" aria-label="Employee profile CSV file" required><button class="button button-primary" type="submit"><i class="fa-solid fa-upload" aria-hidden="true"></i> Upload CSV</button></form>
+		</div>
+	</section>
+	<% if (importResult) { %>
+		<section class="csv-result" aria-live="polite" aria-labelledby="employee-csv-result-title">
+			<h2 id="employee-csv-result-title">CSV import results</h2>
+			<p><strong><%= importResult.importedCount %></strong> of <%= importResult.totalRows %> employee profiles saved<%= importResult.errors.length ? `; ${importResult.errors.length} row${importResult.errors.length === 1 ? '' : 's'} need attention.` : '.' %></p>
+			<% if (importResult.errors.length) { %><ol class="csv-error-list"><% importResult.errors.forEach(item => { %><li><strong>Row <%= item.row %>:</strong> <%= item.message %></li><% }) %></ol><% } %>
+		</section>
+	<% } %>
 	<div class="workspace">
 		<aside class="left-rail" aria-label="Employee navigation">
 			<section class="rail-panel profile-card">

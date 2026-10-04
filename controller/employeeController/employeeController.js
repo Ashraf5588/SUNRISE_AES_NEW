@@ -5,6 +5,8 @@ const bs = require('bikram-sambat-js');
 const multer = require('multer');
 const crypto = require('crypto');
 const path = require('path');
+const csvParser = require('csv-parser');
+const { Readable } = require('stream');
 const { BlobServiceClient } = require('@azure/storage-blob');
 const { staffSchema } = require('../../model/staffschema');
 const { leaveApplicationSchema } = require('../../model/leaveschema/leavetypeschma');
@@ -73,6 +75,14 @@ const DEFAULT_EMPLOYEE_DOCUMENTS = [
     'CIT document',
     'Qualification certificate'
 ];
+const employeeProfileCsvHeaders = Object.keys(staffSchema.paths)
+    .filter(field => !['_id', '__v', 'createdAt', 'updatedAt'].includes(field))
+    .map(field => field === 'dateOfJoining' ? 'dateOfJoiningBs' : field === 'dateOfBirth' ? 'dateOfBirthBs' : field);
+const employeeProfileCsvAliases = { nepaliName: 'nameNepali' };
+const employeeProfileCsvRequiredHeaders = [
+    'employeeCode', 'staffName', 'designation', 'department', 'dateOfJoiningBs',
+    'mobileNumber', 'email', 'address', 'emergencyContactName', 'emergencyContactNumber'
+];
 
 const employeeDocumentUpload = multer({
     storage: multer.memoryStorage(),
@@ -84,6 +94,44 @@ const employeeDocumentUpload = multer({
         }
         return callback(new Error('Upload PDF, JPG, PNG, WebP, or GIF documents only.'));
     }
+});
+
+const employeeAttendanceCsvHeaders = [
+    'SN', 'Employee name', 'Code', 'Branch name', 'Department', 'Date (BS)',
+    'Planned in', 'Planned out', 'Actual in', 'Actual out', 'Late in status',
+    'Early out status', 'Leave type', 'Remarks'
+];
+const employeeAttendanceCsvUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 2 * 1024 * 1024, files: 1 },
+    fileFilter: (req, file, callback) => {
+        if (path.extname(file.originalname || '').toLowerCase() === '.csv') return callback(null, true);
+        return callback(new Error('Choose a .csv attendance file.'));
+    }
+});
+const employeeProfileCsvUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+    fileFilter: (req, file, callback) => {
+        if (path.extname(file.originalname || '').toLowerCase() === '.csv') return callback(null, true);
+        return callback(new Error('Choose a .csv employee profile file.'));
+    }
+});
+
+exports.uploadEmployeeAttendanceCsv = (req, res, next) => employeeAttendanceCsvUpload.single('attendanceCsv')(req, res, error => {
+    if (!error) return next();
+    const message = error instanceof multer.MulterError
+        ? 'Choose a CSV file no larger than 2 MB.'
+        : error.message || 'Unable to read the attendance CSV.';
+    return res.redirect(`/employeeattendance?importError=${encodeURIComponent(message)}`);
+});
+
+exports.uploadEmployeeProfileCsv = (req, res, next) => employeeProfileCsvUpload.single('employeeCsv')(req, res, error => {
+    if (!error) return next();
+    const message = error instanceof multer.MulterError
+        ? 'Choose a CSV file no larger than 5 MB.'
+        : error.message || 'Unable to read the employee CSV.';
+    return res.redirect(`/employeedetail?importError=${encodeURIComponent(message)}`);
 });
 
 exports.uploadEmployeeDocuments = (req, res, next) => employeeDocumentUpload.any()(req, res, error => {
@@ -275,6 +323,7 @@ const renderEmployeeDetails = async (res, options = {}) => {
         defaultDocuments: DEFAULT_EMPLOYEE_DOCUMENTS,
         error: options.error || '',
         saved: options.saved || false,
+        importResult: options.importResult || null,
         formData: options.formData || toEmployeeFormData(selectedEmployee)
     });
 };
@@ -285,7 +334,8 @@ exports.showEmployeeDetails = async (req, res) => {
             employeeId: req.query.employeeId,
             newEmployee: req.query.new === '1',
             activeModule: req.query.module || 'profile',
-            saved: req.query.saved === '1'
+            saved: req.query.saved === '1',
+            error: String(req.query.importError || '')
         });
     } catch (error) {
         console.error('Unable to load employee details:', error);
@@ -1595,11 +1645,276 @@ exports.getEmployeeAttendance = async (req, res) => {
         return res.render('employee/employeeattendance', {
             ...report,
             deviceSN: req.query.SN || '',
+            importMessage: req.query.imported
+                ? `${req.query.importRows || 0} rows processed; ${req.query.imported} new attendance punches saved.`
+                : '',
+            importError: String(req.query.importError || ''),
             isAdmin: true
         });
     } catch (error) {
         console.error('getEmployeeAttendance error:', error);
         return res.status(error.status || 500).send(error.message || 'Unable to load attendance.');
+    }
+};
+
+exports.downloadEmployeeAttendanceCsvTemplate = (req, res) => {
+    const csv = employeeAttendanceCsvHeaders.map(header => `"${header.replace(/"/g, '""')}"`).join(',');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="employee-attendance-template.csv"');
+    return res.send(`\uFEFF${csv}\r\n`);
+};
+
+exports.downloadEmployeeProfileCsvTemplate = (req, res) => {
+    const csv = employeeProfileCsvHeaders.map(header => `"${header.replace(/"/g, '""')}"`).join(',');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="employee-profile-template.csv"');
+    return res.send(`\uFEFF${csv}\r\n`);
+};
+
+const parseEmployeeAttendanceCsv = buffer => new Promise((resolve, reject) => {
+    const rows = [];
+    let headers = [];
+    const parser = csvParser({
+        mapHeaders: ({ header }) => String(header || '').replace(/^\uFEFF/, '').trim()
+    });
+    parser.on('headers', parsedHeaders => { headers = parsedHeaders; });
+    parser.on('data', row => rows.push(row));
+    parser.on('end', () => resolve({ headers, rows }));
+    parser.on('error', reject);
+    Readable.from([buffer]).pipe(parser);
+});
+
+const parseEmployeeProfileCsv = buffer => new Promise((resolve, reject) => {
+    const rows = [];
+    let headers = [];
+    const parser = csvParser({
+        mapHeaders: ({ header }) => String(header || '').replace(/^\uFEFF/, '').trim()
+    });
+    parser.on('headers', parsedHeaders => { headers = parsedHeaders; });
+    parser.on('data', row => rows.push(row));
+    parser.on('end', () => resolve({ headers, rows }));
+    parser.on('error', error => reject(new Error(`CSV parsing failed near row ${rows.length + 2}: ${error.message}`)));
+    Readable.from([buffer]).pipe(parser);
+});
+
+const setEmployeeCsvPath = (target, field, value) => {
+    const segments = field.split('.');
+    let current = target;
+    segments.slice(0, -1).forEach(segment => {
+        current[segment] ||= {};
+        current = current[segment];
+    });
+    current[segments[segments.length - 1]] = value;
+};
+
+const parseEmployeeCsvCell = (header, rawValue, rowNumber) => {
+    const value = String(rawValue ?? '').trim();
+    const canonicalHeader = employeeProfileCsvAliases[header] || header;
+    const schemaPath = canonicalHeader === 'dateOfJoiningBs' ? 'dateOfJoining'
+        : canonicalHeader === 'dateOfBirthBs' ? 'dateOfBirth'
+            : canonicalHeader;
+    const schemaType = staffSchema.path(schemaPath);
+    if (!schemaType) throw new Error(`Unknown column "${header}".`);
+
+    if (!value) {
+        if (schemaType.enumValues?.length) return undefined;
+        if (schemaType.instance === 'Array') return [];
+        if (schemaType.$isSingleNested) return {};
+        if (schemaType.instance === 'Number' || schemaType.instance === 'Date' || schemaType.instance === 'ObjectId' || schemaType.instance === 'ObjectID') return null;
+        if (schemaType.instance === 'Boolean') return false;
+        return '';
+    }
+
+    if (canonicalHeader === 'dateOfJoiningBs' || canonicalHeader === 'dateOfBirthBs') {
+        const date = convertNepaliDateToAD(value);
+        if (!date) throw new Error(`${header} must be a valid Bikram Sambat date (YYYY-MM-DD).`);
+        return date;
+    }
+
+    if (schemaType.instance === 'Array' || schemaType.$isSingleNested) {
+        let parsed;
+        try {
+            parsed = JSON.parse(value);
+        } catch (error) {
+            throw new Error(`${header} must contain valid JSON.`);
+        }
+        if (schemaType.instance === 'Array' && !Array.isArray(parsed)) {
+            throw new Error(`${header} must contain a JSON array.`);
+        }
+        if (schemaType.$isSingleNested && (!parsed || Array.isArray(parsed) || typeof parsed !== 'object')) {
+            throw new Error(`${header} must contain a JSON object.`);
+        }
+        return parsed;
+    }
+
+    if (schemaType.instance === 'Number') {
+        const number = Number(value);
+        if (!Number.isFinite(number)) throw new Error(`${header} must be a valid number.`);
+        return number;
+    }
+    if (schemaType.instance === 'Boolean') {
+        if (/^(true|1|yes)$/i.test(value)) return true;
+        if (/^(false|0|no)$/i.test(value)) return false;
+        throw new Error(`${header} must be true/false, yes/no, or 1/0.`);
+    }
+    if (schemaType.instance === 'Date') {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) throw new Error(`${header} must be a valid date.`);
+        return date;
+    }
+    if (schemaType.instance === 'ObjectId' || schemaType.instance === 'ObjectID') {
+        if (!mongoose.isValidObjectId(value)) throw new Error(`${header} must be a valid employee ID.`);
+        return new mongoose.Types.ObjectId(value);
+    }
+    return value;
+};
+
+const employeeCsvRowToDocument = (row, headers, rowNumber) => {
+    const employeeData = {};
+    headers.forEach(header => {
+        const value = parseEmployeeCsvCell(header, row[header], rowNumber);
+        if (value === undefined) return;
+        const canonicalHeader = employeeProfileCsvAliases[header] || header;
+        const schemaPath = canonicalHeader === 'dateOfJoiningBs' ? 'dateOfJoining'
+            : canonicalHeader === 'dateOfBirthBs' ? 'dateOfBirth'
+                : canonicalHeader;
+        setEmployeeCsvPath(employeeData, schemaPath, value);
+    });
+
+    if (!String(employeeData.staffName || '').trim()) throw new Error('staffName is required.');
+    if (employeeData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(employeeData.email))) {
+        throw new Error('email must be a valid email address.');
+    }
+    if (!employeeData.employeeCode) delete employeeData.employeeCode;
+    return employeeData;
+};
+
+exports.importEmployeeProfileCsv = async (req, res) => {
+    const importResult = { importedCount: 0, totalRows: 0, errors: [] };
+    try {
+        if (!req.file) throw new Error('Choose an employee profile CSV file to upload.');
+        const { headers, rows: parsedRows } = await parseEmployeeProfileCsv(req.file.buffer);
+        const rows = parsedRows.filter(row => Object.values(row).some(value => String(value || '').trim()));
+        importResult.totalRows = rows.length;
+
+        const repeatedHeaders = headers.filter((header, index) => headers.indexOf(header) !== index);
+        if (repeatedHeaders.length) throw new Error(`CSV contains duplicate columns: ${[...new Set(repeatedHeaders)].join(', ')}.`);
+        const unknownHeaders = headers.filter(header => !employeeProfileCsvHeaders.includes(header) && !employeeProfileCsvAliases[header]);
+        if (unknownHeaders.length) throw new Error(`CSV contains unknown columns: ${unknownHeaders.join(', ')}.`);
+        const missingHeaders = employeeProfileCsvRequiredHeaders.filter(header => !headers.includes(header));
+        if (missingHeaders.length) throw new Error(`CSV is missing required columns: ${missingHeaders.join(', ')}.`);
+        if (!rows.length) throw new Error('The CSV contains no employee profile rows.');
+        if (rows.length > 1000) throw new Error('Upload no more than 1,000 employee profiles at a time.');
+
+        for (const [index, row] of rows.entries()) {
+            const rowNumber = index + 2;
+            try {
+                if (Array.isArray(row.__parsed_extra) && row.__parsed_extra.length) {
+                    throw new Error('row has more values than the CSV header.');
+                }
+                const employeeData = employeeCsvRowToDocument(row, headers, rowNumber);
+                const duplicateField = await findDuplicateEmployeeIdentifier(employeeData);
+                if (duplicateField) {
+                    const label = duplicateField === 'employeeCode' ? 'Employee code' : 'Device code';
+                    throw new Error(`${label} is already in use.`);
+                }
+                const employee = new Staff(employeeData);
+                await employee.validate();
+                await employee.save();
+                importResult.importedCount += 1;
+            } catch (error) {
+                const validationMessages = error.errors
+                    ? Object.values(error.errors).map(item => `${item.path}: ${item.message}`).join('; ')
+                    : error.message;
+                importResult.errors.push({ row: rowNumber, message: validationMessages || 'Unable to save this profile.' });
+            }
+        }
+
+        return await renderEmployeeDetails(res, { newEmployee: true, importResult });
+    } catch (error) {
+        console.error('Unable to import employee profiles:', error);
+        return renderEmployeeDetails(res, {
+            newEmployee: true,
+            error: error.message || 'Unable to import employee profiles.',
+            importResult
+        });
+    }
+};
+
+const parseAttendanceCsvTime = (value, rowNumber, label) => {
+    const text = String(value || '').trim();
+    if (!text || /^missed\b/i.test(text)) return null;
+    const match = text.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+    if (!match) throw new Error(`Row ${rowNumber}: ${label} must use HH:mm format.`);
+    return `${match[1]}:${match[2]}`;
+};
+
+exports.importEmployeeAttendanceCsv = async (req, res) => {
+    try {
+        if (!req.file) throw new Error('Choose an attendance CSV file to upload.');
+        const { headers, rows: parsedRows } = await parseEmployeeAttendanceCsv(req.file.buffer);
+        const rows = parsedRows.filter(row => Object.values(row).some(value => String(value || '').trim()));
+        const requiredHeaders = ['Date (BS)', 'Actual in', 'Actual out'];
+        if (!headers.includes('Code') && !headers.includes('Employee code')) requiredHeaders.push('Code');
+        const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
+        if (missingHeaders.length) throw new Error(`CSV is missing required columns: ${missingHeaders.join(', ')}.`);
+        if (!rows.length) throw new Error('The CSV contains no attendance rows.');
+        if (rows.length > 5000) throw new Error('Upload no more than 5,000 attendance rows at a time.');
+
+        const employees = await getEmployeeProfiles();
+        const employeesByCode = new Map(employees.map(employee => [String(employee.employeeCode || '').trim().toUpperCase(), employee]));
+        const operations = [];
+        const importedDates = [];
+        rows.forEach((row, index) => {
+            const rowNumber = index + 2;
+            const employeeCode = String(row.Code || row['Employee code'] || '').trim();
+            const employee = employeesByCode.get(employeeCode.toUpperCase());
+            if (!employee) throw new Error(`Row ${rowNumber}: employee code "${employeeCode}" was not found.`);
+
+            const punchDate = parseNepaliDateKey(row['Date (BS)']);
+            if (!punchDate) throw new Error(`Row ${rowNumber}: enter a valid Bikram Sambat date in Date (BS).`);
+            importedDates.push({ date: punchDate, nepaliDate: getNepaliDate(punchDate).slice(0, 10) });
+            const actualIn = parseAttendanceCsvTime(row['Actual in'], rowNumber, 'Actual in');
+            const actualOut = parseAttendanceCsvTime(row['Actual out'], rowNumber, 'Actual out');
+            if (!actualIn && !actualOut) throw new Error(`Row ${rowNumber}: enter Actual in and/or Actual out as HH:mm.`);
+
+            [[actualIn, 'Check-in', 0], [actualOut, 'Check-out', 1]].forEach(([time, punchType, status]) => {
+                if (!time) return;
+                const punchTime = new Date(punchDate);
+                punchTime.setHours(Number(time.slice(0, 2)), Number(time.slice(3, 5)), 0, 0);
+                const punch = {
+                    sn: 'CSV_IMPORT',
+                    pin: String(employee.employeeCode).trim(),
+                    name: employee.staffName,
+                    punchTime,
+                    source: 'Manual',
+                    manualPunchType: punchType,
+                    status,
+                    verifyMode: 0
+                };
+                operations.push({
+                    updateOne: {
+                        filter: { sn: punch.sn, pin: punch.pin, punchTime, source: 'Manual', manualPunchType: punchType },
+                        update: { $setOnInsert: punch },
+                        upsert: true
+                    }
+                });
+            });
+        });
+
+        const result = await employeeAttendance.bulkWrite(operations, { ordered: true });
+        const punchesSaved = result.upsertedCount + result.modifiedCount;
+        const dateRange = importedDates.sort((first, second) => first.date - second.date);
+        const query = new URLSearchParams({
+            imported: String(punchesSaved),
+            importRows: String(rows.length),
+            startDateBs: dateRange[0].nepaliDate,
+            endDateBs: dateRange[dateRange.length - 1].nepaliDate
+        });
+        return res.redirect(`/employeeattendance?${query}`);
+    } catch (error) {
+        console.error('Unable to import employee attendance CSV:', error);
+        return res.redirect(`/employeeattendance?importError=${encodeURIComponent(error.message || 'Unable to import attendance CSV.')}`);
     }
 };
 
@@ -1609,7 +1924,7 @@ exports.exportEmployeeAttendance = async (req, res) => {
         const columns = [
             ['SN', (_, index) => index + 1],
             ['Employee name', row => row.employeeName],
-            ['Employee code', row => row.employeeCode],
+            ['Code', row => row.employeeCode],
             ['Branch name', row => row.branchName],
             ['Department', row => row.department],
             ['Date (BS)', row => row.nepaliDate],

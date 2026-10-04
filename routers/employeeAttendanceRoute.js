@@ -6,6 +6,7 @@ const { verifytoken, isAdmin } = require('../middleware/auth');
 
 
 employee.get('/employeedetail', verifytoken, isAdmin, employeeController.showEmployeeDetails);
+employee.get('/employeedetail/csv-template', verifytoken, isAdmin, employeeController.downloadEmployeeProfileCsvTemplate);
 employee.get('/employeedetail/check-code', verifytoken, isAdmin, employeeController.checkEmployeeIdentifier);
 employee.get('/employeemanagementdashboard', verifytoken, isAdmin, employeeController.showEmployeeManagementDashboard);
 employee.get('/employeedata', verifytoken, isAdmin, employeeController.showEmployeeData);
@@ -30,6 +31,7 @@ employee.post('/employeeprofile', verifytoken, employeeController.uploadEmployee
 employee.post('/employeprofilefillupform', verifytoken, employeeController.uploadEmployeeDocuments, employeeController.saveEmployeeProfileFillup);
 employee.post('/manualpunch/:id/review', verifytoken, isAdmin, employeeController.reviewManualPunchRequest);
 employee.post('/employeedetail', verifytoken, isAdmin, employeeController.uploadEmployeeDocuments, employeeController.createEmployeeDetails);
+employee.post('/employeedetail/import-csv', verifytoken, isAdmin, employeeController.uploadEmployeeProfileCsv, employeeController.importEmployeeProfileCsv);
 employee.post('/employeedetail/:id', verifytoken, isAdmin, employeeController.uploadEmployeeDocuments, employeeController.updateEmployeeDetails);
 employee.post(
 	'/iclock/cdata',
@@ -63,6 +65,8 @@ employee.all('/iclock/cdata', (req, res) => {
 	res.set('Allow', 'POST').sendStatus(405);
 });
 employee.get('/employeeattendance/export', employeeController.exportEmployeeAttendance);
+employee.get('/employeeattendance/template', verifytoken, isAdmin, employeeController.downloadEmployeeAttendanceCsvTemplate);
+employee.post('/employeeattendance/import', verifytoken, isAdmin, employeeController.uploadEmployeeAttendanceCsv, employeeController.importEmployeeAttendanceCsv);
 employee.get('/employeeattendance', verifytoken, isAdmin, employeeController.getEmployeeAttendance);
 
 module.exports = employee;

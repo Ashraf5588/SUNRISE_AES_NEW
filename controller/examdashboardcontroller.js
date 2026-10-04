@@ -16,13 +16,10 @@ const subjectlist = mongoose.model("subjectlist", subjectSchema, "subjectlist");
 const studentClass = mongoose.model("studentClass", classSchema, "classlist");
 const studentClassModel = mongoose.model("studentClass", classSchema, "classlist");
 const studentRecord = mongoose.model("studentRecord", studentrecordschema, "studentrecord");
-
 const bcrypt = require("bcrypt");
-const {holiday} = require('../model/holidayschema')
 const terminal = mongoose.model("terminal", terminalSchema, "terminal");
 const terminalModel = mongoose.model("terminal", terminalSchema, "terminal");
 const { marksheetsetupschemaForAdmin ,routineSchema} = require("../model/marksheetschema");
-const teacherSchema = require("../model/admin").teacherSchema;
 const { onlineAttendanceSchema } = require("../model/onlineattendanceschema");
 const { fail } = require("assert");
 const routineModel = mongoose.model("routine", routineSchema, "routine");
@@ -33,7 +30,7 @@ const onlineAttendance = mongoose.model("onlineAttendance", onlineAttendanceSche
 app.set("view engine", "ejs");
 app.set("view", path.join(rootDir, "views"));
 const newsubject = mongoose.model("newsubject", newsubjectSchema, "newsubject");
-const usermodel = mongoose.model("users", teacherSchema, "users");
+
 const getSlipModel = () => {
  
   if (mongoose.models[`exam_marks`]) {
@@ -137,25 +134,11 @@ function getCurrentBSDate() {
   return { year: 2083, month: 2, day: 15 };
 }
 
-async function getAttendanceDataFromApi(studentClass, section, academicYear, terminal) {
+async function getAttendanceDataFromApi(studentClass, section, academicYear) {
   const normalizedAcademicYear = String(academicYear || '').trim();
-  const marksheetSetupDoc = await marksheetSetup.findOne({ academicYear: normalizedAcademicYear }).lean();
-  const terminalData = marksheetSetupDoc?.terminals?.find((item) => normalizeText(item.name) === normalizeText(terminal));
-  const attendanceStart = parseBsDate(terminalData?.attendancestartdate);
-  const attendanceEnd = parseBsDate(terminalData?.attendanceenddate);
-  const getDateKey = (date) => date.year * 10000 + date.month * 100 + date.day;
-  const isValidAttendanceDate = (date) => date &&
-    date.year === Number(normalizedAcademicYear) &&
-    Boolean(NEPALI_MONTHS[BS_MONTH_NAMES[date.month]]) &&
-    date.day >= 1 && date.day <= getBsMonthLength(BS_MONTH_NAMES[date.month]);
-
-  if (!terminalData || !isValidAttendanceDate(attendanceStart) || !isValidAttendanceDate(attendanceEnd) || getDateKey(attendanceStart) > getDateKey(attendanceEnd)) {
-    return [];
-  }
-
-  const attendanceStartKey = getDateKey(attendanceStart);
-  const attendanceEndKey = getDateKey(attendanceEnd);
-  const totalWorkingDays = Math.max(Number(terminalData.workingDays) || 0, 0);
+  const bsDate = getCurrentBSDate();
+  const currentDay = Number.isFinite(bsDate.day) ? bsDate.day : 0;
+  const currentMonthNumber = Number.isFinite(bsDate.month) ? bsDate.month : 0;
 
   const holidayDoc = await holiday.findOne({ academicYear: normalizedAcademicYear }).lean();
   const holidayMonthMap = new Map(
@@ -168,6 +151,18 @@ async function getAttendanceDataFromApi(studentClass, section, academicYear, ter
         ])
       : []
   );
+
+  let totalWorkingDaysUptoToday = 0;
+  for (let monthIndex = 1; monthIndex <= currentMonthNumber; monthIndex += 1) {
+    const monthName = BS_MONTH_NAMES[monthIndex];
+    const monthLength = getBsMonthLength(monthName);
+    const monthDayLimit = monthIndex === currentMonthNumber ? currentDay : monthLength;
+    const holidayDaysForMonth = holidayMonthMap.get(getCanonicalMonthName(monthName)) || [];
+    const holidayDaysUntilLimit = holidayDaysForMonth.filter(
+      (dayValue) => Number.isFinite(dayValue) && dayValue <= monthDayLimit
+    );
+    totalWorkingDaysUptoToday += Math.max(monthDayLimit - holidayDaysUntilLimit.length, 0);
+  }
 
   const onlineAttendanceDocs = await onlineAttendance
     .find({
@@ -188,12 +183,16 @@ async function getAttendanceDataFromApi(studentClass, section, academicYear, ter
 
       const entryMonthName = String(entry?.month || '').trim();
       const entryMonthNumber = getBsMonthNumber(entryMonthName);
-      if (!entryMonthNumber) return;
+      if (!entryMonthNumber || entryMonthNumber > currentMonthNumber) return;
 
       const entryDay = Number.parseInt(entry?.day, 10);
-      if (!Number.isFinite(entryDay) || entryDay < 1 || entryDay > getBsMonthLength(BS_MONTH_NAMES[entryMonthNumber])) return;
-      const entryDateKey = Number(entryAcademicYear) * 10000 + entryMonthNumber * 100 + entryDay;
-      if (entryDateKey < attendanceStartKey || entryDateKey > attendanceEndKey) return;
+      if (!Number.isFinite(entryDay) || entryDay <= 0) return;
+
+      const monthDayLimit =
+        entryMonthNumber === currentMonthNumber
+          ? Math.min(currentDay, getBsMonthLength(BS_MONTH_NAMES[entryMonthNumber]))
+          : getBsMonthLength(BS_MONTH_NAMES[entryMonthNumber]);
+      if (entryDay > monthDayLimit) return;
 
       const holidayDaysForMonth = holidayMonthMap.get(getCanonicalMonthName(entryMonthName)) || [];
       if (holidayDaysForMonth.includes(entryDay)) return;
@@ -205,7 +204,7 @@ async function getAttendanceDataFromApi(studentClass, section, academicYear, ter
     });
 
     const absentDays = absentDayKeys.size;
-    const presentDays = Math.max(totalWorkingDays - absentDays, 0);
+    const presentDays = Math.max(totalWorkingDaysUptoToday - absentDays, 0);
 
     return {
       reg,
@@ -213,17 +212,14 @@ async function getAttendanceDataFromApi(studentClass, section, academicYear, ter
       name: onlineDoc?.name || '',
       gender: onlineDoc?.gender || '',
       attendance: presentDays,
-      totalWorkingDaysUptoToday: totalWorkingDays,
-      terminal: terminalData.name,
-      attendanceStartDate: terminalData.attendancestartdate,
-      attendanceEndDate: terminalData.attendanceenddate,
+      totalWorkingDaysUptoToday,
       holidayDaysInAcademicYear: (holidayDoc?.month || []).reduce(
         (count, monthItem) => count + (Array.isArray(monthItem?.holidayDays) ? monthItem.holidayDays.length : 0),
         0
       ),
       absentDays,
-      currentMonth: BS_MONTH_NAMES[attendanceEnd.month] || '',
-      currentDay: attendanceEnd.day,
+      currentMonth: BS_MONTH_NAMES[bsDate.month] || '',
+      currentDay,
       currentAcademicYear: normalizedAcademicYear
     };
   });
@@ -254,277 +250,237 @@ exports.formatChoose = async (req, res, next) => {
 }
 exports.generateMarksheet = async (req, res, next) => {
   try {
-    const { studentClass, section, terminal, academicYear, format } = req.query;
+   const {studentClass,section,terminal,academicYear,format} = req.query;
     const studentClassdata = await studentClassModel.find({}).lean();
-    const allTerminals = await terminalModel.find({}).lean();
-    const isTestFormat = String(format || '').trim().toLowerCase() === 'test';
-    const testTerminals = allTerminals.filter((item) => String(item.terminalType || '').trim().toUpperCase() === 'TEST');
-    const terminals = isTestFormat ? testTerminals : allTerminals;
-    const marksheetSetups = await marksheetSetup.find({}).lean();
-    const user = req.user;
-
-    if (isTestFormat && (!studentClass || !section || !terminal || !academicYear)) {
-      return res.render('./exam/generatemarksheetTest', {
-        currentPage: 'exammanagement',
-        studentClassdata,
-        terminals,
-        studentWisedata: [],
-        studentClass: studentClass || '',
-        section: section || '',
-        terminal: terminal || '',
-        academicYear: academicYear || String(marksheetSetups[0]?.academicYear || ''),
-        creditHourData: [],
-        marksheetSetups,
-        testFullMarks: 0,
-        testPassMarks: 0,
-        user
-      });
-    }
-
-    let testFullMarks = 0;
-    let testPassMarks = 0;
-    if (isTestFormat) {
-      const selectedTestTerminal = testTerminals.find((item) => String(item.terminal) === String(terminal));
-      if (!selectedTestTerminal) return res.status(400).send('Choose a terminal whose type is TEST.');
-      testFullMarks = Number(selectedTestTerminal.fullMarks);
-      testPassMarks = Number(selectedTestTerminal.passMarks) || 0;
-      if (!Number.isFinite(testFullMarks) || testFullMarks <= 0) {
-        return res.status(400).send('The selected TEST terminal must have valid full marks.');
-      }
-    }
-
+    const terminals = await terminalModel.find({}).lean();
+     const user = req.user;
     creditHourData = await newsubject.find({ forClass: studentClass }).lean();
-    console.log("credit hour data", creditHourData);
+       const marksheetSetups = await marksheetSetup.find({}).lean();
+    console.log("credit hour data",creditHourData);
+   
+   
 
     const model = getSlipModel();
 
-    const studentWisedata = await model.aggregate([
-      {
-        $match: {
-          terminal: terminal,
-          academicYear: academicYear,
-          studentClass: studentClass,
-          section: section
-        },
-      },
-      {
-        $setWindowFields: {
-          partitionBy: "$subject",
-          output: {
-            highestMarks: { $max: "$theorymarks" }
-          }
+  
+  const studentWisedata = await model.aggregate([
+  {
+    $match: {
+      terminal: terminal, academicYear:academicYear, studentClass: studentClass, section: section  // ← filter by terminal
+    },
+  },
+  {
+    $setWindowFields:{
+      partitionBy: "$subject",
+      output:{
+        highestMarks: {$max:"$theorymarks"}
+      }
+    }
+  },
+  
+  {
+    $group: {
+      _id: "$reg",
+      name: { $first: "$name" },
+      roll: { $first: "$roll" },
+      terminal: { $first: "$terminal" }, // optional
+      subjects: {
+        $push: {
+          subject: "$subject",
+          attendance: "$attendance",
+          theorymarks: "$theorymarks",
+          practicalmarks: "$practicalmarks",
+          theoryfullmarks: "$theoryfullmarks",
+          passMarks: "$passMarks",
+          practicalfullmarks: "$practicalfullmarks",
+          creditHour: "$creditHour",
+          worksheetGrades: "$worksheetGrades",
+          highestmarks: "$highestMarks",
+          terminalmarks: "$terminalmarks"
+         
         }
-      },
-      {
-        $group: {
-          _id: "$reg",
-          name: { $max: "$name" },
-          roll: { $max: "$roll" },
-          terminal: { $first: "$terminal" },
-          subjects: {
-            $push: {
-              subject: "$subject",
-              status: "$status",
-              attendance: "$attendance",
-              theorymarks: "$theorymarks",
-              practicalmarks: "$practicalmarks",
-              theoryfullmarks: "$theoryfullmarks",
-              passMarks: "$passMarks",
-              practicalfullmarks: "$practicalfullmarks",
-              creditHour: "$creditHour",
-              totalpracticalmarks: "$totalpracticalmarks",
-              worksheetGrades: "$worksheetGrades",
-              highestmarks: "$highestMarks",
-              terminalmarks: "$terminalmarks"
-            }
-          }
-        }
-      },
-      {
-        $sort: { roll: 1 }
-      },
-    ]);
+      }
+    }
+  },
+  {
+    $sort: { roll: 1 }  // optional: sort students by roll
+  },
 
-   
-    const attendanceData = await getAttendanceDataFromApi(studentClass, section, academicYear, terminal);
-    const attendanceMap = new Map(attendanceData.map(item => [String(item.reg).trim(), item]));
-    const terminalWorkingDays = Number(marksheetSetups
-      .find((setup) => String(setup.academicYear) === String(academicYear))
-      ?.terminals?.find((item) => normalizeText(item.name) === normalizeText(terminal))
-      ?.workingDays) || 0;
-    const attendanceWorkingDays = terminalWorkingDays || attendanceData?.[0]?.totalWorkingDaysUptoToday || 0;
+])
 
-    studentWisedata.forEach((student) => {
-      const reg = String(student._id || '').trim();
-      const record = attendanceMap.get(reg);
-      const attendanceValue = record?.attendance ?? (student.subjects?.[0]?.attendance ?? 0);
-      student.subjects = student.subjects.map((sub) => ({ ...sub, attendance:sub.attendance}));
-    });
-    if(studentClass >3 || studentClass.toLowerCase() === "four" || studentClass.toLowerCase() === "five" || studentClass.toLowerCase() === "six" || studentClass.toLowerCase() === "seven" || studentClass.toLowerCase() === "eight" || studentClass.toLowerCase() === "nine" || studentClass.toLowerCase() === "ten")
+   const attendanceData = await getAttendanceDataFromApi(studentClass, section, academicYear);
+   const attendanceMap = new Map(attendanceData.map(item => [String(item.reg).trim(), item]));
+   const attendanceWorkingDays = attendanceData?.[0]?.totalWorkingDaysUptoToday || marksheetSetups?.[0]?.terminals?.[0]?.workingDays || 0;
+
+   studentWisedata.forEach((student) => {
+     const reg = String(student._id || '').trim();
+     const record = attendanceMap.get(reg);
+     const attendanceValue = record?.attendance ?? (student.subjects?.[0]?.attendance ?? 0);
+     student.subjects = student.subjects.map((sub) => ({ ...sub, attendance: attendanceValue }));
+   });
+
+   if (Array.isArray(marksheetSetups)) {
+     marksheetSetups.forEach((setup) => {
+       if (Array.isArray(setup.terminals)) {
+         setup.terminals.forEach((term) => {
+           term.workingDays = attendanceWorkingDays;
+         });
+       }
+     });
+   }
+
+   if (format === "theorypractical") {
+     const className = String(studentClass || "").trim().toLowerCase();
+     const classNumber = Number(studentClass);
+     const viewData = {
+       currentPage: "exammanagement",
+       studentClassdata,
+       terminals,
+       format,
+       studentWisedata,
+       studentClass,
+       section,
+       terminal,
+       academicYear,
+       creditHourData,
+       marksheetSetups,
+       issuedNepaliDate,
+       user: req.user
+     };
+
+     if (["nursery", "playgroup", "lkg", "ukg"].includes(className)) {
+       return res.render("./exam/preprimarypr", viewData);
+     }
+     if (classNumber <= 3 || ["one", "two", "three"].includes(className)) {
+       return res.render("./exam/primarytheorypr", viewData);
+     }
+     if (classNumber === 4 || classNumber === 5 || className === "four" || className === "five") {
+       return res.render("./exam/marksheetfourfive", viewData);
+     }
+     return res.render("./exam/generatemarksheettheorypr", viewData);
+   }
+  
+
+ if(format=="practicalonly")
+  {
+    if(studentClass<1 || studentClass.toLowerCase() === "nursery" || studentClass.toLowerCase() === "playgroup" || studentClass.toLowerCase() === "lkg" || studentClass.toLowerCase() === "ukg")
     {
-      studentWisedata.forEach((student) => {
-      const reg = String(student._id || '').trim();
-      const record = attendanceMap.get(reg);
-      const rawAttendanceValue = record?.attendance ?? (student.subjects?.[0]?.attendance ?? 0);
-      const attendanceValue = Math.min(Math.max(Number(rawAttendanceValue) || 0, 0), attendanceWorkingDays);
-      student.subjects = student.subjects.map((sub) => ({ ...sub, attendance:attendanceValue }));
+      res.render("./exam/preprimarypr", {
+        currentPage: "exammanagement",
+            studentClassdata:studentClassdata,
+            terminals,
+            format,
+            studentWisedata,
+            studentClass,
+            section,
+            terminal,
+            academicYear,
+            creditHourData,
+            marksheetSetups,
+
+      user: req.user
+    });
+  }
+  else
+  {
+    res.render("./exam/generatemarksheetpronly", {
+      currentPage: "exammanagement",
+           studentClassdata:studentClassdata,
+            terminals,
+            format,
+            studentWisedata,
+            studentClass,
+            section,
+            terminal,
+            academicYear,
+            creditHourData,
+            marksheetSetups,
+    });
+  }
+} 
+ if(format=="internalexternal")
+  {
+    res.render("./exam/generatemarksheetinternalexternal", {
+      currentPage: "exammanagement",
+      studentClassdata:studentClassdata,
+      terminals,
+      format,
+      user: req.user,
+      marksheetSetups,
+      studentClass,
+      section,
+      academicYear,
+      terminal,
+      studentWisedata,
+      creditHourData,
+      attendanceWorkingDays,
+      
+      
+    });
+  }
+ if(format=="theoryonly")
+   {
+    res.render("./exam/generatemarksheettheoryonly", {
+      currentPage: "exammanagement",
+
+            studentClassdata:studentClassdata,
+            terminals,
+            format,
+            studentWisedata,
+            studentClass,
+            section,
+            terminal,
+            academicYear,
+            creditHourData,
+            marksheetSetups,
+            issuedNepaliDate,
+           
+      user: req.user
+    });
+  }
+if(format=="cdcterminal")
+   {
+    if(studentClass<1 || studentClass.toLowerCase() === "nursery" || studentClass.toLowerCase() === "playgroup" || studentClass.toLowerCase() === "lkg" || studentClass.toLowerCase() === "ukg"|| studentClass.toLowerCase() === "one" || studentClass.toLowerCase() === "two" || studentClass.toLowerCase() === "three")
+    {
+      res.render("./exam/generatemarksheetcdcterminalprimary", {
+      currentPage: "exammanagement",
+
+            studentClassdata:studentClassdata,
+            terminals,
+            format,
+            studentWisedata,
+            studentClass,
+            section,
+            terminal,
+            academicYear,
+            creditHourData,
+            marksheetSetups,
+           
+      user: req.user
     });
     }
 
-    // Use if-else if-else structure to prevent multiple renders
-    if (isTestFormat) {
-      return res.render('./exam/generatemarksheetTest', {
-        currentPage: 'exammanagement',
-        studentClassdata,
-        terminals,
-        format,
-        studentWisedata,
-        studentClass,
-        section,
-        terminal,
-        academicYear,
-        creditHourData,
-        marksheetSetups,
-        testFullMarks,
-        testPassMarks,
-        user
-      });
-    } else if (format == "practicalonly") {
-      if (studentClass < 1 || studentClass.toLowerCase() === "nursery" || studentClass.toLowerCase() === "playgroup" || studentClass.toLowerCase() === "lkg" || studentClass.toLowerCase() === "ukg") {
-        return res.render("./exam/preprimarypr", {
-          currentPage: "exammanagement",
-          studentClassdata: studentClassdata,
-          terminals,
-          format,
-          studentWisedata,
-          studentClass,
-          section,
-          terminal,
-          academicYear,
-          creditHourData,
-          marksheetSetups,
-          user: req.user
-        });
-      } else {
-        return res.render("./exam/generatemarksheetpronly", {
-          currentPage: "exammanagement",
-          studentClassdata: studentClassdata,
-          terminals,
-          format,
-          studentWisedata,
-          studentClass,
-          section,
-          terminal,
-          academicYear,
-          creditHourData,
-          marksheetSetups,
-        });
-      }
-    } else if (format == "internalexternal") {
-      return res.render("./exam/generatemarksheetinternalexternal", {
-        currentPage: "exammanagement",
-        studentClassdata: studentClassdata,
-        terminals,
-        format,
-        user: req.user,
-        marksheetSetups,
-        studentClass,
-        section,
-        academicYear,
-        terminal,
-        studentWisedata,
-        creditHourData,
-        attendanceWorkingDays,
-      });
-    } else if (format == "theoryonly") {
-      return res.render("./exam/generatemarksheettheoryonly", {
-        currentPage: "exammanagement",
-        studentClassdata: studentClassdata,
-        terminals,
-        format,
-        studentWisedata,
-        studentClass,
-        section,
-        terminal,
-        academicYear,
-        creditHourData,
-        marksheetSetups,
-        issuedNepaliDate,
-        user: req.user
-      });
-    } else if (format == "cdcterminal") {
-      if (studentClass < 1 || studentClass.toLowerCase() === "nursery" || studentClass.toLowerCase() === "playgroup" || studentClass.toLowerCase() === "lkg" || studentClass.toLowerCase() === "ukg" || studentClass.toLowerCase() === "one" || studentClass.toLowerCase() === "two" || studentClass.toLowerCase() === "three") {
-        return res.render("./exam/generatemarksheetcdcterminalprimary", {
-          currentPage: "exammanagement",
-          studentClassdata: studentClassdata,
-          terminals,
-          format,
-          studentWisedata,
-          studentClass,
-          section,
-          terminal,
-          academicYear,
-          creditHourData,
-          marksheetSetups,
-          user: req.user
-        });
-      } else {
-        return res.render("./exam/generatemarksheetcdcterminal", {
-          currentPage: "exammanagement",
-          studentClassdata: studentClassdata,
-          terminals,
-          format,
-          studentWisedata,
-          studentClass,
-          section,
-          terminal,
-          academicYear,
-          creditHourData,
-          marksheetSetups,
-          user: req.user
-        });
-      }
-    } else {
-      // Default case - theory practical
-      if(studentClass<=3 || studentClass.toLowerCase() === "one" || studentClass.toLowerCase() === "two" || studentClass.toLowerCase() === "three")
-      {
-        return res.render("./exam/primarytheorypr", {
-          currentPage: "exammanagement",
-          studentClassdata: studentClassdata,
-        terminals,
-        format,
-        studentWisedata,
-        studentClass: studentClass,
-        section,
-        terminal,
-        academicYear,
-        creditHourData,
-        marksheetSetups,
-        issuedNepaliDate,
-        user: req.user
-        });
+    res.render("./exam/generatemarksheetcdcterminal", {
+      currentPage: "exammanagement",
 
-
-      }
-      return res.render("./exam/generatemarksheettheorypr", {
-        currentPage: "exammanagement",
-        studentClassdata: studentClassdata,
-        terminals,
-        format,
-        studentWisedata,
-        studentClass: studentClass,
-        section,
-        terminal,
-        academicYear,
-        creditHourData,
-        marksheetSetups,
-        issuedNepaliDate,
-        user: req.user
-      });
-    }
-  } catch (error) {
+            studentClassdata:studentClassdata,
+            terminals,
+            format,
+            studentWisedata,
+            studentClass,
+            section,
+            terminal,
+            academicYear,
+            creditHourData,
+            marksheetSetups,
+           
+      user: req.user
+    });
+  }
+  }
+  catch (error) {
     console.error("Error loading generate marksheet page:", error);
-    return res.status(500).send("Internal Server Error");
+    res.status(500).send("Internal Server Error");
   }
 }
 exports.generateMarksheetStudent = async (req, res, next) => {
@@ -541,7 +497,7 @@ exports.generateMarksheetStudent = async (req, res, next) => {
     const terminals = await terminalModel.find({}).lean();
     const creditHourData = await newsubject.find({ forClass: studentClass }).lean();
        const marksheetSetups = await marksheetSetup.find({}).lean();
-  
+    console.log("credit hour data",creditHourData);
    
     const user = req.user;
 
@@ -568,16 +524,7 @@ exports.generateMarksheetStudent = async (req, res, next) => {
       _id: "$reg",
       name: { $first: "$name" },
       roll: { $first: "$roll" },
-      terminal: { $first: "$terminal" }, 
-       attendance: {
-        $max: {
-          $cond: [
-            { $eq: ["$subject", "NEPALI"] },
-            "$attendance",
-            null
-          ]
-        }
-      },// optional
+      terminal: { $first: "$terminal" }, // optional
       subjects: {
         $push: {
           subject: "$subject",
@@ -605,7 +552,7 @@ exports.generateMarksheetStudent = async (req, res, next) => {
 
    if(format=="theorypractical")
    {
-  
+    console.log("grouped data",studentWisedata);
     if(studentClass<=3 || studentClass.toLowerCase() === "one" || studentClass.toLowerCase() === "two" || studentClass.toLowerCase() === "three")
     {
 res.render("./exam/primarytheorypr", {
@@ -762,18 +709,9 @@ exports.saveMarksheetSetup = async (req, res) => {
     for (let i = 1; i <= total; i++) {
       const name = req.body[`name${i}`];
       const workingDays = req.body[`workingDays${i}`];
-      const resultpublishdate = req.body[`resultpublishdate${i}`];
-      const attendancestartdate = req.body[`attendancestartdate${i}`];
-      const attendanceenddate = req.body[`attendanceenddate${i}`];
 
-      if (name && workingDays && resultpublishdate && attendancestartdate && attendanceenddate) {
-        terminals.push({
-          name,
-          workingDays: Number(workingDays),
-          resultpublishdate,
-          attendancestartdate,
-          attendanceenddate
-        });
+      if (name && workingDays) {
+        terminals.push({ name, workingDays });
       }
     }
 
@@ -908,9 +846,6 @@ exports.analytics = async (req, res, next) => {
   try{
 
     const {terminal,studentClass,section,academicYear,subject} = req.query;
-    const sectionMode = req.query.sectionMode === 'with-section' || (req.query.sectionMode === undefined && section && section !== 'all')
-      ? 'with-section'
-      : 'all';
     const studentClassdata = await studentClassModel.find({}).lean();
     const marksheetSetups = await marksheetSetup.find({}).lean();
       const subjects = await newsubject.find({}).lean();
@@ -923,80 +858,15 @@ exports.analytics = async (req, res, next) => {
       matchStage.terminal = terminal;
     }
     if (studentClass) {
-      const classAliases = {
-        nursery: ['Nursery', 'nursery'], lkg: ['LKG', 'lkg'], ukg: ['UKG', 'ukg'],
-        one: ['One', 'one', '1'], two: ['Two', 'two', '2'], three: ['Three', 'three', '3'],
-        four: ['Four', 'four', '4'], five: ['Five', 'five', '5'], six: ['Six', 'six', '6'],
-        seven: ['Seven', 'seven', '7'], eight: ['Eight', 'eight', '8'], nine: ['Nine', 'nine', '9'], ten: ['Ten', 'ten', '10']
-      };
-      const classKey = String(studentClass).trim().toLowerCase();
-      matchStage.studentClass = { $in: classAliases[classKey] || [studentClass] };
+      matchStage.studentClass = studentClass;
     }
-    if (sectionMode === 'with-section' && section && section !== 'all') {
+    if (section) {
       matchStage.section = section;
     }
     if(subject)
     {
       matchStage.subject= subject;
     }
-
-    // Exclude students who have no theory marks in any subject for this scope.
-    const activeStudentScope = { ...matchStage };
-    delete activeStudentScope.subject;
-    const scopedExamMarks = await model.find(activeStudentScope).lean();
-    const getComparableTheoryMarks = (record) => {
-      const theoryMarks = Number(record?.theorymarks);
-      return Number.isFinite(theoryMarks)
-        && Math.abs(theoryMarks - 0.000001) >= 0.0000001
-        ? theoryMarks
-        : 0;
-    };
-    const uniqueExamMarks = [...scopedExamMarks.reduce((recordsByStudentSubject, record) => {
-      const studentKey = String(record.reg ?? '').trim()
-        || `${String(record.name ?? '').trim()}-${String(record.roll ?? '').trim()}`;
-      const recordKey = [
-        studentKey,
-        String(record.studentClass ?? '').trim().toLowerCase(),
-        String(record.section ?? '').trim().toLowerCase(),
-        String(record.terminal ?? '').trim().toLowerCase(),
-        String(record.academicYear ?? '').trim(),
-        String(record.subject ?? '').trim().toLowerCase()
-      ].join('|');
-      const currentRecord = recordsByStudentSubject.get(recordKey);
-
-      if (!currentRecord || getComparableTheoryMarks(record) > getComparableTheoryMarks(currentRecord)) {
-        recordsByStudentSubject.set(recordKey, record);
-      }
-      return recordsByStudentSubject;
-    }, new Map()).values()];
-    const uniqueRecordIds = uniqueExamMarks.map((record) => record._id);
-    const activeStudentKeys = [...new Map(
-      uniqueExamMarks
-        .filter((record) => {
-          return getComparableTheoryMarks(record) > 0;
-        })
-        .map((record) => {
-          const registrationNumber = String(record.reg ?? '').trim();
-          if (!registrationNumber) return null;
-          const studentKey = [
-            registrationNumber,
-            String(record.studentClass ?? '').trim().toLowerCase(),
-            String(record.section ?? '').trim().toLowerCase()
-          ].join('|');
-          return [studentKey, {
-            reg: registrationNumber,
-            studentClass: String(record.studentClass ?? '').trim(),
-            section: String(record.section ?? '').trim()
-          }];
-        })
-        .filter(Boolean)
-    )].map(([, student]) => student);
-    matchStage.$or = activeStudentKeys.map((student) => ({
-      reg: student.reg,
-      studentClass: student.studentClass,
-      section: student.section
-    }));
-    matchStage._id = { $in: uniqueRecordIds };
     
     // 1. Class-wise Subject Analysis
     const classSubjectAnalysis = await model.aggregate([
@@ -1292,53 +1162,9 @@ const schoolOverviewFinalStructure = {};
  
  }
  console.log("Terminal Comparison:", terminalComparisonFinalStructure);
-
-    const comparisonClassOrder = {
-      nursery: 0, lkg: 1, ukg: 2, one: 3, two: 4, three: 5, four: 6,
-      five: 7, six: 8, seven: 9, eight: 10, nine: 11, ten: 12,
-      '1': 3, '2': 4, '3': 5, '4': 6, '5': 7, '6': 8, '7': 9, '8': 10, '9': 11, '10': 12
-    };
-    const comparisonClassName = (value) => {
-      const key = String(value || '').trim().toLowerCase();
-      const names = { nursery: 'Nursery', lkg: 'LKG', ukg: 'UKG', one: 'One', two: 'Two', three: 'Three', four: 'Four', five: 'Five', six: 'Six', seven: 'Seven', eight: 'Eight', nine: 'Nine', ten: 'Ten' };
-      return names[key] || names[Object.keys(names).find(name => comparisonClassOrder[name] === comparisonClassOrder[key])] || value;
-    };
-    const comparisonGroups = new Map();
-    const comparisonTerminals = new Set();
-    terminalComparison.forEach((item) => {
-      const rawClass = String(item._id.studentClass || '').trim();
-      const classKey = rawClass.toLowerCase();
-      const displayClass = comparisonClassName(rawClass);
-      const groupSection = sectionMode === 'with-section' ? String(item._id.section || 'Unassigned') : 'All Sections';
-      const groupKey = `${item._id.academicYear}||${classKey}||${groupSection}`;
-      if (!comparisonGroups.has(groupKey)) {
-        comparisonGroups.set(groupKey, { academicYear: item._id.academicYear, classKey, className: displayClass, section: groupSection, terminals: {}, subjects: new Set() });
-      }
-      const group = comparisonGroups.get(groupKey);
-      const terminalName = String(item._id.terminal || 'Unknown');
-      comparisonTerminals.add(terminalName);
-      group.subjects.add(item._id.subject);
-      if (!group.terminals[terminalName]) group.terminals[terminalName] = {};
-      const current = group.terminals[terminalName][item._id.subject] || { totalStudents: 0, pass: 0, fail: 0, avgWeighted: 0 };
-      current.totalStudents += Number(item.totalStudents || 0);
-      current.pass += Number(item.passtheory || 0);
-      current.fail += Number(item.failtheory || 0);
-      current.avgWeighted += Number(item.avgMarks || 0) * Number(item.totalStudents || 0);
-      group.terminals[terminalName][item._id.subject] = current;
-    });
-    const comparisonData = [...comparisonGroups.values()]
-      .map(group => ({
-        ...group,
-        subjects: [...group.subjects].sort((a, b) => String(a).localeCompare(String(b))),
-        terminals: Object.fromEntries(Object.entries(group.terminals).map(([terminalName, subjectMap]) => [terminalName, Object.fromEntries(Object.entries(subjectMap).map(([subjectName, value]) => [subjectName, { totalStudents: value.totalStudents, pass: value.pass, passPercent: value.totalStudents ? (value.pass / value.totalStudents) * 100 : 0, fail: value.fail, failPercent: value.totalStudents ? (value.fail / value.totalStudents) * 100 : 0, avg: value.totalStudents ? value.avgWeighted / value.totalStudents : 0 }]))]))
-      }))
-      .sort((a, b) => (comparisonClassOrder[a.classKey] ?? 999) - (comparisonClassOrder[b.classKey] ?? 999) || String(a.section).localeCompare(String(b.section)));
-    const sortedComparisonTerminals = [...comparisonTerminals].sort((a, b) => ({ FIRST: 1, SECOND: 2, THIRD: 3, FOURTH: 4, FINAL: 5 }[a] || 99) - ({ FIRST: 1, SECOND: 2, THIRD: 3, FOURTH: 4, FINAL: 5 }[b] || 99) || a.localeCompare(b));
-    const comparisonSections = [...new Set(terminalComparison.map(item => String(item._id.section || '').trim()).filter(Boolean))].sort();
  
     // 6. Year-wise Trend (for multiple years)
     const yearTrend = await model.aggregate([
-      { $match: matchStage },
       {
         $group: {
           _id: { subject: "$subject", academicYear: "$academicYear", terminal: "$terminal" },
@@ -1450,13 +1276,6 @@ console.log("Generated Student Tracking Data:", studenttracking);
       persubjectFailStudentNameStructure,
       combinationsofFailStudentAccrossTerminals,
       studenttracking,
-      comparisonData,
-      comparisonTerminals: sortedComparisonTerminals,
-      comparisonSections,
-      sectionMode,
-      selectedClass: studentClass || 'all',
-      selectedSection: section || '',
-      selectedSubject: subject || 'all',
       
       combinationsofFailStudentAccrossTerminals
     });
@@ -1559,9 +1378,7 @@ exports.ledger = async (req, res, next) => {
 
     // Subjects that should NOT have worksheets
     const NO_WORKSHEET_SUBJECTS = ['HYGIENE', 'ORAL', 'ECA'];
-    if (studentClass && studentClass.toUpperCase() === 'LKG') {
-      NO_WORKSHEET_SUBJECTS.push('THEME');
-    }
+
     let ledgerData = [];
 
     // Helper function to get GP from percentage
@@ -1581,6 +1398,7 @@ exports.ledger = async (req, res, next) => {
     // Helper function to get GP from worksheet grade
     function getWorksheetGP(grade) {
       if (!grade) return 0;
+      // Check if grade is Ab (sentinel value or string)
       if (grade === 'Ab' || grade === '0.000001') return 0;
       const gradeMap = {
         'A+': 4.0,
@@ -1615,11 +1433,14 @@ exports.ledger = async (req, res, next) => {
     // Helper function to check if value is Ab (sentinel 0.000001)
     function isAbValue(value) {
       if (value === null || value === undefined) return false;
+      // Check for exact match
       if (value === 0.000001 || value === '0.000001') return true;
+      // Check for number with epsilon
       if (typeof value === 'number') {
         const epsilon = 0.0000001;
         if (Math.abs(value - 0.000001) < epsilon) return true;
       }
+      // Check if it's a string representation
       if (typeof value === 'string') {
         const cleanValue = value.trim().toLowerCase();
         if (cleanValue === '0.000001' || cleanValue === 'ab' || cleanValue === 'absent') {
@@ -1629,12 +1450,10 @@ exports.ledger = async (req, res, next) => {
       return false;
     }
 
-    // ============================================
-    // PRE-PRIMARY LEDGER (UKG, LKG, NURSERY)
-    // ============================================
     if (isPrePrimary) {
       console.log("=== Processing PRE-PRIMARY LEDGER ===");
       
+      // Get subject credit hours from marksheetSetups
       const subjectCreditHours = {};
       if (marksheetSetups && marksheetSetups.length > 0 && marksheetSetups[0].subjects) {
         marksheetSetups[0].subjects.forEach(sub => {
@@ -1642,6 +1461,7 @@ exports.ledger = async (req, res, next) => {
         });
       }
 
+      // First, get raw data without aggregation to preserve the 0.000001 value
       const rawData = await model.find({
         terminal: terminal,
         academicYear: academicYear,
@@ -1651,6 +1471,7 @@ exports.ledger = async (req, res, next) => {
 
       console.log(`Found ${rawData.length} raw records`);
 
+      // Process data in JavaScript to preserve the raw theorymarks value
       const studentMap = new Map();
       
       rawData.forEach(record => {
@@ -1663,49 +1484,38 @@ exports.ledger = async (req, res, next) => {
             roll: record.roll,
             rollNumber: parseInt(record.roll) || 0,
             gender: record.gender,
-            attendance: 0,
+            attendance: record.attendance,
             subjects: [],
             rawSubjects: {}
           });
         }
         
         const student = studentMap.get(reg);
+        // Store raw theorymarks without modification
         student.subjects.push({
           subject: record.subject,
-          theorymarks: record.theorymarks,
+          theorymarks: record.theorymarks, // Keep raw value (0.000001 preserved)
           practicalmarks: record.practicalmarks,
           theoryfullmarks: record.theoryfullmarks,
           practicalfullmarks: record.practicalfullmarks,
           passMarks: record.passMarks,
           worksheetGrades: record.worksheetGrades || [],
-          totalWorksheet: record.totalWorksheet || 0,
-          attendance: record.attendance || 0
+          totalWorksheet: record.totalWorksheet || 0
         });
         
+        // Store in rawSubjects for easy access
         student.rawSubjects[record.subject] = {
           theorymarks: record.theorymarks,
           worksheetGrades: record.worksheetGrades || [],
-          totalWorksheet: record.totalWorksheet || 0,
-          attendance: record.attendance || 0
+          totalWorksheet: record.totalWorksheet || 0
         };
       });
 
+      // Process each student's data
       ledgerData = Array.from(studentMap.values()).map(student => {
         const subjectMap = {};
         let totalWeightedGP = 0;
         let totalCredits = 0;
-
-        // Get attendance from NEPALI subject
-        let attendanceFromNepali = 0;
-        const nepaliSubject = student.subjects.find(sub => sub.subject.toUpperCase() === 'NEPALI');
-        if (nepaliSubject && nepaliSubject.attendance !== undefined && nepaliSubject.attendance !== null) {
-          attendanceFromNepali = nepaliSubject.attendance;
-        } else {
-          const anySubject = student.subjects.find(sub => sub.attendance !== undefined && sub.attendance !== null);
-          if (anySubject) {
-            attendanceFromNepali = anySubject.attendance;
-          }
-        }
 
         student.subjects.forEach(subject => {
           const subjectName = subject.subject;
@@ -1713,30 +1523,41 @@ exports.ledger = async (req, res, next) => {
           const worksheetGrades = subject.worksheetGrades || [];
           const totalWorksheet = subject.totalWorksheet || worksheetGrades.length;
           
+          // Check if this subject should have worksheets
           const hasWorksheets = shouldHaveWorksheets(subjectName);
+          
+          // Check if theory marks is Ab
           const isAb = isAbValue(rawTheoryMarks);
           
+          // Calculate theory GP
           let theoryGP = 0;
           let finalGP = 0;
           let practicalGP = 0;
           let totalWorksheetGP = 0;
           let worksheetCount = 0;
           
+          // For HYGIENE, ORAL, ECA - no worksheets, theory is final GP
           if (!hasWorksheets) {
+            // These subjects have no worksheets, theory marks is the final GP
             if (isAb) {
-              finalGP = 0;
+              finalGP = 0; // Ab = 0
               theoryGP = 0;
             } else {
+              // Theory marks is already a GP value (e.g., 4.0, 3.6, etc.)
               theoryGP = Number(rawTheoryMarks) || 0;
               finalGP = theoryGP;
             }
           } else {
+            // Regular subjects with worksheets
+            // First, get theory GP
             if (isAb) {
               theoryGP = 0;
             } else {
+              // Theory marks is already a GP value
               theoryGP = Number(rawTheoryMarks) || 0;
             }
             
+            // Calculate worksheet GPs
             if (worksheetGrades && worksheetGrades.length > 0) {
               worksheetGrades.forEach(grade => {
                 const gp = getWorksheetGP(grade);
@@ -1745,6 +1566,7 @@ exports.ledger = async (req, res, next) => {
               });
             }
             
+            // Final GP = (Theory + All Worksheet GPs) / (Number of Worksheets + 1)
             if (worksheetCount > 0) {
               finalGP = (theoryGP + totalWorksheetGP) / (worksheetCount + 1);
             } else {
@@ -1754,25 +1576,40 @@ exports.ledger = async (req, res, next) => {
             practicalGP = worksheetCount > 0 ? (totalWorksheetGP / worksheetCount) : 0;
           }
           
+          // Round to 2 decimal places
           const roundedFinalGP = Math.round(finalGP * 100) / 100;
           
+          // Get theory display value
           let theoryDisplay = '-';
           if (isAb) {
             theoryDisplay = 'Ab';
-          } else {
+          } else if (hasWorksheets) {
+            // For regular subjects, theory is a GP value
             const gp = theoryGP;
-            if (gp >= 3.61 && gp <= 4.0) theoryDisplay = 'A+';
-            else if (gp >= 3.21 && gp <= 3.60) theoryDisplay = 'A';
-            else if (gp >= 2.81 && gp <= 3.20) theoryDisplay = 'B+';
-            else if (gp >= 2.41 && gp <= 2.80) theoryDisplay = 'B';
-            else if (gp >= 2.01 && gp <= 2.40) theoryDisplay = 'C+';
-            else if (gp >= 1.61 && gp <= 2.00) theoryDisplay = 'C';
-            else if (gp === 1.6) theoryDisplay = 'D';
+            if (gp === 4.0) theoryDisplay = 'A+';
+            else if (gp >= 3.6) theoryDisplay = 'A';
+            else if (gp >= 3.2) theoryDisplay = 'B+';
+            else if (gp >= 2.8) theoryDisplay = 'B';
+            else if (gp >= 2.4) theoryDisplay = 'C+';
+            else if (gp >= 2.0) theoryDisplay = 'C';
+            else if (gp >= 1.6) theoryDisplay = 'D';
+            else theoryDisplay = 'NG';
+          } else {
+            // For no-worksheet subjects, theory is already a grade
+            const gp = theoryGP;
+            if (gp === 4.0) theoryDisplay = 'A+';
+            else if (gp >= 3.6) theoryDisplay = 'A';
+            else if (gp >= 3.2) theoryDisplay = 'B+';
+            else if (gp >= 2.8) theoryDisplay = 'B';
+            else if (gp >= 2.4) theoryDisplay = 'C+';
+            else if (gp >= 2.0) theoryDisplay = 'C';
+            else if (gp >= 1.6) theoryDisplay = 'D';
             else theoryDisplay = 'NG';
           }
 
+          // Store in subject map with raw theory marks preserved
           subjectMap[subjectName] = {
-            theoryGP: rawTheoryMarks,
+            theoryGP: rawTheoryMarks, // Store RAW value (0.000001)
             theoryGPDisplay: isAb ? 'Ab' : theoryDisplay,
             theoryGPValue: theoryGP,
             practicalGP: practicalGP,
@@ -1783,15 +1620,16 @@ exports.ledger = async (req, res, next) => {
             isAb: isAb,
             worksheetCount: worksheetCount,
             totalWorksheetGP: totalWorksheetGP || 0,
-            theoryDisplay: theoryDisplay,
-            attendance: subject.attendance || 0
+            theoryDisplay: theoryDisplay
           };
 
+          // Add to weighted total for overall GPA
           const creditHour = subjectCreditHours[subjectName] || 1;
           totalWeightedGP += roundedFinalGP * creditHour;
           totalCredits += creditHour;
         });
 
+        // Calculate overall GPA
         let gpa = 0;
         if (totalCredits > 0) {
           gpa = totalWeightedGP / totalCredits;
@@ -1804,7 +1642,7 @@ exports.ledger = async (req, res, next) => {
           roll: student.roll,
           rollNumber: student.rollNumber,
           gender: student.gender,
-          attendance: attendanceFromNepali,
+          attendance: student.attendance,
           subjects: student.subjects,
           subjectMap: subjectMap,
           rawSubjects: student.rawSubjects,
@@ -1828,237 +1666,238 @@ exports.ledger = async (req, res, next) => {
         rankCounter++;
       });
 
+      // Sort back by roll number
       ledgerData.sort((a, b) => a.rollNumber - b.rollNumber);
+
     } 
-    // ============================================
-    // PRIMARY LEDGER (Classes 1-3)
-    // ============================================
-    else if (isPrimary) {
-      console.log("=== Processing PRIMARY LEDGER (Classes 1-3) ===");
+     else if (isPrimary) {
+  console.log("=== Processing PRIMARY LEDGER (Classes 1-3) ===");
+  
+  // Get credit hour data from newsubject model
+  const creditHourData = await newsubject.find({}).lean();
+  const creditHourMap = {};
+  creditHourData.forEach(item => {
+    const key = `${item.newsubject}_${item.forClass}`;
+    creditHourMap[key] = {
+      theoryCredit: item.theoryCreditHour || 0,
+      practicalCredit: item.practicalCreditHour || 0,
+      forClass: item.forClass
+    };
+  });
+
+  const rawData = await model.aggregate([
+    {
+      $match: {
+        terminal: terminal,
+        academicYear: academicYear,
+        studentClass: studentClass,
+        section: section
+      },
+    },
+    {
+      $addFields: {
+        rollNumber: { $toInt: "$roll" }
+      }
+    },
+    {
+      $group: {
+        _id: "$reg",
+        name: { $first: "$name" },
+        roll: { $first: "$roll" },
+        rollNumber: { $first: "$rollNumber" },
+        gender: { $first: "$gender" },
+        attendance: { $first: "$attendance" },
+        subjects: {
+          $push: {
+            subject: "$subject",
+            theorymarks: "$theorymarks",
+            practicalmarks: "$practicalmarks",
+            theoryfullmarks: "$theoryfullmarks",
+            practicalfullmarks: "$practicalfullmarks",
+            passMarks: "$passMarks",
+            worksheetGrades: "$worksheetGrades",
+            totalWorksheet: "$totalWorksheet"
+          }
+        }
+      }
+    },
+    { $sort: { rollNumber: 1 } }
+  ]);
+
+  // Process the data in JavaScript
+  ledgerData = rawData.map((student) => {
+    const subjectMap = {};
+    let totalWeightedGP = 0;
+    let totalCredits = 0;
+
+    student.subjects.forEach((subject) => {
+      const subjectName = subject.subject;
+      const theoryMarks = subject.theorymarks || 0;
+      const theoryFullMarks = subject.theoryfullmarks || 100;
+      const practicalMarks = subject.practicalmarks || 0;
+      const practicalFullMarks = subject.practicalfullmarks || 100;
+      const worksheetGrades = subject.worksheetGrades || [];
+      const totalWorksheet = subject.totalWorksheet || worksheetGrades.length;
+
+      // Check if this subject should have worksheets
+      const hasWorksheets = shouldHaveWorksheets(subjectName);
       
-      const creditHourData = await newsubject.find({}).lean();
-      const creditHourMap = {};
-      creditHourData.forEach(item => {
-        const key = `${item.newsubject}_${item.forClass}`;
-        creditHourMap[key] = {
-          theoryCredit: item.theoryCreditHour || 0,
-          practicalCredit: item.practicalCreditHour || 0,
-          forClass: item.forClass
-        };
-      });
+      // Check if theory marks is Ab
+      const isAb = isAbValue(theoryMarks);
 
-      const rawData = await model.aggregate([
-        {
-          $match: {
-            terminal: terminal,
-            academicYear: academicYear,
-            studentClass: studentClass,
-            section: section
-          },
-        },
-        {
-          $addFields: {
-            rollNumber: { $toInt: "$roll" }
-          }
-        },
-        {
-          $group: {
-            _id: "$reg",
-            name: { $first: "$name" },
-            roll: { $first: "$roll" },
-            rollNumber: { $first: "$rollNumber" },
-            gender: { $first: "$gender" },
-            attendance: {
-              $first: {
-                $cond: [
-                  { $eq: ["$subject", "NEPALI"] },
-                  "$attendance",
-                  null
-                ]
-              }
-            },
-            subjects: {
-              $push: {
-                subject: "$subject",
-                theorymarks: "$theorymarks",
-                practicalmarks: "$practicalmarks",
-                theoryfullmarks: "$theoryfullmarks",
-                practicalfullmarks: "$practicalfullmarks",
-                passMarks: "$passMarks",
-                worksheetGrades: "$worksheetGrades",
-                totalWorksheet: "$totalWorksheet",
-                attendance: "$attendance"
-              }
-            }
-          }
-        },
-        { $sort: { rollNumber: 1 } }
-      ]);
+      // Calculate theory percentage and GP
+      let theoryGP = 0;
+      if (isAb) {
+        theoryGP = 0;
+      } else {
+        const theoryPercentage = theoryFullMarks > 0 ? (theoryMarks / theoryFullMarks) * 100 : 0;
+        theoryGP = getGP(theoryPercentage);
+      }
 
-      ledgerData = rawData.map((student) => {
-        const subjectMap = {};
-        let totalWeightedGP = 0;
-        let totalCredits = 0;
+      // For HYGIENE, ORAL, ECA - no worksheets, theory is final GP
+      let finalGP = 0;
+      let practicalGP = 0;
+      let totalWorksheetGP = 0;
+      let worksheetCount = 0;
 
-        // Get attendance from NEPALI subject (fallback if aggregation didn't get it)
-        let attendance = student.attendance || 0;
-        if (!attendance) {
-          const nepaliSubject = student.subjects.find(sub => sub.subject.toUpperCase() === 'NEPALI');
-          if (nepaliSubject && nepaliSubject.attendance) {
-            attendance = nepaliSubject.attendance;
-          }
+      if (!hasWorksheets) {
+        // No worksheets - final GP is theory GP
+        finalGP = theoryGP;
+        practicalGP = theoryGP;
+      } else {
+        // Regular subjects with worksheets
+        // Calculate worksheet GPs
+        if (worksheetGrades && worksheetGrades.length > 0) {
+          worksheetGrades.forEach((grade) => {
+            const gp = getWorksheetGP(grade);
+            totalWorksheetGP += gp;
+            worksheetCount++;
+          });
         }
-
-        student.subjects.forEach((subject) => {
-          const subjectName = subject.subject;
-          const theoryMarks = subject.theorymarks || 0;
-          const theoryFullMarks = subject.theoryfullmarks || 100;
-          const practicalMarks = subject.practicalmarks || 0;
-          const practicalFullMarks = subject.practicalfullmarks || 100;
-          const worksheetGrades = subject.worksheetGrades || [];
-          const totalWorksheet = subject.totalWorksheet || worksheetGrades.length;
-
-          const hasWorksheets = shouldHaveWorksheets(subjectName);
-          const isAb = isAbValue(theoryMarks);
-
-          let theoryGP = 0;
-          if (isAb) {
-            theoryGP = 0;
-          } else {
-            const theoryPercentage = theoryFullMarks > 0 ? (theoryMarks / theoryFullMarks) * 100 : 0;
-            theoryGP = getGP(theoryPercentage);
-          }
-
-          let finalGP = 0;
-          let practicalGP = 0;
-          let totalWorksheetGP = 0;
-          let worksheetCount = 0;
-
-          if (!hasWorksheets) {
-            finalGP = theoryGP;
-            practicalGP = theoryGP;
-          } else {
-            if (worksheetGrades && worksheetGrades.length > 0) {
-              worksheetGrades.forEach((grade) => {
-                const gp = getWorksheetGP(grade);
-                totalWorksheetGP += gp;
-                worksheetCount++;
-              });
-            }
-            
-            practicalGP = worksheetCount > 0 ? (totalWorksheetGP / worksheetCount) : 0;
-            
-            const compositeKey = `${subjectName}_${studentClass}`;
-            const credits = creditHourMap[compositeKey] || { theoryCredit: 0, practicalCredit: 0 };
-            const theoryCredit = credits.theoryCredit || 0;
-            const practicalCredit = credits.practicalCredit || 0;
-            const totalCredit = theoryCredit + practicalCredit;
-            
-            if (totalCredit > 0) {
-              finalGP = ((theoryGP * theoryCredit) + (practicalGP * practicalCredit)) / totalCredit;
-            } else {
-              finalGP = (theoryGP + practicalGP) / 2;
-            }
-          }
-
-          const roundedFinalGP = Math.round(finalGP * 100) / 100;
-
-          let theoryDisplay = '-';
-          if (isAb) {
-            theoryDisplay = 'Ab';
-          } else {
-            const gp = theoryGP;
-            if (gp >=3.61 && gp <= 4.0) theoryDisplay = 'A+';
-            else if (gp >= 3.21 && gp <= 3.60) theoryDisplay = 'A';
-            else if (gp >= 2.81 && gp <= 3.20) theoryDisplay = 'B+';
-            else if (gp >= 2.41 && gp <= 2.80) theoryDisplay = 'B';
-            else if (gp >= 2.01 && gp <= 2.40) theoryDisplay = 'C+';
-            else if (gp >= 1.61 && gp <= 2.00) theoryDisplay = 'C';
-            else if (gp == 1.60  ) theoryDisplay = 'D';
-            else theoryDisplay = 'NG';
-          }
-
-          const compositeKey = `${subjectName}_${studentClass}`;
-          const credits = creditHourMap[compositeKey] || { theoryCredit: 0, practicalCredit: 0 };
-          const theoryCredit = credits.theoryCredit || 0;
-          const practicalCredit = credits.practicalCredit || 0;
-          const totalCredit = theoryCredit + practicalCredit;
-
-          subjectMap[subjectName] = {
-            theoryGP: isAb ? 0.000001 : Math.round(theoryGP * 100) / 100,
-            theoryGPDisplay: theoryDisplay,
-            theoryGPValue: theoryGP,
-            isAb: isAb,
-            practicalGP: Math.round(practicalGP * 100) / 100,
-            finalGP: roundedFinalGP,
-            theoryMarks: theoryMarks,
-            practicalMarks: practicalMarks,
-            worksheetGrades: hasWorksheets ? worksheetGrades : [],
-            totalWorksheet: hasWorksheets ? totalWorksheet : 0,
-            theoryPercentage: Math.round((theoryFullMarks > 0 ? (theoryMarks / theoryFullMarks) * 100 : 0) * 100) / 100,
-            practicalPercentage: Math.round(practicalGP * 25 * 100) / 100,
-            hasWorksheets: hasWorksheets,
-            worksheetCount: worksheetCount || 0,
-            totalWorksheetGP: totalWorksheetGP || 0,
-            theoryDisplay: theoryDisplay,
-            theoryCredit: theoryCredit,
-            practicalCredit: practicalCredit,
-            totalCredit: totalCredit,
-            attendance: subject.attendance || 0
-          };
-
-          if (totalCredit > 0) {
-            totalWeightedGP += roundedFinalGP * totalCredit;
-            totalCredits += totalCredit;
-          } else {
-            totalWeightedGP += roundedFinalGP * 1;
-            totalCredits += 1;
-          }
-        });
-
-        let gpa = 0;
-        if (totalCredits > 0) {
-          gpa = totalWeightedGP / totalCredits;
+        
+        // Practical GP = Average of worksheet grades
+        practicalGP = worksheetCount > 0 ? (totalWorksheetGP / worksheetCount) : 0;
+        
+        // Get credit hours for this subject
+        const compositeKey = `${subjectName}_${studentClass}`;
+        const credits = creditHourMap[compositeKey] || { theoryCredit: 0, practicalCredit: 0 };
+        const theoryCredit = credits.theoryCredit || 0;
+        const practicalCredit = credits.practicalCredit || 0;
+        const totalCredit = theoryCredit + practicalCredit;
+        
+        // Calculate final GP using weighted formula
+        if (totalCredit > 0) {
+          finalGP = ((theoryGP * theoryCredit) + (practicalGP * practicalCredit)) / totalCredit;
+        } else {
+          // If no credit hours defined, use simple average
+          finalGP = (theoryGP + practicalGP) / 2;
         }
-        gpa = Math.round(gpa * 100) / 100;
+      }
 
-        return {
-          _id: student._id,
-          name: student.name,
-          roll: student.roll,
-          rollNumber: student.rollNumber,
-          gender: student.gender,
-          attendance: attendance,
-          subjects: student.subjects,
-          subjectMap: subjectMap,
-          gpa: gpa,
-          rank: 0
-        };
-      });
+      // Round to 2 decimal places
+      const roundedFinalGP = Math.round(finalGP * 100) / 100;
 
-      // Calculate ranks based on GPA
-      const sortedStudents = [...ledgerData].sort((a, b) => b.gpa - a.gpa);
-      let currentRank = 1;
-      let previousGPA = null;
-      let rankCounter = 1;
+      // Get theory display value
+      let theoryDisplay = '-';
+      if (isAb) {
+        theoryDisplay = 'Ab';
+      } else {
+        const gp = theoryGP;
+        if (gp === 4.0) theoryDisplay = 'A+';
+        else if (gp >= 3.6) theoryDisplay = 'A';
+        else if (gp >= 3.2) theoryDisplay = 'B+';
+        else if (gp >= 2.8) theoryDisplay = 'B';
+        else if (gp >= 2.4) theoryDisplay = 'C+';
+        else if (gp >= 2.0) theoryDisplay = 'C';
+        else if (gp >= 1.6) theoryDisplay = 'D';
+        else theoryDisplay = 'NG';
+      }
 
-      sortedStudents.forEach((student) => {
-        if (previousGPA !== null && student.gpa < previousGPA) {
-          currentRank = rankCounter;
-        }
-        student.rank = currentRank;
-        previousGPA = student.gpa;
-        rankCounter++;
-      });
+      // Get credit hours for the subject (re-fetch for the map)
+      const compositeKey = `${subjectName}_${studentClass}`;
+      const credits = creditHourMap[compositeKey] || { theoryCredit: 0, practicalCredit: 0 };
+      const theoryCredit = credits.theoryCredit || 0;
+      const practicalCredit = credits.practicalCredit || 0;
+      const totalCredit = theoryCredit + practicalCredit;
 
-      ledgerData.sort((a, b) => a.rollNumber - b.rollNumber);
-    } 
-    // ============================================
-    // REGULAR LEDGER (Classes 4+)
-    // ============================================
+      // Store in subject map
+      subjectMap[subjectName] = {
+        theoryGP: isAb ? 0.000001 : Math.round(theoryGP * 100) / 100,
+        theoryGPDisplay: theoryDisplay,
+        theoryGPValue: theoryGP,
+        isAb: isAb,
+        practicalGP: Math.round(practicalGP * 100) / 100,
+        finalGP: roundedFinalGP,
+        theoryMarks: theoryMarks,
+        practicalMarks: practicalMarks,
+        worksheetGrades: hasWorksheets ? worksheetGrades : [],
+        totalWorksheet: hasWorksheets ? totalWorksheet : 0,
+        theoryPercentage: Math.round((theoryFullMarks > 0 ? (theoryMarks / theoryFullMarks) * 100 : 0) * 100) / 100,
+        practicalPercentage: Math.round(practicalGP * 25 * 100) / 100,
+        hasWorksheets: hasWorksheets,
+        worksheetCount: worksheetCount || 0,
+        totalWorksheetGP: totalWorksheetGP || 0,
+        theoryDisplay: theoryDisplay,
+        theoryCredit: theoryCredit,
+        practicalCredit: practicalCredit,
+        totalCredit: totalCredit
+      };
+
+      // Add to weighted total for overall GPA
+      if (totalCredit > 0) {
+        totalWeightedGP += roundedFinalGP * totalCredit;
+        totalCredits += totalCredit;
+      } else {
+        // If no credit hours defined, use 1
+        totalWeightedGP += roundedFinalGP * 1;
+        totalCredits += 1;
+      }
+    });
+
+    // Calculate overall GPA
+    let gpa = 0;
+    if (totalCredits > 0) {
+      gpa = totalWeightedGP / totalCredits;
+    }
+    gpa = Math.round(gpa * 100) / 100;
+
+    return {
+      _id: student._id,
+      name: student.name,
+      roll: student.roll,
+      rollNumber: student.rollNumber,
+      gender: student.gender,
+      attendance: student.attendance,
+      subjects: student.subjects,
+      subjectMap: subjectMap,
+      gpa: gpa,
+      rank: 0
+    };
+  });
+
+  // Calculate ranks based on GPA
+  const sortedStudents = [...ledgerData].sort((a, b) => b.gpa - a.gpa);
+  let currentRank = 1;
+  let previousGPA = null;
+  let rankCounter = 1;
+
+  sortedStudents.forEach((student) => {
+    if (previousGPA !== null && student.gpa < previousGPA) {
+      currentRank = rankCounter;
+    }
+    student.rank = currentRank;
+    previousGPA = student.gpa;
+    rankCounter++;
+  });
+
+  // Sort back by roll number
+  ledgerData.sort((a, b) => a.rollNumber - b.rollNumber);
+
+} // End of isPrimary
+    
     else {
       console.log("=== Processing REGULAR LEDGER (Classes 4+) ===");
-      
+      // Regular ledger for other classes (Classes 4+)
       ledgerData = await model.aggregate([
         {
           $match: {
@@ -2088,10 +1927,8 @@ exports.ledger = async (req, res, next) => {
                 practicalmarks: "$practicalmarks",
                 theoryfullmarks: "$theoryfullmarks",
                 practicalfullmarks: "$practicalfullmarks",
-                totalpracticalmarks: "$totalpracticalmarks",
                 passMarks: "$passMarks",
-                terminalmarks: "$terminalmarks",
-                totalmarks: { $add: ["$theorymarks", "$totalpracticalmarks"] },
+                totalmarks: { $add: ["$theorymarks", "$practicalmarks"] },
               }
             }
           }
@@ -2118,7 +1955,7 @@ exports.ledger = async (req, res, next) => {
               $reduce: {
                 input: "$subjects",
                 initialValue: 0,
-                in: { $add: ["$$value", "$$this.totalpracticalmarks"] }
+                in: { $add: ["$$value", "$$this.practicalmarks"] }
               }
             },
             totalTheoryFullMarks: {
@@ -2195,7 +2032,7 @@ exports.ledger = async (req, res, next) => {
               hasWorksheets: hasWorksheets,
               worksheetGrades: hasWorksheets ? (sub.worksheetGrades || []) : [],
               isAb: isAb,
-              theoryGP: isAb ? 0.000001 : sub.theorymarks,
+              theoryGP: isAb ? 0.000001 : sub.theorymarks, // Preserve Ab sentinel
               theoryDisplay: isAb ? 'Ab' : sub.theorymarks
             };
           });
@@ -2204,9 +2041,7 @@ exports.ledger = async (req, res, next) => {
       });
     }
 
-    // ============================================
-    // CALCULATE ANALYSIS DATA
-    // ============================================
+    // Calculate analysis data
     console.log("\n=== Calculating Analysis Data ===");
     let ledgerAnalysis = [];
     if (ledgerData.length > 0) {
@@ -2306,9 +2141,7 @@ exports.ledger = async (req, res, next) => {
       }
     });
 
-    // ============================================
-    // RENDER BASED ON CLASS TYPE
-    // ============================================
+    // Render based on class type
     if (isPrePrimary) {
       res.render("./exam/ledgerpreprimary", {
         fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
@@ -2348,42 +2181,22 @@ exports.ledger = async (req, res, next) => {
       });
       return;
     } else {
-      if (studentClass == "Four" || studentClass == "4" || studentClass == "FOUR" || studentClass == "four" || 
-          studentClass == "Five" || studentClass == "5" || studentClass == "FIVE" || studentClass == "five") {
-        res.render("./exam/ledgerfourfive", {
-          fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
-          currentPage: "exammanagement",
-          studentClassdata,
-          user: req.user,
-          academicYear,
-          studentClass,
-          section,
-          terminal,
-          marksheetSetups,
-          ledgerData,
-          ledgerAnalysisLookup,
-          noData: ledgerData.length === 0,
-          isPrePrimary: isPrePrimary,
-          NO_WORKSHEET_SUBJECTS: NO_WORKSHEET_SUBJECTS
-        });
-      } else {
-        res.render("./exam/ledger", {
-          fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
-          currentPage: "exammanagement",
-          studentClassdata,
-          user: req.user,
-          academicYear,
-          studentClass,
-          section,
-          terminal,
-          marksheetSetups,
-          ledgerData,
-          ledgerAnalysisLookup,
-          noData: ledgerData.length === 0,
-          isPrePrimary: isPrePrimary,
-          NO_WORKSHEET_SUBJECTS: NO_WORKSHEET_SUBJECTS
-        });
-      }
+      res.render("./exam/ledger", {
+        fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
+        currentPage: "exammanagement",
+        studentClassdata,
+        user: req.user,
+        academicYear,
+        studentClass,
+        section,
+        terminal,
+        marksheetSetups,
+        ledgerData,
+        ledgerAnalysisLookup,
+        noData: ledgerData.length === 0,
+        isPrePrimary: isPrePrimary,
+        NO_WORKSHEET_SUBJECTS: NO_WORKSHEET_SUBJECTS
+      });
     }
     
   } catch (err) {
@@ -2422,6 +2235,64 @@ exports.formatChooseStudent = async (req, res, next) => {
     res.status(500).send("Internal Server Error");
   }
 }
+exports.eventScholarshipReport = async (req, res) => {
+  try {
+    let selectedClass = String(req.query.studentClass || '').trim();
+    let selectedSection = String(req.query.section || '').trim();
+    const classSection = String(req.query.classSection || '');
+    if ((!selectedClass || !selectedSection) && classSection.includes('||')) {
+      [selectedClass, selectedSection] = classSection.split('||').map(value => value.trim());
+    }
+    const selectedYear = String(req.query.academicYear || '').trim();
+    const [classRows, portfolioDocs] = await Promise.all([
+      studentClassModel.find({}).select('studentClass section').lean().sort({ studentClass: 1, section: 1 }),
+      Portfolio.find({}).select('reg scholarships').lean()
+    ]);
+    const classSections = Array.from(new Map(classRows.map(item => [
+      `${item.studentClass}||${item.section}`,
+      { studentClass: item.studentClass, section: item.section }
+    ])).values());
+    const reportYears = [...new Set(portfolioDocs.flatMap(item => (item.scholarships || [])
+      .map(scholarship => String(scholarship.year || '').trim())
+      .filter(Boolean)))].sort((first, second) => second.localeCompare(first, undefined, { numeric: true }));
+    let reportStudents = [];
+
+    if (selectedClass && selectedSection) {
+      const roster = await studentRecord.find({ studentClass: selectedClass, section: selectedSection })
+        .lean()
+        .sort({ roll: 1 });
+      const portfolioByReg = new Map(portfolioDocs.map(item => [String(item.reg || '').trim(), item]));
+      reportStudents = roster.map(student => {
+        const portfolio = portfolioByReg.get(String(student.reg || '').trim()) || {};
+        const scholarships = Array.isArray(portfolio.scholarships) ? portfolio.scholarships : [];
+        return {
+          reg: student.reg,
+          name: student.name || portfolio.name || '',
+          studentClass: student.studentClass || selectedClass,
+          section: student.section || selectedSection,
+          participations: Array.isArray(portfolio.participations) ? portfolio.participations : [],
+          awards: Array.isArray(portfolio.awards) ? portfolio.awards : [],
+          scholarships: selectedYear
+            ? scholarships.filter(item => String(item.year || '').trim() === selectedYear)
+            : scholarships
+        };
+      });
+    }
+
+    return res.render('admin/portfolio/eventscholarship', {
+      classSections,
+      reportYears,
+      selectedClass,
+      selectedSection,
+      selectedYear,
+      reportStudents
+    });
+  } catch (error) {
+    console.error('Unable to load event and scholarship report:', error);
+    return res.status(500).send('Unable to load event and scholarship report.');
+  }
+};
+
 exports.studentPortfolio = async (req, res, next) => {
   try {
     const {studentClass,section,terminal,academicYear,reg} = req.query;
@@ -2445,7 +2316,6 @@ exports.studentPortfolio = async (req, res, next) => {
        if (reg) {
          rosterFilter.reg = String(reg);
        }
-
        const roster = await studentRecord.find(rosterFilter).lean().sort({ roll: 1 });
        const rosterByReg = roster.reduce((acc, item) => {
          if (item && item.reg) {
@@ -2535,34 +2405,10 @@ for (const student of studentWisedata) {
        const portfolioDocs = portfolioRegs.length
          ? await Portfolio.find({ reg: { $in: portfolioRegs } }).lean()
          : [];
-       const viewerIsAdmin = user && String(user.role || '').toUpperCase() === 'ADMIN';
-       const viewerIdentities = new Set(
-         [user && user.teacherName, user && user.username]
-           .map((value) => String(value || '').trim().toLowerCase())
-           .filter(Boolean)
-       );
-       const canViewComplaint = (complaint) =>
-         viewerIsAdmin ||
-         viewerIdentities.has(String(complaint && complaint.by || '').trim().toLowerCase());
-
        const portfolioByReg = portfolioDocs.reduce((acc, doc) => {
          if (doc && doc.reg) {
-           doc.complaints = Array.isArray(doc.complaints)
-             ? doc.complaints.map((complaint) => ({
-               ...complaint,
-               nepaliDate: complaint.nepaliDate || (complaint.date ? String(bs.ADToBS(new Date(complaint.date)) || '') : '')
-             })).filter(canViewComplaint)
-             : [];
            acc[doc.reg] = doc;
          }
-         return acc;
-       }, {});
-       const complaintsByReg = Object.entries(portfolioByReg).reduce((acc, [portfolioReg, portfolio]) => {
-         acc[portfolioReg] = Array.isArray(portfolio.complaints) ? portfolio.complaints : [];
-         return acc;
-       }, {});
-       const parentMeetingsByReg = Object.entries(portfolioByReg).reduce((acc, [portfolioReg, portfolio]) => {
-         acc[portfolioReg] = Array.isArray(portfolio.parentMeetings) ? portfolio.parentMeetings : [];
          return acc;
        }, {});
 
@@ -2674,8 +2520,6 @@ for (const student of studentWisedata) {
       studentWisedatastructured,
       marksheetSetups,
         portfolioByReg,
-        complaintsByReg,
-        parentMeetingsByReg,
         rosterByReg,
         healthRecordsByReg,
         callLogsByReg,
@@ -2688,195 +2532,6 @@ for (const student of studentWisedata) {
   }
 }
 
-exports.printPortfolio = async (req, res) => {
-  try {
-    const user = req.user || {};
-    const normalize = (value) => String(value || '').trim().toLowerCase();
-    const allClassData = await studentClassModel.find({}).lean().sort({ studentClass: 1, section: 1 });
-    const studentClassdata = String(user.role || '').toUpperCase() !== 'ADMIN'
-      ? allClassData.filter((item) => (user.allowedSubjects || []).some((allowed) =>
-          normalize(allowed.studentClass) === normalize(item.studentClass) &&
-          normalize(allowed.section) === normalize(item.section)
-        ))
-      : allClassData;
-    const setupYears = await marksheetSetup.find({}, { academicYear: 1, _id: 0 }).lean();
-    const academicYears = [...new Set(setupYears.map((item) => String(item.academicYear || '').trim()).filter(Boolean))]
-      .sort((a, b) => Number(b) - Number(a));
-    const currentAcademicYear = academicYears[0] || '';
-    const classSection = String(req.query.classSection || '').trim();
-    const classSectionParts = classSection.split('-');
-    const selectedClass = String(req.query.studentClass || classSectionParts[0] || '').trim();
-    const selectedSection = String(req.query.section || classSectionParts.slice(1).join('-') || '').trim();
-    const academicYear = String(req.query.academicYear || currentAcademicYear).trim();
-    const nameQuery = String(req.query.name || '').trim();
-    const selectedReg = String(req.query.reg || '').trim();
-    const viewerIsAdmin = String(user.role || '').toUpperCase() === 'ADMIN';
-    const viewerIdentities = new Set([user.teacherName, user.username].map(normalize).filter(Boolean));
-    const classAllowed = viewerIsAdmin || studentClassdata.some((item) =>
-      normalize(item.studentClass) === normalize(selectedClass) &&
-      normalize(item.section) === normalize(selectedSection)
-    );
-    const allStudents = await studentRecord.find({}).lean();
-    const selectedStudent = selectedReg
-      ? allStudents.find((student) => String(student.reg || '') === selectedReg)
-      : null;
-    const roster = selectedStudent
-      ? [selectedStudent]
-      : selectedClass && selectedSection && classAllowed
-        ? allStudents.filter((student) =>
-            normalize(student.studentClass) === normalize(selectedClass) &&
-            normalize(student.section) === normalize(selectedSection)
-          )
-        : nameQuery
-          ? allStudents.filter((student) => normalize(student.name).includes(normalize(nameQuery)))
-          : [];
-    const regs = roster.map((item) => item.reg).filter(Boolean);
-    const [portfolioDocs, healthRecords, attendanceDocs] = regs.length
-      ? await Promise.all([
-          Portfolio.find({ reg: { $in: regs } }).lean(),
-          HealthRecord.find({ reg: { $in: regs } }).lean().sort({ createdAt: -1 }),
-          onlineAttendance.find({ reg: { $in: regs } }).lean()
-        ])
-      : [[], [], []];
-    const portfoliosByReg = Object.fromEntries(portfolioDocs.map((item) => [String(item.reg), item]));
-    const healthByReg = healthRecords.reduce((acc, item) => {
-      const key = String(item.reg || '');
-      if (key) (acc[key] ||= []).push(item);
-      return acc;
-    }, {});
-    const attendanceByReg = Object.fromEntries(attendanceDocs.map((item) => [String(item.reg), item]));
-    const nepaliDate = (value) => {
-      if (!value) return '';
-      const converted = bs.ADToBS(new Date(value));
-      return converted ? String(converted) : '';
-    };
-    const entryDate = (item) =>
-      String(item.nepaliDate || '').trim() ||
-      ([item.academicYear, item.month, item.day].filter(Boolean).join('-')) ||
-      nepaliDate(item.date || item.createdAt || item.callLoggedAt);
-    const reportStudents = roster
-      .filter((student) => !nameQuery || normalize(student.name).includes(normalize(nameQuery)))
-      .sort((a, b) => {
-        const rollA = Number.parseInt(String(a.roll || '').replace(/[^\d-]/g, ''), 10);
-        const rollB = Number.parseInt(String(b.roll || '').replace(/[^\d-]/g, ''), 10);
-        if (Number.isNaN(rollA) && Number.isNaN(rollB)) return String(a.roll || '').localeCompare(String(b.roll || ''));
-        if (Number.isNaN(rollA)) return 1;
-        if (Number.isNaN(rollB)) return -1;
-        return rollA - rollB;
-      })
-      .map((student) => {
-        const portfolio = portfoliosByReg[String(student.reg)] || {};
-        const attendance = attendanceByReg[String(student.reg)] || {};
-        const entries = Array.isArray(attendance.attendance) ? attendance.attendance : [];
-        return {
-          reg: String(student.reg || ''),
-          roll: student.roll || '',
-          name: student.name || '',
-          studentClass: student.studentClass || '',
-          section: student.section || '',
-          complaints: (Array.isArray(portfolio.complaints) ? portfolio.complaints : [])
-            .filter((item) => viewerIsAdmin || viewerIdentities.has(normalize(item && item.by))),
-          healthVisits: (healthByReg[String(student.reg)] || []).map((item) => ({
-            date: entryDate(item),
-            text: [item.diagnosis || item.reason, item.treatment].filter(Boolean).join(' - ') || '-'
-          })),
-          absences: entries.filter((item) => ['absent', 'a', 'false'].includes(normalize(item && item.status)))
-            .map((item) => ({ date: entryDate(item), text: item.reason || 'Absent' })),
-          callLogs: entries.filter((item) => item && (item.callReason || item.parentResponse || item.callLoggedAt))
-            .map((item) => ({
-              date: entryDate(item),
-              by: item.callBy || item.by || '',
-              reason: item.callReason || '-',
-              response: item.parentResponse || '-'
-            })),
-          participations: (Array.isArray(portfolio.participations) ? portfolio.participations : [])
-            .filter((item) => !academicYear || String(item.year || '') === academicYear)
-            .map((item) => ({
-              date: entryDate(item),
-              text: [item.event, item.position].filter(Boolean).join(' - ') || '-'
-            })),
-          awards: (Array.isArray(portfolio.awards) ? portfolio.awards : [])
-            .filter((item) => !academicYear || String(item.year || '') === academicYear)
-            .map((item) => ({
-              date: entryDate(item),
-              text: [item.event, item.position].filter(Boolean).join(' - ') || '-'
-            }))
-        };
-      });
-    res.render('./exam/printportfolio', {
-      currentPage: 'exammanagement',
-      studentClassdata, academicYears, currentAcademicYear, academicYear,
-      selectedClass, selectedSection, classSection, nameQuery,
-      selectedReg,
-      nameSuggestions: allStudents
-        .filter((student) => student.name && student.reg)
-        .map((student) => ({
-          name: student.name,
-          reg: String(student.reg),
-          classSection: `${student.studentClass || ''}-${student.section || ''}`
-        })),
-      reportStudents
-    });
-  } catch (error) {
-    console.error('Error loading print portfolio page:', error);
-    res.status(500).send('Internal Server Error');
-  }
-};
-
-exports.eventScholarshipReport = async (req, res) => {
-  try {
-    const { studentClass = '', section = '', academicYear = '' } = req.query;
-    const allClassData = await studentClassModel.find({}).lean().sort({ studentClass: 1, section: 1 });
-    const classSections = allClassData.map((item) => ({
-      studentClass: item.studentClass,
-      section: item.section
-    }));
-
-    const selectedClass = String(studentClass).trim();
-    const selectedSection = String(section).trim();
-    const selectedYear = String(academicYear).trim();
-    const portfolioFilter = {};
-    if (selectedClass) portfolioFilter.studentClass = selectedClass;
-    if (selectedSection) portfolioFilter.section = selectedSection;
-
-    const portfolios = selectedClass && selectedSection
-      ? await Portfolio.find(portfolioFilter).lean().sort({ name: 1 })
-      : [];
-    const currentNepaliYear = Number(String(bs.ADToBS(new Date()) || '').split('-')[0]) || new Date().getFullYear() + 57;
-    const yearMatches = (item) => {
-      if (!selectedYear) return true;
-      const nepaliDate = String(item && item.nepaliDate || '').trim()
-        || (item && item.date ? String(bs.ADToBS(new Date(item.date)) || '').trim() : '');
-      return String(item && item.year || '').trim() === selectedYear
-        || nepaliDate.startsWith(`${selectedYear}-`)
-        || nepaliDate === selectedYear;
-    };
-
-    const reportStudents = portfolios.map((portfolio) => ({
-      reg: portfolio.reg,
-      name: portfolio.name || '',
-      studentClass: portfolio.studentClass || selectedClass,
-      section: portfolio.section || selectedSection,
-      participations: (portfolio.participations || []).filter(yearMatches),
-      awards: (portfolio.awards || []).filter(yearMatches),
-      scholarships: (portfolio.scholarships || []).filter(yearMatches)
-    })).filter((student) => student.participations.length || student.awards.length || student.scholarships.length);
-
-    res.render('./admin/portfolio/eventscholarship', {
-      currentPage: 'portfolio',
-      classSections,
-      reportStudents,
-      selectedClass,
-      selectedSection,
-      selectedYear,
-      reportYears: Array.from({ length: 5 }, (_, index) => currentNepaliYear - index)
-    });
-  } catch (error) {
-    console.error('Error loading event scholarship report:', error);
-    res.status(500).send('Internal Server Error');
-  }
-};
-
 exports.addComplaint = async (req, res) => {
   try {
     const reg = String(req.body && req.body.reg ? req.body.reg : '').trim();
@@ -2886,9 +2541,7 @@ exports.addComplaint = async (req, res) => {
       .filter((item) => typeof item === 'string')
       .map((item) => item.trim())
       .filter(Boolean);
-    const teacherName = req.user && (req.user.teacherName || req.user.username)
-      ? String(req.user.teacherName || req.user.username).trim()
-      : '';
+    const teacherName = req.user && req.user.teacherName ? String(req.user.teacherName).trim() : '';
 
     if (!reg || !reason) {
       return res.status(400).json({ success: false, message: 'Reg and complaint are required.' });
@@ -2901,7 +2554,6 @@ exports.addComplaint = async (req, res) => {
           complaints: {
             by: teacherName,
             date: new Date(),
-            nepaliDate: String(bs.ADToBS(new Date()) || ''),
             reason,
             imageUrls
           }
@@ -2914,124 +2566,6 @@ exports.addComplaint = async (req, res) => {
   } catch (error) {
     console.error('Error saving complaint:', error);
     return res.status(500).json({ success: false, message: 'Failed to save complaint.' });
-  }
-};
-
-exports.addParentMeeting = async (req, res) => {
-  try {
-    const reg = String(req.body && req.body.reg || '').trim();
-    const nepaliDate = String(req.body && req.body.nepaliDate || '').trim();
-    const visitingReason = String(req.body && req.body.visitingReason || '').trim();
-    const parentComplaint = String(req.body && req.body.parentComplaint || '').trim();
-    const schoolResponse = String(req.body && req.body.schoolResponse || '').trim();
-    if (!reg || !nepaliDate || !visitingReason || !parentComplaint || !schoolResponse) {
-      return res.status(400).json({ success: false, message: 'All parent meeting fields are required.' });
-    }
-
-    const student = await studentRecord.findOne({ reg }).lean();
-    if (!student) {
-      return res.status(404).json({ success: false, message: 'Student not found.' });
-    }
-
-    await Portfolio.updateOne(
-      { reg },
-      {
-        $setOnInsert: {
-          reg,
-          name: student.name || '',
-          studentClass: student.studentClass || '',
-          section: student.section || ''
-        },
-        $push: {
-          parentMeetings: {
-            nepaliDate,
-            visitingReason,
-            parentComplaint,
-            schoolResponse,
-            by: req.user && (req.user.teacherName || req.user.username)
-              ? String(req.user.teacherName || req.user.username).trim()
-              : '',
-            createdAt: new Date()
-          }
-        }
-      },
-      { upsert: true }
-    );
-    return res.json({ success: true });
-  } catch (error) {
-    console.error('Error saving parent meeting:', error);
-    return res.status(500).json({ success: false, message: 'Failed to save parent meeting.' });
-  }
-};
-
-exports.addPortfolioAchievement = async (req, res) => {
-  try {
-    const body = req.body || {};
-    const reg = String(body.reg || '').trim();
-    const type = String(body.type || '').trim().toLowerCase();
-    const allowedTypes = {
-      participation: {
-        field: 'participations',
-        required: ['event'],
-        values: ['date', 'nepaliDate', 'event', 'position']
-      },
-      award: {
-        field: 'awards',
-        required: ['event'],
-        values: ['date', 'nepaliDate', 'event', 'position']
-      },
-      scholarship: {
-        field: 'scholarships',
-        required: ['amount', 'reason', 'year'],
-        values: ['date', 'nepaliDate', 'amount', 'reason', 'year']
-      }
-    };
-    const config = allowedTypes[type];
-
-    if (!reg || !config) {
-      return res.status(400).json({ success: false, message: 'Valid registration number and portfolio type are required.' });
-    }
-
-    const entry = {};
-    config.values.forEach((field) => {
-      if (field === 'date') {
-        if (body.date) {
-          const date = new Date(body.date);
-          if (Number.isNaN(date.getTime())) {
-            return;
-          }
-          entry.date = date;
-        }
-        return;
-      }
-      entry[field] = String(body[field] || '').trim();
-    });
-
-    const missing = config.required.filter((field) => !entry[field]);
-    if (missing.length) {
-      return res.status(400).json({ success: false, message: `${missing.join(', ')} is required.` });
-    }
-
-    const roster = await studentRecord.findOne({ reg }).lean();
-    const portfolioValues = {
-      name: String(body.name || (roster && roster.name) || '').trim(),
-      studentClass: String(body.studentClass || (roster && roster.studentClass) || '').trim(),
-      section: String(body.section || (roster && roster.section) || '').trim()
-    };
-
-    await Portfolio.updateOne(
-      { reg },
-      {
-        $setOnInsert: { reg, ...portfolioValues },
-        $push: { [config.field]: entry }
-      },
-      { upsert: true }
-    );
-
-    return res.json({ success: true });
-  } catch (error) {
-    console.error('Error saving portfolio achievement:', error);
-    return res.status(500).json({ success: false, message: 'Failed to save portfolio information.' });
   }
 };
 
@@ -3050,20 +2584,8 @@ exports.updateComplaint = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Reg, complaint, and complaint ID are required.' });
     }
 
-    const isAdmin = req.user && String(req.user.role || '').toUpperCase() === 'ADMIN';
-    const complaintOwner = req.user && (req.user.teacherName || req.user.username)
-      ? String(req.user.teacherName || req.user.username).trim()
-      : '';
-    const complaintFilter = {
-      reg,
-      'complaints._id': complaintId
-    };
-    if (!isAdmin) {
-      complaintFilter['complaints.by'] = complaintOwner;
-    }
-
     const result = await Portfolio.updateOne(
-      complaintFilter,
+      { reg, 'complaints._id': complaintId },
       {
         $set: {
           'complaints.$.reason': reason,
@@ -3204,3422 +2726,17 @@ exports.uploadOldData = async (req, res, next) => {
     res.status(500).send("Internal Server Error");
   }
 }
-exports.schoolanalysis = async (req, res, next) => {
-    try {
-        const mongoose = require('mongoose');
-        const ExamMark = await getSlipModel(); // Your exam marks model
 
-        // Helper function to sort by roll number (handles string values)
-        function sortByRoll(students) {
-            return students.sort((a, b) => {
-                const rollA = a.roll || '';
-                const rollB = b.roll || '';
-                
-                // Try to parse as number first
-                const numA = parseInt(rollA);
-                const numB = parseInt(rollB);
-                
-                // If both are valid numbers, sort numerically
-                if (!isNaN(numA) && !isNaN(numB)) {
-                    return numA - numB;
-                }
-                
-                // If one is a number and the other is not, numbers come first
-                if (!isNaN(numA) && isNaN(numB)) return -1;
-                if (isNaN(numA) && !isNaN(numB)) return 1;
-                
-                // Otherwise sort as strings
-                return rollA.localeCompare(rollB, undefined, { numeric: true, sensitivity: 'base' });
-            });
-        }
-
-        // Helper function to sort by section then roll
-        function sortBySectionAndRoll(students) {
-            // Group by section
-            const sectionGroups = {};
-            students.forEach(student => {
-                const section = student.section || 'No Section';
-                if (!sectionGroups[section]) {
-                    sectionGroups[section] = [];
-                }
-                sectionGroups[section].push(student);
-            });
-            
-            // Sort each section by roll
-            const sortedSections = {};
-            Object.keys(sectionGroups).sort().forEach(section => {
-                sortedSections[section] = sortByRoll(sectionGroups[section]);
-            });
-            
-            // Flatten back to array
-            const result = [];
-            Object.keys(sortedSections).sort().forEach(section => {
-                result.push(...sortedSections[section]);
-            });
-            
-            return result;
-        }
-
-        // Helper function to calculate GPA and grade
-        function calculateGPA(theoryMarks, practicalMarks, passMarks, theoryFullMarks, practicalFullMarks, includePractical = true) {
-            let totalMarks = theoryMarks || 0;
-            let totalFullMarks = theoryFullMarks || 0;
-            
-            if (includePractical) {
-                totalMarks += practicalMarks || 0;
-                totalFullMarks += practicalFullMarks || 0;
-            }
-            
-            const percentage = totalFullMarks > 0 ? (totalMarks / totalFullMarks) * 100 : 0;
-            let gpa = 0;
-            let grade = 'F';
-            let isPassed = false;
-            
-            // Check if passed in theory and practical separately
-            let theoryPassed = (theoryMarks || 0) >= (passMarks || 0);
-            let practicalPassed = true;
-            
-            if (includePractical && practicalFullMarks > 0) {
-                practicalPassed = (practicalMarks || 0) >= ((passMarks || 0) / 2);
-            }
-            
-            // Check overall pass status
-            if (includePractical) {
-                isPassed = theoryPassed && practicalPassed;
-            } else {
-                isPassed = theoryPassed;
-            }
-            
-            // Calculate GPA based on percentage
-            if (percentage >= 90 && percentage <= 100) {
-                gpa = 4.0;
-                grade = 'A+';
-            } else if (percentage >= 80 && percentage < 90) {
-                gpa = 3.6;
-                grade = 'A';
-            } else if (percentage >= 70 && percentage < 80) {
-                gpa = 3.2;
-                grade = 'B+';
-            } else if (percentage >= 60 && percentage < 70) {
-                gpa = 2.8;
-                grade = 'B';
-            } else if (percentage >= 50 && percentage < 60) {
-                gpa = 2.4;
-                grade = 'C+';
-            } else if (percentage >= 40 && percentage < 50) {
-                gpa = 2.0;
-                grade = 'C';
-            } else if (percentage >= 35 && percentage < 40  ) {
-                gpa = 1.6;
-                grade = 'D';
-            } else if (percentage < 35 && percentage >= 0) {
-                gpa = 0.0;
-                grade = 'NG';
-            } 
-            
-            return {
-                totalMarks,
-                totalFullMarks,
-                percentage,
-                gpa,
-                grade,
-                isPassed,
-                theoryPassed,
-                practicalPassed
-            };
-        }
-
-        // Check if a value is empty/blank
-        function isEmpty(value) {
-            if (value === null || value === undefined) return true;
-            if (typeof value === 'string') {
-                const trimmed = value.trim();
-                return trimmed === '' || trimmed === '—' || trimmed === 'N/A' || trimmed === '-' || trimmed === 'null';
-            }
-            return false;
-        }
-
-        // Check if student has valid data (not blank name/reg)
-        function hasValidStudentData(student) {
-            return !isEmpty(student.name) && !isEmpty(student.reg);
-        }
-
-        // Get all students for a specific class, terminal, and academic year (ALL SECTIONS)
-        async function getStudentsForClass(classNumber, terminal, academicYear) {
-            // Convert class number to both formats for matching
-            const classMap = {
-                '1': ['1', 'One'],
-                '2': ['2', 'Two'],
-                '3': ['3', 'Three'],
-                '4': ['4', 'Four'],
-                '5': ['5', 'Five'],
-                '6': ['6', 'Six'],
-                '7': ['7', 'Seven'],
-                '8': ['8', 'Eight'],
-                '9': ['9', 'Nine'],
-                '10': ['10', 'Ten']
-            };
-            
-            const classValues = classMap[classNumber] || [classNumber];
-            
-            // First get all documents for this class
-            const allDocs = await ExamMark.find({
-                studentClass: { $in: classValues },
-                terminal: terminal,
-                academicYear: academicYear,
-                name: { $nin: ['', null, 'N/A', '—', '-', 'null'] },
-                reg: { $nin: ['', null, 'N/A', '—', '-', 'null'] }
-            }).lean();
-            
-            // Group by reg and merge subjects
-            const studentMap = new Map();
-            
-            allDocs.forEach(doc => {
-                const reg = doc.reg;
-                if (!reg) return;
-                
-                // Get or create student entry
-                let studentEntry = studentMap.get(reg);
-                if (!studentEntry) {
-                    studentEntry = {
-                        reg: doc.reg,
-                        name: doc.name,
-                        roll: doc.roll,
-                        gender: doc.gender,
-                        section: doc.section,
-                        subjects: []
-                    };
-                    studentMap.set(reg, studentEntry);
-                }
-                
-                // Check if subject already exists for this student
-                const existingSubject = studentEntry.subjects.find(s => s.subject === doc.subject);
-                if (existingSubject) {
-                    // Update marks if existing subject has no marks but this one does
-                    if ((!existingSubject.theoryMarks || existingSubject.theoryMarks === 0) && doc.theorymarks > 0) {
-                        existingSubject.theoryMarks = doc.theorymarks;
-                    }
-                    if ((!existingSubject.practicalMarks || existingSubject.practicalMarks === 0) && doc.practicalmarks > 0) {
-                        existingSubject.practicalMarks = doc.practicalmarks;
-                    }
-                    if ((!existingSubject.passMarks || existingSubject.passMarks === 0) && doc.passMarks > 0) {
-                        existingSubject.passMarks = doc.passMarks;
-                    }
-                    if ((!existingSubject.theoryFullMarks || existingSubject.theoryFullMarks === 0) && doc.theoryfullmarks > 0) {
-                        existingSubject.theoryFullMarks = doc.theoryfullmarks;
-                    }
-                    if ((!existingSubject.practicalFullMarks || existingSubject.practicalFullMarks === 0) && doc.practicalfullmarks > 0) {
-                        existingSubject.practicalFullMarks = doc.practicalfullmarks;
-                    }
-                } else {
-                    // Add new subject
-                    studentEntry.subjects.push({
-                        subject: doc.subject,
-                        theoryMarks: doc.theorymarks || 0,
-                        practicalMarks: doc.practicalmarks || 0,
-                        passMarks: doc.passMarks || 0,
-                        theoryFullMarks: doc.theoryfullmarks || 25,
-                        practicalFullMarks: doc.practicalfullmarks || 25,
-                        terminalMarks: doc.terminalmarks || 0
-                    });
-                }
-            });
-            
-            // Convert map to array
-            const results = Array.from(studentMap.values());
-            
-            // Additional filter for blank values in results
-            return results.filter(student => hasValidStudentData(student));
-        }
-
-        // Remove duplicate students by reg, keep the one with most subjects
-        function removeDuplicateStudents(students) {
-            const studentMap = new Map();
-            
-            students.forEach(student => {
-                const reg = student.reg;
-                
-                // Count ALL subjects (including those with 0 marks)
-                const subjectCount = student.subjects.length;
-                
-                if (!studentMap.has(reg)) {
-                    studentMap.set(reg, {
-                        student: student,
-                        subjectCount: subjectCount
-                    });
-                } else {
-                    // If this student has more subjects, replace the existing one
-                    const existing = studentMap.get(reg);
-                    if (subjectCount > existing.subjectCount) {
-                        studentMap.set(reg, {
-                            student: student,
-                            subjectCount: subjectCount
-                        });
-                    }
-                }
-            });
-            
-            // Return only the unique students
-            return Array.from(studentMap.values()).map(item => item.student);
-        }
-
-        // Check if student is absent (all subjects have 0 marks or no valid subjects)
-        function isStudentAbsent(student, includePractical = true) {
-            let totalMarks = 0;
-            let hasValidSubject = false;
-            
-            student.subjects.forEach(subject => {
-                // Check if subject has valid data (not blank)
-                const hasTheory = subject.theoryMarks !== undefined && subject.theoryMarks !== null && !isNaN(subject.theoryMarks);
-                const hasPractical = subject.practicalMarks !== undefined && subject.practicalMarks !== null && !isNaN(subject.practicalMarks);
-                
-                if (hasTheory) {
-                    totalMarks += subject.theoryMarks || 0;
-                    hasValidSubject = true;
-                }
-                if (includePractical && hasPractical) {
-                    totalMarks += subject.practicalMarks || 0;
-                    hasValidSubject = true;
-                }
-            });
-            
-            // If no valid subjects, consider as absent
-            if (!hasValidSubject) return true;
-            
-            return totalMarks === 0;
-        }
-
-        // Calculate student result with optional subject handling
-        function calculateStudentResult(student, includePractical = true) {
-            const subjectResults = [];
-            let passedSubjects = 0;
-            let failedSubjects = 0;
-            let totalGPA = 0;
-            let totalSubjects = 0;
-            
-            // Get all subjects for this student
-            const allSubjects = student.subjects;
-            
-            // Check for optional subjects in class 9 and 10
-            const studentClass = student.class || '';
-            const isOptionalClass = studentClass === '9' || studentClass === '10' || 
-                                   studentClass === 'Nine' || studentClass === 'Ten';
-            
-            // For optional classes, determine which optional subject the student actually took
-            let selectedOptionalSubject = null;
-            
-            if (isOptionalClass) {
-                // Find OPT.MATH and ENV.SCIENCE subjects
-                const optMath = allSubjects.find(s => s.subject === 'OPT.MATH');
-                const envScience = allSubjects.find(s => s.subject === 'ENV.SCIENCE');
-                
-                // Check which one has marks (theory or practical)
-                const hasOptMathMarks = optMath && (
-                    (optMath.theoryMarks && optMath.theoryMarks > 0) || 
-                    (optMath.practicalMarks && optMath.practicalMarks > 0)
-                );
-                
-                const hasEnvScienceMarks = envScience && (
-                    (envScience.theoryMarks && envScience.theoryMarks > 0) || 
-                    (envScience.practicalMarks && envScience.practicalMarks > 0)
-                );
-                
-                // Select the one with marks
-                if (hasOptMathMarks && hasEnvScienceMarks) {
-                    // Both have marks - this shouldn't happen, but if it does, keep both
-                    selectedOptionalSubject = 'both';
-                } else if (hasOptMathMarks) {
-                    selectedOptionalSubject = 'OPT.MATH';
-                } else if (hasEnvScienceMarks) {
-                    selectedOptionalSubject = 'ENV.SCIENCE';
-                }
-                // If neither has marks, the student has no optional subject
-            }
-            
-            // Filter subjects for evaluation
-            let subjectsToEvaluate = [];
-            
-            if (isOptionalClass) {
-                // For class 9 & 10: Include all subjects but handle optional subjects
-                subjectsToEvaluate = allSubjects.map(subject => {
-                    const isOptional = subject.subject === 'OPT.MATH' || subject.subject === 'ENV.SCIENCE';
-                    
-                    // Check if subject has valid marks
-                    const hasTheoryMarks = subject.theoryMarks !== undefined && subject.theoryMarks !== null && !isNaN(subject.theoryMarks);
-                    const hasPracticalMarks = subject.practicalMarks !== undefined && subject.practicalMarks !== null && !isNaN(subject.practicalMarks);
-                    const hasMarks = hasTheoryMarks || (includePractical && hasPracticalMarks);
-                    
-                    // If this is an optional subject
-                    if (isOptional) {
-                        // Check if this is the selected optional subject
-                        const isSelected = selectedOptionalSubject === 'both' || selectedOptionalSubject === subject.subject;
-                        
-                        if (isSelected && hasMarks) {
-                            // This is the student's actual optional subject with marks
-                            return {
-                                ...subject,
-                                isOptional: true,
-                                hasData: true,
-                                isCounted: true,
-                                theoryMarks: subject.theoryMarks || 0,
-                                practicalMarks: subject.practicalMarks || 0
-                            };
-                        } else if (isSelected && !hasMarks) {
-                            // This is the student's optional subject but no marks (shouldn't happen)
-                            return {
-                                ...subject,
-                                isOptional: true,
-                                hasData: false,
-                                isCounted: false,
-                                theoryMarks: 0,
-                                practicalMarks: 0
-                            };
-                        } else {
-                            // This is NOT the student's selected optional subject - ignore it
-                            return {
-                                ...subject,
-                                isOptional: true,
-                                hasData: false,
-                                isCounted: false,
-                                theoryMarks: 0,
-                                practicalMarks: 0,
-                                isIgnored: true
-                            };
-                        }
-                    }
-                    
-                    // Regular subject (not optional)
-                    if (!hasMarks) {
-                        return {
-                            ...subject,
-                            isOptional: false,
-                            hasData: false,
-                            isCounted: false,
-                            theoryMarks: 0,
-                            practicalMarks: 0
-                        };
-                    }
-                    
-                    return {
-                        ...subject,
-                        isOptional: false,
-                        hasData: true,
-                        isCounted: true,
-                        theoryMarks: subject.theoryMarks || 0,
-                        practicalMarks: subject.practicalMarks || 0
-                    };
-                });
-            } else {
-                // For classes 1-8: Include ALL subjects
-                subjectsToEvaluate = allSubjects.map(subject => {
-                    const hasTheoryMarks = subject.theoryMarks !== undefined && subject.theoryMarks !== null && !isNaN(subject.theoryMarks);
-                    const hasPracticalMarks = subject.practicalMarks !== undefined && subject.practicalMarks !== null && !isNaN(subject.practicalMarks);
-                    const hasMarks = hasTheoryMarks || (includePractical && hasPracticalMarks);
-                    
-                    if (!hasMarks) {
-                        return {
-                            ...subject,
-                            isOptional: false,
-                            hasData: false,
-                            isCounted: false,
-                            theoryMarks: 0,
-                            practicalMarks: 0
-                        };
-                    }
-                    
-                    return {
-                        ...subject,
-                        isOptional: false,
-                        hasData: true,
-                        isCounted: true,
-                        theoryMarks: subject.theoryMarks || 0,
-                        practicalMarks: subject.practicalMarks || 0
-                    };
-                });
-            }
-            
-            // Evaluate subjects
-            subjectsToEvaluate.forEach(subject => {
-                // Skip ignored optional subjects
-                if (subject.isIgnored) {
-                    subjectResults.push({
-                        subject: subject.subject,
-                        isOptional: true,
-                        hasData: false,
-                        isCounted: false,
-                        isPassed: true,
-                        totalMarks: 0,
-                        totalFullMarks: 0,
-                        percentage: 0,
-                        gpa: 0,
-                        grade: 'IGNORED',
-                        isIgnored: true
-                    });
-                    return;
-                }
-                
-                // Skip subjects that are not counted
-                if (!subject.isCounted) {
-                    subjectResults.push({
-                        subject: subject.subject,
-                        isOptional: subject.isOptional || false,
-                        hasData: false,
-                        isCounted: false,
-                        isPassed: true,
-                        totalMarks: 0,
-                        totalFullMarks: 0,
-                        percentage: 0,
-                        gpa: 0,
-                        grade: 'N/A'
-                    });
-                    return;
-                }
-                
-                const result = calculateGPA(
-                    subject.theoryMarks || 0,
-                    subject.practicalMarks || 0,
-                    subject.passMarks || 0,
-                    subject.theoryFullMarks || 25,
-                    subject.practicalFullMarks || 25,
-                    includePractical
-                );
-                
-                // Check if subject has valid pass marks
-                const hasValidPassMarks = subject.passMarks !== undefined && subject.passMarks !== null && !isNaN(subject.passMarks);
-                const isPassed = hasValidPassMarks ? result.isPassed : true;
-                
-                subjectResults.push({
-                    subject: subject.subject,
-                    isOptional: subject.isOptional || false,
-                    hasData: true,
-                    isCounted: true,
-                    ...result,
-                    isPassed: isPassed
-                });
-                
-                // Count only if subject is counted and has valid data
-                if (subject.isCounted) {
-                    totalSubjects++;
-                    if (isPassed) {
-                        passedSubjects++;
-                        totalGPA += result.gpa;
-                    } else {
-                        failedSubjects++;
-                    }
-                }
-            });
-            
-            const overallGPA = totalSubjects > 0 ? totalGPA / totalSubjects : 0;
-            const isPassedAll = failedSubjects === 0 && totalSubjects > 0;
-            const hasFailedAny = failedSubjects > 0;
-            
-            // Determine overall grade
-            let overallGrade = 'F';
-            if (overallGPA >= 3.6) overallGrade = 'A+';
-            else if (overallGPA >= 3.2) overallGrade = 'A';
-            else if (overallGPA >= 2.8) overallGrade = 'B+';
-            else if (overallGPA >= 2.4) overallGrade = 'B';
-            else if (overallGPA >= 2.0) overallGrade = 'C+';
-            else if (overallGPA >= 1.6) overallGrade = 'C';
-            else if (overallGPA >= 1.2) overallGrade = 'D+';
-            else if (overallGPA >= 0.8) overallGrade = 'D';
-            else overallGrade = 'F';
-            
-            return {
-                reg: student.reg,
-                name: student.name,
-                roll: student.roll,
-                gender: student.gender,
-                section: student.section,
-                class: student.class || '',
-                subjectResults,
-                passedSubjects,
-                failedSubjects,
-                totalSubjects,
-                isPassedAll,
-                hasFailedAny,
-                isAbsent: false,
-                overallGPA: overallGPA.toFixed(2),
-                overallGrade
-            };
-        }
-
-        // Helper function to get class name
-        function getClassName(classNum) {
-            const classNames = {
-                '1': 'One',
-                '2': 'Two',
-                '3': 'Three',
-                '4': 'Four',
-                '5': 'Five',
-                '6': 'Six',
-                '7': 'Seven',
-                '8': 'Eight',
-                '9': 'Nine',
-                '10': 'Ten'
-            };
-            return classNames[classNum] || classNum;
-        }
-
-        // Get query parameters with defaults
-        const { terminal, academicYear, analysisType = 'both' } = req.query;
-        
-        // If no parameters provided, render empty state or show filters
-        if (!terminal || !academicYear) {
-            return res.render('./exam/schoolanalysis', {
-                overallData: { totalStudents: 0, passedAll: 0, failedAny: 0, absent: 0, passPercentage: 0, failPercentage: 0 },
-                groupAnalytics: [],
-                classAnalytics: [],
-                analysisType: 'both',
-                terminal: terminal || '',
-                academicYear: academicYear || '',
-                hasData: false,
-                error: null
-            });
-        }
-
-        const includePractical = analysisType === 'both';
-        
-        // Get all classes from 1 to 10
-        const classes = Array.from({ length: 10 }, (_, i) => (i + 1).toString());
-        
-        // Process each class
-        const classAnalytics = [];
-        const classGroups = {
-            '1-3': { classes: ['1', '2', '3'], students: [], totalPassed: 0, totalFailed: 0, totalAbsent: 0, totalStudents: 0 },
-            '4-7': { classes: ['4', '5', '6', '7'], students: [], totalPassed: 0, totalFailed: 0, totalAbsent: 0, totalStudents: 0 },
-            '8-10': { classes: ['8', '9', '10'], students: [], totalPassed: 0, totalFailed: 0, totalAbsent: 0, totalStudents: 0 }
-        };
-        
-        for (const classNum of classes) {
-            const students = await getStudentsForClass(classNum, terminal, academicYear);
-            
-            if (students.length === 0) continue;
-            
-            // Remove duplicate students (keep the one with most subjects)
-            const uniqueStudents = removeDuplicateStudents(students);
-            
-            if (uniqueStudents.length === 0) continue;
-            
-            // Add class info to each student
-            const studentsWithClass = uniqueStudents.map(student => ({
-                ...student,
-                class: classNum
-            }));
-            
-            // Filter out absent students (all subjects have 0 marks or no valid subjects)
-            const activeStudents = studentsWithClass.filter(student => {
-                return !isStudentAbsent(student, includePractical);
-            });
-            
-            const absentStudents = studentsWithClass.length - activeStudents.length;
-            
-            if (activeStudents.length === 0) {
-                // Only absent students, add to analytics with absent count
-                const classData = {
-                    class: classNum,
-                    className: getClassName(classNum),
-                    totalStudents: 0,
-                    passedAll: 0,
-                    failedAny: 0,
-                    absent: absentStudents,
-                    passPercentage: 0,
-                    failPercentage: 0,
-                    sections: [],
-                    studentResults: []
-                };
-                classAnalytics.push(classData);
-                
-                // Add to group
-                const groupKey = Object.keys(classGroups).find(key => 
-                    classGroups[key].classes.includes(classNum)
-                );
-                if (groupKey) {
-                    classGroups[groupKey].totalAbsent += absentStudents;
-                    classGroups[groupKey].totalStudents += 0;
-                }
-                continue;
-            }
-            
-            // Calculate results for each student (only active students)
-            const studentResults = activeStudents.map(student => {
-                const result = calculateStudentResult(student, includePractical);
-                result.isAbsent = false;
-                return result;
-            });
-            
-            // Sort students by section and roll
-            const sortedStudentResults = sortBySectionAndRoll(studentResults);
-            
-            const passedAll = sortedStudentResults.filter(s => s.isPassedAll).length;
-            const failedAny = sortedStudentResults.filter(s => s.hasFailedAny).length;
-            const totalStudents = sortedStudentResults.length;
-            
-            // Get unique sections for this class
-            const sections = [...new Set(sortedStudentResults.map(s => s.section))].filter(s => s && !isEmpty(s));
-            
-            const classData = {
-                class: classNum,
-                className: getClassName(classNum),
-                totalStudents,
-                passedAll,
-                failedAny,
-                absent: absentStudents,
-                passPercentage: totalStudents > 0 ? ((passedAll / totalStudents) * 100).toFixed(2) : 0,
-                failPercentage: totalStudents > 0 ? ((failedAny / totalStudents) * 100).toFixed(2) : 0,
-                sections: sections,
-                studentResults: sortedStudentResults
-            };
-            
-            classAnalytics.push(classData);
-            
-            // Add to group
-            const groupKey = Object.keys(classGroups).find(key => 
-                classGroups[key].classes.includes(classNum)
-            );
-            
-            if (groupKey) {
-                classGroups[groupKey].students = classGroups[groupKey].students.concat(sortedStudentResults);
-                classGroups[groupKey].totalPassed += passedAll;
-                classGroups[groupKey].totalFailed += failedAny;
-                classGroups[groupKey].totalAbsent += absentStudents;
-                classGroups[groupKey].totalStudents += totalStudents;
-            }
-        }
-        
-        // Calculate group analytics
-        const groupAnalytics = Object.entries(classGroups).map(([groupName, groupData]) => {
-            const totalStudents = groupData.totalStudents;
-            return {
-                groupName,
-                totalStudents,
-                passedAll: groupData.totalPassed,
-                failedAny: groupData.totalFailed,
-                absent: groupData.totalAbsent,
-                passPercentage: totalStudents > 0 ? ((groupData.totalPassed / totalStudents) * 100).toFixed(2) : 0,
-                failPercentage: totalStudents > 0 ? ((groupData.totalFailed / totalStudents) * 100).toFixed(2) : 0
-            };
-        });
-        
-        // Calculate overall totals
-        const totalAllStudents = classAnalytics.reduce((sum, c) => sum + c.totalStudents, 0);
-        const totalPassedAll = classAnalytics.reduce((sum, c) => sum + c.passedAll, 0);
-        const totalFailedAny = classAnalytics.reduce((sum, c) => sum + c.failedAny, 0);
-        const totalAbsent = classAnalytics.reduce((sum, c) => sum + c.absent, 0);
-        
-        const overallData = {
-            totalStudents: totalAllStudents,
-            passedAll: totalPassedAll,
-            failedAny: totalFailedAny,
-            absent: totalAbsent,
-            passPercentage: totalAllStudents > 0 ? ((totalPassedAll / totalAllStudents) * 100).toFixed(2) : 0,
-            failPercentage: totalAllStudents > 0 ? ((totalFailedAny / totalAllStudents) * 100).toFixed(2) : 0
-        };
-        
-        return res.render('./exam/schoolanalysis', {
-            overallData,
-            groupAnalytics,
-            classAnalytics,
-            analysisType,
-            terminal,
-            academicYear,
-            hasData: true,
-            error: null
-        });
-        
-    } catch (error) {
-        console.error('Error generating analytics:', error);
-        return res.status(500).render('./exam/schoolanalysis', {
-            error: error.message || 'An error occurred while generating analytics',
-            overallData: { totalStudents: 0, passedAll: 0, failedAny: 0, absent: 0, passPercentage: 0, failPercentage: 0 },
-            groupAnalytics: [],
-            classAnalytics: [],
-            analysisType: req.query.analysisType || 'both',
-            terminal: req.query.terminal || '',
-            academicYear: req.query.academicYear || '',
-            hasData: false
-        });
-    }
+const unavailableExamDashboardHandler = feature => (req, res) => {
+  return res.status(501).send(`${feature} is not available because its controller implementation is missing.`);
 };
 
-// analysisController.js
-
-
-// analysisController.js
-
-
-// analysisController.js
- // Adjust according to your project structure
-
-// analysisController.js
-// Adjust according to your project structure
-
-// analysisController.js
- // Adjust according to your project structure
-
-// analysisController.js
-
-
-// Class name normalization map
-// analysisController.js
-
-
-// Class name normalization map
-const CLASS_NORMALIZATION = {
-    'nursery': 'Nursery',
-    'lkg': 'LKG',
-    'ukg': 'UKG',
-    'one': 'One',
-    'two': 'Two',
-    'three': 'Three',
-    'four': 'Four',
-    'five': 'Five',
-    'six': 'Six',
-    'seven': 'Seven',
-    'eight': 'Eight',
-    'nine': 'Nine',
-    'ten': 'Ten',
-    '1': 'One',
-    '2': 'Two',
-    '3': 'Three',
-    '4': 'Four',
-    '5': 'Five',
-    '6': 'Six',
-    '7': 'Seven',
-    '8': 'Eight',
-    '9': 'Nine',
-    '10': 'Ten'
-};
-
-// Reverse map for display
-const DISPLAY_CLASS_MAP = {
-    'nursery': 'Nursery',
-    'lkg': 'LKG',
-    'ukg': 'UKG',
-    'one': 'One',
-    'two': 'Two',
-    'three': 'Three',
-    'four': 'Four',
-    'five': 'Five',
-    'six': 'Six',
-    'seven': 'Seven',
-    'eight': 'Eight',
-    'nine': 'Nine',
-    'ten': 'Ten',
-    '1': 'One',
-    '2': 'Two',
-    '3': 'Three',
-    '4': 'Four',
-    '5': 'Five',
-    '6': 'Six',
-    '7': 'Seven',
-    '8': 'Eight',
-    '9': 'Nine',
-    '10': 'Ten'
-};
-
-// Class order for sorting
-const CLASS_ORDER = {
-    'Nursery': 0,
-    'LKG': 1,
-    'UKG': 2,
-    'One': 3,
-    'Two': 4,
-    'Three': 5,
-    'Four': 6,
-    'Five': 7,
-    'Six': 8,
-    'Seven': 9,
-    'Eight': 10,
-    'Nine': 11,
-    'Ten': 12
-};
-
-function normalizeClassName(cls) {
-    if (!cls) return '';
-    const key = String(cls).toLowerCase().trim();
-    return CLASS_NORMALIZATION[key] || cls;
-}
-
-function getClassOrder(cls) {
-    if (!cls) return 999;
-    const normalized = normalizeClassName(cls);
-    return CLASS_ORDER[normalized] !== undefined ? CLASS_ORDER[normalized] : 999;
-}
-
-function displayClassName(cls) {
-    if (!cls) return '';
-    const key = String(cls).toLowerCase().trim();
-    return DISPLAY_CLASS_MAP[key] || cls;
-}
-
-function getIntervalSize(fullMarks) {
-    if (fullMarks <= 25) return 5;
-    if (fullMarks <= 50) return 10;
-    if (fullMarks <= 75) return 15;
-    if (fullMarks <= 100) return 20;
-    return 25;
-}
-
-// ============================================================
-// MAIN PROCESSING FUNCTION - ONLY ONE VERSION
-// ============================================================
-function processQuantumAnalysis(examMarks, subjectFullMarksMap) {
-    // Group by class
-    const classGroups = {};
-
-    examMarks.forEach(record => {
-        const cls = String(record.studentClass || '').trim();
-        if (!cls) return;
-
-        // Normalize class name for grouping
-        const normalizedCls = normalizeClassName(cls);
-        
-        if (!classGroups[normalizedCls]) {
-            classGroups[normalizedCls] = {
-                subjects: {},
-                totalStudents: new Set(),
-                originalNames: new Set()
-            };
-        }
-        
-        // Store original class name for display
-        classGroups[normalizedCls].originalNames.add(cls);
-
-        // Track unique students by reg
-        if (record.reg) {
-            classGroups[normalizedCls].totalStudents.add(record.reg);
-        }
-
-        // Process subject data
-        const subject = String(record.subject || '').trim();
-        if (!subject) return;
-
-        // Get full marks from subject config
-        let fullMarks = 0;
-        
-        // Try with normalized class name first
-        const key1 = (normalizedCls + '||' + subject).toUpperCase();
-        if (subjectFullMarksMap && subjectFullMarksMap[key1]) {
-            fullMarks = subjectFullMarksMap[key1].theory || 0;
-        }
-        
-        // If not found, try with original class name
-        if (fullMarks === 0) {
-            const key2 = (cls + '||' + subject).toUpperCase();
-            if (subjectFullMarksMap && subjectFullMarksMap[key2]) {
-                fullMarks = subjectFullMarksMap[key2].theory || 0;
-            }
-        }
-        
-        // If still not found, use from record
-        if (fullMarks === 0) {
-            fullMarks = record.theoryfullmarks || 0;
-        }
-
-        if (!classGroups[normalizedCls].subjects[subject]) {
-            classGroups[normalizedCls].subjects[subject] = {
-                marks: [],
-                passCount: 0,
-                failCount: 0,
-                passMarks: record.passMarks || 0,
-                fullMarks: fullMarks
-            };
-        }
-
-        // Get theory marks
-        const theoryMarks = parseFloat(record.theorymarks) || 0;
-        classGroups[normalizedCls].subjects[subject].marks.push(theoryMarks);
-
-        // Check pass/fail
-        const passMarks = parseFloat(record.passMarks) || 0;
-        if (theoryMarks >= passMarks) {
-            classGroups[normalizedCls].subjects[subject].passCount++;
-        } else {
-            classGroups[normalizedCls].subjects[subject].failCount++;
-        }
-    });
-
-    // Process each class to build distribution tables
-    const result = {};
-
-    Object.keys(classGroups).forEach(cls => {
-        const classData = classGroups[cls];
-        const subjects = classData.subjects;
-        const totalStudents = classData.totalStudents.size;
-
-        // Group subjects by full marks
-        const groupedSubjects = {};
-
-        Object.keys(subjects).forEach(sub => {
-            const data = subjects[sub];
-            const fullMarks = data.fullMarks || 50;
-
-            if (!groupedSubjects[fullMarks]) {
-                groupedSubjects[fullMarks] = {
-                    fullMarks: fullMarks,
-                    subjects: [],
-                    distributions: {}
-                };
-            }
-
-            groupedSubjects[fullMarks].subjects.push(sub);
-
-            // Build intervals based on full marks
-            const intervalSize = getIntervalSize(fullMarks);
-            const intervals = [];
-            let start = 0;
-            while (start < fullMarks) {
-                const end = Math.min(start + intervalSize, fullMarks);
-                intervals.push({
-                    start: start,
-                    end: end,
-                    count: 0,
-                    label: start + '-' + end
-                });
-                start = end;
-            }
-
-            // Count marks in each interval
-            data.marks.forEach(mark => {
-                for (let i = 0; i < intervals.length; i++) {
-                    if (mark >= intervals[i].start && mark < intervals[i].end) {
-                        intervals[i].count++;
-                        break;
-                    }
-                    if (mark === fullMarks && i === intervals.length - 1) {
-                        intervals[i].count++;
-                        break;
-                    }
-                }
-            });
-
-            // Calculate percentages
-            const total = data.marks.length || 1;
-            const passPercent = ((data.passCount / total) * 100).toFixed(2);
-            const failPercent = ((data.failCount / total) * 100).toFixed(2);
-
-            groupedSubjects[fullMarks].distributions[sub] = {
-                intervals: intervals,
-                total: data.marks.length,
-                passCount: data.passCount,
-                failCount: data.failCount,
-                passPercent: passPercent,
-                failPercent: failPercent,
-                fullMarks: fullMarks
-            };
-        });
-
-        result[cls] = {
-            groupedSubjects: groupedSubjects,
-            totalStudents: totalStudents,
-            displayName: displayClassName(cls)
-        };
-    });
-
-    return result;
-}
-
-// ============================================================
-// EXPORT CONTROLLER FUNCTION
-// ============================================================
-exports.quantamanalysis = async (req, res) => {
-    try {
-        const { terminal, academicYear, filterClass } = req.query;
-
-        // Build filter
-        let filter = {};
-        if (terminal) filter.terminal = terminal;
-        if (academicYear) filter.academicYear = academicYear;
-        
-        // Normalize filter class if provided
-        if (filterClass) {
-            filter.studentClass = filterClass;
-        }
-
-        console.log('Filter:', filter);
-
-        // Get the exam model
-        const Exammodel = await getSlipModel();
-        
-        // Fetch all exam marks
-        const examMarks = await Exammodel.find(filter).lean();
-        console.log('Exam Marks found:', examMarks.length);
-
-        // Fetch all subjects from newsubject collection
-        const subjectConfigs = await newsubject.find({}).lean();
-        console.log('Subject Configs found:', subjectConfigs.length);
-
-        // Build subject full marks map
-        const subjectFullMarksMap = {};
-        subjectConfigs.forEach(sub => {
-            const forClass = String(sub.forClass || '').trim();
-            const subjectName = String(sub.newsubject || '').trim();
-            
-            // Store with original class name
-            const key = (forClass + '||' + subjectName).toUpperCase();
-            subjectFullMarksMap[key] = {
-                theory: sub.theory || 0,
-                practical: sub.practical || 0,
-                total: sub.total || 0,
-                passingMarks: sub.passingMarks || 0,
-                theoryCreditHour: sub.theoryCreditHour || 0,
-                practicalCreditHour: sub.practicalCreditHour || 0
-            };
-            
-            // Also store with normalized class name
-            const normalizedClass = normalizeClassName(forClass);
-            if (normalizedClass !== forClass) {
-                const normalizedKey = (normalizedClass + '||' + subjectName).toUpperCase();
-                subjectFullMarksMap[normalizedKey] = {
-                    theory: sub.theory || 0,
-                    practical: sub.practical || 0,
-                    total: sub.total || 0,
-                    passingMarks: sub.passingMarks || 0,
-                    theoryCreditHour: sub.theoryCreditHour || 0,
-                    practicalCreditHour: sub.practicalCreditHour || 0
-                };
-            }
-        });
-
-        // Get unique classes for filter
-        const allClasses = await Exammodel.distinct('studentClass', filter);
-        const terminals = await Exammodel.distinct('terminal', filter);
-        const years = await Exammodel.distinct('academicYear', filter);
-
-        // Process data
-        const analysisData = processQuantumAnalysis(examMarks, subjectFullMarksMap);
-        console.log('Analysis Data Classes:', Object.keys(analysisData));
-
-        // Log first class structure for debugging
-        if (Object.keys(analysisData).length > 0) {
-            const firstClass = Object.keys(analysisData)[0];
-            console.log('First class:', firstClass);
-            console.log('First class groupedSubjects keys:', Object.keys(analysisData[firstClass].groupedSubjects || {}));
-        }
-
-        res.render('./exam/quantamanalysis', {
-            title: 'Quantum Analysis - Marks Distribution',
-            analysisData: analysisData,
-            classList: allClasses.sort(),
-            terminals: terminals.sort(),
-            years: years.sort(),
-            selectedTerminal: terminal || '',
-            selectedYear: academicYear || '',
-            filterClass: filterClass || ''
-        });
-
-    } catch (error) {
-        console.error('Error in quantamanalysis:', error);
-        res.status(500).send('Error loading analysis page: ' + error.message);
-    }
-};
-// gradeCounterController.js
-
-
-// Class name normalization map
-
-
-function normalizeClassName(cls) {
-    if (!cls) return '';
-    const key = String(cls).toLowerCase().trim();
-    return CLASS_NORMALIZATION[key] || cls;
-}
-
-function getClassOrder(cls) {
-    if (!cls) return 999;
-    const normalized = normalizeClassName(cls);
-    return CLASS_ORDER[normalized] !== undefined ? CLASS_ORDER[normalized] : 999;
-}
-
-function displayClassName(cls) {
-    if (!cls) return '';
-    const key = String(cls).toLowerCase().trim();
-    return CLASS_NORMALIZATION[key] || cls;
-}
-
-function getGradeFromPercentage(percentage) {
-    if (percentage >= 90) return 'A+';
-    if (percentage >= 80) return 'A';
-    if (percentage >= 70) return 'B+';
-    if (percentage >= 60) return 'B';
-    if (percentage >= 50) return 'C+';
-    if (percentage >= 40) return 'C';
-    if (percentage >= 35) return 'D';
-    return 'NG';
-}
-
-function getGPFromPercentage(percentage) {
-    if (percentage >= 90 && percentage <= 100) return 4.0;
-    if (percentage >= 80 && percentage < 90) return 3.6;
-    if (percentage >= 70 && percentage < 80) return 3.2;
-    if (percentage >= 60 && percentage < 70) return 2.8;
-    if (percentage >= 50 && percentage < 60) return 2.4;
-    if (percentage >= 40 && percentage < 50) return 2.0;
-    if (percentage >= 35 && percentage < 40) return 1.6;
-    return 0;
-}
-
-// Grade order for sorting
-const GRADE_ORDER = {
-    'A+': 0,
-    'A': 1,
-    'B+': 2,
-    'B': 3,
-    'C+': 4,
-    'C': 5,
-    'D': 6,
-    'NG': 7
-};
-
-
-
-// Class name normalization map
-
-
-function normalizeClassName(cls) {
-    if (!cls) return '';
-    const key = String(cls).toLowerCase().trim();
-    return CLASS_NORMALIZATION[key] || cls;
-}
-
-function getClassOrder(cls) {
-    if (!cls) return 999;
-    const normalized = normalizeClassName(cls);
-    return CLASS_ORDER[normalized] !== undefined ? CLASS_ORDER[normalized] : 999;
-}
-
-function displayClassName(cls) {
-    if (!cls) return '';
-    const key = String(cls).toLowerCase().trim();
-    return CLASS_NORMALIZATION[key] || cls;
-}
-
-function getGradeFromGP(gp) {
-    if (gp >= 3.61) return 'A+';
-    if (gp >= 3.21) return 'A';
-    if (gp >= 2.81) return 'B+';
-    if (gp >= 2.41) return 'B';
-    if (gp >= 2.01) return 'C+';
-    if (gp >= 1.61) return 'C';
-    if (gp >= 1.6) return 'D';
-    return 'NG';
-}
-
-function getGPFromPercentage(percentage) {
-    if (percentage >= 90) return 4.0;
-    if (percentage >= 80) return 3.6;
-    if (percentage >= 70) return 3.2;
-    if (percentage >= 60) return 2.8;
-    if (percentage >= 50) return 2.4;
-    if (percentage >= 40) return 2.0;
-    if (percentage >= 35) return 1.6;
-    return 0;
-}
-
-function calculateGP(theoryMarks, theoryFull, practicalMarks, practicalFull, theoryCredit, practicalCredit, calcMode) {
-    let theoryGP = 0;
-    let practicalGP = 0;
-    
-    // Calculate theory GP
-    if (theoryFull > 0) {
-        const theoryPercentage = (theoryMarks / theoryFull) * 100;
-        theoryGP = getGPFromPercentage(theoryPercentage);
-    }
-    
-    // Calculate practical GP
-    if (practicalFull > 0 && practicalMarks > 0) {
-        const practicalPercentage = (practicalMarks / practicalFull) * 100;
-        practicalGP = getGPFromPercentage(practicalPercentage);
-    }
-    
-    // If no practical marks, use theory only
-    if (practicalMarks === 0 || practicalFull === 0) {
-        return theoryGP;
-    }
-    
-    // If theory marks is 0, use practical only
-    if (theoryMarks === 0 || theoryFull === 0) {
-        return practicalGP;
-    }
-    
-    // Calculate based on mode
-    if (calcMode === 'theory') {
-        return theoryGP;
-    } else if (calcMode === 'practical') {
-        return practicalGP;
-    } else {
-        // Combined: (theoryGP * theoryCredit + practicalGP * practicalCredit) / (theoryCredit + practicalCredit)
-        const totalCredit = (theoryCredit || 1) + (practicalCredit || 1);
-        if (totalCredit > 0) {
-            const weightedGP = ((theoryGP * (theoryCredit || 1)) + (practicalGP * (practicalCredit || 1))) / totalCredit;
-            return weightedGP;
-        }
-        return theoryGP;
-    }
-}
-
-// Grade order for sorting
-
-
-// Check if class is pre-primary (Nursery, LKG, UKG)
-function isPrePrimary(cls) {
-    const normalized = normalizeClassName(cls);
-    return ['Nursery', 'LKG', 'UKG'].includes(normalized);
-}
-
-// Check if class is primary (1-3)
-function isPrimary(cls) {
-    const normalized = normalizeClassName(cls);
-    return ['One', 'Two', 'Three'].includes(normalized);
-}
-
-// Check if class is middle (4-7)
-function isMiddle(cls) {
-    const normalized = normalizeClassName(cls);
-    return ['Four', 'Five', 'Six', 'Seven'].includes(normalized);
-}
-
-// Check if class is secondary (8-10)
-function isSecondary(cls) {
-    const normalized = normalizeClassName(cls);
-    return ['Eight', 'Nine', 'Ten'].includes(normalized);
-}
-
-exports.getGradeCounter = async (req, res) => {
-    try {
-    const { terminal, academicYear, filterSubject, calcMode, classFilter, sectionFilter } = req.query;
-
-    const classSectionList = await studentClass.find({}, { studentClass: 1, section: 1 }).lean();
-    const classSectionMap = buildClassSectionMap(classSectionList);
-    const availableClasses = getAvailableClasses(classSectionList);
-
-        // Build filter
-        let filter = {};
-        if (terminal) filter.terminal = terminal;
-        if (academicYear) filter.academicYear = academicYear;
-    if (classFilter && classFilter !== 'all') {
-      const normalizedClass = normalizeClassName(classFilter);
-      const displayClass = getClassDisplayName(normalizedClass);
-      const registeredClassValues = classSectionList
-        .map((item) => String(item.studentClass || '').trim())
-        .filter((value) => normalizeClassName(value) === normalizedClass);
-      filter.studentClass = { $in: [...new Set([classFilter, normalizedClass, displayClass, ...registeredClassValues])] };
-    }
-    if (sectionFilter && sectionFilter !== 'all' && sectionFilter !== 'with-section') {
-      filter.section = sectionFilter;
-    }
-
-        // Get the exam model
-        const Exammodel = await getSlipModel();
-
-        // Fetch all exam marks
-        const examMarks = await Exammodel.find(filter).lean();
-        console.log('Exam Marks found:', examMarks.length);
-
-        // Fetch subject configurations for credit hours
-        const subjectConfigs = await newsubject.find({}).lean();
-        console.log('Subject Configs found:', subjectConfigs.length);
-
-        // Build subject config map
-        const subjectConfigMap = {};
-        subjectConfigs.forEach(config => {
-            const forClass = String(config.forClass || '').trim();
-            const subjectName = String(config.newsubject || '').trim();
-            const key = (forClass + '||' + subjectName).toUpperCase();
-            subjectConfigMap[key] = {
-                theoryCredit: config.theoryCreditHour || 1,
-                practicalCredit: config.practicalCreditHour || 1,
-                theoryFull: config.theory || 0,
-                practicalFull: config.practical || 0,
-                totalFull: config.total || 0
-            };
-        });
-
-        if (examMarks.length === 0) {
-            return res.render('exam/gradeCounter', {
-                title: 'Grade Counter - Subject Wise Analysis',
-                gradeData: {},
-                subjectList: [],
-                classList: [],
-                terminals: [],
-                years: [],
-                availableClasses,
-                classSectionMap,
-                selectedTerminal: terminal || '',
-                selectedYear: academicYear || '',
-                filterSubject: filterSubject || '',
-                classFilter: classFilter || 'all',
-                sectionFilter: sectionFilter || 'all',
-                calcMode: calcMode || 'combined'
-            });
-        }
-
-        // Get all subjects for filter
-        const subjectList = await Exammodel.distinct('subject', filter);
-        const classList = await Exammodel.distinct('studentClass', filter);
-        const terminals = await Exammodel.distinct('terminal', filter);
-        const years = await Exammodel.distinct('academicYear', filter);
-
-        // Process grade data
-        const gradeData = processGradeCounter(examMarks, subjectConfigMap, calcMode);
-
-        res.render('./exam/gradeCounter', {
-            title: 'Grade Counter - Subject Wise Analysis',
-            gradeData: gradeData,
-            subjectList: subjectList.sort(),
-            classList: classList.sort(),
-            terminals: terminals.sort(),
-            years: years.sort(),
-            availableClasses,
-            classSectionMap,
-            selectedTerminal: terminal || '',
-            selectedYear: academicYear || '',
-            filterSubject: filterSubject || '',
-            classFilter: classFilter || 'all',
-            sectionFilter: sectionFilter || 'all',
-            calcMode: calcMode || 'combined'
-        });
-
-    } catch (error) {
-        console.error('Error in getGradeCounter:', error);
-        res.status(500).send('Error loading grade counter page: ' + error.message);
-    }
-};
-
-function processGradeCounter(examMarks, subjectConfigMap, calcMode = 'combined') {
-    // Group by subject, then by class
-    const subjectClassData = {};
-
-    examMarks.forEach(record => {
-        const subject = String(record.subject || '').trim();
-        if (!subject) return;
-
-        const cls = String(record.studentClass || '').trim();
-        if (!cls) return;
-
-        const normalizedCls = normalizeClassName(cls);
-
-        // Get marks. Grade Counter uses the stored total practical marks.
-        const theoryMarks = parseFloat(record.theorymarks) || 0;
-        const practicalMarks = parseFloat(record.totalpracticalmarks ?? record.practicalmarks) || 0;
-        
-        // Get full marks from record
-        const theoryFull = parseFloat(record.theoryfullmarks) || 0;
-        const practicalFull = parseFloat(record.practicalfullmarks) || 0;
-
-        // Get credit hours from config
-        const configKey = (cls + '||' + subject).toUpperCase();
-        const config = subjectConfigMap[configKey] || {};
-        
-        // Also try normalized class name
-        const normalizedKey = (normalizedCls + '||' + subject).toUpperCase();
-        const normalizedConfig = subjectConfigMap[normalizedKey] || {};
-        
-        // Use config if available, otherwise fallback to record values
-        const theoryCredit = config.theoryCredit || normalizedConfig.theoryCredit || 1;
-        const practicalCredit = config.practicalCredit || normalizedConfig.practicalCredit || 1;
-        
-        const theoryGP = getGPFromPercentage(theoryFull > 0 ? (theoryMarks / theoryFull) * 100 : 0);
-        const practicalGP = getGPFromPercentage(practicalFull > 0 ? (practicalMarks / practicalFull) * 100 : 0);
-        const worksheetValues = Array.isArray(record.worksheetGrades)
-          ? record.worksheetGrades.map(getWorksheetGP)
-          : [];
-        const worksheetGP = worksheetValues.length > 0
-          ? worksheetValues.reduce((sum, value) => sum + value, 0) / worksheetValues.length
-          : 0;
-        const worksheetTotalGP = worksheetValues.reduce((sum, value) => sum + value, 0);
-        const isNoWorksheetSubject = ['ORAL', 'HYGIENE', 'ECA'].includes(subject.toUpperCase())
-          || (normalizedCls === 'LKG' && subject.toUpperCase() === 'THEME');
-
-        let finalGP = theoryGP;
-        if (calcMode === 'theory') {
-          // Theory Only: always derive the grade from theory marks/full marks.
-          finalGP = theoryGP;
-        } else if (calcMode === 'practical') {
-          finalGP = isPrePrimary(cls) || isPrimary(cls) ? worksheetGP : practicalGP;
-        } else if (isNoWorksheetSubject) {
-          finalGP = theoryGP;
-        } else if (isPrePrimary(cls)) {
-          // Nursery, LKG and UKG combine theory GP with worksheet GP.
-          finalGP = (theoryGP + worksheetTotalGP) / (worksheetValues.length + 1);
-        } else {
-          // Classes 1-10 use credit-weighted theory and practical/worksheet GP.
-          const appliedPracticalGP = isPrimary(cls) ? worksheetGP : practicalGP;
-          const totalCredit = theoryCredit + practicalCredit;
-          finalGP = totalCredit > 0
-            ? ((theoryGP * theoryCredit) + (appliedPracticalGP * practicalCredit)) / totalCredit
-            : theoryGP;
-        }
-
-        // Get grade from GP
-        const grade = getGradeFromGP(finalGP);
-
-        // Initialize structure
-        if (!subjectClassData[subject]) {
-            subjectClassData[subject] = {};
-        }
-        if (!subjectClassData[subject][normalizedCls]) {
-            subjectClassData[subject][normalizedCls] = {
-                grades: {
-                    'A+': 0,
-                    'A': 0,
-                    'B+': 0,
-                    'B': 0,
-                    'C+': 0,
-                    'C': 0,
-                    'D': 0,
-                    'NG': 0
-                },
-                total: 0,
-                classNames: new Set()
-            };
-            subjectClassData[subject][normalizedCls].classNames.add(cls);
-        }
-
-        // Count grade
-        subjectClassData[subject][normalizedCls].grades[grade]++;
-        subjectClassData[subject][normalizedCls].total++;
-        subjectClassData[subject][normalizedCls].classNames.add(cls);
-    });
-
-    return subjectClassData;
-}
-
-function processLegacyGradeCounter(examMarks) {
-    // Group by subject, then by class
-    const subjectClassData = {};
-
-    examMarks.forEach(record => {
-        const subject = String(record.subject || '').trim();
-        if (!subject) return;
-
-        const cls = String(record.studentClass || '').trim();
-        if (!cls) return;
-
-        const normalizedCls = normalizeClassName(cls);
-
-        // Get marks
-        const theoryMarks = parseFloat(record.theorymarks) || 0;
-        const theoryFull = parseFloat(record.theoryfullmarks) || 0;
-        
-        // Calculate percentage
-        const percentage = theoryFull > 0 ? (theoryMarks / theoryFull) * 100 : 0;
-        
-        // Get grade
-        const grade = getGradeFromPercentage(percentage);
-
-        // Initialize structure
-        if (!subjectClassData[subject]) {
-            subjectClassData[subject] = {};
-        }
-        if (!subjectClassData[subject][normalizedCls]) {
-            subjectClassData[subject][normalizedCls] = {
-                grades: {
-                    'A+': 0,
-                    'A': 0,
-                    'B+': 0,
-                    'B': 0,
-                    'C+': 0,
-                    'C': 0,
-                    'D': 0,
-                    'NG': 0
-                },
-                total: 0,
-                classNames: new Set()
-            };
-            subjectClassData[subject][normalizedCls].classNames.add(cls);
-        }
-
-        // Count grade
-        subjectClassData[subject][normalizedCls].grades[grade]++;
-        subjectClassData[subject][normalizedCls].total++;
-        subjectClassData[subject][normalizedCls].classNames.add(cls);
-    });
-
-    return subjectClassData;
-}
-// controllers/subjectwiseanalysis.js
-
-
-// controllers/subjectwiseanalysis.js
-function normalizeClassName(className) {
-    if (!className) return className;
-    
-    const classMap = {
-        'One': '1',
-        'Two': '2',
-        'Three': '3',
-        'Four': '4',
-        'Five': '5',
-        'Six': '6',
-        'Seven': '7',
-        'Eight': '8',
-        'Nine': '9',
-        'Ten': '10',
-        '1': '1',
-        '2': '2',
-        '3': '3',
-        '4': '4',
-        '5': '5',
-        '6': '6',
-        '7': '7',
-        '8': '8',
-        '9': '9',
-        '10': '10'
-    };
-    
-    const trimmed = className.toString().trim();
-    return classMap[trimmed] || trimmed;
-}
-
-function getClassDisplayName(className) {
-    const displayMap = {
-        '1': 'One',
-        '2': 'Two',
-        '3': 'Three',
-        '4': 'Four',
-        '5': 'Five',
-        '6': 'Six',
-        '7': 'Seven',
-        '8': 'Eight',
-        '9': 'Nine',
-        '10': 'Ten'
-    };
-    return displayMap[className] || className;
-}
-
-
-
-// Helper function to convert class names between formats
-function normalizeClassName(className) {
-    if (!className) return className;
-    
-    const classMap = {
-        'One': '1',
-        'Two': '2',
-        'Three': '3',
-        'Four': '4',
-        'Five': '5',
-        'Six': '6',
-        'Seven': '7',
-        'Eight': '8',
-        'Nine': '9',
-        'Ten': '10',
-        '1': '1',
-        '2': '2',
-        '3': '3',
-        '4': '4',
-        '5': '5',
-        '6': '6',
-        '7': '7',
-        '8': '8',
-        '9': '9',
-        '10': '10'
-    };
-    
-    const trimmed = className.toString().trim();
-    return classMap[trimmed] || trimmed;
-}
-
-function getClassDisplayName(className) {
-    const displayMap = {
-        '1': 'One',
-        '2': 'Two',
-        '3': 'Three',
-        '4': 'Four',
-        '5': 'Five',
-        '6': 'Six',
-        '7': 'Seven',
-        '8': 'Eight',
-        '9': 'Nine',
-        '10': 'Ten'
-    };
-    return displayMap[className] || className;
-}
-
-
-
-// Helper function to convert class names between formats
-function normalizeClassName(className) {
-    if (!className) return className;
-    
-    const classMap = {
-        'One': '1',
-        'Two': '2',
-        'Three': '3',
-        'Four': '4',
-        'Five': '5',
-        'Six': '6',
-        'Seven': '7',
-        'Eight': '8',
-        'Nine': '9',
-        'Ten': '10',
-        '1': '1',
-        '2': '2',
-        '3': '3',
-        '4': '4',
-        '5': '5',
-        '6': '6',
-        '7': '7',
-        '8': '8',
-        '9': '9',
-        '10': '10'
-    };
-    
-    const trimmed = className.toString().trim();
-    return classMap[trimmed] || trimmed;
-}
-
-function getClassDisplayName(className) {
-    const displayMap = {
-        '1': 'One',
-        '2': 'Two',
-        '3': 'Three',
-        '4': 'Four',
-        '5': 'Five',
-        '6': 'Six',
-        '7': 'Seven',
-        '8': 'Eight',
-        '9': 'Nine',
-        '10': 'Ten'
-    };
-    return displayMap[className] || className;
-}
-
-function getClassOrder(className) {
-    const orderMap = {
-        '1': 1,
-        '2': 2,
-        '3': 3,
-        '4': 4,
-        '5': 5,
-        '6': 6,
-        '7': 7,
-        '8': 8,
-        '9': 9,
-        '10': 10,
-        'One': 1,
-        'Two': 2,
-        'Three': 3,
-        'Four': 4,
-        'Five': 5,
-        'Six': 6,
-        'Seven': 7,
-        'Eight': 8,
-        'Nine': 9,
-        'Ten': 10
-    };
-    return orderMap[className] || 999;
-}
-
-// Helper function to check if a student is absent (0 in theory for all subjects)
-function isSubjectWiseStudentAbsent(studentMarks, allExamMarks) {
-    // Get all marks for this student
-  const studentReg = String(studentMarks.reg ?? '').trim();
-  const studentClass = String(studentMarks.studentClass ?? '').trim().toLowerCase();
-  const section = String(studentMarks.section ?? '').trim().toLowerCase();
-    
-    // Get all records for this student
-    const allStudentRecords = allExamMarks.filter(mark => 
-    String(mark.reg ?? '').trim() === studentReg &&
-    String(mark.studentClass ?? '').trim().toLowerCase() === studentClass &&
-    String(mark.section ?? '').trim().toLowerCase() === section
-    );
-    
-    // A student is absent when theory marks are zero in every subject.
-    let hasAnyTheoryMarks = false;
-    for (const record of allStudentRecords) {
-      const theoryValue = String(record.theorymarks ?? '').trim().toLowerCase();
-      const theoryMarks = Number(record.theorymarks);
-      const isAbsentValue = theoryValue === 'ab'
-        || theoryValue === 'absent'
-        || theoryValue === '0.000001'
-        || (Number.isFinite(theoryMarks) && Math.abs(theoryMarks - 0.000001) < 0.0000001);
-
-      if (Number.isFinite(theoryMarks) && theoryMarks > 0 && !isAbsentValue) {
-        hasAnyTheoryMarks = true;
-            break;
-        }
-    }
-    
-    return !hasAnyTheoryMarks;
-}
-
-function calculateGP(percentage) {
-    if (percentage >= 90) return 4.0;
-    if (percentage >= 80) return 3.6;
-    if (percentage >= 70) return 3.2;
-    if (percentage >= 60) return 2.8;
-    if (percentage >= 50) return 2.4;
-    if (percentage >= 40) return 2.0;
-    if (percentage >= 30) return 1.6;
-    return 0.0;
-}
-
-function calculateMedian(arr) {
-    if (arr.length === 0) return 0;
-    const sorted = [...arr].sort((a, b) => a - b);
-    const mid = Math.floor(sorted.length / 2);
-    if (sorted.length % 2 === 0) {
-        return (sorted[mid - 1] + sorted[mid]) / 2;
-    }
-    return sorted[mid];
-}
-
-function calculateOverallStats(subjectData) {
-    let totalStudents = 0;
-    let totalPass = 0;
-    let totalFail = 0;
-    
-    for (const className in subjectData.classes) {
-        const classData = subjectData.classes[className];
-        totalStudents += classData.totalStudents;
-        totalPass += classData.passCount;
-        totalFail += classData.failCount;
-    }
-    
-    return {
-        totalStudents,
-        passCount: totalPass,
-        failCount: totalFail,
-        passPercentage: totalStudents > 0 ? (totalPass / totalStudents) * 100 : 0,
-        failPercentage: totalStudents > 0 ? (totalFail / totalStudents) * 100 : 0,
-        avg: 0,
-        median: 0
-    };
-}
-
-async function processSubjectWiseClassData(className, subjectName, classMarks, calculationType, sectionFilter, classConfig, isOptionalSubject = false, allExamMarks = []) {
-  const getTheoryMarkForComparison = (record) => {
-    const value = Number(record?.theorymarks);
-    return Number.isFinite(value) && Math.abs(value - 0.000001) >= 0.0000001 ? value : 0;
-  };
-
-  const uniqueClassMarks = [...classMarks.reduce((recordsByStudent, record) => {
-    const studentKey = String(record.reg || `${record.name || ''}-${record.roll || ''}`).trim();
-    const currentRecord = recordsByStudent.get(studentKey);
-    const currentTheoryMarks = getTheoryMarkForComparison(currentRecord);
-    const recordTheoryMarks = getTheoryMarkForComparison(record);
-
-    if (!currentRecord || recordTheoryMarks > currentTheoryMarks) {
-      recordsByStudent.set(studentKey, record);
-    }
-    return recordsByStudent;
-  }, new Map()).values()];
-
-    const getSummary = (marksForSection) => {
-    const uniqueStudents = [...marksForSection.reduce((recordsByStudent, record) => {
-      const studentKey = String(record.reg || `${record.name || ''}-${record.roll || ''}`).trim();
-      const currentRecord = recordsByStudent.get(studentKey);
-            const currentTheoryMarks = getTheoryMarkForComparison(currentRecord);
-            const recordTheoryMarks = getTheoryMarkForComparison(record);
-
-      if (!currentRecord || recordTheoryMarks > currentTheoryMarks) {
-        recordsByStudent.set(studentKey, record);
-      }
-      return recordsByStudent;
-    }, new Map()).values()];
-
-        // Filter out absent students (those with 0 in all subjects)
-    const absentStudents = uniqueStudents.filter(student => isSubjectWiseStudentAbsent(student, allExamMarks)).length;
-    const activeStudents = uniqueStudents.filter(student => {
-            if (!student || typeof student !== 'object') {
-                return false;
-            }
-
-            // If this is an optional subject and student has 0 marks, they might be in the other subject
-            if (isOptionalSubject) {
-                const theoryMarks = Number(student.theorymarks || 0);
-                const practicalMarks = Number(student.practicalmarks || 0);
-                if (theoryMarks === 0 && practicalMarks === 0) {
-                    return false; // Skip - they're not in this optional subject
-                }
-            }
-            
-            // Check if student is absent (0 in all subjects)
-            const isAbsent = isSubjectWiseStudentAbsent(student, allExamMarks);
-            if (isAbsent) {
-                console.log(`  ⏭️ Excluding absent student: ${student.name || 'Unknown'} (Reg: ${student.reg})`);
-                return false;
-            }
-            return true;
-        });
-        
-        const totalStudents = activeStudents.length;
-        let passCount = 0;
-        let failCount = 0;
-        let totalMarks = 0;
-        let marksArray = [];
-        let minMarks = Infinity;
-        let maxMarks = -Infinity;
-
-        const theoryFullMarks = classConfig?.theory || 50;
-        const practicalFullMarks = classConfig?.practical || 50;
-        const passingMarks = classConfig?.passingMarks || 18;
-        const theoryCredit = classConfig?.theoryCreditHour || 2.5;
-        const practicalCredit = classConfig?.practicalCreditHour || 2.5;
-
-        console.log(`\n=== Processing ${subjectName} - Class ${className} ===`);
-        console.log(`Theory Pass Marks: ${passingMarks} (out of ${theoryFullMarks})`);
-        console.log(`Total active students (excluding absent): ${totalStudents}`);
-
-        let failDetails = [];
-
-        for (const student of activeStudents) {
-            let passed = false;
-            let gp = 0;
-            let marks = 0;
-
-            let theoryMarks = student.theorymarks || 0;
-            let practicalMarks = student.practicalmarks || 0;
-            let theoryFullMarksStudent = student.theoryfullmarks || theoryFullMarks;
-            let practicalFullMarksStudent = student.practicalfullmarks || practicalFullMarks;
-
-            // If marked as fail from optional subject processing
-            if (student._isFail === true) {
-                failCount++;
-                failDetails.push({
-                    name: student.name || 'Unknown',
-                    theory: theoryMarks,
-                    practical: practicalMarks,
-                    reason: 'Marked as fail from optional processing'
-                });
-                continue;
-            }
-
-            // For optional subjects, if student has 0 marks, skip
-            if (isOptionalSubject && theoryMarks === 0 && practicalMarks === 0) {
-                continue;
-            }
-
-            // Check if student has marks in this subject
-            if (theoryMarks === 0 && practicalMarks === 0) {
-                // For non-optional subjects, if they have 0 marks, they failed
-                failCount++;
-                failDetails.push({
-                    name: student.name || 'Unknown',
-                    theory: theoryMarks,
-                    practical: practicalMarks,
-                    reason: 'Zero marks in this subject'
-                });
-                continue;
-            }
-
-            // THEORY PASS MARKS: Compare theory marks against theory pass marks
-            if (calculationType === 'theory') {
-              // Match School Analysis: pass when theory marks reach pass marks.
-              passed = theoryMarks >= passingMarks;
-                gp = passed ? 1.6 : 0;
-                marks = theoryMarks;
-            } else {
-                // Theory + Practical calculation
-                // First check if theory marks meet the theory pass marks
-                const theoryPassed = theoryMarks >= passingMarks;
-                
-                if (!theoryPassed) {
-                    // Fail immediately if theory marks are below pass marks
-                    passed = false;
-                    gp = 0;
-                    marks = theoryMarks;
-                } else {
-                    // Theory passed, now check practical with GP calculation
-                    const theoryPercentage = theoryFullMarksStudent > 0 ? (theoryMarks / theoryFullMarksStudent) * 100 : 0;
-                    const practicalPercentage = practicalFullMarksStudent > 0 ? (practicalMarks / practicalFullMarksStudent) * 100 : 0;
-
-                    const theoryGP = calculateGP(theoryPercentage);
-                    const practicalGP = calculateGP(practicalPercentage);
-
-                    const totalCredit = theoryCredit + practicalCredit;
-                    if (totalCredit > 0) {
-                        gp = (theoryCredit * theoryGP + practicalCredit * practicalGP) / totalCredit;
-                    } else {
-                        gp = theoryGP;
-                    }
-
-                    passed = gp >= 1.6;
-                    marks = theoryMarks;
-                }
-            }
-
-            // Log fail details
-            if (!passed) {
-                failDetails.push({
-                    name: student.name || 'Unknown',
-                    theory: theoryMarks,
-                    practical: practicalMarks,
-                    theoryPassMarks: passingMarks,
-                    reason: theoryMarks < passingMarks ? `Theory marks (${theoryMarks}) < Pass marks (${passingMarks})` : 'GP < 1.6'
-                });
-            }
-
-            totalMarks += marks;
-            marksArray.push(marks);
-            minMarks = Math.min(minMarks, marks);
-            maxMarks = Math.max(maxMarks, marks);
-
-            if (passed) {
-                passCount++;
-            } else {
-                failCount++;
-            }
-        }
-
-        // Log fail details for debugging
-        if (failDetails.length > 0) {
-           
-            failDetails.forEach((detail, index) => {
-                console.log(`  ${index + 1}. ${detail.name} - Theory: ${detail.theory}, Practical: ${detail.practical}, Reason: ${detail.reason}`);
-            });
-        }
-
-        console.log(`\n--- Results for ${subjectName} - Class ${className} ---`);
-        console.log(`Total Active Students: ${totalStudents}`);
-        console.log(`Pass: ${passCount}`);
-        console.log(`Fail: ${failCount}`);
-        console.log(`Pass %: ${totalStudents > 0 ? ((passCount / totalStudents) * 100).toFixed(2) : 0}%`);
-        console.log('=====================================\n');
-
-        const avg = totalStudents > 0 ? totalMarks / totalStudents : 0;
-        const median = calculateMedian(marksArray);
-
-        return {
-            totalStudents,
-            passCount,
-            passPercentage: totalStudents > 0 ? (passCount / totalStudents) * 100 : 0,
-            failCount,
-            failPercentage: totalStudents > 0 ? (failCount / totalStudents) * 100 : 0,
-            avg,
-            median,
-            maxMarks: maxMarks === -Infinity ? 0 : maxMarks,
-            minMarks: minMarks === Infinity ? 0 : minMarks,
-            theoryFullMarks,
-            practicalFullMarks,
-            passingMarks,
-            theoryCredit,
-            practicalCredit,
-            absentStudents,
-            reason: calculationType === 'theory'
-              ? `Theory marks below pass marks (${passingMarks})`
-              : 'Theory below pass marks or combined GP below 1.6'
-        };
-    };
-
-    let filteredMarks = uniqueClassMarks;
-    if (sectionFilter && sectionFilter !== 'all' && sectionFilter !== 'with-section') {
-        filteredMarks = filteredMarks.filter(mark => mark.section === sectionFilter);
-    }
-
-    const totalStudents = filteredMarks.length;
-    console.log(`    Processing ${totalStudents} total students for class ${className} (including absent)`);
-
-    if (sectionFilter === 'with-section') {
-        const sectionBreakdown = {};
-        const groupedBySection = {};
-
-        filteredMarks.forEach((mark) => {
-            const sectionName = String(mark.section || 'Unassigned').trim() || 'Unassigned';
-            if (!groupedBySection[sectionName]) groupedBySection[sectionName] = [];
-            groupedBySection[sectionName].push(mark);
-        });
-
-        Object.keys(groupedBySection).sort((a, b) => a.localeCompare(b)).forEach((sectionName) => {
-            sectionBreakdown[sectionName] = getSummary(groupedBySection[sectionName]);
-        });
-
-        const combinedSummary = getSummary(filteredMarks);
-
-        return {
-            ...combinedSummary,
-            sections: sectionBreakdown
-        };
-    }
-
-    return getSummary(filteredMarks);
-}
-
-exports.subjectWiseanalysis = async (req, res) => {
-    try {
-        const { classFilter, sectionFilter, calculationType, subjectFilter, terminalFilter } = req.query;
-        
-        console.log('=== Starting Subject Wise Analysis ===');
-        console.log('Filters:', { classFilter, sectionFilter, calculationType, subjectFilter, terminalFilter });
-        
-        // Get all subjects
-        const subjects = await newsubject.find({});
-        console.log('Subjects found:', subjects.length);
-
-        const terminals = await terminalModel.find({}).lean();
-        const availableTerminals = [...new Set(
-            terminals
-                .map((item) => [item.terminalName, item.name, item.terminal, item.term].filter(Boolean).map((value) => String(value).trim()))
-                .flat()
-                .filter(Boolean)
-        )].sort((a, b) => a.localeCompare(b));
-
-        const classSectionList = await studentClass.find({}, { studentClass: 1, section: 1 }).lean();
-        const classSectionMap = {};
-        const availableClasses = [...new Set(
-            classSectionList
-                .map((item) => String(item.studentClass || '').trim())
-                .filter(Boolean)
-                .map((className) => normalizeClassName(className))
-        )].sort((a, b) => {
-            const aOrder = getClassOrder(a);
-            const bOrder = getClassOrder(b);
-            if (aOrder !== bOrder) return aOrder - bOrder;
-            return String(a).localeCompare(String(b));
-        });
-
-        classSectionList.forEach((item) => {
-            const rawClass = String(item.studentClass || '').trim();
-            const sectionName = String(item.section || '').trim();
-            if (!rawClass || !sectionName) return;
-
-            const normalizedClass = normalizeClassName(rawClass);
-            const displayClass = getClassDisplayName(normalizedClass);
-            const keys = new Set([
-                rawClass,
-                rawClass.toLowerCase(),
-                rawClass.toUpperCase(),
-                normalizedClass,
-                displayClass,
-                String(normalizedClass).toLowerCase(),
-                String(displayClass).toLowerCase()
-            ]);
-
-            keys.forEach((key) => {
-                if (!key) return;
-                if (!classSectionMap[key]) classSectionMap[key] = [];
-                if (!classSectionMap[key].includes(sectionName)) classSectionMap[key].push(sectionName);
-            });
-        });
-
-        Object.keys(classSectionMap).forEach((classKey) => {
-            classSectionMap[classKey] = [...new Set(classSectionMap[classKey])].sort((a, b) => a.localeCompare(b));
-        });
-        
-        // BUILD QUERY FOR EXAM MARKS
-        let examMarksQuery = {};
-        
-        // Handle class filter - search for both formats
-        if (classFilter && classFilter !== 'all') {
-            const normalizedClass = normalizeClassName(classFilter);
-            const displayClass = getClassDisplayName(normalizedClass);
-            examMarksQuery.studentClass = { $in: [normalizedClass, displayClass] };
-            console.log('Searching for classes:', [normalizedClass, displayClass]);
-        }
-        
-        // Handle section filter
-        if (sectionFilter && sectionFilter !== 'all' && sectionFilter !== 'with-section') {
-            examMarksQuery.section = sectionFilter;
-        }
-
-        if (terminalFilter && terminalFilter !== 'all') {
-            const terminalValues = [
-                terminalFilter,
-                String(terminalFilter).trim(),
-                String(terminalFilter).toLowerCase(),
-                String(terminalFilter).toUpperCase()
-            ];
-            examMarksQuery.terminal = { $in: terminalValues };
-        }
-        
-        console.log('Exam marks query:', JSON.stringify(examMarksQuery));
-        
-        // Get exam marks
-        const examMarks = await getSlipModel().find(examMarksQuery);
-        const availableSubjects = [...new Set([
-            ...subjects.map((subject) => subject.newsubject).filter(Boolean),
-            ...examMarks.map((mark) => mark.subject).filter(Boolean)
-        ])].sort((a, b) => a.localeCompare(b));
-        console.log('Total exam marks found:', examMarks.length);
-        
-        if (examMarks.length === 0) {
-            return res.render('./exam/subjectwiseanalysis', {
-                subjectAnalysis: [],
-                maxFailSubject: null,
-                maxPassSubject: null,
-                highestAvgSubject: null,
-                classFilter: classFilter || 'all',
-                sectionFilter: sectionFilter || 'all',
-                calculationType: calculationType || 'theory',
-                subjectFilter: subjectFilter || 'all',
-                terminalFilter: terminalFilter || 'all',
-                availableSubjects,
-                availableClasses,
-                availableTerminals,
-                classSectionMap,
-                getClassDisplayName: getClassDisplayName
-            });
-        }
-        
-        // Special handling for Class 9 & 10: ENV.SCIENCE and OPT.MATH
-        // Group students by class and section to identify which subject they actually took
-        const studentSubjectMap = {};
-        const optionalSubjects = ['ENV.SCIENCE', 'OPT.MATH'];
-        
-        examMarks.forEach(mark => {
-            const classNum = normalizeClassName(mark.studentClass);
-            // Only apply for class 9 and 10
-            if (classNum === '9' || classNum === '10') {
-                const key = `${mark.studentClass}_${mark.section}_${mark.reg}`;
-                if (!studentSubjectMap[key]) {
-                    studentSubjectMap[key] = {
-                        class: mark.studentClass,
-                        section: mark.section,
-                        reg: mark.reg,
-                        subjects: {}
-                    };
-                }
-                // Store marks for each subject
-                studentSubjectMap[key].subjects[mark.subject] = {
-                    theorymarks: mark.theorymarks || 0,
-                    practicalmarks: mark.practicalmarks || 0,
-                    theoryfullmarks: mark.theoryfullmarks || 0,
-                    practicalfullmarks: mark.practicalfullmarks || 0,
-                    passMarks: mark.passMarks || 0,
-                    // Store the full document for later use
-                    _doc: mark
-                };
-            }
-        });
-        
-        // Determine which subject each student actually took
-        // If a student has marks > 0 in a subject, they took that subject
-        // If both are 0, they took neither (or data missing)
-        const studentsWithOptionalSubjects = {};
-        Object.keys(studentSubjectMap).forEach(key => {
-            const student = studentSubjectMap[key];
-            const subjects = student?.subjects || {};
-            
-            // Check which subjects have marks > 0
-            const subjectsWithMarks = [];
-            Object.keys(subjects).forEach(subj => {
-                const subjectValue = subjects[subj] || {};
-                const theoryMarks = subjectValue.theorymarks || 0;
-                const practicalMarks = subjectValue.practicalmarks || 0;
-                if (theoryMarks > 0 || practicalMarks > 0) {
-                    subjectsWithMarks.push(subj);
-                }
-            });
-            
-            // If student has marks in both (shouldn't happen normally), take both
-            // If student has marks in one, that's their subject
-            // If student has marks in none, they failed both (or data missing)
-            if (subjectsWithMarks.length === 0) {
-                // Student has 0 in both - they failed both subjects
-                // But we need to count them in both subjects as fail
-                Object.keys(subjects).forEach(subj => {
-                    const key2 = `${student.class}_${subj}`;
-                    if (!studentsWithOptionalSubjects[key2]) {
-                        studentsWithOptionalSubjects[key2] = [];
-                    }
-                    const subjectValue = subjects[subj] || {};
-                    if (!subjectValue) return;
-                    studentsWithOptionalSubjects[key2].push({
-                        ...student,
-                        subject: subj,
-                        isFail: true,
-                        marks: subjectValue
-                    });
-                });
-            } else {
-                // Student took these subjects
-                subjectsWithMarks.forEach(subj => {
-                    const key2 = `${student.class}_${subj}`;
-                    if (!studentsWithOptionalSubjects[key2]) {
-                        studentsWithOptionalSubjects[key2] = [];
-                    }
-                    const subjectValue = subjects[subj] || {};
-                    if (!subjectValue) return;
-                    studentsWithOptionalSubjects[key2].push({
-                        ...student,
-                        subject: subj,
-                        isFail: false,
-                        marks: subjectValue
-                    });
-                });
-            }
-        });
-        
-        // Build subject-class mapping from newsubject
-        const subjectClassMap = {};
-        subjects.forEach(sub => {
-            if (!subjectClassMap[sub.newsubject]) {
-                subjectClassMap[sub.newsubject] = {};
-            }
-            const normalizedClass = normalizeClassName(sub.forClass);
-            subjectClassMap[sub.newsubject][normalizedClass] = sub;
-        });
-        
-        // Process each subject
-        const subjectAnalysis = [];
-        let maxFailSubject = null;
-        let maxPassSubject = null;
-        let highestAvgSubject = null;
-        let maxFailCount = -1;
-        let maxPassCount = -1;
-        let highestAvg = -1;
-        
-        // Get unique subjects from exam marks
-        const uniqueSubjects = [...new Set(examMarks.map(mark => mark.subject))];
-        const filteredSubjects = subjectFilter && subjectFilter !== 'all'
-            ? uniqueSubjects.filter((subjectName) => subjectName === subjectFilter)
-            : uniqueSubjects;
-        console.log('Unique subjects:', uniqueSubjects);
-        console.log('Filtered subjects:', filteredSubjects);
-        
-        for (const subjectName of filteredSubjects) {
-            console.log(`\n--- Processing subject: ${subjectName} ---`);
-            
-            const subjectData = {
-                subjectName: subjectName,
-                classes: {}
-            };
-            
-            // Get subject marks for this subject
-            let subjectMarks = examMarks.filter(mark => mark.subject === subjectName);
-            
-            // For ENV.SCIENCE and OPT.MATH in classes 9 & 10, use the processed data
-            if (optionalSubjects.includes(subjectName)) {
-                // For these subjects, we need to use the processed student data
-                const subjectKey = `${subjectName}`;
-                // We'll process classes separately
-            }
-            
-            // Get unique classes for this subject
-            const rawClasses = [...new Set(subjectMarks.map(mark => mark.studentClass))];
-            console.log(`Raw classes for ${subjectName}:`, rawClasses);
-            
-            const normalizedClasses = rawClasses.map(c => normalizeClassName(c));
-            const uniqueClasses = [...new Set(normalizedClasses)];
-            console.log(`Normalized classes for ${subjectName}:`, uniqueClasses);
-            
-            for (const className of uniqueClasses) {
-                console.log(`  Processing class: ${className}`);
-                
-                let classMarksForProcessing = [];
-                let isOptionalSubject = false;
-                
-                // Check if this is class 9 or 10 and subject is ENV.SCIENCE or OPT.MATH
-                if ((className === '9' || className === '10') && optionalSubjects.includes(subjectName)) {
-                    isOptionalSubject = true;
-                    // Use the processed student data
-                    const key = `${className}_${subjectName}`;
-                    if (studentsWithOptionalSubjects[key]) {
-                        // Convert processed data to exam mark format
-                        studentsWithOptionalSubjects[key].forEach(studentData => {
-                            const mark = studentData?.marks?._doc || studentData?.marks || studentData;
-                            if (!mark) return;
-                            // Mark as processed
-                            classMarksForProcessing.push({
-                                ...mark,
-                                _isProcessed: true,
-                                _isFail: !!studentData.isFail
-                            });
-                        });
-                    }
-                    console.log(`  Processed ${classMarksForProcessing.length} students for optional subject ${subjectName} in class ${className}`);
-                } else {
-                    // Normal filtering
-                    classMarksForProcessing = subjectMarks.filter(mark => 
-                        normalizeClassName(mark.studentClass) === className
-                    );
-                }
-                
-                // Get subject configuration
-                const classConfig = subjectClassMap[subjectName]?.[className];
-                
-                // Process class data - pass all exam marks for absent check
-                const classData = await processSubjectWiseClassData(
-                    className, 
-                    subjectName, 
-                    classMarksForProcessing, 
-                    calculationType || 'theory',
-                    sectionFilter,
-                    classConfig,
-                    isOptionalSubject,
-                    examMarks // Pass all exam marks for absent check
-                );
-                
-                subjectData.classes[className] = classData;
-                console.log(`    Pass: ${classData.passCount}, Fail: ${classData.failCount}`);
-            }
-            
-            // Calculate overall subject statistics
-            const overallStats = calculateOverallStats(subjectData);
-            subjectData.overall = overallStats;
-            
-            // Track max/min subjects
-            if (overallStats.failCount > maxFailCount) {
-                maxFailCount = overallStats.failCount;
-                maxFailSubject = subjectName;
-            }
-            if (overallStats.passCount > maxPassCount) {
-                maxPassCount = overallStats.passCount;
-                maxPassSubject = subjectName;
-            }
-            if (overallStats.avg > highestAvg) {
-                highestAvg = overallStats.avg;
-                highestAvgSubject = subjectName;
-            }
-            
-            subjectAnalysis.push(subjectData);
-        }
-        
-        console.log('\n=== Analysis Complete ===');
-        console.log('Subjects processed:', subjectAnalysis.length);
-        
-        res.render('./exam/subjectwiseanalysis', {
-            subjectAnalysis,
-            maxFailSubject,
-            maxPassSubject,
-            highestAvgSubject,
-            classFilter: classFilter || 'all',
-            sectionFilter: sectionFilter || 'all',
-            calculationType: calculationType || 'theory',
-            subjectFilter: subjectFilter || 'all',
-            terminalFilter: terminalFilter || 'all',
-            availableSubjects,
-            availableClasses,
-            availableTerminals,
-            classSectionMap,
-            getClassDisplayName: getClassDisplayName
-        });
-        
-    } catch (error) {
-        console.error('Error in subject wise analysis:', error);
-        res.status(500).send('Error generating subject wise analysis: ' + error.message);
-    }
-};
-
-
-
-// controllers/subjectwisefailstudents.js
-
-// Helper function to convert class names between formats
-function normalizeClassName(className) {
-    if (!className) return className;
-    
-    const classMap = {
-        'One': '1',
-        'Two': '2',
-        'Three': '3',
-        'Four': '4',
-        'Five': '5',
-        'Six': '6',
-        'Seven': '7',
-        'Eight': '8',
-        'Nine': '9',
-        'Ten': '10',
-        '1': '1',
-        '2': '2',
-        '3': '3',
-        '4': '4',
-        '5': '5',
-        '6': '6',
-        '7': '7',
-        '8': '8',
-        '9': '9',
-        '10': '10'
-    };
-    
-    const trimmed = className.toString().trim();
-    return classMap[trimmed] || trimmed;
-}
-
-function getClassDisplayName(className) {
-    const displayMap = {
-        '1': 'One',
-        '2': 'Two',
-        '3': 'Three',
-        '4': 'Four',
-        '5': 'Five',
-        '6': 'Six',
-        '7': 'Seven',
-        '8': 'Eight',
-        '9': 'Nine',
-        '10': 'Ten'
-    };
-    return displayMap[className] || className;
-}
-
-function getClassOrder(className) {
-    const orderMap = {
-        '1': 1,
-        '2': 2,
-        '3': 3,
-        '4': 4,
-        '5': 5,
-        '6': 6,
-        '7': 7,
-        '8': 8,
-        '9': 9,
-        '10': 10,
-        'One': 1,
-        'Two': 2,
-        'Three': 3,
-        'Four': 4,
-        'Five': 5,
-        'Six': 6,
-        'Seven': 7,
-        'Eight': 8,
-        'Nine': 9,
-        'Ten': 10
-    };
-    return orderMap[className] || 999;
-}
-
-// Helper function to check if a student is absent (0 in all subjects)
-function isStudentAbsent(studentMarks, allExamMarks) {
-    if (!studentMarks || typeof studentMarks !== 'object') {
-        return false;
-    }
-
-    const studentReg = studentMarks.reg;
-    const studentClass = studentMarks.studentClass;
-    const section = studentMarks.section;
-
-    if (studentReg == null || studentClass == null) {
-        return false;
-    }
-
-    const allStudentRecords = Array.isArray(allExamMarks)
-        ? allExamMarks.filter(mark => {
-            if (!mark || typeof mark !== 'object') return false;
-            return String(mark.reg || '') === String(studentReg) &&
-                String(mark.studentClass || '') === String(studentClass) &&
-                String(mark.section || '') === String(section || '');
-        })
-        : [];
-    
-    let hasAnyMarks = false;
-    for (const record of allStudentRecords) {
-        const theoryMarks = Number(record.theorymarks || 0);
-        const practicalMarks = Number(record.practicalmarks || 0);
-        if (theoryMarks > 0 || practicalMarks > 0) {
-            hasAnyMarks = true;
-            break;
-        }
-    }
-    
-    return !hasAnyMarks;
-}
-
-function calculateGP(percentage) {
-    if (percentage >= 90) return 4.0;
-    if (percentage >= 80) return 3.6;
-    if (percentage >= 70) return 3.2;
-    if (percentage >= 60) return 2.8;
-    if (percentage >= 50) return 2.4;
-    if (percentage >= 40) return 2.0;
-    if (percentage >= 30) return 1.6;
-    return 0.0;
-}
-
-// Sort function for roll numbers (handle string numbers like "1", "2", "10")
-function sortRollNumbers(a, b) {
-    const numA = parseInt(a);
-    const numB = parseInt(b);
-    if (!isNaN(numA) && !isNaN(numB)) {
-        return numA - numB;
-    }
-    return String(a).localeCompare(String(b));
-}
-
-function normalizeClassName(className) {
-    if (!className) return className;
-    const classMap = {
-        'One': '1', 'Two': '2', 'Three': '3', 'Four': '4', 'Five': '5',
-        'Six': '6', 'Seven': '7', 'Eight': '8', 'Nine': '9', 'Ten': '10',
-        '1': '1', '2': '2', '3': '3', '4': '4', '5': '5',
-        '6': '6', '7': '7', '8': '8', '9': '9', '10': '10'
-    };
-    return classMap[className.toString().trim()] || className;
-}
-
-function getClassDisplayName(className) {
-    const displayMap = {
-        '1': 'One', '2': 'Two', '3': 'Three', '4': 'Four', '5': 'Five',
-        '6': 'Six', '7': 'Seven', '8': 'Eight', '9': 'Nine', '10': 'Ten'
-    };
-    return displayMap[className] || className;
-}
-
-function getClassOrder(className) {
-    const orderMap = {
-        '1': 1, '2': 2, '3': 3, '4': 4, '5': 5,
-        '6': 6, '7': 7, '8': 8, '9': 9, '10': 10,
-        'One': 1, 'Two': 2, 'Three': 3, 'Four': 4, 'Five': 5,
-        'Six': 6, 'Seven': 7, 'Eight': 8, 'Nine': 9, 'Ten': 10
-    };
-    return orderMap[className] || 999;
-}
-
-function calculateGP(percentage) {
-    if (percentage >= 90) return 4.0;
-    if (percentage >= 80) return 3.6;
-    if (percentage >= 70) return 3.2;
-    if (percentage >= 60) return 2.8;
-    if (percentage >= 50) return 2.4;
-    if (percentage >= 40) return 2.0;
-    if (percentage >= 30) return 1.6;
-    return 0.0;
-}
-
-function sortRollNumbers(a, b) {
-    const numA = parseInt(a);
-    const numB = parseInt(b);
-    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-    return String(a).localeCompare(String(b));
-}
-
-exports.subjectWiseFailStudents = async (req, res) => {
-    try {
-        const { classFilter, sectionFilter, subjectFilter, terminalFilter, calculationType } = req.query;
-    const selectedCalculationType = calculationType === 'practical' ? 'practical' : 'theory';
-        
-        console.log('=== Starting Subject Wise Fail Students ===');
-        
-        // Get all data in parallel
-        const [subjects, terminals, classSectionList, examMarks] = await Promise.all([
-            newsubject.find({}),
-            terminalModel.find({}).lean(),
-            studentClass.find({}, { studentClass: 1, section: 1 }).lean(),
-            getSlipModel().find(buildQuery(classFilter, sectionFilter, terminalFilter))
-        ]);
-        
-        console.log(`Found ${examMarks.length} exam marks`);
-        
-        if (examMarks.length === 0) {
-            return renderEmptyResponse(res, classFilter, sectionFilter, subjectFilter, terminalFilter, calculationType, subjects, terminals, classSectionList);
-        }
-
-        // Build maps for quick lookup
-        const subjectClassMap = buildSubjectClassMap(subjects);
-        const classSectionMap = buildClassSectionMap(classSectionList);
-        const availableClasses = getAvailableClasses(classSectionList);
-        const availableSubjects = getAvailableSubjects(subjects, examMarks);
-        const availableTerminals = getAvailableTerminals(terminals);
-
-        // Build student mark map for absent check (optimized)
-        const studentMarkMap = buildStudentMarkMap(examMarks);
-
-        // Process fail students
-        const failStudentsData = [];
-        const subjectList = subjectFilter && subjectFilter !== 'all' ? [subjectFilter] : [...new Set(examMarks.map(m => m.subject))];
-        
-        for (const subjectName of subjectList) {
-            const subjectMarks = examMarks.filter(m => m.subject === subjectName);
-          const classMap = groupMarksByClass(subjectMarks, subjectClassMap, subjectName, selectedCalculationType, studentMarkMap, sectionFilter);
-            
-            if (Object.keys(classMap).length > 0) {
-                const totalFail = Object.values(classMap).reduce((sum, sections) => {
-                    return sum + Object.values(sections).reduce((s, arr) => s + arr.length, 0);
-                }, 0);
-                
-                failStudentsData.push({
-                    subject: subjectName,
-                    classes: classMap,
-                    totalFail: totalFail
-                });
-            }
-        }
-
-        // Sort by class order
-        failStudentsData.sort((a, b) => {
-            const aClass = Object.keys(a.classes)[0] || '';
-            const bClass = Object.keys(b.classes)[0] || '';
-            return getClassOrder(aClass) - getClassOrder(bClass);
-        });
-
-        console.log(`Found ${failStudentsData.length} subjects with fail students`);
-        
-        res.render('./exam/subjectwisefailstudents', {
-            failStudentsData,
-            classFilter: classFilter || 'all',
-            sectionFilter: sectionFilter || 'all',
-            subjectFilter: subjectFilter || 'all',
-            terminalFilter: terminalFilter || 'all',
-            calculationType: selectedCalculationType,
-            availableSubjects,
-            availableClasses,
-            availableTerminals,
-            classSectionMap,
-            getClassDisplayName,
-             getClassOrder: getClassOrder
-        });
-        
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).send('Error: ' + error.message);
-    }
-};
-
-// Helper functions
-function buildQuery(classFilter, sectionFilter, terminalFilter) {
-    const query = {};
-    if (classFilter && classFilter !== 'all') {
-        const normalized = normalizeClassName(classFilter);
-        query.studentClass = { $in: [normalized, getClassDisplayName(normalized)] };
-    }
-    if (sectionFilter && sectionFilter !== 'all') {
-        query.section = sectionFilter;
-    }
-    if (terminalFilter && terminalFilter !== 'all') {
-        query.terminal = { $in: [terminalFilter, terminalFilter.toLowerCase(), terminalFilter.toUpperCase()] };
-    }
-    return query;
-}
-
-function buildSubjectClassMap(subjects) {
-    const map = {};
-    subjects.forEach(sub => {
-        if (!map[sub.newsubject]) map[sub.newsubject] = {};
-        map[sub.newsubject][normalizeClassName(sub.forClass)] = sub;
-    });
-    return map;
-}
-
-function buildClassSectionMap(classSectionList) {
-    const map = {};
-    classSectionList.forEach(item => {
-        const rawClass = String(item.studentClass || '').trim();
-        const section = String(item.section || '').trim();
-        if (!rawClass || !section) return;
-        const normalized = normalizeClassName(rawClass);
-        if (!map[normalized]) map[normalized] = [];
-        if (!map[normalized].includes(section)) map[normalized].push(section);
-    });
-    Object.keys(map).forEach(key => map[key].sort());
-    return map;
-}
-
-function buildStudentMarkMap(examMarks) {
-    const map = {};
-    examMarks.forEach(mark => {
-        const key = `${mark.reg}_${mark.studentClass}_${mark.section || ''}`;
-        if (!map[key]) map[key] = { totalMarks: 0, hasMarks: false };
-        const theory = mark.theorymarks || 0;
-        const practical = mark.practicalmarks || 0;
-        map[key].totalMarks += theory + practical;
-        if (theory > 0 || practical > 0) map[key].hasMarks = true;
-    });
-    return map;
-}
-
-function isStudentAbsent(reg, studentClass, section, studentMarkMap) {
-    if (studentMarkMap == null || typeof studentMarkMap !== 'object') return false;
-    if (reg == null || studentClass == null) return false;
-
-    const key = `${String(reg)}_${String(studentClass)}_${String(section || '')}`;
-    const data = studentMarkMap[key];
-    return data ? !data.hasMarks : false;
-}
-
-function groupMarksByClass(subjectMarks, subjectClassMap, subjectName, calculationType, studentMarkMap, sectionFilter) {
-    const classMap = {};
-    
-    for (const student of subjectMarks) {
-        const className = normalizeClassName(student.studentClass);
-        const section = student.section || 'Unassigned';
-        
-        // Skip if section filter doesn't match
-        if (sectionFilter && sectionFilter !== 'all' && section !== sectionFilter) continue;
-        
-        // Skip absent students
-        if (isStudentAbsent(student.reg, student.studentClass, student.section, studentMarkMap)) continue;
-        
-        const theoryMarks = student.theorymarks || 0;
-        const practicalMarks = student.practicalmarks || 0;
-        const classConfig = subjectClassMap[subjectName]?.[className];
-        const passingMarks = classConfig?.passingMarks || 18;
-        const theoryFull = classConfig?.theory || 50;
-        const practicalFull = classConfig?.practical || 50;
-        const theoryCredit = classConfig?.theoryCreditHour || 2.5;
-        const practicalCredit = classConfig?.practicalCreditHour || 2.5;
-        const normalizedClass = normalizeClassName(className);
-        const isTheoryOnlyClass = ['1', '2', '3'].includes(normalizedClass);
-        
-        // Check if failed
-        let failed = false;
-        let failReason = '';
-        
-        if (calculationType === 'theory' || isTheoryOnlyClass) {
-            if (theoryMarks < passingMarks) {
-                failed = true;
-                failReason = `Theory (${theoryMarks}) < Pass (${passingMarks})`;
-            }
-        } else {
-            if (theoryMarks < passingMarks) {
-                failed = true;
-                failReason = `Theory (${theoryMarks}) < Pass (${passingMarks})`;
-            } else {
-                const theoryPct = theoryFull > 0 ? (theoryMarks / theoryFull) * 100 : 0;
-                const practicalPct = practicalFull > 0 ? (practicalMarks / practicalFull) * 100 : 0;
-                const gp = (theoryCredit * calculateGP(theoryPct) + practicalCredit * calculateGP(practicalPct)) / (theoryCredit + practicalCredit);
-                if (gp < 1.6) {
-                    failed = true;
-                    failReason = `GP (${gp.toFixed(2)}) < 1.6`;
-                }
-            }
-        }
-        
-        if (failed) {
-            if (!classMap[className]) classMap[className] = {};
-            if (!classMap[className][section]) classMap[className][section] = [];
-            
-            classMap[className][section].push({
-                name: student.name || 'Unknown',
-                roll: student.roll || '',
-                reg: student.reg || '',
-                theoryMarks,
-                practicalMarks,
-                theoryFull,
-                practicalFull,
-                totalPractical: student.totalpracticalmarks || 0,
-                terminalMarks: student.terminalmarks || 0,
-                attendance: student.attendance || 0,
-                passMarks: passingMarks,
-                failReason,
-                terminal: student.terminal || '',
-                academicYear: student.academicYear || ''
-            });
-        }
-    }
-    
-    // Sort students by roll number in each section
-    Object.keys(classMap).forEach(className => {
-        Object.keys(classMap[className]).forEach(section => {
-            classMap[className][section].sort((a, b) => sortRollNumbers(a.roll, b.roll));
-        });
-    });
-    
-    return classMap;
-}
-
-function getAvailableClasses(classSectionList) {
-    const classes = [...new Set(
-        classSectionList
-            .map(item => String(item.studentClass || '').trim())
-            .filter(Boolean)
-            .map(normalizeClassName)
-    )];
-    return classes.sort((a, b) => getClassOrder(a) - getClassOrder(b));
-}
-
-function getAvailableSubjects(subjects, examMarks) {
-    const subjectSet = new Set([
-        ...subjects.map(s => s.newsubject).filter(Boolean),
-        ...examMarks.map(m => m.subject).filter(Boolean)
-    ]);
-    return [...subjectSet].sort();
-}
-
-function getAvailableTerminals(terminals) {
-    const terminalSet = new Set();
-    terminals.forEach(item => {
-        [item.terminalName, item.name, item.terminal, item.term]
-            .filter(Boolean)
-            .forEach(v => terminalSet.add(String(v).trim()));
-    });
-    return [...terminalSet].sort();
-}
-
-function renderEmptyResponse(res, classFilter, sectionFilter, subjectFilter, terminalFilter, calculationType, subjects, terminals, classSectionList) {
-    const availableSubjects = [...new Set(subjects.map(s => s.newsubject).filter(Boolean))].sort();
-    const availableClasses = getAvailableClasses(classSectionList);
-    const availableTerminals = getAvailableTerminals(terminals);
-    const classSectionMap = buildClassSectionMap(classSectionList);
-    
-    res.render('./exam/subjectwisefailstudents', {
-        failStudentsData: [],
-        classFilter: classFilter || 'all',
-        sectionFilter: sectionFilter || 'all',
-        subjectFilter: subjectFilter || 'all',
-        terminalFilter: terminalFilter || 'all',
-        calculationType: calculationType || 'theory',
-        availableSubjects,
-        availableClasses,
-        availableTerminals,
-        classSectionMap,
-        getClassDisplayName
-    });
-}
-
-// ecd grade counter
-// controllers/gradeCounterController.js
-
-
-// Helper function to check if a value is Ab (sentinel 0.000001)
-function isAb(value) {
-    if (value === null || value === undefined) return false;
-    const strValue = String(value).trim();
-    if (strValue === '0.000001') return true;
-    if (typeof value === 'number') {
-        const epsilon = 0.0000001;
-        if (Math.abs(value - 0.000001) < epsilon) return true;
-    }
-    if (typeof value === 'string') {
-        const cleanValue = value.trim().toLowerCase();
-        if (cleanValue === '0.000001' || cleanValue === 'ab' || cleanValue === 'absent') return true;
-    }
-    return false;
-}
-
-// Helper function to get numeric value
-function getNumericValue(value) {
-    if (isAb(value)) return 0;
-    if (value === null || value === undefined) return 0;
-    const num = Number(value);
-    return isNaN(num) ? 0 : num;
-}
-
-// Helper function to get grade from GP
-function getGradeFromGP(gp) {
-    if (gp >=3.61 && gp <= 4.0) return "A+";
-    if (gp >= 3.21 && gp <= 3.60) return "A";
-    if (gp >= 2.81 && gp <= 3.20) return "B+";
-    if (gp >= 2.41 && gp <= 2.80) return "B";
-    if (gp >= 2.01 && gp <= 2.40) return "C+";
-    if (gp >= 1.61 && gp <= 2.00) return "C";
-    if (gp === 1.6) return "D";
-    return "NG";
-}
-
-// Helper function to get worksheet GP
-function getWorksheetGP(grade) {
-    if (!grade) return 0;
-    if (isAb(grade)) return 0;
-    const gradeMap = {
-        'A+': 4.0,
-        'A': 3.6,
-        'B+': 3.2,
-        'B': 2.8,
-        'C+': 2.4,
-        'C': 2.0,
-        'D': 1.6,
-        'NG': 0.0
-    };
-    return gradeMap[grade] || 0;
-}
-
-// Helper function to get subject model
-const getSubjectModel = (subjectinput, studentClass, section, terminal) => {
-    const modelName = `${subjectinput.replace(/\s+/g, '_')}_${studentClass}_${section}_${terminal}`;
-  if (mongoose.models[modelName]) {
-    return mongoose.models[modelName];
-  }
-  return mongoose.model(modelName, studentSchema, modelName);
-};
-
-// Helper function to get all students for a class
-const getStudentsForClass = async (studentClass, section, terminal) => {
-    try {
-    const studentModel = mongoose.models.students
-      || mongoose.model('students', new mongoose.Schema({}, { strict: false }), 'students');
-        const students = await studentModel.find({
-            studentClass: studentClass,
-            section: section,
-            terminal: terminal
-        }).lean();
-        return students;
-    } catch (err) {
-        console.error('Error getting students:', err);
-        return [];
-    }
-};
-
-// Helper function to get all subjects for a class
-const getSubjectsForClass = async (studentClass, terminal) => {
-    try {
-        const subjects = await subjectlist.find({
-            forClass: studentClass,
-            forTerminal: terminal
-        }).lean();
-        return subjects;
-    } catch (err) {
-        console.error('Error getting subjects:', err);
-        return [];
-    }
-};
-
-// Helper function to get subject data with question keys
-const getSubjectData = async (subjectName, studentClass, terminal) => {
-    try {
-        const subjectData = await subjectlist.findOne({
-            subject: subjectName,
-            forClass: studentClass,
-            forTerminal: terminal
-        }).lean();
-        return subjectData;
-    } catch (err) {
-        console.error('Error getting subject data:', err);
-        return null;
-    }
-};
-
-// Helper function to calculate GP for a student in a subject
-function calculateStudentGP(studentMarks, subjectData, isNoWorksheet = false) {
-    // Get question key values
-    const keyValues = {};
-    const roman = ['i','ii','iii','iv','v','vi','vii','viii','ix','x'];
-    const questionToChapter = {};
-    
-    if (subjectData && subjectData.chapter && Array.isArray(subjectData.chapter)) {
-        subjectData.chapter.forEach(chap => {
-            if (chap.questions && Array.isArray(chap.questions)) {
-                chap.questions.forEach(q => {
-                    questionToChapter[q] = chap.chapterName;
-                });
-            }
-        });
-    }
-
-    for (const key in subjectData) {
-        if (/^q\d+[a-z]$/.test(key)) {
-            const hasSubparts = subjectData[`${key}_has_subparts`] === "on" || subjectData[`${key}_has_subparts`] === true;
-            const subpartsCount = parseInt(subjectData[`${key}_subparts_count`] || 0);
-            const marksPerSubpart = parseFloat(subjectData[`${key}_marks_per_subpart`] || 0);
-            const marks = parseFloat(subjectData[key] || 0);
-
-            if (hasSubparts && subpartsCount > 0 && !isNaN(marksPerSubpart) && marksPerSubpart > 0) {
-                for (let i = 0; i < subpartsCount; i++) {
-                    const subKey = `${key}_${roman[i]}`;
-                    keyValues[subKey] = marksPerSubpart;
-                }
-            } else if (!hasSubparts && !isNaN(marks) && marks > 0) {
-                keyValues[key] = marks;
-            }
-        }
-    }
-
-    let totalTheoryMarks = 0;
-    let totalTheoryPossible = 0;
-
-    // Calculate theory marks
-    for (const key in keyValues) {
-        const fullMarks = keyValues[key];
-        if (isNaN(fullMarks) || fullMarks <= 0) continue;
-
-        const obtainedMarks = studentMarks[key] !== undefined ? parseFloat(studentMarks[key]) : 0;
-        const isAbValue = isAb(obtainedMarks);
-        
-        totalTheoryMarks += isAbValue ? 0 : obtainedMarks;
-        totalTheoryPossible += fullMarks;
-    }
-
-    // Calculate theory percentage
-    const theoryPercentage = totalTheoryPossible > 0 ? (totalTheoryMarks / totalTheoryPossible) * 100 : 0;
-    let theoryGP = 0;
-
-    // Convert percentage to GP (matching ledger logic)
-    if (theoryPercentage >= 90) theoryGP = 4.0;
-    else if (theoryPercentage >= 80) theoryGP = 3.6;
-    else if (theoryPercentage >= 70) theoryGP = 3.2;
-    else if (theoryPercentage >= 60) theoryGP = 2.8;
-    else if (theoryPercentage >= 50) theoryGP = 2.4;
-    else if (theoryPercentage >= 40) theoryGP = 2.0;
-    else if (theoryPercentage >= 33) theoryGP = 1.6;
-    else theoryGP = 0.0;
-
-    if (isNoWorksheet) {
-        return theoryGP;
-    }
-
-    // Calculate practical/worksheet GP
-    let practicalGP = 0;
-    if (studentMarks.worksheetGrades && studentMarks.worksheetGrades.length > 0) {
-        let totalWorksheetGP = 0;
-        let validWorksheets = 0;
-        studentMarks.worksheetGrades.forEach(grade => {
-            const gp = getWorksheetGP(grade);
-            if (gp > 0 || grade === 'NG' || grade === 'D') {
-                totalWorksheetGP += gp;
-                validWorksheets++;
-            }
-        });
-        if (validWorksheets > 0) {
-            practicalGP = totalWorksheetGP / validWorksheets;
-        }
-    }
-
-    // Calculate combined GP (matching ledger logic)
-    const avgGP = (theoryGP + practicalGP) / 2;
-    return avgGP;
-}
-
-// Main controller method
-exports.getGradeCounterLegacy = async (req, res) => {
-    try {
-        const { terminal, academicYear, filterSubject, calcMode } = req.query;
-        
-        // Get all class data for dropdown
-        const classList = mongoose.model('studentClass', classSchema, 'classlist');
-        const studentClassdata = await classList.find({}).lean();
-
-        // Get all terminals
-       
-        const terminalsData = await terminalModel.find({}).lean();
-        const terminals = terminalsData.map(t => t.terminal).filter(Boolean);
-
-        // Get unique years from marksheet setups
-    
-        const marksheetSetups = await marksheetSetup.find({}).lean();
-        const years = [...new Set(marksheetSetups.map(m => m.academicYear).filter(Boolean))].sort((a, b) => b - a);
-
-        // Get all unique subjects
-        const allSubjects = await subjectlist.find({}).lean();
-        const subjectList = [...new Set(allSubjects.map(s => s.subject).filter(Boolean))].sort();
-
-        // Initialize grade data structure
-        const gradeData = {};
-        const grades = ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'NG'];
-
-        // If no filters are applied, show all data
-        if (!terminal && !academicYear) {
-            // Get all class-section combinations
-            const classSections = [];
-            studentClassdata.forEach(cls => {
-                const key = `${cls.studentClass}-${cls.section}`;
-                if (!classSections.includes(key)) {
-                    classSections.push(key);
-                }
-            });
-
-            // Process each class-section
-            for (const classSection of classSections) {
-                const [studentClass, section] = classSection.split('-');
-                
-                // Get all terminals for this class
-              
-                const studentTerminals = await getSlipModel().distinct('terminal', {
-                    studentClass: studentClass,
-                    section: section
-                });
-
-                for (const term of studentTerminals) {
-                    await processClassData(studentClass, section, term, gradeData, grades, filterSubject, calcMode);
-                }
-            }
-        } else {
-            // Process with filters
-            const classSections = [];
-            studentClassdata.forEach(cls => {
-                const key = `${cls.studentClass}-${cls.section}`;
-                if (!classSections.includes(key)) {
-                    classSections.push(key);
-                }
-            });
-
-            for (const classSection of classSections) {
-                const [studentClass, section] = classSection.split('-');
-                await processClassData(studentClass, section, terminal, gradeData, grades, filterSubject, calcMode);
-            }
-        }
-
-        // Get sidenav data
-    
-
-        res.render("./exam/gradeCounter", {
-            gradeData: gradeData,
-            grades: grades,
-            terminals: terminals,
-            years: years,
-            subjectList: subjectList,
-            selectedTerminal: terminal || '',
-            selectedYear: academicYear || '',
-            filterSubject: filterSubject || '',
-            calcMode: calcMode || 'combined',
-            studentClassdata: studentClassdata,
-            currentPage: 'gradecounter',
-
-        });
-
-    } catch (err) {
-        console.error("Error in getGradeCounter:", err);
-        res.status(500).render('404', {
-            errorMessage: 'Error loading grade counter: ' + err.message,
-            currentPage: 'teacher'
-        });
-    }
-};
-
-// Helper function to process class data
-async function processClassData(studentClass, section, terminal, gradeData, grades, filterSubject, calcMode) {
-    try {
-        // Get all subjects for this class and terminal
-        const subjects = await getSubjectsForClass(studentClass, terminal);
-        
-        if (!subjects || subjects.length === 0) return;
-
-        // Get all students for this class
-        const students = await getStudentsForClass(studentClass, section, terminal);
-        
-        if (!students || students.length === 0) return;
-
-        // Subjects that should NOT have worksheets
-        const NO_WORKSHEET_SUBJECTS = ['ORAL', 'HYGIENE', 'ECA'];
-        if (studentClass && studentClass.toUpperCase() === 'LKG') {
-            NO_WORKSHEET_SUBJECTS.push('THEME');
-        }
-
-        // Process each subject
-        for (const subjectItem of subjects) {
-            const subjectName = subjectItem.subject;
-            
-            // Skip if filterSubject is set and doesn't match
-            if (filterSubject && subjectName !== filterSubject) continue;
-
-            const isNoWorksheet = NO_WORKSHEET_SUBJECTS.includes(subjectName.toUpperCase());
-
-            // Get subject data
-            const subjectData = await getSubjectData(subjectName, studentClass, terminal);
-            if (!subjectData) continue;
-
-            // Get the model for this subject
-            const model = getSubjectModel(subjectName, studentClass, section, terminal);
-
-            // Initialize grade counts for this subject if not exists
-            if (!gradeData[subjectName]) {
-                gradeData[subjectName] = {};
-            }
-
-            // Initialize class data
-            const classKey = `${studentClass}`;
-            if (!gradeData[subjectName][classKey]) {
-                gradeData[subjectName][classKey] = {
-                    grades: {},
-                    total: 0
-                };
-                grades.forEach(g => gradeData[subjectName][classKey].grades[g] = 0);
-            }
-
-            // Process each student
-            for (const student of students) {
-                try {
-                    const studentMarks = await model.findOne({
-                        subject: subjectName,
-                        studentClass: studentClass,
-                        section: section,
-                        terminal: terminal,
-                        roll: parseInt(student.roll)
-                    }).lean();
-
-                    if (!studentMarks) continue;
-
-                    // Calculate GP based on mode
-                    let gp = 0;
-                    
-                    if (calcMode === 'theory') {
-                        // Theory only
-                        const theoryGP = calculateStudentGP(studentMarks, subjectData, true);
-                        gp = theoryGP;
-                    } else if (calcMode === 'practical') {
-                        // Practical only - calculate from worksheet grades
-                        let practicalGP = 0;
-                        if (studentMarks.worksheetGrades && studentMarks.worksheetGrades.length > 0) {
-                            let totalWorksheetGP = 0;
-                            let validWorksheets = 0;
-                            studentMarks.worksheetGrades.forEach(grade => {
-                                const gradeGP = getWorksheetGP(grade);
-                                if (gradeGP > 0 || grade === 'NG' || grade === 'D') {
-                                    totalWorksheetGP += gradeGP;
-                                    validWorksheets++;
-                                }
-                            });
-                            if (validWorksheets > 0) {
-                                practicalGP = totalWorksheetGP / validWorksheets;
-                            }
-                        }
-                        gp = practicalGP;
-                    } else {
-                        // Combined (Theory + Practical)
-                        gp = calculateStudentGP(studentMarks, subjectData, isNoWorksheet);
-                    }
-
-                    // Get grade from GP
-                    const grade = getGradeFromGP(gp);
-
-                    // Increment grade count
-                    if (gradeData[subjectName][classKey].grades[grade] !== undefined) {
-                        gradeData[subjectName][classKey].grades[grade]++;
-                    }
-                    gradeData[subjectName][classKey].total++;
-
-                } catch (err) {
-                    console.error(`Error processing student ${student.roll} for ${subjectName}:`, err);
-                    continue;
-                }
-            }
-        }
-
-    } catch (err) {
-        console.error(`Error processing class ${studentClass} ${section}:`, err);
-    }
-}
-
-// Get grade counter page (alternative route)
-exports.getGradeCounterPage = async (req, res) => {
-    try {
-  
-        
-        const classList = mongoose.model('studentClass', classSchema, 'classlist');
-        const studentClassdata = await classList.find({}).lean();
-        
-      terminalModel.find({}).lean();
-        const terminals = terminalsData.map(t => t.terminal).filter(Boolean);
-
-        // Get unique years
-        const marksheetModel = mongoose.model('marksheetsetup', new mongoose.Schema({}, { strict: false }), 'marksheetsetups');
-        const marksheetSetups = await marksheetModel.find({}).lean();
-        const years = [...new Set(marksheetSetups.map(m => m.academicYear).filter(Boolean))].sort((a, b) => b - a);
-
-        // Get all unique subjects
-        const allSubjects = await subjectlist.find({}).lean();
-        const subjectList = [...new Set(allSubjects.map(s => s.subject).filter(Boolean))].sort();
-
-        res.render("grade-counter-select", {
-            studentClassdata: studentClassdata,
-            terminals: terminals,
-            years: years,
-            subjectList: subjectList,
-            currentPage: 'gradecounter',
-            ...sidenavData
-        });
-
-    } catch (err) {
-        console.error("Error in getGradeCounterPage:", err);
-        res.status(500).render('404', {
-            errorMessage: 'Error loading grade counter page: ' + err.message,
-            currentPage: 'teacher'
-        });
-    }
-};
-
-exports.teacherAnalysis = async (req, res) => {
-    try {
-        const Teacher = usermodel;
-        const ExamMarks = await getSlipModel()
-
-        // Get all teachers with role TEACHER
-        const teachers = await Teacher.find({ role: 'TEACHER' });
-        
-        let teacherData = [];
-
-        for (const teacher of teachers) {
-            const teacherName = teacher.teacherName || teacher.username;
-            let subjectsData = [];
-            let totalStudentsAll = 0;
-            let totalPassedAll = 0;
-            let totalFailedAll = 0;
-            let totalMarksAll = 0;
-            let passPercentages = [];
-
-            // Process each allowed subject
-            for (const allowedSubject of teacher.allowedSubjects) {
-                if (!allowedSubject.studentClass || !allowedSubject.section) continue;
-
-                const marks = await ExamMarks.find({
-                    subject: allowedSubject.subject,
-                    studentClass: allowedSubject.studentClass,
-                    section: allowedSubject.section,
-                    terminal: 'FIRST'
-                });
-
-                if (marks.length === 0) continue;
-
-                let passed = 0;
-                let failed = 0;
-                let totalMarks = 0;
-
-                for (const mark of marks) {
-                    const theoryMarks = mark.theorymarks || mark.theoryMarks || 0;
-                    const passMarks = mark.passMarks || 0;
-                    
-                    totalMarks += theoryMarks;
-                    
-                    if (theoryMarks >= passMarks) {
-                        passed++;
-                    } else {
-                        failed++;
-                    }
-                }
-
-                const totalStudents = marks.length;
-                const passPercentage = totalStudents > 0 ? (passed / totalStudents) * 100 : 0;
-                const failPercentage = totalStudents > 0 ? (failed / totalStudents) * 100 : 0;
-                const averageMarks = totalStudents > 0 ? totalMarks / totalStudents : 0;
-
-                subjectsData.push({
-                    subject: allowedSubject.subject,
-                    class: allowedSubject.studentClass,
-                    section: allowedSubject.section,
-                    totalStudents,
-                    passed,
-                    failed,
-                    passPercentage: passPercentage.toFixed(2),
-                    failPercentage: failPercentage.toFixed(2),
-                    averageMarks: averageMarks.toFixed(2),
-                    totalMarks
-                });
-
-                totalStudentsAll += totalStudents;
-                totalPassedAll += passed;
-                totalFailedAll += failed;
-                totalMarksAll += totalMarks;
-                passPercentages.push(passPercentage);
-            }
-
-            // Calculate overall achievement - average of all subject pass percentages
-            const overallPassPercentage = passPercentages.length > 0 ? 
-                passPercentages.reduce((a, b) => a + b, 0) / passPercentages.length : 0;
-
-            // Also calculate overall pass rate (total passed / total students)
-            const overallPassRate = totalStudentsAll > 0 ? 
-                (totalPassedAll / totalStudentsAll) * 100 : 0;
-
-            teacherData.push({
-                teacherName: teacherName,
-                username: teacher.username,
-                subjects: subjectsData,
-                totalStudents: totalStudentsAll,
-                totalPassed: totalPassedAll,
-                totalFailed: totalFailedAll,
-                overallPassPercentage: overallPassPercentage.toFixed(2),
-                overallPassRate: overallPassRate.toFixed(2),
-                overallAverageMarks: totalStudentsAll > 0 ? 
-                    (totalMarksAll / totalStudentsAll).toFixed(2) : 0
-            });
-        }
-
-        // Sort by overall pass percentage
-        teacherData.sort((a, b) => parseFloat(b.overallPassPercentage) - parseFloat(a.overallPassPercentage));
-
-        // Get unique values for filters
-        const teacherNames = teacherData.map(t => t.teacherName);
-        const allSubjects = [...new Set(
-            teacherData.flatMap(t => t.subjects.map(s => s.subject))
-        )];
-        const allClasses = [...new Set(
-            teacherData.flatMap(t => t.subjects.map(s => s.class))
-        )];
-
-        res.render('./exam/teacherachievement', {
-            teacherData,
-            teacherNames,
-            allSubjects,
-            allClasses,
-            success: true
-        });
-
-    } catch (err) {
-        console.error('Error in teacherAnalysis:', err);
-        res.status(500).json({
-            success: false,
-            message: 'Error fetching teacher analysis',
-            error: err.message
-        });
-    }
-};
+exports.schoolanalysis = unavailableExamDashboardHandler('School analysis');
+exports.quantamanalysis = unavailableExamDashboardHandler('Quantum analysis');
+exports.getGradeCounter = unavailableExamDashboardHandler('Grade counter');
+exports.subjectWiseanalysis = unavailableExamDashboardHandler('Subject-wise analysis');
+exports.teacherAnalysis = unavailableExamDashboardHandler('Teacher analysis');
+exports.subjectWiseFailStudents = unavailableExamDashboardHandler('Subject-wise fail report');
+exports.printPortfolio = unavailableExamDashboardHandler('Portfolio print');
+exports.addParentMeeting = unavailableExamDashboardHandler('Parent meeting');
+exports.addPortfolioAchievement = unavailableExamDashboardHandler('Portfolio achievement');

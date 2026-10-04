@@ -30,6 +30,8 @@
 		.button-primary { background: var(--green); color: #fff; }
 		.button-primary:hover { background: var(--green-dark); }
 		.button-secondary { border-color: var(--line); background: #f4f7f4; color: var(--ink); }
+		.import-notice { margin: 0 16px; padding: 10px 12px; border: 1px solid #c8dfd1; border-radius: 5px; background: #edf8f1; color: var(--green-dark); font-size: .82rem; font-weight: 700; }
+		.import-error { border-color: #ebc9ce; background: #fff1f2; color: var(--red); }
 		.table-heading { padding: 17px 18px; }
 		h2 { margin: 0; font-size: 1rem; }
 		.count { color: var(--muted); font-size: .82rem; }
@@ -70,6 +72,13 @@
 				<button class="button button-secondary" type="submit">Apply dates</button>
 				<a class="button button-primary" href="/employeeattendance/export?startDateBs=<%= encodeURIComponent(startDateBs) %>&amp;endDateBs=<%= encodeURIComponent(endDateBs) %>" download>Export to Excel</a>
 			</form>
+				<% if (importMessage) { %><div class="import-notice" role="status"><%= importMessage %></div><% } %>
+				<% if (importError) { %><div class="import-notice import-error" role="alert"><%= importError %></div><% } %>
+				<form class="toolbar import-toolbar" method="post" action="/employeeattendance/import" enctype="multipart/form-data">
+					<a class="button button-secondary" href="/employeeattendance/template">Download CSV template</a>
+					<div class="filter"><label for="attendanceCsv">Upload attendance CSV</label><input id="attendanceCsv" name="attendanceCsv" type="file" accept=".csv,text/csv" required></div>
+					<button class="button button-primary" type="submit">Upload and save</button>
+				</form>
 			<div class="table-heading">
 				<h2>Daily attendance details</h2>
 				<span class="count"><span id="totalRows"><%= reportRows.length %></span> records</span>
