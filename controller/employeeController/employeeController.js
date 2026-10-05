@@ -14,6 +14,7 @@ const Event = require('../../model/eventmodel');
 const { getRecentNotices } = require('../noticecontroller/noticecontroller');
 const ManualPunchRequest = require('../../model/employeeSchema/manualPunchRequestSchema');
 const { Branch, Department, DepartmentSection, Designation, Shift } = require('../../model/employeeSchema/employeeSetupSchema');
+const EmployeeWeekend = require('../../model/employeeSchema/employeeWeekendSchema');
 const Staff = mongoose.models.staff || mongoose.model('staff', staffSchema, 'staff');
 const LeaveApplication = mongoose.models.LeaveApplication || mongoose.model('LeaveApplication', leaveApplicationSchema, 'leaveApplications');
 const employeeSetupConfigs = {
@@ -117,6 +118,14 @@ const employeeProfileCsvUpload = multer({
         return callback(new Error('Choose a .csv employee profile file.'));
     }
 });
+const employeeWeekendCsvUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 2 * 1024 * 1024, files: 1 },
+    fileFilter: (req, file, callback) => {
+        if (path.extname(file.originalname || '').toLowerCase() === '.csv') return callback(null, true);
+        return callback(new Error('Choose a .csv weekend file.'));
+}
+});
 
 exports.uploadEmployeeAttendanceCsv = (req, res, next) => employeeAttendanceCsvUpload.single('attendanceCsv')(req, res, error => {
     if (!error) return next();
@@ -132,6 +141,14 @@ exports.uploadEmployeeProfileCsv = (req, res, next) => employeeProfileCsvUpload.
         ? 'Choose a CSV file no larger than 5 MB.'
         : error.message || 'Unable to read the employee CSV.';
     return res.redirect(`/employeedetail?importError=${encodeURIComponent(message)}`);
+});
+
+exports.uploadEmployeeWeekendCsv = (req, res, next) => employeeWeekendCsvUpload.single('weekendCsv')(req, res, error => {
+    if (!error) return next();
+    const message = error instanceof multer.MulterError
+        ? 'Choose a CSV file no larger than 2 MB.'
+        : error.message || 'Unable to read the weekend CSV.';
+    return res.redirect(`/addweekend?importError=${encodeURIComponent(message)}`);
 });
 
 exports.uploadEmployeeDocuments = (req, res, next) => employeeDocumentUpload.any()(req, res, error => {
@@ -805,6 +822,122 @@ registerEmployeeSetupHandlers('departments', 'Department');
 registerEmployeeSetupHandlers('sections', 'Section');
 registerEmployeeSetupHandlers('designations', 'Designation');
 registerEmployeeSetupHandlers('shifts', 'Shift');
+
+const getDefaultEmployeeWeekendDate = () => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() + ((6 - date.getDay() + 7) % 7));
+    return getNepaliDate(date).slice(0, 10);
+};
+
+const renderEmployeeWeekendPage = async (req, res, options = {}) => {
+    const [records, editedRecord] = await Promise.all([
+        EmployeeWeekend.find({}).sort({ dateBs: -1 }).lean(),
+        req.query.edit && mongoose.isValidObjectId(req.query.edit)
+            ? EmployeeWeekend.findById(req.query.edit).lean()
+            : Promise.resolve(null)
+    ]);
+    const record = options.record || editedRecord || {
+        dateBs: getDefaultEmployeeWeekendDate(),
+        name: 'Saturday'
+    };
+    return res.status(options.status || 200).render('employee/addweekend', {
+        records,
+        record,
+        isEditing: Boolean(record._id),
+        currentPage: 'weekend-setup',
+        selectedEmployee: null,
+        message: req.query.saved ? 'Weekend or holiday saved.' : req.query.deleted ? 'Weekend or holiday deleted.' : req.query.imported ? `${req.query.imported} CSV date(s) imported.` : '',
+        error: options.error || String(req.query.error || ''),
+        importError: String(req.query.importError || '')
+    });
+};
+
+exports.showEmployeeWeekends = async (req, res) => {
+    try {
+        return await renderEmployeeWeekendPage(req, res);
+    } catch (error) {
+        console.error('Unable to load employee weekends:', error);
+        return res.status(500).send('Unable to load employee weekends.');
+    }
+};
+
+exports.saveEmployeeWeekend = async (req, res) => {
+    const recordId = String(req.body.recordId || '').trim();
+    try {
+        if (req.body.action === 'delete') {
+            if (!mongoose.isValidObjectId(recordId)) return res.redirect('/addweekend?error=Invalid+record.');
+            await EmployeeWeekend.deleteOne({ _id: recordId });
+            return res.redirect('/addweekend?deleted=1');
+        }
+
+        const date = parseNepaliDateKey(req.body.dateBs);
+        const record = {
+            dateBs: date ? getNepaliDate(date).slice(0, 10) : String(req.body.dateBs || '').trim(),
+            name: String(req.body.name || '').trim().slice(0, 100)
+        };
+        if (!date || !record.name) {
+            return renderEmployeeWeekendPage(req, res, {
+                status: 400,
+                record: { ...record, _id: recordId || undefined },
+                error: !date ? 'Choose a valid Bikram Sambat date.' : 'Enter a weekend or holiday name.'
+            });
+        }
+        if (recordId && !mongoose.isValidObjectId(recordId)) return res.status(400).send('Invalid weekend record.');
+        const duplicate = await EmployeeWeekend.findOne({ dateBs: record.dateBs, ...(recordId ? { _id: { $ne: recordId } } : {}) }).lean();
+        if (duplicate) {
+            return renderEmployeeWeekendPage(req, res, {
+                status: 409,
+                record: { ...record, _id: recordId || undefined },
+                error: `A weekend or holiday is already recorded for ${record.dateBs}. Edit that entry instead.`
+            });
+        }
+        if (recordId) await EmployeeWeekend.updateOne({ _id: recordId }, { $set: record }, { runValidators: true });
+        else await EmployeeWeekend.create(record);
+        return res.redirect('/addweekend?saved=1');
+    } catch (error) {
+        console.error('Unable to save employee weekend:', error);
+        return res.status(500).send('Unable to save employee weekend.');
+    }
+};
+
+exports.downloadEmployeeWeekendCsvTemplate = (req, res) => {
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="employee-weekends-template.csv"');
+    return res.send('\uFEFF"Date (BS)","Weekend name"\r\n');
+};
+
+exports.importEmployeeWeekendCsv = async (req, res) => {
+    try {
+        if (!req.file) throw new Error('Choose an employee weekend CSV file to upload.');
+        const { headers, rows: parsedRows } = await parseEmployeeAttendanceCsv(req.file.buffer);
+        const requiredHeaders = ['Date (BS)', 'Weekend name'];
+        const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
+        if (missingHeaders.length) throw new Error(`CSV is missing required columns: ${missingHeaders.join(', ')}.`);
+        const rows = parsedRows.filter(row => Object.values(row).some(value => String(value || '').trim()));
+        if (!rows.length) throw new Error('The CSV contains no weekend dates.');
+        if (rows.length > 5000) throw new Error('Upload no more than 5,000 weekend dates at a time.');
+
+        const recordsByDate = new Map();
+        rows.forEach((row, index) => {
+            const rowNumber = index + 2;
+            const parsedDate = parseNepaliDateKey(row['Date (BS)']);
+            const name = String(row['Weekend name'] || '').trim().slice(0, 100);
+            if (!parsedDate) throw new Error(`Row ${rowNumber}: enter a valid Bikram Sambat date in Date (BS).`);
+            if (!name) throw new Error(`Row ${rowNumber}: enter a weekend or holiday name.`);
+            const dateBs = getNepaliDate(parsedDate).slice(0, 10);
+            recordsByDate.set(dateBs, { dateBs, name });
+        });
+        const operations = Array.from(recordsByDate.values(), record => ({
+            updateOne: { filter: { dateBs: record.dateBs }, update: { $set: record }, upsert: true }
+        }));
+        await EmployeeWeekend.bulkWrite(operations, { ordered: true });
+        return res.redirect(`/addweekend?imported=${recordsByDate.size}`);
+    } catch (error) {
+        console.error('Unable to import employee weekend CSV:', error);
+        return res.redirect(`/addweekend?importError=${encodeURIComponent(error.message || 'Unable to import employee weekend CSV.')}`);
+    }
+};
 
 const getText = (value, maxLength = 500) => String(value || '').trim().slice(0, maxLength);
 const getBoolean = value => ['true', '1', 'yes', 'on', 'approved'].includes(String(value || '').trim().toLowerCase());
@@ -1844,9 +1977,9 @@ exports.importEmployeeProfileCsv = async (req, res) => {
 const parseAttendanceCsvTime = (value, rowNumber, label) => {
     const text = String(value || '').trim();
     if (!text || /^missed\b/i.test(text)) return null;
-    const match = text.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
-    if (!match) throw new Error(`Row ${rowNumber}: ${label} must use HH:mm format.`);
-    return `${match[1]}:${match[2]}`;
+    const match = text.match(/^(0?[0-9]|1[0-9]|2[0-3]):([0-5]\d)$/);
+    if (!match) throw new Error(`Row ${rowNumber}: ${label} must use H:mm or HH:mm format.`);
+    return `${match[1].padStart(2, '0')}:${match[2]}`;
 };
 
 exports.importEmployeeAttendanceCsv = async (req, res) => {

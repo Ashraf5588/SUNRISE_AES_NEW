@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Employee weekends and holidays</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+	<link href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css" rel="stylesheet" type="text/css">
+	<style>
+		:root { color-scheme:light; --ink:#1b2940; --muted:#66758a; --line:#d8e2ee; --blue:#24477b; --blue-dark:#18375f; --blue-soft:#eaf1fa; --canvas:#edf2f8; --paper:#fff; --green:#1c7655; --red:#b4404d; font-family:'DM Sans',sans-serif; color:var(--ink); background:var(--canvas); }
+		* { box-sizing:border-box; }
+		body { margin:0; min-height:100vh; background:linear-gradient(145deg,#f2f6fb,#e7eef7); }
+		button,input { font:inherit; }
+		.page-shell { width:min(1320px,calc(100% - 34px)); margin:0 auto; padding:28px 0 48px; }
+		h1,h2 { font-family:'Manrope',sans-serif; }
+		h1 { margin:0; font-size:1.55rem; }
+		.page-header,.panel-heading,.form-actions,.utility-actions,.row-actions { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+		.page-header { margin-bottom:18px; }
+		.eyebrow { margin:0 0 5px; color:var(--blue); font-size:.7rem; font-weight:800; text-transform:uppercase; }
+		.page-copy { margin:6px 0 0; color:var(--muted); font-size:.83rem; }
+		.panel { overflow:hidden; margin-bottom:15px; border:1px solid var(--line); border-radius:7px; background:var(--paper); }
+		.panel-heading { padding:13px 16px; border-bottom:1px solid var(--line); background:#f7f9fc; }
+		.panel-heading h2 { margin:0; font-size:.92rem; }
+		.panel-heading span,.helper { color:var(--muted); font-size:.74rem; }
+		.entry-form,.import-form { display:flex; align-items:end; flex-wrap:wrap; gap:12px; padding:15px 16px; }
+		.field { display:grid; gap:5px; min-width:min(250px,100%); }
+		.field label { color:#46566c; font-size:.73rem; font-weight:800; }
+		.field input { min-height:39px; padding:8px 10px; border:1px solid #ccd8e6; border-radius:5px; background:#fff; color:var(--ink); }
+		.field input:focus { outline:2px solid rgba(36,71,123,.18); border-color:var(--blue); }
+		.button { display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:38px; padding:0 12px; border:1px solid var(--blue); border-radius:5px; background:var(--blue); color:#fff; font-size:.76rem; font-weight:800; text-decoration:none; cursor:pointer; }
+		.button:hover { background:var(--blue-dark); color:#fff; }
+		.button-secondary { border-color:var(--line); background:#f5f8fc; color:var(--ink); }
+		.button-secondary:hover { background:#eaf1fa; color:var(--ink); }
+		.button-danger { min-height:32px; padding:0 10px; border-color:#efc9ce; background:#fff2f3; color:var(--red); }
+		.button-danger:hover { background:#ffe4e7; color:#8f2735; }
+		.utility-actions { justify-content:flex-start; flex-wrap:wrap; padding:0 16px 14px; }
+		.notice { margin:12px 16px; padding:10px 12px; border:1px solid #c8dfd1; border-radius:5px; background:#edf8f1; color:var(--green); font-size:.78rem; font-weight:700; }
+		.notice-error { border-color:#ebc9ce; background:#fff1f2; color:var(--red); }
+		.table-wrap { overflow:auto; }
+		table { width:100%; border-collapse:collapse; white-space:nowrap; font-size:.77rem; }
+		th,td { padding:10px 12px; border-bottom:1px solid #e9eef4; text-align:left; }
+		th { background:#f8fafd; color:var(--muted); font-size:.66rem; font-weight:800; text-transform:uppercase; }
+		tbody tr:hover { background:#f8fbff; }
+		tbody tr:last-child td { border-bottom:0; }
+		.date-cell { color:var(--blue); font-weight:800; }
+		.row-actions { justify-content:flex-start; }
+		.row-actions form { margin:0; }
+		.edit-link { display:inline-grid; place-items:center; width:32px; height:32px; border:1px solid #cbd8e6; border-radius:4px; background:#f5f8fc; color:var(--blue); text-decoration:none; }
+		.empty-state { padding:32px 20px; color:var(--muted); text-align:center; font-size:.8rem; }
+		@media(max-width:700px) { .page-shell { width:calc(100% - 20px); padding-top:18px; } .page-header { align-items:flex-start; flex-direction:column; } .entry-form,.import-form { align-items:stretch; flex-direction:column; } .field { width:100%; } .entry-form>.button,.import-form>.button,.utility-actions>.button { width:100%; } .panel-heading { align-items:flex-start; flex-direction:column; } }
+	</style>
+</head>
+<body>
+	<%- include('employeesidenav', { currentPage, selectedEmployee }) %>
+	<main class="page-shell">
+		<header class="page-header"><div><p class="eyebrow">People / Basic setup</p><h1>Employee weekends and holidays</h1><p class="page-copy">Manage employee non-working dates separately from the student holiday calendar.</p></div></header>
+		<% if (message) { %><div class="notice" role="status"><%= message %></div><% } %>
+		<% if (error) { %><div class="notice notice-error" role="alert"><%= error %></div><% } %>
+		<% if (importError) { %><div class="notice notice-error" role="alert"><%= importError %></div><% } %>
+		<section class="panel" aria-labelledby="weekend-form-title">
+			<div class="panel-heading"><h2 id="weekend-form-title"><%= isEditing ? 'Edit date' : 'Add date' %></h2><span><%= isEditing ? 'Update this employee calendar entry' : 'The default date is the next Nepali Saturday' %></span></div>
+			<form class="entry-form" method="post" action="/addweekend">
+				<input type="hidden" name="recordId" value="<%= record?._id || '' %>">
+				<div class="field"><label for="dateBs">Date (BS)</label><input id="dateBs" class="nepali-date-input" name="dateBs" type="text" inputmode="numeric" autocomplete="off" placeholder="YYYY-MM-DD" value="<%= record?.dateBs || '' %>" required></div>
+				<div class="field"><label for="weekendName">Weekend or holiday name</label><input id="weekendName" name="name" type="text" maxlength="100" placeholder="Saturday" value="<%= record?.name || '' %>" required></div>
+				<button class="button" type="submit"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i><%= isEditing ? 'Save changes' : 'Add date' %></button>
+				<% if (isEditing) { %><a class="button button-secondary" href="/addweekend">Cancel edit</a><% } %>
+			</form>
+			<div class="utility-actions"><a class="button button-secondary" href="/addweekend/template"><i class="fa-solid fa-download" aria-hidden="true"></i> Download CSV template</a></div>
+			<form class="import-form" method="post" action="/addweekend/import" enctype="multipart/form-data">
+				<div class="field"><label for="weekendCsv">Upload weekend dates CSV</label><input id="weekendCsv" name="weekendCsv" type="file" accept=".csv,text/csv" required></div>
+				<button class="button" type="submit"><i class="fa-solid fa-upload" aria-hidden="true"></i> Upload and save</button>
+				<span class="helper">Columns: Date (BS), Weekend name. Existing dates are updated.</span>
+			</form>
+		</section>
+		<section class="panel" aria-labelledby="weekend-list-title">
+			<div class="panel-heading"><h2 id="weekend-list-title">Employee calendar dates</h2><span><%= records.length %> dates</span></div>
+			<% if (records.length) { %><div class="table-wrap"><table><thead><tr><th>S.N.</th><th>Date (BS)</th><th>Name</th><th>Actions</th></tr></thead><tbody>
+				<% records.forEach((item,index) => { %><tr><td><%= index + 1 %></td><td class="date-cell"><%= item.dateBs %></td><td><%= item.name %></td><td><div class="row-actions"><a class="edit-link" href="/addweekend?edit=<%= item._id %>" aria-label="Edit <%= item.name %> on <%= item.dateBs %>" title="Edit"><i class="fa-solid fa-pen" aria-hidden="true"></i></a><form method="post" action="/addweekend" onsubmit="return confirm('Delete this employee calendar date?')"><input type="hidden" name="recordId" value="<%= item._id %>"><input type="hidden" name="action" value="delete"><button class="button button-danger" type="submit">Delete</button></form></div></td></tr><% }) %>
+			</tbody></table></div><% } else { %><div class="empty-state">No employee weekend or holiday dates have been added yet.</div><% } %>
+		</section>
+	</main>
+	<script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
+	<script>
+		const dateInput = document.getElementById('dateBs');
+		if (dateInput && typeof dateInput.NepaliDatePicker === 'function') dateInput.NepaliDatePicker({ dateFormat: 'YYYY-MM-DD', language: 'english' });
+		 document.querySelector('.entry-form').addEventListener('submit', event => {
+			const input = event.currentTarget.elements.dateBs;
+			const match = input.value.match(/^([0-9०-९]{4})-([0-9०-९]{1,2})-([0-9०-९]{1,2})$/);
+			if (!match) return;
+			const zero = /[०-९]/.test(input.value) ? '०' : '0';
+			input.value = `${match[1]}-${match[2].padStart(2, zero)}-${match[3].padStart(2, zero)}`;
+		});
+	</script>
+</body>
+</html>

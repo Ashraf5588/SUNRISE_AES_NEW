@@ -12,6 +12,10 @@ employee.get('/employeemanagementdashboard', verifytoken, isAdmin, employeeContr
 employee.get('/employeedata', verifytoken, isAdmin, employeeController.showEmployeeData);
 employee.get('/employeeattendancesetup', verifytoken, isAdmin, employeeController.showEmployeeAttendanceSetup);
 employee.post('/employeeattendancesetup', verifytoken, isAdmin, employeeController.saveEmployeeAttendanceSetup);
+employee.get('/addweekend/template', verifytoken, isAdmin, employeeController.downloadEmployeeWeekendCsvTemplate);
+employee.post('/addweekend/import', verifytoken, isAdmin, employeeController.uploadEmployeeWeekendCsv, employeeController.importEmployeeWeekendCsv);
+employee.get('/addweekend', verifytoken, isAdmin, employeeController.showEmployeeWeekends);
+employee.post('/addweekend', verifytoken, isAdmin, employeeController.saveEmployeeWeekend);
 employee.get('/branchsetup', verifytoken, isAdmin, employeeController.showBranchSetup);
 employee.post('/branchsetup', verifytoken, isAdmin, employeeController.saveBranchSetup);
 employee.get('/departmentsetup', verifytoken, isAdmin, employeeController.showDepartmentSetup);

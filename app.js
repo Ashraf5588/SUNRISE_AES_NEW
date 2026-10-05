@@ -1,3 +1,13 @@
+if (typeof Array.prototype.toSorted !== 'function') {
+  Object.defineProperty(Array.prototype, 'toSorted', {
+    configurable: true,
+    writable: true,
+    value(compareFn) {
+      return Array.from(this).sort(compareFn);
+    }
+  });
+}
+
 const express = require('express');
 const student  = require('./routers/mainpage');
 const parentsPortal = require('./routers/parentsroute');

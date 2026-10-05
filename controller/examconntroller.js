@@ -31,54 +31,6 @@ const upload = multer({ dest: "uploads/" });
 const onlineAttendance = mongoose.model("onlineAttendance", onlineAttendanceSchema, "onlineAttendance");
 const holiday = mongoose.model("holiday", holidaySchema, "holiday");
 
-const entryFormTypes = new Set([
-  'auto',
-  'entryform',
-  'entryformprimary',
-  'entryformfourfive',
-  'entryformlocalsubject',
-  'entryformpreprimary'
-]);
-
-exports.entryPageSetup = async (req, res) => {
-  try {
-    const classRows = await studentClassModel.find({}).select('studentClass entryFormType').lean().sort({ classorder: 1, studentClass: 1 });
-    const classes = Array.from(new Map(classRows.map(item => [String(item.studentClass || ''), item])).values());
-    return res.render('./exam/entrypagesetup', {
-      classes,
-      saved: req.query.saved === '1'
-    });
-  } catch (error) {
-    console.error('Unable to load entry form setup:', error);
-    return res.status(500).send('Unable to load entry form setup.');
-  }
-};
-
-exports.saveEntryPageSetup = async (req, res) => {
-  try {
-    const submittedClasses = req.body && req.body.classes;
-    const classes = Array.isArray(submittedClasses)
-      ? submittedClasses
-      : Object.values(submittedClasses || {});
-    const updates = new Map();
-    classes.forEach(item => {
-      const studentClassName = String(item && item.studentClass || '').trim();
-      const entryFormType = String(item && item.entryFormType || '').trim();
-      if (studentClassName && entryFormTypes.has(entryFormType)) {
-        updates.set(studentClassName, entryFormType);
-      }
-    });
-
-    await Promise.all(Array.from(updates, ([studentClassName, entryFormType]) =>
-      studentClassModel.updateMany({ studentClass: studentClassName }, { $set: { entryFormType } })
-    ));
-    return res.redirect('/admin/entrypagesetup?saved=1');
-  } catch (error) {
-    console.error('Unable to save entry form setup:', error);
-    return res.status(500).send('Unable to save entry form setup.');
-  }
-};
-
 const { addChapterSchema } = require("../model/addchapterschema");
 const addChapter = mongoose.model("addChapter", addChapterSchema, "addChapter");
 
@@ -87,7 +39,6 @@ const addChapter = mongoose.model("addChapter", addChapterSchema, "addChapter");
 const {ThemeEvaluationSchema,practicalSchema,scienceprojectSchema, practicalprojectSchema} = require("../model/themeformschema");
 const {themeSchemaFor1,scienceSchema,FinalPracticalSlipSchema} = require("../model/themeschema");
 const { get } = require("http");
-const student = require("../routers/mainpage");
 
 const marksheetSetup = mongoose.models.marksheetSetup || mongoose.model("marksheetSetup", marksheetsetupschemaForAdmin, "marksheetSetup");
 
@@ -287,7 +238,7 @@ const getSubjectModel = (subjectinput, studentClass, section, terminal) => {
 exports.loadForm = async (req,res,next)=>
 {
     const subject = await newsubject.find({}).lean();
-    const studentClassdata = await studentClass.find({}).lean();
+    const studentClassdata = (await studentClass.find({}).lean()).sort((a, b) => a.classorder - b.classorder);
  
     const user = req.user;
     
@@ -323,26 +274,98 @@ exports.loadForm = async (req,res,next)=>
         )
       );
     }
-    console.log("Accessible Subjects:", accessibleSubject);
+    const terminals = await terminalModel.find({}).lean();
    const marksheetSetups = await marksheetSetup.find({}).lean();
     res.render("./exam/formloader", { 
       currentPage: "home",
       subjects: accessibleSubject, 
       studentClassdata:accessibleClass,
+      terminals,
   
       marksheetSetups,
       user,
     });
 
 }
+
+const ENTRY_FORM_TYPES = new Set([
+  'auto',
+  'entryform',
+  'entryformprimary',
+  'entryformfourfive',
+  'entryformlocalsubject',
+  'entryformpreprimary'
+]);
+
+exports.entryPageSetup = async (req, res) => {
+  try {
+    const classRecords = await studentClass.find({}).lean();
+    const classesByName = new Map();
+
+    classRecords.forEach((classRecord) => {
+      const className = String(classRecord.studentClass || '').trim();
+      const key = normalizeText(className);
+      if (!className || !key) return;
+
+      const existing = classesByName.get(key);
+      const entryFormType = ENTRY_FORM_TYPES.has(classRecord.entryFormType) ? classRecord.entryFormType : 'auto';
+      if (!existing || (existing.entryFormType === 'auto' && entryFormType !== 'auto')) {
+        classesByName.set(key, {
+          studentClass: className,
+          classorder: Number(classRecord.classorder) || 0,
+          entryFormType
+        });
+      }
+    });
+
+    const classes = [...classesByName.values()].sort((a, b) => {
+      if (a.classorder !== b.classorder) return a.classorder - b.classorder;
+      return a.studentClass.localeCompare(b.studentClass, undefined, { numeric: true, sensitivity: 'base' });
+    });
+    res.render('./exam/entrypagesetup', { classes, saved: req.query.saved === 'true' });
+  } catch (error) {
+    console.error('Error loading entry form setup:', error);
+    res.status(500).send('Unable to load entry form setup');
+  }
+};
+
+exports.saveEntryPageSetup = async (req, res) => {
+  try {
+    const submittedClasses = req.body.classes || [];
+    const classConfigs = Array.isArray(submittedClasses) ? submittedClasses : Object.values(submittedClasses);
+    const existingClassRecords = await studentClass.find({}, { studentClass: 1 }).lean();
+
+    for (const config of classConfigs) {
+      const className = String(config?.studentClass || '').trim();
+      const entryFormType = String(config?.entryFormType || 'auto');
+      if (!className || !ENTRY_FORM_TYPES.has(entryFormType)) continue;
+
+      const matchingNames = [...new Set(existingClassRecords
+        .map((record) => String(record.studentClass || '').trim())
+        .filter((existingName) => normalizeText(existingName) === normalizeText(className)))];
+      if (!matchingNames.length) continue;
+
+      await studentClass.updateMany(
+        { studentClass: { $in: matchingNames } },
+        { $set: { entryFormType } }
+      );
+    }
+
+    res.redirect('/admin/entrypagesetup?saved=true');
+  } catch (error) {
+    console.error('Error saving entry form setup:', error);
+    res.status(500).send('Unable to save entry form setup');
+  }
+};
+
 exports.entryform = async (req,res,next)=>
 
 {
 
 
-   const studentClassdata = await studentClassModel.find({}).lean();
+   const studentClassdata = (await studentClassModel.find({}).lean()).sort((a, b) => a.classorder - b.classorder);
    
-  const {studentClass,section,subject,academicYear,terminal}= req.query;
+  const {studentClass,section,subject,academicYear,terminal,worksheet}= req.query;
   const model = getSubjectModel(subject, studentClass, section, terminal);
   const theoryData = await model.find({}).lean();
 
@@ -383,6 +406,26 @@ exports.entryform = async (req,res,next)=>
         )
       );
     }
+  const classSetup = studentClassdata.find((item) => normalizeText(item.studentClass) === normalizeText(studentClass));
+  const configuredFormType = ENTRY_FORM_TYPES.has(classSetup?.entryFormType) ? classSetup.entryFormType : 'auto';
+  if (configuredFormType !== 'auto') {
+    if (configuredFormType === 'entryformpreprimary') {
+      const existingData = await getSlipModel().find({studentClass, section, subject, terminal, academicYear}).lean();
+      return res.render("./exam/entryformpreprimary",{studentData,studentClass,section,subject,academicYear,terminal,worksheet:Number(worksheet) || 1,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData,existingData});
+    }
+    if (configuredFormType === 'entryformlocalsubject') {
+      return res.render("./exam/entryformlocalsubject",{studentData,studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData});
+    }
+    if (configuredFormType === 'entryformfourfive') {
+      const savedMarks = await getSlipModel().find({ subject, terminal, academicYear, studentClass, section }).select('reg status').lean();
+      return res.render("./exam/entryformfourfive",{studentData,studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData,savedMarks});
+    }
+    if (configuredFormType === 'entryformprimary') {
+      return res.render("./exam/entryformprimary",{studentData,studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData});
+    }
+    return res.render("./exam/entryform",{studentData,studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,theoryData});
+  }
+
   if(studentClass>3|| studentClass=="SIX" || studentClass=="Six" || studentClass=="six" || studentClass=="6" || studentClass=="SEVEN" || studentClass=="Seven" || studentClass=="seven" || studentClass=="7" || studentClass=="EIGHT" || studentClass=="Eight" || studentClass=="eight" || studentClass=="8" || studentClass=="NINE" || studentClass=="Nine" || studentClass=="nine" || studentClass=="9" || studentClass=="TEN" || studentClass=="Ten" || studentClass=="ten" || studentClass=="10")
   {
 
@@ -392,7 +435,8 @@ exports.entryform = async (req,res,next)=>
   {
     if(subject.toUpperCase()==="SCIENCE" || subject.toUpperCase()==="MATHEMATICS" || subject.toUpperCase()==="ENGLISH" || subject.toUpperCase()==="NEPALI" || subject.toUpperCase()==="SOCIAL" || subject.toUpperCase()==="HEALTH")
     {
-    res.render("./exam/entryformfourfive",{studentData,studentClass:studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData});
+    const savedMarks = await getSlipModel().find({ subject, terminal, academicYear, studentClass, section }).select('reg status').lean();
+    res.render("./exam/entryformfourfive",{studentData,studentClass:studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData,savedMarks});
     }else
     {
       res.render("./exam/entryformlocalsubject",{studentData,studentClass:studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData});
@@ -402,9 +446,11 @@ exports.entryform = async (req,res,next)=>
   {
     res.render("./exam/entryformprimary",{studentData,studentClass:studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData});
   }
-  else if(studentClass.toLowerCase() === "nursery" || studentClass.toLowerCase() === "playgroup" || studentClass.toLowerCase() === "lkg" || studentClass.toLowerCase() === "ukg")
+  else if( studentClass && studentClass.toLowerCase() === "nursery" || studentClass.toLowerCase() === "playgroup" || studentClass.toLowerCase() === "lkg" || studentClass.toLowerCase() === "ukg")
   {
-    res.render("./exam/entryformpreprimary",{studentData,studentClass:studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData});
+    const existingData = await getSlipModel().find({studentClass: studentClass,section: section,subject: subject,terminal: terminal,academicYear: academicYear}).lean();
+    // entryformpreprimary.ejs will handle the rendering for pre-primary classes
+    res.render("./exam/entryformpreprimary",{studentData,studentClass:studentClass,section,subject,academicYear,terminal,worksheet:Number(worksheet) || 1,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData,existingData});
   }
  
 }
@@ -423,6 +469,7 @@ exports.saveEntryform = async (req, res, next) => {
     console.log("[Backend] Query params:", { studentClass, section, subject, academicYear, terminal });
     console.log("[Backend] Body - reg:", req.body.reg, "totalWorksheet:", req.body.totalWorksheet);
     console.log("[Backend] Body - theorymarks:", req.body.theorymarks, "type:", typeof req.body.theorymarks);
+    
 
     const model = getSlipModel();
     
@@ -458,6 +505,7 @@ exports.saveEntryform = async (req, res, next) => {
         roll: req.body.roll,
         name: req.body.name,
         theorymarks: theorymarks, // This can be null, 0.000001, 0.0, 4.0, etc.
+        status: req.body.status === 'ABSENT' ? 'ABSENT' : 'PRESENT',
         practicalmarks: Number(req.body.practicalmarks) || 0,
         totalpracticalmarks: Number(req.body.totalpracticalmarks) || 0,
         attendance: Number(req.body.attendance) || 0,
@@ -493,51 +541,6 @@ exports.saveEntryform = async (req, res, next) => {
   catch (err) {
     console.error("[Backend] ✗ Error saving entry form:", err);
     res.status(500).json({success: false, error: err.message});
-  }
-};
-
-exports.saveEntryFormPrePrimay = async (req, res) => {
-  try {
-    const body = req.body || {};
-    const worksheet = Number.parseInt(body.worksheet, 10);
-    const studentFields = ['reg', 'studentClass', 'section', 'academicYear', 'subject', 'terminal', 'name'];
-    if (studentFields.some(field => !String(body[field] || '').trim()) || !Number.isInteger(worksheet) || worksheet < 1) {
-      return res.status(400).json({ success: false, message: 'Student, class, subject, terminal, year, and worksheet are required.' });
-    }
-
-    const numericValue = value => {
-      const number = Number(value);
-      return Number.isFinite(number) ? number : 0;
-    };
-    const update = {
-      reg: String(body.reg).trim(),
-      roll: String(body.roll || '').trim(),
-      name: String(body.name).trim(),
-      gender: String(body.gender || '').trim(),
-      studentClass: String(body.studentClass).trim(),
-      section: String(body.section).trim(),
-      academicYear: String(body.academicYear).trim(),
-      subject: String(body.subject).trim(),
-      terminal: String(body.terminal).trim(),
-      theorymarks: numericValue(body.theorymarks),
-      attendance: numericValue(body.attendance),
-      totalWorksheet: Math.max(1, numericValue(body.totalWorksheet)),
-      status: String(body.status || '').toUpperCase() === 'ABSENT' ? 'ABSENT' : 'PRESENT',
-      [`worksheetGrades.${worksheet - 1}`]: String(body.worksheetGrades || '')
-    };
-    const filter = {
-      reg: update.reg,
-      studentClass: update.studentClass,
-      section: update.section,
-      academicYear: update.academicYear,
-      subject: update.subject,
-      terminal: update.terminal
-    };
-    const result = await getSlipModel().updateOne(filter, { $set: update }, { upsert: true });
-    return res.json({ success: true, result });
-  } catch (error) {
-    console.error('Unable to save pre-primary entry form:', error);
-    return res.status(500).json({ success: false, message: 'Unable to save the entry form.' });
   }
 };
 
@@ -695,19 +698,32 @@ exports.getPreviousmarks= async (req,res,next)=>
 exports.getAttendanceData= async (req,res,next)=>
 {
   try{
-    const {studentClass,section,academicYear} = req.query;
+    const {studentClass,section,academicYear,terminal} = req.query;
 
-    if (!studentClass || !section || !academicYear) {
-      return res.json([]);
+    if (!studentClass || !section || !academicYear || !terminal) {
+      return res.status(400).json({ error: "Class, section, academic year, and terminal are required" });
     }
 
     const normalizedAcademicYear = String(academicYear).trim();
-    const currentBsDate = String(bs.ADToBS(new Date()) || "").trim();
-    const [currentNepaliYear, currentNepaliMonthNumber, currentNepaliDayNumber] = currentBsDate.split("-");
-    const currentNepaliMonth = BS_MONTH_NAMES[Number.parseInt(currentNepaliMonthNumber, 10)] || "";
-    // const currentDay = Number.parseInt(currentNepaliDayNumber, 10) || 0;
-    const currentDay = 14
-    const currentMonthNumber = Number.parseInt(currentNepaliMonthNumber, 10) || 0;
+    const marksheetSetupDoc = await marksheetSetup.findOne({ academicYear: normalizedAcademicYear }).lean();
+    const terminalData = marksheetSetupDoc?.terminals?.find((item) => normalizeText(item.name) === normalizeText(terminal));
+    const parseBsDate = (value) => {
+      const match = String(value || "").trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (!match) return null;
+      const [, yearText, monthText, dayText] = match;
+      const year = Number(yearText);
+      const month = Number(monthText);
+      const day = Number(dayText);
+      const monthLength = BS_MONTH_LENGTHS[BS_MONTH_NAMES[month]];
+      if (!monthLength || day < 1 || day > monthLength) return null;
+      return { year, month, day, key: year * 10000 + month * 100 + day };
+    };
+    const attendanceStart = parseBsDate(terminalData?.attendancestartdate);
+    const attendanceEnd = parseBsDate(terminalData?.attendanceenddate);
+
+    if (!attendanceStart || !attendanceEnd || attendanceStart.key > attendanceEnd.key) {
+      return res.status(400).json({ error: `Attendance dates are not configured for terminal ${terminal}` });
+    }
 
     const holidayDoc = await holiday.findOne({ academicYear: normalizedAcademicYear }).lean();
     const holidayMonthMap = new Map(
@@ -716,16 +732,7 @@ exports.getAttendanceData= async (req,res,next)=>
         : []
     );
 
-    let totalWorkingDaysUptoToday = 0;
-    for (let monthIndex = 1; monthIndex <= currentMonthNumber; monthIndex += 1) {
-      const monthName = BS_MONTH_NAMES[monthIndex];
-      const monthLength = getBsMonthLength(monthName);
-      const monthDayLimit = monthIndex === currentMonthNumber ? currentDay : monthLength;
-      const holidayDaysForMonth = holidayMonthMap.get(getCanonicalMonthName(monthName)) || [];
-      const holidayDaysUntilLimit = holidayDaysForMonth.filter((dayValue) => Number.isFinite(dayValue) && dayValue <= monthDayLimit);
-
-      totalWorkingDaysUptoToday += Math.max(monthDayLimit - holidayDaysUntilLimit.length, 0);
-    }
+    const totalWorkingDays = Math.max(Number(terminalData.workingDays) || 0, 0);
 
     const onlineAttendanceDocs = await onlineAttendance
       .find({ studentClass: String(studentClass).trim(), section: String(section).trim(), academicYear: normalizedAcademicYear })
@@ -744,7 +751,7 @@ exports.getAttendanceData= async (req,res,next)=>
 
         const entryMonthName = String(entry?.month || "").trim();
         const entryMonthNumber = getBsMonthNumber(entryMonthName);
-        if (!entryMonthNumber || entryMonthNumber > currentMonthNumber) {
+        if (!entryMonthNumber) {
           return;
         }
 
@@ -753,8 +760,8 @@ exports.getAttendanceData= async (req,res,next)=>
           return;
         }
 
-        const monthDayLimit = entryMonthNumber === currentMonthNumber ? currentDay : getBsMonthLength(BS_MONTH_NAMES[entryMonthNumber]);
-        if (entryDay > monthDayLimit) {
+        const entryDateKey = Number(entryAcademicYear) * 10000 + entryMonthNumber * 100 + entryDay;
+        if (entryDateKey < attendanceStart.key || entryDateKey > attendanceEnd.key) {
           return;
         }
 
@@ -765,24 +772,27 @@ exports.getAttendanceData= async (req,res,next)=>
 
         if (getStatusIsAbsent(entry?.status)) {
           const canonicalMonthName = getCanonicalMonthName(entryMonthName);
-          absentDayKeys.add(`${canonicalMonthName}-${entryDay}`);
+          absentDayKeys.add(`${entryAcademicYear}-${canonicalMonthName}-${entryDay}`);
         }
       });
 
       const absentDays = absentDayKeys.size;
-      const presentDays = Math.max(totalWorkingDaysUptoToday - absentDays, 0);
+      const presentDays = Math.max(totalWorkingDays - absentDays, 0);
 
       return {
         reg,
         roll: onlineDoc?.roll || "",
         name: onlineDoc?.name || "",
         gender: onlineDoc?.gender || "",
-        attendance: presentDays,
-        totalWorkingDaysUptoToday,
+        attendance: Math.min(presentDays, totalWorkingDays),
+        totalWorkingDaysUptoToday: totalWorkingDays,
+        terminal: terminalData.name,
+        attendanceStartDate: terminalData.attendancestartdate,
+        attendanceEndDate: terminalData.attendanceenddate,
         holidayDaysInAcademicYear: (holidayDoc?.month || []).reduce((count, monthItem) => count + (Array.isArray(monthItem?.holidayDays) ? monthItem.holidayDays.length : 0), 0),
         absentDays,
-        currentMonth: currentNepaliMonth,
-        currentDay,
+        currentMonth: BS_MONTH_NAMES[attendanceEnd.month],
+        currentDay: attendanceEnd.day,
         currentAcademicYear: normalizedAcademicYear,
       };
     });
@@ -1047,14 +1057,106 @@ exports.getPracticalSlipData = async (req, res, next) => {
         });
       });
 
-      const isHigherClass = studentClass > 8 || ["Nine", "Ten", "TEN", "9", "10", "nine", "ten"].includes(studentClass);
+      const isHigherClass = studentClass > 8 || ["Nine", "Ten", "TEN", "9", "10", "nine", "ten"].includes(String(studentClass).toLowerCase());
+      const unitsCount = lessonData[0]?.units?.length || 1;
       
-      if (isHigherClass) {
-        totalPracticalproject = (((((totalObtainedAllPractical / 10) * 10) + (((totalObtainedAllProject) / 6) * 6))) / lessonData[0]?.units?.length || 1);
-        totalPractical = ((student.attendanceMarks + student.participationMarks + totalPracticalproject + student.terminalMarks) / 25 * 100);
+      // Subject-specific calculations
+      if (subject === "HEALTH" || subject === "Health" || subject === "health") {
+        // Health subject: Attendance & Participation (4) + Project Work & Practical Work (36) + Terminal (10) = 50
+        // For Health, we use portion-wise calculation
+        let portionWise = {};
+        
+        if (student.unit && Array.isArray(student.unit)) {
+          student.unit.forEach(u => {
+            const portion = u.portion;
+            if (!portionWise[portion]) {
+              portionWise[portion] = [];
+            }
+            
+            // Add project work marks from this unit
+            if (u.projectWorks && u.projectWorks.length > 0) {
+              u.projectWorks.forEach(p => {
+                portionWise[portion].push(p.projectMarks || 0);
+              });
+            }
+            
+            // Add practical marks from this unit
+            if (u.practicals && u.practicals.length > 0) {
+              u.practicals.forEach(p => {
+                portionWise[portion].push(p.practicalMarks || 0);
+              });
+            }
+          });
+        }
+
+        // Calculate average for each portion and sum them up
+        let practicalProjectMarks = 0;
+        for (let portion in portionWise) {
+          if (portionWise[portion].length > 0) {
+            let portionAverage = portionWise[portion].reduce((a, b) => a + b, 0) / portionWise[portion].length;
+            practicalProjectMarks += portionAverage;
+          }
+        }
+
+        totalPracticalproject = practicalProjectMarks;
+        // Total = Attendance+Participation (4) + Practical/Project + Terminal (10)
+        const totalMarks = (student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0);
+        totalPractical = (totalMarks / 50) * 100;
+
+      } else if (subject === "MATHEMATICS" || subject === "Mathematics" || subject === "mathematics") {
+        // Mathematics: Attendance & Participation (4) + Project Work & Practical Work (36) + Terminal (10) = 50
+        // Practical: 20 marks, Project: 16 marks (total 36)
+        totalPracticalproject = (((((totalObtainedAllPractical / 20) * 20) + (((totalObtainedAllProject) / 12) * 16))) / unitsCount);
+        totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 50 * 100;
+
+      } else if (subject === "SOCIAL" || subject === "Social" || subject === "social") {
+        // SOCIAL: Matching template logic
+        if (isHigherClass) {
+          // Higher classes: Each unit has 16 marks for practical
+          totalPracticalproject = totalObtainedAllPractical / unitsCount;
+          totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 25 * 100;
+        } else {
+          // Lower classes: Each practical worth 18 marks, doubled to 36
+          // Calculate total (sum of all practicals doubled) - matches template: ((totalObtainedAllPractical/18)*36)
+          totalObtainedAllPractical = (totalObtainedAllPractical / totalDoneAllPractical ); // Double the marks for lower classes
+          // Average across units - matches template display: totalPracticalproject/unitsCount
+        
+          
+          // Total = Attendance+Participation (4) + Practical/Project + Terminal (10)
+          totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 50 * 100;
+        }
+
+      } else if (subject === "NEPALI" || subject === "Nepali" || subject === "nepali") {
+        // Nepali subject
+        if (isHigherClass) {
+          // Class 9-10: सुनाइ, बोलाइ र पढाइ (१२) + सिर्जनात्मक कार्य र परियोजना कार्य तथा प्रस्तुति (४)
+          totalPracticalproject = (((((totalObtainedAllPractical / 12) * 12) + (((totalObtainedAllProject) / 4) * 4))) / unitsCount);
+          totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 25 * 100;
+        } else {
+          // Class 1-8: सुनाइ र बोलाइ(२०) + पढाइ र लेखाइ(१६)
+          totalPracticalproject = (((((totalObtainedAllPractical / 20) * 20) + (((totalObtainedAllProject) / 16) * 16))) / unitsCount);
+          totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 50 * 100;
+        }
+
+      } else if (subject === "ENGLISH" || subject === "English" || subject === "english") {
+        // English subject - same as Nepali calculation
+        if (isHigherClass) {
+          totalPracticalproject = (((((totalObtainedAllPractical / 12) * 12) + (((totalObtainedAllProject) / 4) * 4))) / unitsCount);
+          totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 25 * 100;
+        } else {
+          totalPracticalproject = (((((totalObtainedAllPractical / 20) * 20) + (((totalObtainedAllProject) / 16) * 16))) / unitsCount);
+          totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 50 * 100;
+        }
+
       } else {
-        totalPracticalproject = (((((totalObtainedAllPractical / 10) * 20) + (((totalObtainedAllProject) / 8) * 16))) / lessonData[0]?.units?.length || 1);
-        totalPractical = ((student.attendanceMarks + student.participationMarks + totalPracticalproject + student.terminalMarks) / 50 * 100);
+        // Default/Science subject calculation
+        if (isHigherClass) {
+          totalPracticalproject = (((((totalObtainedAllPractical / 10) * 10) + (((totalObtainedAllProject) / 6) * 6))) / unitsCount);
+          totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 25 * 100;
+        } else {
+          totalPracticalproject = (((((totalObtainedAllPractical / 10) * 20) + (((totalObtainedAllProject) / 8) * 16))) / unitsCount);
+          totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 50 * 100;
+        }
       }
 
       return {
@@ -1062,7 +1164,7 @@ exports.getPracticalSlipData = async (req, res, next) => {
         attendanceMarks: student.attendanceMarks || 0,
         participationMarks: student.participationMarks || 0,
         terminalMarks: student.terminalMarks || 0,
-        totalMarks: student.attendanceMarks + student.participationMarks + totalPracticalproject + (student.terminalMarks || 0),
+        totalMarks: (student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0),
         totalPercentage: totalPractical,
         totalObtainedAllPractical: totalObtainedAllPractical,
         totalObtainedAllProject: totalObtainedAllProject,
@@ -1127,14 +1229,36 @@ exports.getPracticalSlipData = async (req, res, next) => {
         // Average practical marks across terminals
         const avgPracticalProject = terminalCount > 0 ? totalPracticalProjectAllTerminals / terminalCount : 0;
         
-        // Calculate final marks
-        const isHigherClass = studentClass > 8 || ["Nine", "Ten", "TEN", "9", "10", "nine", "ten"].includes(studentClass);
+        // Calculate final marks based on subject
+        const isHigherClass = studentClass > 8 || ["Nine", "Ten", "TEN", "9", "10", "nine", "ten"].includes(String(studentClass).toLowerCase());
         let totalPractical;
         
-        if (isHigherClass) {
-          totalPractical = ((totalAttendance + totalParticipation + avgPracticalProject) / 25 * 100);
-        } else {
+        if (subject === "HEALTH" || subject === "Health" || subject === "health") {
+          // Health: Total out of 50
           totalPractical = ((totalAttendance + totalParticipation + avgPracticalProject) / 50 * 100);
+        } else if (subject === "MATHEMATICS" || subject === "Mathematics" || subject === "mathematics") {
+          // Mathematics: Total out of 50
+          totalPractical = ((totalAttendance + totalParticipation + avgPracticalProject) / 50 * 100);
+        } else if (subject === "SOCIAL" || subject === "Social" || subject === "social") {
+          if (isHigherClass) {
+            totalPractical = ((totalAttendance + totalParticipation + avgPracticalProject) / 25 * 100);
+          } else {
+            totalPractical = ((totalAttendance + totalParticipation + avgPracticalProject) / 50 * 100);
+          }
+        } else if (subject === "NEPALI" || subject === "Nepali" || subject === "nepali" || 
+                   subject === "ENGLISH" || subject === "English" || subject === "english") {
+          if (isHigherClass) {
+            totalPractical = ((totalAttendance + totalParticipation + avgPracticalProject) / 25 * 100);
+          } else {
+            totalPractical = ((totalAttendance + totalParticipation + avgPracticalProject) / 50 * 100);
+          }
+        } else {
+          // Default/Science
+          if (isHigherClass) {
+            totalPractical = ((totalAttendance + totalParticipation + avgPracticalProject) / 25 * 100);
+          } else {
+            totalPractical = ((totalAttendance + totalParticipation + avgPracticalProject) / 50 * 100);
+          }
         }
 
         marksMap[firstEntry.reg] = {
@@ -1392,3 +1516,171 @@ exports.entryCounter = async (req, res) => {
         res.status(500).send("Internal Server Error");
     }
 };
+
+exports.saveEntryFormPrePrimay = async (req, res) => {
+
+  try {
+    console.log("Received data for saving:", req.body);
+
+    const {
+      reg,
+      studentClass,
+      section,
+      terminal,
+      academicYear,
+      subject,
+      worksheet,
+      totalWorksheet,
+      worksheetGrades,
+      theorymarks,
+      attendance,
+      status,
+      roll,
+      gender,
+      name
+    } = req.body;
+
+    // Basic validation
+    if (!reg) {
+      return res.status(400).json({
+        success: false,
+        message: "Student registration number is required"
+      });
+    }
+
+    const worksheetNumber = Number(worksheet);
+
+    if (!worksheetNumber || worksheetNumber < 1) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid worksheet number"
+      });
+    }
+
+    const absentStatus = ['ABSENT', '1'].includes(String(status || '').trim().toUpperCase()) ? 'ABSENT' : 'PRESENT';
+    const parsedTheoryMarks = Number(theorymarks);
+    const savedTheoryMarks = Number.isFinite(parsedTheoryMarks) ? parsedTheoryMarks : 0;
+
+    // Find ONLY this student's record
+    let student = await getSlipModel().findOne({
+      reg: reg,
+      studentClass: studentClass,
+      section: section,
+      subject: subject,
+      terminal: terminal,
+      academicYear: academicYear
+    });
+
+    // =====================================================
+    // CREATE NEW STUDENT RECORD
+    // =====================================================
+
+    if (!student) {
+
+      const savedWorksheetGrades = [];
+
+      while (savedWorksheetGrades.length < worksheetNumber) {
+        savedWorksheetGrades.push("");
+      }
+
+      savedWorksheetGrades[worksheetNumber - 1] = String(worksheetGrades || '');
+      const model = getSlipModel();
+      student = new model({
+        reg,
+        studentClass,
+        section,
+        subject,
+        terminal,
+        academicYear,
+
+        name,
+        roll,
+        gender,
+
+        totalWorksheet,
+
+        worksheetGrades: savedWorksheetGrades,
+
+        theorymarks: savedTheoryMarks,
+        attendance: Number(attendance) || 0,
+        status: absentStatus
+      });
+
+      await student.save();
+
+      console.log(
+        `Created student ${reg} with worksheet ${worksheetNumber}`
+      );
+
+      return res.json({
+        success: true,
+        action: "created",
+        reg,
+        worksheet: worksheetNumber,
+        worksheetGrades: student.worksheetGrades,
+        theorymarks: student.theorymarks,
+        attendance: student.attendance
+      });
+    }
+
+    // =====================================================
+    // EXISTING STUDENT
+    // =====================================================
+
+    let grades = Array.isArray(student.worksheetGrades)
+      ? [...student.worksheetGrades]
+      : [];
+
+    // Make sure array is long enough
+    while (grades.length < worksheetNumber) {
+      grades.push("");
+    }
+
+    grades[worksheetNumber - 1] = String(worksheetGrades || '');
+
+    // Save the updated array
+    student.worksheetGrades = grades;
+
+    // Update other student information
+    student.totalWorksheet = totalWorksheet;
+    student.theorymarks = savedTheoryMarks;
+    student.attendance = Number(attendance) || 0;
+    student.status = absentStatus;
+
+    // These normally don't change, but can be kept updated
+    student.name = name;
+    student.roll = roll;
+    student.gender = gender;
+
+    await student.save();
+
+    console.log(
+      `Updated student ${reg}, worksheet ${worksheetNumber}`
+    );
+
+    console.log(
+      "Final worksheetGrades:",
+      student.worksheetGrades,student.theorymarks,student.attendance
+    );
+
+    return res.json({
+      success: true,
+      action: "updated",
+      reg,
+      worksheet: worksheetNumber,
+      theorymarks: student.theorymarks,
+      attendance: student.attendance,
+      worksheetGrades: student.worksheetGrades
+    });
+
+  } catch (error) {
+
+    console.error("Error saving preprimary entry:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Error saving data",
+      error: error.message
+    });
+  }
+}
