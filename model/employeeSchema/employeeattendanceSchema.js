@@ -20,5 +20,7 @@ const EmployeeAttendanceSchema = new mongoose.Schema({
   otMinutes:  { type: Number, default: 0 },
   extraClass: { type: Boolean, default: false },  // stayed past last period
   finalStatus:{ type: String },  // "Present", "Late", "Half Day", "Absent", "Extra Class"
+  isHoliday: { type: Boolean, default: false },
+  holidayName: { type: String, trim: true, default: '' },
 });   
 module.exports = mongoose.models.EmployeeAttendance || mongoose.model('EmployeeAttendance', EmployeeAttendanceSchema);

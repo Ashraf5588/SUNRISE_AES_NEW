@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Staff contacts</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+	<style>
+		:root { color-scheme:light; --ink:#1b2940; --muted:#66758a; --line:#d8e2ee; --blue:#24477b; --blue-soft:#eaf1fa; --canvas:#edf2f8; --paper:#fff; font-family:'DM Sans',sans-serif; color:var(--ink); background:var(--canvas); }
+		* { box-sizing:border-box; }
+		body { margin:0; min-height:100vh; background:linear-gradient(145deg,#f2f6fb,#e7eef7); }
+		button,input { font:inherit; }
+		.page-shell { width:min(1100px,calc(100% - 32px)); margin:0 auto; padding:32px 0 56px; }
+		.page-header { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:20px; }
+		.eyebrow { margin:0 0 5px; color:var(--blue); font-size:.7rem; font-weight:800; text-transform:uppercase; }
+		h1,h2 { font-family:'Manrope',sans-serif; }
+		h1 { margin:0; font-size:1.7rem; }
+		.page-copy { margin:6px 0 0; color:var(--muted); font-size:.86rem; }
+		.back-link { display:inline-flex; align-items:center; gap:7px; min-height:38px; padding:0 12px; border:1px solid var(--line); border-radius:5px; background:#fff; color:var(--ink); font-size:.8rem; font-weight:700; text-decoration:none; }
+		.directory { overflow:hidden; border:1px solid var(--line); border-radius:7px; background:var(--paper); }
+		.directory-toolbar { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:14px 16px; border-bottom:1px solid var(--line); background:#f8fafd; }
+		.directory-title { margin:0; font-size:.9rem; }
+		.directory-count { color:var(--muted); font-size:.76rem; white-space:nowrap; }
+		.search-wrap { position:relative; flex:1; max-width:420px; }
+		.search-wrap::before { content:'⌕'; position:absolute; top:50%; left:11px; transform:translateY(-52%); color:var(--muted); font-size:1.2rem; }
+		.search { width:100%; min-height:40px; padding:8px 12px 8px 34px; border:1px solid #ccd8e6; border-radius:5px; background:#fff; color:var(--ink); }
+		.search:focus { outline:2px solid rgba(36,71,123,.18); border-color:var(--blue); }
+		.table-wrap { overflow:auto; }
+		table { width:100%; border-collapse:collapse; }
+		th,td { padding:13px 16px; border-bottom:1px solid #e9eef4; text-align:left; }
+		th { background:#fff; color:var(--muted); font-size:.67rem; font-weight:800; text-transform:uppercase; }
+		th:first-child { width:48%; }
+		tbody tr:last-child td { border-bottom:0; }
+		tbody tr:hover { background:#fafcff; }
+		.staff-cell { display:flex; align-items:center; gap:12px; min-width:230px; }
+		.staff-photo { display:grid; place-items:center; flex:0 0 48px; width:48px; height:48px; overflow:hidden; border:1px solid #d7e2ee; border-radius:50%; background:var(--blue-soft); color:var(--blue); font-size:.9rem; font-weight:800; }
+		.staff-photo img { width:100%; height:100%; object-fit:cover; }
+		.staff-photo [hidden] { display:none; }
+		.staff-name { display:block; font-size:.88rem; font-weight:800; }
+		.staff-designation { display:block; margin-top:3px; color:var(--muted); font-size:.73rem; font-weight:500; }
+		.contact-list { display:grid; gap:7px; }
+		.contact-link { display:inline-flex; align-items:center; gap:8px; width:fit-content; max-width:100%; color:var(--blue); font-size:.8rem; overflow-wrap:anywhere; text-decoration:none; }
+		.contact-link:hover { text-decoration:underline; }
+		.contact-symbol { display:grid; place-items:center; flex:0 0 24px; width:24px; height:24px; border-radius:4px; background:#f0f4f9; color:#445c7b; font-size:.72rem; }
+		.unavailable { color:#8792a0; font-size:.77rem; }
+		.empty-state { padding:36px 18px; color:var(--muted); text-align:center; }
+		.empty-state[hidden],tr[hidden] { display:none; }
+		@media(max-width:650px) {
+			.page-shell { width:calc(100% - 20px); padding-top:20px; }
+			.page-header { align-items:flex-start; flex-direction:column; }
+			.directory-toolbar { align-items:stretch; flex-direction:column; }
+			.search-wrap { max-width:none; }
+			table { min-width:540px; }
+			th,td { padding:11px 12px; }
+		}
+	</style>
+</head>
+<body>
+	<main class="page-shell">
+		<header class="page-header">
+			<div><p class="eyebrow">People / Directory</p><h1>Staff contacts</h1><p class="page-copy">Find a colleague and contact them directly.</p></div>
+			<a class="back-link" href="/"><span aria-hidden="true">←</span> Home</a>
+		</header>
+		<section class="directory" aria-labelledby="directoryTitle">
+			<div class="directory-toolbar">
+				<h2 class="directory-title" id="directoryTitle">Staff directory</h2>
+				<div class="search-wrap"><input class="search" id="staffSearch" type="search" placeholder="Search name, role, phone, or email" aria-label="Search staff contacts" autocomplete="off"></div>
+				<span class="directory-count" id="directoryCount"><%= employees.length %> staff</span>
+			</div>
+			<% if (employees.length) { %>
+			<div class="table-wrap"><table>
+				<thead><tr><th scope="col">Staff member</th><th scope="col">Contact</th></tr></thead>
+				<tbody id="staffRows">
+					<% employees.forEach(employee => { const nameParts = String(employee.name || 'Staff member').trim().split(/\s+/).filter(Boolean); const initials = nameParts.slice(0, 2).map(part => part[0]).join('').toUpperCase(); const searchValue = [employee.name, employee.designation, employee.phone, employee.email].filter(Boolean).join(' '); %>
+					<tr data-search="<%= searchValue %>">
+						<td><div class="staff-cell"><span class="staff-photo"><% if (employee.photoUrl) { %><img src="<%= employee.photoUrl %>" alt="<%= employee.name %>" loading="lazy" onerror="this.hidden=true; this.nextElementSibling.hidden=false"><span class="staff-initials" hidden><%= initials %></span><% } else { %><%= initials %><% } %></span><span><strong class="staff-name"><%= employee.name || 'Staff member' %></strong><span class="staff-designation"><%= employee.designation || 'Designation not listed' %></span></span></div></td>
+						<td><div class="contact-list">
+							<% if (employee.phone) { %><a class="contact-link" href="tel:<%= encodeURIComponent(employee.phone) %>"><span class="contact-symbol" aria-hidden="true">T</span><%= employee.phone %></a><% } else { %><span class="unavailable">Phone not listed</span><% } %>
+							<% if (employee.email) { %><a class="contact-link" href="mailto:<%= employee.email %>"><span class="contact-symbol" aria-hidden="true">@</span><%= employee.email %></a><% } else { %><span class="unavailable">Email not listed</span><% } %>
+						</div></td>
+					</tr>
+					<% }) %>
+				</tbody>
+			</table></div>
+			<p class="empty-state" id="noMatches" hidden>No staff match this search.</p>
+			<% } else { %><div class="empty-state">No staff contact details are available.</div><% } %>
+		</section>
+	</main>
+	<script>
+		const searchInput = document.getElementById('staffSearch');
+		const staffRows = Array.from(document.querySelectorAll('#staffRows tr'));
+		const countLabel = document.getElementById('directoryCount');
+		const noMatches = document.getElementById('noMatches');
+		searchInput?.addEventListener('input', () => {
+			const query = searchInput.value.trim().toLocaleLowerCase();
+			let visibleCount = 0;
+			staffRows.forEach(row => {
+				const matches = row.dataset.search.toLocaleLowerCase().includes(query);
+				row.hidden = !matches;
+				if (matches) visibleCount += 1;
+			});
+			countLabel.textContent = `${visibleCount} of ${staffRows.length} staff`;
+			noMatches.hidden = visibleCount > 0;
+		});
+	</script>
+</body>
+</html>

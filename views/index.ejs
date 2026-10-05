@@ -11,6 +11,7 @@
     <title>eAnalyst</title>
     <link rel="stylesheet" href="/style.css">
     <link rel="stylesheet" href="/nav.css">
+    <link rel="stylesheet" href="/home-dashboard.css">
     <link rel="stylesheet" href="/subject-selector.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -917,6 +918,71 @@
         terminals: terminals 
     }) %>
 
+    <%- include('partials/sidenavhome', { userrole, teacherName, schoolName: marksheetSetups[0].schoolName, subjects, studentClassdata, userAllowedSubjects }) %>
+    <main class="desktop-home-dashboard">
+        <header class="home-dashboard-header">
+            <div><p class="home-dashboard-kicker"><%= userrole === 'ADMIN' ? 'Administration / Overview' : 'Teaching / Workspace' %></p><h1><%= userrole === 'ADMIN' ? 'School dashboard' : `Welcome, ${teacherName || 'Teacher'}` %></h1><p class="home-dashboard-date"><%= dashboardDate %></p></div>
+            <div class="home-header-tools">
+                <form class="home-module-search" id="homeModuleSearch" role="search" autocomplete="off">
+                    <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+                    <input id="homeModuleSearchInput" type="search" placeholder="Find a module" aria-label="Find a module" aria-expanded="false" aria-controls="homeModuleSearchResults">
+                    <div class="home-module-search-results" id="homeModuleSearchResults" role="listbox" hidden></div>
+                </form>
+                <span class="home-header-role"><%= userrole === 'ADMIN' ? 'Administrator' : 'Teacher workspace' %></span>
+            </div>
+        </header>
+
+        <% if (userrole === 'ADMIN' && adminDashboardMetrics) { %>
+        <section class="home-dashboard-section" aria-labelledby="todayOverviewTitle">
+            <h2 id="todayOverviewTitle">Today at a glance <span class="home-overview-date">BS <%= adminDashboardMetrics.todayBs %></span></h2>
+            <div class="home-stat-grid">
+                <a class="home-stat" style="--stat-color:#347a62;--stat-tint:#eaf5ef" href="/dailydashboard"><span class="home-stat-icon"><i class="fa-solid fa-person-circle-check" aria-hidden="true"></i></span><span class="home-stat-copy"><span class="home-stat-label">On leave</span><strong class="home-stat-value"><%= adminDashboardMetrics.onLeaveToday %></strong></span></a>
+                <a class="home-stat" style="--stat-color:#b44f46;--stat-tint:#fff0ed" href="/absent-record"><span class="home-stat-icon"><i class="fa-solid fa-user-xmark" aria-hidden="true"></i></span><span class="home-stat-copy"><span class="home-stat-label">Absent teachers</span><strong class="home-stat-value"><%= adminDashboardMetrics.absentToday %></strong></span></a>
+                <a class="home-stat" style="--stat-color:#a87823;--stat-tint:#fff7e7" href="/leave"><span class="home-stat-icon"><i class="fa-solid fa-file-circle-exclamation" aria-hidden="true"></i></span><span class="home-stat-copy"><span class="home-stat-label">Leave requests</span><strong class="home-stat-value"><%= adminDashboardMetrics.pendingLeaveRequests %></strong></span></a>
+                <a class="home-stat" style="--stat-color:#397aa1;--stat-tint:#eaf4fb" href="/inventory/productrequests"><span class="home-stat-icon"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i></span><span class="home-stat-copy"><span class="home-stat-label">Product requests</span><strong class="home-stat-value"><%= adminDashboardMetrics.pendingProductRequests %></strong></span></a>
+                <a class="home-stat" style="--stat-color:#7963a4;--stat-tint:#f2effa" href="/manualpunch"><span class="home-stat-icon"><i class="fa-solid fa-fingerprint" aria-hidden="true"></i></span><span class="home-stat-copy"><span class="home-stat-label">Manual punch requests</span><strong class="home-stat-value"><%= adminDashboardMetrics.pendingManualPunchRequests %></strong></span></a>
+                <a class="home-stat" style="--stat-color:#357999;--stat-tint:#e9f4f9" href="/onlineattendance"><span class="home-stat-icon"><i class="fa-solid fa-users" aria-hidden="true"></i></span><span class="home-stat-copy"><span class="home-stat-label">Student attendance</span><strong class="home-stat-value home-stat-value-pair"><%= adminDashboardMetrics.studentPresent %><span>present</span><i>/</i><%= adminDashboardMetrics.studentAbsent %><span>absent</span></strong></span></a>
+                <a class="home-stat" style="--stat-color:#bd6948;--stat-tint:#fff0e9" href="/dailydashboard"><span class="home-stat-icon"><i class="fa-solid fa-message" aria-hidden="true"></i></span><span class="home-stat-copy"><span class="home-stat-label">Complaints</span><strong class="home-stat-value"><%= adminDashboardMetrics.complaintsToday %></strong></span></a>
+                <a class="home-stat" style="--stat-color:#4c8985;--stat-tint:#eaf5f3" href="/healthrecord"><span class="home-stat-icon"><i class="fa-solid fa-kit-medical" aria-hidden="true"></i></span><span class="home-stat-copy"><span class="home-stat-label">Health visits</span><strong class="home-stat-value"><%= adminDashboardMetrics.healthVisitsToday %></strong></span></a>
+                <a class="home-stat" style="--stat-color:#526da1;--stat-tint:#edf1fa" href="/dailydashboard"><span class="home-stat-icon"><i class="fa-solid fa-phone-volume" aria-hidden="true"></i></span><span class="home-stat-copy"><span class="home-stat-label">Call log</span><strong class="home-stat-value"><%= adminDashboardMetrics.callsDoneToday %></strong></span></a>
+                <a class="home-stat" style="--stat-color:#8b6b41;--stat-tint:#f7f1e9" href="/onlineattendance"><span class="home-stat-icon"><i class="fa-solid fa-calendar-minus" aria-hidden="true"></i></span><span class="home-stat-copy"><span class="home-stat-label">Missed attendance</span><strong class="home-stat-value"><%= adminDashboardMetrics.missedAttendance %></strong></span></a>
+            </div>
+        </section>
+        <% } else { %>
+        <section class="home-dashboard-section" aria-labelledby="assignedSubjectsTitle">
+            <h2 id="assignedSubjectsTitle">Assigned subjects</h2>
+            <% if (subjects.length) { %><div class="home-teacher-subjects"><% subjects.forEach(subject => { %><a class="home-teacher-subject" href="/forms/<%= encodeURIComponent(String(subject.subject || '').trim()) %>"><strong><%= subject.subject %></strong><span>Open class and section selection <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></span></a><% }) %></div><% } else { %><p class="home-notice-empty">No assigned subjects are available.</p><% } %>
+            <div class="home-staff-shortcuts"><a href="/staffcontacts"><i class="fa-solid fa-address-book" aria-hidden="true"></i>Staff contacts</a><a href="/myattendance"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i>My attendance</a><a href="/leave"><i class="fa-solid fa-plane-departure" aria-hidden="true"></i>Leave</a><a href="/homework"><i class="fa-solid fa-book" aria-hidden="true"></i>Homework</a></div>
+        </section>
+        <% } %>
+
+        <% if (userrole === 'ADMIN' && adminDashboardMetrics) { %>
+        <section class="home-dashboard-section home-content-grid home-admin-content" aria-label="Daily school activity">
+            <div class="home-activity-column">
+                <h2>Daily activity</h2>
+                <div class="home-activity-grid">
+                    <section class="home-list-panel"><header><h3>On leave teachers</h3><span><%= adminDashboardMetrics.onLeaveList.length %></span></header><ul><% if (adminDashboardMetrics.onLeaveList.length) { adminDashboardMetrics.onLeaveList.forEach(item => { %><li><strong><%= item.name %></strong><span><%= item.contact %> · <%= item.leave %></span></li><% }) } else { %><li class="home-list-empty">No teachers on leave today.</li><% } %></ul></section>
+                    <section class="home-list-panel"><header><h3>Absent teachers</h3><span><%= adminDashboardMetrics.absentList.length %></span></header><ul><% if (adminDashboardMetrics.absentList.length) { adminDashboardMetrics.absentList.forEach(item => { %><li><strong><%= item.name %></strong><span><%= item.contact %><%= item.designation ? ` · ${item.designation}` : '' %></span></li><% }) } else { %><li class="home-list-empty">No absent teachers today.</li><% } %></ul></section>
+                    <section class="home-list-panel"><header><h3>Complaints</h3><span><%= adminDashboardMetrics.complaintsToday %></span></header><ul><% if (adminDashboardMetrics.complaintList.length) { adminDashboardMetrics.complaintList.forEach(item => { %><li><strong><%= item.studentName || 'Student' %></strong><span><%= item.reason || 'Complaint recorded' %></span></li><% }) } else { %><li class="home-list-empty">No complaints today.</li><% } %></ul></section>
+                    <section class="home-list-panel"><header><h3>Health visits</h3><span><%= adminDashboardMetrics.healthVisitsToday %></span></header><ul><% if (adminDashboardMetrics.healthVisitList.length) { adminDashboardMetrics.healthVisitList.forEach(item => { %><li><strong><%= item.name %></strong><span><%= item.detail %></span></li><% }) } else { %><li class="home-list-empty">No health visits today.</li><% } %></ul></section>
+                    <section class="home-list-panel"><header><h3>Late in</h3><span><%= adminDashboardMetrics.lateInList.length %></span></header><ul><% if (adminDashboardMetrics.lateInList.length) { adminDashboardMetrics.lateInList.forEach(item => { %><li><strong><%= item.name %></strong><span>In <%= item.actualIn %>, late <%= item.lateMinutes %> min</span></li><% }) } else { %><li class="home-list-empty">No late arrivals today.</li><% } %></ul></section>
+                    <section class="home-list-panel"><header><h3>Missed attendance</h3><span><%= adminDashboardMetrics.missedTeacherList.length %></span></header><ul><% if (adminDashboardMetrics.missedTeacherList.length) { adminDashboardMetrics.missedTeacherList.forEach(item => { %><li><strong><%= item.name %></strong><span><%= item.contact %> · <%= item.missing %></span></li><% }) } else { %><li class="home-list-empty">No missing teacher punches today.</li><% } %></ul></section>
+                </div>
+            </div>
+            <aside class="home-right-stack" aria-label="Notices and upcoming items">
+                <section class="home-list-panel home-right-panel"><header><h3>Notices</h3><span><%= recentNotices.length %></span></header><div class="home-side-list"><% if (recentNotices?.length) { recentNotices.slice(0,5).forEach(notice => { %><a href="/notice/<%= notice._id %>"><strong><%= notice.title %></strong><span><%= notice.noticeDate || notice.addedBy || '' %></span></a><% }) } else { %><p class="home-list-empty">No recent notices.</p><% } %></div></section>
+                <section class="home-list-panel home-right-panel"><header><h3>Events this week</h3><span><%= adminDashboardMetrics.eventsThisWeek.length %></span></header><div class="home-side-list"><% if (adminDashboardMetrics.eventsThisWeek.length) { adminDashboardMetrics.eventsThisWeek.forEach(event => { %><a href="/createevent"><strong><%= event.title %></strong><span><%= event.nepaliDate || new Date(event.date).toLocaleDateString() %><%= event.time ? ` · ${event.time}` : '' %></span></a><% }) } else { %><p class="home-list-empty">No events scheduled this week.</p><% } %></div></section>
+                <section class="home-list-panel home-right-panel"><header><h3>Birthdays today</h3><span><%= adminDashboardMetrics.birthdaysToday.length %></span></header><div class="home-side-list"><% if (adminDashboardMetrics.birthdaysToday.length) { adminDashboardMetrics.birthdaysToday.forEach(person => { %><div><strong><%= person.name %></strong><span><%= person.designation || 'Staff' %></span></div><% }) } else { %><p class="home-list-empty">No staff birthdays today.</p><% } %></div></section>
+            </aside>
+        </section>
+        <% } else { %>
+        <section class="home-dashboard-section home-content-grid" aria-label="Notices and workspace">
+            <div><h2>Recent notices</h2><div class="home-panel home-notice-list"><% if (recentNotices?.length) { recentNotices.forEach(notice => { %><a class="home-notice-item" href="/notice/<%= notice._id %>"><strong><%= notice.title %></strong><span><%= notice.description || 'Open notice for details.' %></span><span><%= notice.noticeDate || '' %></span></a><% }) } else { %><p class="home-notice-empty">No recent notices.</p><% } %></div></div>
+            <div><h2>Workspace</h2><div class="home-panel home-notice-list"><a class="home-notice-item" href="/staffcontacts"><strong>Staff contacts</strong><span>Find colleagues and contact details.</span></a><a class="home-notice-item" href="/attendance-summary"><strong>Attendance summary</strong><span>Review attendance and daily activity.</span></a><a class="home-notice-item" href="/createevent"><strong>Events</strong><span>Open upcoming school events.</span></a></div></div>
+        </section>
+        <% } %>
+    </main>
+
     <% const mobileTeacherName = typeof teacherName === 'string' && teacherName.trim() ? teacherName.trim() : 'Teacher'; %>
     <% const mobileNameParts = mobileTeacherName.split(/\s+/).filter(Boolean); %>
     <% const mobileInitials = mobileNameParts.length > 1 ? `${mobileNameParts[0][0]}${mobileNameParts[mobileNameParts.length - 1][0]}` : (mobileNameParts[0]?.[0] || 'T'); %>
@@ -975,7 +1041,19 @@
                 <a class="mobile-module-link" data-app-link data-search="enter analysis data entry" href="#" data-subject-action="enter"><i class="fa-solid fa-chart-column" aria-hidden="true"></i><span>Enter Analysis</span></a>
                 <a class="mobile-module-link" data-app-link data-search="view report analysis reports" href="#" data-subject-action="report"><i class="fa-solid fa-chart-line" aria-hidden="true"></i><span>View Report</span></a>
                 <a class="mobile-module-link" data-app-link data-search="leave form request" href="/leave"><i class="fa-solid fa-file-circle-check" aria-hidden="true"></i><span>Leave Form</span></a>
-                <a class="mobile-module-link" data-app-link data-search="product request inventory" href="/inventory/productrequests"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i><span>Product Request</span></a>
+
+
+                <a class="mobile-module-link" data-app-link data-search="product request inventory" href="/inventory/productrequests"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i><span>Staff Contacts</span></a>
+ <a class="mobile-module-link" data-app-link data-search="product request inventory" href="/myattendance"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i><span>My Attendance</span></a>
+
+  <a class="mobile-module-link" data-app-link data-search="product request inventory" href="/employeeprofile"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i><span>My Profile (KYC)</span></a>
+  <%if (userrole === 'ADMIN') { %>
+     <a class="mobile-module-link" data-app-link data-search="product request inventory" href="/inventory/productrequests"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i><span>Employee Management</span></a>
+     <%} %>
+                <a class="mobile-module-link" data-app-link data-search="product request inventory" href="/staffcontacts"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i><span>Product Request</span></a>
+                
+                
+                
                 <a class="mobile-module-link" data-app-link data-search="events event list" href="/createevent"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i><span>Events</span></a>
                 <a class="mobile-module-link" data-app-link data-search="event create event" href="/lessonplanselect"><i class="fa-solid fa-calendar-plus" aria-hidden="true"></i><span>Lesson Plan</span></a>
                 <a class="mobile-module-link" data-app-link data-search="student update transfer" href="/student-transfer"><i class="fa-solid fa-user-pen" aria-hidden="true"></i><span>Student Update</span></a>
@@ -983,6 +1061,7 @@
                 <a class="mobile-module-link" data-app-link data-search="my attendance personal attendance" href="/myattendance"><i class="fa-solid fa-user-check" aria-hidden="true"></i><span>My Attendance</span></a>
                 <a class="mobile-module-link" data-app-link data-search="manual punch request attendance correction" href="/manualpunch"><i class="fa-solid fa-fingerprint" aria-hidden="true"></i><span>Manual Punch</span></a>
                 <a class="mobile-module-link" data-app-link data-search="my profile complete profile employee information" href="/employeeprofile"><i class="fa-solid fa-id-card" aria-hidden="true"></i><span>My Profile</span></a>
+                <a class="mobile-module-link" data-app-link data-search="staff contacts employee directory phone email" href="/staffcontacts"><i class="fa-solid fa-address-book" aria-hidden="true"></i><span>Staff Contacts</span></a>
                 <a class="mobile-module-link" data-app-link data-search="homework assignments" href="/homework"><i class="fa-solid fa-book" aria-hidden="true"></i><span>Homework</span></a>
                 <a class="mobile-module-link" data-app-link data-search="portfolio student" href="/studentportfolio"><i class="fa-solid fa-address-card" aria-hidden="true"></i><span>Portfolio</span></a>
                         </div>
@@ -1004,7 +1083,7 @@
                     </div>
                     <div class="mobile-module-slide" data-module-slide="2" role="tabpanel" aria-label="Admin modules page 2">
                         <div class="mobile-module-grid">
-                            <a class="mobile-module-link" data-app-link data-search="entry form locker" href="/entryformlocker"><i class="fa-solid fa-lock" aria-hidden="true"></i><span>Entry Form Locker</span></a>
+                            <a class="mobile-module-link" data-app-link data-search="entry form locker" href="/locker"><i class="fa-solid fa-lock" aria-hidden="true"></i><span>Entry Form Locker</span></a>
                             <a class="mobile-module-link" data-app-link data-search="print portfolio" href="/printportfolio"><i class="fa-solid fa-print" aria-hidden="true"></i><span>Print Portfolio</span></a>
                             <a class="mobile-module-link" data-app-link data-search="analysis entry counter" href="/analysisentrycounter"><i class="fa-solid fa-chart-column" aria-hidden="true"></i><span>Analysis Counter</span></a>
                             <a class="mobile-module-link" data-app-link data-search="principal dashboard" href="/principaldashboard"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i><span>Principal Dashboard</span></a>
@@ -1182,6 +1261,10 @@
                            <a href="/homework" class="action-card card-slate" aria-label="Add Homework">
                             <div class="icon-wrapper"><i class="fa-solid fa-square-pen" style="color: rgb(255, 255, 255);"></i></div>
                             <div class="text-wrapper">Add Homework</div>
+                        </a>
+                        <a href="/staffcontacts" class="action-card card-blue" aria-label="Staff Contacts">
+                            <div class="icon-wrapper"><i class="fa-solid fa-address-book" aria-hidden="true"></i></div>
+                            <div class="text-wrapper">Staff Contacts</div>
                         </a>
                  </div>
                 </div>
@@ -1451,6 +1534,7 @@
     </script>
     
     <script src="/index.js"></script>
+    <script src="/home-dashboard.js" defer></script>
 
 
 

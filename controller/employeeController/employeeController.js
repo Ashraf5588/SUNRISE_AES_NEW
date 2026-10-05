@@ -578,12 +578,16 @@ exports.reviewManualPunchRequest = async (req, res) => {
 
         if (decision === 'approved') {
             try {
+                const holidayDateBs = getNepaliDate(new Date(request.punchDateTime)).slice(0, 10);
+                const employeeHoliday = await EmployeeWeekend.findOne({ dateBs: holidayDateBs }).select('name').lean();
                 await employeeAttendance.create({
                     sn: 'MANUAL',
                     pin: request.employeeCode,
                     name: request.employeeName,
                     punchTime: request.punchDateTime,
                     source: 'Manual',
+                    isHoliday: Boolean(employeeHoliday),
+                    holidayName: employeeHoliday?.name || '',
                     manualPunchType: request.punchType,
                     manualPunchRequestId: request._id,
                     status: request.punchType === 'Check-in' ? 0 : request.punchType === 'Check-out' ? 1 : undefined,
@@ -616,6 +620,22 @@ exports.showEmployeeData = async (req, res) => {
     } catch (error) {
         console.error('Unable to load employee list:', error);
         return res.status(500).send('Unable to load employee list.');
+    }
+};
+
+exports.showStaffContacts = async (req, res) => {
+    try {
+        const employees = (await getEmployeeProfiles()).map(employee => ({
+            name: employee.staffName || '',
+            designation: employee.designation || '',
+            email: employee.officeEmail || employee.email || '',
+            phone: employee.officeContact || employee.mobileNumber || '',
+            photoUrl: employee.employeePhoto?.url || ''
+        }));
+        return res.render('employee/staffcontacts', { employees });
+    } catch (error) {
+        console.error('Unable to load staff contacts:', error);
+        return res.status(500).send('Unable to load staff contacts.');
     }
 };
 
@@ -1516,6 +1536,14 @@ exports.saveEmployeeAttendance = async (req, res) => {
             );
         }
 
+        const punchDatesBs = [...new Set(docs.map(doc => getNepaliDate(new Date(doc.punchTime)).slice(0, 10)))];
+        const employeeHolidays = await EmployeeWeekend.find({ dateBs: { $in: punchDatesBs } }).select('dateBs name').lean();
+        const holidaysByDate = new Map(employeeHolidays.map(item => [item.dateBs, item.name]));
+        docs.forEach(doc => {
+            doc.holidayName = holidaysByDate.get(getNepaliDate(new Date(doc.punchTime)).slice(0, 10)) || '';
+            doc.isHoliday = Boolean(doc.holidayName);
+        });
+
         // Insert records. ordered:false allows valid rows to be
         // inserted even if an individual row causes a DB error.
         let insertedCount = 0;
@@ -1662,15 +1690,18 @@ async function buildEmployeeAttendanceReport(queryParams) {
 
     const startDateBs = getNepaliDate(start).slice(0, 10);
     const endDateBs = getNepaliDate(end).slice(0, 10);
-    const [employees, punches, approvedLeaves] = await Promise.all([
+    const reportDatesBs = dates.map(date => getNepaliDate(date).slice(0, 10));
+    const [employees, punches, approvedLeaves, employeeHolidays] = await Promise.all([
         getEmployeeProfiles(),
         employeeAttendance.find({ punchTime: { $gte: from, $lte: through } }).sort({ punchTime: 1 }).lean(),
         LeaveApplication.find({
             status: 'approved',
             startDateNepali: { $lte: endDateBs },
             endDateNepali: { $gte: startDateBs }
-        }).select('employeeName leaveTypeName isPaid startDateNepali endDateNepali').lean()
+        }).select('employeeName leaveTypeName isPaid startDateNepali endDateNepali').lean(),
+        EmployeeWeekend.find({ dateBs: { $in: reportDatesBs } }).select('dateBs name').lean()
     ]);
+    const employeeHolidaysByDate = new Map(employeeHolidays.map(item => [item.dateBs, item.name]));
 
     const employeeByCode = new Map();
     employees.forEach(employee => {
@@ -1720,24 +1751,27 @@ async function buildEmployeeAttendanceReport(queryParams) {
                 || isExplicitCheckOut(punch));
             const actualIn = morningPunches.length ? formatPunchTime(new Date(morningPunches[morningPunches.length - 1].punchTime)) : '';
             const actualOut = eveningPunches.length ? formatPunchTime(new Date(eveningPunches[eveningPunches.length - 1].punchTime)) : '';
+            const storedHolidayPunch = dayPunches.find(punch => punch.isHoliday && punch.holidayName);
+            const holidayName = employeeHolidaysByDate.get(getNepaliDate(date).slice(0, 10)) || storedHolidayPunch?.holidayName || '';
+            const isHoliday = Boolean(holidayName);
             const plannedIn = employee.plannedIn || '09:00';
             const plannedOut = employee.plannedOut || '17:00';
             const plannedInMinutes = getMinutes(plannedIn);
             const plannedOutMinutes = getMinutes(plannedOut);
             const actualInMinutes = getMinutes(actualIn);
             const actualOutMinutes = getMinutes(actualOut);
-            const lateMinutes = actualInMinutes !== null && plannedInMinutes !== null
+            const lateMinutes = !isHoliday && actualInMinutes !== null && plannedInMinutes !== null
                 ? Math.max(0, actualInMinutes - plannedInMinutes) : 0;
-            const earlyMinutes = actualOutMinutes !== null && plannedOutMinutes !== null
+            const earlyMinutes = !isHoliday && actualOutMinutes !== null && plannedOutMinutes !== null
                 ? Math.max(0, plannedOutMinutes - actualOutMinutes) : 0;
             const missing = [];
             const bothPunchesMissing = !actualIn && !actualOut;
             const leaveForDate = (leavesByEmployeeName.get(normalizeEmployeeName(employeeName)) || [])
                 .find(leave => leave.startDateNepali <= getNepaliDate(date).slice(0, 10) && leave.endDateNepali >= getNepaliDate(date).slice(0, 10));
-            const countedLeave = bothPunchesMissing ? leaveForDate : null;
+            const countedLeave = bothPunchesMissing && !isHoliday ? leaveForDate : null;
 
-            if (!actualIn) missing.push('Missed morning');
-            if (!actualOut) missing.push('Missed evening');
+            if (!actualIn && !isHoliday) missing.push('Missed morning');
+            if (!actualOut && !isHoliday) missing.push('Missed evening');
 
             reportRows.push({
                 date: dateKey,
@@ -1748,12 +1782,14 @@ async function buildEmployeeAttendanceReport(queryParams) {
                 department: employee.department || '-',
                 plannedIn,
                 plannedOut,
-                actualIn: actualIn || 'Missed morning',
-                actualOut: actualOut || 'Missed evening',
-                lateInStatus: actualIn ? (lateMinutes ? `Late by ${lateMinutes} min` : 'On time') : 'Missed morning',
-                earlyOutStatus: actualOut ? (earlyMinutes ? `Early by ${earlyMinutes} min` : 'On time') : 'Missed evening',
+                actualIn: actualIn || (isHoliday ? bothPunchesMissing ? 'Holiday' : '-' : 'Missed morning'),
+                actualOut: actualOut || (isHoliday ? bothPunchesMissing ? 'Holiday' : '-' : 'Missed evening'),
+                lateInStatus: actualIn ? (isHoliday ? 'Holiday work' : lateMinutes ? `Late by ${lateMinutes} min` : 'On time') : isHoliday ? bothPunchesMissing ? 'Holiday' : 'Holiday work' : 'Missed morning',
+                earlyOutStatus: actualOut ? (isHoliday ? 'Holiday work' : earlyMinutes ? `Early by ${earlyMinutes} min` : 'On time') : isHoliday ? bothPunchesMissing ? 'Holiday' : 'Holiday work' : 'Missed evening',
                 leaveType: countedLeave ? `${countedLeave.leaveTypeName} / ${countedLeave.isPaid ? 'Paid' : 'Unpaid'}` : '-',
-                remarks: countedLeave
+                remarks: isHoliday
+                    ? bothPunchesMissing ? `Holiday: ${holidayName}` : `Worked on holiday: ${holidayName}`
+                    : countedLeave
                     ? `Leave: ${countedLeave.leaveTypeName} / ${countedLeave.isPaid ? 'Paid' : 'Unpaid'}`
                     : bothPunchesMissing ? 'Absent' : missing.length ? missing.join('; ') : 'Present',
                 lateMinutes,
@@ -1994,6 +2030,13 @@ exports.importEmployeeAttendanceCsv = async (req, res) => {
         if (!rows.length) throw new Error('The CSV contains no attendance rows.');
         if (rows.length > 5000) throw new Error('Upload no more than 5,000 attendance rows at a time.');
 
+        const holidayDateKeys = [...new Set(rows.map(row => {
+            const date = parseNepaliDateKey(row['Date (BS)']);
+            return date ? getNepaliDate(date).slice(0, 10) : '';
+        }).filter(Boolean))];
+        const employeeHolidays = await EmployeeWeekend.find({ dateBs: { $in: holidayDateKeys } }).select('dateBs name').lean();
+        const employeeHolidaysByDate = new Map(employeeHolidays.map(item => [item.dateBs, item.name]));
+
         const employees = await getEmployeeProfiles();
         const employeesByCode = new Map(employees.map(employee => [String(employee.employeeCode || '').trim().toUpperCase(), employee]));
         const operations = [];
@@ -2010,6 +2053,7 @@ exports.importEmployeeAttendanceCsv = async (req, res) => {
             const actualIn = parseAttendanceCsvTime(row['Actual in'], rowNumber, 'Actual in');
             const actualOut = parseAttendanceCsvTime(row['Actual out'], rowNumber, 'Actual out');
             if (!actualIn && !actualOut) throw new Error(`Row ${rowNumber}: enter Actual in and/or Actual out as HH:mm.`);
+            const holidayName = employeeHolidaysByDate.get(getNepaliDate(punchDate).slice(0, 10)) || '';
 
             [[actualIn, 'Check-in', 0], [actualOut, 'Check-out', 1]].forEach(([time, punchType, status]) => {
                 if (!time) return;
@@ -2021,6 +2065,8 @@ exports.importEmployeeAttendanceCsv = async (req, res) => {
                     name: employee.staffName,
                     punchTime,
                     source: 'Manual',
+                    isHoliday: Boolean(holidayName),
+                    holidayName,
                     manualPunchType: punchType,
                     status,
                     verifyMode: 0

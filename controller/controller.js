@@ -18,6 +18,21 @@ const studentRecord = mongoose.model("studentRecord", studentrecordschema, "stud
 const bcrypt = require("bcrypt");
 const terminal = mongoose.model("terminal", terminalSchema, "terminal");
 const noticecontroller = require('./noticecontroller/noticecontroller');
+const bs = require('bikram-sambat-js');
+const { staffSchema } = require('../model/staffschema');
+const { leaveApplicationSchema } = require('../model/leaveschema/leavetypeschma');
+const { onlineAttendanceSchema } = require('../model/onlineattendanceschema');
+const Event = require('../model/eventmodel');
+const ManualPunchRequest = require('../model/employeeSchema/manualPunchRequestSchema');
+const { inventoryProductRequestSchema } = require('../model/inventoryschema/inventorySchema');
+const Staff = mongoose.models.staff || mongoose.model('staff', staffSchema, 'staff');
+const LeaveApplication = mongoose.models.LeaveApplication || mongoose.model('LeaveApplication', leaveApplicationSchema, 'leaveApplications');
+const EmployeeAttendance = require('../model/employeeSchema/employeeattendanceSchema');
+const EmployeeWeekend = require('../model/employeeSchema/employeeWeekendSchema');
+const Portfolio = require('../model/portfolio');
+const HealthRecord = require('../model/nurseschema');
+const onlineAttendance = mongoose.models.onlineAttendance || mongoose.model('onlineAttendance', onlineAttendanceSchema, 'onlineAttendance');
+const InventoryProductRequest = mongoose.models.inventoryProductRequest || mongoose.model('inventoryProductRequest', inventoryProductRequestSchema, 'inventoryProductRequests');
 app.set("view engine", "ejs");
 app.set("view", path.join(rootDir, "views"));
 const { addChapterSchema } = require("../model/addchapterschema");
@@ -30,6 +45,194 @@ const getSlipModel = () => {
     return mongoose.models[`exam_marks`];
   }
   return mongoose.model(`exam_marks`, examSchema, `exam_marks`);
+};
+
+const getAdminHomeMetrics = async () => {
+  const today = new Date();
+  const todayStart = new Date(today);
+  todayStart.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(todayStart);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const todayBs = String(bs.ADToBS(todayStart) || '').trim().slice(0, 10);
+  const [, bsYear, bsMonth, bsDay] = todayBs.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/) || [];
+  const monthNames = ['', 'Baisakh', 'Jestha', 'Asar', 'Shrawan', 'Bhadra', 'Ashwin', 'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'];
+  const monthNumber = Number(bsMonth);
+  const monthKeys = [...new Set([String(monthNumber), monthNames[monthNumber], monthNumber === 3 ? 'Ashadh' : ''].filter(Boolean))];
+  const weekStart = new Date(todayStart);
+  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  const complaintDateFilter = { $or: [{ 'complaints.nepaliDate': todayBs }, { 'complaints.date': { $gte: todayStart, $lt: tomorrow } }] };
+  const callDateFilter = { $or: [
+    { 'attendance.callLoggedAt': { $gte: todayStart, $lt: tomorrow } },
+    { 'attendance.academicYear': String(bsYear), 'attendance.month': { $in: monthKeys }, 'attendance.day': String(bsDay) }
+  ] };
+  const callContentFilter = { $or: [
+    { 'attendance.callReason': { $exists: true, $nin: ['', null] } },
+    { 'attendance.parentResponse': { $exists: true, $nin: ['', null] } },
+    { 'attendance.callLoggedAt': { $exists: true, $ne: null } }
+  ] };
+
+  const [employees, punches, leaves, pendingLeaveRequests, pendingManualPunchRequests, pendingProductRequests, isEmployeeHoliday, complaintResults, healthVisits, callResults, studentAttendanceDocs, totalStudents, events] = await Promise.all([
+    Staff.find({ employeeCode: { $exists: true, $ne: '' }, isActive: { $ne: false } })
+      .select('employeeCode staffName plannedIn midTime employmentStatus jobStatus dateOfBirth designation department mobileNumber officeContact')
+      .lean(),
+    EmployeeAttendance.find({ punchTime: { $gte: todayStart, $lt: tomorrow } })
+      .select('pin punchTime status manualPunchType')
+      .sort({ punchTime: 1 })
+      .lean(),
+    LeaveApplication.find({
+      status: 'approved',
+      startDateNepali: { $lte: todayBs },
+      endDateNepali: { $gte: todayBs }
+    }).select('employeeName leaveTypeName endDateNepali').lean(),
+    LeaveApplication.countDocuments({ status: 'pending' }),
+    ManualPunchRequest.countDocuments({ status: 'pending' }),
+    InventoryProductRequest.countDocuments({ status: 'pending' }),
+    EmployeeWeekend.exists({ dateBs: todayBs }),
+    Portfolio.aggregate([
+      { $unwind: '$complaints' },
+      { $match: complaintDateFilter },
+      { $sort: { 'complaints.date': -1 } },
+      { $facet: {
+        count: [{ $count: 'total' }],
+        items: [
+          { $limit: 6 },
+          { $project: { _id: 0, studentName: '$name', studentClass: '$studentClass', section: '$section', reason: '$complaints.reason', dateBs: '$complaints.nepaliDate' } }
+        ]
+      } }
+    ]),
+    HealthRecord.find({ $or: [{ nepaliDate: todayBs }, { createdAt: { $gte: todayStart, $lt: tomorrow } }] }).select('name studentClass section diagnosis treatment nepaliDate createdAt').sort({ createdAt: -1 }).limit(6).lean(),
+    onlineAttendance.aggregate([
+      { $unwind: '$attendance' },
+      { $match: { $and: [callDateFilter, callContentFilter] } },
+      { $sort: { 'attendance.callLoggedAt': -1 } },
+      { $facet: {
+        count: [{ $count: 'total' }],
+        items: [
+          { $limit: 6 },
+          { $project: { _id: 0, studentName: '$name', callReason: '$attendance.callReason', parentResponse: '$attendance.parentResponse', month: '$attendance.month', day: '$attendance.day' } }
+        ]
+      } }
+    ]),
+    onlineAttendance.find({ attendance: { $elemMatch: { academicYear: String(bsYear), month: { $in: monthKeys }, day: String(bsDay) } } }).select('reg attendance').lean(),
+    studentRecord.countDocuments({}),
+    Event.find({ date: { $gte: todayStart, $lt: weekEnd }, status: { $nin: ['cancelled', 'completed'] } }).select('title date nepaliDate time location').sort({ date: 1 }).limit(6).lean()
+  ]);
+
+  const leaveNames = new Set(leaves.map(leave => String(leave.employeeName || '').trim().toLowerCase()));
+  const punchesByCode = new Map();
+  punches.forEach(punch => {
+    const code = String(punch.pin || '').trim().toUpperCase();
+    if (!punchesByCode.has(code)) punchesByCode.set(code, []);
+    punchesByCode.get(code).push(punch);
+  });
+  const activeEmployees = employees.filter(employee => !['resigned', 'terminated'].includes(String(employee.employmentStatus || employee.jobStatus || '').trim().toLowerCase()));
+  let absentToday = 0;
+  let lateToday = 0;
+  const absentList = [];
+  const lateInList = [];
+  const missedTeacherList = [];
+  const onLeaveList = [];
+  const birthdaysToday = [];
+
+  activeEmployees.forEach(employee => {
+    const punchesForEmployee = punchesByCode.get(String(employee.employeeCode || '').trim().toUpperCase()) || [];
+    const isOnLeave = leaveNames.has(String(employee.staffName || '').trim().toLowerCase());
+    const employeeSummary = {
+      name: employee.staffName || 'Staff member',
+      designation: employee.designation || employee.department || '',
+      contact: employee.mobileNumber || employee.officeContact || 'Contact not listed'
+    };
+    if (isOnLeave) onLeaveList.push({ ...employeeSummary, leave: leaves.find(leave => String(leave.employeeName || '').trim().toLowerCase() === String(employee.staffName || '').trim().toLowerCase())?.leaveTypeName || 'Approved leave' });
+    if (!punchesForEmployee.length) {
+      if (!isOnLeave && !isEmployeeHoliday) {
+        absentToday += 1;
+        absentList.push(employeeSummary);
+        missedTeacherList.push({ ...employeeSummary, missing: 'No punches recorded' });
+      }
+    } else if (!isOnLeave && !isEmployeeHoliday) {
+      const midTime = String(employee.midTime || '13:00').match(/^(\d{1,2}):(\d{2})$/);
+      const midTimeMinutes = midTime ? Number(midTime[1]) * 60 + Number(midTime[2]) : 13 * 60;
+      const isAfterMidTime = punch => {
+        const time = new Date(punch.punchTime);
+        return time.getHours() * 60 + time.getMinutes() >= midTimeMinutes;
+      };
+      const isExplicitCheckIn = punch => punch.manualPunchType === 'Check-in' || Number(punch.status) === 0;
+      const isExplicitCheckOut = punch => punch.manualPunchType === 'Check-out' || Number(punch.status) === 1;
+      const morningPunches = punchesForEmployee.filter(punch => !isAfterMidTime(punch)
+        && (isExplicitCheckIn(punch) || !isExplicitCheckOut(punch)));
+      const eveningPunches = punchesForEmployee.filter(punch => isAfterMidTime(punch) || isExplicitCheckOut(punch));
+      const missing = [];
+      if (!morningPunches.length) missing.push('Missing check-in');
+      if (!eveningPunches.length) missing.push('Missing check-out');
+      if (missing.length) missedTeacherList.push({ ...employeeSummary, missing: missing.join(' and ') });
+      const checkIn = morningPunches[morningPunches.length - 1];
+      if (checkIn) {
+        const [plannedHour, plannedMinute] = String(employee.plannedIn || '09:00').split(':').map(Number);
+        const actualDate = new Date(checkIn.punchTime);
+        const actualMinutes = actualDate.getHours() * 60 + actualDate.getMinutes();
+        const lateMinutes = actualMinutes - (plannedHour * 60 + plannedMinute);
+        if (lateMinutes > 0) {
+          lateToday += 1;
+          lateInList.push({ ...employeeSummary, actualIn: actualDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }), lateMinutes });
+        }
+      }
+    }
+
+    if (employee.dateOfBirth) {
+      const birthday = new Date(employee.dateOfBirth);
+      if (birthday.getMonth() === todayStart.getMonth() && birthday.getDate() === todayStart.getDate()) birthdaysToday.push(employeeSummary);
+    }
+  });
+
+  const studentStatuses = new Map();
+  studentAttendanceDocs.forEach(document => {
+    const entries = Array.isArray(document.attendance) ? document.attendance.filter(entry =>
+      String(entry.academicYear || '') === String(bsYear)
+      && monthKeys.includes(String(entry.month || ''))
+      && String(entry.day || '') === String(bsDay)
+    ) : [];
+    const entry = entries[entries.length - 1];
+    if (!entry) return;
+    const status = String(entry.status || '').trim().toLowerCase();
+    const key = String(document.reg || document._id);
+    if (['present', 'p', 'true', '1'].includes(status)) studentStatuses.set(key, 'present');
+    else if (['absent', 'a', 'false', '0'].includes(status)) studentStatuses.set(key, 'absent');
+  });
+  const studentPresent = [...studentStatuses.values()].filter(status => status === 'present').length;
+  const studentAbsent = [...studentStatuses.values()].filter(status => status === 'absent').length;
+  const missedAttendance = Math.max(totalStudents - studentPresent - studentAbsent, 0);
+
+  const complaintData = complaintResults[0] || { count: [], items: [] };
+  const callData = callResults[0] || { count: [], items: [] };
+  const healthVisitList = healthVisits.map(visit => ({ name: visit.name || 'Student', detail: visit.diagnosis || visit.treatment || 'Health visit', className: [visit.studentClass, visit.section].filter(Boolean).join(' / ') }));
+  const birthdaysList = birthdaysToday.slice(0, 8);
+
+  return {
+    onLeaveToday: leaves.length,
+    absentToday,
+    lateToday,
+    pendingLeaveRequests,
+    pendingProductRequests,
+    pendingManualPunchRequests,
+    studentPresent,
+    studentAbsent,
+    complaintsToday: complaintData.count[0]?.total || 0,
+    complaintList: complaintData.items || [],
+    healthVisitsToday: healthVisits.length,
+    healthVisitList,
+    callsDoneToday: callData.count[0]?.total || 0,
+    callList: callData.items || [],
+    missedAttendance,
+    onLeaveList: onLeaveList.slice(0, 8),
+    absentList: absentList.slice(0, 8),
+    lateInList: lateInList.slice(0, 8),
+    missedTeacherList: missedTeacherList.slice(0, 8),
+    birthdaysToday: birthdaysList,
+    eventsThisWeek: events,
+    todayBs
+  };
 };
 // Helper function to fetch sidenav data
 const getSidenavData = async (req) => {
@@ -280,6 +483,8 @@ exports.homePage = async (req, res, next) => {
   const terminals = await terminal.find({}).lean();
   const user = req.user;
   const recentNotices = await noticecontroller.getRecentNotices(user, 6);
+  const isAdmin = String(user.role || '').toUpperCase() === 'ADMIN';
+  const adminDashboardMetrics = isAdmin ? await getAdminHomeMetrics() : null;
   let accessibleSubject =[];
   let accessibleClass=[];
   if(user.role==="ADMIN")
@@ -308,6 +513,9 @@ exports.homePage = async (req, res, next) => {
     terminals,
     marksheetSetups,
     recentNotices,
+    adminDashboardMetrics,
+    userAllowedSubjects: user.allowedSubjects || [],
+    dashboardDate: new Date().toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }),
     userrole: user.role,
     teacherName: user.teacherName || user.username,
   });

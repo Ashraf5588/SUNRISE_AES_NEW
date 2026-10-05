@@ -1,0 +1,134 @@
+<% const homeIsAdmin = String(userrole || '').toUpperCase() === 'ADMIN'; %>
+<% const homeSubjects = Array.isArray(subjects) ? [...new Map(subjects.filter(item => item && item.subject).map(item => [String(item.subject).trim(), item])).values()] : []; %>
+<% const homeSchoolName = String(schoolName || 'School').trim(); %>
+<% const homeSchoolShortName = homeSchoolName.split(/\s+/).filter(Boolean).map(word => word[0]).join('').toUpperCase(); %>
+<aside class="desktop-home-sidebar" id="desktopHomeSidebar" aria-label="Main navigation">
+	<div class="home-sidebar-brand">
+		<a href="/" aria-label="<%= homeSchoolName %> home"><span class="home-brand-mark"><img src="/image.png" alt="<%= homeSchoolName %> logo" onerror="this.hidden=true; this.nextElementSibling.hidden=false"><span class="home-brand-monogram" hidden><%= homeSchoolShortName %></span></span><span class="home-brand-copy"><strong><%= homeSchoolShortName %></strong><small><%= homeSchoolName %></small></span></a>
+		<button class="home-sidebar-toggle" type="button" aria-label="Collapse sidebar" title="Collapse sidebar"><i class="fa-solid fa-angles-left" aria-hidden="true"></i></button>
+	</div>
+	<div class="home-sidebar-user"><span class="home-user-avatar"><%= String(teacherName || 'U').trim().split(/\s+/).slice(0, 2).map(part => part[0] || '').join('').toUpperCase() %></span><span class="home-user-copy"><strong><%= teacherName || 'Staff member' %></strong><small><%= homeIsAdmin ? 'Administrator' : 'Teacher' %></small></span></div>
+	<nav class="home-sidebar-nav">
+		<a class="home-nav-link home-nav-current" href="/"><i class="fa-solid fa-house" aria-hidden="true"></i><span>Home</span></a>
+		<details class="home-nav-group" open>
+			<summary><i class="fa-solid fa-calendar-check" aria-hidden="true"></i><span>Attendance</span></summary>
+			<div class="home-nav-submenu">
+				<% if (homeIsAdmin) { %><a href="/absent-record"><i class="fa-solid fa-user-xmark" aria-hidden="true"></i>Daily absent record</a><a href="/employeeattendance"><i class="fa-solid fa-user-clock" aria-hidden="true"></i>Employee attendance</a><% } %>
+				<a href="/onlineattendance"><i class="fa-solid fa-users" aria-hidden="true"></i>Student attendance</a>
+				<a href="/attendance-summary"><i class="fa-solid fa-chart-column" aria-hidden="true"></i>Student attendance summary</a>
+				<a href="/myattendance"><i class="fa-solid fa-user-check" aria-hidden="true"></i>My attendance</a>
+				<% if (homeIsAdmin) { %><a href="/employeeattendancesetup"><i class="fa-solid fa-sliders" aria-hidden="true"></i>Employee time setup</a><a href="/addweekend"><i class="fa-solid fa-calendar-xmark" aria-hidden="true"></i>Employee weekends</a><% } %>
+			</div>
+		</details>
+		<details class="home-nav-group">
+			<summary><i class="fa-solid fa-inbox" aria-hidden="true"></i><span>Requests</span></summary>
+			<div class="home-nav-submenu">
+				<a href="/leave"><i class="fa-solid fa-plane-departure" aria-hidden="true"></i>Leave request</a>
+				<a href="/manualpunch"><i class="fa-solid fa-fingerprint" aria-hidden="true"></i>Manual punch request</a>
+				<a href="/inventory/productrequests"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i>Product request</a>
+			</div>
+		</details>
+		<% if (homeIsAdmin) { %><a class="home-nav-link" href="/teacher-record"><i class="fa-solid fa-user-tie" aria-hidden="true"></i><span>Teacher Activity Record</span></a><% } %>
+		<% if (homeIsAdmin) { %>
+		<details class="home-nav-group">
+			<summary><i class="fa-solid fa-users-gear" aria-hidden="true"></i><span>Student Management</span></summary>
+			<div class="home-nav-submenu">
+				<a href="/studentportfolio"><i class="fa-solid fa-address-card" aria-hidden="true"></i>Portfolio</a>
+				<a href="/printportfolio"><i class="fa-solid fa-print" aria-hidden="true"></i>Print portfolio</a>
+				<a href="/admin/portfolio/eventscholarship"><i class="fa-solid fa-award" aria-hidden="true"></i>Print participation</a>
+				<a href="/studentrecord"><i class="fa-solid fa-user-plus" aria-hidden="true"></i>Add or manage students</a>
+				<a href="/student-transfer"><i class="fa-solid fa-right-left" aria-hidden="true"></i>Student update</a>
+			</div>
+		</details>
+		<details class="home-nav-group">
+			<summary><i class="fa-solid fa-chart-line" aria-hidden="true"></i><span>Monitoring</span></summary>
+			<div class="home-nav-submenu">
+				<a href="/dailydashboard"><i class="fa-solid fa-gauge-high" aria-hidden="true"></i>Day dashboard</a>
+				<a href="/cascounter"><i class="fa-solid fa-list-ol" aria-hidden="true"></i>1-5 CAS entry counter</a>
+				<a href="/projectcounter"><i class="fa-solid fa-diagram-project" aria-hidden="true"></i>Project entry counter</a>
+				<a href="/projectlist"><i class="fa-solid fa-list-check" aria-hidden="true"></i>Project work list</a>
+				<a href="/analysisentrycounter"><i class="fa-solid fa-chart-column" aria-hidden="true"></i>Answer Analysis entry counter</a>
+			</div>
+		</details>
+		<% } %>
+		<details class="home-nav-group">
+			<summary><i class="fa-solid fa-bullhorn" aria-hidden="true"></i><span>Notice & Event</span></summary>
+			<div class="home-nav-submenu">
+				<% if (homeIsAdmin) { %><a href="/notice/add"><i class="fa-solid fa-plus" aria-hidden="true"></i>Add notice</a><% } %>
+				<a href="/notice"><i class="fa-solid fa-bell" aria-hidden="true"></i>Notice list</a>
+				<a href="/createevent"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i>Event management</a>
+			</div>
+		</details>
+		<details class="home-nav-group">
+			<summary><i class="fa-solid fa-graduation-cap" aria-hidden="true"></i><span>Exam Management</span></summary>
+			<div class="home-nav-submenu">
+				<% if (homeIsAdmin) { %><a href="/exammanagement"><i class="fa-solid fa-gauge" aria-hidden="true"></i>Exam management dashboard</a><a href="/locker"><i class="fa-solid fa-lock" aria-hidden="true"></i>Entry form locker</a><a href="/admin/marksheetsetup"><i class="fa-solid fa-file-circle-check" aria-hidden="true"></i>Marksheet setup</a><% } %>
+				<a href="/examform"><i class="fa-solid fa-file-signature" aria-hidden="true"></i>Exam marks entry</a>
+				<% if (homeIsAdmin) { %><a href="/theoryentrycounter"><i class="fa-solid fa-arrow-down-1-9" aria-hidden="true"></i>Exam marks entry counter</a><a href="/ledger"><i class="fa-solid fa-book-open" aria-hidden="true"></i>Generate ledger</a><a href="/formatchoose"><i class="fa-solid fa-file-lines" aria-hidden="true"></i>Generate marksheet</a><% } %>
+			</div>
+		</details>
+		<details class="home-nav-group">
+			<summary><i class="fa-solid fa-magnifying-glass-chart" aria-hidden="true"></i><span>Answer Analysis</span></summary>
+			<div class="home-nav-submenu">
+				<a href="/addchapterselect"><i class="fa-solid fa-book-open" aria-hidden="true"></i>Add chapter</a>
+				<a href="/admin/subject"><i class="fa-solid fa-list-check" aria-hidden="true"></i>Question format</a>
+				<% homeSubjects.forEach(subject => { const encodedSubject = encodeURIComponent(String(subject.subject).trim()); %>
+				<div class="home-nav-nested"><strong><%= subject.subject %></strong><a href="/forms/<%= encodedSubject %>">Enter analysis data</a><a href="/teacher/<%= encodedSubject %>/findData">View analysis report</a></div>
+				<% }) %>
+				<% if (homeIsAdmin) { %><a href="/reportprint"><i class="fa-solid fa-print" aria-hidden="true"></i>Print analysis report</a><a href="/admin/comparisionprint"><i class="fa-solid fa-scale-balanced" aria-hidden="true"></i>Print comparison analysis</a><a href="/deleteanalysis"><i class="fa-solid fa-trash" aria-hidden="true"></i>Delete analysis report</a><a href="/analysisentrycounter"><i class="fa-solid fa-chart-column" aria-hidden="true"></i>Analysis entry counter</a><% } %>
+			</div>
+		</details>
+		<details class="home-nav-group">
+			<summary><i class="fa-solid fa-book" aria-hidden="true"></i><span>Academics</span></summary>
+			<div class="home-nav-submenu">
+				<a href="/homework"><i class="fa-solid fa-book-open" aria-hidden="true"></i>Add homework</a>
+				<a href="/class"><i class="fa-solid fa-pen-ruler" aria-hidden="true"></i>Internal assessment</a>
+				<a href="/lessonplanselect"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i>Lesson plan</a>
+			</div>
+		</details>
+		<% if (homeIsAdmin) { %>
+		<details class="home-nav-group">
+			<summary><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i><span>Basic Setup</span></summary>
+			<div class="home-nav-submenu">
+				<a href="/admin/class"><i class="fa-solid fa-school" aria-hidden="true"></i>Class setup</a>
+				<a href="/admin/terminal"><i class="fa-solid fa-calendar-plus" aria-hidden="true"></i>Terminal setup</a>
+				<a href="/admin/marksheetsetup"><i class="fa-solid fa-file-circle-check" aria-hidden="true"></i>Marksheet setup</a>
+				<a href="/admin/new/subject"><i class="fa-solid fa-book-medical" aria-hidden="true"></i>Add subject</a>
+				<a href="/user"><i class="fa-solid fa-user-gear" aria-hidden="true"></i>User management</a>
+				<a href="/branchsetup"><i class="fa-solid fa-building" aria-hidden="true"></i>Branch setup</a>
+				<a href="/departmentsetup"><i class="fa-solid fa-sitemap" aria-hidden="true"></i>Department setup</a>
+				<a href="/sectionsetup"><i class="fa-solid fa-layer-group" aria-hidden="true"></i>Section setup</a>
+				<a href="/designationsetup"><i class="fa-solid fa-id-card" aria-hidden="true"></i>Designation setup</a>
+				<a href="/shiftsetup"><i class="fa-solid fa-clock" aria-hidden="true"></i>Shift setup</a>
+			</div>
+		</details>
+		<% } %>
+		<a class="home-nav-link" href="/staffcontacts"><i class="fa-solid fa-address-book" aria-hidden="true"></i><span>Staff Contact List</span></a>
+		<% if (homeIsAdmin) { %>
+		<a class="home-nav-link" href="/inventory"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i><span>Inventory Dashboard</span></a>
+		<a class="home-nav-link" href="/healthrecord"><i class="fa-solid fa-kit-medical" aria-hidden="true"></i><span>Health Management Dashboard</span></a>
+		<a class="home-nav-link" href="/library/dashboard"><i class="fa-solid fa-book-open" aria-hidden="true"></i><span>Library Management Dashboard</span></a>
+		<a class="home-nav-link" href="/employeemanagementdashboard"><i class="fa-solid fa-users" aria-hidden="true"></i><span>Employee Management Dashboard</span></a>
+		<% } %>
+		<a class="home-nav-link" href="/employeeprofile"><i class="fa-solid fa-id-card" aria-hidden="true"></i><span>My profile (KYC)</span></a>
+		<% if (homeIsAdmin) { %>
+		<details class="home-nav-group">
+			<summary><i class="fa-solid fa-ellipsis" aria-hidden="true"></i><span>More</span></summary>
+			<div class="home-nav-submenu">
+				<a href="/principaldashboard"><i class="fa-solid fa-gauge" aria-hidden="true"></i>Principal dashboard</a>
+			</div>
+		</details>
+		<% } %>
+	</nav>
+	<a class="home-sidebar-logout" href="/admin/login"><i class="fa-solid fa-arrow-right-from-bracket" aria-hidden="true"></i><span>Sign out</span></a>
+</aside>
+<script>
+	(() => {
+		const toggle = document.querySelector('.home-sidebar-toggle');
+		toggle?.addEventListener('click', () => {
+			const collapsed = document.body.classList.toggle('home-sidebar-collapsed');
+			toggle.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+			toggle.title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+		});
+	})();
+</script>
