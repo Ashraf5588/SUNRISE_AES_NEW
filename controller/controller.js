@@ -48,16 +48,26 @@ const getSlipModel = () => {
 };
 
 const getAdminHomeMetrics = async () => {
-  const today = new Date();
-  const todayStart = new Date(today);
+  const todayBs = String(bs.ADToBS(new Date()) || '').trim().slice(0, 10);
+  let todayStart;
+  try {
+    const convertedToday = bs.BSToAD(todayBs);
+    todayStart = convertedToday instanceof Date
+      ? new Date(convertedToday)
+      : new Date(`${String(convertedToday || '').slice(0, 10)}T00:00:00`);
+    if (Number.isNaN(todayStart.getTime())) throw new Error('Invalid converted BS date');
+  } catch (error) {
+    todayStart = new Date();
+  }
   todayStart.setHours(0, 0, 0, 0);
   const tomorrow = new Date(todayStart);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const todayBs = String(bs.ADToBS(todayStart) || '').trim().slice(0, 10);
   const [, bsYear, bsMonth, bsDay] = todayBs.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/) || [];
   const monthNames = ['', 'Baisakh', 'Jestha', 'Asar', 'Shrawan', 'Bhadra', 'Ashwin', 'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'];
   const monthNumber = Number(bsMonth);
-  const monthKeys = [...new Set([String(monthNumber), monthNames[monthNumber], monthNumber === 3 ? 'Ashadh' : ''].filter(Boolean))];
+  const monthAliases = { 3: ['Asar', 'Ashar', 'Ashadh'], 6: ['Ashwin', 'Ashoj'] };
+  const attendanceMonthVariants = (monthAliases[monthNumber] || [monthNames[monthNumber]]).map(name => String(name || '').trim().toLowerCase());
+  const monthKeys = [...new Set([String(monthNumber), ...(monthAliases[monthNumber] || [monthNames[monthNumber]])].filter(Boolean))];
   const weekStart = new Date(todayStart);
   weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
   const weekEnd = new Date(weekStart);
@@ -73,7 +83,7 @@ const getAdminHomeMetrics = async () => {
     { 'attendance.callLoggedAt': { $exists: true, $ne: null } }
   ] };
 
-  const [employees, punches, leaves, pendingLeaveRequests, pendingManualPunchRequests, pendingProductRequests, isEmployeeHoliday, complaintResults, healthVisits, callResults, studentAttendanceDocs, totalStudents, events] = await Promise.all([
+  const [employees, punches, leaves, pendingLeaveRequests, pendingManualPunchRequests, pendingProductRequests, isEmployeeHoliday, complaintResults, allHealthRecords, callResults, studentAttendanceDocs, currentClasses, studentRosterGroups, events] = await Promise.all([
     Staff.find({ employeeCode: { $exists: true, $ne: '' }, isActive: { $ne: false } })
       .select('employeeCode staffName plannedIn midTime employmentStatus jobStatus dateOfBirth designation department mobileNumber officeContact')
       .lean(),
@@ -102,7 +112,7 @@ const getAdminHomeMetrics = async () => {
         ]
       } }
     ]),
-    HealthRecord.find({ $or: [{ nepaliDate: todayBs }, { createdAt: { $gte: todayStart, $lt: tomorrow } }] }).select('name studentClass section diagnosis treatment nepaliDate createdAt').sort({ createdAt: -1 }).limit(6).lean(),
+    HealthRecord.find({}).select('name studentClass section diagnosis treatment nepaliDate createdAt').sort({ createdAt: -1 }).lean(),
     onlineAttendance.aggregate([
       { $unwind: '$attendance' },
       { $match: { $and: [callDateFilter, callContentFilter] } },
@@ -115,8 +125,9 @@ const getAdminHomeMetrics = async () => {
         ]
       } }
     ]),
-    onlineAttendance.find({ attendance: { $elemMatch: { academicYear: String(bsYear), month: { $in: monthKeys }, day: String(bsDay) } } }).select('reg attendance').lean(),
-    studentRecord.countDocuments({}),
+    onlineAttendance.find({}).select('reg studentClass section attendance').lean(),
+    studentClass.find({}).select('studentClass section').lean(),
+    studentRecord.aggregate([{ $group: { _id: { studentClass: '$studentClass', section: '$section' }, count: { $sum: 1 } } }]),
     Event.find({ date: { $gte: todayStart, $lt: weekEnd }, status: { $nin: ['cancelled', 'completed'] } }).select('title date nepaliDate time location').sort({ date: 1 }).limit(6).lean()
   ]);
 
@@ -127,7 +138,8 @@ const getAdminHomeMetrics = async () => {
     if (!punchesByCode.has(code)) punchesByCode.set(code, []);
     punchesByCode.get(code).push(punch);
   });
-  const activeEmployees = employees.filter(employee => !['resigned', 'terminated'].includes(String(employee.employmentStatus || employee.jobStatus || '').trim().toLowerCase()));
+  const activeEmployees = employees.filter(employee => employee.isActive !== false
+    && ![employee.employmentStatus, employee.jobStatus].some(status => ['resigned', 'terminated'].includes(String(status || '').trim().toLowerCase())));
   let absentToday = 0;
   let lateToday = 0;
   const absentList = [];
@@ -144,14 +156,18 @@ const getAdminHomeMetrics = async () => {
       designation: employee.designation || employee.department || '',
       contact: employee.mobileNumber || employee.officeContact || 'Contact not listed'
     };
-    if (isOnLeave) onLeaveList.push({ ...employeeSummary, leave: leaves.find(leave => String(leave.employeeName || '').trim().toLowerCase() === String(employee.staffName || '').trim().toLowerCase())?.leaveTypeName || 'Approved leave' });
     if (!punchesForEmployee.length) {
-      if (!isOnLeave && !isEmployeeHoliday) {
+      if (isOnLeave) {
+        onLeaveList.push({ ...employeeSummary, leave: leaves.find(leave => String(leave.employeeName || '').trim().toLowerCase() === String(employee.staffName || '').trim().toLowerCase())?.leaveTypeName || 'Approved leave' });
+      } else if (!isEmployeeHoliday) {
         absentToday += 1;
         absentList.push(employeeSummary);
         missedTeacherList.push({ ...employeeSummary, missing: 'No punches recorded' });
       }
-    } else if (!isOnLeave && !isEmployeeHoliday) {
+      return;
+    }
+
+    if (!isEmployeeHoliday) {
       const midTime = String(employee.midTime || '13:00').match(/^(\d{1,2}):(\d{2})$/);
       const midTimeMinutes = midTime ? Number(midTime[1]) * 60 + Number(midTime[2]) : 13 * 60;
       const isAfterMidTime = punch => {
@@ -162,11 +178,7 @@ const getAdminHomeMetrics = async () => {
       const isExplicitCheckOut = punch => punch.manualPunchType === 'Check-out' || Number(punch.status) === 1;
       const morningPunches = punchesForEmployee.filter(punch => !isAfterMidTime(punch)
         && (isExplicitCheckIn(punch) || !isExplicitCheckOut(punch)));
-      const eveningPunches = punchesForEmployee.filter(punch => isAfterMidTime(punch) || isExplicitCheckOut(punch));
-      const missing = [];
-      if (!morningPunches.length) missing.push('Missing check-in');
-      if (!eveningPunches.length) missing.push('Missing check-out');
-      if (missing.length) missedTeacherList.push({ ...employeeSummary, missing: missing.join(' and ') });
+      if (!morningPunches.length) missedTeacherList.push({ ...employeeSummary, missing: 'Missed morning check-in' });
       const checkIn = morningPunches[morningPunches.length - 1];
       if (checkIn) {
         const [plannedHour, plannedMinute] = String(employee.plannedIn || '09:00').split(':').map(Number);
@@ -186,33 +198,42 @@ const getAdminHomeMetrics = async () => {
     }
   });
 
-  const studentStatuses = new Map();
+  const currentClassKeys = new Set(currentClasses.map(item => `${String(item.studentClass || '').trim()}||${String(item.section || '').trim()}`));
+  const studentTotalsByClass = new Map();
+  studentRosterGroups.forEach(group => {
+    const key = `${String(group._id?.studentClass || '').trim()}||${String(group._id?.section || '').trim()}`;
+    if (currentClassKeys.has(key)) studentTotalsByClass.set(key, Number(group.count) || 0);
+  });
+  const totalStudents = [...studentTotalsByClass.values()].reduce((total, count) => total + count, 0);
+  let studentAbsent = 0;
   studentAttendanceDocs.forEach(document => {
+    const groupKey = `${String(document.studentClass || '').trim()}||${String(document.section || '').trim()}`;
+    if (!currentClassKeys.has(groupKey)) return;
     const entries = Array.isArray(document.attendance) ? document.attendance.filter(entry =>
       String(entry.academicYear || '') === String(bsYear)
-      && monthKeys.includes(String(entry.month || ''))
+      && attendanceMonthVariants.includes(String(entry.month || '').trim().toLowerCase())
       && String(entry.day || '') === String(bsDay)
     ) : [];
-    const entry = entries[entries.length - 1];
-    if (!entry) return;
-    const status = String(entry.status || '').trim().toLowerCase();
-    const key = String(document.reg || document._id);
-    if (['present', 'p', 'true', '1'].includes(status)) studentStatuses.set(key, 'present');
-    else if (['absent', 'a', 'false', '0'].includes(status)) studentStatuses.set(key, 'absent');
+    entries.forEach(entry => {
+      if (['absent', 'a', 'false'].includes(String(entry.status || '').trim().toLowerCase())) studentAbsent += 1;
+    });
   });
-  const studentPresent = [...studentStatuses.values()].filter(status => status === 'present').length;
-  const studentAbsent = [...studentStatuses.values()].filter(status => status === 'absent').length;
-  const missedAttendance = Math.max(totalStudents - studentPresent - studentAbsent, 0);
+  const studentPresent = Math.max(totalStudents - studentAbsent, 0);
+  const missedAttendance = missedTeacherList.length;
 
   const complaintData = complaintResults[0] || { count: [], items: [] };
   const callData = callResults[0] || { count: [], items: [] };
+  const healthVisits = allHealthRecords.filter(record => {
+    const visitDateBs = String(record.nepaliDate || (record.createdAt ? bs.ADToBS(new Date(record.createdAt)) : '') || '').trim().slice(0, 10);
+    return visitDateBs === todayBs;
+  });
   const healthVisitList = healthVisits.map(visit => ({ name: visit.name || 'Student', detail: visit.diagnosis || visit.treatment || 'Health visit', className: [visit.studentClass, visit.section].filter(Boolean).join(' / ') }));
   const birthdaysList = birthdaysToday.slice(0, 8);
 
   return {
-    onLeaveToday: leaves.length,
-    absentToday,
-    lateToday,
+    onLeaveToday: onLeaveList.length,
+    absentToday: absentList.length,
+    lateToday: lateInList.length,
     pendingLeaveRequests,
     pendingProductRequests,
     pendingManualPunchRequests,
@@ -225,10 +246,10 @@ const getAdminHomeMetrics = async () => {
     callsDoneToday: callData.count[0]?.total || 0,
     callList: callData.items || [],
     missedAttendance,
-    onLeaveList: onLeaveList.slice(0, 8),
-    absentList: absentList.slice(0, 8),
-    lateInList: lateInList.slice(0, 8),
-    missedTeacherList: missedTeacherList.slice(0, 8),
+    onLeaveList,
+    absentList,
+    lateInList,
+    missedTeacherList,
     birthdaysToday: birthdaysList,
     eventsThisWeek: events,
     todayBs
