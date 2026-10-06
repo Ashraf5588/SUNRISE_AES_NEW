@@ -108,11 +108,11 @@ const getAdminHomeMetrics = async () => {
         count: [{ $count: 'total' }],
         items: [
           { $limit: 6 },
-          { $project: { _id: 0, studentName: '$name', studentClass: '$studentClass', section: '$section', reason: '$complaints.reason', dateBs: '$complaints.nepaliDate' } }
+          { $project: { _id: 0, reg: 1, studentName: '$name', studentClass: '$studentClass', section: '$section', reason: '$complaints.reason', by: '$complaints.by', dateBs: '$complaints.nepaliDate' } }
         ]
       } }
     ]),
-    HealthRecord.find({}).select('name studentClass section diagnosis treatment nepaliDate createdAt').sort({ createdAt: -1 }).lean(),
+    HealthRecord.find({}).select('name studentClass section contactNumber diagnosis treatment nepaliDate createdAt').sort({ createdAt: -1 }).lean(),
     onlineAttendance.aggregate([
       { $unwind: '$attendance' },
       { $match: { $and: [callDateFilter, callContentFilter] } },
@@ -222,12 +222,30 @@ const getAdminHomeMetrics = async () => {
   const missedAttendance = missedTeacherList.length;
 
   const complaintData = complaintResults[0] || { count: [], items: [] };
+  const complaintItems = complaintData.items || [];
+  const complaintRegs = [...new Set(complaintItems.map(item => String(item.reg || '').trim()).filter(Boolean))];
+  const complaintStudents = complaintRegs.length
+    ? await studentRecord.find({ reg: { $in: complaintRegs } }).select('reg name studentClass section').lean()
+    : [];
+  const complaintStudentsByReg = new Map(complaintStudents.map(student => [String(student.reg), student]));
+  const complaintList = complaintItems.map(item => ({
+    ...item,
+    studentName: complaintStudentsByReg.get(String(item.reg || '').trim())?.name || item.studentName || 'Student',
+    studentClass: complaintStudentsByReg.get(String(item.reg || '').trim())?.studentClass || item.studentClass || '',
+    section: complaintStudentsByReg.get(String(item.reg || '').trim())?.section || item.section || ''
+  }));
   const callData = callResults[0] || { count: [], items: [] };
   const healthVisits = allHealthRecords.filter(record => {
     const visitDateBs = String(record.nepaliDate || (record.createdAt ? bs.ADToBS(new Date(record.createdAt)) : '') || '').trim().slice(0, 10);
     return visitDateBs === todayBs;
   });
-  const healthVisitList = healthVisits.map(visit => ({ name: visit.name || 'Student', detail: visit.diagnosis || visit.treatment || 'Health visit', className: [visit.studentClass, visit.section].filter(Boolean).join(' / ') }));
+  const healthVisitList = healthVisits.map(visit => ({
+    name: visit.name || 'Student',
+    className: [visit.studentClass, visit.section].filter(Boolean).join(' / '),
+    diagnosis: visit.diagnosis || 'Not recorded',
+    treatment: visit.treatment || 'Not recorded',
+    contact: visit.contactNumber || 'Not listed'
+  }));
   const birthdaysList = birthdaysToday.slice(0, 8);
 
   return {
@@ -240,7 +258,7 @@ const getAdminHomeMetrics = async () => {
     studentPresent,
     studentAbsent,
     complaintsToday: complaintData.count[0]?.total || 0,
-    complaintList: complaintData.items || [],
+    complaintList,
     healthVisitsToday: healthVisits.length,
     healthVisitList,
     callsDoneToday: callData.count[0]?.total || 0,
@@ -503,7 +521,28 @@ exports.homePage = async (req, res, next) => {
   const marksheetSetups = await marksheetSetup.find({}).lean();
   const terminals = await terminal.find({}).lean();
   const user = req.user;
-  const recentNotices = await noticecontroller.getRecentNotices(user, 6);
+  const today = new Date();
+  const todayStart = new Date(today);
+  todayStart.setHours(0, 0, 0, 0);
+  const weekStart = new Date(todayStart);
+  weekStart.setDate(weekStart.getDate() - ((weekStart.getDay() + 6) % 7));
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  const [recentNotices, homeEvents, birthdayStaff] = await Promise.all([
+    noticecontroller.getRecentNotices(user, 6),
+    Event.find({ date: { $gte: todayStart, $lt: weekEnd }, status: { $nin: ['cancelled', 'completed'] } })
+      .select('title date nepaliDate time location')
+      .sort({ date: 1 })
+      .limit(6)
+      .lean(),
+    Staff.find({ dateOfBirth: { $exists: true, $ne: null }, isActive: { $ne: false } })
+      .select('staffName designation dateOfBirth')
+      .lean()
+  ]);
+  const birthdaysToday = birthdayStaff.filter(person => {
+    const birthday = new Date(person.dateOfBirth);
+    return birthday.getMonth() === today.getMonth() && birthday.getDate() === today.getDate();
+  }).slice(0, 8).map(person => ({ name: person.staffName || 'Staff member', designation: person.designation || 'Staff' }));
   const isAdmin = String(user.role || '').toUpperCase() === 'ADMIN';
   const adminDashboardMetrics = isAdmin ? await getAdminHomeMetrics() : null;
   let accessibleSubject =[];
@@ -534,6 +573,8 @@ exports.homePage = async (req, res, next) => {
     terminals,
     marksheetSetups,
     recentNotices,
+    homeEvents,
+    birthdaysToday,
     adminDashboardMetrics,
     userAllowedSubjects: user.allowedSubjects || [],
     dashboardDate: new Date().toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }),
