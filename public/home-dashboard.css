@@ -128,6 +128,8 @@
   .home-stat-copy { display: grid; min-width: 0; gap: 4px; }
   .home-stat-label { color: var(--home-muted); font-size: 14.5px; font-weight: 700; line-height: 1.25; }
   .home-stat-value { color: var(--home-ink); font: 800 24px 'Manrope',sans-serif; line-height: 1; }
+  .home-stat-breakdown { display: flex; flex-wrap: wrap; gap: 3px 8px; color: var(--home-muted); font: 600 9px 'Lexend',sans-serif; line-height: 1.35; }
+  .home-stat-breakdown strong { color: var(--home-ink); font-weight: 800; }
   .home-stat-value-pair { display: flex; align-items: baseline; gap: 4px; font-size: 19px; }
   .home-stat-value-pair span { color: var(--home-muted); font: 600 8px 'Lexend',sans-serif; }
   .home-stat-value-pair i { color: #93a2ae; font: 500 13px 'Lexend',sans-serif; }
