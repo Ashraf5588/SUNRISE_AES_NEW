@@ -206,6 +206,17 @@ const getStatusIsAbsent = (status) => {
   return ["absent", "a", "false", "0"].includes(normalizedStatus);
 };
 
+const getAttendanceSourceForClass = async (studentClass) => {
+  const className = String(studentClass || "").trim();
+  if (!className) return "auto";
+
+  const classRecord = await studentClassModel.findOne({
+    studentClass: { $regex: `^${className}$`, $options: "i" }
+  }).lean();
+
+  return classRecord?.attendanceSource === "manual" ? "manual" : "auto";
+};
+
 const getCanonicalMonthName = (monthName) => {
   return MONTH_KEY_ALIASES[normalizeText(monthName)] || String(monthName || "").trim();
 };
@@ -309,12 +320,16 @@ exports.entryPageSetup = async (req, res) => {
 
       const existing = classesByName.get(key);
       const entryFormType = ENTRY_FORM_TYPES.has(classRecord.entryFormType) ? classRecord.entryFormType : 'auto';
+      const attendanceSource = classRecord.attendanceSource === 'manual' ? 'manual' : 'auto';
       if (!existing || (existing.entryFormType === 'auto' && entryFormType !== 'auto')) {
         classesByName.set(key, {
           studentClass: className,
           classorder: Number(classRecord.classorder) || 0,
-          entryFormType
+          entryFormType,
+          attendanceSource
         });
+      } else if (existing.attendanceSource !== attendanceSource) {
+        existing.attendanceSource = attendanceSource;
       }
     });
 
@@ -338,7 +353,8 @@ exports.saveEntryPageSetup = async (req, res) => {
     for (const config of classConfigs) {
       const className = String(config?.studentClass || '').trim();
       const entryFormType = String(config?.entryFormType || 'auto');
-      if (!className || !ENTRY_FORM_TYPES.has(entryFormType)) continue;
+      const attendanceSource = String(config?.attendanceSource || 'auto');
+      if (!className || !ENTRY_FORM_TYPES.has(entryFormType) || !['auto', 'manual'].includes(attendanceSource)) continue;
 
       const matchingNames = [...new Set(existingClassRecords
         .map((record) => String(record.studentClass || '').trim())
@@ -347,7 +363,7 @@ exports.saveEntryPageSetup = async (req, res) => {
 
       await studentClass.updateMany(
         { studentClass: { $in: matchingNames } },
-        { $set: { entryFormType } }
+        { $set: { entryFormType, attendanceSource } }
       );
     }
 
@@ -530,6 +546,25 @@ exports.saveEntryform = async (req, res, next) => {
     console.log("[Backend] Setting totalWorksheet to:", updateData.$set.totalWorksheet);
 
     const result = await model.updateMany(updateQuery, updateData, { upsert: true });
+
+    const attendanceSource = await getAttendanceSourceForClass(studentClass);
+    if (attendanceSource === "manual") {
+      await model.updateMany(
+        {
+          reg: req.body.reg,
+          studentClass: studentClass,
+          section: section,
+          academicYear: academicYear,
+          terminal: terminal,
+        },
+        {
+          $set: {
+            attendance: Number(req.body.attendance) || 0,
+            status: req.body.status === 'ABSENT' ? 'ABSENT' : 'PRESENT',
+          }
+        }
+      );
+    }
     
     console.log("[Backend] Update result:", result);
     console.log("[Backend] ✓ Data saved successfully (matched:", result.matchedCount, ", modified:", result.modifiedCount, ", upserted:", result.upsertedCount, ")");
@@ -705,6 +740,28 @@ exports.getAttendanceData= async (req,res,next)=>
     }
 
     const normalizedAcademicYear = String(academicYear).trim();
+    const attendanceSource = await getAttendanceSourceForClass(studentClass);
+    if (attendanceSource === "manual") {
+      const manualAttendance = await getSlipModel()
+        .find({
+          studentClass: String(studentClass).trim(),
+          section: String(section).trim(),
+          academicYear: normalizedAcademicYear,
+          terminal: String(terminal).trim(),
+        })
+        .select("reg attendance")
+        .lean();
+
+      return res.json(manualAttendance
+        .filter((row) => String(row?.reg || "").trim())
+        .map((row) => ({
+          reg: String(row.reg).trim(),
+          attendance: Number(row.attendance) || 0,
+          totalWorkingDaysUptoToday: 0,
+          terminal: String(terminal).trim(),
+        })));
+    }
+
     const marksheetSetupDoc = await marksheetSetup.findOne({ academicYear: normalizedAcademicYear }).lean();
     const terminalData = marksheetSetupDoc?.terminals?.find((item) => normalizeText(item.name) === normalizeText(terminal));
     const parseBsDate = (value) => {
@@ -734,11 +791,24 @@ exports.getAttendanceData= async (req,res,next)=>
 
     const totalWorkingDays = Math.max(Number(terminalData.workingDays) || 0, 0);
 
-    const onlineAttendanceDocs = await onlineAttendance
-      .find({ studentClass: String(studentClass).trim(), section: String(section).trim(), academicYear: normalizedAcademicYear })
-      .lean();
+    let attendanceDocs = [];
+    if (attendanceSource === "manual") {
+      attendanceDocs = await getSlipModel()
+        .find({
+          studentClass: String(studentClass).trim(),
+          section: String(section).trim(),
+          academicYear: normalizedAcademicYear,
+          terminal: terminal
+        })
+        .select("reg attendance status")
+        .lean();
+    } else {
+      attendanceDocs = await onlineAttendance
+        .find({ studentClass: String(studentClass).trim(), section: String(section).trim(), academicYear: normalizedAcademicYear })
+        .lean();
+    }
 
-    const calculatedAttendance = onlineAttendanceDocs.map((onlineDoc) => {
+    const calculatedAttendance = attendanceDocs.map((onlineDoc) => {
       const reg = String(onlineDoc?.reg || "").trim();
       const attendanceEntries = Array.isArray(onlineDoc?.attendance) ? onlineDoc.attendance : [];
 

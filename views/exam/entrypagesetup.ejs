@@ -42,7 +42,7 @@
 				<% if (classes.length) { %>
 					<table>
 						<thead>
-							<tr><th>SN</th><th>Class</th><th>Form Type</th></tr>
+								<tr><th>SN</th><th>Class</th><th>Form Type</th><th>Attendance From</th></tr>
 						</thead>
 						<tbody>
 							<% classes.forEach((classItem, index) => { %>
@@ -61,8 +61,12 @@
 											<option value="entryformlocalsubject" <%= classItem.entryFormType === 'entryformlocalsubject' ? 'selected' : '' %>>Local subject entry form</option>
 											<option value="entryformpreprimary" <%= classItem.entryFormType === 'entryformpreprimary' ? 'selected' : '' %>>Only Worksheet select entry Form</option>
 										</select>
-									</td>
-								</tr>
+									</td>										<td>
+											<select name="classes[<%= index %>][attendanceSource]">
+												<option value="auto" <%= classItem.attendanceSource === 'auto' ? 'selected' : '' %>>Auto fetch</option>
+												<option value="manual" <%= classItem.attendanceSource === 'manual' ? 'selected' : '' %>>Manual entry</option>
+											</select>
+										</td>								</tr>
 							<% }) %>
 						</tbody>
 					</table>

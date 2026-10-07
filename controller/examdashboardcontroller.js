@@ -137,6 +137,41 @@ function getCurrentBSDate() {
   return { year: 2083, month: 2, day: 15 };
 }
 
+async function getManualAttendanceData(studentClass, section, academicYear, terminal) {
+  const model = getSlipModel();
+  const rows = await model.find({
+    studentClass: String(studentClass || '').trim(),
+    section: String(section || '').trim(),
+    academicYear: String(academicYear || '').trim(),
+    terminal: String(terminal || '').trim(),
+  }).select('reg attendance').lean();
+
+  const selectedAttendance = new Map();
+
+  rows.forEach((row) => {
+    const reg = String(row?.reg || '').trim();
+    if (!reg) return;
+
+    const attendanceValue = Number(row.attendance);
+    if (!Number.isFinite(attendanceValue)) return;
+
+    const current = selectedAttendance.get(reg);
+    const hasCurrentValue = current !== undefined && current !== null;
+    const shouldReplace = !hasCurrentValue || (current === 0 && attendanceValue !== 0);
+
+    if (shouldReplace) {
+      selectedAttendance.set(reg, attendanceValue);
+    }
+  });
+
+  return [...selectedAttendance.entries()].map(([reg, attendance]) => ({
+    reg,
+    attendance,
+    totalWorkingDaysUptoToday: 0,
+    terminal: String(terminal || '').trim(),
+  }));
+}
+
 async function getAttendanceDataFromApi(studentClass, section, academicYear, terminal) {
   const normalizedAcademicYear = String(academicYear || '').trim();
   const marksheetSetupDoc = await marksheetSetup.findOne({ academicYear: normalizedAcademicYear }).lean();
@@ -346,7 +381,12 @@ exports.generateMarksheet = async (req, res, next) => {
     ]);
 
    
-    const attendanceData = await getAttendanceDataFromApi(studentClass, section, academicYear, terminal);
+    const attendanceSource = await studentClassModel.findOne({
+      studentClass: { $regex: `^${String(studentClass || '').trim()}$`, $options: 'i' }
+    }).select('attendanceSource').lean();
+    const attendanceData = attendanceSource?.attendanceSource === 'manual'
+      ? await getManualAttendanceData(studentClass, section, academicYear, terminal)
+      : await getAttendanceDataFromApi(studentClass, section, academicYear, terminal);
     const attendanceMap = new Map(attendanceData.map(item => [String(item.reg).trim(), item]));
     const terminalWorkingDays = Number(marksheetSetups
       .find((setup) => String(setup.academicYear) === String(academicYear))
@@ -357,19 +397,10 @@ exports.generateMarksheet = async (req, res, next) => {
     studentWisedata.forEach((student) => {
       const reg = String(student._id || '').trim();
       const record = attendanceMap.get(reg);
-      const attendanceValue = record?.attendance ?? (student.subjects?.[0]?.attendance ?? 0);
-      student.subjects = student.subjects.map((sub) => ({ ...sub, attendance:sub.attendance}));
-    });
-    if(studentClass >3 || studentClass.toLowerCase() === "four" || studentClass.toLowerCase() === "five" || studentClass.toLowerCase() === "six" || studentClass.toLowerCase() === "seven" || studentClass.toLowerCase() === "eight" || studentClass.toLowerCase() === "nine" || studentClass.toLowerCase() === "ten")
-    {
-      studentWisedata.forEach((student) => {
-      const reg = String(student._id || '').trim();
-      const record = attendanceMap.get(reg);
       const rawAttendanceValue = record?.attendance ?? (student.subjects?.[0]?.attendance ?? 0);
-      const attendanceValue = Math.min(Math.max(Number(rawAttendanceValue) || 0, 0), attendanceWorkingDays);
-      student.subjects = student.subjects.map((sub) => ({ ...sub, attendance:attendanceValue }));
+      const attendanceValue = Math.min(Math.max(Number(rawAttendanceValue) || 0, 0), attendanceWorkingDays || Number.MAX_SAFE_INTEGER);
+      student.subjects = student.subjects.map((sub) => ({ ...sub, attendance: attendanceValue }));
     });
-    }
 
     // Use if-else if-else structure to prevent multiple renders
     if (isTestFormat) {
