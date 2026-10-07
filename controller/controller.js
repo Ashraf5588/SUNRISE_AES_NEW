@@ -191,11 +191,9 @@ const getAdminHomeMetrics = async () => {
         return time.getHours() * 60 + time.getMinutes() >= midTimeMinutes;
       };
       const isExplicitCheckIn = punch => punch.manualPunchType === 'Check-in' || Number(punch.status) === 0;
-      const isExplicitCheckOut = punch => punch.manualPunchType === 'Check-out' || Number(punch.status) === 1;
-      const morningPunches = punchesForEmployee.filter(punch => !isAfterMidTime(punch)
-        && (isExplicitCheckIn(punch) || !isExplicitCheckOut(punch)));
+      const morningPunches = punchesForEmployee.filter(punch => !isAfterMidTime(punch));
       if (!morningPunches.length) missedTeacherList.push({ ...employeeSummary, missing: 'Missed morning check-in' });
-      const checkIn = morningPunches[morningPunches.length - 1];
+      const checkIn = morningPunches.find(isExplicitCheckIn) || morningPunches[0];
       if (checkIn) {
         const [plannedHour, plannedMinute] = String(employee.plannedIn || '09:00').split(':').map(Number);
         const actualDate = new Date(checkIn.punchTime);
