@@ -15,6 +15,7 @@ const { getRecentNotices } = require('../noticecontroller/noticecontroller');
 const ManualPunchRequest = require('../../model/employeeSchema/manualPunchRequestSchema');
 const { Branch, Department, DepartmentSection, Designation, Shift } = require('../../model/employeeSchema/employeeSetupSchema');
 const EmployeeWeekend = require('../../model/employeeSchema/employeeWeekendSchema');
+const { classifyPunchesByMidTime } = require('../../utils/employeePunchClassification');
 const Staff = mongoose.models.staff || mongoose.model('staff', staffSchema, 'staff');
 const LeaveApplication = mongoose.models.LeaveApplication || mongoose.model('LeaveApplication', leaveApplicationSchema, 'leaveApplications');
 const employeeSetupConfigs = {
@@ -421,19 +422,10 @@ exports.showEmployeeManagementDashboard = async (req, res) => {
             }
 
             attendanceLists.present.push(employeeSummary);
-            const midTimeMinutes = getMinutes(getEmployeeMidTime(employee));
-            const getPunchMinutes = punch => getMinutes(formatPunchTime(new Date(punch.punchTime)));
-            const isAfterMidTime = punch => {
-                const punchMinutes = getPunchMinutes(punch);
-                return punchMinutes !== null && midTimeMinutes !== null && punchMinutes >= midTimeMinutes;
-            };
-            const isExplicitCheckIn = punch => punch.manualPunchType === 'Check-in' || Number(punch.status) === 0;
-            const isExplicitCheckOut = punch => punch.manualPunchType === 'Check-out' || Number(punch.status) === 1;
-            const morningPunches = employeePunches.filter(punch => !isAfterMidTime(punch)
-                && (isExplicitCheckIn(punch) || !isExplicitCheckOut(punch)));
-            if (!morningPunches.length) return;
+            const { checkIn } = classifyPunchesByMidTime(employeePunches, getEmployeeMidTime(employee));
+            if (!checkIn) return;
 
-            const actualIn = morningPunches[morningPunches.length - 1].punchTime;
+            const actualIn = checkIn.punchTime;
             const actualMinutes = getMinutes(formatPunchTime(new Date(actualIn)));
             const plannedMinutes = getMinutes(employee.plannedIn || '09:00');
             if (actualMinutes !== null && plannedMinutes !== null && actualMinutes > plannedMinutes) {
@@ -1737,20 +1729,9 @@ async function buildEmployeeAttendanceReport(queryParams) {
             const employee = employeeByCode.get(code) || {};
             const dayPunches = punchesByDateAndCode.get(`${dateKey}|${code}`) || [];
             const employeeName = employee.staffName || dayPunches.find(punch => punch.name)?.name || 'Employee not mapped';
-            const midTimeMinutes = getMinutes(getEmployeeMidTime(employee));
-            const getPunchMinutes = punch => getMinutes(formatPunchTime(new Date(punch.punchTime)));
-            const isAfterMidTime = punch => {
-                const punchMinutes = getPunchMinutes(punch);
-                return punchMinutes !== null && midTimeMinutes !== null && punchMinutes >= midTimeMinutes;
-            };
-            const isExplicitCheckIn = punch => punch.manualPunchType === 'Check-in' || Number(punch.status) === 0;
-            const isExplicitCheckOut = punch => punch.manualPunchType === 'Check-out' || Number(punch.status) === 1;
-            const morningPunches = dayPunches.filter(punch => !isAfterMidTime(punch)
-                && (isExplicitCheckIn(punch) || !isExplicitCheckOut(punch)));
-            const eveningPunches = dayPunches.filter(punch => isAfterMidTime(punch)
-                || isExplicitCheckOut(punch));
-            const actualIn = morningPunches.length ? formatPunchTime(new Date(morningPunches[morningPunches.length - 1].punchTime)) : '';
-            const actualOut = eveningPunches.length ? formatPunchTime(new Date(eveningPunches[eveningPunches.length - 1].punchTime)) : '';
+            const { checkIn, checkOut } = classifyPunchesByMidTime(dayPunches, getEmployeeMidTime(employee));
+            const actualIn = checkIn ? formatPunchTime(new Date(checkIn.punchTime)) : '';
+            const actualOut = checkOut ? formatPunchTime(new Date(checkOut.punchTime)) : '';
             const storedHolidayPunch = dayPunches.find(punch => punch.isHoliday && punch.holidayName);
             const holidayName = employeeHolidaysByDate.get(getNepaliDate(date).slice(0, 10)) || storedHolidayPunch?.holidayName || '';
             const isHoliday = Boolean(holidayName);
@@ -2192,7 +2173,6 @@ exports.showMyAttendance = async (req, res) => {
         let leaveDays = 0;
         const today = new Date();
         today.setHours(23, 59, 59, 999);
-        const midTimeMinutes = getMinutes(getEmployeeMidTime(employee));
         const plannedIn = employee.plannedIn || '09:00';
         const plannedOut = employee.plannedOut || '17:00';
         const plannedInMinutes = getMinutes(plannedIn);
@@ -2201,16 +2181,9 @@ exports.showMyAttendance = async (req, res) => {
         for (let date = new Date(start); date < endExclusive; date.setDate(date.getDate() + 1)) {
             const dateKey = formatDateKey(date);
             const dayPunches = punchesByDate.get(dateKey) || [];
-            const isAfterMidTime = punch => {
-                const minutes = getMinutes(formatPunchTime(new Date(punch.punchTime)));
-                return minutes !== null && midTimeMinutes !== null && minutes >= midTimeMinutes;
-            };
-            const isCheckIn = punch => punch.manualPunchType === 'Check-in' || Number(punch.status) === 0;
-            const isCheckOut = punch => punch.manualPunchType === 'Check-out' || Number(punch.status) === 1;
-            const checkIns = dayPunches.filter(punch => !isAfterMidTime(punch) && (isCheckIn(punch) || !isCheckOut(punch)));
-            const checkOuts = dayPunches.filter(punch => isAfterMidTime(punch) || isCheckOut(punch));
-            const actualIn = checkIns.length ? new Date(checkIns[checkIns.length - 1].punchTime) : null;
-            const actualOut = checkOuts.length ? new Date(checkOuts[checkOuts.length - 1].punchTime) : null;
+            const { checkIn, checkOut } = classifyPunchesByMidTime(dayPunches, getEmployeeMidTime(employee));
+            const actualIn = checkIn ? new Date(checkIn.punchTime) : null;
+            const actualOut = checkOut ? new Date(checkOut.punchTime) : null;
             const leave = leavesByDate.get(dateKey);
             const isFuture = date > today;
             let status = isFuture ? 'Upcoming' : 'Absent';

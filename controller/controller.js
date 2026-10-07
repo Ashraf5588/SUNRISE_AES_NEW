@@ -110,7 +110,6 @@ const getAdminHomeMetrics = async () => {
       { $facet: {
         count: [{ $count: 'total' }],
         items: [
-          { $limit: 6 },
           { $project: { _id: 0, reg: 1, studentName: '$name', studentClass: '$studentClass', section: '$section', reason: '$complaints.reason', by: '$complaints.by', dateBs: '$complaints.nepaliDate' } }
         ]
       } }
@@ -123,7 +122,6 @@ const getAdminHomeMetrics = async () => {
       { $facet: {
         count: [{ $count: 'total' }],
         items: [
-          { $limit: 6 },
           { $project: { _id: 0, studentName: '$name', callReason: '$attendance.callReason', parentResponse: '$attendance.parentResponse', month: '$attendance.month', day: '$attendance.day' } }
         ]
       } }
