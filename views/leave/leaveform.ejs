@@ -21,41 +21,95 @@
 			<% if (message) { %><div class="leave-notice"><%= message %></div><% } %>
 
 			<section class="leave-panel">
-				<div class="leave-section-heading"><div><h2>New application</h2><p><%= isUserAdmin ? 'Choose the staff member applying for leave.' : 'Your name is taken from your signed-in account.' %></p></div></div>
-				<% if (leaveTypes.length) { %>
-				<form method="post" action="/leave" enctype="multipart/form-data" id="leaveApplicationForm" data-is-admin="<%= isUserAdmin ? 'true' : 'false' %>">
-					<div class="leave-field-grid">
-						<div class="leave-field"><label for="employeeId">Applicant</label>
-							<% if (isUserAdmin) { %><select id="employeeId" name="employeeId" required><option value="">Select applicant</option><% employees.forEach(employee => { %><option value="<%= employee.id %>" data-role="<%= employee.role %>" <%= employee.id === selectedEmployeeId ? 'selected' : '' %>><%= employee.name %> / <%= employee.role %> (<%= employee.username %>)</option><% }) %></select>
-							<% } else { %><input id="employeeId" type="hidden" value="<%= selectedEmployeeId %>"><input id="employeeName" value="<%= employeeName %>" readonly><% } %>
-						</div>
-						<div class="leave-field"><label for="employeeRole">Role</label><input id="employeeRole" value="<%= employeeRole %>" readonly></div>
-						<div class="leave-field"><label for="leaveType">Leave type</label><select id="leaveType" name="leaveType" required><option value="">Select leave type</option><% leaveTypes.forEach(type => { %><option value="<%= type._id %>" data-roles="<%= (type.applicableTo || ['ALL']).join(',') %>" data-paid="<%= type.isPaid ? 'true' : 'false' %>" data-document="<%= type.requiresDocument ? 'true' : 'false' %>" data-annual="<%= type.maxDaysPerYear || '' %>" data-monthly="<%= type.maxDaysPerMonth || '' %>"><%= type.leavename %> / <%= type.isPaid ? 'Paid' : 'Unpaid' %></option><% }) %></select></div>
-						<div class="leave-field"><label for="startDateNepali">Start date (BS)</label><input id="startDateNepali" name="startDateNepali" class="nepali-datepicker" type="text" value="<%= todayNepaliDate %>" placeholder="YYYY-MM-DD" required></div>
-						<div class="leave-field"><label for="endDateNepali">End date (BS)</label><input id="endDateNepali" name="endDateNepali" class="nepali-datepicker" type="text" value="" placeholder="Select end date" required></div>
-						<div class="leave-field"><label>Duration</label><output class="leave-duration" id="durationPreview" aria-live="polite">Select dates to calculate duration</output></div>
-						<div class="leave-field leave-field-wide"><label for="reason">Reason</label><textarea id="reason" name="reason" maxlength="1000" required placeholder="Add details to support your application"></textarea></div>
-						<div class="leave-field leave-field-wide" id="documentField" hidden><label for="supportingDocument">Supporting document <span class="required-note">Required by this leave policy</span></label><input id="supportingDocument" name="supportingDocument" type="file" accept=".pdf,.jpg,.jpeg,.png,.docx"><small>PDF, JPG, PNG, or DOCX. Maximum 5 MB.</small></div>
-					</div>
-					<div id="leaveQuotaWarning" class="leave-quota-warning" role="status" aria-live="polite" hidden></div>
-					<div class="leave-submit-row"><span class="leave-status pending">Submitted applications start as Pending</span><button class="leave-button" id="submitLeaveButton" type="submit">Submit application</button></div>
-				</form>
-				<% } else { %><div class="leave-empty">No active leave types are available for your role. Contact the administrator.</div><% } %>
+				<div class="leave-section-heading">
+					<div><h2>Leave applications</h2><p><%= isUserAdmin ? 'Manage staff leave requests from one place.' : 'Review your leave history and submit new requests.' %></p></div>
+					<button type="button" id="openLeaveModalButton" class="leave-button primary leave-modal-trigger"><%= isUserAdmin ? 'Add new leave request' : 'Request new Leave' %></button>
+				</div>
 			</section>
+
+			<div id="leaveRequestModal" class="leave-modal hidden" aria-hidden="true">
+				<div class="leave-modal-backdrop" data-close-modal="true"></div>
+				<div class="leave-modal-panel" role="dialog" aria-modal="true" aria-labelledby="leaveModalTitle">
+					<div class="leave-modal-header">
+						<h3 id="leaveModalTitle"><%= editingApplication ? 'Edit leave request' : 'Add leave request' %></h3>
+						<button type="button" class="leave-modal-close" aria-label="Close leave form" data-close-modal="true">×</button>
+					</div>
+					<% if (leaveTypes.length) { %>
+					<form method="post" action="<%= editingApplication ? `/leave/${editingApplication._id}/edit` : '/leave' %>" enctype="multipart/form-data" id="leaveApplicationForm" data-is-admin="<%= isUserAdmin ? 'true' : 'false' %>" data-holidays="<%= JSON.stringify(holidayDatesAd || []) %>">
+						<div class="leave-field-grid">
+							<% if (isUserAdmin) { %><div class="leave-field"><label for="branchFilter">Select Branch</label><select id="branchFilter"><option value="">All branches</option><% branches.forEach(branch => { %><option value="<%= branch %>"><%= branch %></option><% }) %></select></div><% } %>
+							<div class="leave-field"><label for="employeeId">Employee Name *</label>
+								<% if (isUserAdmin) { %><select id="employeeId" name="employeeId" required><option value="">Select employee</option><% employees.forEach(employee => { %><option value="<%= employee.id %>" data-role="<%= employee.role %>" data-name="<%= employee.name %>" data-code="<%= employee.employeeCode %>" data-company="<%= employee.companyName %>" data-branch="<%= employee.branchName %>" data-designation="<%= employee.designation %>" data-department="<%= employee.department %>" data-section="<%= employee.section %>" data-photo="<%= employee.photoUrl %>" <%= employee.id === selectedEmployeeId ? 'selected' : '' %>><%= employee.name %> / <%= employee.role %> (<%= employee.username %>)</option><% }) %></select>
+								<% } else { %><input id="employeeId" type="hidden" value="<%= selectedEmployeeId %>"><input id="employeeName" value="<%= currentEmployee.name || employeeName %>" readonly><% } %>
+							</div>
+							<div class="leave-field"><label for="companyName">Company Name</label><input id="companyName" value="<%= currentEmployee.companyName || 'United English Boarding School' %>" readonly></div>
+							<div class="leave-field"><label for="branchName">Branch</label><input id="branchName" value="<%= currentEmployee.branchName || '' %>" readonly></div>
+							<div class="leave-field"><label for="employeeCode">Employee Code</label><input id="employeeCode" value="<%= currentEmployee.employeeCode || '' %>" readonly></div>
+							<div class="leave-field"><label for="designation">Designation</label><input id="designation" value="<%= currentEmployee.designation || '' %>" readonly></div>
+							<div class="leave-field"><label for="department">Department</label><input id="department" value="<%= currentEmployee.department || '' %>" readonly></div>
+							<div class="leave-field"><label for="section">Section</label><input id="section" value="<%= currentEmployee.section || '' %>" readonly></div>
+							<div class="leave-field employee-photo-field"><label>Employee photo</label><img id="employeePhoto" src="<%= currentEmployee.photoUrl || '' %>" alt="Employee photo" <%= currentEmployee.photoUrl ? '' : 'hidden' %>><span id="employeePhotoEmpty" <%= currentEmployee.photoUrl ? 'hidden' : '' %>>No Photo</span></div>
+							<div class="leave-field"><label for="leaveType">Leave Type *</label><select id="leaveType" name="leaveType" required><option value="">Select leave type</option><% leaveTypes.forEach(type => { %><option value="<%= type._id %>" data-roles="<%= (type.applicableTo || ['ALL']).join(',') %>" data-paid="<%= type.isPaid ? 'true' : 'false' %>" data-document="<%= type.requiresDocument ? 'true' : 'false' %>" data-annual="<%= type.maxDaysPerYear || '' %>" data-monthly="<%= type.maxDaysPerMonth || '' %>" <%= editingApplication && String(editingApplication.leaveType) === String(type._id) ? 'selected' : '' %>><%= type.leavename %> / <%= type.isPaid ? 'Paid' : 'Unpaid' %></option><% }) %></select></div>
+							<div class="leave-field leave-field-wide">
+								<div id="leaveBalance" class="leave-balance" role="status" aria-live="polite" hidden>
+									<div class="leave-balance-box"><span>Allocated</span><strong id="leaveAllocatedValue">0</strong></div>
+									<div class="leave-balance-box"><span>Available</span><strong id="leaveAvailableValue">0</strong></div>
+									<div class="leave-balance-box"><span>Remaining</span><strong id="leaveRemainingValue">0</strong></div>
+								</div>
+							</div>
+							<div class="leave-field"><label for="leaveDay">Leave Day *</label><select id="leaveDay" name="leaveDay" required><% ['Full day', 'Early leave', 'Late leave'].forEach(leaveDay => { %><option value="<%= leaveDay %>" <%= (editingApplication?.leaveDay || 'Full day') === leaveDay ? 'selected' : '' %>><%= leaveDay %><%= leaveDay === 'Full day' ? '' : ' / 0.5 day' %></option><% }) %></select></div>
+							<div class="leave-field"><label for="startDateBs">From (BS) *</label><input id="startDateBs" name="startDateBs" class="nepali-date-input" type="text" data-nepali-date-input value="<%= editingApplication?.startDateNepali || todayNepaliDate %>" placeholder="YYYY-MM-DD" required><input id="startDateAd" name="startDateAd" type="hidden" value="<%= editingApplication?.startDateAd || '' %>"></div>
+							<div class="leave-field"><label for="endDateBs">To (BS) *</label><input id="endDateBs" name="endDateBs" class="nepali-date-input" type="text" data-nepali-date-input value="<%= editingApplication?.endDateNepali || todayNepaliDate %>" placeholder="YYYY-MM-DD" required><input id="endDateAd" name="endDateAd" type="hidden" value="<%= editingApplication?.endDateAd || '' %>"></div>
+							<div class="leave-field"><label>Days</label><output class="leave-duration" id="durationPreview" aria-live="polite">Choose leave dates</output></div>
+							<div class="leave-field leave-field-wide sandwich-field"><label class="leave-check"><input id="sandwichLeave" name="sandwichLeave" type="checkbox" <%= editingApplication?.sandwichLeave !== false ? 'checked' : '' %>><span>Sandwich Leave: Include weekends and holidays in the leave count. Disable to remove them.</span></label></div>
+							<div class="leave-field"><label for="approverName">Approved By</label><select id="approverName" name="approverName"><option value="">Department admin assigns approval</option><% departmentAdmins.forEach(admin => { %><option value="<%= admin.name %>" data-department="<%= admin.department %>" <%= editingApplication?.approverName === admin.name ? 'selected' : '' %>><%= admin.name %></option><% }) %></select></div>
+							<div class="leave-field"><label for="recommendedBy">Recommended By</label><select id="recommendedBy" name="recommendedBy"><option value="">Select department admin</option><% departmentAdmins.forEach(admin => { %><option value="<%= admin.name %>" data-department="<%= admin.department %>" <%= editingApplication?.recommendedBy === admin.name ? 'selected' : '' %>><%= admin.name %></option><% }) %></select></div>
+							<div class="leave-field leave-field-wide"><label for="reason">Description *</label><textarea id="reason" name="reason" maxlength="1000" required placeholder="Description is required"><%= editingApplication?.reason || '' %></textarea></div>
+							<div class="leave-field leave-field-wide" id="documentField" hidden><label for="supportingDocument">Supporting document <span class="required-note">Required by this leave policy</span></label><input id="supportingDocument" name="supportingDocument" type="file" accept=".pdf,.jpg,.jpeg,.png,.docx"><small>PDF, JPG, PNG, or DOCX. Maximum 5 MB.</small></div>
+						</div>
+						<div id="leaveQuotaWarning" class="leave-quota-warning" role="status" aria-live="polite" hidden></div>
+						<div class="leave-submit-row"><span class="leave-status pending">Submitted applications start as Pending</span><button class="leave-button" id="submitLeaveButton" type="submit"><%= editingApplication ? 'Save changes' : 'Submit application' %></button></div>
+					</form>
+					<% } else { %><div class="leave-empty">No active leave types are available for your role. Contact the administrator.</div><% } %>
+				</div>
+			</div>
+
+			<div id="leaveTransferModal" class="leave-transfer-modal hidden" aria-hidden="true">
+				<div class="leave-modal-backdrop" data-close-transfer-modal="true"></div>
+				<div class="leave-transfer-panel" role="dialog" aria-modal="true" aria-labelledby="leaveTransferModalTitle">
+					<div class="leave-modal-header">
+						<h3 id="leaveTransferModalTitle">Transfer leave</h3>
+						<button type="button" class="leave-modal-close" aria-label="Close transfer dialog" data-close-transfer-modal="true">×</button>
+					</div>
+					<form id="leaveTransferForm" method="post" class="leave-transfer-form-modal">
+						<label for="transferEmployeeId">Transfer to</label>
+						<select id="transferEmployeeId" name="employeeId" required>
+							<option value="">Select employee</option>
+							<% employees.forEach(employee => { %><option value="<%= employee.id %>"><%= employee.name %> / <%= employee.employeeCode || employee.role %></option><% }) %>
+						</select>
+						<div class="leave-submit-row compact">
+							<button type="submit" class="leave-button secondary">Transfer</button>
+						</div>
+					</form>
+				</div>
+			</div>
 
 		<section class="leave-panel">
 			<div class="leave-section-heading"><div><h2><%= isUserAdmin ? 'Applications for review' : 'Application history' %></h2><p><%= applications.length %> recent records</p></div></div>
 			<% if (applications.length) { %>
 			<div class="leave-table-wrap"><table class="leave-table">
-				<thead><tr><% if (isUserAdmin) { %><th>Applicant</th><% } %><th>Leave type</th><th>Dates (BS)</th><th>Days</th><th>Pay</th><th>Reason / document</th><th>Status / decision</th></tr></thead>
+				<thead><tr><th>S.N.</th><th>Employee</th><th>Leave Type</th><th>From</th><th>To</th><th>Days</th><th>Leave Day</th><th>Approved By</th><th>Approved On</th><th>Status</th><th>Action</th></tr></thead>
 				<tbody><% applications.forEach(application => { %>
 				<tr>
-					<% if (isUserAdmin) { %><td><strong><%= application.employeeName %></strong><small><%= application.username %> / <%= application.employeeRole %></small></td><% } %>
-					<td><strong><%= application.leaveTypeName %></strong></td>
-					<td><strong class="leave-date-range"><%= application.startDateNepali %> to <%= application.endDateNepali %></strong></td>
-					<td><strong class="leave-duration-days"><%= application.requestedDays %> <%= application.requestedDays === 1 ? 'day' : 'days' %></strong></td>
-					<td><span class="leave-status <%= application.isPaid ? 'approved' : 'unpaid' %>"><%= application.isPaid ? 'Paid' : 'Unpaid' %></span></td>
-					<td><span><%= application.reason %></span><% if (application.supportingDocumentName) { %><a class="document-link" href="/leave/<%= application._id %>/document"><%= application.supportingDocumentName %></a><% } %></td>
+					<td><%= applications.indexOf(application) + 1 %></td>
+					<td><strong><%= application.employeeName %></strong><small><%= [application.employeeCode, application.designation, application.department, application.branchName].filter(Boolean).join(' / ') || application.username %></small></td>
+					<td><strong><%= application.leaveTypeName %></strong><small><%= application.reason %></small><% if (application.supportingDocumentName) { %><a class="document-link" href="/leave/<%= application._id %>/document"><%= application.supportingDocumentName %></a><% } %></td>
+					<td><strong class="leave-date-range"><%= application.startDateAd || application.startDateNepali %></strong></td>
+					<td><strong class="leave-date-range"><%= application.endDateAd || application.endDateNepali %></strong></td>
+					<td><strong class="leave-duration-days"><%= application.requestedDays %></strong></td>
+					<td><%= application.leaveDay || 'Full day' %><% if (application.sandwichLeave === false) { %><small>Sandwich excluded</small><% } %></td>
+					<td><%= application.status === 'approved' ? application.reviewedBy || application.approverName || '-' : '-' %><% if (application.status === 'pending' && application.approverName) { %><small>Assigned: <%= application.approverName %></small><% } %></td>
+					<td><%= application.status === 'approved' && application.reviewedAt ? new Date(application.reviewedAt).toLocaleDateString('en-CA') : '-' %></td>
 					<td>
 						<% if (isUserAdmin && application.status === 'pending') { %>
 						<form class="leave-review-form" method="post" action="/leave/<%= application._id %>/review">
@@ -66,8 +120,20 @@
 						<% } else { %>
 							<span class="leave-status <%= application.status %>"><%= application.status %></span>
 							<% if (application.reviewReason) { %><small class="decision-reason"><%= application.reviewReason %></small><% } %>
-							<% if (application.reviewedBy) { %><small>Reviewed by <%= application.reviewedBy %></small><% } %>
 						<% } %>
+					</td>
+					<td class="leave-actions-cell">
+						<% if (isUserAdmin) { %>
+							<div class="leave-action-icons">
+								<% if (application.status === 'pending') { %>
+								<button type="button" class="leave-icon-button transfer" data-transfer-id="<%= application._id %>" data-transfer-label="<%= application.employeeName %>" title="Transfer leave"><i class="fa-solid fa-arrow-right-arrow-left"></i></button>
+								<a class="leave-icon-button edit" href="/leave/<%= application._id %>/edit" title="Edit leave"><i class="fa-solid fa-pen-to-square"></i></a>
+								<% } %>
+								<form method="post" action="/leave/<%= application._id %>/delete" onsubmit="return confirm('Delete this leave application?')" class="inline-delete-form">
+									<button class="leave-icon-button delete" type="submit" title="Delete leave"><i class="fa-solid fa-trash"></i></button>
+								</form>
+							</div>
+						<% } else { %><span>-</span><% } %>
 					</td>
 				</tr>
 				<% }) %></tbody>
@@ -79,22 +145,43 @@
 	<script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
 	<script>
 		const leaveApplicationForm = document.getElementById('leaveApplicationForm');
+		const leaveRequestModal = document.getElementById('leaveRequestModal');
+		const openLeaveModalButton = document.getElementById('openLeaveModalButton');
 		const isAdminView = leaveApplicationForm?.dataset.isAdmin === 'true';
 		const employeeSelect = document.getElementById('employeeId');
-		const employeeRoleInput = document.getElementById('employeeRole');
+		const branchFilter = document.getElementById('branchFilter');
 		const leaveTypeSelect = document.getElementById('leaveType');
+		const leaveDaySelect = document.getElementById('leaveDay');
+		const sandwichInput = document.getElementById('sandwichLeave');
+		const approverSelect = document.getElementById('approverName');
+		const recommenderSelect = document.getElementById('recommendedBy');
 		const documentField = document.getElementById('documentField');
 		const documentInput = document.getElementById('supportingDocument');
-		const startDateInput = document.getElementById('startDateNepali');
-		const endDateInput = document.getElementById('endDateNepali');
+		const startDateBsInput = document.getElementById('startDateBs');
+		const endDateBsInput = document.getElementById('endDateBs');
+		const startDateInput = document.getElementById('startDateAd');
+		const endDateInput = document.getElementById('endDateAd');
 		const durationPreview = document.getElementById('durationPreview');
+		const leaveBalance = document.getElementById('leaveBalance');
+		const allocatedValue = document.getElementById('leaveAllocatedValue');
+		const availableValue = document.getElementById('leaveAvailableValue');
+		const remainingValue = document.getElementById('leaveRemainingValue');
 		const quotaWarning = document.getElementById('leaveQuotaWarning');
 		const submitLeaveButton = document.getElementById('submitLeaveButton');
+		const holidayDates = new Set(JSON.parse(leaveApplicationForm?.dataset.holidays || '[]'));
 		let quotaRequestNumber = 0;
+		const convertBsToAd = (value) => {
+			if (!value || typeof NepaliFunctions === 'undefined') return '';
+			try { return NepaliFunctions.BS2AD(String(value).trim()); } catch (error) { return ''; }
+		};
+		const syncDatePair = (nepaliInput, adInput) => {
+			if (!nepaliInput || !adInput) return;
+			adInput.value = convertBsToAd(nepaliInput.value);
+		};
 		function setQuotaButtonState(state) {
-			if (!submitLeaveButton || isAdminView) return;
+			if (!submitLeaveButton) return;
 			submitLeaveButton.classList.remove('quota-checking', 'quota-blocked');
-			submitLeaveButton.disabled = state !== 'ready';
+			submitLeaveButton.disabled = state === 'blocked';
 			if (state === 'checking') {
 				submitLeaveButton.classList.add('quota-checking');
 				submitLeaveButton.textContent = 'Checking allowance...';
@@ -102,13 +189,65 @@
 				submitLeaveButton.classList.add('quota-blocked');
 				submitLeaveButton.textContent = 'Limit exceeded';
 			} else {
-				submitLeaveButton.textContent = 'Submit application';
+				submitLeaveButton.textContent = '<%= editingApplication ? 'Save changes' : 'Submit application' %>';
 			}
+		}
+		function renderQuotaSummary(usage) {
+			if (!leaveBalance || !allocatedValue || !availableValue || !remainingValue) return;
+			const summary = usage?.summary?.year || usage?.summary?.month || null;
+			if (!summary) {
+				leaveBalance.hidden = true;
+				return;
+			}
+			const allocated = summary.limit === null ? '—' : Number(summary.limit || 0);
+			const used = Number(summary.usedDays || 0);
+			const available = summary.remainingDays === null || typeof summary.remainingDays === 'undefined' ? (summary.limit === null ? '—' : Math.max(0, Number(summary.limit || 0) - used)) : Number(summary.remainingDays || 0);
+			allocatedValue.textContent = allocated === '—' ? '—' : String(allocated);
+			availableValue.textContent = available === '—' ? '—' : String(available);
+			remainingValue.textContent = available === '—' ? '—' : String(available);
+			leaveBalance.hidden = false;
+		}
+		function setProfileFields() {
+			const option = employeeSelect?.selectedOptions[0];
+			const fields = {
+				companyName: option?.dataset.company || 'United English Boarding School',
+				branchName: option?.dataset.branch || '',
+				employeeCode: option?.dataset.code || '',
+				designation: option?.dataset.designation || '',
+				department: option?.dataset.department || '',
+				section: option?.dataset.section || ''
+			};
+			Object.entries(fields).forEach(([id, value]) => {
+				const field = document.getElementById(id);
+				if (field && option) field.value = value;
+			});
+			const photo = document.getElementById('employeePhoto');
+			const photoEmpty = document.getElementById('employeePhotoEmpty');
+			if (photo && option) {
+				photo.src = option.dataset.photo || '';
+				photo.hidden = !photo.src;
+			}
+			if (photoEmpty && option) photoEmpty.hidden = Boolean(option.dataset.photo);
+			const department = String(option?.dataset.department || '<%= currentEmployee.department || '' %>').trim().toLowerCase();
+			[approverSelect, recommenderSelect].filter(Boolean).forEach(select => {
+				Array.from(select.options).forEach((item, index) => {
+					if (index && item.value) item.hidden = Boolean(department && String(item.dataset.department || '').trim().toLowerCase() !== department);
+				});
+				if (select.selectedOptions[0]?.hidden) select.value = '';
+			});
+			filterLeaveTypesForApplicant();
+		}
+		function filterEmployeesForBranch() {
+			if (!employeeSelect || !branchFilter) return;
+			Array.from(employeeSelect.options).forEach((option, index) => {
+				if (index) option.hidden = Boolean(branchFilter.value && option.dataset.branch !== branchFilter.value);
+			});
+			if (employeeSelect.selectedOptions[0]?.hidden) employeeSelect.value = '';
+			setProfileFields();
 		}
 		function filterLeaveTypesForApplicant() {
 			if (!isAdminView || employeeSelect?.tagName !== 'SELECT') return;
 			const role = String(employeeSelect.selectedOptions[0]?.dataset.role || '').toUpperCase();
-			if (employeeRoleInput) employeeRoleInput.value = role;
 			Array.from(leaveTypeSelect.options).forEach((option) => {
 				if (!option.value) return;
 				const roles = String(option.dataset.roles || 'ALL').split(',').map((value) => value.trim().toUpperCase());
@@ -129,70 +268,117 @@
 			const requestNumber = ++quotaRequestNumber;
 			quotaWarning.hidden = true;
 			quotaWarning.textContent = '';
+			if (leaveBalance) leaveBalance.hidden = true;
 			setQuotaButtonState('ready');
 			const employeeId = employeeSelect?.value || '';
-			if (!leaveTypeSelect?.value || !startDateInput?.value || !endDateInput?.value || (isAdminView && !employeeId)) return;
+			if (!leaveTypeSelect?.value || (isAdminView && !employeeId)) return;
 			setQuotaButtonState('checking');
-			const params = new URLSearchParams({
-				leaveType: leaveTypeSelect.value,
-				startDateNepali: startDateInput.value,
-				endDateNepali: endDateInput.value
-			});
+			const params = new URLSearchParams({ leaveType: leaveTypeSelect.value, leaveDay: leaveDaySelect?.value || 'Full day', sandwichLeave: sandwichInput?.checked ? 'true' : 'false' });
 			if (isAdminView) params.set('employeeId', employeeId);
+			if (startDateInput?.value && endDateInput?.value) {
+				params.set('startDateAd', startDateInput.value);
+				params.set('endDateAd', endDateInput.value);
+			}
 			try {
 				const response = await fetch(`/leave/usage?${params}`);
 				const usage = await response.json();
 				if (requestNumber !== quotaRequestNumber) return;
-				if (!response.ok || !usage.exceedsLimits) {
+				if (!response.ok) throw new Error(usage.message || 'Unable to check leave balance.');
+				renderQuotaSummary(usage);
+				if (usage.exceedsLimits) {
+					const exceeded = [...usage.monthly, ...usage.yearly].filter(period => period.exceeds);
+					const details = exceeded.map(period => `${period.period}: ${period.usedDays}/${period.limit} used, ${period.remainingDays} remaining, ${period.requestedDays} requested`).join(' / ');
+					quotaWarning.textContent = `${isAdminView ? 'Quota exceeded; administrator override is enabled. ' : 'No leave allowance remains for this period. '}${details}`;
+					quotaWarning.hidden = false;
+					setQuotaButtonState(isAdminView ? 'ready' : 'blocked');
+				} else {
 					setQuotaButtonState('ready');
-					return;
 				}
-				const exceeded = [...usage.monthly, ...usage.yearly].filter((period) => period.exceeds);
-				const details = exceeded.map((period) => `${period.period}: ${period.usedDays}/${period.limit} used, ${period.remainingDays} remaining, ${period.requestedDays} requested`).join(' / ');
-				quotaWarning.textContent = `${isAdminView ? 'Quota exceeded; administrator override is enabled. ' : 'No leave allowance remains for this period. '}${details}`;
-				quotaWarning.hidden = false;
-				setQuotaButtonState(isAdminView ? 'ready' : 'blocked');
 			} catch (error) {
 				if (requestNumber !== quotaRequestNumber) return;
-				quotaWarning.textContent = 'Leave availability could not be checked. The server will validate this application.';
+				quotaWarning.textContent = error.message || 'Leave availability could not be checked. The server will validate this application.';
 				quotaWarning.hidden = false;
 				setQuotaButtonState('ready');
 			}
 		}
 		function updateDuration() {
 			if (!startDateInput || !endDateInput || !durationPreview) return;
-			if (!startDateInput.value || !endDateInput.value || typeof NepaliFunctions === 'undefined') {
-				durationPreview.textContent = 'Select dates to calculate duration';
+			if (!startDateInput.value || !endDateInput.value) {
+				durationPreview.textContent = 'Choose leave dates';
 				updateQuotaAvailability();
 				return;
 			}
-			try {
-				const startAd = NepaliFunctions.BS2AD(startDateInput.value);
-				const endAd = NepaliFunctions.BS2AD(endDateInput.value);
-				const start = new Date(`${startAd}T00:00:00Z`);
-				const end = new Date(`${endAd}T00:00:00Z`);
-				const days = Math.round((end - start) / 86400000) + 1;
-				durationPreview.textContent = days > 0 ? `${days} ${days === 1 ? 'day' : 'days'} / inclusive of both dates` : 'End date must be on or after start date';
-			} catch (error) {
-				durationPreview.textContent = 'Select valid Nepali dates';
+			const start = new Date(`${startDateInput.value}T00:00:00Z`);
+			const end = new Date(`${endDateInput.value}T00:00:00Z`);
+			if (end < start) {
+				durationPreview.textContent = 'To date must not precede From date';
+				updateQuotaAvailability();
+				return;
 			}
+			const halfDay = ['Early leave', 'Late leave'].includes(leaveDaySelect?.value);
+			if (halfDay && start.getTime() !== end.getTime()) {
+				durationPreview.textContent = 'Early or late leave must be one date';
+				updateQuotaAvailability();
+				return;
+			}
+			let days = 0;
+			for (let current = new Date(start); current <= end; current.setUTCDate(current.getUTCDate() + 1)) {
+				const adKey = current.toISOString().slice(0, 10);
+				if (halfDay) { days = 0.5; break; }
+				if (sandwichInput?.checked || (current.getUTCDay() !== 6 && !holidayDates.has(adKey))) days += 1;
+			}
+			durationPreview.textContent = `${days} ${days === 1 ? 'day' : 'days'}`;
 			updateQuotaAvailability();
 		}
+		const toggleLeaveModal = (show) => {
+			if (!leaveRequestModal) return;
+			leaveRequestModal.classList.toggle('hidden', !show);
+			leaveRequestModal.setAttribute('aria-hidden', String(!show));
+		};
+		if (openLeaveModalButton) {
+			openLeaveModalButton.addEventListener('click', () => toggleLeaveModal(true));
+		}
+		if (leaveRequestModal) {
+			leaveRequestModal.addEventListener('click', (event) => {
+				if (event.target === leaveRequestModal || event.target.hasAttribute('data-close-modal')) {
+					toggleLeaveModal(false);
+				}
+			});
+		}
+		document.querySelectorAll('[data-close-modal="true"]').forEach((button) => {
+			button.addEventListener('click', () => toggleLeaveModal(false));
+		});
+		if (typeof editingApplication !== 'undefined' && editingApplication) {
+			toggleLeaveModal(true);
+		}
+		if (startDateBsInput) {
+			startDateBsInput.addEventListener('change', () => syncDatePair(startDateBsInput, startDateInput));
+			startDateBsInput.addEventListener('input', () => syncDatePair(startDateBsInput, startDateInput));
+		}
+		if (endDateBsInput) {
+			endDateBsInput.addEventListener('change', () => syncDatePair(endDateBsInput, endDateInput));
+			endDateBsInput.addEventListener('input', () => syncDatePair(endDateBsInput, endDateInput));
+		}
+		syncDatePair(startDateBsInput, startDateInput);
+		syncDatePair(endDateBsInput, endDateInput);
+		if (typeof window !== 'undefined' && window.NepaliDatePicker) {
+			[document.getElementById('startDateBs'), document.getElementById('endDateBs')].filter(Boolean).forEach((input) => {
+				if (typeof input.NepaliDatePicker === 'function') {
+					input.NepaliDatePicker({ dateFormat: 'YYYY-MM-DD', language: 'english' });
+				}
+			});
+		}
 		if (employeeSelect?.tagName === 'SELECT') {
-			employeeSelect.addEventListener('change', filterLeaveTypesForApplicant);
-			filterLeaveTypesForApplicant();
+			employeeSelect.addEventListener('change', setProfileFields);
+			setProfileFields();
 		} else {
 			updateLeaveTypeDetails();
+			setProfileFields();
 		}
+		branchFilter?.addEventListener('change', filterEmployeesForBranch);
 		if (leaveTypeSelect) leaveTypeSelect.addEventListener('change', updateLeaveTypeDetails);
 		if (leaveTypeSelect) leaveTypeSelect.addEventListener('change', updateQuotaAvailability);
-		[startDateInput, endDateInput].filter(Boolean).forEach((input) => {
-			input.addEventListener('input', updateDuration);
-			input.addEventListener('change', updateDuration);
-		});
-		document.querySelectorAll('.nepali-datepicker').forEach((input) => {
-			if (typeof input.nepaliDatePicker === 'function') input.nepaliDatePicker({ dateFormat: 'YYYY-MM-DD', language: 'en', onSelect: updateDuration });
-		});
+		[leaveDaySelect, startDateBsInput, endDateBsInput, sandwichInput].filter(Boolean).forEach(input => input.addEventListener('change', updateDuration));
 		document.querySelectorAll('.leave-review-form').forEach((form) => {
 			const decision = form.querySelector('.decision-select');
 			const reason = form.querySelector('.review-reason');
@@ -205,6 +391,38 @@
 			decision.addEventListener('change', updateDecisionState);
 			updateDecisionState();
 		});
+		document.querySelectorAll('.leave-icon-button.transfer').forEach((button) => {
+			button.addEventListener('click', () => {
+				const transferId = button.dataset.transferId;
+				const transferLabel = button.dataset.transferLabel || 'this leave request';
+				const transferModal = document.getElementById('leaveTransferModal');
+				const transferForm = document.getElementById('leaveTransferForm');
+				const transferSelect = document.getElementById('transferEmployeeId');
+				const transferTitle = document.getElementById('leaveTransferModalTitle');
+				if (!transferModal || !transferForm || !transferSelect || !transferTitle) return;
+				transferForm.action = `/leave/${transferId}/transfer`;
+				transferTitle.textContent = `Transfer leave for ${transferLabel}`;
+				transferModal.classList.remove('hidden');
+				transferModal.setAttribute('aria-hidden', 'false');
+				transferSelect.value = '';
+			});
+		});
+		document.querySelectorAll('[data-close-transfer-modal]').forEach((button) => {
+			button.addEventListener('click', () => {
+				const transferModal = document.getElementById('leaveTransferModal');
+				if (!transferModal) return;
+				transferModal.classList.add('hidden');
+				transferModal.setAttribute('aria-hidden', 'true');
+			});
+		});
+		if (document.getElementById('leaveTransferModal')) {
+			document.getElementById('leaveTransferModal').addEventListener('click', (event) => {
+				if (event.target === document.getElementById('leaveTransferModal') || event.target.hasAttribute('data-close-transfer-modal')) {
+					document.getElementById('leaveTransferModal').classList.add('hidden');
+					document.getElementById('leaveTransferModal').setAttribute('aria-hidden', 'true');
+				}
+			});
+		}
 	</script>
 </body>
 </html>
