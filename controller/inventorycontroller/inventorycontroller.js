@@ -186,6 +186,7 @@ exports.searchRequestProducts = async (req, res) => {
           ]
         }
       },
+      { $sort: { quantity: -1, createdAt: -1, _id: -1 } },
       {
         $group: {
           _id: {
@@ -335,33 +336,30 @@ exports.reviewProductRequest = async (req, res) => {
     }
     if (status === 'approved') {
       if (!selectedProduct) return res.status(409).send('Add the requested item to inventory and link it before approving.');
+      const matchingProductIdentity = productIdentityKey(selectedProduct);
+      const allStockRecords = await InventoryProduct.find({ active: true }).lean();
+      const matchingStockRecords = allStockRecords.filter((product) => productIdentityKey(product) === matchingProductIdentity);
+      if (!matchingStockRecords.length) return res.status(409).send('The selected inventory product is no longer available.');
+
       if (request.stockDeducted && String(request.product) === String(selectedProduct._id)) {
         const quantityDifference = quantity - request.quantity;
         if (quantityDifference > 0) {
-          const updatedProduct = await InventoryProduct.findOneAndUpdate(
-            { _id: selectedProduct._id, active: true, quantity: { $gte: quantityDifference } },
-            { $inc: { quantity: -quantityDifference } },
-            { new: true }
-          );
-          if (!updatedProduct) return res.status(409).send('Not enough additional stock is available for the revised quantity.');
-          stockAdjustment = { productId: selectedProduct._id, quantity: -quantityDifference };
+          const decremented = [];
+          await decrementGroupedProductStock(matchingStockRecords, new Map([[String(selectedProduct._id), quantityDifference]]), decremented);
+          stockAdjustment = decremented;
         } else if (quantityDifference < 0) {
           const quantityToRestore = -quantityDifference;
           await InventoryProduct.updateOne({ _id: selectedProduct._id, active: true }, { $inc: { quantity: quantityToRestore } });
-          stockAdjustment = { productId: selectedProduct._id, quantity: quantityToRestore };
+          stockAdjustment = [{ productId: selectedProduct._id, quantity: quantityToRestore }];
         }
       } else if (!request.stockDeducted) {
-        const updatedProduct = await InventoryProduct.findOneAndUpdate(
-          { _id: selectedProduct._id, active: true, quantity: { $gte: quantity } },
-          { $inc: { quantity: -quantity } },
-          { new: true }
-        );
-        if (!updatedProduct) return res.status(409).send('Not enough stock is available to approve this request.');
-        stockAdjustment = { productId: selectedProduct._id, quantity: -quantity };
+        const decremented = [];
+        await decrementGroupedProductStock(matchingStockRecords, new Map([[String(selectedProduct._id), quantity]]), decremented);
+        stockAdjustment = decremented;
       }
     } else if (request.stockDeducted && request.product) {
       await InventoryProduct.updateOne({ _id: request.product }, { $inc: { quantity: request.quantity } });
-      stockAdjustment = { productId: request.product, quantity: request.quantity };
+      stockAdjustment = [{ productId: request.product, quantity: request.quantity }];
     }
 
     const approvalTransaction = status === 'approved' && !request.issuedTransactionId
@@ -408,7 +406,12 @@ exports.reviewProductRequest = async (req, res) => {
     return res.redirect(`/inventory/?reviewed=1&requestsPage=${requestsPage}`);
   } catch (error) {
     if (createdTransactionId) await InventoryTransaction.deleteOne({ _id: createdTransactionId });
-    if (stockAdjustment) await InventoryProduct.updateOne({ _id: stockAdjustment.productId }, { $inc: { quantity: -stockAdjustment.quantity } });
+    if (stockAdjustment?.length) {
+      await Promise.all(stockAdjustment.map((adjustment) => InventoryProduct.updateOne(
+        { _id: adjustment.productId, active: true },
+        { $inc: { quantity: -adjustment.quantity } }
+      )));
+    }
     if (error.message === 'REQUEST_CHANGED') return res.status(409).send('This request was updated by another manager. Refresh and review it again.');
     console.error('Unable to review product request:', error);
     return res.status(400).send('Unable to save the request review.');
