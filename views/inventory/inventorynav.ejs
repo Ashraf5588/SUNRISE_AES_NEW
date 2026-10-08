@@ -11,9 +11,9 @@
 	<div class="nav-caption">WORKSPACE</div>
 	<nav class="inventory-links" id="inventoryLinks" aria-label="Inventory navigation">
 		<a class="<%= currentPath === '/inventory' || currentPath === '/inventory/' ? 'active' : '' %>" href="/inventory/"><i class="fa-solid fa-house-chimney" style="color: rgb(255, 255, 255);"></i>&ensp;Overview</a>
-		<a class="<%= currentPath.startsWith('/inventory/products') ? 'active' : '' %>" href="/inventory/products"><i class="fa-solid fa-bag-shopping" style="color: rgb(255, 255, 255);"></i>&ensp;Products</a>
+		<a class="<%= currentPath.startsWith('/inventory/products') ? 'active' : '' %>" href="/inventory/products"><i class="fa-solid fa-bag-shopping" style="color: rgb(255, 255, 255);"></i>&ensp;Purchase Entry</a>
 		<a class="<%= currentPath.startsWith('/inventory/productrequests') ? 'active' : '' %>" href="/inventory/productrequests"><i class="fa-solid fa-question" style="color: rgb(255, 255, 255);"></i>&ensp;Product requests</a>
-		<a class="<%= currentPath === '/inventory/sales' ? 'active' : '' %>" href="/inventory/sales"><i class="fa-solid fa-hand-holding-dollar" style="color: rgb(255, 255, 255);"></i>&ensp;Issue items</a>
+		<a class="<%= currentPath === '/inventory/sales' ? 'active' : '' %>" href="/inventory/sales"><i class="fa-solid fa-hand-holding-dollar" style="color: rgb(255, 255, 255);"></i>&ensp;Sales Entry</a>
 		<a class="<%= currentPath.startsWith('/inventory/salesreturns') ? 'active' : '' %>" href="/inventory/salesreturns"><i class="fa-solid fa-arrow-rotate-left" style="color: rgb(255, 255, 255);"></i>&ensp;Sales returns</a>
 		<a class="<%= currentPath.startsWith('/inventory/purchasereturns') ? 'active' : '' %>" href="/inventory/purchasereturns"><i class="fa-solid fa-arrow-rotate-left" style="color: rgb(255, 255, 255);"></i>&ensp;Purchase returns</a>
 		<a class="<%= currentPath.startsWith('/inventory/categories') ? 'active' : '' %>" href="/inventory/categories"><i class="fa-solid fa-layer-group" style="color: rgb(255, 255, 255);"></i>&ensp;Categories</a>
