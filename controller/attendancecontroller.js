@@ -29,6 +29,8 @@ const {onlineAttendanceSchema} = require("../model/onlineattendanceschema");
 const onlineAttendance = mongoose.model("onlineAttendance", onlineAttendanceSchema, "onlineAttendance");
 const {holidaySchema} = require("../model/holidayschema");
 const holiday = mongoose.model("holiday", holidaySchema, "holiday");
+const { inventoryProductRequestSchema } = require("../model/inventoryschema/inventorySchema");
+const InventoryProductRequest = mongoose.model("inventoryProductRequest", inventoryProductRequestSchema, "inventoryProductRequests");
 const bs = require('bikram-sambat-js');
 const getSidenavData = async (req) => {
   try {
@@ -1229,6 +1231,7 @@ exports.frontdeskPage = async (req, res) => {
 
     const monthOptions = Object.keys(BS_MONTH_NAMES).map((monthKey) => BS_MONTH_NAMES[monthKey]);
     const dayOptions = Array.from({ length: 32 }, (_, index) => index + 1);
+    const pendingProductRequests = await InventoryProductRequest.countDocuments({ status: 'pending' });
 
     res.render('./frontdesk/frontdesk', {
       absentStudents,
@@ -1238,7 +1241,8 @@ exports.frontdeskPage = async (req, res) => {
       academicYear: targetAcademicYear,
       academicYearOptions,
       monthOptions,
-      dayOptions
+      dayOptions,
+      pendingProductRequests
     });
   } catch (error) {
     console.error('Error loading frontdesk page:', error);

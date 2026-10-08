@@ -85,20 +85,28 @@
     .code-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 10px; }
     .code-check { display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font-size: 12px; background: #f8fafc; }
     .table-action-btn { padding: 8px 12px; font-size: 12px; border-radius: 8px; line-height: 1.2; }
-    .table-scroll { width: 100%; max-width: 100%; overflow-x: auto; overflow-y: hidden; }
+    .table-scroll { width: 100%; max-width: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-color: #8ca39a #edf1ee; scrollbar-width: thin; }
+    .table-scroll::-webkit-scrollbar { height: 10px; }
+    .table-scroll::-webkit-scrollbar-track { background: #edf1ee; }
+    .table-scroll::-webkit-scrollbar-thumb { border: 2px solid #edf1ee; border-radius: 999px; background: #8ca39a; }
     .table-scroll table { min-width: 1450px; }
     table { width: 100%; border-collapse: collapse; background: #fff; }
-    th, td { padding: 12px 14px; border-bottom: 1px solid var(--border); text-align: left; }
-    th { background: #eef5ff; }
+    th, td { padding: 0; border: 1px solid #dfe6ee; text-align: left; }
+    th { padding: 9px 8px; background: #eef5ff; font-size: 12px; }
     tbody tr:nth-child(even) { background: #f8fafc; }
     tbody tr:hover { background: #eff6ff; }
     .code-scroll { max-width: 220px; max-height: 42px; overflow-x: auto; overflow-y: hidden; white-space: nowrap; }
     .code-scroll small { white-space: nowrap; }
-    .inline-book-input { width: 125px; min-width: 90px; padding: 7px 8px; border: 1px solid var(--border); border-radius: 7px; font: inherit; color: var(--text); background: #fff; }
-    .inline-book-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,.14); }
-    .inline-save-status { display: block; min-height: 14px; margin-top: 3px; color: var(--muted); font-size: 10px; }
-    .inline-save-status.saved { color: var(--green); }
-    .inline-save-status.failed { color: var(--red); }
+    .dense-book-input { display: block; width: 100%; min-width: 90px; min-height: 38px; padding: 7px 8px; border: 0; border-radius: 0; font: inherit; color: var(--text); background: transparent; }
+    .dense-book-input:focus { outline: 2px solid var(--primary); outline-offset: -2px; background: #fff; }
+    .dense-book-input[readonly] { color: var(--muted); background: #f8fafc; }
+    .table-edit-cell { padding: 0; }
+    .table-top-toolbar { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin: 0 0 10px; }
+    .table-scroll-indicator { display: flex; align-items: center; gap: 8px; padding: 5px 10px; border: 1px solid #b7c7c1; border-radius: 999px; background: #f2f6f3; cursor: grab; user-select: none; }
+    .table-scroll-indicator:active { cursor: grabbing; }
+    .scroll-indicator-arrow { color: var(--primary); font-size: 13px; font-weight: 700; }
+    .scroll-indicator-track { position: relative; display: block; width: 110px; height: 8px; border-radius: 999px; background: #dfe9e3; overflow: hidden; }
+    .scroll-indicator-thumb { position: absolute; top: 0; left: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #176b50, #6aa683); }
     .status-ok { color: var(--green); font-weight: 700; }
     .status-low { color: #b45309; font-weight: 700; }
     .message { margin-top: 12px; padding: 10px 12px; border-radius: 8px; font-size: 14px; }
@@ -263,52 +271,70 @@
               <button type="button" class="btn btn-primary" id="bulkPrintStickerBtn">Print Sticker</button>
             </div>
           </div>
-          <div class="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Book Code</th>
-                  <th>Author</th>
-                  <th>Title</th>
-                  <th>Category</th>
-                  <th>Shelves No</th>
-                  <th>Edition</th>
-                  <th>Publisher</th>
-                  <th>Year</th>
-                  <th>Page</th>
-                  <th>Source</th>
-                  <th>Cost</th>
-                  <th>Remarks</th>
-                  <th>Actions</th>
+          <form action="/library/books" method="POST" id="bookInventoryForm">
+            <div class="table-top-toolbar">
+              <div class="table-scroll-indicator" aria-label="Scroll table horizontally" role="scrollbar" aria-orientation="horizontal">
+                <span class="scroll-indicator-arrow">←</span>
+                <span class="scroll-indicator-track"><span class="scroll-indicator-thumb"></span></span>
+                <span class="scroll-indicator-arrow">→</span>
+              </div>
+              <button type="submit" form="bookInventoryForm" class="btn btn-primary">Save Book</button>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Book Code</th>
+                    <th>Author</th>
+                    <th>Title</th>
+                    <th>Category</th>
+                    <th>Shelves No</th>
+                    <th>Edition</th>
+                    <th>Publisher</th>
+                    <th>Year</th>
+                    <th>Page</th>
+                    <th>Source</th>
+                    <th>Cost</th>
+                    <th>Remarks</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="bookTableBody">
+                  <tr class="new-book-row" data-existing="false">
+                  <td class="table-edit-cell"><input class="dense-book-input" name="date" type="text" placeholder="Date" aria-label="Date"></td>
+                  <td class="table-edit-cell"><input class="dense-book-input" name="bookCode" type="text" placeholder="Code" readonly aria-label="Generated book code"></td>
+                  <td class="table-edit-cell"><input class="dense-book-input" name="author" type="text" placeholder="Author" aria-label="Author"></td>
+                  <td class="table-edit-cell"><input class="dense-book-input" name="title" type="text" placeholder="Title" aria-label="Title"></td>
+                  <td class="table-edit-cell"><input class="dense-book-input" name="category" type="text" placeholder="Category" aria-label="Category"></td>
+                  <td class="table-edit-cell"><input class="dense-book-input" name="shelvesNo" type="text" placeholder="Shelf" aria-label="Shelf number"></td>
+                  <td class="table-edit-cell"><input class="dense-book-input" name="edition" type="text" placeholder="Edition" aria-label="Edition"></td>
+                  <td class="table-edit-cell"><input class="dense-book-input" name="publisherName" type="text" placeholder="Publisher" aria-label="Publisher"></td>
+                  <td class="table-edit-cell"><input class="dense-book-input" name="publishedYear" type="text" placeholder="Year" aria-label="Published year"></td>
+                  <td class="table-edit-cell"><input class="dense-book-input" name="page" type="text" placeholder="Page" aria-label="Page"></td>
+                  <td class="table-edit-cell"><input class="dense-book-input" name="source" type="text" placeholder="Source" aria-label="Source"></td>
+                  <td class="table-edit-cell"><input class="dense-book-input" name="price" type="number" min="0" step="0.01" placeholder="Cost" aria-label="Cost"></td>
+                  <td class="table-edit-cell"><input class="dense-book-input" name="totalQuantity" type="number" min="1" value="1" placeholder="Qty" aria-label="Total quantity"></td>
+                  <td class="table-edit-cell"><input class="dense-book-input" name="remarks" type="text" placeholder="Remarks" aria-label="Remarks"></td>
+                  <td class="table-edit-cell"><button type="button" class="btn btn-secondary table-action-btn" id="newBookFillFromFormBtn">Fill</button></td>
                 </tr>
-              </thead>
-              <tbody id="bookTableBody">
               <% if (books && books.length) { %>
                 <% books.forEach((book) => { %>
                   <tr data-book-id="<%= book._id %>" data-category="<%= book.category || '' %>" data-category-color="<%= book.categoryDisplayColor || book.categoryColor || '#2563eb' %>" data-isbn="<%= book.isbn || '' %>" data-total-quantity="<%= book.totalQuantity || 1 %>" data-search-text="<%= [book.date, (book.bookCodes || []).map((copy) => copy.code).join(' '), book.author, book.title, book.category, book.shelvesNo, book.edition, book.publisherName, book.publishedYear, book.page, book.source, book.price, book.remarks].join(' ') %>">
-                    <td><input class="inline-book-input" data-field="date" value="<%= book.date || '' %>" placeholder="Date"><span class="inline-save-status"></span></td>
-                    <td>
-                      <div class="code-scroll" title="Scroll to view all book codes">
-                        <small><%= (book.bookCodes || []).map((copy) => copy.code).join(', ') || book.bookCodePrefix || '—' %></small>
-                      </div>
-                    </td>
-                    <td><input class="inline-book-input" data-field="author" value="<%= book.author || '' %>" placeholder="Author"><span class="inline-save-status"></span></td>
-                    <td><input class="inline-book-input" data-field="title" value="<%= book.title || '' %>" placeholder="Title"><span class="inline-save-status"></span></td>
-                    <td>
-                      <div style="display:flex; align-items:center; gap:8px;">
-                        <span style="display:inline-block; width:14px; height:14px; border-radius:4px; border:1px solid rgba(15,23,42,0.15); background:<%= book.categoryDisplayColor || book.categoryColor || '#2563eb' %>;"></span>
-                        <span><%= book.category || '—' %></span>
-                      </div>
-                    </td>
-                    <td><input class="inline-book-input" data-field="shelvesNo" value="<%= book.shelvesNo || '' %>" placeholder="Shelf"><span class="inline-save-status"></span></td>
-                    <td><input class="inline-book-input" data-field="edition" value="<%= book.edition || '' %>" placeholder="Edition"><span class="inline-save-status"></span></td>
-                    <td><input class="inline-book-input" data-field="publisherName" value="<%= book.publisherName || '' %>" placeholder="Publisher"><span class="inline-save-status"></span></td>
-                    <td><input class="inline-book-input" data-field="publishedYear" value="<%= book.publishedYear || '' %>" placeholder="Year"><span class="inline-save-status"></span></td>
-                    <td><input class="inline-book-input" data-field="page" value="<%= book.page || '' %>" placeholder="Page"><span class="inline-save-status"></span></td>
-                    <td><input class="inline-book-input" data-field="source" value="<%= book.source || '' %>" placeholder="Source"><span class="inline-save-status"></span></td>
-                    <td><input class="inline-book-input" data-field="price" type="number" min="0" step="0.01" value="<%= Number(book.price || 0) %>" placeholder="Cost"><span class="inline-save-status"></span></td>
-                    <td><input class="inline-book-input" data-field="remarks" value="<%= book.remarks || '' %>" placeholder="Remarks"><span class="inline-save-status"></span></td>
+                    <td><div class="code-scroll"><small><%= book.date || '—' %></small></div></td>
+                    <td><div class="code-scroll"><small><%= (book.bookCodes || []).map((copy) => copy.code).join(', ') || book.bookCodePrefix || '—' %></small></div></td>
+                    <td><div class="code-scroll"><small><%= book.author || '—' %></small></div></td>
+                    <td><div class="code-scroll"><small><%= book.title || '—' %></small></div></td>
+                    <td><div style="display:flex; align-items:center; gap:8px; padding:7px 8px;"><span style="display:inline-block; width:14px; height:14px; border-radius:4px; border:1px solid rgba(15,23,42,0.15); background:<%= book.categoryDisplayColor || book.categoryColor || '#2563eb' %>;"></span><span><%= book.category || '—' %></span></div></td>
+                    <td><div class="code-scroll"><small><%= book.shelvesNo || '—' %></small></div></td>
+                    <td><div class="code-scroll"><small><%= book.edition || '—' %></small></div></td>
+                    <td><div class="code-scroll"><small><%= book.publisherName || '—' %></small></div></td>
+                    <td><div class="code-scroll"><small><%= book.publishedYear || '—' %></small></div></td>
+                    <td><div class="code-scroll"><small><%= book.page || '—' %></small></div></td>
+                    <td><div class="code-scroll"><small><%= book.source || '—' %></small></div></td>
+                    <td><div class="code-scroll"><small><%= book.price || '—' %></small></div></td>
+                    <td><div class="code-scroll"><small><%= book.totalQuantity || '—' %></small></div></td>
+                    <td><div class="code-scroll"><small><%= book.remarks || '—' %></small></div></td>
                     <td>
                       <div class="action-btns">
                         <button type="button" class="btn btn-secondary table-action-btn edit-book" data-id="<%= book._id %>">Edit</button>
@@ -321,12 +347,13 @@
                 <% }) %>
               <% } else { %>
                 <tr>
-                  <td colspan="12">No books added yet.</td>
+                  <td colspan="14">No books added yet.</td>
                 </tr>
               <% } %>
-              </tbody>
-            </table>
-          </div>
+                </tbody>
+              </table>
+            </div>
+          </form>
         </div>
       </div>
     </main>
@@ -521,51 +548,6 @@
         row.style.display = show ? '' : 'none';
       });
     }
-
-    async function saveInlineBookField(input) {
-      const row = input.closest('tr[data-book-id]');
-      if (!row || input.dataset.lastSaved === input.value) return;
-
-      const status = input.parentElement.querySelector('.inline-save-status');
-      const value = input.value;
-      const fields = {};
-      row.querySelectorAll('.inline-book-input').forEach((field) => {
-        fields[field.dataset.field] = field.value;
-      });
-      fields.category = row.dataset.category || '';
-      fields.isbn = row.dataset.isbn || '';
-      fields.totalQuantity = row.dataset.totalQuantity || '1';
-      fields.categoryColor = row.dataset.categoryColor || '#2563eb';
-
-      status.textContent = 'Saving...';
-      status.className = 'inline-save-status';
-      try {
-        const response = await fetch(`/library/books/${row.dataset.bookId}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(fields)
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || 'Save failed');
-        input.dataset.lastSaved = value;
-        status.textContent = 'Saved';
-        status.className = 'inline-save-status saved';
-        window.setTimeout(() => {
-          if (status.textContent === 'Saved') status.textContent = '';
-        }, 1800);
-      } catch (error) {
-        status.textContent = 'Save failed';
-        status.className = 'inline-save-status failed';
-      }
-    }
-
-    document.querySelectorAll('#bookTableBody tr[data-book-id]').forEach((row) => {
-      row.querySelectorAll('.inline-book-input').forEach((input) => {
-        input.dataset.lastSaved = input.value;
-        input.addEventListener('change', () => saveInlineBookField(input));
-        input.addEventListener('blur', () => saveInlineBookField(input));
-      });
-    });
 
     function openStockModal(book) {
       activeStockBook = book;
@@ -1030,6 +1012,65 @@
       });
     });
     generateCodes();
+
+    const tableScroll = document.querySelector('.table-scroll');
+    const scrollIndicator = document.querySelector('.table-scroll-indicator');
+    const scrollIndicatorThumb = document.querySelector('.scroll-indicator-thumb');
+    const scrollIndicatorTrack = document.querySelector('.scroll-indicator-track');
+
+    if (tableScroll && scrollIndicator && scrollIndicatorThumb && scrollIndicatorTrack) {
+      const updateScrollIndicator = () => {
+        const maxScroll = tableScroll.scrollWidth - tableScroll.clientWidth;
+        const ratio = maxScroll > 0 ? tableScroll.scrollLeft / maxScroll : 0;
+        const thumbWidth = Math.max(24, (tableScroll.clientWidth / tableScroll.scrollWidth) * 100);
+        scrollIndicatorThumb.style.width = `${thumbWidth}%`;
+        scrollIndicatorThumb.style.left = `${ratio * (100 - thumbWidth)}%`;
+      };
+      const scrollToPointer = (clientX) => {
+        const rect = scrollIndicatorTrack.getBoundingClientRect();
+        const maxScroll = tableScroll.scrollWidth - tableScroll.clientWidth;
+        if (maxScroll <= 0) return;
+        const position = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        tableScroll.scrollLeft = position * maxScroll;
+        updateScrollIndicator();
+      };
+      const handlePointerMove = (event) => scrollToPointer(event.clientX);
+      scrollIndicatorTrack.addEventListener('pointerdown', (event) => {
+        if (event.button !== 0) return;
+        scrollToPointer(event.clientX);
+        document.addEventListener('pointermove', handlePointerMove);
+        document.addEventListener('pointerup', () => document.removeEventListener('pointermove', handlePointerMove), { once: true });
+      });
+      tableScroll.addEventListener('scroll', updateScrollIndicator);
+      window.addEventListener('resize', updateScrollIndicator);
+      updateScrollIndicator();
+    }
+
+    document.getElementById('newBookFillFromFormBtn')?.addEventListener('click', () => {
+      const newRow = document.querySelector('.new-book-row');
+      if (!newRow) return;
+      const mappedFields = [
+        ['date', dateInput],
+        ['author', authorInput],
+        ['title', titleInput],
+        ['category', categoryInput],
+        ['shelvesNo', document.getElementById('shelvesNo')],
+        ['edition', document.getElementById('edition')],
+        ['publisherName', publisherInput],
+        ['publishedYear', document.getElementById('publishedYear')],
+        ['page', document.getElementById('page')],
+        ['source', document.getElementById('source')],
+        ['price', document.getElementById('price')],
+        ['totalQuantity', quantityInput],
+        ['remarks', document.getElementById('remarks')]
+      ];
+      mappedFields.forEach(([fieldName, sourceInput]) => {
+        const target = newRow.querySelector(`[name="${fieldName}"]`);
+        if (target && sourceInput) target.value = sourceInput.value;
+      });
+      const codeLabel = newRow.querySelector('[name="bookCode"]');
+      if (codeLabel) codeLabel.value = generatedBookCodes.textContent.trim() || 'Code will be generated on save';
+    });
 
     document.querySelectorAll('.print-book-codes').forEach((button) => {
       button.addEventListener('click', async () => {
