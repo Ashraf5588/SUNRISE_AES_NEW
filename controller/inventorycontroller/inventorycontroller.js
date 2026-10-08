@@ -999,7 +999,6 @@ exports.importTransactionsCsv = [transactionCsvUpload.single('transactionCsv'), 
     if (!req.file?.buffer) return res.status(400).json({ message: 'Choose a CSV file to upload.' });
     const rows = await parseInventoryCsv(req.file.buffer);
     if (!rows.length) return res.status(400).json({ message: 'The CSV file has no issue rows.' });
-    if (rows.length > 1000) return res.status(400).json({ message: 'Import no more than 1,000 issue item rows at a time.' });
 
     const products = await InventoryProduct.find({ active: true }).lean();
     const productGroups = groupInventoryProducts(products);
