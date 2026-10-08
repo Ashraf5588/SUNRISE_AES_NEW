@@ -25,7 +25,14 @@
 			<div class="panel-heading"><div><h2>Request an item</h2><p>Search current inventory or submit an item that is not listed.</p></div></div>
 			<form method="post" action="/inventory/productrequests" id="productRequestForm">
 				<div class="form-grid request-form-grid">
-					<div class="field"><label for="requesterUsername">Request by</label><input id="requesterUsername" value="<%= requesterUsername %>" readonly required><span class="item-stock">Signed-in user</span></div>
+					<div class="field"><label for="recommendedBy">Recommended by</label><input id="recommendedBy" name="recommendedBy" value="<%= requesterUsername %>" readonly required><span class="item-stock">Signed-in user</span></div>
+					<div class="field request-person-field search-field">
+						<label for="requestedByName">Requested by</label>
+						<input id="requestedByName" name="requestedByName" type="search" placeholder="Search teacher name" autocomplete="off" maxlength="120" required aria-autocomplete="list" aria-expanded="false">
+						<input id="requestedById" name="requestedById" type="hidden">
+						<div class="search-results" id="requestedByResults" role="listbox" hidden></div>
+						<span class="item-stock">Teacher receiving the product</span>
+					</div>
 					<div class="field"><label for="requestedAtNepali">Request date (BS)</label><input id="requestedAtNepali" name="requestedAtNepali" class="nepali-datepicker" type="text" value="<%= todayNepaliDate %>" placeholder="YYYY-MM-DD" required></div>
 					<div class="field"><label for="requiredByNepali">Required by (BS)</label><input id="requiredByNepali" name="requiredByNepali" class="nepali-datepicker" type="text" value="" placeholder="Select required date" required></div>
 					<div class="field request-product-field search-field">
@@ -50,11 +57,13 @@
 			<div class="panel-heading"><div><h2><%= isInventoryManager ? 'All requests' : 'My requests' %></h2><p>Showing <%= totalRequests ? (page - 1) * 25 + 1 : 0 %>-<%= Math.min(page * 25, totalRequests) %> of <%= totalRequests %></p></div></div>
 			<% if (requests.length) { %>
 			<div class="table-wrap"><table class="request-table">
-				<thead><tr><th>Requested</th><th>Product</th><th>Quantity</th><th>Required by</th><th>Reason</th><th>Status</th></tr></thead>
+				<thead><tr><th>Requested</th><th>Requested by</th><th>Recommended by</th><th>Product</th><th>Quantity</th><th>Required by</th><th>Reason</th><th>Status</th></tr></thead>
 				<tbody>
 				<% requests.forEach(request => { %>
 				<tr>
-					<td><%= request.requestedAtNepali %></td>
+					<td><span class="cell-primary"><%= request.requesterUsername %></span><span class="cell-secondary"><%= request.requestedAtNepali %></span></td>
+					<td><%= request.requestedByName %></td>
+					<td><%= request.recommendedBy %></td>
 					<td><span class="cell-primary"><%= request.productName %></span><span class="cell-secondary"><%= request.product ? `${request.availableQuantityAtRequest} ${request.quantityTypeName} available when requested` : 'Not listed in inventory' %><%= request.color || request.size ? ` / ${[request.color, request.size].filter(Boolean).join(' / ')}` : '' %></span></td>
 					<td><%= request.quantity %> <%= request.quantityTypeName %></td>
 					<td><%= request.requiredByNepali %></td>
@@ -76,11 +85,15 @@
 <script>
 	const productNameInput = document.getElementById('productName');
 	const productIdInput = document.getElementById('productId');
+	const requestedByNameInput = document.getElementById('requestedByName');
+	const requestedByIdInput = document.getElementById('requestedById');
+	const requestedByResults = document.getElementById('requestedByResults');
 	const productUnitInput = document.getElementById('quantityTypeName');
 	const productAvailability = document.getElementById('productAvailability');
 	const productSearchResults = document.getElementById('productSearchResults');
 	const newItemConfirmed = document.getElementById('newItemConfirmed');
 	let productSearchTimer;
+	let requestedBySearchTimer;
 
 	function showNewItemOption(query) {
 		const option = document.createElement('button');
@@ -103,6 +116,42 @@
 		});
 		productSearchResults.appendChild(option);
 	}
+
+	requestedByNameInput.addEventListener('input', () => {
+		clearTimeout(requestedBySearchTimer);
+		requestedByIdInput.value = '';
+		const query = requestedByNameInput.value.trim();
+		if (query.length < 2) { requestedByResults.hidden = true; return; }
+		requestedBySearchTimer = window.setTimeout(async () => {
+			try {
+				const response = await fetch(`/inventory/search/teachers?q=${encodeURIComponent(query)}`);
+				if (!response.ok) throw new Error('Teacher search failed');
+				const teachers = await response.json();
+				requestedByResults.replaceChildren();
+				teachers.forEach((teacher) => {
+					const option = document.createElement('button');
+					option.type = 'button';
+					option.className = 'search-result';
+					const name = document.createElement('strong');
+					name.textContent = teacher.name;
+					const detail = document.createElement('small');
+					detail.textContent = teacher.username || 'Teacher';
+					option.append(name, detail);
+					option.addEventListener('click', () => {
+						requestedByNameInput.value = teacher.name;
+						requestedByIdInput.value = teacher.id;
+						requestedByResults.hidden = true;
+						requestedByNameInput.setCustomValidity('');
+					});
+					requestedByResults.appendChild(option);
+				});
+				requestedByResults.hidden = !teachers.length;
+				requestedByNameInput.setAttribute('aria-expanded', String(Boolean(teachers.length)));
+			} catch (error) {
+				requestedByResults.hidden = true;
+			}
+		}, 220);
+	});
 
 	productNameInput.addEventListener('input', () => {
 		clearTimeout(productSearchTimer);
@@ -164,12 +213,18 @@
 	});
 	document.addEventListener('click', (event) => {
 		if (!event.target.closest('.request-product-field')) productSearchResults.hidden = true;
+		if (!event.target.closest('.request-person-field')) requestedByResults.hidden = true;
 	});
 	document.getElementById('productRequestForm').addEventListener('submit', (event) => {
 		if (!productIdInput.value && newItemConfirmed.value !== 'true') {
 			event.preventDefault();
 			productNameInput.setCustomValidity('Select a matching item or choose the new-item request option.');
 			productNameInput.reportValidity();
+		}
+		if (!requestedByNameInput.value.trim()) {
+			event.preventDefault();
+			requestedByNameInput.setCustomValidity('Select the teacher receiving the product.');
+			requestedByNameInput.reportValidity();
 		}
 	});
 	document.querySelectorAll('.nepali-datepicker').forEach((input) => {

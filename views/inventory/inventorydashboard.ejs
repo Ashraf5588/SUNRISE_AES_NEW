@@ -19,6 +19,7 @@
 			<article class="stat-card"><div class="stat-label">Units available</div><div class="stat-value"><%= Number(totalStock || 0).toLocaleString() %></div><p class="stat-note">Across active products</p></article>
 			<article class="stat-card"><div class="stat-label">Active products</div><div class="stat-value"><%= totalProducts || 0 %></div><p class="stat-note">In <%= categoryCount || 0 %> categories</p></article>
 			<article class="stat-card"><div class="stat-label">Low stock items</div><div class="stat-value"><%= lowStockItems.length %></div><p class="stat-note">At or below reorder threshold</p></article>
+			<article class="stat-card stat-card-pending" data-target="pendingRequestsTable"><div class="stat-label">Pending product requests</div><div class="stat-value"><%= totalProductRequests || 0 %></div><p class="stat-note">Needs approval or review</p></article>
 		</section>
 		<section class="dashboard-grid">
 			<article class="panel">
@@ -35,15 +36,21 @@
 			</article>
 		</section>
 		<% if (productRequestMessage) { %><div class="notice" style="margin-top:16px"><%= productRequestMessage %></div><% } %>
-		<% if (productRequests.length) { %>
 		<section class="panel request-dashboard-panel">
-			<div class="panel-heading"><div><h2><%= isInventoryManager ? 'Product requests to review' : 'My product requests' %></h2><p>Showing <%= totalProductRequests ? (requestsPage - 1) * 25 + 1 : 0 %>-<%= Math.min(requestsPage * 25, totalProductRequests) %> of <%= totalProductRequests %></p></div><a class="panel-link" href="/inventory/productrequests"><%= isInventoryManager ? 'Open request form' : 'Request a product' %></a></div>
+			<div class="panel-heading"><div><h2>Pending product requests</h2><p><%= totalProductRequests %> pending request<%= totalProductRequests === 1 ? '' : 's' %></p></div><a class="panel-link" href="/inventory/productrequests">Request history</a></div>
+			<button class="button secondary" type="button" id="pendingRequestsSummary" data-target="pendingRequestsTable">View pending requests <strong><%= totalProductRequests %></strong></button>
+		</section>
+		<% if (productRequests.length) { %>
+		<section class="panel request-dashboard-panel" id="pendingRequestsTable">
+			<div class="panel-heading"><div><h2>Pending requests</h2><p>Showing <%= totalProductRequests ? (requestsPage - 1) * 30 + 1 : 0 %>-<%= Math.min(requestsPage * 30, totalProductRequests) %> of <%= totalProductRequests %></p></div></div>
 			<div class="table-wrap"><table class="request-table dashboard-request-table">
-				<thead><tr><th>Requested</th><% if (isInventoryManager) { %><th>Requester</th><% } %><th>Product</th><th>Quantity</th><th>Required by</th><% if (isInventoryManager) { %><th>Reason</th><th>Manager review</th><% } else { %><th>Status</th><% } %></tr></thead>
+				<thead><tr><th>Requested</th><th>Requested by</th><% if (isInventoryManager) { %><th>Requester</th><% } %><th>Recommended by</th><th>Product</th><th>Quantity</th><th>Required by</th><% if (isInventoryManager) { %><th>Reason</th><th>Manager review</th><% } else { %><th>Status</th><% } %></tr></thead>
 				<tbody><% productRequests.forEach(request => { %>
 				<tr>
-					<td><%= request.requestedAtNepali %></td>
+					<td><span class="cell-primary"><%= request.requesterUsername %></span><span class="cell-secondary"><%= request.requestedAtNepali %></span></td>
+					<td><%= request.requestedByName %></td>
 					<% if (isInventoryManager) { %><td><span class="cell-primary"><%= request.requesterUsername %></span></td><% } %>
+					<td><%= request.recommendedBy %></td>
 					<td><span class="cell-primary"><%= request.productName %></span><span class="cell-secondary"><%= request.product ? `${request.availableQuantityAtRequest} ${request.quantityTypeName} available when requested` : 'Not listed in inventory' %><%= request.color || request.size ? ` / ${[request.color, request.size].filter(Boolean).join(' / ')}` : '' %></span></td>
 					<td>
 						<% if (isInventoryManager) { %>
@@ -57,20 +64,27 @@
 					<td>
 						<form class="request-review-form" id="requestReview-<%= request._id %>" method="post" action="/inventory/productrequests/<%= request._id %>/review">
 							<input type="hidden" name="requestsPage" value="<%= requestsPage %>">
+							<input type="hidden" name="status" value="approved">
 							<div class="review-product-search search-field">
 								<input type="search" class="review-product-search-input" value="<%= linkedProductNames[String(request.product || '')] || '' %>" placeholder="Search inventory product" autocomplete="off" aria-label="Search product to link">
 								<input type="hidden" name="productId" class="review-product-id" value="<%= request.product || '' %>">
 								<div class="search-results review-product-results" hidden></div>
 							</div>
-							<select name="status" class="review-status" aria-label="Request status">
-								<option value="pending" <%= request.status === 'pending' ? 'selected' : '' %>>Pending</option>
-								<option value="approved" <%= request.status === 'approved' ? 'selected' : '' %>>Approved</option>
-								<option value="rejected" <%= request.status === 'rejected' ? 'selected' : '' %>>Rejected</option>
-							</select>
-							<textarea name="managerReason" class="review-reason" maxlength="500" placeholder="Reason required only to reject" aria-label="Rejection reason"><%= request.managerReason || '' %></textarea>
-							<span class="cell-secondary"><%= request.reviewedBy ? `Reviewed by ${request.reviewedBy}` : '' %><%= request.stockDeducted ? ' / stock deducted' : '' %></span>
-							<button class="button small" type="submit">Save review</button>
+							<div class="request-review-actions">
+								<button class="button small" type="submit">Approve</button>
+								<button class="button secondary small" type="button" data-open-reject-dialog="requestReview-<%= request._id %>">Reject</button>
+							</div>
 						</form>
+						<dialog class="request-rejection-dialog" id="rejectDialog-requestReview-<%= request._id %>">
+							<form method="dialog" class="request-rejection-form">
+								<label for="managerReason-<%= request._id %>">Reason for rejection</label>
+								<textarea id="managerReason-<%= request._id %>" name="managerReason" maxlength="500" required></textarea>
+								<div class="request-review-actions">
+									<button class="button secondary small" type="submit" value="cancel">Cancel</button>
+									<button class="button small" type="button" data-confirm-reject="requestReview-<%= request._id %>">Save rejection</button>
+								</div>
+							</form>
+						</dialog>
 					</td>
 					<% } else { %>
 					<td><span class="pill request-status <%= request.status %>"><%= request.status %></span><% if (request.status === 'rejected' && request.managerReason) { %><span class="cell-secondary request-rejection-reason"><%= request.managerReason %></span><% } %></td>
@@ -79,6 +93,10 @@
 				<% }) %></tbody>
 			</table></div>
 			<% if (requestTotalPages > 1) { %><nav class="pagination" aria-label="Dashboard request pages"><span>Page <%= requestsPage %> of <%= requestTotalPages %></span><div><% if (requestsPage > 1) { %><a class="button secondary small" href="/inventory/?requestsPage=<%= requestsPage - 1 %>">Previous</a><% } %><% if (requestsPage < requestTotalPages) { %><a class="button secondary small" href="/inventory/?requestsPage=<%= requestsPage + 1 %>">Next</a><% } %></div></nav><% } %>
+		</section>
+		<% } else { %>
+		<section class="panel request-dashboard-panel">
+			<div class="empty-state">No pending product requests.</div>
 		</section>
 		<% } %>
 		<section class="panel" style="margin-top:16px">
@@ -138,19 +156,45 @@
 				}
 			}, 200);
 		});
-		const updateRequirements = () => {
-			reason.required = status.value === 'rejected';
-		};
-		status.addEventListener('change', updateRequirements);
+		const approveButton = form.querySelector('button[type="submit"]');
+		const rejectDialog = form.parentElement.querySelector('.request-rejection-dialog');
+		const rejectReason = rejectDialog?.querySelector('textarea');
+		const confirmRejectButton = rejectDialog?.querySelector('[data-confirm-reject]');
 		form.addEventListener('submit', (event) => {
-			if (status.value === 'approved' && !productId.value) {
+			if (!productId.value) {
 				event.preventDefault();
 				productSearch.setCustomValidity('Choose a product from inventory search before approving.');
 				productSearch.reportValidity();
 				productSearch.addEventListener('input', () => productSearch.setCustomValidity(''), { once: true });
 			}
 		});
-		updateRequirements();
+		form.querySelector('[data-open-reject-dialog]')?.addEventListener('click', () => rejectDialog?.showModal());
+		confirmRejectButton?.addEventListener('click', () => {
+			if (!rejectReason?.value.trim()) {
+				rejectReason?.setCustomValidity('Add a rejection reason.');
+				rejectReason?.reportValidity();
+				return;
+			}
+			rejectReason.setCustomValidity('');
+			const reviewStatus = form.querySelector('input[name="status"]');
+			reviewStatus.value = 'rejected';
+			const reasonInput = document.createElement('input');
+			reasonInput.type = 'hidden';
+			reasonInput.name = 'managerReason';
+			reasonInput.value = rejectReason.value.trim();
+			form.appendChild(reasonInput);
+			form.submit();
+		});
+		rejectDialog?.addEventListener('close', () => rejectReason?.setCustomValidity(''));
+	});
+	const pendingRequestsSummary = document.getElementById('pendingRequestsSummary');
+	pendingRequestsSummary?.addEventListener('click', () => {
+		document.getElementById(pendingRequestsSummary.dataset.target)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	});
+	document.querySelectorAll('.stat-card-pending').forEach((card) => {
+		card.addEventListener('click', () => {
+			document.getElementById(card.dataset.target)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		});
 	});
 	const issueCanvas = document.getElementById('issueChart');
 	new Chart(issueCanvas, {

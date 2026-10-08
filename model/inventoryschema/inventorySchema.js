@@ -82,6 +82,9 @@ inventoryReturnSchema.index({ sourceTransaction: 1, sourceItemId: 1 });
 const inventoryProductRequestSchema = new mongoose.Schema({
   requesterId: { type: mongoose.Schema.Types.ObjectId, required: true },
   requesterUsername: { type: String, required: true, trim: true },
+  requestedById: { type: mongoose.Schema.Types.ObjectId, default: null },
+  requestedByName: { type: String, required: true, trim: true },
+  recommendedBy: { type: String, required: true, trim: true },
   requestedAtNepali: { type: String, required: true, trim: true },
   requiredByNepali: { type: String, required: true, trim: true },
   product: { type: mongoose.Schema.Types.ObjectId, ref: 'inventoryProduct', default: undefined },
@@ -96,9 +99,11 @@ const inventoryProductRequestSchema = new mongoose.Schema({
   managerReason: { type: String, trim: true, default: '' },
   reviewedBy: { type: String, trim: true, default: '' },
   reviewedAt: { type: Date, default: null },
-  stockDeducted: { type: Boolean, default: false }
+  stockDeducted: { type: Boolean, default: false },
+  issuedTransactionId: { type: mongoose.Schema.Types.ObjectId, default: null }
 }, { timestamps: true });
 inventoryProductRequestSchema.index({ requesterId: 1, createdAt: -1 });
+inventoryProductRequestSchema.index({ requestedById: 1, createdAt: -1 });
 inventoryProductRequestSchema.index({ status: 1, createdAt: -1 });
 
 module.exports = {

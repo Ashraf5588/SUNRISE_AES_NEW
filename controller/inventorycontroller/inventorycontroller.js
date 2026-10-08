@@ -138,16 +138,16 @@ const parseInventoryCsv = (buffer) => new Promise((resolve, reject) => {
 });
 
 const renderPage = (res, view, data = {}) => res.render(`inventory/${view}`, { ...data, currentPath: res.req.path });
-const isInventoryManager = (user) => ['ADMIN', 'INVENTORY_MANAGER', 'INVENTORYMANAGER'].includes(String(user?.role || '').toUpperCase());
-const requireInventoryManager = (req, res, next) => isInventoryManager(req.user)
+const isApprover = (user) => ['ADMIN', 'FRONTDESKOFFICER', 'FRONTDESK', 'INVENTORY_MANAGER', 'INVENTORYMANAGER'].includes(String(user?.role || '').toUpperCase());
+const requireInventoryManager = (req, res, next) => isApprover(req.user)
   ? next()
-  : res.status(403).send('Only inventory managers can review product requests.');
+  : res.status(403).send('Only administrators and frontdesk officers can review product requests.');
 exports.requireInventoryManager = requireInventoryManager;
 
 exports.productRequestsPage = async (req, res) => {
   try {
-    const manager = isInventoryManager(req.user);
-    const filter = manager ? {} : { requesterId: req.user._id };
+    const approver = isApprover(req.user);
+    const filter = approver ? {} : { $or: [{ requesterId: req.user._id }, { requestedById: req.user._id }] };
     const requestedPage = parsePage(req.query.page);
     const totalRequests = await InventoryProductRequest.countDocuments(filter);
     const totalPages = Math.max(1, Math.ceil(totalRequests / PAGE_SIZE));
@@ -159,7 +159,7 @@ exports.productRequestsPage = async (req, res) => {
       totalPages,
       totalRequests,
       requesterUsername: String(req.user.teacherName || '').trim(),
-      isInventoryManager: manager,
+      isInventoryManager: approver,
       showInventoryNavigation: ['ADMIN', 'FRONTDESKOFFICER', 'FRONTDESK'].includes(String(req.user.role || '').trim().toUpperCase()),
       todayNepaliDate: String(bs.ADToBS(new Date()) || '').trim(),
       message: req.query.saved ? 'Product request submitted.' : req.query.reviewed ? 'Request review saved.' : ''
@@ -175,19 +175,45 @@ exports.searchRequestProducts = async (req, res) => {
   if (query.length < 2) return res.json([]);
   try {
     const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const products = await InventoryProduct.find({
-      active: true,
-      $or: [
-        { name: { $regex: safeQuery, $options: 'i' } },
-        { sku: { $regex: safeQuery, $options: 'i' } },
-        { barcode: { $regex: safeQuery, $options: 'i' } }
-      ]
-    }).sort({ name: 1 }).limit(12).lean();
+    const products = await InventoryProduct.aggregate([
+      {
+        $match: {
+          active: true,
+          $or: [
+            { name: { $regex: safeQuery, $options: 'i' } },
+            { sku: { $regex: safeQuery, $options: 'i' } },
+            { barcode: { $regex: safeQuery, $options: 'i' } }
+          ]
+        }
+      },
+      {
+        $group: {
+          _id: {
+            name: '$name',
+            categoryName: '$categoryName',
+            quantityTypeName: '$quantityTypeName',
+            color: '$color',
+            size: '$size',
+            sku: '$sku',
+            barcode: '$barcode',
+            description: '$description',
+            price: '$price',
+            lowStockThreshold: '$lowStockThreshold'
+          },
+          id: { $first: '$_id' },
+          quantity: { $sum: { $ifNull: ['$quantity', 0] } },
+          unit: { $first: '$quantityTypeName' },
+          sku: { $first: '$sku' }
+        }
+      },
+      { $sort: { '_id.name': 1 } },
+      { $limit: 12 }
+    ]);
     return res.json(products.map((product) => ({
-      id: String(product._id),
-      name: product.name,
-      quantity: product.quantity,
-      unit: product.quantityTypeName,
+      id: String(product.id),
+      name: product._id.name,
+      quantity: Number(product.quantity) || 0,
+      unit: product.unit,
       sku: product.sku || ''
     })));
   } catch (error) {
@@ -196,10 +222,34 @@ exports.searchRequestProducts = async (req, res) => {
   }
 };
 
+exports.searchRequestTeachers = async (req, res) => {
+  try {
+    const query = String(req.query.q || '').trim();
+    if (query.length < 2) return res.json([]);
+    const teachers = await User.find({
+      $or: [
+        { teacherName: { $regex: query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' } },
+        { username: { $regex: query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' } }
+      ]
+    }).select('teacherName username').sort({ teacherName: 1 }).limit(10).lean();
+    return res.json(teachers.map((teacher) => ({
+      id: String(teacher._id),
+      name: String(teacher.teacherName || '').trim(),
+      username: String(teacher.username || '').trim()
+    })).filter((teacher) => teacher.name));
+  } catch (error) {
+    console.error('Unable to search teacher names:', error);
+    return res.status(500).json({ message: 'Unable to search teacher names.' });
+  }
+};
+
 exports.createProductRequest = async (req, res) => {
   try {
     const productId = String(req.body.productId || '').trim();
     const productNameInput = String(req.body.productName || '').trim();
+    const requestedById = String(req.body.requestedById || '').trim();
+    const requestedByName = String(req.body.requestedByName || '').trim();
+    const recommendedBy = String(req.body.recommendedBy || '').trim();
     const quantity = Number(req.body.quantity);
     const requestedAtNepali = String(req.body.requestedAtNepali || '').trim();
     const requiredByNepali = String(req.body.requiredByNepali || '').trim();
@@ -207,12 +257,19 @@ exports.createProductRequest = async (req, res) => {
     const quantityTypeNameInput = String(req.body.quantityTypeName || 'pcs').trim();
     const color = String(req.body.color || '').trim();
     const size = String(req.body.size || '').trim();
-    if (!productNameInput || productNameInput.length > 120 || !Number.isInteger(quantity) || quantity < 1 || !reason || reason.length > 500 || quantityTypeNameInput.length > 40 || color.length > 40 || size.length > 40) {
-      return res.status(400).send('Enter a product, whole-number quantity, and reason for the request.');
+    if (!productNameInput || productNameInput.length > 120 || !Number.isInteger(quantity) || quantity < 1 || !reason || reason.length > 500 || !requestedByName || requestedByName.length > 120 || !recommendedBy || recommendedBy.length > 120 || quantityTypeNameInput.length > 40 || color.length > 40 || size.length > 40) {
+      return res.status(400).send('Select a teacher, enter the recommended person, product, whole-number quantity, and reason for the request.');
     }
     const isNepaliDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value);
     if (!isNepaliDate(requestedAtNepali) || !isNepaliDate(requiredByNepali) || requiredByNepali < requestedAtNepali) {
       return res.status(400).send('Select valid Nepali request and required-by dates. The required-by date cannot be earlier than the request date.');
+    }
+
+    let requestedTeacher = null;
+    if (requestedById) {
+      if (!mongoose.isValidObjectId(requestedById)) return res.status(400).send('Select a valid requested teacher.');
+      requestedTeacher = await User.findById(requestedById).select('teacherName').lean();
+      if (!requestedTeacher || !requestedTeacher.teacherName) return res.status(404).send('That teacher record could not be found.');
     }
 
     let product = null;
@@ -225,6 +282,9 @@ exports.createProductRequest = async (req, res) => {
     await InventoryProductRequest.create({
       requesterId: req.user._id,
       requesterUsername: String(req.user.username || '').trim(),
+      requestedById: requestedTeacher?._id || null,
+      requestedByName: requestedTeacher?.teacherName || requestedByName,
+      recommendedBy,
       requestedAtNepali,
       requiredByNepali,
       product: product?._id,
@@ -255,6 +315,7 @@ exports.reviewProductRequest = async (req, res) => {
   if (status === 'rejected' && !managerReason) return res.status(400).send('Add a reason when rejecting a request.');
 
   let stockAdjustment = null;
+  let createdTransactionId = null;
   try {
     const request = await InventoryProductRequest.findById(req.params.id);
     if (!request) return res.status(404).send('Product request not found.');
@@ -303,6 +364,31 @@ exports.reviewProductRequest = async (req, res) => {
       stockAdjustment = { productId: request.product, quantity: request.quantity };
     }
 
+    const approvalTransaction = status === 'approved' && !request.issuedTransactionId
+      ? {
+          transactionNo: `REQ-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`,
+          assignedAt: new Date(),
+          assignedNepaliDate: request.requestedAtNepali || String(bs.ADToBS(new Date()) || '').trim(),
+          recipientType: 'staff',
+          recipientName: request.requestedByName,
+          recipientId: request.requestedById ? String(request.requestedById) : '',
+          recipientClass: '',
+          reason: `Product request approved: ${request.reason}`.slice(0, 240),
+          assignedBy: String(req.user.username || req.user.teacherName || '').trim(),
+          items: [{
+            product: selectedProduct._id,
+            productName: selectedProduct.name,
+            sku: selectedProduct.sku || '',
+            quantity,
+            quantityTypeName: selectedProduct.quantityTypeName
+          }]
+        }
+      : null;
+    if (approvalTransaction) {
+      const createdTransaction = await InventoryTransaction.create(approvalTransaction);
+      createdTransactionId = createdTransaction._id;
+    }
+
     const result = await InventoryProductRequest.updateOne(
       { _id: request._id, status: request.status, stockDeducted: request.stockDeducted, quantity: request.quantity },
       { $set: {
@@ -313,13 +399,15 @@ exports.reviewProductRequest = async (req, res) => {
         managerReason: status === 'rejected' ? managerReason : '',
         reviewedBy: String(req.user.username || req.user.teacherName || '').trim(),
         reviewedAt: new Date(),
-        stockDeducted: status === 'approved'
+        stockDeducted: status === 'approved',
+        issuedTransactionId: createdTransactionId || request.issuedTransactionId || null
       } }
     );
     if (!result.modifiedCount) throw new Error('REQUEST_CHANGED');
     const requestsPage = parsePage(req.body.requestsPage);
     return res.redirect(`/inventory/?reviewed=1&requestsPage=${requestsPage}`);
   } catch (error) {
+    if (createdTransactionId) await InventoryTransaction.deleteOne({ _id: createdTransactionId });
     if (stockAdjustment) await InventoryProduct.updateOne({ _id: stockAdjustment.productId }, { $inc: { quantity: -stockAdjustment.quantity } });
     if (error.message === 'REQUEST_CHANGED') return res.status(409).send('This request was updated by another manager. Refresh and review it again.');
     console.error('Unable to review product request:', error);
@@ -329,7 +417,8 @@ exports.reviewProductRequest = async (req, res) => {
 
 exports.dashboard = async (req, res) => {
   try {
-    const manager = isInventoryManager(req.user);
+    const manager = isApprover(req.user);
+    const pendingRequestPageSize = 30;
     const [totalProducts, stockSummary, lowStockItems, recentTransactions, categoryCount, monthly] = await Promise.all([
       InventoryProduct.countDocuments({ active: true }),
       InventoryProduct.aggregate([
@@ -346,12 +435,12 @@ exports.dashboard = async (req, res) => {
         { $sort: { _id: 1 } }
       ])
     ]);
-    const requestFilter = manager ? {} : { requesterId: req.user._id };
+    const requestFilter = manager ? { status: 'pending' } : { status: 'pending', $or: [{ requesterId: req.user._id }, { requestedById: req.user._id }] };
     const requestedPage = parsePage(req.query.requestsPage);
     const totalProductRequests = await InventoryProductRequest.countDocuments(requestFilter);
-    const requestTotalPages = Math.max(1, Math.ceil(totalProductRequests / PAGE_SIZE));
+    const requestTotalPages = Math.max(1, Math.ceil(totalProductRequests / pendingRequestPageSize));
     const requestsPage = Math.min(requestedPage, requestTotalPages);
-    const productRequests = await InventoryProductRequest.find(requestFilter).sort({ createdAt: -1 }).skip((requestsPage - 1) * PAGE_SIZE).limit(PAGE_SIZE).lean();
+    const productRequests = await InventoryProductRequest.find(requestFilter).sort({ createdAt: -1 }).skip((requestsPage - 1) * pendingRequestPageSize).limit(pendingRequestPageSize).lean();
     const linkedProductIds = productRequests.map((request) => request.product).filter(Boolean);
     const linkedProducts = linkedProductIds.length
       ? await InventoryProduct.find({ _id: { $in: linkedProductIds } }).select('name').lean()
@@ -368,7 +457,7 @@ exports.dashboard = async (req, res) => {
       requestsPage,
       requestTotalPages,
       totalProductRequests,
-      isInventoryManager: manager,
+      isInventoryManager: isApprover(req.user),
       productRequestMessage: req.query.reviewed ? 'Product request review saved.' : '',
       chartLabels: monthly.map((row) => row._id),
       chartValues: monthly.map((row) => row.quantity)

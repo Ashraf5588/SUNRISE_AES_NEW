@@ -33,6 +33,7 @@ inventory.get('/productrequests', verifytoken, inventoryController.productReques
 inventory.post('/productrequests', verifytoken, inventoryController.createProductRequest);
 inventory.post('/productrequests/:id/review', verifytoken, inventoryController.requireInventoryManager, inventoryController.reviewProductRequest);
 inventory.get('/search/products', verifytoken, inventoryController.searchRequestProducts);
+inventory.get('/search/teachers', verifytoken, inventoryController.searchRequestTeachers);
 inventory.get('/analytics',verifytoken,isFrontdesk, inventoryController.analyticsPage);
 inventory.get('/search/assignees', verifytoken,isFrontdesk, inventoryController.searchAssignees);
 inventory.get('/transactions/:id/print', verifytoken,isFrontdesk, inventoryController.printTransaction);

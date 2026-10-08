@@ -32,8 +32,32 @@
 				<form method="post" action="/inventory/products/save" id="productForm" data-default-unit="<%= defaultQuantityTypeId %>">
 					<input type="hidden" name="page" value="<%= page %>">
 					<input type="hidden" name="search" value="<%= search %>">
+					<div class="product-table-toolbar">
+						<div class="product-table-scroll-indicator" aria-label="Horizontal table scroll">
+							<span class="scroll-indicator-arrow">←</span>
+							<span class="scroll-indicator-track"><span class="scroll-indicator-thumb"></span></span>
+							<span class="scroll-indicator-arrow">→</span>
+						</div>
+						<button class="button" type="submit" <%= !quantityTypes.length ? 'disabled' : '' %>>Save table</button>
+					</div>
 					<div class="product-entry-table-wrap"><table class="product-entry-table"><thead><tr><th>Entry date (BS)</th><th>Product name</th><th>Quantity</th><th>Unit</th><th>Price</th><th>Buy from</th><th>Color</th><th>Size</th><th>SKU / code</th><th>Description</th><th>Barcode</th><th>Category <span>(optional)</span></th><th>Low-stock alert</th></tr></thead>
 						<tbody>
+						<% const newRowIndex = products.length; %>
+						<tr class="product-sheet-row new-product-row" data-existing="false">
+							<td><input type="hidden" name="products[<%= newRowIndex %>][touched]" value="0"><input class="sheet-input nepali-datepicker" name="products[<%= newRowIndex %>][entryDateNepali]" type="text" value="<%= todayNepaliDate %>" placeholder="YYYY-MM-DD" aria-label="New product entry date in Nepali calendar"></td>
+							<td><input class="sheet-input" name="products[<%= newRowIndex %>][name]" maxlength="120" placeholder="New product name" aria-label="New product name"></td>
+							<td><input class="sheet-input" name="products[<%= newRowIndex %>][quantity]" type="number" min="0" step="1" value="0" aria-label="New product quantity"></td>
+							<td><select class="sheet-input" name="products[<%= newRowIndex %>][quantityType]" aria-label="New product quantity unit"><% quantityTypes.forEach(unit => { %><option value="<%= unit._id %>" <%= String(unit._id) === defaultQuantityTypeId ? 'selected' : '' %>><%= unit.name %><%= unit.abbreviation ? ` (${unit.abbreviation})` : '' %></option><% }) %></select></td>
+							<td><input class="sheet-input" name="products[<%= newRowIndex %>][price]" type="number" min="0" step="0.01" value="0" aria-label="New product price"></td>
+							<td><input class="sheet-input" name="products[<%= newRowIndex %>][supplierName]" maxlength="120" list="inventorySupplierOptions" aria-label="New product supplier or store"></td>
+							<td><input class="sheet-input" name="products[<%= newRowIndex %>][color]" maxlength="40" aria-label="New product color"></td>
+							<td><input class="sheet-input" name="products[<%= newRowIndex %>][size]" maxlength="40" aria-label="New product size"></td>
+							<td><input class="sheet-input" name="products[<%= newRowIndex %>][sku]" maxlength="60" aria-label="New product SKU or code"></td>
+							<td><input class="sheet-input" name="products[<%= newRowIndex %>][description]" maxlength="400" aria-label="New product description"></td>
+							<td><input class="sheet-input" name="products[<%= newRowIndex %>][barcode]" maxlength="100" aria-label="New product barcode"></td>
+							<td><select class="sheet-input" name="products[<%= newRowIndex %>][category]" aria-label="New product category"><option value="">No category</option><% categories.forEach(category => { %><option value="<%= category._id %>"><%= category.name %></option><% }) %></select></td>
+							<td><input class="sheet-input" name="products[<%= newRowIndex %>][lowStockThreshold]" type="number" min="0" step="1" value="5" aria-label="New product low-stock alert"></td>
+						</tr>
 						<% products.forEach((product, index) => { %>
 						<tr class="product-sheet-row" data-existing="true">
 							<td><input type="hidden" name="products[<%= index %>][productId]" value="<%= product._id %>"><input type="hidden" name="products[<%= index %>][touched]" value="1"><input class="sheet-input nepali-datepicker" name="products[<%= index %>][entryDateNepali]" type="text" value="<%= product.entryDateNepali || todayNepaliDate %>" placeholder="YYYY-MM-DD" required aria-label="Entry date in Nepali calendar"></td>
@@ -51,25 +75,8 @@
 							<td><input class="sheet-input" name="products[<%= index %>][lowStockThreshold]" type="number" min="0" step="1" value="<%= product.lowStockThreshold %>" required aria-label="Low-stock alert"></td>
 						</tr>
 						<% }) %>
-						<% const newRowIndex = products.length; %>
-						<tr class="product-sheet-row new-product-row" data-existing="false">
-							<td><input type="hidden" name="products[<%= newRowIndex %>][touched]" value="0"><input class="sheet-input nepali-datepicker" name="products[<%= newRowIndex %>][entryDateNepali]" type="text" value="<%= todayNepaliDate %>" placeholder="YYYY-MM-DD" aria-label="New product entry date in Nepali calendar"></td>
-							<td><input class="sheet-input" name="products[<%= newRowIndex %>][name]" maxlength="120" placeholder="New product name" aria-label="New product name"></td>
-							<td><input class="sheet-input" name="products[<%= newRowIndex %>][quantity]" type="number" min="0" step="1" value="0" aria-label="New product quantity"></td>
-							<td><select class="sheet-input" name="products[<%= newRowIndex %>][quantityType]" aria-label="New product quantity unit"><% quantityTypes.forEach(unit => { %><option value="<%= unit._id %>" <%= String(unit._id) === defaultQuantityTypeId ? 'selected' : '' %>><%= unit.name %><%= unit.abbreviation ? ` (${unit.abbreviation})` : '' %></option><% }) %></select></td>
-							<td><input class="sheet-input" name="products[<%= newRowIndex %>][price]" type="number" min="0" step="0.01" value="0" aria-label="New product price"></td>
-							<td><input class="sheet-input" name="products[<%= newRowIndex %>][supplierName]" maxlength="120" list="inventorySupplierOptions" aria-label="New product supplier or store"></td>
-							<td><input class="sheet-input" name="products[<%= newRowIndex %>][color]" maxlength="40" aria-label="New product color"></td>
-							<td><input class="sheet-input" name="products[<%= newRowIndex %>][size]" maxlength="40" aria-label="New product size"></td>
-							<td><input class="sheet-input" name="products[<%= newRowIndex %>][sku]" maxlength="60" aria-label="New product SKU or code"></td>
-							<td><input class="sheet-input" name="products[<%= newRowIndex %>][description]" maxlength="400" aria-label="New product description"></td>
-							<td><input class="sheet-input" name="products[<%= newRowIndex %>][barcode]" maxlength="100" aria-label="New product barcode"></td>
-							<td><select class="sheet-input" name="products[<%= newRowIndex %>][category]" aria-label="New product category"><option value="">No category</option><% categories.forEach(category => { %><option value="<%= category._id %>"><%= category.name %></option><% }) %></select></td>
-							<td><input class="sheet-input" name="products[<%= newRowIndex %>][lowStockThreshold]" type="number" min="0" step="1" value="5" aria-label="New product low-stock alert"></td>
-						</tr>
 						</tbody></table></div>
 					<datalist id="inventorySupplierOptions"><% suppliers.forEach(supplier => { %><option value="<%= supplier.name %>"></option><% }) %></datalist>
-					<div class="form-actions"><button class="button" type="submit" <%= !quantityTypes.length ? 'disabled' : '' %>>Save table</button></div>
 				</form>
 				<% if (totalPages > 1) { %><nav class="pagination" aria-label="Product pages"><span>Page <%= page %> of <%= totalPages %></span><div><% if (page > 1) { %><a class="button secondary small" href="/inventory/products?page=<%= page - 1 %>&amp;search=<%= encodeURIComponent(search) %>">Previous</a><% } %><% if (page < totalPages) { %><a class="button secondary small" href="/inventory/products?page=<%= page + 1 %>&amp;search=<%= encodeURIComponent(search) %>">Next</a><% } %></div></nav><% } %>
 		</section>
@@ -85,6 +92,9 @@
 	const uploadStatus = document.getElementById('uploadStatus');
 	const uploadMessage = document.getElementById('uploadMessage');
 	const newProductRow = document.querySelector('.new-product-row');
+	const productTableWrap = document.querySelector('.product-entry-table-wrap');
+	const scrollIndicator = document.querySelector('.product-table-scroll-indicator');
+	const scrollIndicatorTrack = document.querySelector('.scroll-indicator-track');
 	const markNewRowTouched = () => {
 		if (!newProductRow) return;
 		newProductRow.querySelector('[name$="[touched]"]').value = '1';
@@ -145,6 +155,35 @@
 		request.open('POST', '/inventory/products/import-csv');
 		request.send(formData);
 	});
+	if (productTableWrap && scrollIndicator && scrollIndicatorTrack) {
+		const thumb = scrollIndicatorTrack.querySelector('.scroll-indicator-thumb');
+		const updateScrollIndicator = () => {
+			const maxScroll = productTableWrap.scrollWidth - productTableWrap.clientWidth;
+			const ratio = maxScroll > 0 ? productTableWrap.scrollLeft / maxScroll : 0;
+			const thumbWidth = Math.max(24, (productTableWrap.clientWidth / productTableWrap.scrollWidth) * 100);
+			thumb.style.width = `${thumbWidth}%`;
+			thumb.style.left = `${ratio * (100 - thumbWidth)}%`;
+		};
+		const scrollToPointer = (clientX) => {
+			const rect = scrollIndicatorTrack.getBoundingClientRect();
+			const maxScroll = productTableWrap.scrollWidth - productTableWrap.clientWidth;
+			if (maxScroll <= 0) return;
+			const position = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+			productTableWrap.scrollLeft = position * maxScroll;
+			updateScrollIndicator();
+		};
+		const handlePointerMove = (event) => scrollToPointer(event.clientX);
+		const stopPointerDrag = () => document.removeEventListener('pointermove', handlePointerMove);
+		scrollIndicatorTrack.addEventListener('pointerdown', (event) => {
+			if (event.button !== 0) return;
+			scrollToPointer(event.clientX);
+			document.addEventListener('pointermove', handlePointerMove);
+			document.addEventListener('pointerup', stopPointerDrag, { once: true });
+		});
+		productTableWrap.addEventListener('scroll', updateScrollIndicator);
+		window.addEventListener('resize', updateScrollIndicator);
+		updateScrollIndicator();
+	}
 	function initializeNepaliDatePickers(root = document) {
 		root.querySelectorAll('.nepali-datepicker:not([data-initialized])').forEach((dateInput) => {
 			if (typeof dateInput.nepaliDatePicker !== 'function') return;
