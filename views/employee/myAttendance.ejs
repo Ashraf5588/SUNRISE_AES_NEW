@@ -47,10 +47,12 @@
 		th { background:#fbfcfe; color:var(--muted); font-size:.66rem; font-weight:800; text-transform:uppercase; }
 		tbody tr:last-child td { border-bottom:0; }
 		tbody tr:hover { background:#f8fbff; }
+		tbody tr.holiday-row td,tbody tr.holiday-row:hover td { background:#f8d7da; color:#842029; }
 		.status { display:inline-flex; padding:5px 8px; border-radius:4px; font-size:.68rem; font-weight:800; }
 		.status-present,.status-check-in-only,.status-check-out-only { background:var(--green-soft); color:var(--green); }
 		.status-on-leave { background:var(--amber-soft); color:var(--amber); }
 		.status-absent { background:var(--red-soft); color:var(--red); }
+		.status-holiday { background:var(--red-soft); color:var(--red); }
 		.status-upcoming { background:var(--blue-soft); color:var(--blue); }
 		.attendance-note { font-size:.7rem; font-weight:700; }
 		.late-note { color:#ae5b1c; }
@@ -80,7 +82,7 @@
 			</div>
 		</section>
 		<section class="panel" aria-labelledby="attendance-table-heading"><div class="table-heading"><div><h2 id="attendance-table-heading">Daily attendance</h2><p>Date, check-in, check-out, and status for your selected month.</p></div></div>
-			<% if (rows.length) { %><div class="table-wrap"><table><thead><tr><th>Date (BS)</th><th>Check in</th><th>Check out</th><th>Status</th></tr></thead><tbody><% rows.forEach(row => { const statusClass = row.status.toLowerCase().replace(/[^a-z]+/g, '-'); const isUpcoming = row.status === 'Upcoming'; %><tr><td><%= row.date %></td><td class="<%= !isUpcoming && row.checkIn === '-' ? 'missed-time' : '' %>"><%= isUpcoming ? '-' : row.checkIn === '-' ? 'Missed' : row.checkIn %><% if (!isUpcoming && row.lateDuration !== '-') { %> <span class="attendance-note late-note">(late by <%= row.lateDuration %>)</span><% } %></td><td class="<%= !isUpcoming && row.checkOut === '-' ? 'missed-time' : '' %>"><%= isUpcoming ? '-' : row.checkOut === '-' ? 'Missed' : row.checkOut %><% if (!isUpcoming && row.earlyDuration !== '-') { %> <span class="attendance-note early-note">(<%= row.earlyDuration %> early)</span><% } %></td><td><span class="status status-<%= statusClass %>"><%= row.status %></span></td></tr><% }) %></tbody></table></div><% } else { %><div class="empty">No attendance records for this Nepali month.</div><% } %>
+			<% if (rows.length) { %><div class="table-wrap"><table><thead><tr><th>Date (BS)</th><th>Check in</th><th>Check out</th><th>Status</th></tr></thead><tbody><% rows.forEach(row => { const statusClass = row.isHoliday ? 'holiday' : row.status.toLowerCase().replace(/[^a-z]+/g, '-'); const isUpcoming = row.status === 'Upcoming'; %><tr class="<%= row.isHoliday ? 'holiday-row' : '' %>"><td><%= row.date %></td><td class="<%= !row.isHoliday && !isUpcoming && row.checkIn === '-' ? 'missed-time' : '' %>"><%= isUpcoming ? '-' : row.checkIn === '-' ? 'Missed' : row.checkIn %><% if (!row.isHoliday && !isUpcoming && row.lateDuration !== '-') { %> <span class="attendance-note late-note">(late by <%= row.lateDuration %>)</span><% } %></td><td class="<%= !row.isHoliday && !isUpcoming && row.checkOut === '-' ? 'missed-time' : '' %>"><%= isUpcoming ? '-' : row.checkOut === '-' ? 'Missed' : row.checkOut %><% if (!row.isHoliday && !isUpcoming && row.earlyDuration !== '-') { %> <span class="attendance-note early-note">(<%= row.earlyDuration %> early)</span><% } %></td><td><span class="status status-<%= statusClass %>"><%= row.status %></span></td></tr><% }) %></tbody></table></div><% } else { %><div class="empty">No attendance records for this Nepali month.</div><% } %>
 		</section>
 	</main>
 </body>

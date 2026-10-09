@@ -42,6 +42,7 @@
 		th { position: sticky; top: 0; z-index: 1; padding: 0; background: #02337b; color: var(--paper); font-size: .69rem; text-transform: uppercase; }
 		.sort-button { width: 100%; min-height: 40px; padding: 8px 12px; border: 0; background: transparent; color: inherit; text-align: left; font-size: inherit; font-weight: 800; text-transform: inherit; cursor: pointer; }
 		tbody tr:hover { background: #f8fbf8; }
+		tbody tr.holiday-row td, tbody tr.holiday-row:hover td { background: #f8d7da; color: #842029; }
 		.employee-name { font-weight: 700; }
 		.employee-code { color: var(--green-dark); font-weight: 800; }
 		.status-late { color: #9b4c16; font-weight: 700; }
@@ -94,7 +95,7 @@
 						</tr></thead>
 						<tbody>
 							<% reportRows.forEach((row, index) => { %>
-								<tr>
+								<tr class="<%= row.isHoliday ? 'holiday-row' : '' %>">
 									<td data-value="<%= index + 1 %>"><%= index + 1 %></td>
 									<td class="employee-name" data-value="<%= row.employeeName %>"><%= row.employeeName %></td>
 									<td class="employee-code" data-value="<%= row.employeeCode %>"><%= row.employeeCode %></td>

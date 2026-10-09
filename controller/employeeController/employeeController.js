@@ -1729,12 +1729,13 @@ async function buildEmployeeAttendanceReport(queryParams) {
             const employee = employeeByCode.get(code) || {};
             const dayPunches = punchesByDateAndCode.get(`${dateKey}|${code}`) || [];
             const employeeName = employee.staffName || dayPunches.find(punch => punch.name)?.name || 'Employee not mapped';
-            const { checkIn, checkOut } = classifyPunchesByMidTime(dayPunches, getEmployeeMidTime(employee));
-            const actualIn = checkIn ? formatPunchTime(new Date(checkIn.punchTime)) : '';
-            const actualOut = checkOut ? formatPunchTime(new Date(checkOut.punchTime)) : '';
             const storedHolidayPunch = dayPunches.find(punch => punch.isHoliday && punch.holidayName);
             const holidayName = employeeHolidaysByDate.get(getNepaliDate(date).slice(0, 10)) || storedHolidayPunch?.holidayName || '';
             const isHoliday = Boolean(holidayName);
+            const attendancePunches = dayPunches.filter(punch => formatPunchTime(new Date(punch.punchTime)) !== '00:00');
+            const { checkIn, checkOut } = classifyPunchesByMidTime(attendancePunches, getEmployeeMidTime(employee));
+            const actualIn = checkIn ? formatPunchTime(new Date(checkIn.punchTime)) : '';
+            const actualOut = checkOut ? formatPunchTime(new Date(checkOut.punchTime)) : '';
             const plannedIn = employee.plannedIn || '09:00';
             const plannedOut = employee.plannedOut || '17:00';
             const plannedInMinutes = getMinutes(plannedIn);
@@ -1763,10 +1764,10 @@ async function buildEmployeeAttendanceReport(queryParams) {
                 department: employee.department || '-',
                 plannedIn,
                 plannedOut,
-                actualIn: actualIn || (isHoliday ? bothPunchesMissing ? 'Holiday' : '-' : 'Missed morning'),
-                actualOut: actualOut || (isHoliday ? bothPunchesMissing ? 'Holiday' : '-' : 'Missed evening'),
-                lateInStatus: actualIn ? (isHoliday ? 'Holiday work' : lateMinutes ? `Late by ${lateMinutes} min` : 'On time') : isHoliday ? bothPunchesMissing ? 'Holiday' : 'Holiday work' : 'Missed morning',
-                earlyOutStatus: actualOut ? (isHoliday ? 'Holiday work' : earlyMinutes ? `Early by ${earlyMinutes} min` : 'On time') : isHoliday ? bothPunchesMissing ? 'Holiday' : 'Holiday work' : 'Missed evening',
+                actualIn: actualIn || (isHoliday ? holidayName : 'Missed morning'),
+                actualOut: actualOut || (isHoliday ? holidayName : 'Missed evening'),
+                lateInStatus: isHoliday ? holidayName : actualIn ? lateMinutes ? `Late by ${lateMinutes} min` : 'On time' : 'Missed morning',
+                earlyOutStatus: isHoliday ? holidayName : actualOut ? earlyMinutes ? `Early by ${earlyMinutes} min` : 'On time' : 'Missed evening',
                 leaveType: countedLeave ? `${countedLeave.leaveTypeName} / ${countedLeave.isPaid ? 'Paid' : 'Unpaid'}` : '-',
                 remarks: isHoliday
                     ? bothPunchesMissing ? `Holiday: ${holidayName}` : `Worked on holiday: ${holidayName}`
@@ -1774,7 +1775,9 @@ async function buildEmployeeAttendanceReport(queryParams) {
                     ? `Leave: ${countedLeave.leaveTypeName} / ${countedLeave.isPaid ? 'Paid' : 'Unpaid'}`
                     : bothPunchesMissing ? 'Absent' : missing.length ? missing.join('; ') : 'Present',
                 lateMinutes,
-                earlyMinutes
+                earlyMinutes,
+                isHoliday,
+                holidayName
             });
         });
     });
@@ -2137,7 +2140,8 @@ exports.showMyAttendance = async (req, res) => {
         const through = new Date(endExclusive);
         through.setMilliseconds(through.getMilliseconds() - 1);
         const employeeCode = String(employee.employeeCode || '').trim().toUpperCase();
-        const [punches, approvedLeaves] = await Promise.all([
+        const endDateBs = getNepaliDate(through).slice(0, 10);
+        const [punches, approvedLeaves, employeeHolidays] = await Promise.all([
             employeeAttendance.find({
                 pin: employeeCode,
                 punchTime: { $gte: start, $lt: endExclusive }
@@ -2147,8 +2151,10 @@ exports.showMyAttendance = async (req, res) => {
                 employeeName: employee.staffName,
                 startDateNepali: { $lte: getNepaliDate(through).slice(0, 10) },
                 endDateNepali: { $gte: requestedMonth + '-01' }
-            }).select('leaveTypeName isPaid startDateNepali endDateNepali requestedDays').lean()
+            }).select('leaveTypeName isPaid startDateNepali endDateNepali requestedDays').lean(),
+            EmployeeWeekend.find({ dateBs: { $gte: requestedMonth + '-01', $lte: endDateBs } }).select('dateBs name').lean()
         ]);
+        const employeeHolidaysByDate = new Map(employeeHolidays.map(item => [item.dateBs, item.name]));
 
         const leavesByDate = new Map();
         approvedLeaves.forEach(leave => {
@@ -2180,30 +2186,37 @@ exports.showMyAttendance = async (req, res) => {
 
         for (let date = new Date(start); date < endExclusive; date.setDate(date.getDate() + 1)) {
             const dateKey = formatDateKey(date);
-            const dayPunches = punchesByDate.get(dateKey) || [];
+            const allDayPunches = punchesByDate.get(dateKey) || [];
+            const holidayName = employeeHolidaysByDate.get(getNepaliDate(date).slice(0, 10))
+                || allDayPunches.find(punch => punch.isHoliday && punch.holidayName)?.holidayName
+                || '';
+            const isHoliday = Boolean(holidayName);
+            const dayPunches = allDayPunches.filter(punch => formatPunchTime(new Date(punch.punchTime)) !== '00:00');
             const { checkIn, checkOut } = classifyPunchesByMidTime(dayPunches, getEmployeeMidTime(employee));
             const actualIn = checkIn ? new Date(checkIn.punchTime) : null;
             const actualOut = checkOut ? new Date(checkOut.punchTime) : null;
             const leave = leavesByDate.get(dateKey);
             const isFuture = date > today;
-            let status = isFuture ? 'Upcoming' : 'Absent';
-            if (leave && !actualIn && !actualOut) {
+            let status = isHoliday ? holidayName : isFuture ? 'Upcoming' : 'Absent';
+            if (!isHoliday && leave && !actualIn && !actualOut) {
                 status = `On leave - ${leave.leaveTypeName}`;
                 leaveDays += 1;
-            } else if (actualIn || actualOut) {
+            } else if (!isHoliday && (actualIn || actualOut)) {
                 status = actualIn && actualOut ? 'Present' : actualIn ? 'Check-in only' : 'Check-out only';
             }
             const actualInMinutes = actualIn ? getMinutes(formatPunchTime(actualIn)) : null;
             const actualOutMinutes = actualOut ? getMinutes(formatPunchTime(actualOut)) : null;
-            const lateMinutes = actualInMinutes !== null && plannedInMinutes !== null ? Math.max(0, actualInMinutes - plannedInMinutes) : 0;
-            const earlyMinutes = actualOutMinutes !== null && plannedOutMinutes !== null ? Math.max(0, plannedOutMinutes - actualOutMinutes) : 0;
+            const lateMinutes = !isHoliday && actualInMinutes !== null && plannedInMinutes !== null ? Math.max(0, actualInMinutes - plannedInMinutes) : 0;
+            const earlyMinutes = !isHoliday && actualOutMinutes !== null && plannedOutMinutes !== null ? Math.max(0, plannedOutMinutes - actualOutMinutes) : 0;
             if (lateMinutes) lateCount += 1;
             if (earlyMinutes) earlyOutCount += 1;
             rows.push({
                 date: getNepaliDate(date).slice(0, 10),
-                checkIn: actualIn ? formatPunchTime(actualIn) : '-',
-                checkOut: actualOut ? formatPunchTime(actualOut) : '-',
+                checkIn: actualIn ? formatPunchTime(actualIn) : isHoliday ? holidayName : '-',
+                checkOut: actualOut ? formatPunchTime(actualOut) : isHoliday ? holidayName : '-',
                 status,
+                isHoliday,
+                holidayName,
                 lateMinutes,
                 earlyMinutes,
                 lateDuration: lateMinutes ? formatDurationMinutes(lateMinutes) : '-',
