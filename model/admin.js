@@ -16,6 +16,9 @@ const superadminSchema = new mongoose.Schema({
 const teacherSchema = new mongoose.Schema({
   "teacherName": String,
   "teacherId": String,
+  "name": String,
+  "reg": String,
+  "displayName": String,
   employeeCode: { type: String, trim: true, uppercase: true, default: '' },
   "role": String,
   "allowedSubjects": [{
@@ -26,6 +29,7 @@ const teacherSchema = new mongoose.Schema({
 
   "username": String,
   "password": String,
+  active: { type: Boolean, default: true },
   fcmTokens: [String],
   tokenVersion: { type: Number, default: "1" },
 

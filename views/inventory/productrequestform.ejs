@@ -21,6 +21,7 @@
 		</header>
 		<% if (message) { %><div class="notice"><%= message %></div><% } %>
 
+	<%if (role == 'ADMIN') { %>
 		<section class="panel request-panel">
 			<div class="panel-heading"><div><h2>Request an item</h2><p>Search current inventory or submit an item that is not listed.</p></div></div>
 			<form method="post" action="/inventory/productrequests" id="productRequestForm">
@@ -52,6 +53,7 @@
 				<div class="request-submit-row"><span class="pill request-pending-pill">Status: Pending on submission</span><button class="button" type="submit">Submit request</button></div>
 			</form>
 		</section>
+	<% } %>
 
 		<section class="panel request-list-panel">
 			<div class="panel-heading"><div><h2><%= isInventoryManager ? 'All requests' : 'My requests' %></h2><p>Showing <%= totalRequests ? (page - 1) * 25 + 1 : 0 %>-<%= Math.min(page * 25, totalRequests) %> of <%= totalRequests %></p></div></div>

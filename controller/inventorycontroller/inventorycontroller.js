@@ -158,6 +158,7 @@ exports.productRequestsPage = async (req, res) => {
       page,
       totalPages,
       totalRequests,
+      role: String(req.user.role || '').trim(),
       requesterUsername: String(req.user.teacherName || '').trim(),
       isInventoryManager: approver,
       showInventoryNavigation: ['ADMIN', 'FRONTDESKOFFICER', 'FRONTDESK'].includes(String(req.user.role || '').trim().toUpperCase()),

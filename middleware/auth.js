@@ -33,6 +33,7 @@ const verifytoken = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "aas_amedtech_solutions_789");
     const user = await userlist.findById(decoded.id);
     if (!user) return res.status(401).json({ message: "User not found" });
+    if (user.role === "STUDENT") return res.redirect('/parents');
     
     // Check tokenVersion only if it exists in both places
     if (user.tokenVersion && decoded.tokenVersion && user.tokenVersion !== decoded.tokenVersion) {

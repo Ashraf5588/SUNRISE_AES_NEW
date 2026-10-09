@@ -8,43 +8,52 @@
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css">
 	<style>
-		:root { --ink:#182b2a; --muted:#6a7d79; --green:#147966; --green-pale:#e3f3ee; --coral:#df7358; --amber:#d39027; --blue:#457e9a; --line:#e1eae7; --white:#fff; --canvas:#f4f7f6; }
+		:root { --ink:#172b46; --muted:#647891; --green:#147966; --green-pale:#e3f3ee; --coral:#df7358; --amber:#d39027; --blue:#214d82; --blue-dark:#17385f; --blue-pale:#edf4fc; --line:#dbe5f0; --white:#fff; --canvas:#f1f5fa; }
 		* { box-sizing:border-box; }
-		body { margin:0; background:var(--canvas); color:var(--ink); font-family:'DM Sans',sans-serif; padding-bottom:calc(86px + env(safe-area-inset-bottom)); }
+		body { margin:0; background:linear-gradient(155deg,#edf3fa,#f7f9fc 56%,#eaf1f8); color:var(--ink); font-family:'DM Sans',sans-serif; padding-bottom:calc(104px + env(safe-area-inset-bottom)); }
 		button, input, textarea { font:inherit; }
-		.app-shell { width:min(100%,760px); min-height:100vh; margin:0 auto; background:var(--canvas); }
+		.app-shell { width:min(100%,820px); min-height:100vh; margin:0 auto; background:var(--canvas); }
 		.topbar { display:flex; align-items:center; justify-content:space-between; padding:18px 18px 12px; }
 		.profile { display:flex; align-items:center; gap:11px; min-width:0; }
-		.avatar { width:44px; height:44px; flex:0 0 44px; display:grid; place-items:center; border-radius:50%; background:#d7eee7; color:#176b5c; font:800 14px 'Manrope',sans-serif; }
+		.avatar { width:44px; height:44px; flex:0 0 44px; display:grid; place-items:center; border:2px solid #d1deee; border-radius:50%; background:#dce8f7; color:var(--blue-dark); font:800 14px 'Manrope',sans-serif; }
 		.profile-name { overflow:hidden; color:var(--ink); font-size:14px; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
 		.profile-label { margin-top:2px; color:var(--muted); font-size:11px; }
-		.logout { width:40px; height:40px; display:grid; place-items:center; border:1px solid var(--line); border-radius:7px; background:#fff; color:#526762; cursor:pointer; }
+		.logout { width:40px; height:40px; display:grid; place-items:center; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--blue); cursor:pointer; }
 		.logout svg,.feature-icon svg,.tab-icon svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
 		.welcome { padding:5px 18px 17px; }
 		.welcome h1 { margin:0; font:800 25px/1.2 'Manrope',sans-serif; letter-spacing:0; }
 		.welcome p { margin:6px 0 0; color:var(--muted); font-size:13px; }
-		.student-card { position:relative; overflow:hidden; margin:0 16px 22px; padding:17px; border:1px solid #d9e8e3; border-radius:7px; background:linear-gradient(112deg,#fff 0%,#f3faf7 74%,#e1f2eb 100%); }
-		.student-card::after { position:absolute; right:-22px; bottom:-53px; width:140px; height:140px; border:1px solid rgba(20,121,102,.12); border-radius:50%; content:''; }
-		.student-card-label { color:var(--green); font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
-		.student-card h2 { margin:7px 0 12px; font:800 18px/1.25 'Manrope',sans-serif; }
-		.student-meta { display:flex; flex-wrap:wrap; gap:7px 16px; color:#627671; font-size:12px; }
-		.student-meta strong { color:#283d38; }
+		.student-card { position:relative; overflow:hidden; margin:0 16px 20px; padding:17px; border:1px solid #254f7d; border-radius:9px; background:linear-gradient(125deg,#142f52 0%,#1c4776 72%,#285b8b 100%); color:#fff; box-shadow:0 9px 20px rgba(18,47,82,.18); }
+		.student-card::after { position:absolute; right:-22px; bottom:-53px; width:140px; height:140px; border:1px solid rgba(255,255,255,.15); border-radius:50%; content:''; }
+		.school-brand { position:relative; z-index:1; display:flex; align-items:center; justify-content:space-between; gap:12px; padding-bottom:13px; border-bottom:1px solid rgba(255,255,255,.2); }
+		.school-brand-name { margin:0; color:#fff; font:800 16px/1.3 'Manrope',sans-serif; overflow-wrap:anywhere; }
+		.school-brand-label { margin:3px 0 0; color:#c5d8ed; font-size:10px; font-weight:700; text-transform:uppercase; }
+		.school-logo { width:48px; height:48px; flex:0 0 48px; border:1px solid rgba(255,255,255,.45); border-radius:8px; background:#fff; object-fit:contain; }
+		.student-profile { position:relative; z-index:1; padding-top:13px; }
+		.student-card-label { color:#b8d5f3; font-size:10px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+		.student-card h2 { margin:5px 0 9px; color:#fff; font:800 19px/1.25 'Manrope',sans-serif; }
+		.student-meta { display:flex; flex-wrap:wrap; gap:7px 16px; color:#d4e2f1; font-size:11px; }
+		.student-meta strong { color:#fff; }
 		.tab-panel { display:none; }
 		.tab-panel.active { display:block; }
-		.section-heading { display:flex; align-items:baseline; justify-content:space-between; margin:0 18px 11px; }
-		.section-heading h2 { margin:0; font:800 16px 'Manrope',sans-serif; }
+		.app-shell.section-open .welcome,.app-shell.section-open .student-card,.app-shell.detail-open .welcome,.app-shell.detail-open .student-card { display:none; }
+		.section-heading { display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin:0 18px 11px; }
+		.section-heading h2 { margin:0; color:var(--ink); font:800 15px 'Manrope',sans-serif; }
 		.section-heading span { color:var(--muted); font-size:11px; }
-		.feature-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; padding:0 16px; }
-		.feature { min-width:0; min-height:96px; padding:12px 5px 10px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; border:1px solid var(--line); border-radius:7px; background:#fff; color:var(--ink); cursor:pointer; }
+		.feature-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; padding:0 16px; }
+		.feature { position:relative; min-width:0; min-height:76px; padding:8px 2px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; border:1px solid transparent; border-radius:8px; background:transparent; color:var(--ink); cursor:pointer; }
+		.feature-link { text-decoration:none; }
+		.feature:disabled { opacity:.42; cursor:not-allowed; }
+		.feature:hover:not(:disabled) { border-color:#e4ebf4; background:rgba(255,255,255,.5); }
+		.feature:focus-visible,.parent-bottom-button:focus-visible,.module-search:focus-visible { outline:3px solid rgba(33,77,130,.3); outline-offset:2px; }
+		.homework-badge { position:absolute; top:4px; right:4px; display:grid; min-width:19px; height:19px; place-items:center; padding:0 5px; border:2px solid #fff; border-radius:999px; background:#c62828; color:#fff; font-size:9px; font-weight:800; line-height:1; }
 		.feature:active { transform:scale(.98); }
-		.feature-icon { width:36px; height:36px; display:grid; place-items:center; border-radius:50%; }
-		.feature:nth-child(4n+1) .feature-icon { background:#e1f2ec; color:#157765; }
-		.feature:nth-child(4n+2) .feature-icon { background:#fff0e9; color:#c75c3d; }
-		.feature:nth-child(4n+3) .feature-icon { background:#e8f1f7; color:#39738d; }
-		.feature:nth-child(4n) .feature-icon { background:#fff4d9; color:#a66e0b; }
-		.feature-label { color:#344944; font-size:10px; font-weight:700; line-height:1.25; text-align:center; }
-		.home-summary { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:21px 16px 8px; }
+		.feature-icon { width:44px; height:44px; display:grid; place-items:center; border-radius:7px; background:#214d82; color:#fff; }
+		.feature-icon svg { width:45px; height:45px; }
+		.feature-label { color:#344944; font-size:12px; font-weight:700; line-height:1.2; text-align:center; overflow-wrap:anywhere; }
+		.home-summary { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:19px 16px 8px; }
 		.summary-card { min-height:94px; padding:13px; border:1px solid var(--line); border-radius:7px; background:#fff; }
 		.summary-label { color:var(--muted); font-size:11px; }
 		.summary-value { margin-top:7px; font:800 20px 'Manrope',sans-serif; }
@@ -70,12 +79,73 @@
 		.complaint-form textarea { min-height:95px; resize:vertical; padding:11px; border:1px solid #c5d5d0; border-radius:5px; background:#fff; color:var(--ink); }
 		.complaint-form button { min-height:42px; border:0; border-radius:5px; background:var(--green); color:#fff; font-size:13px; font-weight:700; cursor:pointer; }
 		.success-note { padding:10px 12px; border-radius:5px; background:#e1f2e9; color:#176044; font-size:12px; }
-		.bottom-nav { position:fixed; z-index:10; right:0; bottom:0; left:0; display:grid; grid-template-columns:repeat(4,1fr); width:min(100%,760px); margin:0 auto; padding:8px 12px calc(8px + env(safe-area-inset-bottom)); border-top:1px solid var(--line); background:rgba(255,255,255,.97); }
-		.tab-button { min-height:53px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; border:0; border-radius:5px; background:transparent; color:#788984; font-size:9px; font-weight:700; cursor:pointer; }
-		.tab-button.active { background:#e9f5f1; color:var(--green); }
-		.tab-icon { height:21px; }
-		@media(min-width:620px) { body { padding:24px 0; } .app-shell { min-height:calc(100vh - 48px); border:1px solid var(--line); border-radius:9px; box-shadow:0 15px 45px rgba(24,43,42,.06); } .bottom-nav { bottom:24px; border:1px solid var(--line); border-radius:0 0 9px 9px; } }
-		@media(max-width:360px) { .feature-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .welcome h1 { font-size:22px; } }
+		.homework-filter { display:flex; align-items:end; gap:9px; margin:0 0 14px; }
+		.homework-date-field { display:grid; flex:1; gap:5px; min-width:0; }
+		.homework-date-field label { color:var(--muted); font-size:11px; font-weight:700; }
+		.homework-date-field input { width:100%; min-height:40px; padding:8px 10px; border:1px solid #cbd8e6; border-radius:5px; background:#fff; color:var(--ink); }
+		.homework-filter button { min-height:40px; padding:0 13px; border:0; border-radius:5px; background:var(--blue); color:#fff; font-size:12px; font-weight:700; cursor:pointer; }
+		.homework-table-wrap { overflow-x:auto; border:1px solid var(--line); border-radius:6px; background:#fff; }
+		.homework-table { width:100%; border-collapse:collapse; table-layout:fixed; }
+		.homework-table th { padding:10px; background:#edf4fb; color:#355675; font-size:10px; text-align:left; text-transform:uppercase; }
+		.homework-table td { padding:11px 10px; border-top:1px solid #e8eef5; color:var(--ink); font-size:12px; vertical-align:top; overflow-wrap:anywhere; }
+		.homework-table th:first-child,.homework-table td:first-child { width:25%; }
+		.homework-table th:nth-child(2),.homework-table td:nth-child(2) { width:52%; }
+		.homework-table th:last-child,.homework-table td:last-child { width:23%; }
+		.homework-subject { color:#244d78; font-weight:800; }
+		.homework-title { display:block; font-weight:700; line-height:1.4; }
+		.homework-meta { display:block; margin-top:5px; color:var(--muted); font-size:10px; line-height:1.4; }
+		.homework-due { color:#244d78; font-weight:700; }
+		.module-group { margin-top:17px; }
+		.module-search-wrap { position:relative; margin:0 16px 16px; }
+		.module-search { width:100%; min-height:42px; padding:9px 12px 9px 38px; border:1px solid #cbd8e8; border-radius:8px; background:#fff; color:var(--ink); font-size:12px; }
+		.module-search-icon { position:absolute; top:50%; left:13px; transform:translateY(-50%); color:var(--muted); }
+		.module-group-title { margin:0 16px 9px; color:#526982; font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
+		.module-search-empty { margin:0 16px; color:var(--muted); font-size:12px; }
+		.teacher-contact-section,.latest-notice-section { margin:18px 16px 0; padding:15px; border:1px solid var(--line); border-radius:9px; background:#fff; }
+		.contact-item { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid #edf1f6; }
+		.contact-item:last-child { border-bottom:0; }
+		.contact-name { color:var(--ink); font-size:12px; font-weight:700; }
+		.contact-detail { display:block; margin-top:3px; color:var(--muted); font-size:10px; }
+		.contact-call { display:grid; width:36px; height:36px; flex:0 0 36px; place-items:center; border-radius:50%; background:var(--blue-pale); color:var(--blue); font-size:15px; text-decoration:none; }
+		.latest-notice-link { display:flex; align-items:center; gap:10px; padding:11px 0; border-bottom:1px solid #edf1f6; color:inherit; text-decoration:none; }
+		.latest-notice-link:last-child { border-bottom:0; }
+		.latest-notice-link.latest { padding:13px; border:1px solid #d7e4f3; border-radius:8px; background:linear-gradient(110deg,#f1f6fd,#fff); box-shadow:0 5px 14px rgba(27,61,99,.08); }
+		.notice-symbol { display:grid; width:36px; height:36px; flex:0 0 36px; place-items:center; border-radius:10px; background:#e4eef9; color:var(--blue); font-size:16px; }
+		.latest-notice-link.latest .notice-symbol { width:42px; height:42px; flex-basis:42px; }
+		.notice-copy { min-width:0; flex:1; }
+		.notice-title-line { display:flex; align-items:center; gap:7px; }
+		.notice-title { overflow:hidden; color:var(--ink); font-size:12px; font-weight:800; text-overflow:ellipsis; white-space:nowrap; }
+		.notice-new { flex:0 0 auto; padding:3px 5px; border-radius:4px; background:#fff0f1; color:#b42332; font-size:8px; font-weight:800; }
+		.notice-description { display:block; overflow:hidden; margin-top:4px; color:var(--muted); font-size:10px; line-height:1.4; text-overflow:ellipsis; }
+		.notice-meta { display:block; margin-top:4px; color:#8493a4; font-size:9px; }
+		.attendance-filter { display:flex; align-items:end; gap:9px; margin:0 0 14px; }
+		.attendance-filter label { display:grid; flex:1; gap:5px; color:var(--muted); font-size:11px; font-weight:700; }
+		.attendance-filter select { width:100%; min-height:40px; padding:8px 10px; border:1px solid #cbd8e6; border-radius:6px; background:#fff; color:var(--ink); }
+		.attendance-filter button { min-height:40px; padding:0 12px; border:0; border-radius:6px; background:var(--blue); color:#fff; font-size:11px; font-weight:700; }
+		.attendance-summary { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:12px; }
+		.attendance-count { padding:10px; border:1px solid #dce7f3; border-radius:7px; background:#f6f9fd; }
+		.attendance-count strong { display:block; color:var(--blue-dark); font:800 19px 'Manrope',sans-serif; }
+		.attendance-count span { color:var(--muted); font-size:10px; }
+		.attendance-table-wrap { overflow:hidden; border:1px solid var(--line); border-radius:7px; background:#fff; }
+		.attendance-table { width:100%; border-collapse:collapse; table-layout:fixed; }
+		.attendance-table th { padding:9px 10px; background:#edf3fa; color:#435c78; font-size:10px; text-align:left; }
+		.attendance-table td { padding:9px 10px; border-top:1px solid #eaf0f6; font-size:11px; overflow-wrap:anywhere; }
+		.attendance-table th:first-child,.attendance-table td:first-child { width:22%; }
+		.attendance-status { font-weight:800; }
+		.attendance-status.present { color:#176248; }
+		.attendance-status.absent { color:#b42332; }
+		.attendance-status.holiday { color:#647891; }
+		.mobile-bottom-nav { position:fixed; z-index:20; right:0; bottom:0; left:0; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); align-items:end; width:min(100%,820px); margin:0 auto; padding:8px 10px calc(8px + env(safe-area-inset-bottom)); border-top:1px solid #d8e2ef; background:rgba(255,255,255,.97); box-shadow:0 -7px 20px rgba(24,53,86,.08); backdrop-filter:blur(12px); }
+		.tab-button { min-width:0; min-height:48px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; border:0; border-radius:9px; background:transparent; color:#74849a; font-size:9px; font-weight:700; cursor:pointer; }
+		.tab-button.active { background:#e9f1fb; color:var(--blue-dark); }
+		.tab-button.home-tab { position:relative; z-index:1; width:58px; height:58px; min-height:58px; justify-self:center; transform:translateY(-10px); border:3px solid #fff; border-radius:50px; background:#183d6b; color:#fff; box-shadow:0 17px 17px rgba(18,49,85,.3); }
+		.tab-button.home-tab.active { background:#183d6b; color:#fff; }
+		.tab-icon { height:20px; }
+		.tab-button.home-tab .tab-icon svg { width:22px; height:22px; }
+		@media(min-width:620px) { body { padding:20px 0 30px; } .app-shell { min-height:calc(100vh - 50px); border:1px solid var(--line); border-radius:12px; box-shadow:0 15px 45px rgba(24,43,42,.08); } .mobile-bottom-nav { bottom:15px; border:1px solid var(--line); border-radius:14px; } }
+		@media(max-width:600px) { .feature-grid { grid-template-columns:repeat(5,minmax(0,1fr)); gap:2px; } .feature { min-height:68px; padding:6px 1px; } .feature-label { font-size:8px; } .feature-icon { width:30px; height:30px; } .feature-icon svg { width:22px; height:22px; } }
+		@media(max-width:520px) { .app-shell { width:100%; } .homework-filter,.attendance-filter { align-items:stretch; } .homework-filter button,.attendance-filter button { padding:0 10px; } .homework-table th { padding:8px 5px; font-size:9px; } .homework-table td { padding:9px 5px; font-size:11px; } .homework-table th:first-child,.homework-table td:first-child { width:25%; } .homework-table th:nth-child(2),.homework-table td:nth-child(2) { width:48%; } .homework-table th:last-child,.homework-table td:last-child { width:27%; } .homework-meta { font-size:9px; } .attendance-table th,.attendance-table td { padding:8px 6px; } .teacher-contact-section,.latest-notice-section { margin-left:13px; margin-right:13px; } }
+		@media(max-width:360px) { .feature-grid { grid-template-columns:repeat(5,minmax(0,1fr)); gap:0; } .feature { min-height:64px; padding:5px 0; } .feature-label { font-size:7px; } .welcome h1 { font-size:22px; } .homework-filter,.attendance-filter { flex-direction:column; } .homework-filter button,.attendance-filter button { width:100%; } .tab-button { font-size:8px; } .tab-button.home-tab { width:52px; height:54px; min-height:54px; border-radius:50px; } }
 	</style>
 </head>
 <body>
@@ -94,28 +164,35 @@
 
 		<section class="welcome"><h1>Hello, <%= studentFirstName %></h1><p>Here is your school update.</p></section>
 		<section class="student-card" aria-label="Linked student">
-			<div class="student-card-label">Student profile</div>
-			<h2><%= student.name %></h2>
-			<div class="student-meta"><span>Class <strong><%= student.studentClass %></strong></span><span>Section <strong><%= student.section %></strong></span><span>Roll <strong><%= student.roll %></strong></span></div>
+			<div class="school-brand"><div><p class="school-brand-label">School</p><h2 class="school-brand-name"><%= schoolName %></h2></div><img class="school-logo" src="/image.png" alt="<%= schoolName %> logo"></div>
+			<h4><%= student.name %></h4><div class="student-meta"><span>Class <strong><%= student.studentClass %></strong></span><span>Section <strong><%= student.section %></strong></span><span>Roll <strong><%= student.roll || '-' %></strong></span></div></div>
 		</section>
 
 		<section class="tab-panel active" id="tab-home">
 			<div id="homeLanding">
-				<div class="section-heading"><h2>Student services</h2><span>Tap to view</span></div>
-				<div class="feature-grid">
-					<button class="feature" data-detail="results"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M8 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3M8 3h8v4H8zM7 12h10M7 16h7"/></svg></span><span class="feature-label">Exam results</span></button>
-					<button class="feature" data-detail="portfolio"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 1 4 17.5zM4 6h13M8 10h8M8 14h6"/></svg></span><span class="feature-label">Portfolio / CAS</span></button>
-					<button class="feature" data-detail="events"><span class="feature-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h3M8 17h6"/></svg></span><span class="feature-label">Events</span></button>
-					<button class="feature" data-detail="assessment"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M5 3h14a2 2 0 0 1 2 2v16H3V5a2 2 0 0 1 2-2zM7 8h10M7 12h3M7 16h2M14 12l1.5 1.5L18 11"/></svg></span><span class="feature-label">Assessment</span></button>
-					<button class="feature" data-detail="attendance"><span class="feature-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4m8-4v4M3 9h18m-13 5 2 2 4-4"/></svg></span><span class="feature-label">Attendance</span></button>
-					<button class="feature" data-detail="library"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 1 4 17.5zM4 5h12M8 9h8M8 13h7"/></svg></span><span class="feature-label">Library</span></button>
-					<button class="feature" data-detail="fees"><span class="feature-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18m-13 5h4"/></svg></span><span class="feature-label">Fees</span></button>
-					<button class="feature" data-detail="homework"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M5 3h14v18H5zM8 7h8M8 11h8M8 15h5"/></svg></span><span class="feature-label">Homework</span></button>
-				</div>
-				<div class="home-summary">
-					<div class="summary-card"><div class="summary-label">Recent notices</div><div class="summary-value"><%= notices.length %></div><div class="summary-foot">School updates</div></div>
-					<div class="summary-card"><div class="summary-label">Upcoming events</div><div class="summary-value"><%= events.length %></div><div class="summary-foot">For <%= student.studentClass %></div></div>
-				</div>
+				<div class="module-search-wrap"><span class="module-search-icon" aria-hidden="true">⌕</span><input class="module-search" id="moduleSearch" type="search" placeholder="Search modules" aria-label="Search parent portal modules"></div>
+				<p class="module-search-empty" id="moduleSearchEmpty" hidden>No matching modules.</p>
+				<section class="module-group" aria-labelledby="studentModulesHeading"><h2 class="module-group-title" id="studentModulesHeading">Student modules</h2><div class="feature-grid">
+					<button class="feature" type="button" data-module="homework" data-open-tab="homework"><% if (todayHomeworkCount) { %><span class="homework-badge" aria-label="<%= todayHomeworkCount %> homework assignments active today"><%= todayHomeworkCount %></span><% } %><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M5 3h14v18H5zM8 7h8M8 11h8M8 15h5"/></svg></span><span class="feature-label">Homework</span></button>
+					<button class="feature" type="button" data-module="attendance" data-open-tab="attendance"><span class="feature-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4m8-4v4M3 9h18m-13 5 2 2 4-4"/></svg></span><span class="feature-label">Attendance</span></button>
+					<button class="feature" type="button" data-module="notice notices" data-open-tab="notices"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 13h4"/></svg></span><span class="feature-label">Notice</span></button>
+					<a class="feature feature-link" data-module="portfolio cas activities awards" href="/parents/portfolio"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 1 4 17.5zM4 6h13M8 10h8M8 14h6"/></svg></span><span class="feature-label">Portfolio</span></a>
+					<a class="feature feature-link" data-module="internal marks assessment" href="/parents/internal-marks"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M5 3h14a2 2 0 0 1 2 2v16H3V5a2 2 0 0 1 2-2zM7 8h10M7 12h3M7 16h2M14 12l1.5 1.5L18 11"/></svg></span><span class="feature-label">Internal Marks</span></a>
+				</div></section>
+				<section class="module-group" aria-labelledby="moreModulesHeading"><h2 class="module-group-title" id="moreModulesHeading">More modules</h2><div class="feature-grid">
+					<button class="feature" type="button" data-module="events calendar" data-detail="events"><span class="feature-icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18M8 14h3M8 17h6"/></svg></span><span class="feature-label">Events</span></button>
+					<button class="feature" type="button" data-module="exam routine schedule" data-detail="exam-routine"><span class="feature-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4m8-4v4M3 9h18M8 13h3m3 0h2m-8 4h3"/></svg></span><span class="feature-label">Exam routine</span></button>
+					<button class="feature" type="button" data-module="class routine timetable" data-detail="class-routine"><span class="feature-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18M15 9v12M9 15h6"/></svg></span><span class="feature-label">Class routine</span></button>
+					<button class="feature" type="button" data-module="library books loans" data-detail="library"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v18H6.5A2.5 2.5 0 0 1 4 17.5zM4 5h12M8 9h8M8 13h7"/></svg></span><span class="feature-label">Library</span></button>
+					<button class="feature" type="button" disabled aria-disabled="true" title="Upcoming" data-module="exam results upcoming"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M8 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3M8 3h8v4H8zM7 12h10M7 16h7"/></svg></span><span class="feature-label">Exam upcoming</span></button>
+				</div></section>
+				<section class="module-group" aria-labelledby="contactModulesHeading"><h2 class="module-group-title" id="contactModulesHeading">Contacts</h2><div class="feature-grid">
+					<button class="feature" type="button" data-module="teacher contact" data-detail="teacher-contact"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m7-9a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm7-2h6m-3-3v6"/></svg></span><span class="feature-label">Teacher contact</span></button>
+					<button class="feature" type="button" data-module="complaints message contact school" data-open-tab="complaints"><span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3 21l1.9-5.6A8.5 8.5 0 1 1 21 11.5zM8 11h8m-8 4h5"/></svg></span><span class="feature-label">Complaints</span></button>
+				</div></section>
+				<section class="latest-notice-section" aria-labelledby="latestNoticesHeading"><div class="section-heading" style="margin:0 0 8px"><h2 id="latestNoticesHeading">Latest notices</h2><button type="button" class="back-button" style="margin:0" data-open-tab="notices">View all</button></div>
+					<% if (notices.length) { notices.slice(0, 5).forEach((notice, index) => { const shortDescription = String(notice.description || '').trim(); %><article class="latest-notice-link <%= index === 0 ? 'latest' : '' %>"><span class="notice-symbol" aria-hidden="true">▤</span><span class="notice-copy"><span class="notice-title-line"><strong class="notice-title"><%= notice.title %></strong><% if (notice.isNew) { %><span class="notice-new">NEW</span><% } %></span><span class="notice-description"><%= shortDescription.length > 130 ? `${shortDescription.slice(0, 127)}...` : shortDescription || 'Open the notice for details.' %></span><span class="notice-meta"><%= notice.noticeDate || '' %><%= notice.addedBy ? ` · ${notice.addedBy}` : '' %></span></span></article><% }) } else { %><div class="empty-state">No notices for parents are available.</div><% } %>
+				</section>
 			</div>
 
 			<div id="homeDetail" class="detail-view">
@@ -126,11 +203,37 @@
 
 		<section class="tab-panel" id="tab-notices"><div class="tab-content"><h2>Notice</h2>
 			<% if (notices.length) { notices.forEach((notice) => { %>
-				<article class="list-card"><div class="list-title"><%= notice.headline || 'School notice' %></div><div class="list-meta"><%= notice.date ? new Date(notice.date).toLocaleDateString() : '' %></div><div class="list-copy"><%= notice.content || '' %></div></article>
+				<article class="list-card"><div class="notice-title-line"><strong class="list-title"><%= notice.title %></strong><% if (notice.isNew) { %><span class="notice-new">NEW</span><% } %></div><div class="list-meta"><%= notice.noticeDate || '' %><%= notice.addedBy ? ` · ${notice.addedBy}` : '' %></div><div class="list-copy"><%= notice.description || '' %></div></article>
 			<% }) } else { %><div class="empty-state">There are no recent notices.</div><% } %>
 		</div></section>
 
-		<section class="tab-panel" id="tab-homework"><div class="tab-content"><h2>Homework</h2><div class="empty-state">Homework updates will appear here when they are published for this student.</div></div></section>
+		<section class="tab-panel" id="tab-attendance"><div class="tab-content">
+			<h2>Attendance</h2>
+			<form class="attendance-filter" method="get" action="/parents">
+				<input type="hidden" name="tab" value="attendance">
+				<label for="attendanceMonth">Nepali month<select id="attendanceMonth" name="attendanceMonth"><% attendanceMonthOptions.forEach(option => { %><option value="<%= option.value %>" <%= attendanceMonth.year + '-' + String(attendanceMonth.monthNumber).padStart(2, '0') === option.value ? 'selected' : '' %>><%= option.name %> <%= option.value.slice(0, 4) %></option><% }) %></select></label>
+				<button type="submit">Show month</button>
+			</form>
+			<div class="attendance-summary"><div class="attendance-count"><strong><%= attendanceMonth.presentCount %></strong><span>Present days</span></div><div class="attendance-count"><strong><%= attendanceMonth.absentCount %></strong><span>Absent days</span></div></div>
+			<div class="section-heading" style="margin:0 0 9px"><h2><%= attendanceMonth.monthName %> <%= attendanceMonth.year %></h2><span>Holiday dates excluded from totals</span></div>
+			<% if (attendanceMonth.rows.length) { %><div class="attendance-table-wrap"><table class="attendance-table"><thead><tr><th>Date</th><th>Status</th><th>Reason</th></tr></thead><tbody><% attendanceMonth.rows.forEach(row => { const statusClass = row.status.toLowerCase(); %><tr><td><%= attendanceMonth.monthName %> <%= row.day %></td><td class="attendance-status <%= statusClass %>"><%= row.status %></td><td><%= row.reason || '-' %></td></tr><% }) %></tbody></table></div><% } else { %><div class="empty-state">No attendance days are available for this month.</div><% } %>
+		</div></section>
+
+		<section class="tab-panel" id="tab-homework"><div class="tab-content">
+			<h2>Homework</h2>
+			<form class="homework-filter" method="get" action="/parents">
+				<input type="hidden" name="tab" value="homework">
+				<div class="homework-date-field"><label for="homeworkDate">Nepali date (BS)</label><input id="homeworkDate" class="nepali-datepicker" name="homeworkDate" value="<%= homeworkDate %>" inputmode="numeric" autocomplete="off" required></div>
+				<button type="submit">Show date</button>
+			</form>
+			<% if (homework.length) { %><div class="homework-table-wrap"><table class="homework-table"><thead><tr><th>Subject</th><th>Homework</th><th>Due date</th></tr></thead><tbody>
+				<% homework.forEach((item, index) => { %><tr>
+					<td><span class="homework-subject"><%= index + 1 %>. <%= item.subject %></span></td>
+					<td><span class="homework-title"><%= item.title %></span><span class="homework-meta">Given by: <%= item.givenBy %> · Time: <%= item.estimatedMinutes ? `${item.estimatedMinutes} min` : 'Not specified' %></span></td>
+					<td class="homework-due"><%= item.dueDate %></td>
+				</tr><% }) %>
+			</tbody></table></div><% } else { %><div class="empty-state">No homework is assigned for <%= homeworkDate %>.</div><% } %>
+		</div></section>
 
 		<section class="tab-panel" id="tab-complaints"><div class="tab-content"><h2>Complaints</h2>
 			<% if (complaintSent) { %><div class="success-note">Your message was sent to the school.</div><% } %>
@@ -141,27 +244,14 @@
 			<% }) } else { %><div class="empty-state">Your messages and school replies will appear here.</div><% } %>
 		</div></section>
 
-		<nav class="bottom-nav" aria-label="Main navigation">
-			<button class="tab-button active" data-tab="home" aria-selected="true"><span class="tab-icon"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg></span>Home</button>
+		<nav class="mobile-bottom-nav" aria-label="Parent navigation">
 			<button class="tab-button" data-tab="notices" aria-selected="false"><span class="tab-icon"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 13h4"/></svg></span>Notice</button>
 			<button class="tab-button" data-tab="homework" aria-selected="false"><span class="tab-icon"><svg viewBox="0 0 24 24"><path d="M5 3h14v18H5zM8 7h8M8 11h8M8 15h5"/></svg></span>Homework</button>
+			<button class="tab-button home-tab active" data-tab="home" aria-selected="true"><span class="tab-icon"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg></span>Home</button>
+			<button class="tab-button" data-tab="attendance" aria-selected="false"><span class="tab-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4m8-4v4M3 9h18m-13 5 2 2 4-4"/></svg></span>Attendance</button>
 			<button class="tab-button" data-tab="complaints" aria-selected="false"><span class="tab-icon"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L3 21l1.9-5.6A8.5 8.5 0 1 1 21 11.5zM8 11h8m-8 4h5"/></svg></span>Complaints</button>
 		</nav>
 	</main>
-
-	<template id="detail-results"><h2>Exam results</h2>
-		<% if (examResults.length) { examResults.forEach((result) => { %>
-			<article class="detail-card"><div class="list-title"><%= result.subject || 'Subject' %></div><div class="list-meta"><%= result.terminal || '' %> · <%= result.academicYear || '' %></div><div class="data-list"><div class="data-row"><span class="data-label">Theory</span><span class="data-value"><%= result.theorymarks ?? '—' %> / <%= result.theoryfullmarks ?? '—' %></span></div><div class="data-row"><span class="data-label">Practical</span><span class="data-value"><%= result.practicalmarks ?? '—' %> / <%= result.practicalfullmarks ?? '—' %></span></div><div class="data-row"><span class="data-label">Status</span><span class="data-value"><%= result.status || 'PRESENT' %></span></div></div></article>
-		<% }) } else { %><div class="empty-state">Exam results will appear here when released.</div><% } %>
-	</template>
-
-	<template id="detail-portfolio"><h2>Portfolio & CAS</h2>
-		<% const participationItems = Array.isArray(portfolio.participations) ? portfolio.participations : []; const awardItems = Array.isArray(portfolio.awards) ? portfolio.awards : []; const scholarshipItems = Array.isArray(portfolio.scholarships) ? portfolio.scholarships : []; %>
-		<% if (!participationItems.length && !awardItems.length && !scholarshipItems.length) { %><div class="empty-state">Portfolio activities and achievements will appear here.</div><% } %>
-		<% participationItems.forEach((item) => { %><article class="list-card"><div class="list-title"><%= item.event || 'Activity' %></div><div class="list-meta"><%= item.nepaliDate || '' %></div><div class="list-copy"><%= item.position || 'Participation' %></div></article><% }) %>
-		<% awardItems.forEach((item) => { %><article class="list-card"><div class="list-title"><%= item.event || 'Achievement' %></div><div class="list-meta"><%= item.nepaliDate || '' %></div><div class="list-copy"><%= item.position || '' %></div></article><% }) %>
-		<% scholarshipItems.forEach((item) => { %><article class="list-card"><div class="list-title">Scholarship · <%= item.reason || 'Award' %></div><div class="list-meta"><%= item.year || item.nepaliDate || '' %></div><div class="list-copy"><%= item.amount || '' %></div></article><% }) %>
-	</template>
 
 	<template id="detail-events"><h2>Events</h2>
 		<% if (events.length) { events.forEach((event) => { %><article class="list-card"><div class="list-title"><%= event.title %></div><div class="list-meta"><%= event.nepaliDate || (event.date ? new Date(event.date).toLocaleDateString() : '') %><%= event.time ? ` · ${event.time}` : '' %></div><div class="list-copy"><%= event.description || event.location || '' %></div></article><% }) } else { %><div class="empty-state">There are no upcoming class events.</div><% } %>
@@ -180,16 +270,26 @@
 		<% if (libraryLoans.length) { libraryLoans.forEach((loan) => { %><article class="list-card"><div class="list-title"><%= loan.bookTitle %></div><div class="list-meta">Issued <%= loan.issuedAt ? new Date(loan.issuedAt).toLocaleDateString() : '' %> · Due <%= loan.dueDate ? new Date(loan.dueDate).toLocaleDateString() : '—' %></div><div class="list-copy">Status: <%= loan.status %><%= loan.fineAmount ? ` · Fine ${loan.fineAmount}` : '' %></div></article><% }) } else { %><div class="empty-state">No library loans are currently linked to this student.</div><% } %>
 	</template>
 
+	<template id="detail-exam-routine"><h2>Exam routine</h2>
+		<% if (examRoutines.length) { examRoutines.forEach(item => { %><article class="list-card"><div class="list-title"><%= item.subject %></div><div class="list-meta"><%= item.nepalidate %><%= item.terminal ? ` · ${item.terminal}` : '' %></div></article><% }) } else { %><div class="empty-state">No exam routine has been published for this class.</div><% } %>
+	</template>
+
+	<template id="detail-class-routine"><h2>Class routine</h2><div class="empty-state">The class routine has not been published here yet. Contact the school office for the latest timetable.</div></template>
+
+	<template id="detail-teacher-contact"><h2>Teacher contact</h2>
+		<% if (teacherContacts.length) { teacherContacts.forEach(contact => { %><article class="list-card"><div class="list-title"><%= contact.name %></div><div class="list-meta"><%= contact.phone || contact.email || 'Class teacher' %></div><% if (contact.phone) { %><a class="contact-call" href="tel:<%= contact.phone.replace(/[^0-9+]/g, '') %>" aria-label="Call <%= contact.name %>">☎</a><% } %></article><% }) } else { %><article class="list-card"><div class="list-title">School office</div><div class="list-meta"><%= schoolPhone || 'Contact the school for teacher details.' %></div><% if (schoolPhone) { %><a class="contact-call" href="tel:<%= schoolPhone.replace(/[^0-9+]/g, '') %>" aria-label="Call school office">☎</a><% } %></article><% } %>
+	</template>
+
 	<template id="detail-fees"><h2>Fees</h2>
 		<% if (invoices.length) { invoices.forEach((invoice) => { %><article class="list-card"><div class="list-title"><%= invoice.invoiceNumber %></div><div class="list-meta"><%= invoice.billMonthBS %> · <%= invoice.billDateBS %></div><div class="data-list"><div class="data-row"><span class="data-label">Total</span><span class="data-value"><%= invoice.grandTotal %></span></div><div class="data-row"><span class="data-label">Balance due</span><span class="data-value"><%= invoice.balanceDue %></span></div><div class="data-row"><span class="data-label">Status</span><span class="data-value"><%= invoice.status %></span></div></div></article><% }) } else { %><div class="empty-state">No fee invoices are linked to this student account.</div><% } %>
 	</template>
-
-	<template id="detail-homework"><h2>Homework</h2><div class="empty-state">Homework updates will appear here when they are published for this student.</div></template>
 
 	<script>
 		const tabButtons = [...document.querySelectorAll('[data-tab]')];
 		const tabPanels = [...document.querySelectorAll('.tab-panel')];
 		function activateTab(tabName) {
+			document.querySelector('.app-shell').classList.toggle('section-open', tabName !== 'home');
+			document.querySelector('.app-shell').classList.remove('detail-open');
 			tabButtons.forEach((button) => {
 				const active = button.dataset.tab === tabName;
 				button.classList.toggle('active', active);
@@ -200,6 +300,22 @@
 			document.getElementById('homeDetail').classList.remove('active');
 		}
 		tabButtons.forEach((button) => button.addEventListener('click', () => activateTab(button.dataset.tab)));
+		document.querySelectorAll('[data-open-tab]').forEach((button) => button.addEventListener('click', () => activateTab(button.dataset.openTab)));
+		const moduleSearch = document.getElementById('moduleSearch');
+		const moduleSearchEmpty = document.getElementById('moduleSearchEmpty');
+		moduleSearch?.addEventListener('input', () => {
+			const query = moduleSearch.value.trim().toLocaleLowerCase();
+			let visibleModules = 0;
+			document.querySelectorAll('[data-module]').forEach(module => {
+				const matches = !query || `${module.dataset.module} ${module.textContent}`.toLocaleLowerCase().includes(query);
+				module.hidden = !matches;
+				if (matches) visibleModules += 1;
+			});
+			document.querySelectorAll('.module-group').forEach(group => {
+				group.hidden = !group.querySelector('[data-module]:not([hidden])');
+			});
+			moduleSearchEmpty.hidden = visibleModules > 0;
+		});
 
 		document.querySelectorAll('[data-detail]').forEach((button) => {
 			button.addEventListener('click', () => {
@@ -207,16 +323,24 @@
 				document.getElementById('detailContent').replaceChildren(template.content.cloneNode(true));
 				document.getElementById('homeLanding').hidden = true;
 				document.getElementById('homeDetail').classList.add('active');
+				document.querySelector('.app-shell').classList.add('detail-open');
 				document.getElementById('detailBack').onclick = () => {
 					document.getElementById('homeDetail').classList.remove('active');
 					document.getElementById('homeLanding').hidden = false;
+					document.querySelector('.app-shell').classList.remove('detail-open');
 				};
 				window.scrollTo({ top: 0, behavior: 'smooth' });
 			});
 		});
 
 		const requestedTab = new URLSearchParams(window.location.search).get('tab');
-		if (['notices', 'homework', 'complaints'].includes(requestedTab)) activateTab(requestedTab);
+		if (['notices', 'homework', 'attendance', 'complaints'].includes(requestedTab)) activateTab(requestedTab);
+	</script>
+	<script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js"></script>
+	<script>
+		document.querySelectorAll('.nepali-datepicker').forEach(input => {
+			if (typeof input.nepaliDatePicker === 'function') input.nepaliDatePicker({ dateFormat:'YYYY-MM-DD', language:'en' });
+		});
 	</script>
 </body>
 </html>

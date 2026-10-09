@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+	<meta name="theme-color" content="#17385f">
+	<title>Internal marks | <%= student.name %></title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+	<style>
+		:root { color-scheme:light; --ink:#19324d; --muted:#667b92; --blue:#235d9d; --blue-dark:#174577; --blue-soft:#eaf2fb; --line:#d8e3ef; --paper:#fff; --canvas:#f1f5fa; --warning:#9a5b13; font-family:'DM Sans',sans-serif; color:var(--ink); background:var(--canvas); }
+		* { box-sizing:border-box; }
+		body { margin:0; min-height:100vh; padding-bottom:calc(96px + env(safe-area-inset-bottom)); background:linear-gradient(145deg,#edf3fa,#f7f9fc); }
+		.page { width:min(100%,820px); min-height:100vh; margin:0 auto; padding:18px 18px 110px; background:var(--paper); }
+		.topbar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding-bottom:15px; border-bottom:1px solid var(--line); }
+		.profile { display:flex; min-width:0; align-items:center; gap:10px; }
+		.avatar { display:grid; width:44px; height:44px; flex:0 0 44px; place-items:center; border:2px solid #d6e5f5; border-radius:50%; background:var(--blue-soft); color:var(--blue-dark); font:800 13px 'Manrope',sans-serif; }
+		.profile-copy { min-width:0; }
+		.profile-copy h1 { overflow:hidden; margin:0; font:800 15px/1.25 'Manrope',sans-serif; text-overflow:ellipsis; white-space:nowrap; }
+		.profile-copy p { margin:3px 0 0; color:var(--muted); font-size:10px; }
+		.back-link { display:inline-flex; min-height:36px; align-items:center; padding:0 11px; border:1px solid var(--line); border-radius:6px; color:var(--blue); font-size:11px; font-weight:700; text-decoration:none; white-space:nowrap; }
+		.intro { margin:19px 0 4px; color:var(--blue); font-size:10px; font-weight:800; text-transform:uppercase; }
+		.page-title { margin:0 0 16px; font:800 22px/1.25 'Manrope',sans-serif; }
+		.filter { display:flex; align-items:end; gap:9px; margin-bottom:16px; }
+		.filter label { display:grid; flex:1; gap:5px; color:var(--muted); font-size:11px; font-weight:700; }
+		.filter select { width:100%; min-height:40px; padding:8px 10px; border:1px solid #cbd8e6; border-radius:6px; background:#fff; color:var(--ink); font:inherit; }
+		.filter button { min-height:40px; padding:0 13px; border:0; border-radius:6px; background:var(--blue); color:#fff; font-size:11px; font-weight:700; }
+		.table-wrap { overflow-x:auto; border:1px solid var(--line); border-radius:7px; }
+		table { width:100%; border-collapse:collapse; table-layout:fixed; }
+		th { padding:9px 8px; background:#edf3fa; color:#435c78; font-size:9px; text-align:left; text-transform:uppercase; }
+		td { padding:9px 8px; border-top:1px solid #eaf0f6; font-size:11px; vertical-align:top; overflow-wrap:anywhere; }
+		.primary-table th:nth-child(1) { width:20%; }
+		.primary-table th:nth-child(2) { width:27%; }
+		.primary-table th:nth-child(3) { width:25%; }
+		.primary-table th:nth-child(4) { width:14%; }
+		.primary-table th:nth-child(5) { width:14%; }
+		.marks { color:var(--blue-dark); font-weight:800; white-space:nowrap; }
+		.indicator-list { display:grid; gap:5px; }
+		.indicator-name { color:#344b65; line-height:1.35; }
+		.indicator-name small { display:block; color:var(--muted); font-size:9px; }
+		.remark { color:#176248; font-size:10px; font-weight:800; }
+		.remark.needs-improvement { color:var(--warning); }
+		.subject-block { margin:13px 0; overflow:hidden; border:1px solid var(--line); border-radius:7px; background:#fff; }
+		.subject-heading { margin:0; padding:12px 13px; background:#edf4fb; color:var(--blue-dark); font:800 15px 'Manrope',sans-serif; }
+		details.terminal { border-top:1px solid var(--line); }
+		details.terminal summary { display:flex; min-height:48px; align-items:center; justify-content:space-between; gap:10px; padding:10px 13px; color:var(--ink); font-size:12px; font-weight:700; cursor:pointer; list-style:none; }
+		details.terminal summary::-webkit-details-marker { display:none; }
+		details.terminal summary::after { content:'›'; color:var(--blue); font-size:20px; line-height:1; transform:rotate(90deg); }
+		details.terminal[open] summary::after { transform:rotate(-90deg); }
+		.terminal-total { margin-left:auto; color:var(--blue-dark); font-size:10px; font-weight:800; text-align:right; }
+		.terminal-content { padding:0 12px 12px; }
+		.unit-title { margin:12px 0 6px; color:var(--blue-dark); font-size:11px; font-weight:800; }
+		.activity { margin-top:8px; padding:10px; border:1px solid #e2eaf3; border-radius:6px; background:#fbfdff; }
+		.activity-heading { display:flex; justify-content:space-between; gap:8px; margin-bottom:7px; font-size:11px; font-weight:800; }
+		.activity-heading span:last-child { color:var(--blue-dark); white-space:nowrap; }
+		.criteria-table th:first-child { width:47%; }
+		.criteria-table th:nth-child(2) { width:33%; }
+		.criteria-table th:last-child { width:20%; }
+		.empty { padding:22px 14px; border:1px dashed #cbd8e6; border-radius:7px; color:var(--muted); font-size:12px; text-align:center; }
+		.mobile-bottom-nav { position:fixed; z-index:20; right:0; bottom:0; left:0; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); align-items:end; width:min(100%,820px); margin:0 auto; padding:8px 10px calc(8px + env(safe-area-inset-bottom)); border-top:1px solid #d8e2ef; background:rgba(255,255,255,.97); box-shadow:0 -7px 20px rgba(24,53,86,.08); backdrop-filter:blur(12px); }
+		.nav-link { display:flex; min-width:0; min-height:48px; flex-direction:column; align-items:center; justify-content:center; gap:3px; border-radius:9px; color:#74849a; font-size:8px; font-weight:700; text-decoration:none; }
+		.nav-link.active { background:#e9f1fb; color:var(--blue-dark); }
+		.nav-link.home { width:54px; height:56px; justify-self:center; transform:translateY(-9px); border:3px solid #fff; border-radius:50%; background:#183d6b; color:#fff; box-shadow:0 8px 17px rgba(18,49,85,.28); }
+		.nav-link svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+		@media(max-width:520px) { .page { padding:15px 12px 108px; } .back-link { min-height:33px; padding:0 9px; font-size:10px; } .filter { align-items:stretch; } .primary-table th,.primary-table td { padding:7px 4px; font-size:9px; } .primary-table th:nth-child(1) { width:19%; } .primary-table th:nth-child(2) { width:25%; } .primary-table th:nth-child(3) { width:26%; } .primary-table th:nth-child(4) { width:15%; } .primary-table th:nth-child(5) { width:15%; } .terminal-content { padding:0 7px 9px; } .criteria-table th,.criteria-table td { padding:7px 5px; font-size:10px; } }
+		@media(max-width:360px) { .page { padding-right:9px; padding-left:9px; } .filter { flex-direction:column; } .filter button { width:100%; } .profile-copy h1 { max-width:190px; font-size:13px; } .nav-link { font-size:7px; } }
+	</style>
+</head>
+<body>
+	<main class="page">
+		<header class="topbar">
+			<div class="profile"><div class="avatar" aria-hidden="true"><%= studentInitials %></div><div class="profile-copy"><h1><%= student.name %></h1><p>Class <%= student.studentClass %> · Section <%= student.section %> · Reg <%= student.reg %></p></div></div>
+			<a class="back-link" href="/parents">Back to home</a>
+		</header>
+		<p class="intro">Academic records · <%= academicYear || 'Current year' %></p>
+		<h2 class="page-title">Internal Marks</h2>
+
+		<% if (isPrimary) { %>
+			<form class="filter" method="get" action="/parents/internal-marks">
+				<label for="unit">Unit / Theme<select id="unit" name="unit"><option value="all" <%= selectedUnit === 'all' ? 'selected' : '' %>>All units</option><% unitOptions.forEach(unit => { %><option value="<%= unit %>" <%= selectedUnit === unit ? 'selected' : '' %>><%= unit %></option><% }) %></select></label>
+				<button type="submit">Show unit</button>
+			</form>
+			<% if (primaryRows.length) { %>
+				<div class="table-wrap"><table class="primary-table"><thead><tr><th>Subject / Unit</th><th>Learning outcome</th><th>Obtained indicator</th><th>Before / After</th><th>Remarks</th></tr></thead><tbody>
+					<% primaryRows.forEach(row => { %><tr>
+						<td><strong><%= row.subject || 'Subject' %></strong><br><%= row.unitName || '-' %></td>
+						<td><%= row.learningOutcomeName || '-' %></td>
+						<td><div class="indicator-list"><% if (row.indicatorBefore.length) { %><div class="indicator-name"><small>Before</small><%= row.indicatorBefore.join(', ') %></div><% } %><% if (row.indicatorAfter.length) { %><div class="indicator-name"><small>After</small><%= row.indicatorAfter.join(', ') %></div><% } %><% if (!row.indicatorBefore.length && !row.indicatorAfter.length) { %>-<% } %></div></td>
+						<td class="marks"><%= row.marksBefore %> / <%= row.marksAfter %></td>
+						<td class="remark <%= row.remark === 'Needs improvement' ? 'needs-improvement' : '' %>"><%= row.remark %></td>
+					</tr><% }) %>
+				</tbody></table></div>
+			<% } else { %><div class="empty">No internal assessment marks are available for this unit yet.</div><% } %>
+		<% } else { %>
+			<form class="filter" method="get" action="/parents/internal-marks">
+				<label for="terminal">Terminal<select id="terminal" name="terminal"><option value="all" <%= selectedTerminal === 'all' ? 'selected' : '' %>>All terminals</option><% terminalOptions.forEach(terminal => { %><option value="<%= terminal %>" <%= selectedTerminal === terminal ? 'selected' : '' %>><%= terminal %></option><% }) %></select></label>
+				<button type="submit">Show terminal</button>
+			</form>
+			<% if (middleSubjects.length) { middleSubjects.forEach(subject => { %>
+				<section class="subject-block"><h3 class="subject-heading"><%= subject.subject %></h3>
+					<% subject.terminals.forEach(terminal => { %><details class="terminal"><summary><span><%= terminal.terminal %></span><span class="terminal-total">Obt. practical/project marks: <%= terminal.totalMarks %></span></summary><div class="terminal-content">
+						<% terminal.units.forEach(unit => { %><h4 class="unit-title"><%= unit.unitName || 'Unit' %></h4>
+							<% unit.activities.forEach(activity => { %><article class="activity"><div class="activity-heading"><span><%= activity.type %>: <%= activity.name %></span><span>Obt. <%= activity.marks %></span></div>
+								<% if (activity.criteria.length) { %><div class="table-wrap"><table class="criteria-table"><thead><tr><th>Obtained indicator</th><th>Assessment area</th><th>Marks</th></tr></thead><tbody><% activity.criteria.forEach(item => { %><tr><td><%= item.name || '-' %></td><td><%= item.area || '-' %></td><td class="marks"><%= item.marks %></td></tr><% }) %></tbody></table></div><% } else { %><div class="indicator-name">No indicator details were recorded.</div><% } %>
+							</article><% }) %>
+						<% }) %>
+					</div></details><% }) %>
+				</section>
+			<% }) } else { %><div class="empty">No internal assessment marks are available for this academic year yet.</div><% } %>
+		<% } %>
+	</main>
+	<nav class="mobile-bottom-nav" aria-label="Parent navigation">
+		<a class="nav-link" href="/parents?tab=notices"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9m-8 13h4"/></svg>Notice</a>
+		<a class="nav-link" href="/parents?tab=homework"><svg viewBox="0 0 24 24"><path d="M5 3h14v18H5zM8 7h8M8 11h8M8 15h5"/></svg>Homework</a>
+		<a class="nav-link home" href="/parents"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg>Home</a>
+		<a class="nav-link" href="/parents?tab=attendance"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4m8-4v4M3 9h18m-13 5 2 2 4-4"/></svg>Attendance</a>
+		<a class="nav-link" href="/parents/portfolio"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 1 4 17.5zM4 6h13M8 10h8M8 14h6"/></svg>Portfolio</a>
+	</nav>
+</body>
+</html>

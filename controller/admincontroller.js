@@ -376,6 +376,7 @@ exports.adminloginpost = async (req, res, next) => {
 const user = await userlist.findOne({ username });
 
 if (!user) return res.render("admin/invalid",{message: "Invalid username"});
+if (user.active === false) return res.render("admin/invalid",{message: "Invalid username or password"});
 const isMatch = await bcrypt.compare(password, user.password);
 if (!isMatch) return res.render("admin/invalid",{message: "Invalid password"});
 
@@ -396,7 +397,7 @@ const token = generateToken(user);
       if (user.role === "NEWSADMIN") {
   return res.redirect('/newsadmin');
 } else if (user.role === "ADMIN") {
-  return res.redirect('/admin/term/FIRST');
+  return res.redirect('/');
 }
   else if (user.role === "NURSE") {
   return res.redirect('/healthrecord');
@@ -408,7 +409,7 @@ const token = generateToken(user);
   return res.redirect('/library/dashboard');
   }
   else if (user.role === "STUDENT") {
-  return res.redirect('/student');
+  return res.redirect('/parents');
   }
  else {
   return res.redirect('/');
