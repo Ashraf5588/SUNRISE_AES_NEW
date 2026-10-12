@@ -208,7 +208,7 @@
 			leaveBalance.hidden = false;
 		}
 		function setProfileFields() {
-			const option = employeeSelect?.selectedOptions[0];
+			const option = employeeSelect?.selectedOptions?.[0];
 			const fields = {
 				companyName: option?.dataset.company || 'United English Boarding School',
 				branchName: option?.dataset.branch || '',
