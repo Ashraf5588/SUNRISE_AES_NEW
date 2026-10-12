@@ -96,6 +96,20 @@ const findStaffProfile = (user, profiles) => {
 		|| {};
 };
 
+const normalizeName = value => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+const getDepartmentAdmins = (users, profiles) => users.map(user => {
+	const profile = findStaffProfile(user, profiles);
+	return {
+		name: String(profile.staffName || user.teacherName || user.username || '').trim(),
+		department: String(profile.department || user.department || '').trim()
+	};
+}).filter(admin => admin.name);
+const getDepartmentAdminNames = (users, profiles, department) => new Map(
+	getDepartmentAdmins(users, profiles)
+		.filter(admin => normalizeName(admin.department) === normalizeName(department))
+		.map(admin => [normalizeName(admin.name), admin.name])
+);
+
 const getRole = (user) => String(user?.role || '').trim().toUpperCase();
 const appliesToUser = (leaveType, user) => {
 	const applicableTo = (leaveType.applicableTo || ['ALL']).map((role) => String(role).toUpperCase());
@@ -214,13 +228,7 @@ exports.leavePage = async (req, res) => {
 				photoUrl: profile.employeePhoto?.url || ''
 			};
 		});
-		const departmentAdmins = adminUsers.map(user => {
-			const profile = findStaffProfile(user, profiles);
-			return {
-				name: String(profile.staffName || user.teacherName || user.username || '').trim(),
-				department: String(profile.department || user.department || '').trim()
-			};
-		}).filter(adminUser => adminUser.name);
+		const departmentAdmins = getDepartmentAdmins(adminUsers, profiles);
 		const editingApplication = admin && mongoose.isValidObjectId(req.query.edit)
 			? applications.find(application => String(application._id) === String(req.query.edit) && application.status === 'pending') || null
 			: null;
@@ -365,12 +373,16 @@ exports.submitLeaveApplication = [handleLeaveDocumentUpload, async (req, res) =>
 		const profiles = await Staff.find({}).select('employeeCode staffName companyName branchName designation department section employeePhoto').lean();
 		const profile = findStaffProfile(applicant, profiles);
 		const department = String(profile.department || applicant.department || '').trim();
-		const departmentAdminNames = new Set((await User.find({ role: { $in: ['ADMIN', 'DEPARTMENT_ADMIN'] } }).select('teacherName username employeeCode department').lean())
-			.filter(user => String(user.department || findStaffProfile(user, profiles).department || '').trim().toLowerCase() === department.toLowerCase())
-			.map(user => String(findStaffProfile(user, profiles).staffName || user.teacherName || user.username || '').trim()));
-		const approverName = String(req.body.approverName || '').trim();
-		const recommendedBy = String(req.body.recommendedBy || '').trim();
-		if ((approverName && !departmentAdminNames.has(approverName)) || (recommendedBy && !departmentAdminNames.has(recommendedBy))) {
+		const departmentAdminNames = getDepartmentAdminNames(
+			await User.find({ role: { $in: ['ADMIN', 'DEPARTMENT_ADMIN'] } }).select('teacherName username employeeCode department').lean(),
+			profiles,
+			department
+		);
+		const requestedApproverName = String(req.body.approverName || '').trim();
+		const requestedRecommendedBy = String(req.body.recommendedBy || '').trim();
+		const approverName = departmentAdminNames.get(normalizeName(requestedApproverName)) || '';
+		const recommendedBy = departmentAdminNames.get(normalizeName(requestedRecommendedBy)) || '';
+		if ((requestedApproverName && !approverName) || (requestedRecommendedBy && !recommendedBy)) {
 			return res.status(400).send('Choose approver and recommender names from the applicant department administrators.');
 		}
 		const activeStatuses = ['pending', 'approved'];
@@ -496,12 +508,16 @@ exports.updateLeaveApplication = [handleLeaveDocumentUpload, async (req, res) =>
 		const profiles = await Staff.find({}).select('employeeCode staffName companyName branchName designation department section').lean();
 		const profile = findStaffProfile(applicant, profiles);
 		const department = String(profile.department || applicant.department || '').trim();
-		const departmentAdmins = await User.find({ role: { $in: ['ADMIN', 'DEPARTMENT_ADMIN'] } }).select('teacherName username employeeCode department').lean();
-		const departmentAdminNames = new Set(departmentAdmins.filter(user => String(user.department || findStaffProfile(user, profiles).department || '').trim().toLowerCase() === department.toLowerCase())
-			.map(user => String(findStaffProfile(user, profiles).staffName || user.teacherName || user.username || '').trim()));
-		const approverName = String(req.body.approverName || '').trim();
-		const recommendedBy = String(req.body.recommendedBy || '').trim();
-		if ((approverName && !departmentAdminNames.has(approverName)) || (recommendedBy && !departmentAdminNames.has(recommendedBy))) {
+		const departmentAdminNames = getDepartmentAdminNames(
+			await User.find({ role: { $in: ['ADMIN', 'DEPARTMENT_ADMIN'] } }).select('teacherName username employeeCode department').lean(),
+			profiles,
+			department
+		);
+		const requestedApproverName = String(req.body.approverName || '').trim();
+		const requestedRecommendedBy = String(req.body.recommendedBy || '').trim();
+		const approverName = departmentAdminNames.get(normalizeName(requestedApproverName)) || '';
+		const recommendedBy = departmentAdminNames.get(normalizeName(requestedRecommendedBy)) || '';
+		if ((requestedApproverName && !approverName) || (requestedRecommendedBy && !recommendedBy)) {
 			return res.status(400).send('Choose approver and recommender names from the applicant department administrators.');
 		}
 		const update = {
