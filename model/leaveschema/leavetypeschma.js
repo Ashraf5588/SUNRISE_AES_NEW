@@ -49,7 +49,7 @@ const leaveApplicationSchema = new mongoose.Schema({
   supportingDocument: { type: Buffer, default: undefined },
   supportingDocumentName: { type: String, trim: true, default: '' },
   supportingDocumentMimeType: { type: String, trim: true, default: '' },
-  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending', index: true },
+  status: { type: String, enum: ['pending', 'approved', 'rejected', 'reverted'], default: 'pending', index: true },
   reviewReason: { type: String, trim: true, default: '', maxlength: 1000 },
   reviewedBy: { type: String, trim: true, default: '' },
   reviewedAt: { type: Date, default: null }

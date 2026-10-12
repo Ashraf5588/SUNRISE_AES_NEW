@@ -94,6 +94,25 @@
 				</div>
 			</div>
 
+			<div id="leaveRejectModal" class="leave-transfer-modal hidden" aria-hidden="true">
+				<div class="leave-modal-backdrop" data-close-reject-modal="true"></div>
+				<div class="leave-transfer-panel leave-reject-panel" role="dialog" aria-modal="true" aria-labelledby="leaveRejectModalTitle">
+					<div class="leave-modal-header">
+						<h3 id="leaveRejectModalTitle">Reject leave application</h3>
+						<button type="button" class="leave-modal-close" aria-label="Close rejection dialog" data-close-reject-modal="true">×</button>
+					</div>
+					<form id="leaveRejectForm" method="post" class="leave-reject-form">
+						<input type="hidden" name="status" value="rejected">
+						<label for="leaveRejectReason">Reason for rejection</label>
+						<textarea id="leaveRejectReason" name="reviewReason" maxlength="1000" required placeholder="Enter the reason"></textarea>
+						<div class="leave-submit-row compact">
+							<button type="button" class="leave-button secondary" data-close-reject-modal="true">Cancel</button>
+							<button type="submit" class="leave-button danger">Reject leave</button>
+						</div>
+					</form>
+				</div>
+			</div>
+
 		<section class="leave-panel">
 			<div class="leave-section-heading"><div><h2><%= isUserAdmin ? 'Applications for review' : 'Application history' %></h2><p><%= applications.length %> recent records</p></div></div>
 			<% if (applications.length) { %>
@@ -101,31 +120,22 @@
 				<thead><tr><th>S.N.</th><th>Employee</th><th>Leave Type</th><th>From</th><th>To</th><th>Days</th><th>Leave Day</th><th>Approved By</th><th>Approved On</th><th>Status</th><th>Action</th></tr></thead>
 				<tbody><% applications.forEach(application => { %>
 				<tr>
-					<td><%= applications.indexOf(application) + 1 %></td>
-					<td><strong><%= application.employeeName %></strong><small><%= application.employeeCode || '' %></small></td>
-					<td><strong><%= application.leaveTypeName %></strong><small><%= application.reason %></small><% if (application.supportingDocumentName) { %><a class="document-link" href="/leave/<%= application._id %>/document"><%= application.supportingDocumentName %></a><% } %></td>
-					<td><strong class="leave-date-range"><%= application.startDateNepali %></strong></td>
-					<td><strong class="leave-date-range"><%= application.endDateNepali %></strong></td>
-					<td><strong class="leave-duration-days"><%= application.requestedDays %></strong></td>
-					<td><%= application.leaveDay || 'Full day' %><% if (application.sandwichLeave === false) { %><small>Sandwich excluded</small><% } %></td>
-					<td><%= application.status === 'approved' ? application.reviewedBy || application.approverName || '-' : '-' %><% if (application.status === 'pending' && application.approverName) { %><small>Assigned: <%= application.approverName %></small><% } %></td>
-					<td><%= application.status === 'approved' && application.reviewedAt ? new Date(application.reviewedAt).toLocaleDateString('en-CA') : '-' %></td>
-					<td>
-						<% if (isUserAdmin && application.status === 'pending') { %>
-						<form class="leave-review-form" method="post" action="/leave/<%= application._id %>/review">
-							<select name="status" class="decision-select" aria-label="Leave decision"><option value="" selected disabled>Pending - select decision</option><option value="approved">Approve</option><option value="rejected">Reject</option></select>
-							<textarea name="reviewReason" class="review-reason" maxlength="1000" placeholder="Reason required only when rejecting" aria-label="Decision reason"></textarea>
-							<button class="leave-button primary" type="submit">Save decision</button>
-						</form>
-						<% } else { %>
-							<span class="leave-status <%= application.status %>"><%= application.status %></span>
-							<% if (application.reviewReason) { %><small class="decision-reason"><%= application.reviewReason %></small><% } %>
-						<% } %>
-					</td>
-					<td class="leave-actions-cell">
+					<td data-label="S.N."><%= applications.indexOf(application) + 1 %></td>
+					<td data-label="Employee"><strong><%= application.employeeName %></strong><small><%= application.employeeCode || '' %></small></td>
+					<td data-label="Leave Type"><strong><%= application.leaveTypeName %></strong><small><%= application.reason %></small><% if (application.supportingDocumentName) { %><a class="document-link" href="/leave/<%= application._id %>/document"><%= application.supportingDocumentName %></a><% } %></td>
+					<td data-label="From"><strong class="leave-date-range"><%= application.startDateNepali %></strong></td>
+					<td data-label="To"><strong class="leave-date-range"><%= application.endDateNepali %></strong></td>
+					<td data-label="Days"><strong class="leave-duration-days"><%= application.requestedDays %></strong></td>
+					<td data-label="Leave Day"><%= application.leaveDay || 'Full day' %><% if (application.sandwichLeave === false) { %><small>Sandwich excluded</small><% } %></td>
+					<td data-label="Approved By"><%= application.status === 'approved' ? application.reviewedBy || application.approverName || '-' : '-' %><% if (application.status === 'pending' && application.approverName) { %><small>Assigned: <%= application.approverName %></small><% } %></td>
+					<td data-label="Approved On"><%= application.status === 'approved' && application.reviewedAt ? new Date(application.reviewedAt).toLocaleDateString('en-CA') : '-' %></td>
+					<td data-label="Status"><span class="leave-status <%= String(application.status || 'pending').toLowerCase() %>"><%= String(application.status || 'pending').toLowerCase() === 'reverted' ? 'Reverted' : application.status %></span></td>
+					<td class="leave-actions-cell" data-label="Action">
 						<% if (isUserAdmin) { %>
 							<div class="leave-action-icons">
 								<% if (application.status === 'pending') { %>
+								<form method="post" action="/leave/<%= application._id %>/review" class="inline-review-form"><input type="hidden" name="status" value="approved"><button type="submit" class="leave-icon-button approve" title="Approve leave" aria-label="Approve leave"><i class="fa-solid fa-check"></i></button></form>
+								<button type="button" class="leave-icon-button reject" data-reject-id="<%= application._id %>" data-reject-label="<%= application.employeeName %>" title="Reject leave" aria-label="Reject leave"><i class="fa-solid fa-xmark"></i></button>
 								<button type="button" class="leave-icon-button transfer" data-transfer-id="<%= application._id %>" data-transfer-label="<%= application.employeeName %>" title="Transfer leave"><i class="fa-solid fa-arrow-right-arrow-left"></i></button>
 								<a class="leave-icon-button edit" href="/leave/<%= application._id %>/edit" title="Edit leave"><i class="fa-solid fa-pen-to-square"></i></a>
 								<% } %>
@@ -144,8 +154,12 @@
 	</div>
 	<script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
 	<script>
+		const hasEditingApplication = <%- JSON.stringify(Boolean(editingApplication)) %>;
 		const leaveApplicationForm = document.getElementById('leaveApplicationForm');
 		const leaveRequestModal = document.getElementById('leaveRequestModal');
+		const leaveRejectModal = document.getElementById('leaveRejectModal');
+		const leaveRejectForm = document.getElementById('leaveRejectForm');
+		const leaveRejectReason = document.getElementById('leaveRejectReason');
 		const openLeaveModalButton = document.getElementById('openLeaveModalButton');
 		const isAdminView = leaveApplicationForm?.dataset.isAdmin === 'true';
 		const employeeSelect = document.getElementById('employeeId');
@@ -348,9 +362,25 @@
 		document.querySelectorAll('[data-close-modal="true"]').forEach((button) => {
 			button.addEventListener('click', () => toggleLeaveModal(false));
 		});
-		if (typeof editingApplication !== 'undefined' && editingApplication) {
+		if (hasEditingApplication) {
 			toggleLeaveModal(true);
 		}
+		document.querySelectorAll('.leave-icon-button.reject').forEach((button) => {
+			button.addEventListener('click', () => {
+				if (!leaveRejectModal || !leaveRejectForm || !leaveRejectReason) return;
+				leaveRejectForm.action = `/leave/${button.dataset.rejectId}/review`;
+				leaveRejectReason.value = '';
+				leaveRejectModal.classList.remove('hidden');
+				leaveRejectModal.setAttribute('aria-hidden', 'false');
+				leaveRejectReason.focus();
+			});
+		});
+		document.querySelectorAll('[data-close-reject-modal]').forEach((button) => {
+			button.addEventListener('click', () => {
+				leaveRejectModal?.classList.add('hidden');
+				leaveRejectModal?.setAttribute('aria-hidden', 'true');
+			});
+		});
 		if (startDateBsInput) {
 			startDateBsInput.addEventListener('change', () => syncDatePair(startDateBsInput, startDateInput));
 			startDateBsInput.addEventListener('input', () => syncDatePair(startDateBsInput, startDateInput));
