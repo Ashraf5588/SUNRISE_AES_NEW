@@ -117,7 +117,13 @@
     <!-- Creating form dynamically popup input fields --><script>
   const editing = "<%= editing ? 'true' : 'false' %>";
   const subjectedit = <%- editing ? JSON.stringify(subjectedit || {}) : '{}' %>;
-  const availableChapters = <%- (typeof chapterData !== 'undefined' && chapterData.length > 0 && chapterData[0].chapters) ? JSON.stringify(chapterData[0].chapters) : '[]' %>;
+  const availableChapters = <%- JSON.stringify([
+    ...((typeof chapterData !== 'undefined' && chapterData.length > 0 && chapterData[0].chapters) ? chapterData[0].chapters : []),
+    ...((typeof subjectedit !== 'undefined' && Array.isArray(subjectedit.chapter)) ? subjectedit.chapter.map(item => item.chapterName) : []),
+    ...((typeof subjectedit !== 'undefined' && subjectedit) ? Object.entries(subjectedit)
+      .filter(([key, value]) => /^q\d+(?:[a-z])?_chapter$/.test(key) && value)
+      .map(([, value]) => value) : [])
+  ]) %>;
 // Replace the DOMContentLoaded event listener with this corrected version:
 // Cache-busting comment: v2.0 - Fixed generateInput error
 
@@ -206,7 +212,7 @@ document.addEventListener("DOMContentLoaded", () => {
         name: `q${questionNum}${letter}_chapter`,
         chapters: availableChapters,
         className: 'form-select mt-2',
-        value: (typeof editing !== 'undefined' && editing === 'true' && typeof subjectedit !== 'undefined' && subjectedit[`q${questionNum}${letter}_chapter`]) ? subjectedit[`q${questionNum}${letter}_chapter`] : (document.getElementById(`q${questionNum}_chapter`) ? document.getElementById(`q${questionNum}_chapter`).value : ''),
+        value: editing === 'true' ? chapterForQuestion(subjectedit, `q${questionNum}${letter}`) : (document.getElementById(`q${questionNum}_chapter`) ? document.getElementById(`q${questionNum}_chapter`).value : ''),
         id: `q${questionNum}${letter}_chapter`
 
       });
@@ -632,6 +638,40 @@ function createChapterSelect({
 
   return select; // 🔥 reusable
 }
+
+function chapterForQuestion(source, questionKey) {
+  if (!source) return '';
+
+  const storedValue = source[`${questionKey}_chapter`];
+  if (storedValue) return storedValue;
+
+  const chapters = Array.isArray(source.chapter) ? source.chapter : [];
+  const chapter = chapters.find(item => Array.isArray(item.questions) && item.questions.includes(questionKey));
+  if (chapter) return chapter.chapterName || '';
+
+  if (/^q\d+$/.test(questionKey)) {
+    const parentChapter = chapters.find(item =>
+      Array.isArray(item.questions) && item.questions.some(question => /^q\d+[a-z]$/.test(question) && question.replace(/[a-z]$/, '') === questionKey)
+    );
+    return parentChapter ? parentChapter.chapterName || '' : '';
+  }
+
+  return '';
+}
+
+function setChapterSelectValue(select, value) {
+  if (!select || value === undefined || value === null || value === '') return;
+  const chapterName = String(value);
+  const matchingOption = Array.from(select.options).find(option => option.value === chapterName);
+  if (!matchingOption) {
+    const option = document.createElement('option');
+    option.value = chapterName;
+    option.textContent = chapterName;
+    select.appendChild(option);
+  }
+  select.value = chapterName;
+}
+
 function generateDynamicForm(number) {
     const subContainer = document.getElementById("subQuestionContainer");
     const preservedValues = {};
@@ -676,7 +716,7 @@ function generateDynamicForm(number) {
   name: `q${i}_chapter`,
   chapters: availableChapters,
   id: `q${i}_chapter`,
-  value: (typeof editing !== 'undefined' && editing === 'true' && typeof subjectedit !== 'undefined' && subjectedit[`q${i}_chapter`]) ? subjectedit[`q${i}_chapter`] : ""
+  value: editing === 'true' ? chapterForQuestion(subjectedit, `q${i}`) : ""
 });
 
 chapterSelect.addEventListener('change', function() {
@@ -1424,13 +1464,8 @@ async function autofillFromClass(classNameParam, terminalParam) {
             const marksPerSubKey = `q${i}_marks_per_sub`;
             const chapterKey = `q${i}_chapter`;
 
-            // Set Main Chapter if available
-            if (data[chapterKey]) {
-            const chapSelect = document.getElementById(chapterKey);
-            if (chapSelect) {
-                chapSelect.value = data[chapterKey];
-            }
-            }
+            const mainChapter = chapterForQuestion(data, `q${i}`);
+            setChapterSelectValue(document.getElementById(chapterKey), mainChapter);
             
             if (data[subCountKey] && data[marksPerSubKey]) {
             // Set sub-question count
@@ -1532,12 +1567,8 @@ function populateSubQuestionData(questionNum, data, subCount) {
     
     // Set Chapter for sub-question if available
     const subQChapterKey = `q${questionNum}${letter}_chapter`;
-    if (data[subQChapterKey]) {
-        const subChapSelect = document.getElementById(subQChapterKey);
-        if (subChapSelect) {
-             subChapSelect.value = data[subQChapterKey];
-        }
-    }
+    const subQuestionChapter = chapterForQuestion(data, subQuestionKey);
+    setChapterSelectValue(document.getElementById(subQChapterKey), subQuestionChapter);
 
     // Set the main marks for the sub-question
     const marksInput = document.querySelector(`input[name="${subQuestionKey}"]`);
