@@ -322,7 +322,7 @@ exports.generateMarksheet = async (req, res, next) => {
       const selectedTestTerminal = testTerminals.find((item) => String(item.terminal) === String(terminal));
       if (!selectedTestTerminal) return res.status(400).send('Choose a terminal whose type is TEST.');
       testFullMarks = Number(selectedTestTerminal.fullMarks);
-      testPassMarks = Number(selectedTestTerminal.passMarks) || 0;
+      testPassMarks = Number(selectedTestTerminal.passMarks) || 9;
       if (!Number.isFinite(testFullMarks) || testFullMarks <= 0) {
         return res.status(400).send('The selected TEST terminal must have valid full marks.');
       }
