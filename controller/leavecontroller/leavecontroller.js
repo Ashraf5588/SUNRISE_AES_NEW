@@ -200,7 +200,7 @@ exports.leavePage = async (req, res) => {
 		const userFilter = admin ? {} : { requester: req.user._id };
 		const [allLeaveTypes, applicationRecords, users, profiles, branches, adminUsers, holidays] = await Promise.all([
 			LeaveType.find({ isActive: true }).sort({ leavename: 1 }).lean(),
-			LeaveApplication.find(userFilter).sort({ createdAt: -1 }).limit(admin ? 200 : 100).lean(),
+			LeaveApplication.find(userFilter).sort({ startDateNepali: -1, createdAt: -1 }).limit(admin ? 200 : 100).lean(),
 			admin ? User.find({}).select('teacherName username role employeeCode department').sort({ teacherName: 1, username: 1 }).lean() : Promise.resolve([req.user]),
 			Staff.find({}).select('employeeCode staffName companyName branchName designation department section employeePhoto').lean(),
 			Branch.find({}).select('name').sort({ name: 1 }).lean(),
@@ -358,7 +358,7 @@ exports.submitLeaveApplication = [handleLeaveDocumentUpload, async (req, res) =>
 		const endDateNepali = endDate ? String(bs.ADToBS(endDate) || '').trim() : '';
 		const leaveDay = String(req.body.leaveDay || 'Full day').trim();
 		const halfDay = ['Early leave', 'Late leave'].includes(leaveDay);
-		const sandwichLeave = req.body.sandwichLeave === 'on';
+		const sandwichLeave = admin || req.body.sandwichLeave === 'on';
 		const reason = String(req.body.reason || '').trim();
 		if (!startDate || !endDate || endDate < startDate || !['Full day', 'Early leave', 'Late leave'].includes(leaveDay) || !reason || reason.length > 1000) {
 			return res.status(400).send('Choose valid dates and leave type, and enter a reason. The end date must not precede the start date.');
