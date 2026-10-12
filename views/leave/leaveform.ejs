@@ -35,7 +35,7 @@
 						<button type="button" class="leave-modal-close" aria-label="Close leave form" data-close-modal="true">×</button>
 					</div>
 					<% if (leaveTypes.length) { %>
-					<form method="post" action="<%= editingApplication ? `/leave/${editingApplication._id}/edit` : '/leave' %>" enctype="multipart/form-data" id="leaveApplicationForm" data-is-admin="<%= isUserAdmin ? 'true' : 'false' %>" data-holidays="<%= JSON.stringify(holidayDatesAd || []) %>">
+					<form method="post" action="<%= editingApplication ? `/leave/${editingApplication._id}/edit` : '/leave' %>" enctype="multipart/form-data" id="leaveApplicationForm" data-is-admin="<%= isUserAdmin ? 'true' : 'false' %>" data-editing-id="<%= editingApplication?._id || '' %>" data-holidays="<%= JSON.stringify(holidayDatesAd || []) %>">
 						<div class="leave-field-grid">
 							<% if (isUserAdmin) { %><div class="leave-field"><label for="branchFilter">Select Branch</label><select id="branchFilter"><option value="">All branches</option><% branches.forEach(branch => { %><option value="<%= branch %>"><%= branch %></option><% }) %></select></div><% } %>
 							<div class="leave-field"><label for="employeeId">Employee Name *</label>
@@ -305,6 +305,7 @@
 			if (!leaveTypeSelect?.value || (isAdminView && !employeeId)) return;
 			setQuotaButtonState('checking');
 			const params = new URLSearchParams({ leaveType: leaveTypeSelect.value, leaveDay: leaveDaySelect?.value || 'Full day', sandwichLeave: sandwichInput?.checked ? 'true' : 'false' });
+			if (leaveApplicationForm?.dataset.editingId) params.set('excludeApplicationId', leaveApplicationForm.dataset.editingId);
 			if (isAdminView) params.set('employeeId', employeeId);
 			if (startDateInput?.value && endDateInput?.value) {
 				params.set('startDateAd', startDateInput.value);

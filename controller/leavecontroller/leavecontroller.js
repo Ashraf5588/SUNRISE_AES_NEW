@@ -96,6 +96,19 @@ const findStaffProfile = (user, profiles) => {
 		|| {};
 };
 
+const getEmployeeLeaveFilter = (user, profile = {}) => {
+	const identifiers = [{ requester: user._id }];
+	const employeeCode = String(profile.employeeCode || user.employeeCode || '').trim();
+	const username = String(user.username || '').trim();
+	if (employeeCode) identifiers.push({ employeeCode });
+	if (username) identifiers.push({ username });
+	if (!employeeCode && !username) {
+		const employeeName = String(profile.staffName || user.teacherName || '').trim();
+		if (employeeName) identifiers.push({ employeeName });
+	}
+	return { $or: identifiers };
+};
+
 const normalizeName = value => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
 const getDepartmentAdmins = (users, profiles) => users.map(user => {
 	const profile = findStaffProfile(user, profiles);
@@ -197,7 +210,8 @@ exports.updateLeaveType = async (req, res) => {
 exports.leavePage = async (req, res) => {
 	try {
 		const admin = isAdmin(req.user);
-		const userFilter = admin ? {} : { requester: req.user._id };
+		const profiles = await Staff.find({}).select('employeeCode staffName companyName branchName designation department section employeePhoto').lean();
+		const userFilter = admin ? {} : getEmployeeLeaveFilter(req.user, findStaffProfile(req.user, profiles));
 		const applicationCount = await LeaveApplication.countDocuments(userFilter);
 		const pageSize = ['50', '100', 'all'].includes(String(req.query.perPage || '')) ? String(req.query.perPage) : '50';
 		const pageSizeNumber = pageSize === 'all' ? applicationCount : Number(pageSize);
@@ -208,11 +222,10 @@ exports.leavePage = async (req, res) => {
 			.skip((page - 1) * pageSizeNumber);
 		if (pageSize !== 'all') applicationQuery.limit(pageSizeNumber);
 		else if (applicationCount) applicationQuery.limit(applicationCount);
-		const [allLeaveTypes, applicationRecords, users, profiles, branches, adminUsers, holidays] = await Promise.all([
+		const [allLeaveTypes, applicationRecords, users, branches, adminUsers, holidays] = await Promise.all([
 			LeaveType.find({ isActive: true }).sort({ leavename: 1 }).lean(),
 			applicationQuery.lean(),
 			admin ? User.find({}).select('teacherName username role employeeCode department').sort({ teacherName: 1, username: 1 }).lean() : Promise.resolve([req.user]),
-			Staff.find({}).select('employeeCode staffName companyName branchName designation department section employeePhoto').lean(),
 			Branch.find({}).select('name').sort({ name: 1 }).lean(),
 			User.find({ role: { $in: ['ADMIN', 'DEPARTMENT_ADMIN'] } }).select('teacherName username employeeCode department').lean(),
 			EmployeeWeekend.find({}).select('dateBs').lean()
@@ -292,6 +305,9 @@ exports.leaveUsage = async (req, res) => {
 			? await LeaveType.findOne({ _id: leaveTypeId, isActive: true }).lean()
 			: null;
 		if (!leaveType || !appliesToUser(leaveType, applicant)) return res.status(400).json({ message: 'Choose a leave type available to this employee.' });
+		const profiles = await Staff.find({}).select('employeeCode staffName').lean();
+		const applicantProfile = findStaffProfile(applicant, profiles);
+		const applicantLeaveFilter = getEmployeeLeaveFilter(applicant, applicantProfile);
 
 		const startValue = String(req.query.startDateAd || req.query.startDateNepali || '').trim();
 		const endValue = String(req.query.endDateAd || req.query.endDateNepali || '').trim();
@@ -309,11 +325,16 @@ exports.leaveUsage = async (req, res) => {
 			? await getDateAllocations(startDate, endDate, { halfDay, sandwichLeave: req.query.sandwichLeave !== 'false' })
 			: { months: new Map(), years: new Map() };
 		const activeStatuses = ['pending', 'approved'];
-		const quotaRecords = await LeaveApplication.find({
-			requester: applicant._id,
-			leaveType: leaveType._id,
-			status: { $in: activeStatuses }
-		}).select('startDateNepali endDateNepali leaveDay sandwichLeave monthlyAllocations yearlyAllocations').lean();
+		const quotaFilters = [
+			applicantLeaveFilter,
+			{ $or: [{ leaveType: leaveType._id }, { leaveTypeName: leaveType.leavename }] },
+			{ status: { $in: activeStatuses } }
+		];
+		if (admin && mongoose.isValidObjectId(req.query.excludeApplicationId)) {
+			quotaFilters.push({ _id: { $ne: req.query.excludeApplicationId } });
+		}
+		const quotaRecords = await LeaveApplication.find({ $and: quotaFilters })
+			.select('startDateNepali endDateNepali leaveDay sandwichLeave monthlyAllocations yearlyAllocations').lean();
 		const usedMonths = new Map();
 		const usedYears = new Map();
 		await addStoredUsage(quotaRecords, usedMonths, usedYears);
@@ -388,6 +409,7 @@ exports.submitLeaveApplication = [handleLeaveDocumentUpload, async (req, res) =>
 		if (!requestedDays) return res.status(400).send('The selected dates contain no chargeable leave days.');
 		const profiles = await Staff.find({}).select('employeeCode staffName companyName branchName designation department section employeePhoto').lean();
 		const profile = findStaffProfile(applicant, profiles);
+		const applicantLeaveFilter = getEmployeeLeaveFilter(applicant, profile);
 		const department = String(profile.department || applicant.department || '').trim();
 		const departmentAdminNames = getDepartmentAdminNames(
 			await User.find({ role: { $in: ['ADMIN', 'DEPARTMENT_ADMIN'] } }).select('teacherName username employeeCode department').lean(),
@@ -402,20 +424,23 @@ exports.submitLeaveApplication = [handleLeaveDocumentUpload, async (req, res) =>
 		}
 		const activeStatuses = ['pending', 'approved'];
 		const overlapping = await LeaveApplication.find({
-			requester: applicant._id,
-			status: { $in: activeStatuses },
-			startDateNepali: { $lte: endDateNepali },
-			endDateNepali: { $gte: startDateNepali }
+			$and: [applicantLeaveFilter, {
+				status: { $in: activeStatuses },
+				startDateNepali: { $lte: endDateNepali },
+				endDateNepali: { $gte: startDateNepali }
+			}]
 		}).select('startDateNepali endDateNepali').lean();
 		if (overlapping.length) return res.status(409).send('You already have a pending or approved leave request that overlaps these dates.');
 
 		if (!admin && (leaveType.maxDaysPerYear || leaveType.maxDaysPerMonth)) {
 			const quotaRecords = await LeaveApplication.find({
-				requester: applicant._id,
-				leaveType: leaveType._id,
-				status: { $in: activeStatuses },
-				startDateNepali: { $lte: endDateNepali },
-				endDateNepali: { $gte: `${startDateNepali.slice(0, 4)}-01-01` }
+				$and: [applicantLeaveFilter, {
+					$or: [{ leaveType: leaveType._id }, { leaveTypeName: leaveType.leavename }]
+				}, {
+					status: { $in: activeStatuses },
+					startDateNepali: { $lte: endDateNepali },
+					endDateNepali: { $gte: `${startDateNepali.slice(0, 4)}-01-01` }
+				}]
 			}).select('startDateNepali endDateNepali leaveDay sandwichLeave monthlyAllocations yearlyAllocations').lean();
 			const usedMonths = new Map();
 			const usedYears = new Map();
@@ -512,16 +537,20 @@ exports.updateLeaveApplication = [handleLeaveDocumentUpload, async (req, res) =>
 		if (leaveType.requiresDocument && !req.file && !application.supportingDocument) return res.status(400).send('A supporting document is required for this leave type.');
 		const startDateNepali = String(bs.ADToBS(startDate) || '').trim();
 		const endDateNepali = String(bs.ADToBS(endDate) || '').trim();
+		const profiles = await Staff.find({}).select('employeeCode staffName companyName branchName designation department section').lean();
+		const profile = findStaffProfile(applicant, profiles);
+		const applicantLeaveFilter = getEmployeeLeaveFilter(applicant, profile);
 		const overlapping = await LeaveApplication.findOne({
-			_id: { $ne: application._id }, requester: applicant._id, status: { $in: ['pending', 'approved'] },
-			startDateNepali: { $lte: endDateNepali }, endDateNepali: { $gte: startDateNepali }
+			$and: [
+				{ _id: { $ne: application._id } },
+				applicantLeaveFilter,
+				{ status: { $in: ['pending', 'approved'] }, startDateNepali: { $lte: endDateNepali }, endDateNepali: { $gte: startDateNepali } }
+			]
 		}).select('_id').lean();
 		if (overlapping) return res.status(409).send('This employee already has a pending or approved leave request that overlaps these dates.');
 		const allocations = await getDateAllocations(startDate, endDate, { halfDay, sandwichLeave });
 		const requestedDays = totalAllocations(allocations.years);
 		if (!requestedDays) return res.status(400).send('The selected dates contain no chargeable leave days.');
-		const profiles = await Staff.find({}).select('employeeCode staffName companyName branchName designation department section').lean();
-		const profile = findStaffProfile(applicant, profiles);
 		const department = String(profile.department || applicant.department || '').trim();
 		const departmentAdminNames = getDepartmentAdminNames(
 			await User.find({ role: { $in: ['ADMIN', 'DEPARTMENT_ADMIN'] } }).select('teacherName username employeeCode department').lean(),
