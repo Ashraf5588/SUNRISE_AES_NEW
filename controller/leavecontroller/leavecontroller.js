@@ -198,9 +198,19 @@ exports.leavePage = async (req, res) => {
 	try {
 		const admin = isAdmin(req.user);
 		const userFilter = admin ? {} : { requester: req.user._id };
+		const applicationCount = await LeaveApplication.countDocuments(userFilter);
+		const pageSize = ['50', '100', 'all'].includes(String(req.query.perPage || '')) ? String(req.query.perPage) : '50';
+		const pageSizeNumber = pageSize === 'all' ? applicationCount : Number(pageSize);
+		const pageCount = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(applicationCount / pageSizeNumber));
+		const page = pageSize === 'all' ? 1 : Math.min(Math.max(Number.parseInt(req.query.page, 10) || 1, 1), pageCount);
+		const applicationQuery = LeaveApplication.find(userFilter)
+			.sort({ startDateNepali: -1, createdAt: -1 })
+			.skip((page - 1) * pageSizeNumber);
+		if (pageSize !== 'all') applicationQuery.limit(pageSizeNumber);
+		else if (applicationCount) applicationQuery.limit(applicationCount);
 		const [allLeaveTypes, applicationRecords, users, profiles, branches, adminUsers, holidays] = await Promise.all([
 			LeaveType.find({ isActive: true }).sort({ leavename: 1 }).lean(),
-			LeaveApplication.find(userFilter).sort({ startDateNepali: -1, createdAt: -1 }).limit(admin ? 200 : 100).lean(),
+			applicationQuery.lean(),
 			admin ? User.find({}).select('teacherName username role employeeCode department').sort({ teacherName: 1, username: 1 }).lean() : Promise.resolve([req.user]),
 			Staff.find({}).select('employeeCode staffName companyName branchName designation department section employeePhoto').lean(),
 			Branch.find({}).select('name').sort({ name: 1 }).lean(),
@@ -240,6 +250,12 @@ exports.leavePage = async (req, res) => {
 		renderPage(res, 'leaveform', {
 			leaveTypes: admin ? allLeaveTypes : allLeaveTypes.filter((type) => appliesToUser(type, req.user)),
 			applications,
+			applicationCount,
+			page,
+			pageCount,
+			pageSize,
+			firstApplication: applicationCount ? (page - 1) * pageSizeNumber + 1 : 0,
+			lastApplication: (page - 1) * pageSizeNumber + applications.length,
 			editingApplication,
 			employees,
 			branches: branchNames,

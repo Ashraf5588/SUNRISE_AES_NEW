@@ -114,7 +114,24 @@
 			</div>
 
 		<section class="leave-panel">
-			<div class="leave-section-heading"><div><h2><%= isUserAdmin ? 'Applications for review' : 'Application history' %></h2><p><%= applications.length %> recent records</p></div></div>
+			<div class="leave-section-heading">
+				<div><h2><%= isUserAdmin ? 'Applications for review' : 'Application history' %></h2><p>Showing <%= firstApplication %>-<%= lastApplication %> of <%= applicationCount %> applications</p></div>
+				<div class="leave-list-tools">
+					<form method="get" action="/leave" class="leave-page-size-form">
+						<label for="leavePageSize">Rows</label>
+						<select id="leavePageSize" name="perPage" aria-label="Applications per page" onchange="this.form.submit()">
+							<option value="50" <%= pageSize === '50' ? 'selected' : '' %>>50</option>
+							<option value="100" <%= pageSize === '100' ? 'selected' : '' %>>100</option>
+							<option value="all" <%= pageSize === 'all' ? 'selected' : '' %>>All</option>
+						</select>
+					</form>
+					<nav class="leave-pagination" aria-label="Application pages">
+						<a href="/leave?page=<%= Math.max(page - 1, 1) %>&perPage=<%= pageSize %>" class="<%= page <= 1 ? 'disabled' : '' %>" aria-disabled="<%= page <= 1 %>">Previous</a>
+						<span><%= page %> / <%= pageCount %></span>
+						<a href="/leave?page=<%= Math.min(page + 1, pageCount) %>&perPage=<%= pageSize %>" class="<%= page >= pageCount ? 'disabled' : '' %>" aria-disabled="<%= page >= pageCount %>">Next</a>
+					</nav>
+				</div>
+			</div>
 			<% if (applications.length) { %>
 			<div class="leave-table-wrap"><table class="leave-table">
 				<thead><tr><th>S.N.</th><th>Employee</th><th>Leave Type</th><th>From</th><th>To</th><th>Days</th><th>Leave Day</th><th>Approved By</th><th>Approved On</th><th>Status</th><th>Action</th></tr></thead>
@@ -137,7 +154,7 @@
 								<form method="post" action="/leave/<%= application._id %>/review" class="inline-review-form"><input type="hidden" name="status" value="approved"><button type="submit" class="leave-icon-button approve" title="Approve leave" aria-label="Approve leave"><i class="fa-solid fa-check"></i></button></form>
 								<button type="button" class="leave-icon-button reject" data-reject-id="<%= application._id %>" data-reject-label="<%= application.employeeName %>" title="Reject leave" aria-label="Reject leave"><i class="fa-solid fa-xmark"></i></button>
 								<button type="button" class="leave-icon-button transfer" data-transfer-id="<%= application._id %>" data-transfer-label="<%= application.employeeName %>" title="Transfer leave"><i class="fa-solid fa-arrow-right-arrow-left"></i></button>
-								<a class="leave-icon-button edit" href="/leave/<%= application._id %>/edit" title="Edit leave"><i class="fa-solid fa-pen-to-square"></i></a>
+								<a class="leave-icon-button edit" href="/leave/<%= application._id %>/edit?page=<%= page %>&perPage=<%= pageSize %>" title="Edit leave" aria-label="Edit leave for <%= application.employeeName %>"><i class="fa-solid fa-pen-to-square"></i></a>
 								<% } %>
 								<form method="post" action="/leave/<%= application._id %>/delete" onsubmit="return confirm('Delete this leave application?')" class="inline-delete-form">
 									<button class="leave-icon-button delete" type="submit" title="Delete leave"><i class="fa-solid fa-trash"></i></button>
