@@ -70,7 +70,7 @@ const terminalSchema = new mongoose.Schema({
   "passMarks": {
     type: Number,
     required: false,
-    default: 18
+    default: 9
   }
 })
 

@@ -1512,11 +1512,13 @@ exports.addTerminalpost = async (req, res, next) => {
     const updatedTerminal = String(req.body.terminal || '').trim();
     const terminalType = String(req.body.terminalType || 'TEST').toUpperCase();
     const fullMarks = Number(req.body.fullMarks || 100);
+    const passMarks = Number(req.body.passMarks || 9)
 
     const payload = {
       terminal: updatedTerminal,
       terminalType: ['TEST', 'TERMINAL'].includes(terminalType) ? terminalType : 'TEST',
       fullMarks: Number.isFinite(fullMarks) && fullMarks > 0 ? fullMarks : 100,
+      passMarks:  Number.isFinite(passMarks) && passMarks > 0 ? passMarks : 9,
     };
 
     if (terminalId) {

@@ -371,7 +371,7 @@
               id="passMarks"
               name="passMarks"
               class="form-control"
-              value="<%= editing ? (terminalData.passMarks || 18) : 18 %>"
+              value="<%= editing ? (terminalData.passMarks || 9) : 9 %>"
               min="1"
               step="1"
               required
@@ -423,7 +423,7 @@
                       <span class="badge bg-light text-dark"><%= term.terminalType || 'TEST' %></span>
                     </td>
                     <td><%= term.fullMarks || 50 %></td>
-                     <td><%= term.passMarks || 18 %></td>
+                     <td><%= term.passMarks || 9 %></td>
                     <td>
                       <a href="/admin/terminal/<%= term._id %>/edit-terminal?editing=true" 
                          class="action-btn edit-btn"
