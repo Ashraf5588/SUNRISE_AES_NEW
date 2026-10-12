@@ -106,7 +106,7 @@ const getDepartmentAdmins = (users, profiles) => users.map(user => {
 }).filter(admin => admin.name);
 const getDepartmentAdminNames = (users, profiles, department) => new Map(
 	getDepartmentAdmins(users, profiles)
-		.filter(admin => normalizeName(admin.department) === normalizeName(department))
+		.filter(admin => !normalizeName(department) || normalizeName(admin.department) === normalizeName(department))
 		.map(admin => [normalizeName(admin.name), admin.name])
 );
 
@@ -375,15 +375,14 @@ exports.submitLeaveApplication = [handleLeaveDocumentUpload, async (req, res) =>
 		const department = String(profile.department || applicant.department || '').trim();
 		const departmentAdminNames = getDepartmentAdminNames(
 			await User.find({ role: { $in: ['ADMIN', 'DEPARTMENT_ADMIN'] } }).select('teacherName username employeeCode department').lean(),
-			profiles,
-			department
+			profiles
 		);
 		const requestedApproverName = String(req.body.approverName || '').trim();
 		const requestedRecommendedBy = String(req.body.recommendedBy || '').trim();
 		const approverName = departmentAdminNames.get(normalizeName(requestedApproverName)) || '';
 		const recommendedBy = departmentAdminNames.get(normalizeName(requestedRecommendedBy)) || '';
 		if ((requestedApproverName && !approverName) || (requestedRecommendedBy && !recommendedBy)) {
-			return res.status(400).send('Choose approver and recommender names from the applicant department administrators.');
+			return res.status(400).send('Choose approver and recommender names from the administrator list.');
 		}
 		const activeStatuses = ['pending', 'approved'];
 		const overlapping = await LeaveApplication.find({
@@ -510,15 +509,14 @@ exports.updateLeaveApplication = [handleLeaveDocumentUpload, async (req, res) =>
 		const department = String(profile.department || applicant.department || '').trim();
 		const departmentAdminNames = getDepartmentAdminNames(
 			await User.find({ role: { $in: ['ADMIN', 'DEPARTMENT_ADMIN'] } }).select('teacherName username employeeCode department').lean(),
-			profiles,
-			department
+			profiles
 		);
 		const requestedApproverName = String(req.body.approverName || '').trim();
 		const requestedRecommendedBy = String(req.body.recommendedBy || '').trim();
 		const approverName = departmentAdminNames.get(normalizeName(requestedApproverName)) || '';
 		const recommendedBy = departmentAdminNames.get(normalizeName(requestedRecommendedBy)) || '';
 		if ((requestedApproverName && !approverName) || (requestedRecommendedBy && !recommendedBy)) {
-			return res.status(400).send('Choose approver and recommender names from the applicant department administrators.');
+			return res.status(400).send('Choose approver and recommender names from the administrator list.');
 		}
 		const update = {
 			requester: applicant._id,
