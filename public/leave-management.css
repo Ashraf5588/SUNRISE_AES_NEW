@@ -42,10 +42,17 @@ body.employee-nav-collapsed .leave-shell {
 .leave-section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
 .leave-section-heading h2 { margin: 0; font: 700 19px Manrope, sans-serif; }
 .leave-section-heading p { margin: 5px 0 0; color: var(--leave-muted); font-size: 13px; }
-.leave-list-tools, .leave-page-size-form, .leave-pagination { display: flex; align-items: center; gap: 7px; }
+.leave-list-tools, .leave-academic-year-form, .leave-page-size-form, .leave-pagination { display: flex; align-items: center; gap: 7px; }
 .leave-list-tools { justify-content: flex-end; flex-wrap: wrap; }
-.leave-page-size-form { color: var(--leave-muted); font-size: 11px; font-weight: 700; }
-.leave-page-size-form select { min-height: 30px; padding: 4px 22px 4px 7px; border: 1px solid var(--leave-line); border-radius: 4px; color: var(--leave-ink); background: #fff; font-size: 11px; }
+.leave-academic-year-form, .leave-page-size-form { color: var(--leave-muted); font-size: 11px; font-weight: 700; }
+.leave-academic-year-form select, .leave-page-size-form select { min-height: 30px; padding: 4px 22px 4px 7px; border: 1px solid var(--leave-line); border-radius: 4px; color: var(--leave-ink); background: #fff; font-size: 11px; }
+.leave-summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: -4px 0 14px; }
+.leave-summary-item { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; border: 1px solid transparent; border-radius: 4px; }
+.leave-summary-item span { font-size: 11px; font-weight: 700; }
+.leave-summary-item strong { font-size: 20px; line-height: 1; }
+.leave-summary-item.requests { color: #1e40af; border-color: #bfdbfe; background: #eff6ff; }
+.leave-summary-item.approved { color: #166534; border-color: #bbf7d0; background: #f0fdf4; }
+.leave-summary-item.rejected { color: #991b1b; border-color: #fecaca; background: #fef2f2; }
 .leave-pagination { gap: 5px; color: var(--leave-muted); font-size: 11px; white-space: nowrap; }
 .leave-pagination a { padding: 6px 8px; border: 1px solid var(--leave-line); border-radius: 4px; color: var(--leave-deep); background: #fff; font-weight: 700; text-decoration: none; }
 .leave-pagination a:hover { border-color: var(--leave-green); background: var(--leave-light); }
@@ -193,6 +200,7 @@ body.employee-nav-collapsed .leave-shell {
 	.leave-submit-row { align-items: flex-start; flex-direction: column; gap: 12px; }
 	.leave-submit-row .leave-button { width: 100%; }
 	.leave-list-tools { width: 100%; justify-content: space-between; }
+	.leave-summary-grid { grid-template-columns: 1fr; }
 	.leave-table-wrap { overflow: visible; }
 	.leave-table { min-width: 0; table-layout: auto; }
 	.leave-table thead { display: none; }

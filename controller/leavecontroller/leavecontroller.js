@@ -212,12 +212,36 @@ exports.leavePage = async (req, res) => {
 		const admin = isAdmin(req.user);
 		const profiles = await Staff.find({}).select('employeeCode staffName companyName branchName designation department section employeePhoto').lean();
 		const userFilter = admin ? {} : getEmployeeLeaveFilter(req.user, findStaffProfile(req.user, profiles));
-		const applicationCount = await LeaveApplication.countDocuments(userFilter);
+		const currentBsYear = String(bs.ADToBS(new Date()) || '').slice(0, 4);
+		const yearSetup = await mongoose.connection.collection('marksheetSetup').findOne({}, { projection: { academicYear: 1 } });
+		const currentAcademicYear = String(yearSetup?.academicYear || currentBsYear);
+		const storedYears = await LeaveApplication.aggregate([
+			{ $match: { ...userFilter, startDateNepali: /^\d{4}-/ } },
+			{ $project: { year: { $substrBytes: ['$startDateNepali', 0, 4] } } },
+			{ $group: { _id: '$year' } }
+		]);
+		const academicYearOptions = [...new Set([currentAcademicYear, ...storedYears.map(item => String(item._id))])]
+			.filter(year => /^\d{4}$/.test(year))
+			.sort((yearA, yearB) => Number(yearB) - Number(yearA));
+		const requestedAcademicYear = String(req.query.academicYear || '');
+		const academicYear = academicYearOptions.includes(requestedAcademicYear) ? requestedAcademicYear : currentAcademicYear;
+		const yearFilter = { startDateNepali: { $regex: `^${academicYear}-` } };
+		const applicationFilter = { $and: [userFilter, yearFilter] };
+		const [summaryResult] = await LeaveApplication.aggregate([
+			{ $match: applicationFilter },
+			{ $group: {
+				_id: null,
+				totalRequests: { $sum: 1 },
+				totalApproved: { $sum: { $cond: [{ $eq: ['$status', 'approved'] }, 1, 0] } },
+				totalRejected: { $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] } }
+			} }
+		]);
+		const applicationCount = summaryResult?.totalRequests || 0;
 		const pageSize = ['50', '100', 'all'].includes(String(req.query.perPage || '')) ? String(req.query.perPage) : '50';
 		const pageSizeNumber = pageSize === 'all' ? applicationCount : Number(pageSize);
 		const pageCount = pageSize === 'all' ? 1 : Math.max(1, Math.ceil(applicationCount / pageSizeNumber));
 		const page = pageSize === 'all' ? 1 : Math.min(Math.max(Number.parseInt(req.query.page, 10) || 1, 1), pageCount);
-		const applicationQuery = LeaveApplication.find(userFilter)
+		const applicationQuery = LeaveApplication.find(applicationFilter)
 			.sort({ startDateNepali: -1, createdAt: -1 })
 			.skip((page - 1) * pageSizeNumber);
 		if (pageSize !== 'all') applicationQuery.limit(pageSizeNumber);
@@ -264,6 +288,10 @@ exports.leavePage = async (req, res) => {
 			leaveTypes: admin ? allLeaveTypes : allLeaveTypes.filter((type) => appliesToUser(type, req.user)),
 			applications,
 			applicationCount,
+			academicYear,
+			academicYearOptions,
+			totalApproved: summaryResult?.totalApproved || 0,
+			totalRejected: summaryResult?.totalRejected || 0,
 			page,
 			pageCount,
 			pageSize,
