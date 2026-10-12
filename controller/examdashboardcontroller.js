@@ -1547,8 +1547,12 @@ const {routineId,terminal,academicYear} = req.query;
 exports.ledger = async (req, res, next) => {
   try {
     const { studentClass, section, academicYear, terminal } = req.query;
-    const studentClassdata = await studentClassModel.find({}).lean();
+   const studentClassdata = await studentClassModel
+  .find({})
+  .sort({ classorder: 1 })
+  .lean();
     const marksheetSetups = await marksheetSetup.find({}).lean();
+    const terminals = await terminalModel.find({});
 
     const model = getSlipModel();
     
@@ -1570,6 +1574,7 @@ exports.ledger = async (req, res, next) => {
         studentClass,
         section,
         terminal,
+        terminals,
         marksheetSetups,
         ledgerData: [],
         ledgerAnalysisLookup: {},
