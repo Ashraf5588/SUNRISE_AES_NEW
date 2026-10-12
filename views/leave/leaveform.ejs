@@ -144,7 +144,25 @@
 				<div class="leave-summary-item requests"><span>Total leave requests</span><strong><%= applicationCount %></strong></div>
 				<div class="leave-summary-item approved"><span>Total approved</span><strong><%= totalApproved %></strong></div>
 				<div class="leave-summary-item rejected"><span>Total rejected</span><strong><%= totalRejected %></strong></div>
+				<% if (!isUserAdmin) { %><div class="leave-summary-item remaining"><span>Remaining leave days</span><strong><%= Number(totalRemainingLeave.toFixed(1)) %></strong><small>Across <%= remainingQuotaTypeCount %> limited types</small></div><% } %>
 			</div>
+			<% if (!isUserAdmin) { %>
+			<div class="leave-remaining-section">
+				<div class="leave-section-heading"><div><h3>Remaining by leave type</h3><p>Balances for academic year <%= academicYear %>; monthly balances use the matching BS month.</p></div></div>
+				<div class="leave-remaining-grid">
+					<% leaveBalances.forEach(balance => { %>
+					<div class="leave-remaining-item">
+						<strong><%= balance.name %></strong>
+						<div class="leave-remaining-values">
+							<% if (balance.yearlyLimit !== null) { %><span>Yearly <b><%= Number(balance.yearlyRemaining.toFixed(1)) %> / <%= balance.yearlyLimit %> days left</b></span><% } %>
+							<% if (balance.monthlyLimit !== null) { %><span>Monthly <b><%= Number(balance.monthlyRemaining.toFixed(1)) %> / <%= balance.monthlyLimit %> days left</b><small><%= balance.monthlyPeriod %></small></span><% } %>
+							<% if (balance.yearlyLimit === null && balance.monthlyLimit === null) { %><span class="no-leave-limit">No fixed limit</span><% } %>
+						</div>
+					</div>
+					<% }) %>
+				</div>
+			</div>
+			<% } %>
 			<% if (applications.length) { %>
 			<div class="leave-table-wrap"><table class="leave-table">
 				<thead><tr><th>S.N.</th><th>Employee</th><th>Leave Type</th><th>From</th><th>To</th><th>Days</th><th>Leave Day</th><th>Approved By</th><th>Approved On</th><th>Status</th><th>Action</th></tr></thead>

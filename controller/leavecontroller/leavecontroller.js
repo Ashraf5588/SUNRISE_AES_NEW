@@ -275,6 +275,39 @@ exports.leavePage = async (req, res) => {
 				photoUrl: profile.employeePhoto?.url || ''
 			};
 		});
+		const availableLeaveTypes = admin ? allLeaveTypes : allLeaveTypes.filter(type => appliesToUser(type, req.user));
+		let leaveBalances = [];
+		if (!admin) {
+			const balanceRecords = await LeaveApplication.find({
+				$and: [userFilter, yearFilter, { status: { $in: ['pending', 'approved'] } }]
+			}).select('leaveType leaveTypeName startDateNepali endDateNepali leaveDay sandwichLeave monthlyAllocations yearlyAllocations').lean();
+			const currentBsMonth = String(bs.ADToBS(new Date()) || '').slice(5, 7);
+			const selectedMonthPeriod = `${academicYear}-${currentBsMonth}`;
+			leaveBalances = await Promise.all(availableLeaveTypes.map(async type => {
+				const typeRecords = balanceRecords.filter(record =>
+					String(record.leaveType || '') === String(type._id)
+					|| normalizeName(record.leaveTypeName) === normalizeName(type.leavename)
+				);
+				const usedMonths = new Map();
+				const usedYears = new Map();
+				await addStoredUsage(typeRecords, usedMonths, usedYears);
+				const yearlyLimit = Number(type.maxDaysPerYear) || null;
+				const monthlyLimit = Number(type.maxDaysPerMonth) || null;
+				const yearlyRemaining = yearlyLimit === null ? null : Math.max(0, yearlyLimit - (usedYears.get(academicYear) || 0));
+				const monthlyRemaining = monthlyLimit === null ? null : Math.max(0, monthlyLimit - (usedMonths.get(selectedMonthPeriod) || 0));
+				return {
+					name: type.leavename,
+					yearlyLimit,
+					yearlyRemaining,
+					monthlyLimit,
+					monthlyRemaining,
+					monthlyPeriod: selectedMonthPeriod,
+					remainingDays: yearlyRemaining ?? monthlyRemaining
+				};
+			}));
+		}
+		const remainingQuotaTypeCount = leaveBalances.filter(balance => balance.remainingDays !== null).length;
+		const totalRemainingLeave = leaveBalances.reduce((total, balance) => total + (balance.remainingDays || 0), 0);
 		const departmentAdmins = getDepartmentAdmins(adminUsers, profiles);
 		const editingApplication = admin && mongoose.isValidObjectId(req.query.edit)
 			? applications.find(application => String(application._id) === String(req.query.edit) && application.status === 'pending') || null
@@ -285,7 +318,10 @@ exports.leavePage = async (req, res) => {
 		const holidayDatesAd = holidays.map(holiday => parseNepaliDate(holiday.dateBs))
 			.filter(Boolean).map(date => date.toISOString().slice(0, 10));
 		renderPage(res, 'leaveform', {
-			leaveTypes: admin ? allLeaveTypes : allLeaveTypes.filter((type) => appliesToUser(type, req.user)),
+			leaveTypes: availableLeaveTypes,
+			leaveBalances,
+			remainingQuotaTypeCount,
+			totalRemainingLeave,
 			applications,
 			applicationCount,
 			academicYear,
