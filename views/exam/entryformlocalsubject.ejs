@@ -216,16 +216,13 @@
 
   </form>
 </div>
-<!-- fetch on the basis of name -->
- <% terminalData = marksheetSetups[0].terminals.find(t => t.name === terminal); %>
- <% if (terminalData) { %>
-  <input type="hidden" id="workingDays" value="<%= terminalData.working
-Days %>">
-<% } else { %>
-  <input type="hidden" id="workingDays" value="0">
-<% } %>
+<% if (marksheetSetups) { %>
+  <% const terminalData = marksheetSetups[0].terminals.find(t => t.name === terminal); %>
 
-<input type="hidden" id="workingDays" value="<%=workingDays%>">
+  <% if (terminalData) { %>
+    <input type="hidden" id="workingDays" value="<%=terminalData.workingDays%>">
+  <% } %>
+<% } %>
 
 <script>
   const terminal = document.getElementById('terminal').value;
