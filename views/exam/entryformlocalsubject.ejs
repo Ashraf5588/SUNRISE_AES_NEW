@@ -135,18 +135,18 @@
         <th >Roll</th>
         <th>Name</th>
         <th>Photo</th>
-         <th>
+ <th>
           Th Marks (
-        <% if (!['FIRST', 'SECOND', 'THIRD', 'FINAL', 'MID'].includes(String(terminal || '').toUpperCase())) { %>
-          <%= terminals.find(t => String(t.terminal || '').toUpperCase() === String(terminal || '').toUpperCase())?.fullMarks ?? 'N/A' %>
-        <% } else { %>
-               <% if (subjectData && subjectData.length > 0) { %>
-                <%= subjectData[0].theory %>
-                 <% } else { %>
-                 <span style="color:red;">Theory marks not added. Contact admin.</span>
-               <% } %>
-        <% } %>
-        )
+          <% if (subjectData && subjectData.length > 0) { %>
+            <% if (terminals.find(t => t.terminal === terminal).terminalType === 'TEST') { %>
+              <%= terminals.find(t => t.terminal === terminal).fullMarks %>
+            <% } else { %>
+            <%= subjectData[0].theory %>
+            <%}%>
+          <% } else { %>
+            <span style="color:red;">Theory marks not added. Contact admin.</span>
+          <% } %>
+          )
         </th>
 
    <th>
