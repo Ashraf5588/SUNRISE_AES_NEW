@@ -2419,6 +2419,7 @@ exports.ledger = async (req, res, next) => {
           studentClass,
           section,
           terminal,
+          terminals,
           marksheetSetups,
           ledgerData,
           ledgerAnalysisLookup,
