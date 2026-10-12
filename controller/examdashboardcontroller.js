@@ -2346,6 +2346,7 @@ exports.ledger = async (req, res, next) => {
     // RENDER BASED ON CLASS TYPE
     // ============================================
     if (isPrePrimary) {
+      const terminals = await terminalModel.find({})
       res.render("./exam/ledgerpreprimary", {
         fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
         currentPage: "exammanagement",
@@ -2355,6 +2356,7 @@ exports.ledger = async (req, res, next) => {
         studentClass,
         section,
         terminal,
+        terminals,
         marksheetSetups,
         ledgerData,
         ledgerAnalysisLookup,
@@ -2364,6 +2366,7 @@ exports.ledger = async (req, res, next) => {
       });
       return;
     } else if (isPrimary) {
+      const terminals = await terminalModel.find()
       res.render("./exam/ledgerprimary", {
         fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
         currentPage: "exammanagement",
@@ -2373,6 +2376,7 @@ exports.ledger = async (req, res, next) => {
         studentClass,
         section,
         terminal,
+        terminals,
         marksheetSetups,
         ledgerData,
         ledgerAnalysisLookup,
@@ -2386,6 +2390,7 @@ exports.ledger = async (req, res, next) => {
     } else {
       if (studentClass == "Four" || studentClass == "4" || studentClass == "FOUR" || studentClass == "four" || 
           studentClass == "Five" || studentClass == "5" || studentClass == "FIVE" || studentClass == "five") {
+            const terminals = await terminalModel.find({})
         res.render("./exam/ledgerfourfive", {
           fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
           currentPage: "exammanagement",
@@ -2395,6 +2400,7 @@ exports.ledger = async (req, res, next) => {
           studentClass,
           section,
           terminal,
+          terminals,
           marksheetSetups,
           ledgerData,
           ledgerAnalysisLookup,
@@ -2403,6 +2409,7 @@ exports.ledger = async (req, res, next) => {
           NO_WORKSHEET_SUBJECTS: NO_WORKSHEET_SUBJECTS
         });
       } else {
+        const terminals = await terminalModel.find({})
         res.render("./exam/ledger", {
           fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
           currentPage: "exammanagement",
