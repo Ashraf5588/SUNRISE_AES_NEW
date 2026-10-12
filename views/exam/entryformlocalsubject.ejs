@@ -135,15 +135,19 @@
         <th >Roll</th>
         <th>Name</th>
         <th>Photo</th>
-        <th>
-  Th Marks (
-  <% if (subjectData && subjectData.length > 0) { %>
-      <%= subjectData[0].theory %>
-  <% } else { %>
-      <span style="color:red;">Theory marks not added. Contact admin.</span>
-  <% } %>
-  )
-</th>
+         <th>
+          Th Marks (
+        <% if (!['FIRST', 'SECOND', 'THIRD', 'FINAL', 'MID'].includes(String(terminal || '').toUpperCase())) { %>
+          <%= terminals.find(t => String(t.terminal || '').toUpperCase() === String(terminal || '').toUpperCase())?.fullMarks ?? 'N/A' %>
+        <% } else { %>
+               <% if (subjectData && subjectData.length > 0) { %>
+                <%= subjectData[0].theory %>
+                 <% } else { %>
+                 <span style="color:red;">Theory marks not added. Contact admin.</span>
+               <% } %>
+        <% } %>
+        )
+        </th>
 
    <th>
   Pr Marks (
@@ -212,22 +216,15 @@
 
   </form>
 </div>
-<% if (terminal == "FIRST")
-{
-  workingDays = marksheetSetups[0].terminals[0].workingDays;
-}
-else if (terminal == "SECOND")
-{
-  workingDays = marksheetSetups[0].terminals[1].workingDays;
-}
-else if (terminal == "THIRD")
-{
-  workingDays = marksheetSetups[0].terminals[2].workingDays;
-}
-else if (terminal == "FINAL")
-{
-  workingDays = marksheetSetups[0].terminals[3].workingDays;
-}%>
+<!-- fetch on the basis of name -->
+ <% terminalData = marksheetSetups[0].terminals.find(t => t.name === terminal); %>
+ <% if (terminalData) { %>
+  <input type="hidden" id="workingDays" value="<%= terminalData.working
+Days %>">
+<% } else { %>
+  <input type="hidden" id="workingDays" value="0">
+<% } %>
+
 <input type="hidden" id="workingDays" value="<%=workingDays%>">
 
 <script>
