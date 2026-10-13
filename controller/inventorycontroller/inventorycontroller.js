@@ -487,7 +487,7 @@ exports.productsPage = async (req, res) => {
     const totalPages = Math.max(1, Math.ceil(totalProducts / PAGE_SIZE));
     const page = Math.min(requestedPage, totalPages);
     const [products, categories, quantityTypes, suppliers] = await Promise.all([
-      InventoryProduct.find(productFilter).sort({ name: 1 }).skip((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).lean(),
+      InventoryProduct.find(productFilter).sort({ entryDateNepali: -1, createdAt: -1, _id: -1 }).skip((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).lean(),
       InventoryCategory.find({ active: true }).sort({ name: 1 }).lean(),
       InventoryQuantityType.find({ active: true }).sort({ name: 1 }).lean(),
       InventorySupplier.find({ active: true }).sort({ name: 1 }).lean()
@@ -524,10 +524,12 @@ exports.createProduct = async (req, res) => {
     ]);
     if ((req.body.category && !category) || !quantityType) return res.status(400).send('Select a valid category and quantity type.');
     const quantity = Number(req.body.quantity);
+    const buyQuantityInput = String(req.body.buyQuantity ?? '').trim();
+    const buyQuantity = buyQuantityInput ? Number(buyQuantityInput) : quantity;
     const price = Number(req.body.price || 0);
     const lowStockThreshold = Number(req.body.lowStockThreshold);
     const supplierName = String(req.body.supplierName || '').trim();
-    if (!Number.isInteger(quantity) || quantity < 0 || !Number.isFinite(price) || price < 0 || !Number.isFinite(lowStockThreshold) || lowStockThreshold < 0) {
+    if (!Number.isInteger(quantity) || quantity < 0 || !Number.isInteger(buyQuantity) || buyQuantity < 0 || !Number.isFinite(price) || price < 0 || !Number.isFinite(lowStockThreshold) || lowStockThreshold < 0) {
       return res.status(400).send('Stock, price, and low-stock threshold must be valid and zero or greater.');
     }
     if (supplierName.length > 120) return res.status(400).send('Supplier name must be 120 characters or fewer.');
@@ -540,6 +542,7 @@ exports.createProduct = async (req, res) => {
       supplierName,
       quantityType: quantityType._id,
       quantityTypeName: quantityType.name,
+      buyQuantity,
       quantity,
       price,
       barcode: String(req.body.barcode || '').trim() || undefined,
@@ -577,11 +580,13 @@ exports.saveProducts = async (req, res) => {
       const name = standardizeProductName(row.name);
       const sku = String(row.sku || '').trim();
       const quantity = Number(row.quantity);
+      const buyQuantityInput = String(row.buyQuantity ?? '').trim();
+      const buyQuantity = buyQuantityInput ? Number(buyQuantityInput) : quantity;
       const price = Number(row.price || 0);
       const lowStockThreshold = Number(row.lowStockThreshold);
       const supplierName = String(row.supplierName || '').trim();
       const barcode = String(row.barcode || '').trim();
-      if (!name || name.length > 120 || supplierName.length > 120 || sku.length > 60 || barcode.length > 100 || !Number.isInteger(quantity) || quantity < 0 || !Number.isFinite(price) || price < 0 || !Number.isInteger(lowStockThreshold) || lowStockThreshold < 0) {
+      if (!name || name.length > 120 || supplierName.length > 120 || sku.length > 60 || barcode.length > 100 || !Number.isInteger(quantity) || quantity < 0 || !Number.isInteger(buyQuantity) || buyQuantity < 0 || !Number.isFinite(price) || price < 0 || !Number.isInteger(lowStockThreshold) || lowStockThreshold < 0) {
         return res.status(400).send('Each changed row needs a product name, valid whole-number stock values, and a nonnegative price.');
       }
       if (sku && submittedSkus.has(sku.toLowerCase())) return res.status(409).send(`SKU ${sku} is repeated in the table.`);
@@ -602,6 +607,7 @@ exports.saveProducts = async (req, res) => {
         supplierName,
         quantityType: quantityType._id,
         quantityTypeName: quantityType.name,
+        buyQuantity,
         quantity,
         price,
         lowStockThreshold,
@@ -643,13 +649,13 @@ exports.saveProducts = async (req, res) => {
 };
 
 exports.downloadProductTemplate = (req, res) => {
-  const headers = ['entryDateNepali', 'name', 'quantity', 'unit', 'supplierName', 'price', 'color', 'size', 'sku', 'description', 'barcode', 'category', 'lowStockThreshold'];
+  const headers = ['entryDateNepali', 'name', 'buyQuantity', 'quantity', 'unit', 'supplierName', 'price', 'color', 'size', 'sku', 'description', 'barcode', 'category', 'lowStockThreshold'];
   res.type('text/csv');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
   res.setHeader('Content-Disposition', 'attachment; filename="inventory-products-template.csv"');
-  res.send(`${headers.join(',')}\r\n${String(bs.ADToBS(new Date()) || '').trim()},Sample product,10,pcs,,0,Blue,Medium,SKU-001,Product description,123456789012,,5\r\n`);
+  res.send(`${headers.join(',')}\r\n${String(bs.ADToBS(new Date()) || '').trim()},Sample product,10,10,pcs,,0,Blue,Medium,SKU-001,Product description,123456789012,,5\r\n`);
 };
 
 exports.importProductsCsv = [inventoryCsvUpload.single('productCsv'), async (req, res) => {
@@ -679,6 +685,7 @@ exports.importProductsCsv = [inventoryCsvUpload.single('productCsv'), async (req
       const categoryName = String(row.category || '').trim();
       const category = categoryName ? categoryMap.get(categoryName.toLowerCase()) : null;
       const quantity = Number(row.quantity);
+      const buyQuantity = row.buyQuantity === undefined || String(row.buyQuantity).trim() === '' ? quantity : Number(row.buyQuantity);
       const price = Number(row.price || 0);
       const lowStockThreshold = Number(row.lowStockThreshold || 5);
       const sku = String(row.sku || '').trim();
@@ -689,6 +696,7 @@ exports.importProductsCsv = [inventoryCsvUpload.single('productCsv'), async (req
       if (!unit) invalidFields.push('unit');
       if (categoryName && !category) invalidFields.push('category');
       if (!Number.isInteger(quantity) || quantity < 0) invalidFields.push('quantity');
+      if (!Number.isInteger(buyQuantity) || buyQuantity < 0) invalidFields.push('buy quantity');
       if (!Number.isFinite(price) || price < 0) invalidFields.push('price');
       if (!Number.isInteger(lowStockThreshold) || lowStockThreshold < 0) invalidFields.push('low-stock alert');
       if (invalidFields.length) {
@@ -712,6 +720,7 @@ exports.importProductsCsv = [inventoryCsvUpload.single('productCsv'), async (req
         supplierName,
         quantityType: unit._id,
         quantityTypeName: unit.name,
+        buyQuantity,
         quantity,
         price,
         lowStockThreshold,

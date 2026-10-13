@@ -21,6 +21,7 @@ const inventoryProductSchema = new mongoose.Schema({
   supplierName: { type: String, trim: true, maxlength: 120, default: '' },
   quantityType: { type: mongoose.Schema.Types.ObjectId, ref: 'inventoryQuantityType', required: true },
   quantityTypeName: { type: String, required: true, trim: true },
+  buyQuantity: { type: Number, min: 0, default: undefined },
   quantity: { type: Number, required: true, min: 0, default: 0 },
   price: { type: Number, required: true, min: 0, default: 0 },
   lowStockThreshold: { type: Number, required: true, min: 0, default: 5 },

@@ -120,21 +120,22 @@ tbody tr:last-child td { border-bottom: 0; }
 .product-entry-table-wrap::-webkit-scrollbar-track { background: #edf1ee; }
 .product-entry-table-wrap::-webkit-scrollbar-thumb { border: 2px solid #edf1ee; border-radius: 999px; background: #8ca39a; }
 .product-sheet-panel { width: 100%; min-width: 0; }
-.product-entry-table { min-width: 1930px; table-layout: fixed; border-collapse: collapse; }
+.product-entry-table { min-width: 2040px; table-layout: fixed; border-collapse: collapse; }
 .product-entry-table th { padding: 12px 9px; border: 1px solid #111; color: #202522; background: #f3f5f3; }
 .product-entry-table th span { color: var(--muted); font-size: 10px; font-weight: 500; }
 .product-entry-table th:nth-child(1) { width: 155px; }
 .product-entry-table th:nth-child(2) { width: 190px; }
 .product-entry-table th:nth-child(3) { width: 110px; }
-.product-entry-table th:nth-child(4) { width: 140px; }
-.product-entry-table th:nth-child(5) { width: 115px; }
-.product-entry-table th:nth-child(6) { width: 180px; }
-.product-entry-table th:nth-child(7), .product-entry-table th:nth-child(8) { width: 100px; }
-.product-entry-table th:nth-child(9) { width: 125px; }
-.product-entry-table th:nth-child(10) { width: 250px; }
-.product-entry-table th:nth-child(11) { width: 160px; }
-.product-entry-table th:nth-child(12) { width: 145px; }
-.product-entry-table th:nth-child(13) { width: 130px; }
+.product-entry-table th:nth-child(4) { width: 125px; }
+.product-entry-table th:nth-child(5) { width: 140px; }
+.product-entry-table th:nth-child(6) { width: 115px; }
+.product-entry-table th:nth-child(7) { width: 180px; }
+.product-entry-table th:nth-child(8), .product-entry-table th:nth-child(9) { width: 100px; }
+.product-entry-table th:nth-child(10) { width: 125px; }
+.product-entry-table th:nth-child(11) { width: 250px; }
+.product-entry-table th:nth-child(12) { width: 160px; }
+.product-entry-table th:nth-child(13) { width: 145px; }
+.product-entry-table th:nth-child(14) { width: 130px; }
 .product-entry-table td { padding: 0; border: 1px solid #111; background: #fff; }
 .product-entry-table input, .product-entry-table select { display: block; width: 100%; min-height: 44px; padding: 9px; border: 0; border-radius: 0; color: var(--ink); background: transparent; font-size: 13px; }
 .product-entry-table .new-product-row { background: #f8fbf8; }

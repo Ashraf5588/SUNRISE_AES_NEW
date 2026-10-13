@@ -40,13 +40,14 @@
 						</div>
 						<button class="button" type="submit" <%= !quantityTypes.length ? 'disabled' : '' %>>Save table</button>
 					</div>
-					<div class="product-entry-table-wrap"><table class="product-entry-table"><thead><tr><th>Entry date (BS)</th><th>Product name</th><th>Quantity</th><th>Unit</th><th>Price</th><th>Buy from</th><th>Color</th><th>Size</th><th>SKU / code</th><th>Description</th><th>Barcode</th><th>Category <span>(optional)</span></th><th>Low-stock alert</th></tr></thead>
+					<div class="product-entry-table-wrap"><table class="product-entry-table"><thead><tr><th>Entry date (BS)</th><th>Product name</th><th>Buy quantity</th><th>Available quantity</th><th>Unit</th><th>Price</th><th>Buy from</th><th>Color</th><th>Size</th><th>SKU / code</th><th>Description</th><th>Barcode</th><th>Category <span>(optional)</span></th><th>Low-stock alert</th></tr></thead>
 						<tbody>
 						<% const newRowIndex = products.length; %>
 						<tr class="product-sheet-row new-product-row" data-existing="false">
 							<td><input type="hidden" name="products[<%= newRowIndex %>][touched]" value="0"><input class="sheet-input nepali-datepicker" name="products[<%= newRowIndex %>][entryDateNepali]" type="text" value="<%= todayNepaliDate %>" placeholder="YYYY-MM-DD" aria-label="New product entry date in Nepali calendar"></td>
 							<td><input class="sheet-input" name="products[<%= newRowIndex %>][name]" maxlength="120" placeholder="New product name" aria-label="New product name"></td>
-							<td><input class="sheet-input" name="products[<%= newRowIndex %>][quantity]" type="number" min="0" step="1" value="0" aria-label="New product quantity"></td>
+							<td><input class="sheet-input new-buy-quantity" name="products[<%= newRowIndex %>][buyQuantity]" type="number" min="0" step="1" value="0" aria-label="New product buy quantity"></td>
+							<td><input class="sheet-input new-available-quantity" name="products[<%= newRowIndex %>][quantity]" type="number" min="0" step="1" value="0" aria-label="New product available quantity"></td>
 							<td><select class="sheet-input" name="products[<%= newRowIndex %>][quantityType]" aria-label="New product quantity unit"><% quantityTypes.forEach(unit => { %><option value="<%= unit._id %>" <%= String(unit._id) === defaultQuantityTypeId ? 'selected' : '' %>><%= unit.name %><%= unit.abbreviation ? ` (${unit.abbreviation})` : '' %></option><% }) %></select></td>
 							<td><input class="sheet-input" name="products[<%= newRowIndex %>][price]" type="number" min="0" step="0.01" value="0" aria-label="New product price"></td>
 							<td><input class="sheet-input" name="products[<%= newRowIndex %>][supplierName]" maxlength="120" list="inventorySupplierOptions" aria-label="New product supplier or store"></td>
@@ -62,7 +63,8 @@
 						<tr class="product-sheet-row" data-existing="true">
 							<td><input type="hidden" name="products[<%= index %>][productId]" value="<%= product._id %>"><input type="hidden" name="products[<%= index %>][touched]" value="1"><input class="sheet-input nepali-datepicker" name="products[<%= index %>][entryDateNepali]" type="text" value="<%= product.entryDateNepali || todayNepaliDate %>" placeholder="YYYY-MM-DD" required aria-label="Entry date in Nepali calendar"></td>
 							<td><input class="sheet-input" name="products[<%= index %>][name]" value="<%= product.name %>" required maxlength="120" aria-label="Product name"></td>
-							<td><input class="sheet-input" name="products[<%= index %>][quantity]" type="number" min="0" step="1" value="<%= product.quantity %>" required aria-label="Quantity"></td>
+							<td><input class="sheet-input" name="products[<%= index %>][buyQuantity]" type="number" min="0" step="1" value="<%= product.buyQuantity ?? product.quantity %>" required aria-label="Buy quantity"></td>
+							<td><input class="sheet-input" name="products[<%= index %>][quantity]" type="number" min="0" step="1" value="<%= product.quantity %>" required aria-label="Available quantity"></td>
 							<td><select class="sheet-input" name="products[<%= index %>][quantityType]" required aria-label="Quantity unit"><% quantityTypes.forEach(unit => { %><option value="<%= unit._id %>" <%= String(product.quantityType || '') === String(unit._id) ? 'selected' : '' %>><%= unit.name %><%= unit.abbreviation ? ` (${unit.abbreviation})` : '' %></option><% }) %></select></td>
 							<td><input class="sheet-input" name="products[<%= index %>][price]" type="number" min="0" step="0.01" value="<%= product.price ?? 0 %>" required aria-label="Price"></td>
 							<td><input class="sheet-input" name="products[<%= index %>][supplierName]" value="<%= product.supplierName || '' %>" maxlength="120" list="inventorySupplierOptions" aria-label="Supplier or store bought from"></td>
@@ -92,6 +94,8 @@
 	const uploadStatus = document.getElementById('uploadStatus');
 	const uploadMessage = document.getElementById('uploadMessage');
 	const newProductRow = document.querySelector('.new-product-row');
+	const newBuyQuantityInput = newProductRow?.querySelector('.new-buy-quantity');
+	const newAvailableQuantityInput = newProductRow?.querySelector('.new-available-quantity');
 	const productTableWrap = document.querySelector('.product-entry-table-wrap');
 	const scrollIndicator = document.querySelector('.product-table-scroll-indicator');
 	const scrollIndicatorTrack = document.querySelector('.scroll-indicator-track');
@@ -100,10 +104,16 @@
 		newProductRow.querySelector('[name$="[touched]"]').value = '1';
 		newProductRow.querySelector('[name$="[name]"]').required = true;
 		newProductRow.querySelector('[name$="[quantityType]"]').required = true;
+		newProductRow.querySelector('[name$="[buyQuantity]"]').required = true;
 		newProductRow.querySelector('[name$="[quantity]"]').required = true;
 		newProductRow.querySelector('[name$="[lowStockThreshold]"]').required = true;
 		newProductRow.querySelector('[name$="[entryDateNepali]"]').required = true;
 	};
+	let newAvailableQuantityEdited = false;
+	newAvailableQuantityInput?.addEventListener('input', () => { newAvailableQuantityEdited = true; });
+	newBuyQuantityInput?.addEventListener('input', () => {
+		if (newAvailableQuantityInput && !newAvailableQuantityEdited) newAvailableQuantityInput.value = newBuyQuantityInput.value;
+	});
 	newProductRow?.querySelectorAll('.sheet-input').forEach((input) => {
 		input.addEventListener('input', markNewRowTouched);
 		input.addEventListener('change', markNewRowTouched);
