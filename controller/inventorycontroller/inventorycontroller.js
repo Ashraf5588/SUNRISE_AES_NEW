@@ -37,10 +37,7 @@ const productIdentityKey = (product) => JSON.stringify([
   normalizeProductIdentityValue(product.color),
   normalizeProductIdentityValue(product.size),
   normalizeProductIdentityValue(product.sku),
-  normalizeProductIdentityValue(product.barcode),
-  normalizeProductIdentityValue(product.description),
-  Number(product.price) || 0,
-  Number(product.lowStockThreshold) || 0
+  normalizeProductIdentityValue(product.barcode)
 ]);
 const findMatchingProductRecords = async (product, excludeId) => {
   const normalizedName = standardizeProductName(product.name).replace(/\s+/g, '').toLowerCase();
