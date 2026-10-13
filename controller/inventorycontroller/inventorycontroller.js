@@ -42,6 +42,46 @@ const productIdentityKey = (product) => JSON.stringify([
   Number(product.price) || 0,
   Number(product.lowStockThreshold) || 0
 ]);
+const findMatchingProductRecords = async (product, excludeId) => {
+  const normalizedName = standardizeProductName(product.name).replace(/\s+/g, '').toLowerCase();
+  if (!normalizedName || !product.quantityType) return [];
+  const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const namePattern = new RegExp(`^${[...normalizedName].map(escapeRegExp).join('\\s*')}$`, 'i');
+  const filter = { active: true, quantityType: product.quantityType, name: namePattern };
+  if (excludeId) filter._id = { $ne: excludeId };
+  const candidates = await InventoryProduct.find(filter).lean();
+  return candidates.filter(candidate => {
+    const productDate = normalizeProductIdentityValue(product.entryDateNepali);
+    const candidateDate = normalizeProductIdentityValue(candidate.entryDateNepali);
+    const sameDate = !productDate || !candidateDate || productDate === candidateDate;
+    const sameVariant = normalizeProductIdentityValue(candidate.color) === normalizeProductIdentityValue(product.color)
+      && normalizeProductIdentityValue(candidate.size) === normalizeProductIdentityValue(product.size)
+      && normalizeProductIdentityValue(candidate.categoryName) === normalizeProductIdentityValue(product.categoryName);
+    const skuCompatible = !candidate.sku || !product.sku || normalizeProductIdentityValue(candidate.sku) === normalizeProductIdentityValue(product.sku);
+    const barcodeCompatible = !candidate.barcode || !product.barcode || normalizeProductIdentityValue(candidate.barcode) === normalizeProductIdentityValue(product.barcode);
+    return sameDate && sameVariant && skuCompatible && barcodeCompatible;
+  });
+};
+const buildProductStockMergeOperation = (existing, incoming) => {
+  const existingBuyQuantity = existing.buyQuantity === undefined || existing.buyQuantity === null
+    ? Number(existing.quantity) || 0
+    : Number(existing.buyQuantity) || 0;
+  const setValues = {
+    buyQuantity: existingBuyQuantity + (Number(incoming.buyQuantity) || 0),
+    entryDateNepali: String(incoming.entryDateNepali || '') > String(existing.entryDateNepali || '')
+      ? incoming.entryDateNepali
+      : existing.entryDateNepali || incoming.entryDateNepali || ''
+  };
+  if (!existing.supplierName && incoming.supplierName) setValues.supplierName = incoming.supplierName;
+  if (!existing.sku && incoming.sku) setValues.sku = incoming.sku;
+  if (!existing.barcode && incoming.barcode) setValues.barcode = incoming.barcode;
+  return {
+    updateOne: {
+      filter: { _id: existing._id, active: true },
+      update: { $set: setValues, $inc: { quantity: Number(incoming.quantity) || 0 } }
+    }
+  };
+};
 const groupInventoryProducts = (products) => {
   const groups = new Map();
   for (const product of products) {
@@ -204,8 +244,17 @@ exports.searchRequestProducts = async (req, res) => {
           },
           id: { $first: '$_id' },
           quantity: { $sum: { $ifNull: ['$quantity', 0] } },
+          categoryId: { $first: '$category' },
+          quantityTypeId: { $first: '$quantityType' },
           unit: { $first: '$quantityTypeName' },
-          sku: { $first: '$sku' }
+          sku: { $first: '$sku' },
+          barcode: { $first: '$barcode' },
+          supplierName: { $first: '$supplierName' },
+          color: { $first: '$color' },
+          size: { $first: '$size' },
+          price: { $first: '$price' },
+          lowStockThreshold: { $first: '$lowStockThreshold' },
+          description: { $first: '$description' }
         }
       },
       { $sort: { '_id.name': 1 } },
@@ -215,8 +264,17 @@ exports.searchRequestProducts = async (req, res) => {
       id: String(product.id),
       name: product._id.name,
       quantity: Number(product.quantity) || 0,
+      categoryId: product.categoryId ? String(product.categoryId) : '',
+      quantityTypeId: product.quantityTypeId ? String(product.quantityTypeId) : '',
       unit: product.unit,
-      sku: product.sku || ''
+      sku: product.sku || '',
+      barcode: product.barcode || '',
+      supplierName: product.supplierName || '',
+      color: product.color || '',
+      size: product.size || '',
+      price: Number(product.price) || 0,
+      lowStockThreshold: Number(product.lowStockThreshold) || 0,
+      description: product.description || ''
     })));
   } catch (error) {
     console.error('Unable to search requested products:', error);
@@ -508,7 +566,7 @@ exports.productsPage = async (req, res) => {
       quantityTypes,
       defaultQuantityTypeId: String(defaultQuantityType._id),
       todayNepaliDate: String(bs.ADToBS(new Date()) || '').trim(),
-      message: req.query.saved ? 'Product table saved.' : ''
+      message: req.query.merged ? 'Stock added to the existing matching product.' : req.query.saved ? 'Product table saved.' : ''
     });
   } catch (error) {
     console.error('Unable to load inventory products:', error);
@@ -534,7 +592,7 @@ exports.createProduct = async (req, res) => {
     }
     if (supplierName.length > 120) return res.status(400).send('Supplier name must be 120 characters or fewer.');
     if (supplierName) await saveSupplierName(supplierName);
-    await InventoryProduct.create({
+    const productValues = {
       name: standardizeProductName(req.body.name),
       sku: String(req.body.sku || '').trim() || undefined,
       category: category?._id,
@@ -551,7 +609,16 @@ exports.createProduct = async (req, res) => {
       color: String(req.body.color || '').trim(),
       size: String(req.body.size || '').trim(),
       description: req.body.description
-    });
+    };
+    const matchingProducts = await findMatchingProductRecords(productValues);
+    if (matchingProducts.length > 1) {
+      return res.status(409).send(`More than one existing product matches "${productValues.name}" on the same date. Update the correct product row instead of adding a new one.`);
+    }
+    if (matchingProducts.length === 1) {
+      await InventoryProduct.bulkWrite([buildProductStockMergeOperation(matchingProducts[0], productValues)]);
+      return res.redirect('/inventory/products?saved=1&merged=1');
+    }
+    await InventoryProduct.create(productValues);
     res.redirect('/inventory/products?saved=1');
   } catch (error) {
     console.error('Unable to create inventory product:', error);
@@ -576,6 +643,7 @@ exports.saveProducts = async (req, res) => {
     const operations = [];
     const submittedSkus = new Set();
     const submittedBarcodes = new Set();
+    let mergedExistingProduct = false;
     for (const row of changedRows) {
       const name = standardizeProductName(row.name);
       const sku = String(row.sku || '').trim();
@@ -630,7 +698,16 @@ exports.saveProducts = async (req, res) => {
       } else {
         if (sku) values.sku = sku;
         if (barcode) values.barcode = barcode;
-        operations.push({ insertOne: { document: values } });
+        const matchingProducts = await findMatchingProductRecords(values);
+        if (matchingProducts.length > 1) {
+          return res.status(409).send(`More than one existing product matches "${name}" on the same date. Update the correct product row instead of adding a new one.`);
+        }
+        if (matchingProducts.length === 1) {
+          operations.push(buildProductStockMergeOperation(matchingProducts[0], values));
+          mergedExistingProduct = true;
+        } else {
+          operations.push({ insertOne: { document: values } });
+        }
       }
     }
 
@@ -640,7 +717,7 @@ exports.saveProducts = async (req, res) => {
     }
     await InventoryProduct.bulkWrite(operations, { ordered: true });
     await Promise.all([...new Set(changedRows.map((row) => String(row.supplierName || '').trim()).filter(Boolean))].map(saveSupplierName));
-    return res.redirect(returnUrl);
+    return res.redirect(mergedExistingProduct ? `${returnUrl}&merged=1` : returnUrl);
   } catch (error) {
     console.error('Unable to save inventory product rows:', error);
     if (error.code === 11000) return res.status(409).send('A product SKU is already in use. Review the table and try again.');

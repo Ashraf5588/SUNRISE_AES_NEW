@@ -45,7 +45,7 @@
 						<% const newRowIndex = products.length; %>
 						<tr class="product-sheet-row new-product-row" data-existing="false">
 							<td><input type="hidden" name="products[<%= newRowIndex %>][touched]" value="0"><input class="sheet-input nepali-datepicker" name="products[<%= newRowIndex %>][entryDateNepali]" type="text" value="<%= todayNepaliDate %>" placeholder="YYYY-MM-DD" aria-label="New product entry date in Nepali calendar"></td>
-							<td><input class="sheet-input" name="products[<%= newRowIndex %>][name]" maxlength="120" placeholder="New product name" aria-label="New product name"></td>
+							<td><div class="product-name-autocomplete"><input class="sheet-input new-product-name-input" name="products[<%= newRowIndex %>][name]" maxlength="120" placeholder="New product name" aria-label="New product name" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="productNameSuggestions"><div class="search-results product-name-suggestions" id="productNameSuggestions" role="listbox" hidden></div></div></td>
 							<td><input class="sheet-input new-buy-quantity" name="products[<%= newRowIndex %>][buyQuantity]" type="number" min="0" step="1" value="0" aria-label="New product buy quantity"></td>
 							<td><input class="sheet-input new-available-quantity" name="products[<%= newRowIndex %>][quantity]" type="number" min="0" step="1" value="0" aria-label="New product available quantity"></td>
 							<td><select class="sheet-input" name="products[<%= newRowIndex %>][quantityType]" aria-label="New product quantity unit"><% quantityTypes.forEach(unit => { %><option value="<%= unit._id %>" <%= String(unit._id) === defaultQuantityTypeId ? 'selected' : '' %>><%= unit.name %><%= unit.abbreviation ? ` (${unit.abbreviation})` : '' %></option><% }) %></select></td>
@@ -94,11 +94,97 @@
 	const uploadStatus = document.getElementById('uploadStatus');
 	const uploadMessage = document.getElementById('uploadMessage');
 	const newProductRow = document.querySelector('.new-product-row');
+	const newProductNameInput = newProductRow?.querySelector('.new-product-name-input');
+	const productNameSuggestions = document.getElementById('productNameSuggestions');
 	const newBuyQuantityInput = newProductRow?.querySelector('.new-buy-quantity');
 	const newAvailableQuantityInput = newProductRow?.querySelector('.new-available-quantity');
 	const productTableWrap = document.querySelector('.product-entry-table-wrap');
 	const scrollIndicator = document.querySelector('.product-table-scroll-indicator');
 	const scrollIndicatorTrack = document.querySelector('.scroll-indicator-track');
+	let productNameSearchTimer;
+	let productNameSearchNumber = 0;
+	const closeProductNameSuggestions = () => {
+		if (!productNameSuggestions || !newProductNameInput) return;
+		productNameSuggestions.hidden = true;
+		newProductNameInput.setAttribute('aria-expanded', 'false');
+	};
+	const setNewProductField = (fieldName, value) => {
+		const field = newProductRow?.querySelector(`[name$="[${fieldName}]"]`);
+		if (!field) return;
+		field.value = value ?? '';
+		field.dispatchEvent(new Event('change', { bubbles: true }));
+	};
+	newProductNameInput?.addEventListener('input', () => {
+		clearTimeout(productNameSearchTimer);
+		const query = newProductNameInput.value.trim();
+		const requestNumber = ++productNameSearchNumber;
+		if (query.length < 2 || !productNameSuggestions) {
+			closeProductNameSuggestions();
+			return;
+		}
+		productNameSearchTimer = window.setTimeout(async () => {
+			try {
+				const response = await fetch(`/inventory/search/products?q=${encodeURIComponent(query)}`);
+				if (!response.ok) throw new Error('Product search failed');
+				const matches = await response.json();
+				if (requestNumber !== productNameSearchNumber) return;
+				productNameSuggestions.replaceChildren();
+				matches.forEach(product => {
+					const option = document.createElement('button');
+					option.type = 'button';
+					option.className = 'search-result';
+					option.setAttribute('role', 'option');
+					const name = document.createElement('strong');
+					name.textContent = product.name;
+					const detail = document.createElement('small');
+					const variant = [product.color, product.size].filter(Boolean).join(' / ');
+					detail.textContent = `${product.quantity} ${product.unit} available${variant ? ` / ${variant}` : ''}`;
+					option.append(name, detail);
+					option.addEventListener('click', () => {
+						newProductNameInput.value = product.name;
+						newProductNameInput.dispatchEvent(new Event('change', { bubbles: true }));
+						setNewProductField('quantityType', product.quantityTypeId);
+						setNewProductField('category', product.categoryId);
+						setNewProductField('color', product.color);
+						setNewProductField('size', product.size);
+						setNewProductField('sku', product.sku);
+						setNewProductField('barcode', product.barcode);
+						setNewProductField('price', product.price);
+						setNewProductField('lowStockThreshold', product.lowStockThreshold);
+						setNewProductField('description', product.description);
+						closeProductNameSuggestions();
+						newBuyQuantityInput?.focus();
+					});
+					option.addEventListener('keydown', event => {
+						const options = [...productNameSuggestions.querySelectorAll('[role="option"]')];
+						const currentIndex = options.indexOf(option);
+						if (event.key === 'ArrowDown' && options[currentIndex + 1]) {
+							event.preventDefault();
+							options[currentIndex + 1].focus();
+						} else if (event.key === 'ArrowUp') {
+							event.preventDefault();
+							(currentIndex > 0 ? options[currentIndex - 1] : newProductNameInput)?.focus();
+						} else if (event.key === 'Escape') {
+							closeProductNameSuggestions();
+							newProductNameInput.focus();
+						}
+					});
+					productNameSuggestions.appendChild(option);
+				});
+				productNameSuggestions.hidden = matches.length === 0;
+				newProductNameInput.setAttribute('aria-expanded', String(matches.length > 0));
+			} catch (error) {
+				closeProductNameSuggestions();
+			}
+		}, 180);
+	});
+	newProductNameInput?.addEventListener('keydown', event => {
+		if (event.key === 'Escape') closeProductNameSuggestions();
+		if (event.key === 'ArrowDown' && !productNameSuggestions?.hidden) {
+			event.preventDefault();
+			productNameSuggestions.querySelector('[role="option"]')?.focus();
+		}
+	});
 	const markNewRowTouched = () => {
 		if (!newProductRow) return;
 		newProductRow.querySelector('[name$="[touched]"]').value = '1';

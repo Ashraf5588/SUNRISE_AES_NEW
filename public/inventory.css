@@ -142,6 +142,8 @@ tbody tr:last-child td { border-bottom: 0; }
 .product-entry-table .new-product-row td { background: #f8fbf8; }
 .product-entry-table .new-product-row input:focus, .product-entry-table .new-product-row select:focus { background: #fff; }
 .product-entry-table input:focus, .product-entry-table select:focus { position: relative; z-index: 1; outline: 2px solid var(--green); outline-offset: -2px; }
+.product-name-autocomplete { position: relative; min-width: 0; }
+.product-name-suggestions { z-index: 8; }
 .product-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 14px; }
 .product-search { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 14px; }
 .product-search label { color: var(--ink); font-size: 13px; font-weight: 700; }
