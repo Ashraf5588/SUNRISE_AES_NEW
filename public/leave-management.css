@@ -226,7 +226,12 @@ body.employee-nav-collapsed .leave-shell {
 	.leave-table-wrap::-webkit-scrollbar { height: 6px; }
 	.leave-table-wrap::-webkit-scrollbar-track { background: #edf1ee; }
 	.leave-table-wrap::-webkit-scrollbar-thumb { border-radius: 3px; background: var(--leave-green); }
-	.leave-table { width: 1160px; min-width: 1160px; table-layout: fixed; }
+	.leave-table { display: table; width: 1160px; min-width: 1160px; table-layout: fixed; }
+	.leave-table thead { display: table-header-group; }
+	.leave-table tbody { display: table-row-group; width: auto; }
+	.leave-table tbody tr { display: table-row; }
+	.leave-table th, .leave-table td { display: table-cell; }
+	.leave-table td::before { content: none; }
 	.leave-table th { padding: 6px 3px; font-size: 8px; white-space: nowrap; }
 	.leave-table td { overflow: hidden; padding: 5px 3px; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; overflow-wrap: normal; word-break: normal; }
 	.leave-table td strong, .leave-table td small, .leave-table td a { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
