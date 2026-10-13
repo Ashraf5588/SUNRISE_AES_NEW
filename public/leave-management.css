@@ -226,9 +226,9 @@ body.employee-nav-collapsed .leave-shell {
 	.leave-table-wrap::-webkit-scrollbar { height: 6px; }
 	.leave-table-wrap::-webkit-scrollbar-track { background: #edf1ee; }
 	.leave-table-wrap::-webkit-scrollbar-thumb { border-radius: 3px; background: var(--leave-green); }
-	.leave-table { min-width: 820px; }
+	.leave-table { width: 920px; min-width: 920px; table-layout: fixed; }
 	.leave-table th { padding: 6px 3px; font-size: 8px; }
-	.leave-table td { padding: 5px 3px; font-size: 10px; }
+	.leave-table td { padding: 5px 3px; font-size: 10px; overflow-wrap: normal; word-break: normal; }
 	.leave-table td small { margin-top: 2px; font-size: 10px; }
 	.leave-action-icons { justify-content: flex-end; }
 }

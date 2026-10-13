@@ -215,8 +215,6 @@
 		const leaveTypeSelect = document.getElementById('leaveType');
 		const leaveDaySelect = document.getElementById('leaveDay');
 		const sandwichInput = document.getElementById('sandwichLeave');
-		const approverSelect = document.getElementById('approverName');
-		const recommenderSelect = document.getElementById('recommendedBy');
 		const documentField = document.getElementById('documentField');
 		const documentInput = document.getElementById('supportingDocument');
 		const startDateBsInput = document.getElementById('startDateBs');
@@ -290,13 +288,6 @@
 				photo.hidden = !photo.src;
 			}
 			if (photoEmpty && option) photoEmpty.hidden = Boolean(option.dataset.photo);
-			const department = String(option?.dataset.department || '<%= currentEmployee.department || '' %>').trim().toLowerCase();
-			[approverSelect, recommenderSelect].filter(Boolean).forEach(select => {
-				Array.from(select.options).forEach((item, index) => {
-					if (index && item.value) item.hidden = Boolean(department && String(item.dataset.department || '').trim().toLowerCase() !== department);
-				});
-				if (select.selectedOptions[0]?.hidden) select.value = '';
-			});
 			filterLeaveTypesForApplicant();
 		}
 		function filterEmployeesForBranch() {

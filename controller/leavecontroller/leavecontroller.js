@@ -117,10 +117,13 @@ const getDepartmentAdmins = (users, profiles) => users.map(user => {
 		department: String(profile.department || user.department || '').trim()
 	};
 }).filter(admin => admin.name);
-const getDepartmentAdminNames = (users, profiles, department) => new Map(
+const getAdminDepartmentStaff = (users, profiles) => [...new Map(
 	getDepartmentAdmins(users, profiles)
-		.filter(admin => !normalizeName(department) || normalizeName(admin.department) === normalizeName(department))
-		.map(admin => [normalizeName(admin.name), admin.name])
+		.filter(admin => normalizeName(admin.department) === 'admin')
+		.map(admin => [normalizeName(admin.name), admin])
+).values()];
+const getDepartmentAdminNames = (users, profiles) => new Map(
+	getAdminDepartmentStaff(users, profiles).map(admin => [normalizeName(admin.name), admin.name])
 );
 
 const getRole = (user) => String(user?.role || '').trim().toUpperCase();
@@ -246,12 +249,12 @@ exports.leavePage = async (req, res) => {
 			.skip((page - 1) * pageSizeNumber);
 		if (pageSize !== 'all') applicationQuery.limit(pageSizeNumber);
 		else if (applicationCount) applicationQuery.limit(applicationCount);
-		const [allLeaveTypes, applicationRecords, users, branches, adminUsers, holidays] = await Promise.all([
+		const [allLeaveTypes, applicationRecords, users, branches, approverUsers, holidays] = await Promise.all([
 			LeaveType.find({ isActive: true }).sort({ leavename: 1 }).lean(),
 			applicationQuery.lean(),
 			admin ? User.find({}).select('teacherName username role employeeCode department').sort({ teacherName: 1, username: 1 }).lean() : Promise.resolve([req.user]),
 			Branch.find({}).select('name').sort({ name: 1 }).lean(),
-			User.find({ role: { $in: ['ADMIN', 'DEPARTMENT_ADMIN'] } }).select('teacherName username employeeCode department').lean(),
+			User.find({}).select('teacherName username role employeeCode department').sort({ teacherName: 1, username: 1 }).lean(),
 			EmployeeWeekend.find({}).select('dateBs').lean()
 		]);
 		const applications = applicationRecords.map(application => ({
@@ -308,7 +311,7 @@ exports.leavePage = async (req, res) => {
 		}
 		const remainingQuotaTypeCount = leaveBalances.filter(balance => balance.remainingDays !== null).length;
 		const totalRemainingLeave = leaveBalances.reduce((total, balance) => total + (balance.remainingDays || 0), 0);
-		const departmentAdmins = getDepartmentAdmins(adminUsers, profiles);
+		const departmentAdmins = getAdminDepartmentStaff(approverUsers, profiles);
 		const editingApplication = admin && mongoose.isValidObjectId(req.query.edit)
 			? applications.find(application => String(application._id) === String(req.query.edit) && application.status === 'pending') || null
 			: null;
@@ -476,7 +479,7 @@ exports.submitLeaveApplication = [handleLeaveDocumentUpload, async (req, res) =>
 		const applicantLeaveFilter = getEmployeeLeaveFilter(applicant, profile);
 		const department = String(profile.department || applicant.department || '').trim();
 		const departmentAdminNames = getDepartmentAdminNames(
-			await User.find({ role: { $in: ['ADMIN', 'DEPARTMENT_ADMIN'] } }).select('teacherName username employeeCode department').lean(),
+			await User.find({}).select('teacherName username employeeCode department').lean(),
 			profiles
 		);
 		const requestedApproverName = String(req.body.approverName || '').trim();
@@ -617,7 +620,7 @@ exports.updateLeaveApplication = [handleLeaveDocumentUpload, async (req, res) =>
 		if (!requestedDays) return res.status(400).send('The selected dates contain no chargeable leave days.');
 		const department = String(profile.department || applicant.department || '').trim();
 		const departmentAdminNames = getDepartmentAdminNames(
-			await User.find({ role: { $in: ['ADMIN', 'DEPARTMENT_ADMIN'] } }).select('teacherName username employeeCode department').lean(),
+			await User.find({}).select('teacherName username employeeCode department').lean(),
 			profiles
 		);
 		const requestedApproverName = String(req.body.approverName || '').trim();
