@@ -17,7 +17,7 @@
 	<% if (showInventoryNavigation) { %><%- include('inventorynav', { currentPath }) %><% } %>
 	<main class="inventory-main">
 		<header class="page-header">
-			<div><p class="eyebrow">Inventory / Requests</p><h1>Product requests</h1><p class="page-subtitle">Request stock and follow its review status.</p></div>
+			<div><p class="eyebrow">Inventory / Requests</p><h1><%= isInventoryManager ? 'Product requests' : 'Products assigned to me' %></h1><p class="page-subtitle"><%= isInventoryManager ? 'Review requests and follow their status.' : 'View inventory products assigned to you.' %></p></div>
 		</header>
 		<% if (message) { %><div class="notice"><%= message %></div><% } %>
 
@@ -55,6 +55,26 @@
 		</section>
 	<% } %>
 
+		<% if (!isInventoryManager) { %>
+		<section class="panel request-list-panel">
+			<div class="panel-heading"><div><h2>My assigned products</h2><p>Showing <%= totalRequests ? (page - 1) * 25 + 1 : 0 %>-<%= Math.min(page * 25, totalRequests) %> of <%= totalRequests %></p></div></div>
+			<% if (assignments.length) { %>
+			<div class="table-wrap"><table class="request-table">
+				<thead><tr><th>Assigned date</th><th>Product</th><th>Quantity</th><th>Assigned by</th><th>Reason</th></tr></thead>
+				<tbody><% assignments.forEach(assignment => { %>
+				<tr>
+					<td><%= assignment.assignedNepaliDate %></td>
+					<td><span class="cell-primary"><%= assignment.productName %></span><span class="cell-secondary"><%= assignment.transactionNo %></span></td>
+					<td><%= assignment.quantity %> <%= assignment.quantityTypeName %></td>
+					<td><%= assignment.assignedBy %></td>
+					<td><%= assignment.reason %></td>
+				</tr>
+				<% }) %></tbody>
+			</table></div>
+			<% } else { %><div class="empty-state">No products have been assigned to you.</div><% } %>
+			<% if (totalPages > 1) { %><nav class="pagination" aria-label="Assigned products pages"><span>Page <%= page %> of <%= totalPages %></span><div><% if (page > 1) { %><a class="button secondary small" href="/inventory/productrequests?page=<%= page - 1 %>">Previous</a><% } %><% if (page < totalPages) { %><a class="button secondary small" href="/inventory/productrequests?page=<%= page + 1 %>">Next</a><% } %></div></nav><% } %>
+		</section>
+		<% } else { %>
 		<section class="panel request-list-panel">
 			<div class="panel-heading"><div><h2><%= isInventoryManager ? 'All requests' : 'My requests' %></h2><p>Showing <%= totalRequests ? (page - 1) * 25 + 1 : 0 %>-<%= Math.min(page * 25, totalRequests) %> of <%= totalRequests %></p></div></div>
 			<% if (requests.length) { %>
@@ -81,9 +101,11 @@
 			<% } else { %><div class="empty-state">No product requests yet.</div><% } %>
 			<% if (totalPages > 1) { %><nav class="pagination" aria-label="Request history pages"><span>Page <%= page %> of <%= totalPages %></span><div><% if (page > 1) { %><a class="button secondary small" href="/inventory/productrequests?page=<%= page - 1 %>">Previous</a><% } %><% if (page < totalPages) { %><a class="button secondary small" href="/inventory/productrequests?page=<%= page + 1 %>">Next</a><% } %></div></nav><% } %>
 		</section>
+		<% } %>
 	</main>
 </div>
 <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
+<% if (role === 'ADMIN') { %>
 <script>
 	const productNameInput = document.getElementById('productName');
 	const productIdInput = document.getElementById('productId');
@@ -233,5 +255,6 @@
 		if (typeof input.nepaliDatePicker === 'function') input.nepaliDatePicker({ dateFormat: 'YYYY-MM-DD', language: 'en' });
 	});
 </script>
+<% } %>
 </body>
 </html>

@@ -318,10 +318,9 @@
                 <div>
                     <label for="terminal">Terminal:</label>
                     <select id="terminal">
-                        <option value="FIRST">FIRST</option>
-                        <option value="SECOND">SECOND</option>
-                        <option value="THIRD">THIRD</option>
-                        <option value="FOURTH">FOURTH</option>
+                     <% terminals.forEach(function(terminal) { %>
+                        <option value="<%= terminal.terminal %>"><%= terminal.terminal %></option>
+                        <% }); %>
                     </select>
                 </div>
                 

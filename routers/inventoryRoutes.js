@@ -1,7 +1,7 @@
 const express = require('express');
 const inventory = express.Router();
 const inventoryController = require('../controller/inventorycontroller/inventorycontroller');
-const { verifytoken,isFrontdesk } = require('../middleware/auth');
+const { verifytoken,isFrontdesk,isAdmin } = require('../middleware/auth');
 
 inventory.get('/', verifytoken,isFrontdesk,inventoryController.dashboard);
 inventory.get('/products',verifytoken,isFrontdesk, inventoryController.productsPage);
@@ -30,7 +30,7 @@ inventory.post('/salesreturns', verifytoken,isFrontdesk, inventoryController.cre
 inventory.get('/purchasereturns', verifytoken,isFrontdesk, inventoryController.purchaseReturnsPage);
 inventory.post('/purchasereturns', verifytoken,isFrontdesk, inventoryController.createPurchaseReturn);
 inventory.get('/productrequests', verifytoken, inventoryController.productRequestsPage);
-inventory.post('/productrequests', verifytoken, inventoryController.createProductRequest);
+inventory.post('/productrequests', verifytoken, isAdmin, inventoryController.createProductRequest);
 inventory.post('/productrequests/:id/review', verifytoken, inventoryController.requireInventoryManager, inventoryController.reviewProductRequest);
 inventory.get('/search/products', verifytoken, inventoryController.searchRequestProducts);
 inventory.get('/search/teachers', verifytoken, inventoryController.searchRequestTeachers);

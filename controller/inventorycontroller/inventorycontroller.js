@@ -184,6 +184,57 @@ exports.requireInventoryManager = requireInventoryManager;
 exports.productRequestsPage = async (req, res) => {
   try {
     const approver = isApprover(req.user);
+    if (!approver) {
+      const recipientName = String(req.user.teacherName || req.user.username || '').trim();
+      const assignmentFilter = {
+        recipientType: 'staff',
+        $or: [
+          { recipientId: String(req.user._id) },
+          { recipientId: { $in: ['', null] }, recipientName }
+        ]
+      };
+      const assignmentCount = await InventoryTransaction.aggregate([
+        { $match: assignmentFilter },
+        { $unwind: '$items' },
+        { $count: 'total' }
+      ]);
+      const totalRequests = assignmentCount[0]?.total || 0;
+      const requestedPage = parsePage(req.query.page);
+      const totalPages = Math.max(1, Math.ceil(totalRequests / PAGE_SIZE));
+      const page = Math.min(requestedPage, totalPages);
+      const assignments = await InventoryTransaction.aggregate([
+        { $match: assignmentFilter },
+        { $unwind: '$items' },
+        { $sort: { assignedAt: -1, _id: -1 } },
+        { $skip: (page - 1) * PAGE_SIZE },
+        { $limit: PAGE_SIZE },
+        {
+          $project: {
+            _id: 0,
+            transactionNo: 1,
+            assignedNepaliDate: 1,
+            assignedBy: 1,
+            reason: 1,
+            productName: '$items.productName',
+            quantity: '$items.quantity',
+            quantityTypeName: '$items.quantityTypeName'
+          }
+        }
+      ]);
+      return renderPage(res, 'productrequestform', {
+        assignments,
+        requests: [],
+        page,
+        totalPages,
+        totalRequests,
+        role: String(req.user.role || '').trim(),
+        requesterUsername: String(req.user.teacherName || '').trim(),
+        isInventoryManager: false,
+        showInventoryNavigation: false,
+        todayNepaliDate: String(bs.ADToBS(new Date()) || '').trim(),
+        message: ''
+      });
+    }
     const filter = approver ? {} : { $or: [{ requesterId: req.user._id }, { requestedById: req.user._id }] };
     const requestedPage = parsePage(req.query.page);
     const totalRequests = await InventoryProductRequest.countDocuments(filter);
