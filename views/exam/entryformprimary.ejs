@@ -4,6 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pre primary Entry Form</title>
+  <style>
+/* Chrome, Edge, Safari, and other WebKit browsers */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+</style>
 </head>
 <body>
   <form action="/entryformpreprimary?studentClass=<%= studentClass %>&section=<%= section %>&terminal=<%= terminal %>&academicYear=<%= academicYear %>" method="POST" id="entryForm" >  
@@ -354,6 +368,15 @@
   worksheetSelect.addEventListener('change', function () {
     updateTableVisibility();
   });
+  
+document.querySelectorAll('input[type="number"]').forEach(input => {
+  input.addEventListener('wheel', function (event) {
+    if (document.activeElement === this) {
+      event.preventDefault();
+    }
+  }, { passive: false });
+});
+
 </script>
 </body>
 </html>

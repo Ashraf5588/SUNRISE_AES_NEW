@@ -125,6 +125,20 @@
     @media(max-width:1024px){.entry-container{padding:15px}table{font-size:12px}table th,table td{padding:7px 5px}}
     @media(max-width:768px){body{padding:10px}.selector-panel,.entry-container{padding:15px;border-radius:8px}.selector-title,.entry-title{font-size:16px}.selector-grid{grid-template-columns:1fr}.entry-container{overflow-x:scroll;-webkit-overflow-scrolling:touch}table{min-width:800px}table th,table td{font-size:11px;padding:6px 4px}table input{font-size:12px;padding:6px}input[type="submit"],.load-btn{width:100%;max-width:100%;padding:11px 20px}.entry-container::after{content:'← Scroll to view all →';display:block;text-align:center;color:var(--primary);font-size:11px;margin-top:8px;font-weight:600}}
     @media(max-width:480px){.selector-title,.entry-title{font-size:15px}table{min-width:700px}table th,table td{font-size:10px;padding:5px 3px}table img{width:32px;height:32px}}
+    
+/* Chrome, Edge, Safari, and other WebKit browsers */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
   </style>
 </head>
 <body>
@@ -1227,6 +1241,15 @@
       console.log("All data loaded successfully for:", subject);
     }
   };
+  
+document.querySelectorAll('input[type="number"]').forEach(input => {
+  input.addEventListener('wheel', function (event) {
+    if (document.activeElement === this) {
+      event.preventDefault();
+    }
+  }, { passive: false });
+});
+
 </script>
 
 </body>

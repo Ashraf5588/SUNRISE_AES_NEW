@@ -7,6 +7,20 @@
   <style>
     .invalid-registration { color: red; }
     .valid-registration { color: black; }
+    
+/* Chrome, Edge, Safari, and other WebKit browsers */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
   </style>
 </head>
 <body>
@@ -365,6 +379,15 @@
     }
 
   });
+  
+document.querySelectorAll('input[type="number"]').forEach(input => {
+  input.addEventListener('wheel', function (event) {
+    if (document.activeElement === this) {
+      event.preventDefault();
+    }
+  }, { passive: false });
+});
+
 </script>
 </body>
 </html>
