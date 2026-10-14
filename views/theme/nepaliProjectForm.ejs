@@ -59,6 +59,27 @@
       opacity: 0.9;
     }
 
+    .maximum-marks-setting {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 8px 12px;
+      margin-top: 16px;
+    }
+
+    .maximum-marks-setting label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .maximum-marks-setting input { width: 18px; height: 18px; accent-color: var(--secondary-color); }
+    .maximum-marks-setting [role="status"] { min-height: 1em; font-size: 12px; }
+
     .form-content {
       padding: 30px;
     }
@@ -544,6 +565,12 @@
     <div class="header">
       <h1>Nepali Project Evaluation Form</h1>
       <p>Complete evaluation form for practical and project work assessment</p>
+      <% if (canManageMaximumMarksOnly) { %>
+      <div class="maximum-marks-setting">
+        <label for="maximumMarksOnlyToggle"><input type="checkbox" id="maximumMarksOnlyToggle" <%= maximumMarksOnly ? 'checked' : '' %>> Show maximum marks only</label>
+        <span id="maximumMarksPreferenceStatus" role="status" aria-live="polite"></span>
+      </div>
+      <% } %>
     </div>
 
     <div class="form-content">
@@ -850,13 +877,15 @@
                 type="radio"
                 class="marks-radio"
                 value="<%= mark %>||<%= ind.indicatorName %>||<%= theme.themeName %>"
+                data-mark="<%= mark %>"
+                data-max-mark="<%= ind.maxMarks %>"
                 name="unit[<%= idx %>][practicals][<%= prindx %>][criteria][<%= iIndex %>]"
                 data-practical="<%= idx %>-<%= prindx %>"
                   data-criteria-index="<%= iIndex %>"
                 id="practical_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= ind._id %>_<%= mark.replace('.', '_') %>">
 
             <label
-                for="practical_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= ind._id %>_<%= mark.replace('.', '_') %>">
+              for="practical_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= ind._id %>_<%= mark.replace('.', '_') %>" <%= maximumMarksOnly && Number(mark) !== Number(ind.maxMarks) ? 'hidden' : '' %>>
                 <%= mark %>
             </label>
 
@@ -962,6 +991,8 @@
                 <input type="radio"
                        value="<%= mark %>||<%= ind.indicatorName %>||<%= lo.learningOutcomeName %>"
                        class="marks-radio-project"
+                    data-mark="<%= mark %>"
+                    data-max-mark="<%= ind.indicatorsMarks %>"
                        name="unit[<%= idx %>][projectWorks][<%= prindx %>][criteria][<%= iIndex %>]"
                        data-project="<%= idx %>-<%= prindx %>"
                          data-criteria-index="<%= iIndex %>"
@@ -969,7 +1000,7 @@
                        data-criteria-index="<%= iIndex %>"
                        id="project_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>_<%= mark.replace('.', '_') %>">
 
-                <label for="project_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>_<%= mark.replace('.', '_') %>">
+                <label for="project_<%= idx %>_<%= prindx %>_<%= iIndex %>_<%= indIndex %>_<%= mark.replace('.', '_') %>" <%= maximumMarksOnly && Number(mark) !== Number(ind.indicatorsMarks) ? 'hidden' : '' %>>
                     <%= mark %>
                 </label>
 
@@ -1094,6 +1125,42 @@
       }, 0);
       
       totalInput.value = total;
+    }
+
+    function updateMaximumMarksVisibility(enabled) {
+      document.querySelectorAll('.marks-radio, .marks-radio-project').forEach((radio) => {
+        const label = radio.nextElementSibling;
+        if (label?.tagName === 'LABEL') {
+          label.hidden = enabled && Number(radio.dataset.mark) !== Number(radio.dataset.maxMark);
+        }
+      });
+    }
+
+    const maximumMarksOnlyToggle = document.getElementById('maximumMarksOnlyToggle');
+    const maximumMarksPreferenceStatus = document.getElementById('maximumMarksPreferenceStatus');
+    if (maximumMarksOnlyToggle) {
+      updateMaximumMarksVisibility(maximumMarksOnlyToggle.checked);
+      maximumMarksOnlyToggle.addEventListener('change', async () => {
+        const enabled = maximumMarksOnlyToggle.checked;
+        maximumMarksOnlyToggle.disabled = true;
+        maximumMarksPreferenceStatus.textContent = 'Saving...';
+        try {
+          const response = await fetch('/practicalprojectform/maximum-marks-preference', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ enabled })
+          });
+          const result = await response.json();
+          if (!response.ok || !result.saved) throw new Error(result.message || 'Unable to save this setting.');
+          updateMaximumMarksVisibility(enabled);
+          maximumMarksPreferenceStatus.textContent = enabled ? 'Saved. Only maximum marks are shown.' : 'Saved. All marks are shown.';
+        } catch (error) {
+          maximumMarksOnlyToggle.checked = !enabled;
+          maximumMarksPreferenceStatus.textContent = error.message || 'Unable to save this setting.';
+        } finally {
+          maximumMarksOnlyToggle.disabled = false;
+        }
+      });
     }
 
     // Handle practical radio change
