@@ -42,7 +42,7 @@
 				<% if (classes.length) { %>
 					<table>
 						<thead>
-								<tr><th>SN</th><th>Class</th><th>Form Type</th><th>Attendance From</th></tr>
+								<tr><th>SN</th><th>Class</th><th>Form Type</th><th>Attendance From</th><th>Marksheet Type</th><th>Ledger Type</th></tr>
 						</thead>
 						<tbody>
 							<% classes.forEach((classItem, index) => { %>
@@ -65,6 +65,24 @@
 											<select name="classes[<%= index %>][attendanceSource]">
 												<option value="auto" <%= classItem.attendanceSource === 'auto' ? 'selected' : '' %>>Auto fetch</option>
 												<option value="manual" <%= classItem.attendanceSource === 'manual' ? 'selected' : '' %>>Manual entry</option>
+											</select>
+										</td>
+										<td>
+											<select name="classes[<%= index %>][marksheetType]">
+												<option value="auto" <%= classItem.marksheetType === 'auto' ? 'selected' : '' %>>Automatic (class rules)</option>
+												<option value="preprimary" <%= classItem.marksheetType === 'preprimary' ? 'selected' : '' %>>Preprimary</option>
+												<option value="primary" <%= classItem.marksheetType === 'primary' ? 'selected' : '' %>>Primary</option>
+												<option value="secondary" <%= classItem.marksheetType === 'secondary' ? 'selected' : '' %>>Secondary</option>
+											</select>
+										</td>
+										<td>
+											<select name="classes[<%= index %>][ledgerType]">
+												<option value="auto" <%= classItem.ledgerType === 'auto' ? 'selected' : '' %>>Automatic (class rules)</option>
+												<option value="preprimary" <%= classItem.ledgerType === 'preprimary' ? 'selected' : '' %>>Preprimary</option>
+												<option value="primary" <%= classItem.ledgerType === 'primary' ? 'selected' : '' %>>Primary</option>
+												<option value="cas" <%= classItem.ledgerType === 'cas' ? 'selected' : '' %>>CAS (Four/Five)</option>
+												<option value="secondary" <%= classItem.ledgerType === 'secondary' ? 'selected' : '' %>>Secondary</option>
+												<option value="withgpa" <%= classItem.ledgerType === 'withgpa' ? 'selected' : '' %>>With GPA</option>
 											</select>
 										</td>								</tr>
 							<% }) %>

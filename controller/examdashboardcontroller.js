@@ -42,6 +42,19 @@ const getSlipModel = () => {
   return mongoose.model(`exam_marks`, examSchema, `exam_marks`);
 };
 
+const MARKSHEET_VIEW_BY_TYPE = {
+  preprimary: './exam/preprimarypr',
+  primary: './exam/primarytheorypr',
+  secondary: './exam/generatemarksheettheorypr'
+};
+const LEDGER_VIEW_BY_TYPE = {
+  preprimary: './exam/ledgerpreprimary',
+  primary: './exam/ledgerprimary',
+  cas: './exam/ledgerfourfive',
+  secondary: './exam/ledger',
+  withgpa: './exam/ledgerwithgpa'
+};
+
 const issuedNepaliDate = String(bs.ADToBS(new Date()) || '').trim() || new Date().toLocaleDateString('en-GB');
 
 const BS_MONTH_NAMES = {
@@ -381,10 +394,11 @@ exports.generateMarksheet = async (req, res, next) => {
     ]);
 
    
-    const attendanceSource = await studentClassModel.findOne({
+    const classSetup = await studentClassModel.findOne({
       studentClass: { $regex: `^${String(studentClass || '').trim()}$`, $options: 'i' }
-    }).select('attendanceSource').lean();
-    const attendanceData = attendanceSource?.attendanceSource === 'manual'
+    }).select('attendanceSource marksheetType').lean();
+    const configuredMarksheetType = MARKSHEET_VIEW_BY_TYPE[classSetup?.marksheetType] ? classSetup.marksheetType : 'auto';
+    const attendanceData = classSetup?.attendanceSource === 'manual'
       ? await getManualAttendanceData(studentClass, section, academicYear, terminal)
       : await getAttendanceDataFromApi(studentClass, section, academicYear, terminal);
     const attendanceMap = new Map(attendanceData.map(item => [String(item.reg).trim(), item]));
@@ -516,28 +530,14 @@ exports.generateMarksheet = async (req, res, next) => {
         });
       }
     } else {
-      // Default case - theory practical
-      if(studentClass<=3 || studentClass.toLowerCase() === "one" || studentClass.toLowerCase() === "two" || studentClass.toLowerCase() === "three")
-      {
-        return res.render("./exam/primarytheorypr", {
-          currentPage: "exammanagement",
-          studentClassdata: studentClassdata,
-        terminals,
-        format,
-        studentWisedata,
-        studentClass: studentClass,
-        section,
-        terminal,
-        academicYear,
-        creditHourData,
-        marksheetSetups,
-        issuedNepaliDate,
-        user: req.user
-        });
-
-
-      }
-      return res.render("./exam/generatemarksheettheorypr", {
+      const normalizedStudentClass = String(studentClass || '').trim().toLowerCase();
+      const automaticView = ['nursery', 'playgroup', 'lkg', 'ukg'].includes(normalizedStudentClass)
+        ? MARKSHEET_VIEW_BY_TYPE.preprimary
+        : Number(studentClass) >= 1 && Number(studentClass) <= 3
+          || ['one', 'two', 'three', 'i', 'ii', 'iii'].includes(normalizedStudentClass)
+          ? MARKSHEET_VIEW_BY_TYPE.primary
+          : MARKSHEET_VIEW_BY_TYPE.secondary;
+      return res.render(MARKSHEET_VIEW_BY_TYPE[configuredMarksheetType] || automaticView, {
         currentPage: "exammanagement",
         studentClassdata: studentClassdata,
         terminals,
@@ -572,6 +572,10 @@ exports.generateMarksheetStudent = async (req, res, next) => {
     const terminals = await terminalModel.find({}).lean();
     const creditHourData = await newsubject.find({ forClass: studentClass }).lean();
        const marksheetSetups = await marksheetSetup.find({}).lean();
+    const classSetup = await studentClassModel.findOne({
+      studentClass: { $regex: `^${String(studentClass || '').trim()}$`, $options: 'i' }
+    }).select('marksheetType').lean();
+    const configuredMarksheetView = MARKSHEET_VIEW_BY_TYPE[classSetup?.marksheetType];
   
    
     const user = req.user;
@@ -634,88 +638,36 @@ exports.generateMarksheetStudent = async (req, res, next) => {
 
 
 
-   if(format=="theorypractical")
+   if(format==="theorypractical")
    {
-  
-    if(studentClass<=3 || studentClass.toLowerCase() === "one" || studentClass.toLowerCase() === "two" || studentClass.toLowerCase() === "three")
-    {
-res.render("./exam/primarytheorypr", {
-        currentPage: "exammanagement",
-
-            studentClassdata:studentClassdata,
-            terminals,
-            format,
-            studentWisedata,
-            studentClass,
-            section,
-            terminal,
-            academicYear,
-            creditHourData,
-            marksheetSetups,
-           
+    const renderData = {
+      currentPage: "exammanagement",
+      studentClassdata,
+      terminals,
+      format,
+      studentWisedata,
+      studentClass,
+      section,
+      terminal,
+      academicYear,
+      creditHourData,
+      marksheetSetups,
       user: req.user
-    });
+    };
+    if (configuredMarksheetView) return res.render(configuredMarksheetView, renderData);
+
+    const normalizedStudentClass = String(studentClass || '').trim().toLowerCase();
+    if (Number(studentClass) >= 1 && Number(studentClass) <= 3
+      || ['one', 'two', 'three'].includes(normalizedStudentClass)) {
+      return res.render("./exam/primarytheorypr", renderData);
     }
-    if(studentClass.toLowerCase() === "nursery" || studentClass.toLowerCase() === "playgroup" || studentClass.toLowerCase() === "lkg" || studentClass.toLowerCase() === "ukg")
-    {
-      res.render("./exam/preprimarypr", {
-        currentPage: "exammanagement",
-
-            studentClassdata:studentClassdata,
-            terminals,
-            format,
-            studentWisedata,
-            studentClass,
-            section,
-            terminal,
-            academicYear,
-            creditHourData,
-            marksheetSetups,
-           
-      user: req.user
-    });
-  
+    if (['nursery', 'playgroup', 'lkg', 'ukg'].includes(normalizedStudentClass)) {
+      return res.render("./exam/preprimarypr", renderData);
     }
-    else
-
-    { 
-      if(studentClass.toLowerCase() === "four" || studentClass.toLowerCase() === "five" || studentClass=="4" || studentClass=="5")
-      {
-        res.render("./exam/marksheetfourfive", {
-          currentPage: "exammanagement",
-           studentClassdata:studentClassdata,
-            terminals,
-            format,
-            studentWisedata,
-            studentClass,
-            section,
-            terminal,
-            academicYear,
-            creditHourData,
-            marksheetSetups,
-           
-      user: req.user
-      });
+    if (['four', 'five', '4', '5'].includes(normalizedStudentClass)) {
+      return res.render("./exam/marksheetfourfive", renderData);
     }
-      else{
-      res.render("./exam/generatemarksheettheorypr", {
-        currentPage: "exammanagement",
-
-            studentClassdata:studentClassdata,
-            terminals,
-            format,
-            studentWisedata,
-            studentClass,
-            section,
-            terminal,
-            academicYear,
-            creditHourData,
-            marksheetSetups,
-           
-      user: req.user
-    });
-  }
-  }
+    return res.render("./exam/generatemarksheettheorypr", renderData);
   }
   
 
@@ -1547,10 +1499,27 @@ const {routineId,terminal,academicYear} = req.query;
 exports.ledger = async (req, res, next) => {
   try {
     const { studentClass, section, academicYear, terminal } = req.query;
+    const normalizedClass = studentClass ? studentClass.toString().toUpperCase().trim() : '';
+    const isPrePrimary = ['UKG', 'LKG', 'NURSERY'].includes(normalizedClass);
+    const primaryClasses = ['1', 'ONE', 'I', '2', 'TWO', 'II', '3', 'THREE', 'III'];
+    const isPrimary = primaryClasses.includes(normalizedClass);
+    const isCASClass = ['4', 'FOUR', '5', 'FIVE'].includes(normalizedClass);
    const studentClassdata = await studentClassModel
   .find({})
   .sort({ classorder: 1 })
   .lean();
+    const classSetup = await studentClassModel.findOne({
+      studentClass: { $regex: `^${String(studentClass || '').trim()}$`, $options: 'i' }
+    }).select('ledgerType').lean();
+    const configuredLedgerType = LEDGER_VIEW_BY_TYPE[classSetup?.ledgerType] ? classSetup.ledgerType : 'auto';
+    const ledgerView = LEDGER_VIEW_BY_TYPE[configuredLedgerType]
+      || (isPrePrimary
+        ? LEDGER_VIEW_BY_TYPE.preprimary
+        : isPrimary
+          ? LEDGER_VIEW_BY_TYPE.primary
+          : isCASClass
+            ? LEDGER_VIEW_BY_TYPE.cas
+            : LEDGER_VIEW_BY_TYPE.secondary);
     const marksheetSetups = await marksheetSetup.find({}).lean();
     const terminals = await terminalModel.find({});
 
@@ -1565,7 +1534,7 @@ exports.ledger = async (req, res, next) => {
     }).lean();
 
     if (!dataExists) {
-      return res.render("./exam/ledger", {
+      return res.render(ledgerView, {
         fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
         currentPage: "exammanagement",
         studentClassdata,
@@ -1579,19 +1548,9 @@ exports.ledger = async (req, res, next) => {
         ledgerData: [],
         ledgerAnalysisLookup: {},
         noData: true,
-        isPrePrimary: ['UKG', 'LKG', 'NURSERY'].includes(studentClass)
+        isPrePrimary
       });
     }
-
-    // Normalize student class for comparison
-    const normalizedClass = studentClass ? studentClass.toString().toUpperCase().trim() : '';
-    
-    // Check if it's pre-primary class
-    const isPrePrimary = ['UKG', 'LKG', 'NURSERY'].includes(normalizedClass);
-    
-    // Check if it's primary (classes 1-3)
-    const primaryClasses = ['1', 'ONE', 'I', '2', 'TWO', 'II', '3', 'THREE', 'III'];
-    const isPrimary = primaryClasses.includes(normalizedClass);
 
     // Subjects that should NOT have worksheets
     const NO_WORKSHEET_SUBJECTS = ['HYGIENE', 'ORAL', 'ECA'];
@@ -2094,6 +2053,11 @@ exports.ledger = async (req, res, next) => {
     // ============================================
     else {
       console.log("=== Processing REGULAR LEDGER (Classes 4+) ===");
+      const creditHourData = await newsubject.find({ forClass: studentClass }).lean();
+      const creditHourMap = new Map(creditHourData.map((item) => [
+        String(item.newsubject || '').trim().toUpperCase(),
+        item
+      ]));
       
       ledgerData = await model.aggregate([
         {
@@ -2120,14 +2084,20 @@ exports.ledger = async (req, res, next) => {
             subjects: {
               $push: {
                 subject: "$subject",
-                theorymarks: "$theorymarks",
-                practicalmarks: "$practicalmarks",
-                theoryfullmarks: "$theoryfullmarks",
-                practicalfullmarks: "$practicalfullmarks",
-                totalpracticalmarks: "$totalpracticalmarks",
-                passMarks: "$passMarks",
-                terminalmarks: "$terminalmarks",
-                totalmarks: { $add: ["$theorymarks", "$totalpracticalmarks"] },
+                status: "$status",
+                theorymarks: { $ifNull: ["$theorymarks", 0] },
+                practicalmarks: { $ifNull: ["$practicalmarks", 0] },
+                theoryfullmarks: { $ifNull: ["$theoryfullmarks", 0] },
+                practicalfullmarks: { $ifNull: ["$practicalfullmarks", 0] },
+                totalpracticalmarks: { $ifNull: ["$totalpracticalmarks", { $ifNull: ["$practicalmarks", 0] }] },
+                passMarks: { $ifNull: ["$passMarks", 0] },
+                terminalmarks: { $ifNull: ["$terminalmarks", 0] },
+                totalmarks: {
+                  $add: [
+                    { $ifNull: ["$theorymarks", 0] },
+                    { $ifNull: ["$totalpracticalmarks", { $ifNull: ["$practicalmarks", 0] }] }
+                  ]
+                },
               }
             }
           }
@@ -2225,7 +2195,7 @@ exports.ledger = async (req, res, next) => {
         if (student.subjects) {
           student.subjects.forEach((sub) => {
             const hasWorksheets = shouldHaveWorksheets(sub.subject);
-            const isAb = isAbValue(sub.theorymarks);
+              const isAb = normalizeText(sub.status) === 'absent' || isAbValue(sub.theorymarks);
             lookupmap[sub.subject] = {
               ...sub,
               hasWorksheets: hasWorksheets,
@@ -2237,6 +2207,46 @@ exports.ledger = async (req, res, next) => {
           });
         }
         student.subjectMap = lookupmap;
+
+        let weightedGradePoints = 0;
+        let totalCreditHours = 0;
+        student.subjects.forEach((subject) => {
+          const subjectKey = String(subject.subject || '').trim().toUpperCase();
+          const credits = creditHourMap.get(subjectKey) || {};
+          const theoryCredit = Number(credits.theoryCreditHour) || 0;
+          const practicalCredit = Number(credits.practicalCreditHour) || 0;
+          const subjectCredits = theoryCredit + practicalCredit;
+          const theoryMarks = Number(subject.theorymarks) || 0;
+          const practicalMarks = Number(subject.totalpracticalmarks ?? subject.practicalmarks) || 0;
+          const theoryFullMarks = Number(subject.theoryfullmarks) || 0;
+          const practicalFullMarks = Number(subject.practicalfullmarks) || 0;
+          const theoryPercentage = theoryFullMarks > 0 ? (theoryMarks / theoryFullMarks) * 100 : 0;
+          const practicalPercentage = practicalFullMarks > 0 ? (practicalMarks / practicalFullMarks) * 100 : 0;
+          const theoryGP = getGP(theoryPercentage);
+          const practicalGP = getGP(practicalPercentage);
+          const isAbsent = normalizeText(subject.status) === 'absent' || isAbValue(subject.theorymarks);
+          const finalGP = isAbsent ? 0 : subjectCredits > 0
+            ? ((theoryGP * theoryCredit) + (practicalGP * practicalCredit)) / subjectCredits
+            : (theoryGP + practicalGP) / 2;
+          const roundedFinalGP = Math.round(finalGP * 100) / 100;
+
+          subject.finalGP = roundedFinalGP;
+          if (student.subjectMap[subject.subject]) {
+            student.subjectMap[subject.subject].finalGP = roundedFinalGP;
+          }
+
+          if (isAbsent) return;
+          if (subjectCredits > 0) {
+            weightedGradePoints += (theoryGP * theoryCredit) + (practicalGP * practicalCredit);
+            totalCreditHours += subjectCredits;
+          } else {
+            weightedGradePoints += roundedFinalGP;
+            totalCreditHours += 1;
+          }
+        });
+        student.gpa = totalCreditHours > 0
+          ? Math.round((weightedGradePoints / totalCreditHours) * 100) / 100
+          : 0;
       });
     }
 
@@ -2342,93 +2352,26 @@ exports.ledger = async (req, res, next) => {
       }
     });
 
-    // ============================================
-    // RENDER BASED ON CLASS TYPE
-    // ============================================
-    if (isPrePrimary) {
-      const terminals = await terminalModel.find({})
-      res.render("./exam/ledgerpreprimary", {
-        fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
-        currentPage: "exammanagement",
-        studentClassdata,
-        user: req.user,
-        academicYear,
-        studentClass,
-        section,
-        terminal,
-        terminals,
-        marksheetSetups,
-        ledgerData,
-        ledgerAnalysisLookup,
-        noData: ledgerData.length === 0,
-        isPrePrimary: isPrePrimary,
-        NO_WORKSHEET_SUBJECTS: NO_WORKSHEET_SUBJECTS
-      });
-      return;
-    } else if (isPrimary) {
-      const terminals = await terminalModel.find()
-      res.render("./exam/ledgerprimary", {
-        fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
-        currentPage: "exammanagement",
-        studentClassdata,
-        user: req.user,
-        academicYear,
-        studentClass,
-        section,
-        terminal,
-        terminals,
-        marksheetSetups,
-        ledgerData,
-        ledgerAnalysisLookup,
-        noData: ledgerData.length === 0,
-        isPrimary: isPrimary,
-        getGP: getGP,
-        getGrade: getGrade,
-        NO_WORKSHEET_SUBJECTS: NO_WORKSHEET_SUBJECTS
-      });
-      return;
-    } else {
-      if (studentClass == "Four" || studentClass == "4" || studentClass == "FOUR" || studentClass == "four" || 
-          studentClass == "Five" || studentClass == "5" || studentClass == "FIVE" || studentClass == "five") {
-            const terminals = await terminalModel.find({})
-        res.render("./exam/ledgerfourfive", {
-          fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
-          currentPage: "exammanagement",
-          studentClassdata,
-          user: req.user,
-          academicYear,
-          studentClass,
-          section,
-          terminal,
-          terminals,
-          marksheetSetups,
-          ledgerData,
-          ledgerAnalysisLookup,
-          noData: ledgerData.length === 0,
-          isPrePrimary: isPrePrimary,
-          NO_WORKSHEET_SUBJECTS: NO_WORKSHEET_SUBJECTS
-        });
-      } else {
-        const terminals = await terminalModel.find({})
-        res.render("./exam/ledger", {
-          fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
-          currentPage: "exammanagement",
-          studentClassdata,
-          user: req.user,
-          academicYear,
-          studentClass,
-          section,
-          terminal,
-          terminals,
-          marksheetSetups,
-          ledgerData,
-          ledgerAnalysisLookup,
-          noData: ledgerData.length === 0,
-          isPrePrimary: isPrePrimary,
-          NO_WORKSHEET_SUBJECTS: NO_WORKSHEET_SUBJECTS
-        });
-      }
-    }
+    return res.render(ledgerView, {
+      fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
+      currentPage: "exammanagement",
+      studentClassdata,
+      user: req.user,
+      academicYear,
+      studentClass,
+      section,
+      terminal,
+      terminals,
+      marksheetSetups,
+      ledgerData,
+      ledgerAnalysisLookup,
+      noData: ledgerData.length === 0,
+      isPrePrimary,
+      isPrimary,
+      getGP,
+      getGrade,
+      NO_WORKSHEET_SUBJECTS
+    });
     
   } catch (err) {
     console.error("Error loading ledger page:", err);

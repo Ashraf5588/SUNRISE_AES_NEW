@@ -309,6 +309,8 @@ const ENTRY_FORM_TYPES = new Set([
   'entryformlocalsubject',
   'entryformpreprimary'
 ]);
+const MARKSHEET_TYPES = new Set(['auto', 'preprimary', 'primary', 'secondary']);
+const LEDGER_TYPES = new Set(['auto', 'preprimary', 'primary', 'cas', 'secondary', 'withgpa']);
 
 exports.entryPageSetup = async (req, res) => {
   try {
@@ -323,16 +325,23 @@ exports.entryPageSetup = async (req, res) => {
       const existing = classesByName.get(key);
       const entryFormType = ENTRY_FORM_TYPES.has(classRecord.entryFormType) ? classRecord.entryFormType : 'auto';
       const attendanceSource = classRecord.attendanceSource === 'manual' ? 'manual' : 'auto';
+      const marksheetType = MARKSHEET_TYPES.has(classRecord.marksheetType) ? classRecord.marksheetType : 'auto';
+      const ledgerType = LEDGER_TYPES.has(classRecord.ledgerType) ? classRecord.ledgerType : 'auto';
       if (!existing || (existing.entryFormType === 'auto' && entryFormType !== 'auto')) {
         classesByName.set(key, {
           studentClass: className,
           classorder: Number(classRecord.classorder) || 0,
           entryFormType,
-          attendanceSource
+          attendanceSource,
+          marksheetType,
+          ledgerType
         });
       } else if (existing.attendanceSource !== attendanceSource) {
         existing.attendanceSource = attendanceSource;
       }
+      const groupedClass = classesByName.get(key);
+      if (groupedClass.marksheetType === 'auto' && marksheetType !== 'auto') groupedClass.marksheetType = marksheetType;
+      if (groupedClass.ledgerType === 'auto' && ledgerType !== 'auto') groupedClass.ledgerType = ledgerType;
     });
 
     const classes = [...classesByName.values()].sort((a, b) => {
@@ -356,7 +365,10 @@ exports.saveEntryPageSetup = async (req, res) => {
       const className = String(config?.studentClass || '').trim();
       const entryFormType = String(config?.entryFormType || 'auto');
       const attendanceSource = String(config?.attendanceSource || 'auto');
-      if (!className || !ENTRY_FORM_TYPES.has(entryFormType) || !['auto', 'manual'].includes(attendanceSource)) continue;
+      const marksheetType = String(config?.marksheetType || 'auto');
+      const ledgerType = String(config?.ledgerType || 'auto');
+      if (!className || !ENTRY_FORM_TYPES.has(entryFormType) || !['auto', 'manual'].includes(attendanceSource)
+        || !MARKSHEET_TYPES.has(marksheetType) || !LEDGER_TYPES.has(ledgerType)) continue;
 
       const matchingNames = [...new Set(existingClassRecords
         .map((record) => String(record.studentClass || '').trim())
@@ -365,7 +377,7 @@ exports.saveEntryPageSetup = async (req, res) => {
 
       await studentClass.updateMany(
         { studentClass: { $in: matchingNames } },
-        { $set: { entryFormType, attendanceSource } }
+        { $set: { entryFormType, attendanceSource, marksheetType, ledgerType } }
       );
     }
 

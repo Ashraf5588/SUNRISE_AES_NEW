@@ -333,10 +333,10 @@ input[type="number"] {
 
     // Determine multiplier based on subject
     let multiplier = 1;
-    if ( subject.toUpperCase() === "SOCIAL") {
+    if ( subject.toUpperCase() === "SOCIAL" || subject.toUpperCase() === "HAMRO HETAUDA" || subject.toUpperCase() === "SCIENCE") {
       multiplier = 2;
     }
-    console.log(`Multiplier for ${subject}: ${multiplier}`);
+
 
     if (typeof marksData === 'object' && marksData !== null && !Array.isArray(marksData)) {
       Object.keys(marksData).forEach((reg) => {

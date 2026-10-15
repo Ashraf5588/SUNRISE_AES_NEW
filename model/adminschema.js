@@ -52,6 +52,8 @@ const classSchema = new mongoose.Schema({
   "classorder":{ type: Number,required: false},
   "entryFormType":{ type: String, enum: ['auto', 'entryform', 'entryformprimary', 'entryformfourfive', 'entryformlocalsubject', 'entryformpreprimary'], default: 'auto', required: false},
   "attendanceSource":{ type: String, enum: ['auto', 'manual'], default: 'auto', required: false},
+  "marksheetType":{ type: String, enum: ['auto', 'preprimary', 'primary', 'secondary'], default: 'auto', required: false},
+  "ledgerType":{ type: String, enum: ['auto', 'preprimary', 'primary', 'cas', 'secondary', 'withgpa'], default: 'auto', required: false},
 
 })
 const terminalSchema = new mongoose.Schema({
