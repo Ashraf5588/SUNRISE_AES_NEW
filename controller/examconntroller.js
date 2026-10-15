@@ -519,10 +519,19 @@ exports.saveEntryform = async (req, res, next) => {
       subject,
       theoryFullMarks: req.body.theoryfullmarks
     });
-    const totalPracticalMarks = (Number(req.body.practicalmarks) || 0)
-      + attendanceMarks
-      + (Number(req.body.terminalmarks) || 0)
-      + (Number(req.body.participationMarks) || 0);
+    const normalizedClass = normalizeText(studentClass);
+    const mainFourFiveSubjects = new Set(['nepali', 'english', 'mathematics', 'science', 'social', 'health']);
+    const classConfiguration = await mongoose.models.studentClass.findOne({
+      studentClass: String(studentClass || '').trim()
+    }).select('entryFormType').lean();
+    const isFourFiveEntryForm = classConfiguration?.entryFormType === 'entryformfourfive'
+      || (['4', 'four', '5', 'five'].includes(normalizedClass) && mainFourFiveSubjects.has(normalizeText(subject)));
+    const totalPracticalMarks = isFourFiveEntryForm
+      ? Number(req.body.practicalmarks) || 0
+      : (Number(req.body.practicalmarks) || 0)
+        + attendanceMarks
+        + (Number(req.body.terminalmarks) || 0)
+        + (Number(req.body.participationMarks) || 0);
     
     const updateQuery = {
       reg: req.body.reg,
@@ -1429,7 +1438,7 @@ exports.getPracticalSlipData = async (req, res, next) => {
 };
 exports.updateAnalysisTheoryMarks = async (req, res, next) => {
   try {
-    const { reg, studentClass, section, subject, terminal, totalMarks } = req.body;
+    const { reg, studentClass, section, subject, terminal, totalMarks, name, roll } = req.body;
     
     // Get the theory model
     const model = getSubjectModel(subject, studentClass, section, terminal);
@@ -1439,12 +1448,19 @@ exports.updateAnalysisTheoryMarks = async (req, res, next) => {
       { reg: reg },
       { 
         $set: { 
-          totalMarks: parseFloat(totalMarks) || 0 
+          totalMarks: parseFloat(totalMarks) || 0,
+          name,
+          roll,
+          studentClass,
+          section,
+          subject,
+          terminal
         } 
       },
       { 
         new: true,  // Return the updated document
-        upsert: false // Don't create if doesn't exist
+        upsert: true,
+        runValidators: true
       }
     );
     
