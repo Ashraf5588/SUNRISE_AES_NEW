@@ -2070,12 +2070,12 @@ exports.ledger = async (req, res, next) => {
         item
       ]));
       const rosterRecords = await studentRecord.find({ studentClass, section })
-        .select('reg name')
+        .select('reg name roll')
         .lean();
-      const rosterNameByReg = new Map(rosterRecords.map((record) => [
+      const rosterByReg = new Map(rosterRecords.map((record) => [
         String(record.reg || '').trim(),
-        String(record.name || '').trim()
-      ]).filter(([reg, name]) => reg && name));
+        { name: String(record.name || '').trim(), roll: record.roll }
+      ]).filter(([reg]) => reg));
       
       ledgerData = await model.aggregate([
         {
@@ -2213,9 +2213,14 @@ exports.ledger = async (req, res, next) => {
 
       // Process regular data - set hasWorksheets flag and preserve Ab values
       ledgerData.forEach((student) => {
+        const rosterRecord = rosterByReg.get(String(student._id || '').trim());
         if (!String(student.name || '').trim()) {
-          student.name = rosterNameByReg.get(String(student._id || '').trim()) || student.name;
+          student.name = rosterRecord?.name || student.name;
         }
+        if (!String(student.roll ?? '').trim() && rosterRecord?.roll != null) {
+          student.roll = rosterRecord.roll;
+        }
+        student.rollNumber = Number.parseInt(student.roll, 10) || 0;
 
         if (isTestTerminal) {
           student.subjects.forEach((subject) => {
@@ -2288,6 +2293,7 @@ exports.ledger = async (req, res, next) => {
           ? Math.round((weightedGradePoints / totalCreditHours) * 100) / 100
           : 0;
       });
+      ledgerData.sort((a, b) => a.rollNumber - b.rollNumber);
     }
 
     // ============================================
