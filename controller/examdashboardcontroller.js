@@ -2069,6 +2069,13 @@ exports.ledger = async (req, res, next) => {
         String(item.newsubject || '').trim().toUpperCase(),
         item
       ]));
+      const rosterRecords = await studentRecord.find({ studentClass, section })
+        .select('reg name')
+        .lean();
+      const rosterNameByReg = new Map(rosterRecords.map((record) => [
+        String(record.reg || '').trim(),
+        String(record.name || '').trim()
+      ]).filter(([reg, name]) => reg && name));
       
       ledgerData = await model.aggregate([
         {
@@ -2206,6 +2213,10 @@ exports.ledger = async (req, res, next) => {
 
       // Process regular data - set hasWorksheets flag and preserve Ab values
       ledgerData.forEach((student) => {
+        if (!String(student.name || '').trim()) {
+          student.name = rosterNameByReg.get(String(student._id || '').trim()) || student.name;
+        }
+
         if (isTestTerminal) {
           student.subjects.forEach((subject) => {
             subject.theoryfullmarks = testFullMarks;
