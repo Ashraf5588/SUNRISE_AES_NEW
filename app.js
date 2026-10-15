@@ -15,6 +15,7 @@ const attendance  = require('./routers/attendance');
 const billing  = require('./routers/billing');
 const library  = require('./routers/libraryroute');
 const inventory = require('./routers/inventoryRoutes');
+const totalAttendance = require('./routers/totalattendanceroute');
 const leave = require('./routers/leaveroute');
 const homework = require('./routers/homeworkRoute');
 const fs = require('fs');
@@ -398,6 +399,7 @@ app.get('/convert-docx/:filename', (req, res) => {
 app.use('/inventory', inventory);
 app.use('/leave', leave);
 app.use('/homework', homework);
+app.use(totalAttendance);
 app.use('/setup', router);
 app.use('/parents', parentsPortal);
 app.use('/', router);

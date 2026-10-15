@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Total attendance entry</title>
+	<style>
+		:root { color-scheme: light; --ink:#1d2b35; --muted:#60717c; --line:#d6e0e5; --paper:#f3f6f7; --teal:#126b68; --teal-dark:#0b514f; }
+		* { box-sizing:border-box; }
+		body { margin:0; padding:20px; background:var(--paper); color:var(--ink); font:15px/1.45 "Segoe UI",sans-serif; }
+		main { width:min(1200px,100%); margin:0 auto; }
+		h1 { margin:0; font-size:25px; }
+		.page-heading { margin-bottom:18px; }
+		.page-heading p { margin:5px 0 0; color:var(--muted); }
+		.panel { margin-bottom:16px; padding:18px; border:1px solid var(--line); border-radius:6px; background:#fff; }
+		.filters { display:grid; grid-template-columns:repeat(5,minmax(130px,1fr)); gap:12px; align-items:end; }
+		.field { display:grid; gap:5px; min-width:0; }
+		label { color:#334650; font-size:12px; font-weight:700; }
+		select, input { width:100%; min-width:0; min-height:40px; padding:8px 10px; border:1px solid #bdcbd2; border-radius:4px; background:#fff; color:var(--ink); font:inherit; }
+		select:focus, input:focus { outline:2px solid #8bc9c4; outline-offset:1px; border-color:var(--teal); }
+		.button { display:inline-flex; min-height:40px; align-items:center; justify-content:center; padding:0 16px; border:0; border-radius:4px; background:var(--teal); color:#fff; font-weight:700; cursor:pointer; }
+		.button:hover { background:var(--teal-dark); }
+		.button:disabled { opacity:.55; cursor:not-allowed; }
+		.notice { margin-bottom:14px; padding:10px 12px; border:1px solid #a8d8c5; border-radius:4px; background:#e9f7f0; color:#18553d; }
+		.table-scroll { width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+		table { width:100%; min-width:700px; border-collapse:collapse; }
+		th, td { padding:9px 10px; border-bottom:1px solid #e6ecef; text-align:left; vertical-align:middle; }
+		th { background:#eef4f5; color:#455a64; font-size:11px; text-transform:uppercase; white-space:nowrap; }
+		td.reg, td.roll { white-space:nowrap; color:var(--muted); }
+		td.name { min-width:170px; font-weight:600; }
+		td.attendance { width:150px; }
+		td.marks { min-width:220px; color:#40535e; font-size:13px; }
+		.marks-list { display:flex; flex-wrap:wrap; gap:5px; }
+		.marks-list span { padding:3px 6px; border-radius:3px; background:#edf5f4; white-space:nowrap; }
+		.empty { padding:30px 12px; color:var(--muted); text-align:center; }
+		.save-row { display:flex; justify-content:flex-end; padding-top:14px; }
+		@media (max-width:760px) {
+			body { padding:12px; }
+			.panel { padding:13px; }
+			.filters { grid-template-columns:repeat(2,minmax(0,1fr)); }
+			.filters .field:last-of-type { grid-column:1 / -1; }
+			.filters .button { width:100%; }
+			h1 { font-size:22px; }
+		}
+		@media (max-width:420px) { .filters { grid-template-columns:1fr; } .filters .field:last-of-type { grid-column:auto; } }
+	</style>
+</head>
+<body>
+	<main>
+		<header class="page-heading">
+			<h1>Total attendance entry</h1>
+			<p>Enter attendance days for a class and terminal.</p>
+		</header>
+		<% if (message) { %><div class="notice" role="status"><%= message %></div><% } %>
+
+		<section class="panel">
+			<form class="filters" method="get" action="/total-attendanceentry">
+				<div class="field">
+					<label for="studentClass">Class</label>
+					<select id="studentClass" name="studentClass" required>
+						<option value="">Select class</option>
+						<% classes.forEach(item => { %><option value="<%= item %>" <%= String(item) === studentClass ? 'selected' : '' %>><%= item %></option><% }) %>
+					</select>
+				</div>
+				<div class="field">
+					<label for="section">Section</label>
+					<select id="section" name="section" required>
+						<option value="">Select section</option>
+						<% sections.forEach(item => { %><option value="<%= item %>" <%= String(item) === section ? 'selected' : '' %>><%= item %></option><% }) %>
+					</select>
+				</div>
+				<div class="field">
+					<label for="terminal">Terminal</label>
+					<select id="terminal" name="terminal" required>
+						<option value="">Select terminal</option>
+						<% terminalOptions.forEach(item => { %><option value="<%= item.name %>" <%= String(item.name).toLowerCase() === String(terminal).toLowerCase() ? 'selected' : '' %>><%= item.name %></option><% }) %>
+					</select>
+				</div>
+				<div class="field">
+					<label for="academicYear">Academic year</label>
+					<select id="academicYear" name="academicYear" required>
+						<% setups.forEach(setup => { %><option value="<%= setup.academicYear %>" <%= String(setup.academicYear) === academicYear ? 'selected' : '' %>><%= setup.academicYear %></option><% }) %>
+					</select>
+				</div>
+				<button class="button" type="submit">Load students</button>
+			</form>
+		</section>
+
+		<% if (studentClass && section && terminal) { %>
+		<section class="panel">
+			<% if (students.length) { %>
+			<form method="post" action="/total-attendanceentry/save">
+				<input type="hidden" name="studentClass" value="<%= studentClass %>">
+				<input type="hidden" name="section" value="<%= section %>">
+				<input type="hidden" name="terminal" value="<%= terminal %>">
+				<input type="hidden" name="academicYear" value="<%= academicYear %>">
+				<div class="table-scroll">
+					<table>
+						<thead><tr><th>Reg</th><th>Roll</th><th>Name</th><th>Attendance days</th><th>Attendance marks by subject</th></tr></thead>
+						<tbody><% students.forEach(student => { %>
+							<tr>
+								<td class="reg"><%= student.reg %></td>
+								<td class="roll"><%= student.roll || '-' %></td>
+								<td class="name"><%= student.name %></td>
+								<td class="attendance"><input type="number" name="attendance[<%= student.reg %>]" min="0" max="<%= workingDays %>" step="1" value="<%= student.attendance %>" required aria-label="Attendance days for <%= student.name %>"></td>
+								<td class="marks">
+									<% if (student.subjectMarks.length) { %><div class="marks-list"><% student.subjectMarks.forEach(mark => { %><span><%= mark.subject %>: <%= mark.marks %></span><% }) %></div>
+									<% } else { %><span>Calculated when exam marks are entered</span><% } %>
+								</td>
+							</tr>
+						<% }) %></tbody>
+					</table>
+				</div>
+				<div class="save-row"><button class="button" type="submit" <%= workingDays ? '' : 'disabled' %>>Save attendance</button></div>
+			</form>
+			<% } else { %><div class="empty">No students found for this class and section.</div><% } %>
+		</section>
+		<% } %>
+	</main>
+</body>
+</html>

@@ -292,7 +292,7 @@ input[type="number"] {
                    data-percentage=""
                    oninput="handlePracticalMarksChange(this)">
           </td>
-          <td><input type="number" id="attendance" name="attendance[<%=student.reg%>]" value="" data-reg="<%= student.reg %>" oninput="handleAttendanceChange(this)"></td>
+          <td><input type="number" id="attendance" name="attendance[<%=student.reg%>]" value="<%= totalAttendanceByReg?.[String(student.reg)] ?? '' %>" data-reg="<%= student.reg %>" oninput="handleAttendanceChange(this)"></td>
           <input type="hidden" id="attendancemarks_<%=student.reg%>" name="attendanceMarks[<%=student.reg%>]" readonly value="0">
    <% if (subject.toUpperCase()==="ENGLISH" || subject.toUpperCase()==="NEPALI" || subject.toUpperCase()==="MATHEMATICS" || subject.toUpperCase()==="SCIENCE" || subject.toUpperCase()==="SOCIAL" || subject.toUpperCase()==="HEALTH") 
 {%>
@@ -692,7 +692,7 @@ input[type="number"] {
     const studentClass = urlParams.get('studentClass');
     const section = urlParams.get('section');
     const terminal = urlParams.get('terminal');
-    const academicYear = urlParams.get('academicYear');
+    const academicYear = urlParams.get('academicYear') || "<%= academicYear %>";
     
     // 🔥 FIX: Added SCIENCE to theme data subjects
     const subjectsWithThemeData = ['NEPALI', 'ENGLISH', 'MATHEMATICS', 'SCIENCE', 'SOCIAL', 'HEALTH'];
@@ -788,7 +788,7 @@ input[type="number"] {
     }
 
     // Total = practical + attendance + terminal + participation
-    const total = Math.ceil(practical);
+    const total = Math.ceil(practical + attendanceMarks + terminalMarks + participationMarks);
     
     if (totalPracticalInput) {
       totalPracticalInput.value = String(Math.ceil(total));
@@ -901,7 +901,7 @@ input[type="number"] {
         const studentClass = param.get('studentClass');
         const section = param.get('section');
         const subject = param.get('subject');
-        const academicYear = param.get('academicYear');
+        const academicYear = param.get('academicYear') || "<%= academicYear %>";
         const terminal = param.get('terminal');
         const passMarks = document.getElementById('passMarks')?.value || '';
         const practicalfullmarks = document.getElementById('practicalfullmarks')?.value || '50';
@@ -949,6 +949,7 @@ input[type="number"] {
             theorymarks,
             practicalmarks,
             attendance,
+            attendanceMarks: document.getElementById(`attendancemarks_${reg}`)?.value || 0,
             studentClass,
             section,
             subject,
@@ -1233,11 +1234,19 @@ input[type="number"] {
     const section = urlParams.get('section');
     const subject = urlParams.get('subject');
     const terminal = urlParams.get('terminal');
-    const academicYear = urlParams.get('academicYear');
+    const academicYear = urlParams.get('academicYear') || "<%= academicYear %>";
 
     if (studentClass && section && subject && terminal && academicYear) {
       // Populate all data with priority: Theme > API > Database
       await populateData(subject, studentClass, section, academicYear, terminal);
+      const totalAttendanceByReg = <%- JSON.stringify(totalAttendanceByReg || {}) %>;
+      Object.entries(totalAttendanceByReg).forEach(([reg, attendance]) => {
+        const attendanceInput = document.querySelector(`input[name="attendance[${reg}]"]`);
+        if (!attendanceInput) return;
+        attendanceInput.value = attendance;
+        calculateAttendanceMarks(reg);
+        autoSave(attendanceInput);
+      });
       console.log("All data loaded successfully for:", subject);
     }
   };

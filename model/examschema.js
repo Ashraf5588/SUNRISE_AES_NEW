@@ -13,6 +13,7 @@ const examSchema = new mongoose.Schema({
  participationMarks: {type: Number, required: false},
  totalpracticalmarks: {type: Number, required: false},
   attendance: {type: Number, required: false},
+  attendanceMarks: {type: Number, required: false},
   subject: {type: String, required: false},
   terminal: {type: String, required: false},
   theoryfullmarks: {type: Number, required: false},

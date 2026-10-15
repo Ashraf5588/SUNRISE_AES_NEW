@@ -41,6 +41,8 @@ const {themeSchemaFor1,scienceSchema,FinalPracticalSlipSchema} = require("../mod
 const { get } = require("http");
 
 const marksheetSetup = mongoose.models.marksheetSetup || mongoose.model("marksheetSetup", marksheetsetupschemaForAdmin, "marksheetSetup");
+const TotalAttendance = mongoose.models.attendanceTotal || require("../model/totalattendanceSchema");
+const { calculateAttendanceMarks } = require("../utils/attendanceMarks");
 
 const { BlobServiceClient } = require("@azure/storage-blob");
 const sharp = require("sharp");
@@ -381,7 +383,18 @@ exports.entryform = async (req,res,next)=>
 
    const studentClassdata = (await studentClassModel.find({}).lean()).sort((a, b) => a.classorder - b.classorder);
    
-  const {studentClass,section,subject,academicYear,terminal,worksheet}= req.query;
+  const {studentClass,section,subject,terminal,worksheet}= req.query;
+  const marksheetSetups = await marksheetSetup.find({}).sort({ academicYear: -1 }).lean();
+  const academicYear = String(req.query.academicYear || marksheetSetups[0]?.academicYear || '').trim();
+  const totalAttendanceRecords = studentClass && section && terminal && academicYear
+    ? await TotalAttendance.find({
+        academicYear,
+        terminal: String(terminal).toUpperCase(),
+        studentClass: String(studentClass).trim(),
+        section: String(section).trim().toUpperCase()
+      }).select('reg presentDays').lean()
+    : [];
+  const totalAttendanceByReg = Object.fromEntries(totalAttendanceRecords.map((record) => [String(record.reg), Number(record.presentDays) || 0]));
   const model = getSubjectModel(subject, studentClass, section, terminal);
   const theoryData = await model.find({}).lean();
 
@@ -395,8 +408,6 @@ exports.entryform = async (req,res,next)=>
   }).lean();
 
   console.log(`[Backend] entryform: requested class='${studentClass}', section='${section}' -> found ${studentData.length} student records`);
-     const marksheetSetups = await marksheetSetup.find({}).lean();
-     
   const subjectData = await newsubject.find({forClass:studentClass,newsubject:subject}).lean();
  
   const subjects = await newsubject.find({}).lean();
@@ -434,25 +445,25 @@ exports.entryform = async (req,res,next)=>
     }
     if (configuredFormType === 'entryformfourfive') {
       const savedMarks = await getSlipModel().find({ subject, terminal, academicYear, studentClass, section }).select('reg status').lean();
-      return res.render("./exam/entryformfourfive",{studentData,studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData,savedMarks});
+      return res.render("./exam/entryformfourfive",{studentData,studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData,savedMarks,totalAttendanceByReg});
     }
     if (configuredFormType === 'entryformprimary') {
       return res.render("./exam/entryformprimary",{studentData,studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData});
     }
-    return res.render("./exam/entryform",{studentData,studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,theoryData});
+    return res.render("./exam/entryform",{studentData,studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,theoryData,totalAttendanceByReg});
   }
 
   if(studentClass>3|| studentClass=="SIX" || studentClass=="Six" || studentClass=="six" || studentClass=="6" || studentClass=="SEVEN" || studentClass=="Seven" || studentClass=="seven" || studentClass=="7" || studentClass=="EIGHT" || studentClass=="Eight" || studentClass=="eight" || studentClass=="8" || studentClass=="NINE" || studentClass=="Nine" || studentClass=="nine" || studentClass=="9" || studentClass=="TEN" || studentClass=="Ten" || studentClass=="ten" || studentClass=="10")
   {
 
-  res.render("./exam/entryform",{studentData,studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,theoryData});
+  res.render("./exam/entryform",{studentData,studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,theoryData,totalAttendanceByReg});
   }
   if(studentClass=="FOUR" || studentClass=="Four" || studentClass=="four" || studentClass=="4" || studentClass=="FIVE" || studentClass=="Five" || studentClass=="five" || studentClass=="5")
   {
     if(subject.toUpperCase()==="SCIENCE" || subject.toUpperCase()==="MATHEMATICS" || subject.toUpperCase()==="ENGLISH" || subject.toUpperCase()==="NEPALI" || subject.toUpperCase()==="SOCIAL" || subject.toUpperCase()==="HEALTH")
     {
     const savedMarks = await getSlipModel().find({ subject, terminal, academicYear, studentClass, section }).select('reg status').lean();
-    res.render("./exam/entryformfourfive",{studentData,studentClass:studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData,savedMarks});
+    res.render("./exam/entryformfourfive",{studentData,studentClass:studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData,savedMarks,totalAttendanceByReg});
     }else
     {
       res.render("./exam/entryformlocalsubject",{studentData,studentClass:studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData});
@@ -488,6 +499,18 @@ exports.saveEntryform = async (req, res, next) => {
     
 
     const model = getSlipModel();
+    const marksheetSetupDoc = await marksheetSetup.findOne({ academicYear: String(academicYear) }).lean();
+    const terminalSetup = marksheetSetupDoc?.terminals?.find((item) => normalizeText(item.name) === normalizeText(terminal));
+    const attendanceMarks = calculateAttendanceMarks({
+      attendance: req.body.attendance,
+      workingDays: terminalSetup?.workingDays,
+      subject,
+      theoryFullMarks: req.body.theoryfullmarks
+    });
+    const totalPracticalMarks = (Number(req.body.practicalmarks) || 0)
+      + attendanceMarks
+      + (Number(req.body.terminalmarks) || 0)
+      + (Number(req.body.participationMarks) || 0);
     
     const updateQuery = {
       reg: req.body.reg,
@@ -523,8 +546,9 @@ exports.saveEntryform = async (req, res, next) => {
         theorymarks: theorymarks, // This can be null, 0.000001, 0.0, 4.0, etc.
         status: req.body.status === 'ABSENT' ? 'ABSENT' : 'PRESENT',
         practicalmarks: Number(req.body.practicalmarks) || 0,
-        totalpracticalmarks: Number(req.body.totalpracticalmarks) || 0,
+        totalpracticalmarks: totalPracticalMarks,
         attendance: Number(req.body.attendance) || 0,
+        attendanceMarks,
         terminal: terminal,
         subject: subject,
         theoryfullmarks: Number(req.body.theoryfullmarks) || 0,
