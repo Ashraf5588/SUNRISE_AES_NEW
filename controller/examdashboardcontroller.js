@@ -1511,8 +1511,18 @@ exports.ledger = async (req, res, next) => {
     const classSetup = await studentClassModel.findOne({
       studentClass: { $regex: `^${String(studentClass || '').trim()}$`, $options: 'i' }
     }).select('ledgerType').lean();
+    const marksheetSetups = await marksheetSetup.find({}).lean();
+    const terminals = await terminalModel.find({}).lean();
+    const selectedTerminal = terminals.find((item) =>
+      String(item.terminal || '').trim().toLowerCase() === String(terminal || '').trim().toLowerCase()
+    );
+    const isTestTerminal = String(selectedTerminal?.terminalType || '').trim().toUpperCase() === 'TEST';
+    const testFullMarks = Number(selectedTerminal?.fullMarks ?? 50);
+    const testPassMarks = Number(selectedTerminal?.passMarks ?? 9);
     const configuredLedgerType = LEDGER_VIEW_BY_TYPE[classSetup?.ledgerType] ? classSetup.ledgerType : 'auto';
-    const ledgerView = LEDGER_VIEW_BY_TYPE[configuredLedgerType]
+    const ledgerView = isTestTerminal
+      ? './exam/testLedger'
+      : LEDGER_VIEW_BY_TYPE[configuredLedgerType]
       || (isPrePrimary
         ? LEDGER_VIEW_BY_TYPE.preprimary
         : isPrimary
@@ -1520,8 +1530,6 @@ exports.ledger = async (req, res, next) => {
           : isCASClass
             ? LEDGER_VIEW_BY_TYPE.cas
             : LEDGER_VIEW_BY_TYPE.secondary);
-    const marksheetSetups = await marksheetSetup.find({}).lean();
-    const terminals = await terminalModel.find({});
 
     const model = getSlipModel();
     
@@ -1627,7 +1635,7 @@ exports.ledger = async (req, res, next) => {
     // ============================================
     // PRE-PRIMARY LEDGER (UKG, LKG, NURSERY)
     // ============================================
-    if (isPrePrimary) {
+    if (isPrePrimary && !isTestTerminal) {
       console.log("=== Processing PRE-PRIMARY LEDGER ===");
       
       const subjectCreditHours = {};
@@ -1828,7 +1836,7 @@ exports.ledger = async (req, res, next) => {
     // ============================================
     // PRIMARY LEDGER (Classes 1-3)
     // ============================================
-    else if (isPrimary) {
+    else if (isPrimary && !isTestTerminal) {
       console.log("=== Processing PRIMARY LEDGER (Classes 1-3) ===");
       
       const creditHourData = await newsubject.find({}).lean();
@@ -2087,10 +2095,14 @@ exports.ledger = async (req, res, next) => {
                 status: "$status",
                 theorymarks: { $ifNull: ["$theorymarks", 0] },
                 practicalmarks: { $ifNull: ["$practicalmarks", 0] },
-                theoryfullmarks: { $ifNull: ["$theoryfullmarks", 0] },
+                theoryfullmarks: isTestTerminal
+                  ? { $literal: testFullMarks }
+                  : { $ifNull: ["$theoryfullmarks", 0] },
                 practicalfullmarks: { $ifNull: ["$practicalfullmarks", 0] },
                 totalpracticalmarks: { $ifNull: ["$totalpracticalmarks", { $ifNull: ["$practicalmarks", 0] }] },
-                passMarks: { $ifNull: ["$passMarks", 0] },
+                passMarks: isTestTerminal
+                  ? { $literal: testPassMarks }
+                  : { $ifNull: ["$passMarks", 0] },
                 terminalmarks: { $ifNull: ["$terminalmarks", 0] },
                 totalmarks: {
                   $add: [
@@ -2276,6 +2288,11 @@ exports.ledger = async (req, res, next) => {
 
         const result = await model.aggregate([
           { $match: matchQuery },
+          {
+            $set: {
+              passMarks: isTestTerminal ? { $literal: testPassMarks } : "$passMarks"
+            }
+          },
           {
             $group: {
               _id: null,
