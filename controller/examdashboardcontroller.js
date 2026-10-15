@@ -1513,9 +1513,12 @@ exports.ledger = async (req, res, next) => {
     }).select('ledgerType').lean();
     const marksheetSetups = await marksheetSetup.find({}).lean();
     const terminals = await terminalModel.find({}).lean();
-    const selectedTerminal = terminals.find((item) =>
+    const matchingTerminals = terminals.filter((item) =>
       String(item.terminal || '').trim().toLowerCase() === String(terminal || '').trim().toLowerCase()
     );
+    const selectedTerminal = matchingTerminals.find((item) =>
+      String(item.terminalType || '').trim().toUpperCase() === 'TEST'
+    ) || matchingTerminals[0];
     const isTestTerminal = String(selectedTerminal?.terminalType || '').trim().toUpperCase() === 'TEST';
     const testFullMarks = Number(selectedTerminal?.fullMarks ?? 50);
     const testPassMarks = Number(selectedTerminal?.passMarks ?? 9);
@@ -2203,6 +2206,20 @@ exports.ledger = async (req, res, next) => {
 
       // Process regular data - set hasWorksheets flag and preserve Ab values
       ledgerData.forEach((student) => {
+        if (isTestTerminal) {
+          student.subjects.forEach((subject) => {
+            subject.theoryfullmarks = testFullMarks;
+            subject.passMarks = testPassMarks;
+          });
+          student.failcount = student.subjects.filter((subject) =>
+            Number(subject.theorymarks) < testPassMarks
+          ).length;
+          student.totalTheoryFullMarks = student.subjects.length * testFullMarks;
+          student.theorypercentage = student.totalTheoryFullMarks > 0
+            ? (student.totalTh / student.totalTheoryFullMarks) * 100
+            : 0;
+        }
+
         let lookupmap = {};
         if (student.subjects) {
           student.subjects.forEach((sub) => {
