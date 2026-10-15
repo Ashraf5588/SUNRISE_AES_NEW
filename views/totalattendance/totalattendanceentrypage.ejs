@@ -5,7 +5,7 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Total attendance entry</title>
 	<style>
-		:root { color-scheme: light; --ink:#1d2b35; --muted:#60717c; --line:#d6e0e5; --paper:#f3f6f7; --teal:#126b68; --teal-dark:#0b514f; }
+		:root { color-scheme: light; --ink:#142a39; --muted:#65bdf8; --line:#d6e0e5; --paper:#f3f6f7; --teal:#001b93; --teal-dark:#01173f; }
 		* { box-sizing:border-box; }
 		body { margin:0; padding:20px; background:var(--paper); color:var(--ink); font:15px/1.45 "Segoe UI",sans-serif; }
 		main { width:min(1200px,100%); margin:0 auto; }
@@ -56,17 +56,12 @@
 		<section class="panel">
 			<form class="filters" method="get" action="/total-attendanceentry">
 				<div class="field">
-					<label for="studentClass">Class</label>
-					<select id="studentClass" name="studentClass" required>
-						<option value="">Select class</option>
-						<% classes.forEach(item => { %><option value="<%= item %>" <%= String(item) === studentClass ? 'selected' : '' %>><%= item %></option><% }) %>
-					</select>
-				</div>
-				<div class="field">
-					<label for="section">Section</label>
-					<select id="section" name="section" required>
-						<option value="">Select section</option>
-						<% sections.forEach(item => { %><option value="<%= item %>" <%= String(item) === section ? 'selected' : '' %>><%= item %></option><% }) %>
+					<label for="classSection">Class - Section</label>
+					<select id="classSection" name="classSection" required>
+						<option value="">Select class and section</option>
+						<% classSections.forEach(item => { const value = `${item.studentClass}-${item.section}`; %>
+							<option value="<%= value %>" <%= String(item.studentClass) === studentClass && String(item.section) === section ? 'selected' : '' %>><%= item.studentClass %>-<%= item.section %></option>
+						<% }) %>
 					</select>
 				</div>
 				<div class="field">

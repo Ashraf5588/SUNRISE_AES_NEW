@@ -1,11 +1,12 @@
 const mongoose = require('mongoose');
 const TotalAttendance = mongoose.models.attendanceTotal || require('../../model/totalattendanceSchema');
-const { studentrecordschema } = require('../../model/adminschema');
+const { studentrecordschema, classSchema } = require('../../model/adminschema');
 const { examSchema } = require('../../model/examschema');
 const { marksheetsetupschemaForAdmin } = require('../../model/marksheetschema');
 const { calculateAttendanceMarks } = require('../../utils/attendanceMarks');
 
 const StudentRecord = mongoose.models.studentRecord || mongoose.model('studentRecord', studentrecordschema, 'studentrecord');
+const ClassList = mongoose.models.studentClass || mongoose.model('studentClass', classSchema, 'classlist');
 const ExamMarks = mongoose.models.exam_marks || mongoose.model('exam_marks', examSchema, 'exam_marks');
 const MarksheetSetup = mongoose.models.marksheetSetup || mongoose.model('marksheetSetup', marksheetsetupschemaForAdmin, 'marksheetSetup');
 const normalize = (value) => String(value || '').trim().toLowerCase();
@@ -16,12 +17,22 @@ exports.TotalAttendanceEntryPage = async (req, res) => {
     const setups = await MarksheetSetup.find({}).sort({ academicYear: -1 }).lean();
     const academicYear = String(req.query.academicYear || setups[0]?.academicYear || '').trim();
     const currentSetup = setups.find((setup) => String(setup.academicYear) === academicYear) || setups[0];
-    const studentClass = String(req.query.studentClass || '').trim();
-    const section = String(req.query.section || '').trim();
+    const selectedClassSection = String(req.query.classSection || '').trim();
+    const separatorIndex = selectedClassSection.indexOf('-');
+    const studentClass = separatorIndex >= 0
+      ? selectedClassSection.slice(0, separatorIndex).trim()
+      : String(req.query.studentClass || '').trim();
+    const section = separatorIndex >= 0
+      ? selectedClassSection.slice(separatorIndex + 1).trim()
+      : String(req.query.section || '').trim();
     const terminal = String(req.query.terminal || '').trim();
-    const classes = (await StudentRecord.distinct('studentClass')).filter(Boolean).sort((a, b) => String(a).localeCompare(String(b), 'en', { numeric: true }));
-    const sectionFilter = studentClass ? { studentClass: exactRegex(studentClass) } : {};
-    const sections = (await StudentRecord.distinct('section', sectionFilter)).filter(Boolean).sort();
+    const classSections = await ClassList.find({
+      studentClass: { $exists: true, $nin: ['', null] },
+      section: { $exists: true, $nin: ['', null] }
+    })
+      .select('studentClass section classorder')
+      .sort({ classorder: 1, studentClass: 1, section: 1 })
+      .lean();
     const terminalOptions = currentSetup?.terminals || [];
     const selectedTerminal = terminalOptions.find((item) => normalize(item.name) === normalize(terminal));
     const workingDays = Number(selectedTerminal?.workingDays) || 0;
@@ -79,8 +90,7 @@ exports.TotalAttendanceEntryPage = async (req, res) => {
     }
 
     res.render('totalattendance/totalattendanceentrypage', {
-      classes,
-      sections,
+      classSections,
       setups,
       academicYear,
       studentClass,
