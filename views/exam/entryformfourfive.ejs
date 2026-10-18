@@ -327,8 +327,10 @@ input[type="number"] {
   <% } %>
 <% } %>
 
+<div id="practicalSlipSubjectList" data-subjects="<%= JSON.stringify([...new Set((subjects || []).filter((subjectRecord) => subjectRecord.subjectType === 'compulsory').map((subjectRecord) => String(subjectRecord.newsubject || '').toUpperCase()))]) %>" hidden></div>
 <script>
   const terminal = document.getElementById('terminal').value;
+  const compulsorySubjects = JSON.parse(document.getElementById('practicalSlipSubjectList').dataset.subjects);
   const saveTimers = new Map();
   let practicalDataSource = 'db'; // 'db', 'theme', 'api'
 
@@ -388,9 +390,7 @@ input[type="number"] {
   // ==================== PROCESS THEME DATA FOR PRACTICAL MARKS ====================
 
   function processThemeDataForPracticalMarks(themeData, currentSubject) {
-    const subjectsWithPracticalSlips = ['NEPALI', 'ENGLISH', 'MATHEMATICS', 'SCIENCE', 'SOCIAL', 'HEALTH'];
-    
-    if (!subjectsWithPracticalSlips.includes(currentSubject.toUpperCase())) {
+    if (!compulsorySubjects.includes(currentSubject.toUpperCase())) {
       console.log(`Subject ${currentSubject} not in practical slips list, skipping theme data`);
       return { marksMap: {}, hasValidPercentage: false };
     }
@@ -694,10 +694,6 @@ input[type="number"] {
     const terminal = urlParams.get('terminal');
     const academicYear = urlParams.get('academicYear') || "<%= academicYear %>";
     
-    // 🔥 FIX: Added SCIENCE to theme data subjects
-    const subjectsWithThemeData = ['NEPALI', 'ENGLISH', 'MATHEMATICS', 'SCIENCE', 'SOCIAL', 'HEALTH'];
-    const subjectsWithPracticalSlips = ['SCIENCE', 'SOCIAL', 'NEPALI', 'ENGLISH', 'MATHEMATICS', 'HEALTH'];
-    
     try {
       // Clear existing practical marks only - DO NOT clear theory marks
       document.querySelectorAll('input[id^="practicalmarks_"]').forEach(input => {
@@ -721,7 +717,7 @@ input[type="number"] {
       let hasValidPercentage = false;
       
       // First priority: Theme data for specific subjects (including SCIENCE)
-      if (subjectsWithThemeData.includes(subject.toUpperCase())) {
+      if (compulsorySubjects.includes(subject.toUpperCase())) {
         const result = await applyThemeDataToPracticalMarks(studentClass, section, subject);
         dataApplied = result.applied;
         hasValidPercentage = result.hasValidPercentage;
@@ -737,7 +733,7 @@ input[type="number"] {
       }
       
       // Second priority: Practical slip API for subjects that support it
-      if (subjectsWithPracticalSlips.includes(subject.toUpperCase())) {
+      if (compulsorySubjects.includes(subject.toUpperCase())) {
         await getPracticalMarks();
         console.log("Practical marks refreshed from API for:", subject);
         dataApplied = true;
@@ -1115,11 +1111,8 @@ input[type="number"] {
     const attendanceResponse = await fetch(attendanceDataUrl);
     const attendanceResult = await attendanceResponse.json();
 
-    // 🔥 FIX: Added SCIENCE to theme data subjects
-    const subjectsWithThemeData = ['NEPALI', 'ENGLISH', 'MATHEMATICS', 'SCIENCE', 'SOCIAL', 'HEALTH'];
-    const subjectsWithPracticalSlips = ['SCIENCE', 'SOCIAL', 'NEPALI', 'ENGLISH', 'MATHEMATICS', 'HEALTH'];
-    const shouldFetchThemeData = subjectsWithThemeData.includes(subject.toUpperCase());
-    const shouldFetchPracticalSlips = subjectsWithPracticalSlips.includes(subject.toUpperCase());
+    const shouldFetchThemeData = compulsorySubjects.includes(subject.toUpperCase());
+    const shouldFetchPracticalSlips = compulsorySubjects.includes(subject.toUpperCase());
 
     showLoading(true, 'Loading practical marks...');
 
