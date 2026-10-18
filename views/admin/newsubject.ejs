@@ -595,7 +595,18 @@
               </div>
             </div>
 
-           
+            <div class="row mb-4">
+              <div class="col-md-6">
+                <label for="subjectType" class="form-label">Subject Type</label>
+                <select id="subjectType" name="subjectType" class="form-control" required>
+                  <option value="" <%= !editing || !newsubjectData.subjectType ? 'selected' : '' %>>Select subject type</option>
+                  <option value="compulsory" <%= editing && newsubjectData.subjectType === 'compulsory' ? 'selected' : '' %>>Compulsory</option>
+                  <option value="local" <%= editing && newsubjectData.subjectType === 'local' ? 'selected' : '' %>>Local</option>
+                  <option value="optional" <%= editing && newsubjectData.subjectType === 'optional' ? 'selected' : '' %>>Optional</option>
+                  <option value="Extra" <%= editing && newsubjectData.subjectType === 'Extra' ? 'selected' : '' %>>Extra</option>
+                </select>
+              </div>
+            </div>
 
             <!-- Marks Section -->
             <div class="row mb-4">
@@ -733,6 +744,7 @@ document.getElementById("subject").addEventListener("input", function() {
                   <th>S.No.</th>
                   <th>Subject Name</th>
                   <th>For Class</th>
+                  <th>Subject Type</th>
                   <th>Theory Marks</th>
                   <th>Practical Marks</th>
                   
@@ -752,6 +764,9 @@ document.getElementById("subject").addEventListener("input", function() {
                     </td>
                     <td>
                       <%= subject.forClass %>
+                    </td>
+                    <td>
+                      <%= subject.subjectType || 'Not set' %>
                     </td>
                     <td>
                       <%= subject.theory %>

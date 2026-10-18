@@ -1386,6 +1386,11 @@ exports.addNewSubjectPost = async (req, res, next) => {
   try {
     const { subjectId } = req.params;
     const updatedNewSubject = String(req.body.newsubject || '').toUpperCase().trim();
+    const subjectType = String(req.body.subjectType || '').trim();
+    const allowedSubjectTypes = ['compulsory', 'local', 'optional', 'Extra'];
+    if (!allowedSubjectTypes.includes(subjectType)) {
+      return res.status(400).send("Invalid subject type");
+    }
     const { newsubject, theory, practical, selectedClasses, total, passingMarks, theoryCreditHour, practicalCreditHour } = req.body;
     const classes = JSON.parse(selectedClasses || '[]');
 console.log("Selected classes for new subject:", classes);
@@ -1415,6 +1420,7 @@ console.log("Selected classes for new subject:", classes);
         {
           $set: {
             newsubject: updatedNewSubject,
+            subjectType,
             theory,
             practical,
             total,
@@ -1428,6 +1434,7 @@ console.log("Selected classes for new subject:", classes);
       if (missingClasses.length > 0) {
         const inserts = missingClasses.map((cls) => ({
           newsubject: updatedNewSubject,
+          subjectType,
           theory,
           practical,
           total,
@@ -1441,7 +1448,8 @@ console.log("Selected classes for new subject:", classes);
     } else {
       
   const dataToInsert = classes.map(cls => ({
-      newsubject,
+      newsubject: updatedNewSubject,
+      subjectType,
       theory,
       practical,
       total,
