@@ -2222,6 +2222,36 @@ exports.ledger = async (req, res, next) => {
         }
         student.rollNumber = Number.parseInt(student.roll, 10) || 0;
 
+        if (isCASClass) {
+          const subjectsByName = new Map();
+          student.subjects.forEach((subject) => {
+            const subjectKey = String(subject.subject || '').trim().toUpperCase();
+            const existing = subjectsByName.get(subjectKey);
+            if (!existing) {
+              subjectsByName.set(subjectKey, { ...subject });
+              return;
+            }
+
+            existing.theorymarks = Math.max(Number(existing.theorymarks) || 0, Number(subject.theorymarks) || 0);
+            existing.practicalmarks = Math.max(Number(existing.practicalmarks) || 0, Number(subject.practicalmarks) || 0);
+            existing.theoryfullmarks = Math.max(Number(existing.theoryfullmarks) || 0, Number(subject.theoryfullmarks) || 0);
+            existing.practicalfullmarks = Math.max(Number(existing.practicalfullmarks) || 0, Number(subject.practicalfullmarks) || 0);
+            existing.passMarks = Math.max(Number(existing.passMarks) || 0, Number(subject.passMarks) || 0);
+            existing.totalpracticalmarks = existing.practicalmarks;
+          });
+
+          student.subjects = [...subjectsByName.values()];
+          student.totalTh = student.subjects.reduce((total, subject) => total + (Number(subject.theorymarks) || 0), 0);
+          student.totalPr = student.subjects.reduce((total, subject) => total + (Number(subject.practicalmarks) || 0), 0);
+          student.totalTheoryFullMarks = student.subjects.reduce((total, subject) => total + (Number(subject.theoryfullmarks) || 0), 0);
+          student.theorypercentage = student.totalTheoryFullMarks > 0
+            ? (student.totalTh / student.totalTheoryFullMarks) * 100
+            : 0;
+          student.failcount = student.subjects.filter((subject) =>
+            Number(subject.theorymarks) < Number(subject.passMarks)
+          ).length;
+        }
+
         if (isTestTerminal) {
           student.subjects.forEach((subject) => {
             subject.theoryfullmarks = testFullMarks;

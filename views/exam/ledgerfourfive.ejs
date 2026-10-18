@@ -465,9 +465,6 @@
             return 0;
           }
           
-          // List of local subjects that get attendance + terminal marks added to PR
-          const localSubjects = ['COMPUTER', 'COMPUTER DELIGHT', 'DELIGHT', 'LOCAL', 'LOCAL SUBJECT', 'COMPUTER SCIENCE'];
-          
           // Calculate total theory and practical marks for each student
           // Also calculate percentage and rank
           const studentsWithCalculations = ledgerData.map((student) => {
@@ -482,17 +479,7 @@
               const theoryFull = sub.theoryfullmarks || 0;
               const passMarks = sub.passMarks || 0;
               
-              // Check if local subject
-              const isLocalSubject = localSubjects.some(local => sub.subject.toUpperCase().includes(local));
-              
-              // Calculate attendance marks for this student
-              const attMarks = calculateAttendanceMarks(student.attendance);
-              
-              // Calculate practical marks
-              let practicalMarks = sub.practicalmarks || 0;
-              if (isLocalSubject) {
-                practicalMarks = (sub.practicalmarks || 0) + attMarks + (sub.terminalmarks || 0);
-              }
+              const practicalMarks = Number(sub.practicalmarks) || 0;
               
               // Add to totals (only if theory marks is not null)
               if (theoryMarks !== null && theoryMarks !== undefined) {
@@ -547,20 +534,9 @@
             <% Array.from(uniqueSubjects).forEach((sub, index) => { %>
                 <% const subjectData = data.subjectMap[sub]; %>
                 <% if(subjectData){ 
-                  // Check if this is a local subject
-                  const isLocalSubject = localSubjects.some(local => sub.toUpperCase().includes(local));
-                  
-                  // Calculate attendance marks for this student
-                  const attMarks = calculateAttendanceMarks(data.attendance);
-                  
-                  // Calculate practical marks - add attendance + terminal for local subjects
-                  let practicalMarks = subjectData.practicalmarks || 0;
+                  const practicalMarks = Number(subjectData.practicalmarks) || 0;
                   let theoryMarks = subjectData.theorymarks || 0;
                   let passMarks = subjectData.passMarks || 0;
-                  
-                  if (isLocalSubject) {
-                    practicalMarks = (subjectData.practicalmarks || 0) + attMarks + (subjectData.terminalmarks || 0);
-                  }
                   
                   const totalMarks = (theoryMarks || 0) + (practicalMarks || 0);
                   const isFail = theoryMarks !== null && theoryMarks !== undefined && theoryMarks < passMarks;
