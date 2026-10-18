@@ -210,13 +210,15 @@ input[type="number"] {
   }
 </script>
 
+<% const configuredPracticalMarks = Number(subjectData?.[0]?.practical); %>
+<% const practicalFullMarks = Number.isFinite(configuredPracticalMarks) && configuredPracticalMarks >= 0 ? configuredPracticalMarks : 50; %>
 <div class="entry-container">
   <div class="entry-title">Enter Marks Data</div>
   <center>
     <div style="font-weight: 800;">Class <%= studentClass %> - <%= section %> | <%= subject %> | <%= terminal %> Terminal- <%= academicYear %></div>
     <button class="refresh-btn" onclick="refreshPracticalMarks()">🔄 Refresh Practical Marks</button>
     <span id="dataSourceBadge" style="margin-left:10px;font-size:12px;color:#666;"></span>
-    <span class="practical-full-marks-info">(Practical Full Marks: 50)</span>
+    <span class="practical-full-marks-info">(Practical Full Marks: <%= practicalFullMarks %>)</span>
     <span id="noPercentageWarning" class="no-percentage-warning" style="display:none;">⚠️ No percentage data available - using manual entry</span>
   </center>
 
@@ -287,7 +289,7 @@ input[type="number"] {
                    id="practicalmarks_<%=student.reg%>" 
                    name="practicalmarks[<%=student.reg%>]" 
                    value="" 
-                   data-max="50"
+                   data-max="<%= practicalFullMarks %>"
                    data-source=""
                    data-percentage=""
                    oninput="handlePracticalMarksChange(this)">
@@ -309,7 +311,7 @@ input[type="number"] {
     <% if (subjectData && subjectData.length > 0) { %>
       <input type="hidden" name="theoryfullmarks" id="fullMarks" value="<%= ['FIRST', 'SECOND', 'THIRD', 'MID', 'FINAL'].includes(String(terminal || '').toUpperCase()) ? subjectData[0].theory : (terminals.find(t => String(t.terminal || '').toUpperCase() === String(terminal || '').toUpperCase())?.fullMarks ?? '') %>">
       <input type="hidden" name="passMarks" id="passMarks" value="<%=subjectData[0].passingMarks%>">
-      <input type="hidden" name="practicalfullmarks" id="practicalfullmarks" value="50">
+      <input type="hidden" name="practicalfullmarks" id="practicalfullmarks" value="<%= practicalFullMarks %>">
     <% } else { %>
       <span style="color:red;">Theory marks or practical marks are not added. Contact admin.</span>
     <%}%>
@@ -331,6 +333,7 @@ input[type="number"] {
 <script>
   const terminal = document.getElementById('terminal').value;
   const compulsorySubjects = JSON.parse(document.getElementById('practicalSlipSubjectList').dataset.subjects);
+  const practicalFullMarks = Number(document.getElementById('practicalfullmarks')?.value) || 50;
   const saveTimers = new Map();
   let practicalDataSource = 'db'; // 'db', 'theme', 'api'
 
@@ -415,14 +418,14 @@ input[type="number"] {
         if (percentage > 0) {
           hasValidPercentage = true;
           // Convert percentage to marks out of 50
-          const convertedMarks = (percentage / 100) * 50;
+          const convertedMarks = (percentage / 100) * practicalFullMarks;
           marksMap[reg] = {
             marks: convertedMarks,
             percentage: percentage,
-            maxMarks: 50,
+            maxMarks: practicalFullMarks,
             hasPercentage: true
           };
-          console.log(`Reg: ${reg}, Subject: ${currentSubject}, Percentage: ${percentage}%, Converted Marks: ${convertedMarks.toFixed(2)}/50`);
+          console.log(`Reg: ${reg}, Subject: ${currentSubject}, Percentage: ${percentage}%, Converted Marks: ${convertedMarks.toFixed(2)}/${practicalFullMarks}`);
         } else {
           // Percentage is 0 or not available
           marksMap[reg] = {
