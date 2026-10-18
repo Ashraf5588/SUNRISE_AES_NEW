@@ -1143,6 +1143,10 @@ exports.getPracticalSlipData = async (req, res, next) => {
 
     const marksheetSetting = await marksheetSetup.find();
     const academicYear = marksheetSetting[0]?.academicYear;
+    const subjectMarksData = await newsubject.findOne({
+      forClass: studentClass,
+      newsubject: subject
+    }).lean();
 
     // Common function to calculate marks for all subjects
     const calculateMarks = (student, lessonData, studentClass) => {
@@ -1267,15 +1271,29 @@ exports.getPracticalSlipData = async (req, res, next) => {
           totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 50 * 100;
         }
 
-      } else {
-        // Default/Science subject calculation
+      } else if (normalizeText(subject).toUpperCase() === 'SCIENCE') {
         if (isHigherClass) {
-          totalPracticalproject = (((((totalObtainedAllPractical / 10) * 10) + (((totalObtainedAllProject) / 6) * 6))) / unitsCount);
+          totalPracticalproject = (((totalObtainedAllPractical / 10) * 10) + ((totalObtainedAllProject / 6) * 6)) / unitsCount;
           totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 25 * 100;
         } else {
-          totalPracticalproject = (((((totalObtainedAllPractical / 10) * 20) + (((totalObtainedAllProject) / 8) * 16))) / unitsCount);
+          totalPracticalproject = (((totalObtainedAllPractical / 10) * 20) + ((totalObtainedAllProject / 8) * 16)) / unitsCount;
           totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 50 * 100;
         }
+      } else {
+        const savedUnits = Array.isArray(student.unit) ? student.unit : [];
+        totalObtainedAllPractical = savedUnits.reduce((sum, unit) =>
+          sum + (Array.isArray(unit.practicals)
+            ? unit.practicals.reduce((unitTotal, practical) => unitTotal + (Number(practical.practicalMarks) || 0), 0)
+            : 0), 0);
+        totalObtainedAllProject = savedUnits.reduce((sum, unit) =>
+          sum + (Array.isArray(unit.projectWorks)
+            ? unit.projectWorks.reduce((unitTotal, project) => unitTotal + (Number(project.projectMarks) || 0), 0)
+            : 0), 0);
+        totalPracticalproject = totalObtainedAllPractical + totalObtainedAllProject;
+        const practicalFullMarks = Number(subjectMarksData?.practical) || 0;
+        totalPractical = practicalFullMarks > 0
+          ? (totalPracticalproject / practicalFullMarks) * 100
+          : 0;
       }
 
       return {
