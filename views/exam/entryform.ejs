@@ -277,6 +277,10 @@ input[type="number"] {
 <script>
   const terminal = document.getElementById('terminal').value;
   const saveTimers = new Map();
+  const normalizedStudentClass = String(document.getElementById('studentClass')?.value || '').trim().toUpperCase();
+  const isClassNineOrTen = ['9', '10', 'NINE', 'TEN'].includes(normalizedStudentClass);
+  const configuredPracticalMarks = Number(document.getElementById('practicalfullmarks')?.value);
+  const terminalMarksScale = isClassNineOrTen && configuredPracticalMarks === 25 ? 6 : 10;
 
   // ==================== PRACTICAL MARKS FUNCTIONS ====================
 
@@ -467,7 +471,7 @@ input[type="number"] {
     if (fullMarks <= 25) {
       terminalMarks = (theory / fullMarks) * 5;
     } else if (fullMarks > 25) {
-      terminalMarks = (theory / fullMarks) * 10;
+      terminalMarks = (theory / fullMarks) * terminalMarksScale;
     }
 
     if (terminalMarksInput) {
@@ -937,7 +941,7 @@ input[type="number"] {
         if (fullMarks <= 25) {
           terminalMarks = (theory / fullMarks) * 5;
         } else if (fullMarks > 25) {
-          terminalMarks = (theory / fullMarks) * 10;
+          terminalMarks = (theory / fullMarks) * terminalMarksScale;
         }
         const terminalMarksInput = document.getElementById(`terminalmarks_${reg}`);
         if (terminalMarksInput) {
