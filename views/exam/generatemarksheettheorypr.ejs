@@ -978,7 +978,7 @@
                 <td class="subject"><%= displaySubjectName %></td>
                 <td><%= totalCreditHour || 'N/A' %></td>
                 <td class="col-theorymarks"><%= isAbsent ? 'Ab' : sub.theorymarks %> <%= !isAbsent && sub.theorymarks < sub.passMarks ? '*' : '' %></td>
-                <td class="col-prmarks"><%= isAbsent ? '-' : practicalTotal.toFixed(2) %> <%= !isAbsent && practicalTotal < sub.passMarks ? '*' : '' %></td>
+                <td class="col-prmarks"><%= isAbsent ? '-' : practicalTotal.toFixed(2) %> <%= !isAbsent && practicalTotal < 0.36*sub.practicalfullmarks ? '*' : '' %></td>
                 <td class="col-finalgp"><%= isAbsent ? 'Ab' : finalGP.toFixed(2) %></td>
                 <td class="col-finalgrade"><%= isAbsent ? '-' : finalGrade %></td>
                 <td class="col-obtainedgp"><%= isAbsent ? '-' : obtainedGP %></td>
