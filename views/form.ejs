@@ -313,7 +313,7 @@
             <section class="mb-5">
                 <h2 class="section-title">Student Information</h2>
                 <center style="color: rgb(231, 135, 1);">Click on student name to autofill the form</center>
-                <div class="student-list-scroll" id="studentList" data-student-class="<%= studentClass %>" data-section="<%= section %>">
+                <div class="student-list-scroll" id="studentList" data-student-class="<%= studentClass %>" data-section="<%= section %>" data-subject="<%= subjectname %>" data-terminal="<%= terminal %>">
                     <% 
                         // Create a Set of rolls that have marks for efficient lookup
                         const submittedRolls = new Set(totalcountmarks.map(m => String(m.roll)));
@@ -750,7 +750,9 @@
 
                 const params = new URLSearchParams({
                     studentClass: studentList.dataset.studentClass,
-                    section: studentList.dataset.section
+                    section: studentList.dataset.section,
+                    subject: studentList.dataset.subject,
+                    terminal: studentList.dataset.terminal
                 });
 
                 try {
@@ -764,7 +766,7 @@
                     const selectedReg = document.getElementById('reg').value;
                     studentList.replaceChildren();
 
-                    students.forEach(student => {
+                    students.filter(student => !student.isSubmitted).forEach(student => {
                         const button = document.createElement('button');
                         button.type = 'button';
                         button.className = 'student-btn';

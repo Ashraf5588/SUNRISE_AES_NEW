@@ -801,9 +801,20 @@ const getFormStudentRoster = (studentClass, section) => {
 
 exports.getFormStudents = async (req, res) => {
   try {
-    const studentrecord = await getFormStudentRoster(req.query.studentClass, req.query.section);
+    const { studentClass, section, subject, terminal } = req.query;
+    const model = getSubjectModel(subject, studentClass, section, terminal);
+    const [studentrecord, submittedRecords] = await Promise.all([
+      getFormStudentRoster(studentClass, section),
+      model.find({ subject, studentClass, section, terminal }).select('roll').lean()
+    ]);
+    const submittedRolls = new Set(submittedRecords.map(record => String(record.roll)));
     res.set('Cache-Control', 'no-store');
-    return res.json({ students: studentrecord });
+    return res.json({
+      students: studentrecord.map(student => ({
+        ...student,
+        isSubmitted: submittedRolls.has(String(student.roll))
+      }))
+    });
   } catch (error) {
     console.error('Error fetching form student roster:', error);
     return res.status(500).json({ message: 'Unable to fetch the latest student list.' });
