@@ -506,17 +506,13 @@ input[type="number"] {
     const isMainSubject = ['NEPALI', 'ENGLISH', 'SOCIAL','SCIENCE','MATHEMATICS','HEALTH','HAMRO HETAUDA','COMPUTER'].includes(subject.toUpperCase());
 
     if (attendancePercent >= 90) {
-    
-      attendanceMarks = isMainSubject ? 2 : (fullMarks <= 25 ? 2 : 4);
+      attendanceMarks = isClassNineOrTen ? 1 : (isMainSubject ? 2 : (fullMarks <= 25 ? 2 : 4));
     } else if (attendancePercent >= 80) {
-      
-      attendanceMarks = isMainSubject ? 1.5 : (fullMarks <= 25 ? 1.5 : 3);
+      attendanceMarks = isClassNineOrTen ? 0.75 : (isMainSubject ? 1.5 : (fullMarks <= 25 ? 1.5 : 3));
     } else if (attendancePercent >= 70) {
-      
-      attendanceMarks = isMainSubject ? 1 : (fullMarks <= 25 ? 1 : 2);
+      attendanceMarks = isClassNineOrTen ? 0.5 : (isMainSubject ? 1 : (fullMarks <= 25 ? 1 : 2));
     } else if (attendancePercent >= 60) {
-     
-      attendanceMarks = isMainSubject ? 0.5 : (fullMarks <= 25 ? 0.5 : 1);
+      attendanceMarks = isClassNineOrTen ? 0.25 : (isMainSubject ? 0.5 : (fullMarks <= 25 ? 0.5 : 1));
     }
 
     const attendanceMarksInput = document.getElementById(`attendancemarks_${reg}`);
