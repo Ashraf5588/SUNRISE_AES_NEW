@@ -313,7 +313,7 @@
             <section class="mb-5">
                 <h2 class="section-title">Student Information</h2>
                 <center style="color: rgb(231, 135, 1);">Click on student name to autofill the form</center>
-                <div class="student-list-scroll">
+                <div class="student-list-scroll" id="studentList" data-student-class="<%= studentClass %>" data-section="<%= section %>">
                     <% 
                         // Create a Set of rolls that have marks for efficient lookup
                         const submittedRolls = new Set(totalcountmarks.map(m => String(m.roll)));
@@ -730,26 +730,64 @@
     <script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-      function setupStudentButtons() {
-        const buttons = document.querySelectorAll('.student-btn');
-        buttons.forEach(button => {
-          button.addEventListener('click', function() {
-            // Remove active class from all buttons
-            buttons.forEach(btn => btn.classList.remove('active'));
-            
-            // Add active class to clicked button
-            this.classList.add('active');
-            
-            // Fill form fields
-            document.getElementById('roll').value = this.getAttribute('data-roll');
-            document.getElementById('name').value = this.getAttribute('data-name');
-            document.getElementById('reg').value = this.getAttribute('data-reg');
-          });
-        });
-      }
-      
-      // Initialize when DOM is ready
-      document.addEventListener('DOMContentLoaded', setupStudentButtons);
+            const studentList = document.getElementById('studentList');
+            let studentListRefreshInFlight = false;
+
+            studentList.addEventListener('click', function(event) {
+                const button = event.target.closest('.student-btn');
+                if (!button || !studentList.contains(button)) return;
+
+                studentList.querySelectorAll('.student-btn').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                document.getElementById('roll').value = button.dataset.roll;
+                document.getElementById('name').value = button.dataset.name;
+                document.getElementById('reg').value = button.dataset.reg;
+            });
+
+            async function refreshStudentList() {
+                if (studentListRefreshInFlight) return;
+                studentListRefreshInFlight = true;
+
+                const params = new URLSearchParams({
+                    studentClass: studentList.dataset.studentClass,
+                    section: studentList.dataset.section
+                });
+
+                try {
+                    const response = await fetch(`/forms/students?${params}`, {
+                        cache: 'no-store',
+                        headers: { Accept: 'application/json' }
+                    });
+                    if (!response.ok) return;
+
+                    const { students = [] } = await response.json();
+                    const selectedReg = document.getElementById('reg').value;
+                    studentList.replaceChildren();
+
+                    students.forEach(student => {
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'student-btn';
+                        button.dataset.roll = student.roll ?? '';
+                        button.dataset.name = student.name || '';
+                        button.dataset.reg = student.reg || '';
+                        button.textContent = `${student.roll ?? ''} - ${student.name || ''}`;
+                        if (selectedReg && String(student.reg) === selectedReg) button.classList.add('active');
+                        studentList.appendChild(button);
+                    });
+                } catch (error) {
+                    console.error('Unable to refresh student list:', error);
+                } finally {
+                    studentListRefreshInFlight = false;
+                }
+            }
+
+            refreshStudentList();
+            window.addEventListener('focus', refreshStudentList);
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') refreshStudentList();
+            });
+            window.setInterval(refreshStudentList, 30000);
 
     </script>
 </body>

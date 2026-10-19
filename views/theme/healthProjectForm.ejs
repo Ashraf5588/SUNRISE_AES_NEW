@@ -518,7 +518,7 @@
         <div class="section">
           <div class="section-header">Student Information</div>
           <div class="section-content">
-            <div class="student-list-container">
+            <div class="student-list-container" id="studentList" data-student-class="<%= studentClass %>" data-section="<%= section %>">
               <% sortedByRoll = studentData.sort((a, b) => Number(a.roll) - Number(b.roll)); %>
              <% sortedByRoll.forEach((studentname) => { %>
                 <button type="button" class="student-btn" id="studentData<%= studentname.roll %>" onclick="fill('<%= studentname.roll %>','<%= studentname.name %>','<%= studentname.reg %>')">
@@ -1616,6 +1616,63 @@ document.addEventListener('keydown', function(event) {
         }
     }
 });
+</script>
+<script>
+let studentListRefreshInFlight = false;
+
+async function refreshPracticalStudentList() {
+  const studentList = document.getElementById('studentList');
+  if (!studentList || studentListRefreshInFlight) return;
+
+  studentListRefreshInFlight = true;
+  const params = new URLSearchParams({
+    studentClass: studentList.dataset.studentClass,
+    section: studentList.dataset.section
+  });
+
+  try {
+    const response = await fetch(`/practicaldetailform/students?${params}`, {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' }
+    });
+    if (!response.ok) return;
+
+    const { students = [] } = await response.json();
+    const selectedReg = document.querySelector('input[name="reg"]')?.value;
+    studentList.replaceChildren();
+
+    students.forEach((student) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'student-btn';
+      button.id = `studentData${student.roll}`;
+      button.addEventListener('click', () => fill(student.roll, student.name, student.reg));
+
+      const roll = document.createElement('span');
+      roll.className = 'roll';
+      roll.textContent = student.roll ?? '';
+      button.append(roll, document.createTextNode(` ${student.name || ''}`));
+
+      if (selectedReg && String(student.reg) === selectedReg) {
+        button.style.backgroundColor = 'darkblue';
+        button.style.color = 'white';
+      }
+
+      studentList.appendChild(button);
+    });
+  } catch (error) {
+    console.error('Unable to refresh practical form student list:', error);
+  } finally {
+    studentListRefreshInFlight = false;
+  }
+}
+
+refreshPracticalStudentList();
+window.addEventListener('focus', refreshPracticalStudentList);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') refreshPracticalStudentList();
+});
+window.setInterval(refreshPracticalStudentList, 30000);
 </script>
 </body>
 </html>

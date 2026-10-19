@@ -788,10 +788,32 @@ exports.terminal = async (req, res, next) => {
 };
 
 
+const getFormStudentRoster = (studentClass, section) => {
+  const classValue = String(studentClass || '').trim();
+  const sectionValue = String(section || '').trim();
+  if (!classValue || !sectionValue) return Promise.resolve([]);
+
+  return studentRecord.find({
+    studentClass: { $regex: `^\\s*${escapeRegExp(classValue)}\\s*$`, $options: 'i' },
+    section: { $regex: `^\\s*${escapeRegExp(sectionValue)}\\s*$`, $options: 'i' }
+  }).select('name reg roll').sort({ roll: 1 }).lean();
+};
+
+exports.getFormStudents = async (req, res) => {
+  try {
+    const studentrecord = await getFormStudentRoster(req.query.studentClass, req.query.section);
+    res.set('Cache-Control', 'no-store');
+    return res.json({ students: studentrecord });
+  } catch (error) {
+    console.error('Error fetching form student roster:', error);
+    return res.status(500).json({ message: 'Unable to fetch the latest student list.' });
+  }
+};
+
 exports.showForm = async (req, res, next) => {
   let { subjectinput,studentClass, section, terminal } = req.params;
   const user = req.user
-  const studentrecord = await studentRecord.find({studentClass:studentClass,section:section}).lean();
+  const studentrecord = await getFormStudentRoster(studentClass, section);
   
 
 const subjectList = await subjectlist.find({ forClass: `${studentClass}`, subject: `${subjectinput}`,forTerminal:`${terminal}`}).lean();

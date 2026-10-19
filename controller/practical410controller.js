@@ -14,6 +14,17 @@ const { name } = require("ejs");
 const subjectlist = mongoose.model("subjectlist", subjectSchema, "subjectlist");
 const studentClass = mongoose.model("studentClass", classSchema, "classlist");
 const studentRecord = mongoose.model("studentRecord", studentrecordschema, "studentrecord");
+const escapeRegex = (value) => String(value || '').trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const getPracticalFormStudentList = (studentClass, section) => {
+  const classValue = String(studentClass || '').trim();
+  const sectionValue = String(section || '').trim();
+  if (!classValue || !sectionValue) return Promise.resolve([]);
+
+  return studentRecord.find({
+    studentClass: { $regex: `^\\s*${escapeRegex(classValue)}\\s*$`, $options: 'i' },
+    section: { $regex: `^\\s*${escapeRegex(sectionValue)}\\s*$`, $options: 'i' }
+  }).select('name reg roll').sort({ roll: 1 }).lean();
+};
 const { addChapterSchema } = require("../model/addchapterschema");
 const addChapter = mongoose.model("addChapter", addChapterSchema, "addChapter");
 const newsubject = mongoose.model("newsubject", newsubjectSchema, "newsubject");
@@ -355,6 +366,17 @@ exports.evaluationForm = async (req, res) => {
      return res.render("theme/practicalform410pannel", {...await getSidenavData(req),editing: false, studentClass, section,subject,terminal});
   }
 };
+exports.getPracticalFormStudents = async (req, res) => {
+  try {
+    const students = await getPracticalFormStudentList(req.query.studentClass, req.query.section);
+    res.set('Cache-Control', 'no-store');
+    return res.json({ students });
+  } catch (error) {
+    console.error('Error fetching practical form students:', error);
+    return res.status(500).json({ message: 'Unable to fetch the latest student list.' });
+  }
+};
+
 exports.showpracticalDetailForm = async (req, res) => {
   console.log('=== FUNCTION CALLED: showpracticalDetailForm ===');
   console.log('Timestamp:', new Date().toISOString());
@@ -377,7 +399,7 @@ const attendancemodel = attendanceModel(studentClass, section, marksheetSetting[
 const attendanceData = await attendancemodel.find({}).lean();
 
 
-    const studentData = await studentRecord.find({studentClass:studentClass,section:section}).lean();
+    const studentData = await getPracticalFormStudentList(studentClass, section);
     const practicalFormat = getThemeFormat(studentClass);
     const practicalFormatData = await practicalFormat.find({
       studentClass: studentClass,

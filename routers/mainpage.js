@@ -511,6 +511,7 @@ student.get('/marksheetsetup/delete/:id',verifytoken,authorized,isAdmin,admincon
 
 student.get('/class',verifytoken,authorized,practical410controller.chooseClass);
 student.get('/evaluationform',verifytoken,authorized,practical410controller.evaluationForm);
+student.get('/practicaldetailform/students',verifytoken,authorized,practical410controller.getPracticalFormStudents);
 student.get('/practicaldetailform',verifytoken,authorized,practical410controller.showpracticalDetailForm);
 student.post('/practicaldetailform',verifytoken,authorized,practical410controller.savepracticalDetailForm);
 
@@ -616,6 +617,7 @@ student.get('/data', verifytoken, authorized, examcontroller.analysisOfParents);
 student.get('/parentsdata', verifytoken, authorized, isAdmin, examcontroller.parentsDataForm);
 student.post('/parentsdata/analyze', verifytoken, authorized, isAdmin, examcontroller.analyzeParentsData);
 
+student.get('/forms/students',verifytoken,authorized,controller.getFormStudents)
 student.get('/forms/:subjectinput/:studentClass/:section/:terminal',verifytoken,authorized,controller.showForm)
 student.post('/forms/:subjectinput/:studentClass?/:section?/:terminal?',verifytoken,authorized,controller.saveForm)
 
