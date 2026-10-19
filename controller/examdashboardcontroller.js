@@ -3578,8 +3578,8 @@ exports.schoolanalysis = async (req, res, next) => {
             
             if (isOptionalClass) {
                 // Find OPT.MATH and ENV.SCIENCE subjects
-                const optMath = allSubjects.find(s => s.subject === 'OPT.MATH');
-                const envScience = allSubjects.find(s => s.subject === 'ENV.SCIENCE');
+                const optMath = allSubjects.find(s => s.subject === 'OPT.MATH' || s.subject === 'O.MATH');
+                const envScience = allSubjects.find(s => s.subject === 'ENV.SCIENCE' || s.subject === 'E.SCIENCE');
                 
                 // Check which one has marks (theory or practical)
                 const hasOptMathMarks = optMath && (
@@ -3597,9 +3597,9 @@ exports.schoolanalysis = async (req, res, next) => {
                     // Both have marks - this shouldn't happen, but if it does, keep both
                     selectedOptionalSubject = 'both';
                 } else if (hasOptMathMarks) {
-                    selectedOptionalSubject = 'OPT.MATH';
+                    selectedOptionalSubject = 'OPT.MATH' || 'O.MATH';
                 } else if (hasEnvScienceMarks) {
-                    selectedOptionalSubject = 'ENV.SCIENCE';
+                    selectedOptionalSubject = 'ENV.SCIENCE' || 'E.SCIENCE';
                 }
                 // If neither has marks, the student has no optional subject
             }
@@ -3610,7 +3610,7 @@ exports.schoolanalysis = async (req, res, next) => {
             if (isOptionalClass) {
                 // For class 9 & 10: Include all subjects but handle optional subjects
                 subjectsToEvaluate = allSubjects.map(subject => {
-                    const isOptional = subject.subject === 'OPT.MATH' || subject.subject === 'ENV.SCIENCE';
+                    const isOptional = subject.subject === 'OPT.MATH' || subject.subject === 'ENV.SCIENCE' || subject.subject === 'O.MATH' || subject.subject === 'E.SCIENCE';
                     
                     // Check if subject has valid marks
                     const hasTheoryMarks = subject.theoryMarks !== undefined && subject.theoryMarks !== null && !isNaN(subject.theoryMarks);
@@ -5425,7 +5425,7 @@ exports.subjectWiseanalysis = async (req, res) => {
         // Special handling for Class 9 & 10: ENV.SCIENCE and OPT.MATH
         // Group students by class and section to identify which subject they actually took
         const studentSubjectMap = {};
-        const optionalSubjects = ['ENV.SCIENCE', 'OPT.MATH'];
+        const optionalSubjects = ['ENV.SCIENCE', 'OPT.MATH','E.SCIENCE','O.MATH'];
         
         examMarks.forEach(mark => {
             const classNum = normalizeClassName(mark.studentClass);
