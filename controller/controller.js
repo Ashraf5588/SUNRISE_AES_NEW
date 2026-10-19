@@ -805,15 +805,27 @@ exports.getFormStudents = async (req, res) => {
     const model = getSubjectModel(subject, studentClass, section, terminal);
     const [studentrecord, submittedRecords] = await Promise.all([
       getFormStudentRoster(studentClass, section),
-      model.find({ subject, studentClass, section, terminal }).select('roll').lean()
+      model.find({ subject, studentClass, section, terminal }).select('reg roll name').lean()
     ]);
-    const submittedRolls = new Set(submittedRecords.map(record => String(record.roll)));
+    const normalizeIdentity = value => String(value ?? '').trim().toLowerCase();
     res.set('Cache-Control', 'no-store');
     return res.json({
-      students: studentrecord.map(student => ({
-        ...student,
-        isSubmitted: submittedRolls.has(String(student.roll))
-      }))
+      students: studentrecord.map(student => {
+        const studentReg = normalizeIdentity(student.reg);
+        const studentRoll = normalizeIdentity(student.roll);
+        const studentName = normalizeIdentity(student.name);
+        const isSubmitted = submittedRecords.some(record => {
+          const recordReg = normalizeIdentity(record.reg);
+          const recordRoll = normalizeIdentity(record.roll);
+          const recordName = normalizeIdentity(record.name);
+
+          return (studentReg && recordReg === studentReg) ||
+            (studentRoll && recordRoll === studentRoll) ||
+            (!recordReg && !recordRoll && studentName && recordName === studentName);
+        });
+
+        return { ...student, isSubmitted };
+      })
     });
   } catch (error) {
     console.error('Error fetching form student roster:', error);
