@@ -162,6 +162,7 @@ input[type="number"] {
   </center>
 
   <% const isPrimaryLanguage36MarkSubject = (Number(studentClass) >= 4 && Number(studentClass) <= 8) && ['NEPALI', 'ENGLISH'].includes(String(subject || '').toUpperCase()); %>
+  <% const isCompulsorySubject = Array.isArray(subjectData) && subjectData.some((subjectRecord) => String(subjectRecord.subjectType || '').trim().toLowerCase() === 'compulsory'); %>
   <form action="/entryform?<%= `studentClass=${studentClass}&section=${section}&subject=${subject}&academicYear=${academicYear}&terminal=${terminal}` %>" method="POST">
     <% if (!subjectData || subjectData.length === 0) { %>
       <div style="color:red;font-weight:600;margin-top:10px;text-align:center;">Theory Marks and Practical Marks are not setup. Please contact the admin to add subject details.</div>
@@ -198,8 +199,7 @@ input[type="number"] {
         </th>
         <th>Attendance</th>
         <th>Attendance Marks</th>
-<% if (subject.toUpperCase()==="ENGLISH" || subject.toUpperCase()==="NEPALI" || subject.toUpperCase()==="MATHEMATICS" || subject.toUpperCase()==="SCIENCE" || subject.toUpperCase()==="SOCIAL" || subject.toUpperCase()==="HEALTH")
-{%>
+<% if (isCompulsorySubject) { %>
  <th> Participation Marks</th>
 <%}%>
 
@@ -242,8 +242,7 @@ input[type="number"] {
           </td>
           <td><input type="number" id="attendance" name="attendance[<%=student.reg%>]" value="<%= totalAttendanceByReg?.[String(student.reg)] ?? '' %>" data-reg="<%= student.reg %>" oninput="autoSave(this)"></td>
           <td><input type="number" id="attendancemarks_<%=student.reg%>" name="attendanceMarks[<%=student.reg%>]" readonly></td>
-   <% if (subject.toUpperCase()==="ENGLISH" || subject.toUpperCase()==="NEPALI" || subject.toUpperCase()==="MATHEMATICS" || subject.toUpperCase()==="SCIENCE" || subject.toUpperCase()==="SOCIAL" || subject.toUpperCase()==="HEALTH")
-{%>
+  <% if (isCompulsorySubject) { %>
 <td><input type="number" id="participationMarks_<%=student.reg%>" name="participationMarks[<%=student.reg%>]" value="" data-reg="<%= student.reg %>" oninput="autoSave(this)"></td>
 
 <%}%>
