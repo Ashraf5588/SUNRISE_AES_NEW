@@ -280,7 +280,15 @@ input[type="number"] {
   const normalizedStudentClass = String(document.getElementById('studentClass')?.value || '').trim().toUpperCase();
   const isClassNineOrTen = ['9', '10', 'NINE', 'TEN'].includes(normalizedStudentClass);
   const configuredPracticalMarks = Number(document.getElementById('practicalfullmarks')?.value);
-  const terminalMarksScale = isClassNineOrTen && configuredPracticalMarks === 25 ? 6 : 10;
+  const normalizedSubject = String(document.getElementById('subjectHidden')?.value || '').trim().toUpperCase();
+  const isComputerSubject = normalizedSubject === 'COMPUTER';
+  const shouldDoubleParticipationMarks = isClassNineOrTen && (isComputerSubject || configuredPracticalMarks === 50);
+  const terminalMarksScale = isClassNineOrTen && configuredPracticalMarks === 25 && !isComputerSubject ? 6 : 10;
+
+  function scaleParticipationMarks(marks) {
+    const numericMarks = Number(marks);
+    return shouldDoubleParticipationMarks && Number.isFinite(numericMarks) ? numericMarks * 2 : marks;
+  }
 
   // ==================== PRACTICAL MARKS FUNCTIONS ====================
 
@@ -315,10 +323,10 @@ input[type="number"] {
         participationMarksFromAPI.forEach((value, reg) => {
           const participationInput = document.getElementById(`participationMarks_${reg}`);
           if (participationInput) {
-            participationInput.value = value;
+            participationInput.value = scaleParticipationMarks(value);
             participationInput.dispatchEvent(new Event('input'));
             calculateTotal(reg);
-            console.log(`✅✅✅ Set participation marks from API for ${reg}: ${value}`);
+            console.log(`✅✅✅ Set participation marks from API for ${reg}: ${participationInput.value}`);
             // Auto save to update database
             autoSave(participationInput);
           }
@@ -378,9 +386,9 @@ input[type="number"] {
           // ALSO SET PARTICIPATION MARKS DIRECTLY FROM API DATA
           const participationMarksInput = document.getElementById(`participationMarks_${reg}`);
           if (participationMarksInput && item.participationMarks !== undefined && item.participationMarks !== null) {
-            participationMarksInput.value = item.participationMarks;
+            participationMarksInput.value = scaleParticipationMarks(item.participationMarks);
             participationMarksInput.dispatchEvent(new Event('input'));
-            console.log(`✅ Set participation marks for ${reg}: ${item.participationMarks}`);
+            console.log(`✅ Set participation marks for ${reg}: ${participationMarksInput.value}`);
           }
 
           // Update calculations
