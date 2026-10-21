@@ -79,7 +79,7 @@
               <% (optionalSubjects || []).forEach((item) => { %>
                 <option value="<%= item.newsubject %>" data-class="<%= item.forClass %>"
                   <%= String(item.newsubject) === String(selectedSubject) ? 'selected' : '' %>>
-                  <%= item.newsubject %> (Class <%= item.forClass %>)
+                  <%= item.newsubject %> 
                 </option>
               <% }) %>
             </select>
