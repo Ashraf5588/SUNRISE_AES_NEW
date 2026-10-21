@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Optional Subject Students</title>
+  <style>
+    :root { font-family: Arial, sans-serif; color: #1e293b; background: #f4f7fb; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px; }
+    main { max-width: 1200px; margin: 0 auto; }
+    h1 { margin-top: 0; color: #153b71; }
+    .panel, .subject-card { background: white; border: 1px solid #dbe3ee; border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+    .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; align-items: end; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; }
+    select, button { width: 100%; min-height: 40px; border: 1px solid #b8c4d3; border-radius: 6px; padding: 8px 10px; background: #fff; font: inherit; }
+    button { background: #153b71; color: white; border: 0; font-weight: 600; cursor: pointer; }
+    button:hover { background: #1d4d8c; }
+    .save-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 16px 0; }
+    .save-row button { width: auto; min-width: 150px; }
+    .student-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; max-height: 380px; overflow: auto; }
+    .student-option { display: flex; gap: 9px; align-items: flex-start; border: 1px solid #e2e8f0; border-radius: 6px; padding: 9px; margin: 0; font-weight: 400; }
+    .student-option input { margin-top: 3px; }
+    .subject-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+    .subject-card { margin: 0; padding: 0; overflow: hidden; }
+    .subject-card h3 { margin: 0; padding: 12px 16px; background: #153b71; color: white; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border-bottom: 1px solid #e2e8f0; padding: 9px 10px; text-align: left; }
+    th { background: #f1f5f9; }
+    .notice { border-radius: 6px; padding: 12px 14px; margin-bottom: 16px; }
+    .success { background: #dcfce7; color: #166534; }
+    .empty { color: #64748b; padding: 16px; }
+    .back-link { display: inline-block; margin-top: 16px; color: #153b71; }
+    @media (max-width: 600px) { body { padding: 12px; } .panel { padding: 14px; } .save-row { align-items: stretch; flex-direction: column; } .save-row button { width: 100%; } }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Optional Subject Students</h1>
+    <p>Select the optional subjects taken by students for a class, section, and academic year.</p>
+
+    <% if (success) { %>
+      <div class="notice success">Optional subject assignments saved.</div>
+    <% } %>
+
+    <section class="panel">
+      <form method="GET" action="/admin/optional-students" id="filterForm">
+        <div class="filters">
+          <div>
+            <label for="classSection">Class and Section</label>
+            <select id="classSection" required>
+              <option value="">Choose class and section</option>
+              <% const seenClassSections = new Set(); %>
+              <% (classList || []).forEach((item) => { %>
+                <% const key = JSON.stringify([item.studentClass, item.section]); %>
+                <% if (!seenClassSections.has(key)) { seenClassSections.add(key); %>
+                  <option value="<%= encodeURIComponent(key) %>"
+                    <%= String(item.studentClass) === String(studentClass) && String(item.section) === String(section) ? 'selected' : '' %>>
+                    <%= item.studentClass %> - <%= item.section %>
+                  </option>
+                <% } %>
+              <% }) %>
+            </select>
+            <input type="hidden" name="studentClass" id="studentClass" value="<%= studentClass %>">
+            <input type="hidden" name="section" id="section" value="<%= section %>">
+          </div>
+          <div>
+            <label for="academicYear">Academic Year</label>
+            <select name="academicYear" id="academicYear" required>
+              <% (academicYears || []).forEach((year) => { %>
+                <option value="<%= year %>" <%= String(year) === String(academicYear) ? 'selected' : '' %>><%= year %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div>
+            <label for="subject">Optional Subject</label>
+            <select name="subject" id="subject" required>
+              <option value="">Choose optional subject</option>
+              <% (optionalSubjects || []).forEach((item) => { %>
+                <option value="<%= item.newsubject %>" data-class="<%= item.forClass %>"
+                  <%= String(item.newsubject) === String(selectedSubject) ? 'selected' : '' %>>
+                  <%= item.newsubject %> (Class <%= item.forClass %>)
+                </option>
+              <% }) %>
+            </select>
+          </div>
+          <div><button type="submit">Load Students</button></div>
+        </div>
+      </form>
+
+      <% if (studentClass && section && selectedSubject) { %>
+        <form method="POST" action="/admin/optional-students/save">
+          <input type="hidden" name="studentClass" value="<%= studentClass %>">
+          <input type="hidden" name="section" value="<%= section %>">
+          <input type="hidden" name="academicYear" value="<%= academicYear %>">
+          <input type="hidden" name="subject" value="<%= selectedSubject %>">
+          <div class="save-row">
+            <strong>Choose students taking <%= selectedSubject %> in Class <%= studentClass %> - <%= section %></strong>
+            <button type="submit">Save Students</button>
+          </div>
+          <% if (students && students.length) { %>
+            <div class="student-list">
+              <% students.forEach((student) => { %>
+                <label class="student-option">
+                  <input type="checkbox" name="studentIds" value="<%= student._id %>"
+                    <%= selectedRegs.has(String(student.reg || '')) ? 'checked' : '' %>>
+                  <span><strong><%= student.name || 'Unnamed student' %></strong><br>Roll: <%= student.roll || '-' %> | Reg: <%= student.reg || 'Missing registration' %></span>
+                </label>
+              <% }) %>
+            </div>
+          <% } else { %>
+            <p class="empty">No students were found for this class and section.</p>
+          <% } %>
+        </form>
+      <% } else { %>
+        <p class="empty">Choose a class, section, academic year, and optional subject, then load students.</p>
+      <% } %>
+    </section>
+
+    <% if (studentClass && section) { %>
+      <h2>Assigned Students — Class <%= studentClass %>, Section <%= section %>, Year <%= academicYear %></h2>
+      <% if (classOptionalSubjects && classOptionalSubjects.length) { %>
+        <div class="subject-grid">
+          <% classOptionalSubjects.forEach((subjectItem) => { %>
+            <% const subjectStudents = (assignments || []).filter((assignment) => (assignment.optionalSubjects || []).some((name) => String(name).toLowerCase() === String(subjectItem.newsubject).toLowerCase())); %>
+            <section class="subject-card">
+              <h3><%= subjectItem.newsubject %></h3>
+              <% if (subjectStudents.length) { %>
+                <table>
+                  <thead><tr><th>Roll</th><th>Name</th><th>Class</th><th>Section</th></tr></thead>
+                  <tbody>
+                    <% subjectStudents.forEach((student) => { %>
+                      <tr>
+                        <td><%= student.roll || '' %></td>
+                        <td><%= student.name %></td>
+                        <td><%= student.studentClass %></td>
+                        <td><%= student.section %></td>
+                      </tr>
+                    <% }) %>
+                  </tbody>
+                </table>
+              <% } else { %>
+                <p class="empty">No students assigned to this subject yet.</p>
+              <% } %>
+            </section>
+          <% }) %>
+        </div>
+      <% } else { %>
+        <p class="empty">No optional subjects are configured for this class.</p>
+      <% } %>
+    <% } %>
+    <a class="back-link" href="/admin/new/subject">Back to subject setup</a>
+  </main>
+
+  <script>
+    const classSectionSelect = document.getElementById('classSection');
+    const subjectSelect = document.getElementById('subject');
+    const studentClassInput = document.getElementById('studentClass');
+    const sectionInput = document.getElementById('section');
+    const currentSubject = subjectSelect.value;
+
+    function updateFilters() {
+      let selectedClass = '';
+      if (classSectionSelect.value) {
+        [studentClassInput.value, sectionInput.value] = JSON.parse(decodeURIComponent(classSectionSelect.value));
+        selectedClass = studentClassInput.value;
+      } else {
+        studentClassInput.value = '';
+        sectionInput.value = '';
+      }
+
+      let selectedOptionExists = false;
+      Array.from(subjectSelect.options).forEach((option) => {
+        if (!option.value) return;
+        const visible = option.dataset.class === selectedClass;
+        option.hidden = !visible;
+        option.disabled = !visible;
+        if (visible && option.value === currentSubject) selectedOptionExists = true;
+      });
+      if (!selectedOptionExists && subjectSelect.value) subjectSelect.value = '';
+    }
+
+    classSectionSelect.addEventListener('change', updateFilters);
+    updateFilters();
+    if (currentSubject && Array.from(subjectSelect.options).some((option) => option.value === currentSubject && !option.disabled)) {
+      subjectSelect.value = currentSubject;
+    }
+  </script>
+</body>
+</html>

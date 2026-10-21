@@ -181,6 +181,8 @@ student.get('/admin/new/subject',verifytoken,authorized,isAdmin,admincontrol.add
 student.post('/admin/new/subject/:subjectId?',verifytoken,authorized,isAdmin,admincontrol.addNewSubjectPost)
 student.get('/admin/new/subject/:subjectId/:editing?',verifytoken,authorized,isAdmin,admincontrol.editNewSubject)
 student.get('/delete/new/subject/:subjectId',verifytoken,authorized,isAdmin,admincontrol.deleteNewSubject)
+student.get('/admin/optional-students',verifytoken,authorized,isAdmin,admincontrol.optionalSubStudentPage)
+student.post('/admin/optional-students/save',verifytoken,authorized,isAdmin,admincontrol.saveOptionalSubStudents)
 
 student.get('/delete/subject/:subjectId/:subjectname?',verifytoken,authorized,admincontrol.deleteSubject)
 student.get('/delete/class/:classId',verifytoken,authorized,isAdmin,admincontrol.deleteStudentClass)

@@ -16,6 +16,7 @@ const { adminSchema,superadminSchema, teacherSchema} = require("../model/admin")
 const { teacherRecordSchema } = require("../model/teacherrecordschema");
 const { staffSchema } = require("../model/staffschema");
 const { studentSchema } = require("../model/schema");
+const { optionalSubStudentSchema } = require("../model/optionalsubstudentschema");
 const terminal = mongoose.model("terminal", terminalSchema, "terminal");
 const newsubject = mongoose.model("newsubject", newsubjectSchema, "newsubject");
 const newsubjectModel = mongoose.model("newsubject", newsubjectSchema, "newsubject");
@@ -24,6 +25,8 @@ const TeacherRecord = mongoose.models.teacherRecord || mongoose.model("teacherRe
 const Staff = mongoose.models.staff || mongoose.model("staff", staffSchema, "staff");
  const { studentrecordschema } = require("../model/adminschema");
 const modal = mongoose.model("studentrecord", studentrecordschema, "studentrecord");
+const OptionalSubStudent = mongoose.models.optionalSubStudent
+  || mongoose.model("optionalSubStudent", optionalSubStudentSchema, "optionalstudents");
 const bcrypt = require("bcrypt");
 const controllerModule = require("./controller");
 const {allowedSubjectData} = controllerModule;
@@ -1625,6 +1628,163 @@ exports.deleteNewSubject = async (req, res, next) => {
   await newsubject.findByIdAndDelete(subjectId);
   res.redirect("/admin/new/subject");
 }
+
+exports.optionalSubStudentPage = async (req, res) => {
+  try {
+    const classList = await studentClass.find({}).sort({ classorder: 1, studentClass: 1, section: 1 }).lean();
+    const optionalSubjects = await newsubject.find({ subjectType: 'optional' })
+      .select('newsubject forClass displayorder')
+      .lean();
+    optionalSubjects.sort((a, b) =>
+      Number(a.displayorder ?? Number.MAX_SAFE_INTEGER) - Number(b.displayorder ?? Number.MAX_SAFE_INTEGER)
+      || String(a.newsubject || '').localeCompare(String(b.newsubject || ''))
+    );
+    const marksheetSettings = await marksheetSetup.findOne({}).select('academicYear').lean();
+    const currentYear = Number(marksheetSettings?.academicYear) || new Date().getFullYear();
+    const academicYears = Array.from({ length: 5 }, (_, index) => String(currentYear - index));
+    const studentClassValue = String(req.query.studentClass || '').trim();
+    const sectionValue = String(req.query.section || '').trim();
+    const academicYear = academicYears.includes(String(req.query.academicYear || ''))
+      ? String(req.query.academicYear)
+      : String(currentYear);
+    const subjectValue = String(req.query.subject || '').trim();
+
+    const [students, assignments] = studentClassValue && sectionValue
+      ? await Promise.all([
+        modal.find({ studentClass: studentClassValue, section: sectionValue })
+          .select('reg name roll studentClass section')
+          .sort({ roll: 1, name: 1 })
+          .lean(),
+        OptionalSubStudent.find({
+          studentClass: studentClassValue,
+          section: sectionValue,
+          academicYear
+        }).sort({ roll: 1, name: 1 }).lean()
+      ])
+      : [[], []];
+    const classOptionalSubjects = optionalSubjects.filter((item) =>
+      String(item.forClass || '').trim().toLowerCase() === studentClassValue.toLowerCase()
+    );
+    const selectedSubject = classOptionalSubjects.some((item) =>
+      String(item.newsubject || '').trim().toLowerCase() === subjectValue.toLowerCase()
+    ) ? subjectValue : '';
+    const selectedSubjectRecord = classOptionalSubjects.find((item) =>
+      String(item.newsubject || '').trim().toLowerCase() === selectedSubject.toLowerCase()
+    );
+    const selectedRegs = new Set(
+      assignments
+        .filter((assignment) => (assignment.optionalSubjects || []).some((name) =>
+          String(name).toLowerCase() === String(selectedSubjectRecord?.newsubject || '').toLowerCase()
+        ))
+        .map((assignment) => String(assignment.reg))
+    );
+
+    res.render('exam/optionalsubstudent', {
+      classList,
+      optionalSubjects,
+      classOptionalSubjects,
+      students,
+      assignments,
+      selectedRegs,
+      studentClass: studentClassValue,
+      section: sectionValue,
+      academicYear,
+      academicYears,
+      selectedSubject,
+      success: req.query.success === 'saved',
+      ...(await getSidenavData(req))
+    });
+  } catch (err) {
+    console.error('Error loading optional subject student assignments:', err);
+    res.status(500).send('Error loading optional subject students: ' + err.message);
+  }
+};
+
+exports.saveOptionalSubStudents = async (req, res) => {
+  try {
+    const studentClassValue = String(req.body.studentClass || '').trim();
+    const sectionValue = String(req.body.section || '').trim();
+    const academicYear = String(req.body.academicYear || '').trim();
+    const subjectName = String(req.body.subject || '').trim();
+    const selectedStudentIds = [...new Set(
+      (Array.isArray(req.body.studentIds) ? req.body.studentIds : req.body.studentIds ? [req.body.studentIds] : [])
+        .map((id) => String(id).trim())
+        .filter((id) => mongoose.isValidObjectId(id))
+    )];
+    const marksheetSettings = await marksheetSetup.findOne({}).select('academicYear').lean();
+    const currentYear = Number(marksheetSettings?.academicYear) || new Date().getFullYear();
+    const allowedYears = Array.from({ length: 5 }, (_, index) => String(currentYear - index));
+    if (!studentClassValue || !sectionValue || !allowedYears.includes(academicYear) || !subjectName) {
+      return res.status(400).send('Class, section, optional subject, and a valid academic year are required.');
+    }
+
+    const subjectRecord = await newsubject.findOne({
+      subjectType: 'optional',
+      forClass: studentClassValue,
+      newsubject: subjectName
+    }).select('newsubject').lean();
+    if (!subjectRecord) {
+      return res.status(400).send('The selected subject is not an optional subject for this class.');
+    }
+
+    const studentQuery = { studentClass: studentClassValue, section: sectionValue };
+    const selectedStudents = selectedStudentIds.length
+      ? await modal.find({ ...studentQuery, _id: { $in: selectedStudentIds } })
+        .select('reg name roll studentClass section')
+        .lean()
+      : [];
+    const studentsWithoutReg = selectedStudents.filter((student) => !String(student.reg || '').trim());
+    if (studentsWithoutReg.length) {
+      return res.status(400).send('Every selected student must have a registration number before saving.');
+    }
+
+    const assignmentScope = {
+      studentClass: studentClassValue,
+      section: sectionValue,
+      academicYear
+    };
+    await OptionalSubStudent.updateMany(assignmentScope, {
+      $pull: { optionalSubjects: subjectRecord.newsubject }
+    });
+
+    if (selectedStudents.length) {
+      await OptionalSubStudent.bulkWrite(selectedStudents.map((student) => ({
+        updateOne: {
+          filter: {
+            reg: String(student.reg).trim(),
+            ...assignmentScope
+          },
+          update: {
+            $set: {
+              name: String(student.name || '').trim(),
+              roll: student.roll,
+              studentClass: studentClassValue,
+              section: sectionValue,
+              academicYear
+            },
+            $addToSet: { optionalSubjects: subjectRecord.newsubject }
+          },
+          upsert: true
+        }
+      })));
+    }
+    await OptionalSubStudent.deleteMany({
+      ...assignmentScope,
+      optionalSubjects: { $size: 0 }
+    });
+
+    res.redirect(`/admin/optional-students?${new URLSearchParams({
+      studentClass: studentClassValue,
+      section: sectionValue,
+      academicYear,
+      subject: subjectRecord.newsubject,
+      success: 'saved'
+    }).toString()}`);
+  } catch (err) {
+    console.error('Error saving optional subject student assignments:', err);
+    res.status(500).send('Error saving optional subject students: ' + err.message);
+  }
+};
 
 
 exports.addTerminal = async (req, res, next) => {
