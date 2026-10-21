@@ -1499,6 +1499,7 @@ const {routineId,terminal,academicYear} = req.query;
 exports.ledger = async (req, res, next) => {
   try {
     const { studentClass, section, academicYear, terminal } = req.query;
+    const ledgerType = req.query.ledgerType === 'teacherwise' ? 'teacherwise' : 'classwise';
     const normalizedClass = studentClass ? studentClass.toString().toUpperCase().trim() : '';
     const isPrePrimary = ['UKG', 'LKG', 'NURSERY'].includes(normalizedClass);
     const primaryClasses = ['1', 'ONE', 'I', '2', 'TWO', 'II', '3', 'THREE', 'III'];
@@ -1511,6 +1512,220 @@ exports.ledger = async (req, res, next) => {
     const classSetup = await studentClassModel.findOne({
       studentClass: { $regex: `^${String(studentClass || '').trim()}$`, $options: 'i' }
     }).select('ledgerType').lean();
+    const marksheetSetups = await marksheetSetup.find({}).lean();
+    const terminals = await terminalModel.find({}).lean();
+    const matchingTerminals = terminals.filter((item) =>
+      String(item.terminal || '').trim().toLowerCase() === String(terminal || '').trim().toLowerCase()
+    );
+    const selectedTerminal = matchingTerminals.find((item) =>
+      String(item.terminalType || '').trim().toUpperCase() === 'TEST'
+    ) || matchingTerminals[0];
+    const isTestTerminal = String(selectedTerminal?.terminalType || '').trim().toUpperCase() === 'TEST';
+    const testFullMarks = Number(selectedTerminal?.fullMarks ?? 50);
+    const testPassMarks = Number(selectedTerminal?.passMarks ?? 9);
+
+    if (ledgerType === 'teacherwise') {
+      const normalize = (value) => String(value || '').trim().toLowerCase();
+      const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const teachers = await usermodel.find({ role: 'TEACHER', active: { $ne: false } })
+        .select('teacherName displayName name username allowedSubjects')
+        .lean();
+      const teacherRecords = teachers.map((teacher) => {
+        const groups = new Map();
+        (teacher.allowedSubjects || []).forEach((allowed) => {
+          const subjectName = String(allowed.subject || '').trim();
+          const className = String(allowed.studentClass || '').trim();
+          const sectionName = String(allowed.section || '').trim();
+          if (!subjectName || !className || !sectionName) return;
+          const key = `${normalize(className)}|${normalize(sectionName)}`;
+          if (!groups.has(key)) {
+            groups.set(key, { studentClass: className, section: sectionName, subjects: [] });
+          }
+          const group = groups.get(key);
+          if (!group.subjects.some((item) => normalize(item) === normalize(subjectName))) {
+            group.subjects.push(subjectName);
+          }
+        });
+        return {
+          teacherName: String(teacher.teacherName || teacher.displayName || teacher.name || teacher.username || 'Teacher').trim(),
+          groups: [...groups.values()]
+        };
+      });
+
+      const allClassNames = [...new Set(teacherRecords.flatMap((teacher) =>
+        teacher.groups.map((group) => group.studentClass)
+      ))];
+      const subjectConfigs = allClassNames.length
+        ? await newsubject.find({ forClass: { $in: allClassNames } })
+          .select('newsubject forClass theoryCreditHour practicalCreditHour')
+          .lean()
+        : [];
+      const classSections = new Map();
+      const markQueries = [];
+
+      teacherRecords.forEach((teacher) => teacher.groups.forEach((group) => {
+        const key = `${normalize(group.studentClass)}|${normalize(group.section)}`;
+        if (!classSections.has(key)) classSections.set(key, group);
+        group.subjects = group.subjects.map((name) => {
+          const config = subjectConfigs.find((item) =>
+            normalize(item.forClass) === normalize(group.studentClass)
+            && normalize(item.newsubject) === normalize(name)
+          );
+          return {
+            name,
+            config: config || {},
+            key: `${key}|${normalize(name)}`
+          };
+        });
+        group.subjects.forEach((item) => {
+          markQueries.push({
+            studentClass: { $regex: `^${escapeRegex(group.studentClass)}$`, $options: 'i' },
+            section: { $regex: `^${escapeRegex(group.section)}$`, $options: 'i' },
+            subject: { $regex: `^${escapeRegex(item.name)}$`, $options: 'i' }
+          });
+        });
+      }));
+
+      const [rosters, markRecords] = await Promise.all([
+        Promise.all([...classSections.values()].map(async (group) => ({
+          key: `${normalize(group.studentClass)}|${normalize(group.section)}`,
+          students: await studentRecord.find({
+            studentClass: group.studentClass,
+            section: group.section
+          }).select('reg name roll').lean()
+        }))),
+        markQueries.length && terminal && academicYear
+          ? getSlipModel().find({
+            terminal,
+            academicYear,
+            $or: markQueries
+          }).select('studentClass section subject reg name roll theorymarks practicalmarks totalpracticalmarks theoryfullmarks practicalfullmarks totalmarks status worksheetGrades').lean()
+          : Promise.resolve([])
+      ]);
+      const rosterMap = new Map(rosters.map((item) => [item.key, item.students]));
+      const markMap = new Map();
+      markRecords.forEach((record) => {
+        const key = `${normalize(record.studentClass)}|${normalize(record.section)}|${normalize(record.subject)}`;
+        if (!markMap.has(key)) markMap.set(key, new Map());
+        const studentKey = String(record.reg || `${record.name || ''}|${record.roll || ''}`).trim();
+        if (!studentKey) return;
+        const recordsByStudent = markMap.get(key);
+        const existing = recordsByStudent.get(studentKey);
+        if (existing && ['4', 'four', '5', 'five'].includes(normalize(record.studentClass))) {
+          const maximum = (field) => Math.max(Number(existing[field]) || 0, Number(record[field]) || 0);
+          recordsByStudent.set(studentKey, {
+            ...existing,
+            theorymarks: maximum('theorymarks'),
+            practicalmarks: maximum('practicalmarks'),
+            totalpracticalmarks: maximum('practicalmarks'),
+            theoryfullmarks: maximum('theoryfullmarks'),
+            practicalfullmarks: maximum('practicalfullmarks'),
+            passMarks: maximum('passMarks')
+          });
+        } else {
+          recordsByStudent.set(studentKey, record);
+        }
+      });
+      const getGP = (percent) => {
+        if (percent >= 90) return 4.0;
+        if (percent >= 80) return 3.6;
+        if (percent >= 70) return 3.2;
+        if (percent >= 60) return 2.8;
+        if (percent >= 50) return 2.4;
+        if (percent >= 40) return 2.0;
+        if (percent >= 35) return 1.6;
+        return 0.0;
+      };
+      const worksheetGP = (grade) => ({
+        'A+': 4.0, A: 3.6, 'B+': 3.2, B: 2.8, 'C+': 2.4, C: 2.0, D: 1.6, NG: 0
+      }[String(grade || '').trim()] ?? 0);
+      const isAbsent = (value) => ['ab', 'absent', '0.000001'].includes(String(value ?? '').trim().toLowerCase());
+      const noWorksheetSubjects = new Set(['HYGIENE', 'ORAL', 'ECA']);
+      const calculateSubjectGP = (record, group, subject) => {
+        const normalizedClass = normalize(group.studentClass).toUpperCase();
+        const isPrePrimary = ['UKG', 'LKG', 'NURSERY'].includes(normalizedClass);
+        const isPrimary = ['1', 'ONE', 'I', '2', 'TWO', 'II', '3', 'THREE', 'III'].includes(normalizedClass);
+        const rawTheory = Number(record.theorymarks) || 0;
+        const theoryFull = isTestTerminal ? testFullMarks : Number(record.theoryfullmarks) || 0;
+        const practicalFull = Number(record.practicalfullmarks) || 0;
+        const practicalMarks = Number(record.totalpracticalmarks ?? record.practicalmarks) || 0;
+        const isAb = isAbsent(record.theorymarks) || String(record.status || '').toLowerCase() === 'absent';
+        const grades = Array.isArray(record.worksheetGrades) ? record.worksheetGrades : [];
+        const theoryGP = isPrePrimary
+          ? (isAb ? 0 : rawTheory)
+          : getGP(theoryFull > 0 ? (rawTheory / theoryFull) * 100 : 0);
+        const practicalGP = isPrimary && grades.length
+          ? grades.reduce((sum, grade) => sum + worksheetGP(grade), 0) / grades.length
+          : getGP(practicalFull > 0 ? (practicalMarks / practicalFull) * 100 : 0);
+
+        if (isAb) return 0;
+        if (isPrePrimary) {
+          const subjectName = subject.name.toUpperCase();
+          if (noWorksheetSubjects.has(subjectName) || (normalizedClass === 'LKG' && subjectName === 'THEME')) {
+            return theoryGP;
+          }
+          return grades.length
+            ? (theoryGP + grades.reduce((sum, grade) => sum + worksheetGP(grade), 0)) / (grades.length + 1)
+            : theoryGP;
+        }
+        if (isPrimary && noWorksheetSubjects.has(subject.name.toUpperCase())) return theoryGP;
+
+        const theoryCredit = Number(subject.config.theoryCreditHour) || 0;
+        const practicalCredit = Number(subject.config.practicalCreditHour) || 0;
+        const totalCredit = theoryCredit + practicalCredit;
+        return totalCredit
+          ? ((theoryGP * theoryCredit) + (practicalGP * practicalCredit)) / totalCredit
+          : (theoryGP + practicalGP) / 2;
+      };
+
+      teacherRecords.forEach((teacher) => teacher.groups.forEach((group) => {
+        const studentsByKey = new Map();
+        const groupKey = `${normalize(group.studentClass)}|${normalize(group.section)}`;
+        (rosterMap.get(groupKey) || []).forEach((student) => {
+          const key = String(student.reg || `${student.name || ''}|${student.roll || ''}`).trim();
+          if (key) studentsByKey.set(key, student);
+        });
+        group.subjects.forEach((subject) => {
+          const records = markMap.get(subject.key) || new Map();
+          records.forEach((record, key) => {
+            if (!studentsByKey.has(key)) {
+              studentsByKey.set(key, { reg: record.reg, name: record.name, roll: record.roll });
+            }
+          });
+        });
+        const students = [...studentsByKey.entries()].map(([key, student]) => ({
+          ...student,
+          sortRoll: Number.parseInt(student.roll, 10) || Number.MAX_SAFE_INTEGER,
+          marksBySubject: Object.fromEntries(group.subjects.map((subject) => {
+            const record = (markMap.get(subject.key) || new Map()).get(key);
+            if (!record) return [subject.name, null];
+            const theoryMarks = Number(record.theorymarks) || 0;
+            const practicalMarks = Number(record.totalpracticalmarks ?? record.practicalmarks) || 0;
+            return [subject.name, {
+              theoryMarks,
+              practicalMarks,
+              totalMarks: Number(record.totalmarks ?? (theoryMarks + practicalMarks)),
+              gp: calculateSubjectGP(record, group, subject)
+            }];
+          }))
+        })).sort((a, b) => a.sortRoll - b.sortRoll || String(a.name || '').localeCompare(String(b.name || '')));
+        group.students = students;
+      }));
+
+      return res.render('./exam/teacherwiseledger', {
+        fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
+        currentPage: 'exammanagement',
+        user: req.user,
+        studentClassdata,
+        marksheetSetups,
+        terminals,
+        academicYear,
+        terminal,
+        ledgerType,
+        teacherLedgers: teacherRecords.filter((teacher) => teacher.groups.length > 0)
+      });
+    }
+
     const classSubjectRecords = await newsubject.find({ forClass: studentClass })
       .select('newsubject displayorder')
       .lean();
@@ -1526,17 +1741,6 @@ exports.ledger = async (req, res, next) => {
     const classSubjects = [...new Set(
       classSubjectRecords.map((item) => String(item.newsubject || '').trim()).filter(Boolean)
     )];
-    const marksheetSetups = await marksheetSetup.find({}).lean();
-    const terminals = await terminalModel.find({}).lean();
-    const matchingTerminals = terminals.filter((item) =>
-      String(item.terminal || '').trim().toLowerCase() === String(terminal || '').trim().toLowerCase()
-    );
-    const selectedTerminal = matchingTerminals.find((item) =>
-      String(item.terminalType || '').trim().toUpperCase() === 'TEST'
-    ) || matchingTerminals[0];
-    const isTestTerminal = String(selectedTerminal?.terminalType || '').trim().toUpperCase() === 'TEST';
-    const testFullMarks = Number(selectedTerminal?.fullMarks ?? 50);
-    const testPassMarks = Number(selectedTerminal?.passMarks ?? 9);
     const configuredLedgerType = LEDGER_VIEW_BY_TYPE[classSetup?.ledgerType] ? classSetup.ledgerType : 'auto';
     const ledgerView = isTestTerminal
       ? './exam/testLedger'
@@ -1575,7 +1779,8 @@ exports.ledger = async (req, res, next) => {
         ledgerData: [],
         ledgerAnalysisLookup: {},
         noData: true,
-        isPrePrimary
+        isPrePrimary,
+        ledgerType
       });
     }
 
@@ -2464,6 +2669,7 @@ exports.ledger = async (req, res, next) => {
       ledgerData,
       ledgerAnalysisLookup,
       noData: ledgerData.length === 0,
+      ledgerType,
       isPrePrimary,
       isPrimary,
       getGP,

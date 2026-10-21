@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teacher-wise Student Ledger</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 18px; font: 13px Arial, sans-serif; color: #172033; }
+    .selector, .teacher-sheet { max-width: 1200px; margin: 0 auto 18px; }
+    .selector { padding: 14px; border: 1px solid #d8dee9; border-radius: 8px; }
+    .selector-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .classwise-only[hidden] { display: none; }
+    select, button { min-height: 38px; padding: 7px 10px; border: 1px solid #aab4c3; border-radius: 5px; background: white; }
+    button { cursor: pointer; background: #153b71; color: white; }
+    .teacher-sheet { padding: 16px; border: 1px solid #d8dee9; border-radius: 8px; }
+    .school-heading, .teacher-heading { text-align: center; }
+    .school-heading h1 { margin: 0 0 4px; font-size: 20px; text-transform: uppercase; }
+    .school-heading p, .teacher-heading p { margin: 4px 0; }
+    .teacher-heading { margin: 14px 0; padding: 8px; border-top: 2px solid #153b71; border-bottom: 2px solid #153b71; }
+    .teacher-heading h2 { margin: 0 0 5px; font-size: 18px; }
+    .class-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+    .class-block { break-inside: avoid; page-break-inside: avoid; }
+    .class-block h3 { margin: 0; padding: 6px; background: #153b71; color: #fff; text-align: center; font-size: 13px; }
+    table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 10px; }
+    th, td { border: 1px solid #8792a2; padding: 4px 3px; text-align: center; }
+    th { background: #e8edf5; }
+    td.student-name { width: 28%; max-width: 28%; text-align: left; overflow-wrap: anywhere; }
+    .empty-state { padding: 30px; text-align: center; color: #64748b; }
+    @media print {
+      @page { size: A4 landscape; margin: 8mm; }
+      body { padding: 0; }
+      .no-print { display: none !important; }
+      .teacher-sheet { max-width: none; margin: 0; padding: 0; border: 0; break-after: right; page-break-after: right; }
+      .teacher-sheet:last-of-type { break-after: auto; page-break-after: auto; }
+      .teacher-heading { margin: 8px 0; }
+      .class-grid { gap: 8px; }
+      .class-block { break-inside: avoid; page-break-inside: avoid; }
+      thead { display: table-header-group; }
+      tr { break-inside: avoid; page-break-inside: avoid; }
+    }
+    @media screen and (max-width: 700px) {
+      body { padding: 10px; }
+      .class-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="selector no-print">
+    <h2>Marksheet Ledger Configuration</h2>
+    <div class="selector-row">
+      <select id="ledgerType" aria-label="Ledger type">
+        <option value="classwise">Class-wise</option>
+        <option value="teacherwise" selected>Teacher-wise</option>
+      </select>
+      <select id="classSection" class="classwise-only" aria-label="Class and section" hidden>
+        <option value="">Choose Class &amp; Section</option>
+        <% (studentClassdata || []).forEach((item) => { %>
+          <option value="<%= encodeURIComponent(JSON.stringify([item.studentClass, item.section])) %>"><%= item.studentClass %> - <%= item.section %></option>
+        <% }) %>
+      </select>
+      <select id="terminal" aria-label="Terminal">
+        <option value="">Choose Terminal</option>
+        <% (terminals || []).forEach((item) => { %>
+          <option value="<%= item.terminal %>" <%= item.terminal === terminal ? 'selected' : '' %>><%= item.terminal %></option>
+        <% }) %>
+      </select>
+      <select id="academicYear" aria-label="Academic year">
+        <option value="">Choose Academic Year</option>
+        <% const currentYear = Number((marksheetSetups && marksheetSetups[0] && marksheetSetups[0].academicYear) || new Date().getFullYear()); %>
+        <% for (let i = 0; i < 5; i++) { const year = String(currentYear - i); %>
+          <option value="<%= year %>" <%= year === String(academicYear || '') ? 'selected' : '' %>><%= year %></option>
+        <% } %>
+      </select>
+      <button type="button" onclick="loadLedger()">Load Ledger</button>
+      <button type="button" onclick="window.print()">Print Ledger</button>
+    </div>
+  </div>
+
+  <% if (!teacherLedgers || teacherLedgers.length === 0) { %>
+    <div class="empty-state">No teachers with allowed class, section, and subject assignments were found.</div>
+  <% } %>
+
+  <% (teacherLedgers || []).forEach((teacher) => { %>
+    <section class="teacher-sheet">
+      <header class="school-heading">
+        <% if (marksheetSetups && marksheetSetups[0]) { %>
+          <h1><%= marksheetSetups[0].schoolName || '' %></h1>
+          <p><%= [marksheetSetups[0].address, marksheetSetups[0].phone, marksheetSetups[0].email].filter(Boolean).join(' | ') %></p>
+        <% } %>
+      </header>
+      <header class="teacher-heading">
+        <h2>Teacher-wise Student Ledger</h2>
+        <p><strong>Teacher:</strong> <%= teacher.teacherName %>
+          &nbsp;|&nbsp; <strong>Terminal:</strong> <%= terminal || '' %>
+          &nbsp;|&nbsp; <strong>Academic Year:</strong> <%= academicYear || '' %>
+        </p>
+      </header>
+      <div class="class-grid">
+        <% teacher.groups.forEach((group) => { %>
+          <% group.subjects.forEach((subject) => { %>
+          <section class="class-block">
+            <% const displayTitle = (value) => String(value || '').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase()); %>
+            <h3>Class <%= displayTitle(group.studentClass) %> - <%= displayTitle(group.section) %> | <%= displayTitle(subject.name) %> | <%= displayTitle(terminal) %></h3>
+            <table>
+              <colgroup>
+                <col style="width: 8%">
+                <col style="width: 28%">
+                <col style="width: 16%">
+                <col style="width: 16%">
+                <col style="width: 16%">
+                <col style="width: 16%">
+              </colgroup>
+              <thead>
+                <tr><th>Roll</th><th>Name</th><th>TH</th><th>PR</th><th>Total</th><th>GP</th></tr>
+              </thead>
+              <tbody>
+                <% if (group.students.length) { %>
+                  <% group.students.forEach((student) => { %>
+                    <% const marks = student.marksBySubject[subject.name]; %>
+                    <tr>
+                      <td><%= student.roll || '' %></td>
+                      <td class="student-name"><%= student.name || '' %></td>
+                      <td><%= marks ? marks.theoryMarks : '' %></td>
+                      <td><%= marks ? marks.practicalMarks : '' %></td>
+                      <td><%= marks ? marks.totalMarks : '' %></td>
+                      <td><%= marks ? Number(marks.gp).toFixed(2) : '' %></td>
+                    </tr>
+                  <% }) %>
+                <% } else { %>
+                  <tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                <% } %>
+              </tbody>
+            </table>
+          </section>
+          <% }) %>
+        <% }) %>
+      </div>
+    </section>
+  <% }) %>
+
+  <script>
+    const ledgerTypeSelect = document.getElementById('ledgerType');
+    const classSectionSelect = document.getElementById('classSection');
+    ledgerTypeSelect.addEventListener('change', () => {
+      classSectionSelect.hidden = ledgerTypeSelect.value !== 'classwise';
+    });
+
+    function loadLedger() {
+      const type = document.getElementById('ledgerType').value;
+      const terminal = document.getElementById('terminal').value;
+      const academicYear = document.getElementById('academicYear').value;
+      if (!terminal || !academicYear) {
+        alert('Please select a terminal and academic year.');
+        return;
+      }
+      const params = new URLSearchParams({ ledgerType: type, terminal, academicYear });
+      if (type === 'classwise') {
+        if (!classSectionSelect.value) {
+          alert('Please select a class and section for the class-wise ledger.');
+          return;
+        }
+        const [studentClass, section] = JSON.parse(decodeURIComponent(classSectionSelect.value));
+        params.set('studentClass', studentClass);
+        params.set('section', section);
+      }
+      window.location.href = `/ledger?${params.toString()}`;
+    }
+  </script>
+</body>
+</html>

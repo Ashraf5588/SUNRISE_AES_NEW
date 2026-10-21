@@ -331,6 +331,10 @@
     <div class="form-selector-container">
       <div class="form-selector-title">Marksheet Ledger Configuration</div>
       <div class="form-selector-grid">
+        <select id="ledgerType" aria-label="Ledger type">
+          <option value="classwise" <%= ledgerType !== 'teacherwise' ? 'selected' : '' %>>Class-wise</option>
+          <option value="teacherwise" <%= ledgerType === 'teacherwise' ? 'selected' : '' %>>Teacher-wise</option>
+        </select>
         <select name="classSection" id="classSection">
           <option selected disabled>Choose Class & Section</option>
           <% studentClassdata.forEach((data)=> { %>
@@ -675,14 +679,20 @@
     }
 
     function loadform() {
+      const ledgerType = document.getElementById('ledgerType').value;
+      const academicYear = document.getElementById('academicYear').value;
+      const terminal = document.getElementById('terminal').value;
+      if (ledgerType === 'teacherwise') {
+        if (!terminal || !academicYear) { alert("Please select Terminal and Academic Year"); return; }
+        window.location.href = `/ledger?ledgerType=teacherwise&terminal=${encodeURIComponent(terminal)}&academicYear=${encodeURIComponent(academicYear)}`;
+        return;
+      }
       const classSection = document.getElementById('classSection').value;
       if(!classSection) { alert("Please select Class & Section"); return; }
       const studentClass = classSection.split("-")[0];
       const section = classSection.split("-")[1];
-      const academicYear = document.getElementById('academicYear').value;
-      const terminal = document.getElementById('terminal').value;
 
-      window.location.href = (`/ledger?studentClass=${studentClass}&section=${section}&terminal=${terminal}&academicYear=${academicYear}`);
+      window.location.href = (`/ledger?ledgerType=classwise&studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&terminal=${encodeURIComponent(terminal)}&academicYear=${encodeURIComponent(academicYear)}`);
     }
     
     // Set initial values for selectors
