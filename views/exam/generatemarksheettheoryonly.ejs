@@ -681,17 +681,11 @@
             'SOCIAL': 'SOCIAL STUDIES AND HUMAN VALUE EDUCATION',
             'SOCIAL STUDIES': 'SOCIAL STUDIES AND HUMAN VALUE EDUCATION',
             'HEALTH': 'HEALTH PHYSICAL AND CREATIVE ARTS',
-            'DELIGHT': 'ENGLISH-II',
-            'ENV.SCIENCE': 'OPTIONAL-II',
-            'OPT.MATH': 'OPTIONAL-II'
+            'DELIGHT': 'ENGLISH-II'
           };
           
           function getDisplaySubjectName(subjectName) {
             const upperName = subjectName.toUpperCase().trim();
-            if (upperName === 'ENV.SCIENCE' || upperName === 'ENV SCIENCE' || 
-                upperName === 'OPT.MATH' || upperName === 'OPT MATH' || upperName === 'OPTIONAL MATH') {
-              return 'OPTIONAL-II';
-            }
             return subjectDisplayNames[upperName] || subjectName;
           }
           
@@ -772,78 +766,6 @@
             return 0.0;
           }
 
-          // ========== FUNCTION TO GET OPTIONAL-II SUBJECT DATA ==========
-          function getOptionalSubjectData(subjects) {
-            let envScience = null;
-            let optMath = null;
-            let selectedSubject = null;
-            let selectedMarks = 0;
-            let selectedFullMarks = 0;
-            let selectedPassMarks = 0;
-            let selectedAttendance = 0;
-            let selectedCreditHour = 0;
-            
-            subjects.forEach(sub => {
-              const upperName = sub.subject.toUpperCase().trim();
-              if (upperName === 'ENV.SCIENCE' || upperName === 'ENV SCIENCE') {
-                envScience = sub;
-              }
-              if (upperName === 'OPT.MATH' || upperName === 'OPT MATH' || upperName === 'OPTIONAL MATH') {
-                optMath = sub;
-              }
-            });
-            
-            // Check if ENV.SCIENCE has theorymarks > 0
-            if (envScience && envScience.theorymarks !== null && envScience.theorymarks > 0) {
-              selectedSubject = envScience;
-              selectedMarks = envScience.theorymarks;
-              selectedFullMarks = envScience.theoryfullmarks || 0;
-              selectedPassMarks = envScience.passMarks || 0;
-              selectedAttendance = envScience.attendance || 0;
-            } 
-            // Check if OPT.MATH has theorymarks > 0
-            else if (optMath && optMath.theorymarks !== null && optMath.theorymarks > 0) {
-              selectedSubject = optMath;
-              selectedMarks = optMath.theorymarks;
-              selectedFullMarks = optMath.theoryfullmarks || 0;
-              selectedPassMarks = optMath.passMarks || 0;
-              selectedAttendance = optMath.attendance || 0;
-            }
-            // If both have 0 or null, use ENV.SCIENCE as default (shows 0)
-            else if (envScience) {
-              selectedSubject = envScience;
-              selectedMarks = 0;
-              selectedFullMarks = envScience.theoryfullmarks || 0;
-              selectedPassMarks = envScience.passMarks || 0;
-              selectedAttendance = envScience.attendance || 0;
-            }
-            // If only OPT.MATH exists with 0 or null
-            else if (optMath) {
-              selectedSubject = optMath;
-              selectedMarks = 0;
-              selectedFullMarks = optMath.theoryfullmarks || 0;
-              selectedPassMarks = optMath.passMarks || 0;
-              selectedAttendance = optMath.attendance || 0;
-            }
-            
-            // Get credit hour for the selected subject
-            if (selectedSubject) {
-              let creditMatch = creditHourData.filter(ch => ch.newsubject === selectedSubject.subject)[0];
-              if (creditMatch) {
-                selectedCreditHour = creditMatch.theoryCreditHour || 0;
-              }
-            }
-            
-            return {
-              subject: selectedSubject,
-              marks: selectedMarks,
-              fullMarks: selectedFullMarks,
-              passMarks: selectedPassMarks,
-              attendance: selectedAttendance,
-              creditHour: selectedCreditHour,
-              hasData: selectedSubject !== null
-            };
-          }
         %>
         <select name="classSection" id="classSection">
           <option value="" selected disabled>Choose Class & Section</option>
@@ -907,60 +829,21 @@
         });
         
         sortedStudentData.forEach((data) => { 
-          // ========== FIX: Handle Optional-II subjects ==========
           const uniqueSubjects = [];
           const subjectSet = new Set();
-          let optionalData = null;
-          let hasEnvScience = false;
-          let hasOptMath = false;
-          
-          if (data.subjects && Array.isArray(data.subjects)) {
-            // Check if ENV.SCIENCE and OPT.MATH exist
-            data.subjects.forEach(sub => {
-              const upperName = sub.subject.toUpperCase().trim();
-              if (upperName === 'ENV.SCIENCE' || upperName === 'ENV SCIENCE') {
-                hasEnvScience = true;
-              }
-              if (upperName === 'OPT.MATH' || upperName === 'OPT MATH' || upperName === 'OPTIONAL MATH') {
-                hasOptMath = true;
-              }
-            });
-            
-            // Get the optional subject data
-            optionalData = getOptionalSubjectData(data.subjects);
-            
-            data.subjects.forEach(sub => {
-              const upperName = sub.subject.toUpperCase().trim();
-              // Skip ENV.SCIENCE and OPT.MATH - we handle them separately
-              if (upperName === 'ENV.SCIENCE' || upperName === 'ENV SCIENCE' || 
-                  upperName === 'OPT.MATH' || upperName === 'OPT MATH' || upperName === 'OPTIONAL MATH') {
-                return; // Skip these, we'll add Optional-II separately
-              }
-              
-              const key = upperName;
-              if (!subjectSet.has(key)) {
-                subjectSet.add(key);
-                uniqueSubjects.push(sub);
-              }
-            });
-            
-            // Add Optional-II if ENV.SCIENCE or OPT.MATH exists
-            if (hasEnvScience || hasOptMath) {
-              // Create a synthetic subject for Optional-II using the selected data
-              const optionalSubject = {
-                subject: 'OPTIONAL-II',
-                theorymarks: optionalData.marks,
-                theoryfullmarks: optionalData.fullMarks,
-                passMarks: optionalData.passMarks,
-                attendance: optionalData.attendance,
-                // Copy other fields from the actual subject
-                ...optionalData.subject
-              };
-              // Override the subject name to "Optional-II"
-              optionalSubject.subject = 'OPTIONAL-II';
-              uniqueSubjects.push(optionalSubject);
+          const optionalNameSet = new Set((data.optionalSubjectNames || []).map((name) =>
+            String(name || '').trim().toLowerCase().replace(/\s+/g, ' ')
+          ));
+          const selectedOptionalName = String(data.selectedOptionalSubject || '')
+            .trim().toLowerCase().replace(/\s+/g, ' ');
+          (data.subjects || []).forEach((sub) => {
+            const key = String(sub.subject || '').trim().toLowerCase().replace(/\s+/g, ' ');
+            if (optionalNameSet.has(key) && key !== selectedOptionalName) return;
+            if (!subjectSet.has(key)) {
+              subjectSet.add(key);
+              uniqueSubjects.push(sub);
             }
-          }
+          });
           
           // Sort subjects by the defined order
           const sortedSubjects = uniqueSubjects.sort((a, b) => {
@@ -1030,10 +913,6 @@
                 if (!creditMatch) {
                   // If not found, try matching by display name
                   creditMatch = creditHourData.filter(ch => ch.newsubject === displaySubjectName)[0];
-                }
-                // For Optional-II, use the credit hour from the selected subject
-                if (!creditMatch && sub.subject === 'OPTIONAL-II' && optionalData && optionalData.hasData) {
-                  theoryCreditHour = optionalData.creditHour || 0;
                 }
                 if (creditMatch) {
                   theoryCreditHour = creditMatch.theoryCreditHour || 0;

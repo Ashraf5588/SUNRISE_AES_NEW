@@ -361,10 +361,12 @@
             <td class="subject-<%= index %> col-tot"><%= totalMarks.toFixed(2) %></td>
             <td class="subject-<%= index %> col-gp"><%= subjectData.isAb ? 'Ab' : Number(subjectData.finalGP ?? 0).toFixed(2) %></td>
             <% } else { %>
-            <td class="subject-<%= index %> col-th"></td>
-            <td class="subject-<%= index %> col-pr"></td>
-            <td class="subject-<%= index %> col-tot"></td>
-            <td class="subject-<%= index %> col-gp"></td>
+            <% const normalizeOptionalName = (value) => String(value || '').trim().toLowerCase().replace(/\s+/g, ' '); %>
+            <% const notChosenOptional = (optionalSubjectNames || []).some(name => normalizeOptionalName(name) === normalizeOptionalName(sub)) && normalizeOptionalName(data.selectedOptionalSubject) !== normalizeOptionalName(sub); %>
+            <td class="subject-<%= index %> col-th"><%= notChosenOptional ? '-' : '' %></td>
+            <td class="subject-<%= index %> col-pr"><%= notChosenOptional ? '-' : '' %></td>
+            <td class="subject-<%= index %> col-tot"><%= notChosenOptional ? '-' : '' %></td>
+            <td class="subject-<%= index %> col-gp"><%= notChosenOptional ? '-' : '' %></td>
             <% } %>
            <% }) %>
             <td class="col-total-th"><%= data.totalTh %></td>

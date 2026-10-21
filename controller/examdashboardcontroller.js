@@ -9,6 +9,7 @@ const bodyParser = require("body-parser");
 const { rootDir } = require("../utils/path");
 const { studentSchema } = require("../model/schema");
 const { studentrecordschema } = require("../model/adminschema");
+const { optionalSubStudentSchema } = require("../model/optionalsubstudentschema");
 const { classSchema, subjectSchema,terminalSchema,newsubjectSchema } = require("../model/adminschema");
 const {examSchema}= require("../model/examschema");
 const { name } = require("ejs");
@@ -34,6 +35,30 @@ app.set("view engine", "ejs");
 app.set("view", path.join(rootDir, "views"));
 const newsubject = mongoose.model("newsubject", newsubjectSchema, "newsubject");
 const usermodel = mongoose.model("users", teacherSchema, "users");
+const OptionalSubStudent = mongoose.models.optionalSubStudent
+  || mongoose.model("optionalSubStudent", optionalSubStudentSchema, "optionalstudents");
+const normalizeSubjectName = (value) => String(value || '').trim().toLowerCase().replace(/\s+/g, ' ');
+const applyOptionalSubjectAssignments = (students, optionalSubjectNames, assignments) => {
+  const optionalNameSet = new Set(optionalSubjectNames.map(normalizeSubjectName));
+  const assignmentMap = new Map(assignments.map((item) => [
+    String(item.reg || '').trim(),
+    (item.optionalSubjects || []).map(normalizeSubjectName)
+  ]));
+
+  students.forEach((student) => {
+    const reg = String(student._id || student.reg || '').trim();
+    const assignedNames = assignmentMap.get(reg) || [];
+    const selectedOptionalSubject = optionalSubjectNames.find((name) =>
+      assignedNames.includes(normalizeSubjectName(name))
+    ) || '';
+    student.selectedOptionalSubject = selectedOptionalSubject;
+    student.optionalSubjectNames = optionalSubjectNames;
+    student.subjects = (student.subjects || []).filter((subject) =>
+      !optionalNameSet.has(normalizeSubjectName(subject.subject))
+      || normalizeSubjectName(subject.subject) === normalizeSubjectName(selectedOptionalSubject)
+    );
+  });
+};
 const getSlipModel = () => {
  
   if (mongoose.models[`exam_marks`]) {
@@ -393,7 +418,19 @@ exports.generateMarksheet = async (req, res, next) => {
       },
     ]);
 
-   
+    const [optionalSubjectRecords, optionalAssignments] = await Promise.all([
+      newsubject.find({ forClass: studentClass, subjectType: 'optional' })
+        .select('newsubject')
+        .lean(),
+      OptionalSubStudent.find({ studentClass, section, academicYear })
+        .select('reg optionalSubjects')
+        .lean()
+    ]);
+    const optionalSubjectNames = [...new Set(optionalSubjectRecords
+      .map((item) => String(item.newsubject || '').trim())
+      .filter(Boolean))];
+    applyOptionalSubjectAssignments(studentWisedata, optionalSubjectNames, optionalAssignments);
+
     const classSetup = await studentClassModel.findOne({
       studentClass: { $regex: `^${String(studentClass || '').trim()}$`, $options: 'i' }
     }).select('attendanceSource marksheetType').lean();
@@ -636,6 +673,18 @@ exports.generateMarksheetStudent = async (req, res, next) => {
 
 ])
 
+  const [optionalSubjectRecords, optionalAssignments] = await Promise.all([
+    newsubject.find({ forClass: studentClass, subjectType: 'optional' })
+      .select('newsubject')
+      .lean(),
+    OptionalSubStudent.find({ studentClass, section, academicYear })
+      .select('reg optionalSubjects')
+      .lean()
+  ]);
+  const optionalSubjectNames = [...new Set(optionalSubjectRecords
+    .map((item) => String(item.newsubject || '').trim())
+    .filter(Boolean))];
+  applyOptionalSubjectAssignments(studentWisedata, optionalSubjectNames, optionalAssignments);
 
 
    if(format==="theorypractical")
@@ -1727,7 +1776,7 @@ exports.ledger = async (req, res, next) => {
     }
 
     const classSubjectRecords = await newsubject.find({ forClass: studentClass })
-      .select('newsubject displayorder')
+      .select('newsubject displayorder subjectType')
       .lean();
     classSubjectRecords.sort((a, b) => {
       const orderA = a.displayorder === null || a.displayorder === undefined
@@ -1740,6 +1789,12 @@ exports.ledger = async (req, res, next) => {
     });
     const classSubjects = [...new Set(
       classSubjectRecords.map((item) => String(item.newsubject || '').trim()).filter(Boolean)
+    )];
+    const optionalSubjectNames = [...new Set(
+      classSubjectRecords
+        .filter((item) => String(item.subjectType || '').toLowerCase() === 'optional')
+        .map((item) => String(item.newsubject || '').trim())
+        .filter(Boolean)
     )];
     const configuredLedgerType = LEDGER_VIEW_BY_TYPE[classSetup?.ledgerType] ? classSetup.ledgerType : 'auto';
     const ledgerView = isTestTerminal
@@ -1776,6 +1831,7 @@ exports.ledger = async (req, res, next) => {
         terminals,
         marksheetSetups,
         classSubjects,
+        optionalSubjectNames,
         ledgerData: [],
         ledgerAnalysisLookup: {},
         noData: true,
@@ -2547,6 +2603,60 @@ exports.ledger = async (req, res, next) => {
       ledgerData.sort((a, b) => a.rollNumber - b.rollNumber);
     }
 
+    if (optionalSubjectNames.length && ledgerData.length) {
+      const optionalAssignments = await OptionalSubStudent.find({
+        studentClass,
+        section,
+        academicYear
+      }).select('reg optionalSubjects').lean();
+      applyOptionalSubjectAssignments(ledgerData, optionalSubjectNames, optionalAssignments);
+
+      const optionalSubjectKeys = new Set(optionalSubjectNames.map(normalizeSubjectName));
+      ledgerData.forEach((student) => {
+        const keptSubjects = new Set((student.subjects || []).map((item) => normalizeSubjectName(item.subject)));
+        Object.keys(student.subjectMap || {}).forEach((subjectName) => {
+          if (optionalSubjectKeys.has(normalizeSubjectName(subjectName))
+            && !keptSubjects.has(normalizeSubjectName(subjectName))) {
+            delete student.subjectMap[subjectName];
+          }
+        });
+        student.totalTh = (student.subjects || []).reduce((total, subject) =>
+          total + (Number(subject.theorymarks) || 0), 0);
+        student.totalPr = (student.subjects || []).reduce((total, subject) =>
+          total + (Number(subject.totalpracticalmarks ?? subject.practicalmarks) || 0), 0);
+        student.totalTheoryFullMarks = (student.subjects || []).reduce((total, subject) =>
+          total + (Number(subject.theoryfullmarks) || 0), 0);
+        student.theorypercentage = student.totalTheoryFullMarks > 0
+          ? (student.totalTh / student.totalTheoryFullMarks) * 100
+          : 0;
+        student.failcount = (student.subjects || []).filter((subject) =>
+          Number(subject.theorymarks) < Number(subject.passMarks)
+        ).length;
+
+        let weightedGP = 0;
+        let creditTotal = 0;
+        Object.values(student.subjectMap || {}).forEach((subject) => {
+          if (subject.isAb) return;
+          const gradePoint = Number(subject.finalGP) || 0;
+          const credits = Number(subject.totalCredit) || 0;
+          if (credits > 0) {
+            weightedGP += gradePoint * credits;
+            creditTotal += credits;
+          } else {
+            weightedGP += gradePoint;
+            creditTotal += 1;
+          }
+        });
+        student.gpa = creditTotal > 0 ? Math.round((weightedGP / creditTotal) * 100) / 100 : 0;
+      });
+
+      [...ledgerData].sort((a, b) => Number(b.gpa) - Number(a.gpa)).forEach((student, index, sorted) => {
+        student.rank = index > 0 && Number(student.gpa) === Number(sorted[index - 1].gpa)
+          ? sorted[index - 1].rank
+          : index + 1;
+      });
+    }
+
     // ============================================
     // CALCULATE ANALYSIS DATA
     // ============================================
@@ -2653,6 +2763,31 @@ exports.ledger = async (req, res, next) => {
         ledgerAnalysisLookup[item.subject] = item;
       }
     });
+    optionalSubjectNames.forEach((subjectName) => {
+      const values = ledgerData.flatMap((student) => (student.subjects || [])
+        .filter((subject) => normalizeSubjectName(subject.subject) === normalizeSubjectName(subjectName))
+        .map((subject) => ({
+          marks: Number(subject.theorymarks) || 0,
+          gender: String(student.gender || '').toLowerCase(),
+          passMarks: Number(subject.passMarks) || 0
+        })));
+      const average = (items) => items.length
+        ? items.reduce((total, item) => total + item.marks, 0) / items.length
+        : 0;
+      const maleValues = values.filter((item) => item.gender === 'male');
+      const femaleValues = values.filter((item) => item.gender === 'female');
+      const failCount = values.filter((item) => item.marks < item.passMarks).length;
+      ledgerAnalysisLookup[subjectName] = {
+        highestMarks: values.length ? Math.max(...values.map((item) => item.marks)) : 0,
+        lowestMarks: values.length ? Math.min(...values.map((item) => item.marks)) : 0,
+        avgMarks: average(values),
+        maleavg: average(maleValues),
+        femaleavg: average(femaleValues),
+        failCount,
+        passCount: values.length - failCount,
+        totalStudents: values.length
+      };
+    });
 
     return res.render(ledgerView, {
       fullUrl: req.protocol + '://' + req.get('host') + req.originalUrl,
@@ -2666,6 +2801,7 @@ exports.ledger = async (req, res, next) => {
       terminals,
       marksheetSetups,
       classSubjects,
+      optionalSubjectNames,
       ledgerData,
       ledgerAnalysisLookup,
       noData: ledgerData.length === 0,
