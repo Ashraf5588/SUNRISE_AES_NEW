@@ -267,6 +267,123 @@ const sortClassSectionList = (items) => {
 };
 
 /**
+ * Sort student records according to:
+ * 1. classorder from classlist collection (with fallback to standard grade progression)
+ * 2. Section within that class (all students of same section appear together, then next section)
+ * 3. Roll number (numeric ascending)
+ * 4. Name / Reg (tie-breakers)
+ */
+const sortStudentRecords = (records, classList = []) => {
+  if (!Array.isArray(records) || records.length === 0) {
+    return [];
+  }
+
+  const normalizeKey = (val) => String(val || '').trim().toLowerCase();
+  const canonicalClassKey = (value) => normalizeClassName(value).toLowerCase();
+  const classOrderMap = new Map();
+  const sectionSequenceMap = new Map();
+
+  (classList || []).forEach((item, index) => {
+    const normClass = canonicalClassKey(item.studentClass);
+    const rawSection = String(item.section || '').trim().toUpperCase();
+    const orderNum = item.classorder !== null && item.classorder !== undefined && item.classorder !== ''
+      ? Number(item.classorder)
+      : NaN;
+    const hasOrder = Number.isFinite(orderNum);
+
+    if (normClass) {
+      if (hasOrder) {
+        if (!classOrderMap.has(normClass) || orderNum < classOrderMap.get(normClass)) {
+          classOrderMap.set(normClass, orderNum);
+        }
+      }
+      if (rawSection) {
+        const secKey = `${normClass}__${rawSection}`;
+        if (!sectionSequenceMap.has(secKey)) {
+          sectionSequenceMap.set(secKey, index);
+        }
+      }
+    }
+  });
+
+  const getStudentClassWeight = (cls) => {
+    const classKey = canonicalClassKey(cls);
+    if (classOrderMap.has(classKey)) return classOrderMap.get(classKey);
+    return 10000 + classSortWeight(classKey || normalizeKey(cls));
+  };
+
+  const parseRoll = (val) => {
+    if (val === null || val === undefined || String(val).trim() === '') {
+      return { num: Infinity, str: '' };
+    }
+    const str = String(val).trim();
+    const num = Number.parseInt(str.replace(/[^\d-]/g, ''), 10);
+    return { num: Number.isFinite(num) ? num : Infinity, str };
+  };
+
+  return [...records].sort((a, b) => {
+    // 1. Sort by classorder from classlist
+    const weightA = getStudentClassWeight(a.studentClass);
+    const weightB = getStudentClassWeight(b.studentClass);
+    if (weightA !== weightB) {
+      return weightA - weightB;
+    }
+
+    const classCmp = canonicalClassKey(a.studentClass).localeCompare(
+      canonicalClassKey(b.studentClass),
+      undefined,
+      { numeric: true, sensitivity: 'base' }
+    );
+    if (classCmp !== 0) {
+      return classCmp;
+    }
+
+    // 2. Same class: same section appear together, then next section
+    const secA = String(a.section || '').trim().toUpperCase();
+    const secB = String(b.section || '').trim().toUpperCase();
+    if (secA !== secB) {
+      const normClass = canonicalClassKey(a.studentClass);
+      const seqA = sectionSequenceMap.get(`${normClass}__${secA}`);
+      const seqB = sectionSequenceMap.get(`${normClass}__${secB}`);
+      if (seqA !== undefined && seqB !== undefined && seqA !== seqB) {
+        return seqA - seqB;
+      }
+      if (seqA !== undefined && seqB === undefined) return -1;
+      if (seqA === undefined && seqB !== undefined) return 1;
+      return secA.localeCompare(secB, undefined, { numeric: true, sensitivity: 'base' });
+    }
+
+    // 3. Same section: sort by roll number (numerical ascending)
+    const rollA = parseRoll(a.roll);
+    const rollB = parseRoll(b.roll);
+    if (rollA.num !== rollB.num) {
+      return rollA.num - rollB.num;
+    }
+    const rollStrCmp = rollA.str.localeCompare(rollB.str, undefined, { numeric: true });
+    if (rollStrCmp !== 0) {
+      return rollStrCmp;
+    }
+
+    // 4. Same roll: sort by student name
+    const nameCmp = String(a.name || '').trim().localeCompare(
+      String(b.name || '').trim(),
+      undefined,
+      { sensitivity: 'base' }
+    );
+    if (nameCmp !== 0) {
+      return nameCmp;
+    }
+
+    // 5. Tie breaker: registration number
+    return String(a.reg || '').trim().localeCompare(
+      String(b.reg || '').trim(),
+      undefined,
+      { numeric: true, sensitivity: 'base' }
+    );
+  });
+};
+
+/**
  * Transform entry array data into a pivoted format for better data visualization
  * 
  * This function takes the MongoDB aggregation results and creates a pivot table structure:
@@ -1356,7 +1473,7 @@ exports.addClass = async (req, res, next) => {
   }
 };
 exports.addNewSubject = async (req, res, next) => {
-  const newsubjectList = await newsubject.find({}).lean();
+  const newsubjectList = await newsubject.find({}).sort({ displayorder: 1, newsubject: 1, forClass: 1 }).lean();
 
 
   // Get sidenav data
@@ -1387,9 +1504,14 @@ exports.addNewSubjectPost = async (req, res, next) => {
     const { subjectId } = req.params;
     const updatedNewSubject = String(req.body.newsubject || '').toUpperCase().trim();
     const subjectType = String(req.body.subjectType || '').trim();
+    const displayorderValue = String(req.body.displayorder || '').trim();
+    const displayorder = Number(displayorderValue);
     const allowedSubjectTypes = ['compulsory', 'local', 'optional', 'Extra'];
     if (!allowedSubjectTypes.includes(subjectType)) {
       return res.status(400).send("Invalid subject type");
+    }
+    if (!displayorderValue || !Number.isInteger(displayorder) || displayorder < 0) {
+      return res.status(400).send("Display order must be a non-negative whole number");
     }
     const { newsubject, theory, practical, selectedClasses, total, passingMarks, theoryCreditHour, practicalCreditHour } = req.body;
     const classes = JSON.parse(selectedClasses || '[]');
@@ -1420,6 +1542,7 @@ console.log("Selected classes for new subject:", classes);
         {
           $set: {
             newsubject: updatedNewSubject,
+            displayorder,
             subjectType,
             theory,
             practical,
@@ -1434,6 +1557,7 @@ console.log("Selected classes for new subject:", classes);
       if (missingClasses.length > 0) {
         const inserts = missingClasses.map((cls) => ({
           newsubject: updatedNewSubject,
+          displayorder,
           subjectType,
           theory,
           practical,
@@ -1449,6 +1573,7 @@ console.log("Selected classes for new subject:", classes);
       
   const dataToInsert = classes.map(cls => ({
       newsubject: updatedNewSubject,
+      displayorder,
       subjectType,
       theory,
       practical,
@@ -1470,7 +1595,7 @@ console.log("Selected classes for new subject:", classes);
 exports.editNewSubject = async (req, res, next) => {
   try {
     const { subjectId } = req.params;
-    const newsubjectList = await newsubject.find({}).lean();
+    const newsubjectList = await newsubject.find({}).sort({ displayorder: 1, newsubject: 1, forClass: 1 }).lean();
     const editing = req.query.editing === "true";
     const newsubjectData = await newsubject.findOne({ _id: subjectId });
     const subjectClassDocs = newsubjectData
@@ -1783,8 +1908,9 @@ exports.cross_sheet = async (req, res, next) => {
 };
 exports.studentrecord = async (req, res, next) => {
   try {
-     
-    const studentRecord = await modal.find({}).lean();
+    const classList = await studentClass.find({}).lean();
+    const rawStudentRecord = await modal.find({}).lean();
+    const studentRecord = sortStudentRecords(rawStudentRecord, classList);
     const year = new Date();
     const nepaliYear = bs.ADToBS(`${year}`).slice(0, 4);
     console.log(nepaliYear);
@@ -1796,6 +1922,7 @@ exports.studentrecord = async (req, res, next) => {
       editing: false,
       nepaliYear,
       studentRecord,
+      classList,
       currentPage: 'studentRecord',
       ...sidenavData
     });
@@ -2044,14 +2171,28 @@ const modal = mongoose.model("studentrecord", studentrecordschema, "studentrecor
 
   await modal.insertMany(jsonArray, { ordered: false });
 
-  // Keep classlist in sync with the full studentrecord collection.
+  // Keep classlist in sync with the full studentrecord collection while preserving existing classorder
+  const existingClasses = await studentClass.find({}).lean();
+  const existingClassOrderMap = new Map();
+  existingClasses.forEach((item) => {
+    const cls = normalizeClassName(String(item.studentClass || '').trim());
+    const sec = String(item.section || '').trim().toUpperCase();
+    if (item.classorder !== null && item.classorder !== undefined && item.classorder !== '') {
+      existingClassOrderMap.set(`${cls}__${sec}`, Number(item.classorder));
+      if (!existingClassOrderMap.has(cls)) {
+        existingClassOrderMap.set(cls, Number(item.classorder));
+      }
+    }
+  });
+
   const allClassSectionRows = await modal.find({}, { studentClass: 1, section: 1 }).lean();
   const uniqueClassSections = new Map();
   allClassSectionRows.forEach((row) => {
     const cls = normalizeClassName(String(row.studentClass || '').trim());
     const sec = String(row.section || '').trim().toUpperCase();
     if (!cls || !sec) return;
-    uniqueClassSections.set(`${cls}__${sec}`, { studentClass: cls, section: sec });
+    const order = existingClassOrderMap.get(`${cls}__${sec}`) ?? existingClassOrderMap.get(cls) ?? null;
+    uniqueClassSections.set(`${cls}__${sec}`, { studentClass: cls, section: sec, classorder: order });
   });
 
   await studentClass.deleteMany({});
@@ -2147,13 +2288,13 @@ exports.studentrecordadd = async (req, res, next) => {
   try {
     const { studentrecordschema } = require("../model/adminschema");
     const modal = mongoose.model("studentrecord", studentrecordschema, "studentrecord");
-    const { studentId, reg, roll, name, studentClass, section, gender } = req.body;
+    const { studentId, reg, roll, name, studentClass: inputClass, section, gender } = req.body;
 
     const updatePayload = {
       reg,
       roll,
       name,
-      studentClass,
+      studentClass: inputClass,
       section,
       gender
     };
@@ -2175,6 +2316,24 @@ exports.studentrecordadd = async (req, res, next) => {
       const created = await modal.create(updatePayload);
 
       if (created) {
+        // Ensure class/section is represented in classlist collection
+        const trimmedClass = normalizeClassName(String(inputClass || '').trim());
+        const trimmedSection = String(section || '').trim().toUpperCase();
+        if (trimmedClass && trimmedSection) {
+          const classExists = await studentClass.findOne({
+            studentClass: trimmedClass,
+            section: trimmedSection
+          });
+          if (!classExists) {
+            const siblingClass = await studentClass.findOne({ studentClass: trimmedClass });
+            await studentClass.create({
+              studentClass: trimmedClass,
+              section: trimmedSection,
+              classorder: siblingClass ? siblingClass.classorder : null
+            });
+          }
+        }
+
         return res.render("./partials/success", {
           message: 'Student record added successfully',
           redirectUrl: '/studentrecord'
@@ -2183,11 +2342,7 @@ exports.studentrecordadd = async (req, res, next) => {
     }
 
     return res.json({ success: false, message: 'Save failed' });
-
-
-
-
-  }catch (err) {
+  } catch (err) {
     console.error("Error in studentrecordadd:", err);
     res.status(500).send("Error adding student record: " + err.message);
   }
@@ -2196,7 +2351,9 @@ exports.studentrecordedit = async (req, res, next) => {
   try {
     const { studentrecordschema } = require("../model/adminschema");
     const modal = mongoose.model("studentrecord", studentrecordschema, "studentrecord");
-    const studentRecord = await modal.find({}).lean();
+    const classList = await studentClass.find({}).lean();
+    const rawStudentRecord = await modal.find({}).lean();
+    const studentRecord = sortStudentRecords(rawStudentRecord, classList);
     const { studentId } = req.params;
     const editing = req.query.editing === "true"; // Check if editing mode is enabled
     const studentrecordData = await modal.findOne({ _id: studentId }).lean();
@@ -2206,10 +2363,11 @@ exports.studentrecordedit = async (req, res, next) => {
       return res.status(404).send("Student record not found");
     }    
     return res.render("admin/schoolstudentrecord", {
-      editing:true,
+      editing: true,
       studentrecordData,
       studentId,
       studentRecord,
+      classList,
       nepaliYear: bs.ADToBS(new Date()).slice(0, 4), // Convert current date to Nepali year
       currentPage: 'studentRecord',
       ...await getSidenavData(req)
@@ -2339,10 +2497,11 @@ exports.bulkDeleteStudentRecords = async (req, res) => {
 };
 exports.showStudentTransfer = async (req, res) => {
   try {
-    const [studentRecords, classSections] = await Promise.all([
+    const [rawStudentRecords, classSections] = await Promise.all([
       modal.find({}, { reg: 1, name: 1, studentClass: 1, section: 1, roll: 1, gender: 1 }).lean(),
-      studentClass.find({}, { studentClass: 1, section: 1 }).lean()
+      studentClass.find({}, { studentClass: 1, section: 1, classorder: 1 }).lean()
     ]);
+    const studentRecords = sortStudentRecords(rawStudentRecords, classSections);
 
     const combinedClassSections = new Map();
     [...studentRecords, ...classSections].forEach((item) => {
@@ -4330,4 +4489,3 @@ exports.deletemarksheetSetup = async (req, res) => {
     res.status(500).send("Error deleting marksheet setup: " + err.message);
   }
 };
-

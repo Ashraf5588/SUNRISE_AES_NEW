@@ -146,6 +146,7 @@ const studentrecordschema = new mongoose.Schema({
 const newsubjectSchema = new mongoose.Schema({
   "subject":{ type: String,required: false},
   "newsubject":{ type: String,required: false},
+  "displayorder":{ type: Number,required: false},
   "subjectType":{ type: String, enum: ['compulsory', 'local', 'optional', 'Extra'], required: false},
   "forClass":{ type: String,required: false},
   "theory":{ type: Number,required: false},

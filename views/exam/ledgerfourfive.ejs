@@ -390,7 +390,7 @@
         </div>
         <div class="hide-group">
           <div class="hide-group-title">Hide Subjects</div>
-          <% uniqueSubjects = new Set(ledgerData.map(item => item.subjects.map(sub => sub.subject)).flat()); %>
+          <% uniqueSubjects = new Set(classSubjects || ledgerData.map(item => item.subjects.map(sub => sub.subject)).flat()); %>
           <% Array.from(uniqueSubjects).forEach((sub, index) => { %>
             <label><input type="checkbox" class="subject-toggle" data-subject-index="<%= index %>" checked> <%= sub %></label>
           <% }) %>
@@ -427,7 +427,7 @@
         <tr>
           <th rowspan="2">Roll</th>
           <th rowspan="2">Name</th>
-          <% uniqueSubjects = new Set(ledgerData.map(item => item.subjects.map(sub => sub.subject)).flat()); %>
+          <% uniqueSubjects = new Set(classSubjects || ledgerData.map(item => item.subjects.map(sub => sub.subject)).flat()); %>
           <% Array.from(uniqueSubjects).forEach((sub, index) => { %>
             <th colspan="3" class="subject-header subject-<%= index %>" data-subject-index="<%= index %>"><%= sub %></th>
           <% }) %>
@@ -545,9 +545,9 @@
                 <td class="subject-<%= index %> col-pr"><%= practicalMarks !== null && practicalMarks !== undefined ? practicalMarks : '-' %></td>
                 <td class="subject-<%= index %> col-tot"><%= totalMarks !== null && totalMarks !== undefined ? totalMarks.toFixed(2) : '-' %></td>
             <% } else { %>
-                <td class="subject-<%= index %> col-th">-</td>
-                <td class="subject-<%= index %> col-pr">-</td>
-                <td class="subject-<%= index %> col-tot">-</td>
+                <td class="subject-<%= index %> col-th"></td>
+                <td class="subject-<%= index %> col-pr"></td>
+                <td class="subject-<%= index %> col-tot"></td>
             <% } %>
            <% }) %>
             <td class="col-total-th"><%= data.totalTh ? data.totalTh.toFixed(2) : '-' %></td>

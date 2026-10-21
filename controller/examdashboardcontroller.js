@@ -1511,6 +1511,21 @@ exports.ledger = async (req, res, next) => {
     const classSetup = await studentClassModel.findOne({
       studentClass: { $regex: `^${String(studentClass || '').trim()}$`, $options: 'i' }
     }).select('ledgerType').lean();
+    const classSubjectRecords = await newsubject.find({ forClass: studentClass })
+      .select('newsubject displayorder')
+      .lean();
+    classSubjectRecords.sort((a, b) => {
+      const orderA = a.displayorder === null || a.displayorder === undefined
+        ? Number.MAX_SAFE_INTEGER
+        : Number(a.displayorder);
+      const orderB = b.displayorder === null || b.displayorder === undefined
+        ? Number.MAX_SAFE_INTEGER
+        : Number(b.displayorder);
+      return orderA - orderB || String(a.newsubject || '').localeCompare(String(b.newsubject || ''));
+    });
+    const classSubjects = [...new Set(
+      classSubjectRecords.map((item) => String(item.newsubject || '').trim()).filter(Boolean)
+    )];
     const marksheetSetups = await marksheetSetup.find({}).lean();
     const terminals = await terminalModel.find({}).lean();
     const matchingTerminals = terminals.filter((item) =>
@@ -1556,6 +1571,7 @@ exports.ledger = async (req, res, next) => {
         terminal,
         terminals,
         marksheetSetups,
+        classSubjects,
         ledgerData: [],
         ledgerAnalysisLookup: {},
         noData: true,
@@ -2444,6 +2460,7 @@ exports.ledger = async (req, res, next) => {
       terminal,
       terminals,
       marksheetSetups,
+      classSubjects,
       ledgerData,
       ledgerAnalysisLookup,
       noData: ledgerData.length === 0,

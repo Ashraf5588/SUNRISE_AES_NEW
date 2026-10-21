@@ -606,6 +606,20 @@
                   <option value="Extra" <%= editing && newsubjectData.subjectType === 'Extra' ? 'selected' : '' %>>Extra</option>
                 </select>
               </div>
+              <div class="col-md-6">
+                <label for="displayorder" class="form-label">Display Order</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  id="displayorder"
+                  name="displayorder"
+                  value="<%= editing ? newsubjectData.displayorder : '' %>"
+                  placeholder="Enter display order"
+                  min="0"
+                  step="1"
+                  required
+                >
+              </div>
             </div>
 
             <!-- Marks Section -->
@@ -742,6 +756,7 @@ document.getElementById("subject").addEventListener("input", function() {
               <thead>
                 <tr>
                   <th>S.No.</th>
+                  <th>Display Order</th>
                   <th>Subject Name</th>
                   <th>For Class</th>
                   <th>Subject Type</th>
@@ -759,6 +774,7 @@ document.getElementById("subject").addEventListener("input", function() {
                 <% newsubjectList.forEach((subject, index) => { %>
                   <tr>
                     <td><strong><%= index + 1 %></strong></td>
+                    <td><%= subject.displayorder === undefined ? '' : subject.displayorder %></td>
                     <td>
                       <%= subject.newsubject %>
                     </td>

@@ -43,7 +43,8 @@
         }
 
         .container {
-            max-width: 800px;
+            max-width: 1400px;
+            width: 96%;
             margin: 0 auto;
             padding: 2rem;
         }
@@ -507,8 +508,139 @@
             opacity: 0.7;
         }
 
+        .form-row.form-row-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .table-card {
+            background: var(--card-background);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            transition: var(--transition);
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+            overflow-y: visible;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        #studentrecordTable {
+            width: 100%;
+            min-width: 0;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin-top: 0.5rem;
+        }
+
+        #studentrecordTable th,
+        #studentrecordTable td {
+            padding: 0.35rem 0.25rem;
+            border-bottom: 1px solid var(--border-color);
+            text-align: left;
+            font-size: 0.72rem;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
+
+        #studentrecordTable td {
+            color: var(--text-primary);
+            background-color: #ffffff;
+            opacity: 1;
+            visibility: visible;
+        }
+
+        #studentrecordTable th {
+            background: #f1f5f9;
+            color: var(--text-primary);
+            font-weight: 700;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+        }
+
+        #studentrecordTable tbody tr:hover {
+            background-color: #f8fafc;
+        }
+
+        #studentrecordTable .btn {
+            min-width: 0;
+            padding: 0.3rem 0.35rem;
+            font-size: 0.7rem;
+        }
+
+        .table-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .table-filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+
+        .table-filter-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            min-width: 160px;
+        }
+
+        .table-filter-item label {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .table-filter-item select,
+        .table-filter-item input {
+            padding: 0.5rem 0.75rem;
+            border: 1.5px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            background: var(--background-color);
+            color: var(--text-primary);
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .table-filter-item select:focus,
+        .table-filter-item input:focus {
+            border-color: var(--primary-color);
+        }
+
+        .table-count-badge {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            background: #f1f5f9;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+        }
+
         @media (max-width: 768px) {
-            .form-row {
+            .table-responsive {
+                overflow-x: auto;
+            }
+
+            #studentrecordTable {
+                min-width: 1100px;
+            }
+
+            .form-row,
+            .form-row.form-row-3 {
                 grid-template-columns: 1fr;
                 gap: 0;
             }
@@ -558,20 +690,40 @@
                     <input type="text" name="name" id="name" placeholder="Enter student name" value="<%=editing?studentrecordData.name:''%>" required>
                 </div>
 
-                <div class="form-row">
+                <div class="form-row form-row-3">
                     <div class="form-group">
                         <label for="studentClass"><i class="fas fa-graduation-cap"></i> Class</label>
-                        <input type="text" name="studentClass" id="studentClass" placeholder="Enter class" value="<%=editing?studentrecordData.studentClass:''%>" required>
+                        <input type="text" name="studentClass" id="studentClass" placeholder="Enter class" value="<%=editing?studentrecordData.studentClass:''%>" required list="classListDatalist">
                     </div>
                     <div class="form-group">
                         <label for="section"><i class="fas fa-users"></i> Section</label>
-                        <input type="text" name="section" id="section" placeholder="Enter section" value="<%=editing?studentrecordData.section:''%>" required>
+                        <input type="text" name="section" id="section" placeholder="Enter section" value="<%=editing?studentrecordData.section:''%>" required list="sectionListDatalist">
                     </div>
                     <div class="form-group">
-                        <label for="section"><i class="fas fa-users"></i> gender</label>
-                        <input type="text" name="gender" id="section" placeholder="Enter section" value="<%=editing?studentrecordData.gender:''%>" required>
+                        <label for="gender"><i class="fas fa-venus-mars"></i> Gender</label>
+                        <input type="text" name="gender" id="gender" placeholder="Enter gender" value="<%=editing?studentrecordData.gender:''%>" required list="genderDatalist">
                     </div>
                 </div>
+
+                <% if (typeof classList !== 'undefined' && Array.isArray(classList) && classList.length > 0) { %>
+                    <datalist id="classListDatalist">
+                        <% const datalistClasses = [...new Set(classList.map(c => c.studentClass).filter(Boolean))]; %>
+                        <% datalistClasses.forEach(c => { %>
+                            <option value="<%= c %>"></option>
+                        <% }) %>
+                    </datalist>
+                    <datalist id="sectionListDatalist">
+                        <% const datalistSections = [...new Set(classList.map(c => c.section).filter(Boolean))]; %>
+                        <% datalistSections.forEach(s => { %>
+                            <option value="<%= s %>"></option>
+                        <% }) %>
+                    </datalist>
+                <% } %>
+                <datalist id="genderDatalist">
+                    <option value="Male"></option>
+                    <option value="Female"></option>
+                    <option value="Other"></option>
+                </datalist>
 
                 <div class="form-group">
                     <button type="submit" class="btn btn-primary">
@@ -705,60 +857,96 @@
             </div>
         </div>
 
-        <table cellspacing="0" class="table table-striped" style="background-color: white;" id="studentrecordTable">
-    <thead>
-        <tr>
-            <th><input type="checkbox" id="selectAllRecords" /></th>
-            <th>SN</th>
-            <th>Reg No</th>
-            <th>Name of Student</th>
-            <th>Gender</th>
-            <th>Class</th>
-            <th>Section</th>
-            <th>Roll No</th>
-            <th>DOB Nepali</th>
-            <th>Contact No</th>
-            <th>Father's Name</th>
-            <th>Mother's Name</th>
-            <th>Bus Stop</th>
-            <th>Father's Mobile</th>
-            <th>Mother's Mobile</th>
-            <th>Action</th>
-        </tr>
-    </thead>
-    <tbody>
-        <% studentRecord.forEach((record, index) => { %>
-            <tr data-id="<%= record._id %>">
-                <td><input type="checkbox" class="record-select" value="<%= record._id %>" /></td>
-                <td><%= index + 1 %></td>
-                <td data-field="reg"><%= record.reg %></td>
-                <td data-field="name"><%= record.name %></td>
-                <td data-field="gender"><%= record.gender %></td>
-                <td data-field="studentClass"><%= record.studentClass %></td>
-                <td data-field="section"><%= record.section %></td>
-                <td data-field="roll"><%= record.roll %></td>
-                <td data-field="dobNepali"><%= record.dobNepali %></td>
-                <td data-field="numberofmobile"><%= record.numberofmobile %></td>
-                <td data-field="fatherName"><%= record.fatherName %></td>
-                <td data-field="motherName"><%= record.motherName %></td>
-                <td data-field="busStop"><%= record.busStop %></td>
-                <td data-field="fatherMobile"><%= record.fatherMobile %></td>
-                <td data-field="motherMobile"><%= record.motherMobile %></td>
-                <td>
-                    <a href="/studentrecord/edit/<%= record._id %>?editing=true" class="btn btn-secondary">
-                        <i class="fas fa-edit"></i> Edit
-                    </a>
-                    <form action="/studentrecord/delete/<%= record._id %>" method="POST" style="display: inline;">
-                        <button type="submit" class="btn btn-danger delete-record-btn" data-id="<%= record._id %>">
-                            <i class="fas fa-trash"></i> Delete
-                        </button>
-                    </form>
-                </td>
+        <!-- Student Records Table Card -->
+        <div class="card table-card" style="margin-top: 1.5rem;">
+            <div class="table-toolbar">
+                <div class="table-filter-group">
+                    <div class="table-filter-item">
+                        <label for="tableFilterClass"><i class="fas fa-graduation-cap"></i> Filter Class</label>
+                        <select id="tableFilterClass">
+                            <option value="">All Classes</option>
+                            <% const tableFilterClassOptions = [...new Set(studentRecord.map(r => r.studentClass).filter(Boolean))]; %>
+                            <% tableFilterClassOptions.forEach((cls) => { %>
+                                <option value="<%= cls %>"><%= cls %></option>
+                            <% }) %>
+                        </select>
+                    </div>
+                    <div class="table-filter-item">
+                        <label for="tableFilterSection"><i class="fas fa-users"></i> Filter Section</label>
+                        <select id="tableFilterSection">
+                            <option value="">All Sections</option>
+                            <% const tableFilterSectionOptions = [...new Set(studentRecord.map(r => r.section).filter(Boolean))]; %>
+                            <% tableFilterSectionOptions.forEach((sec) => { %>
+                                <option value="<%= sec %>"><%= sec %></option>
+                            <% }) %>
+                        </select>
+                    </div>
+                    <div class="table-filter-item" style="flex: 1; min-width: 220px;">
+                        <label for="tableSearchInput"><i class="fas fa-search"></i> Search Students</label>
+                        <input type="text" id="tableSearchInput" placeholder="Search by name, roll, reg...">
+                    </div>
+                </div>
+                <div class="table-count-badge" id="tableCountBadge">
+                    Showing <span id="visibleRecordCount"><%= studentRecord.length %></span> of <%= studentRecord.length %> Students
+                </div>
+            </div>
 
-            </tr>
-        <% }) %>
-    </tbody>
-</table>
+            <div class="table-responsive">
+                <table cellspacing="0" class="table table-striped" style="background-color: white;" id="studentrecordTable">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAllRecords" /></th>
+                            <th>SN</th>
+                            <th>Reg No</th>
+                            <th>Name of Student</th>
+                            <th>Gender</th>
+                            <th>Class</th>
+                            <th>Section</th>
+                            <th>Roll No</th>
+                            <th>DOB Nepali</th>
+                            <th>Contact No</th>
+                            <th>Father's Name</th>
+                            <th>Mother's Name</th>
+                            <th>Bus Stop</th>
+                            <th>Father's Mobile</th>
+                            <th>Mother's Mobile</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% studentRecord.forEach((record, index) => { %>
+                            <tr data-id="<%= record._id %>">
+                                <td><input type="checkbox" class="record-select" value="<%= record._id %>" /></td>
+                                <td class="row-sn"><%= index + 1 %></td>
+                                <td data-field="reg"><%= record.reg %></td>
+                                <td data-field="name"><%= record.name %></td>
+                                <td data-field="gender"><%= record.gender %></td>
+                                <td data-field="studentClass"><%= record.studentClass %></td>
+                                <td data-field="section"><%= record.section %></td>
+                                <td data-field="roll"><%= record.roll %></td>
+                                <td data-field="dobNepali"><%= record.dobNepali %></td>
+                                <td data-field="numberofmobile"><%= record.numberofmobile %></td>
+                                <td data-field="fatherName"><%= record.fatherName %></td>
+                                <td data-field="motherName"><%= record.motherName %></td>
+                                <td data-field="busStop"><%= record.busStop %></td>
+                                <td data-field="fatherMobile"><%= record.fatherMobile %></td>
+                                <td data-field="motherMobile"><%= record.motherMobile %></td>
+                                <td>
+                                    <a href="/studentrecord/edit/<%= record._id %>?editing=true" class="btn btn-secondary">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                    <form action="/studentrecord/delete/<%= record._id %>" method="POST" style="display: inline;">
+                                        <button type="submit" class="btn btn-danger delete-record-btn" data-id="<%= record._id %>">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 <script>
 const bulkUpdateBtn = document.getElementById('bulkUpdateBtn');
 const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
@@ -787,8 +975,11 @@ function updateBulkButtons() {
     if (bulkUpdateBtn) bulkUpdateBtn.disabled = !hasSelection;
     if (bulkDeleteBtn) bulkDeleteBtn.disabled = !hasSelection;
     if (selectAllRecords) {
-        const allCheckboxes = document.querySelectorAll('.record-select');
-        selectAllRecords.checked = allCheckboxes.length > 0 && selectedIds.length === allCheckboxes.length;
+        const visibleCheckboxes = Array.from(document.querySelectorAll('.record-select')).filter(
+            cb => !cb.closest('tr') || cb.closest('tr').style.display !== 'none'
+        );
+        selectAllRecords.checked = visibleCheckboxes.length > 0 &&
+            visibleCheckboxes.every(cb => cb.checked);
     }
 }
 
@@ -962,11 +1153,57 @@ if (selectAllRecords) {
     selectAllRecords.addEventListener('change', () => {
         const checked = selectAllRecords.checked;
         document.querySelectorAll('.record-select').forEach((checkbox) => {
-            checkbox.checked = checked;
+            const tr = checkbox.closest('tr');
+            if (!tr || tr.style.display !== 'none') {
+                checkbox.checked = checked;
+            }
         });
         updateBulkButtons();
     });
 }
+
+// Live table filter by class, section, and search
+const tableFilterClass = document.getElementById('tableFilterClass');
+const tableFilterSection = document.getElementById('tableFilterSection');
+const tableSearchInput = document.getElementById('tableSearchInput');
+const visibleRecordCount = document.getElementById('visibleRecordCount');
+
+function applyLiveTableFilter() {
+    const filterClass = tableFilterClass ? tableFilterClass.value.trim().toLowerCase() : '';
+    const filterSection = tableFilterSection ? tableFilterSection.value.trim().toLowerCase() : '';
+    const query = tableSearchInput ? tableSearchInput.value.trim().toLowerCase() : '';
+
+    const rows = document.querySelectorAll('#studentrecordTable tbody tr');
+    let count = 0;
+
+    rows.forEach((row) => {
+        const classCell = (row.querySelector('[data-field="studentClass"]')?.textContent || '').trim().toLowerCase();
+        const sectionCell = (row.querySelector('[data-field="section"]')?.textContent || '').trim().toLowerCase();
+        const nameCell = (row.querySelector('[data-field="name"]')?.textContent || '').trim().toLowerCase();
+        const rollCell = (row.querySelector('[data-field="roll"]')?.textContent || '').trim().toLowerCase();
+        const regCell = (row.querySelector('[data-field="reg"]')?.textContent || '').trim().toLowerCase();
+
+        const matchesClass = !filterClass || classCell === filterClass;
+        const matchesSection = !filterSection || sectionCell === filterSection;
+        const matchesQuery = !query || nameCell.includes(query) || rollCell.includes(query) || regCell.includes(query);
+
+        if (matchesClass && matchesSection && matchesQuery) {
+            row.style.display = '';
+            count++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    if (visibleRecordCount) {
+        visibleRecordCount.textContent = String(count);
+    }
+    updateBulkButtons();
+}
+
+if (tableFilterClass) tableFilterClass.addEventListener('change', applyLiveTableFilter);
+if (tableFilterSection) tableFilterSection.addEventListener('change', applyLiveTableFilter);
+if (tableSearchInput) tableSearchInput.addEventListener('input', applyLiveTableFilter);
 
 if (bulkUpdateBtn) {
     bulkUpdateBtn.addEventListener('click', async () => {
