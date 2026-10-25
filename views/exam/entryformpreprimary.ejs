@@ -5,161 +5,234 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pre primary Entry Form</title>
   <style>
-    .invalid-registration { color: red; }
-    .valid-registration { color: black; }
-    
-/* Chrome, Edge, Safari, and other WebKit browsers */
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-/* Firefox */
-input[type="number"] {
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
-
+    :root {
+      color-scheme: light;
+      --ink: #172b4d;
+      --muted: #66758b;
+      --line: #e2e8f0;
+      --surface: #ffffff;
+      --canvas: #f4f7fb;
+      --accent: #2457c5;
+      --accent-dark: #1946a3;
+      --success: #16804a;
+      --danger: #c43d48;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--canvas); color: var(--ink); }
+    .page { width: 100%; max-width: 1500px; margin: 0 auto; padding: 24px 20px 48px; }
+    .page-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 22px; }
+    .page-heading-copy { min-width: 0; }
+    .eyebrow { margin: 0 0 6px; color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(24px, 3vw, 32px); letter-spacing: -.03em; }
+    .subtitle { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+    .page-action { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 9px 16px; border-radius: 8px; background: var(--accent); color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; }
+    .page-action:hover { background: var(--accent-dark); }
+    .card { margin-bottom: 18px; padding: 22px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 4px 18px rgba(23, 43, 77, .045); }
+    .filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 15px; }
+    .worksheet-filter { grid-template-columns: minmax(180px, 260px); margin-bottom: 16px; }
+    .field { display: flex; min-width: 0; flex-direction: column; gap: 7px; }
+    .field label, .field-label { color: #35445c; font-size: 12px; font-weight: 700; }
+    select, input[type="number"] {
+      width: 100%; min-height: 42px; padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 8px;
+      background: #fff; color: var(--ink); font: inherit; font-size: 14px;
+    }
+    select:focus, input[type="number"]:focus { outline: 3px solid rgba(36, 87, 197, .14); border-color: var(--accent); }
+    input[readonly] { background: #f6f8fb; color: #59677d; }
+    .detail-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+    .context { color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .context strong { color: var(--ink); }
+    .worksheet-tools { display: flex; align-items: end; gap: 10px; }
+    .worksheet-tools .field { width: 155px; }
+    button { min-height: 42px; padding: 9px 16px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .15s ease, transform .15s ease; }
+    button:hover { background: var(--accent-dark); }
+    button:active { transform: translateY(1px); }
+    button:disabled { opacity: .65; cursor: wait; }
+    .entry-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .entry-heading h2 { margin: 0; font-size: 18px; }
+    .entry-heading p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    .save-status { min-height: 18px; color: var(--muted); font-size: 12px; text-align: right; }
+    .save-status.success { color: var(--success); }
+    .save-status.error { color: var(--danger); }
+    .table-wrap { overflow: hidden; border: 1px solid var(--line); border-radius: 10px; }
+    #entrytable { width: 100%; table-layout: fixed; border-collapse: collapse; }
+    #entrytable th:nth-child(1), #entrytable td:nth-child(1) { width: 36%; }
+    #entrytable th:nth-child(2), #entrytable td:nth-child(2) { width: 22%; }
+    #entrytable th:nth-child(3), #entrytable td:nth-child(3) { width: 22%; }
+    #entrytable th:nth-child(4), #entrytable td:nth-child(4) { width: 20%; }
+    #entrytable th { position: sticky; top: 0; z-index: 1; padding: 12px 14px; background: #f3f6fb; color: #46556c; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-align: left; text-transform: uppercase; }
+    #entrytable th:not(:first-child), #entrytable td:not(:first-child) { text-align: center; }
+    #entrytable td { padding: 10px 14px; border-top: 1px solid #edf1f6; vertical-align: middle; }
+    #entrytable tbody tr:hover { background: #f8faff; }
+    #entrytable td select, #entrytable td input[type="number"] { width: 100%; min-width: 0; min-height: 38px; }
+    .student-name { font-weight: 600; }
+    .invalid-registration { color: var(--danger); }
+    .valid-registration { color: var(--ink); }
+    .absent-control { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+    input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); vertical-align: middle; }
+    .empty-state { padding: 32px 16px; color: var(--muted); text-align: center; }
+    @media (max-width: 800px) {
+      .page { padding: 18px 12px 36px; }
+      .filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .detail-bar { align-items: stretch; flex-direction: column; }
+      .worksheet-tools { justify-content: space-between; }
+      .worksheet-tools .field { width: min(50%, 200px); }
+    }
+    @media (max-width: 480px) {
+      .filter-grid { grid-template-columns: 1fr; }
+      .page-heading { align-items: flex-start; flex-direction: column; }
+      .page-action { padding: 8px 10px; font-size: 11px; white-space: nowrap; }
+      .card { padding: 10px; }
+      .entry-heading { align-items: flex-start; flex-direction: column; }
+      .save-status { text-align: left; }
+    }
   </style>
 </head>
 <body>
-  <form action="/entryformpreprimary?studentClass=<%= studentClass %>&section=<%= section %>&terminal=<%= terminal %>&academicYear=<%= academicYear %>" method="POST" id="entryForm" >  
-  <select name="subject" id="subjectSelect" class="formloader">
-    <option selected disabled>Select Subject</option>
-    <%
-    const preprimarysubjects = subjects.filter(sub=> sub.forClass.toLowerCase() === "nursery" || sub.forClass.toLowerCase() === "playgroup" || sub.forClass.toLowerCase() === "lkg" || sub.forClass.toLowerCase() === "ukg");
-    const uniqueSubjects = new Set(preprimarysubjects.map(sub => sub.newsubject));
-    uniqueSubjects.forEach(subject => { %>
-      <option value="<%= subject %>"><%= subject %></option>
-    <% }) %>
-  </select>
+  <% const isAdminUser = String(userRole || '').toUpperCase() === 'ADMIN'; %>
+  <% const worksheetCount = Math.max(1, Number(configuredWorksheetCount || existingData[0]?.totalWorksheet) || 1); %>
+  <main class="page">
+  <header class="page-heading">
+    <div class="page-heading-copy">
+      <p class="eyebrow">Assessment entry</p>
+      <h1>Pre-primary worksheet grades</h1>
+      <p class="subtitle">Choose the class, subject and assessment period, then enter student grades.</p>
+    </div>
+    <a class="page-action" id="addTotalAttendance" href="/total-attendanceentry">Add total attendance</a>
+  </header>
+  <form action="/entryformpreprimary?studentClass=<%= studentClass %>&section=<%= section %>&terminal=<%= terminal %>&academicYear=<%= academicYear %>" method="POST" id="entryForm">
+  <section class="card" aria-label="Assessment selection">
+  <div class="filter-grid">
+  <div class="field">
+    <label for="subjectSelect">Subject</label>
+    <select name="subject" id="subjectSelect" class="formloader">
+      <option value="" selected disabled>Select subject</option>
+      <%
+      const preprimarysubjects = subjects.filter(sub=> sub.forClass.toLowerCase() === "nursery" || sub.forClass.toLowerCase() === "playgroup" || sub.forClass.toLowerCase() === "lkg" || sub.forClass.toLowerCase() === "ukg");
+      const uniqueSubjects = new Set(preprimarysubjects.map(sub => sub.newsubject));
+      uniqueSubjects.forEach(subject => { %>
+        <option value="<%= subject %>"><%= subject %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div class="field">
+    <label for="classSection">Class and section</label>
+    <select name="classSection" id="classSection" class="formloader">
+      <option value="" selected disabled>Select class and section</option>
+      <% const classOrder = {
+        "Nursery": 1, "LKG": 2, "UKG": 3, "One": 4, "Two": 5, "Three": 6,
+        "Four": 7, "Five": 8, "Six": 9, "Seven": 10, "Eight": 11, "Nine": 12, "Ten": 13
+      }; %>
+      <% studentClassdata.sort((a, b) => classOrder[a.studentClass] - classOrder[b.studentClass]).forEach(classItem => { %>
+        <option value="<%= classItem.studentClass %>-<%= classItem.section %>"><%= classItem.studentClass %> - <%= classItem.section %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div class="field">
+    <label for="terminalSelect">Terminal</label>
+    <select name="terminal" id="terminalSelect" class="formloader">
+      <option value="" selected disabled>Select terminal</option>
+      <% terminals.forEach(terminal => { %><option value="<%= terminal.terminal %>"><%= terminal.terminal %></option><% }) %>
+    </select>
+  </div>
+  <div class="field">
+    <label for="academicYearSelect">Academic year</label>
+    <select name="academicYear" id="academicYearSelect" class="formloader">
+      <option value="" selected disabled>Select academic year</option>
+      <% marksheetSetups.forEach(setup => { %>
+        <% for (let i = 0; i < 5; i++) { %><option value="<%= setup.academicYear - i %>"><%= setup.academicYear - i %></option><% } %>
+      <% }) %>
+    </select>
+  </div>
+  </div>
+  <input type="hidden" name="studentClass" value="<%= studentClass %>">
+  <input type="hidden" name="section" value="<%= section %>">
+  <div class="detail-bar">
+    <div class="context">
+      <strong><%= subject || 'Select a subject' %></strong>
+      <span aria-hidden="true"> · </span><%= studentClass %> - <%= section %>
+      <span aria-hidden="true"> · </span><%= terminal %> Terminal
+      <span aria-hidden="true"> · </span>Academic year <%= academicYear %>
+    </div>
+    <div class="worksheet-tools">
+      <div class="field">
+        <label for="totalWorksheet">Total worksheets <%= isAdminUser ? '(admin)' : '' %></label>
+        <input type="number" id="totalWorksheet" name="totalWorksheet" value="<%= worksheetCount %>" min="1" max="100" step="1" <%= isAdminUser ? '' : 'readonly aria-readonly="true"' %> required>
+      </div>
+      <% if (isAdminUser) { %>
+        <button type="button" id="saveWorksheetCount">Save count</button>
+      <% } %>
+    </div>
+  </div>
+  </section>
 
-      <select name="classSection" class="formloader">
-        <option selected disabled>Select Class Section</option>
-        <% const classOrder = {
-          "Nursery": 1,
-          "LKG": 2,
-          "UKG": 3,
-          "One": 4,
-          "Two": 5,
-          "Three": 6,
-          "Four": 7,
-          "Five": 8,
-          "Six": 9,
-          "Seven": 10,
-          "Eight": 11,
-          "Nine": 12,
-          "Ten": 13,
-        }; %>
-        <% studentClassdata.sort((a, b) => classOrder[a.studentClass] - classOrder[b.studentClass]).forEach(classItem => { %>
-          <option value="<%= classItem.studentClass %>-<%= classItem.section %>"><%= classItem.studentClass %>-<%= classItem.section %></option>
-        <% }) %>
-      </select>
-  <!-- hidden field for class & section -->
-   <input type="hidden" name="studentClass" value="<%= studentClass %>">
-   <input type="hidden" name="section" value="<%= section %>">
-<select name="terminal" class="formloader">
-  <option selected disabled>Select Terminal</option>
-  <% terminals.forEach(terminal => { %>
-    <option value="<%= terminal.terminal %>"><%= terminal.terminal%></option>
-  <% }) %>
-
-</select>
-<select name="academicYear" class="formloader">
-  <option selected disabled>Select Academic Year</option>
-<% marksheetSetups.forEach(setup => { %>
-  <% for (i=0;i<5;i++){ %>
-    <option value="<%= setup.academicYear - i %>" ><%= setup.academicYear - i %></option>
-  <% } %>
-
-<% }) %>
-</select>
-
-<br>
-<%= subject %> | <%=studentClass%>-<%section%> | <%=terminal%> Terminal | <%=academicYear%>
-
- 
-  Total Worksheet: <input type="number" name="totalWorksheet" value="<%= existingData[0]?.totalWorksheet || 1 %>" readonly>
-  <% const selectedWorksheet = Number(worksheet) || 1; %>
-  <select name="worksheet">
-    <option value="" disabled>Select Worksheet</option>
-    <% for (let i = 1; i <= (existingData[0]?.totalWorksheet || 1); i++) { %>
-      <option value="<%= i %>" <%= selectedWorksheet === i ? 'selected' : '' %>>Worksheet <%= i %></option>
+  <section class="card" aria-label="Student worksheet grades">
+    <div class="entry-heading">
+      <div>
+        <h2>Student entries</h2>
+        <p>Select a worksheet and enter grades. Changes save automatically.</p>
+      </div>
+      <div class="save-status" id="saveStatus" role="status" aria-live="polite">Ready</div>
+    </div>
+    <div class="filter-grid worksheet-filter">
+      <div class="field">
+        <label for="worksheetSelect">Worksheet</label>
+        <select name="worksheet" id="worksheetSelect">
+          <option value="" disabled>Select worksheet</option>
+          <% for (let i = 1; i <= worksheetCount; i++) { %>
+            <option value="<%= i %>" <%= Number(worksheet) === i ? 'selected' : '' %>>Worksheet <%= i %></option>
+          <% } %>
+        </select>
+      </div>
+    </div>
+    <div class="table-wrap">
+    <% const sortedStudent = studentData.sort((a,b)=>Number(a.roll) - Number(b.roll)); %>
+    <% if (sortedStudent.length) { %>
+    <table id="entrytable">
+      <thead><tr><th>Name</th><th>Th</th><th id="worksheetheader">W<%= worksheet || 1 %></th><th>Att.</th></tr></thead>
+      <tbody>
+      <% sortedStudent.forEach(student => { %>
+        <tr>
+          <input type="hidden" name="roll[<%= student.reg %>]" value="<%= student.roll %>">
+          <input type="hidden" name="gender[<%= student.reg %>]" value="<%= student.gender %>">
+          <td class="<%= student.reg == '' || student.reg == null || student.reg == undefined || student.reg == 'N/A' || !student.reg ? 'invalid-registration' : 'valid-registration' %>">
+            <input type="hidden" name="reg[<%= student.reg %>]" value="<%= student.reg %>">
+            <input type="hidden" name="name[<%= student.reg %>]" value="<%= student.name %>">
+            <span class="student-name"><%= student.roll %>. <%= student.name %></span>
+            <label class="absent-control">Absent <input type="checkbox" name="status[<%= student.reg %>]" value="ABSENT" data-reg="<%= student.reg %>" <%= ['ABSENT', '1'].includes(String(existingData.find(item => String(item.reg) === String(student.reg))?.status || '').toUpperCase()) ? 'checked' : '' %>></label>
+          </td>
+          <td>
+            <select class="theoryGrade" name="theorymarks[<%= student.reg %>]" data-reg="<%= student.reg %>" aria-label="Theory grade for <%= student.name %>">
+              <option value="">Select grade</option>
+              <option value="4.0">A+</option><option value="3.6">A</option><option value="3.2">B+</option>
+              <option value="2.8">B</option><option value="2.4">C+</option><option value="2.0">C</option>
+              <option value="1.6">D</option><option value="0.0">NG</option>
+            </select>
+          </td>
+          <td><select class="worksheetGrade" id="worksheetgrade_<%= student._id %>" name="worksheetGrades[<%= student.reg %>]" data-reg="<%= student.reg %>" aria-label="Worksheet grade for <%= student.name %>">
+            <option value="">Select grade</option><option value="A+">A+</option><option value="A">A</option>
+            <option value="B+">B+</option><option value="B">B</option><option value="C+">C+</option>
+            <option value="C">C</option><option value="D">D</option><option value="NG">NG</option><option value="Ab">Absent</option>
+          </select></td>
+          <td><input type="number" name="attendance[<%= student.reg %>]" min="0" value="<%= totalAttendanceByReg?.[String(student.reg)] ?? existingData.find(item => item.reg === student.reg)?.attendance ?? '' %>" data-reg="<%= student.reg %>" aria-label="Attendance for <%= student.name %>" readonly aria-readonly="true"></td>
+        </tr>
+      <% }) %>
+      </tbody>
+    </table>
+    <% } else { %>
+      <div class="empty-state">No students are available for this class and section.</div>
     <% } %>
-  </select>
-
-
-<table cellspacing="0" border="1" id="entrytable"> 
-  <tr>
-   
-  <Th>Name</Th>
-  <th>Th</th>
-  <th id="worksheetheader"></th>
-  <th>Attendance</th>
-</tr>
-<% const sortedStudent = studentData.sort((a,b)=>Number(a.roll) - Number(b.roll)); %>
-<% sortedStudent.forEach(student => { %>
-  <tr>
-     <input type="hidden" name="roll[<%= student.reg %>]" value="<%= student.roll %>">
-      <input type="hidden" name="gender[<%= student.reg %>]" value="<%= student.gender %>">
-
-    <td class="<%= student.reg == '' || student.reg == null || student.reg == undefined || student.reg == 'N/A' || !student.reg ? 'invalid-registration' : 'valid-registration' %>">
-      <input type="hidden" name="reg[<%= student.reg %>]" value="<%= student.reg %>">
-      <input type="hidden" name="name[<%= student.reg %>]" value="<%= student.name %>">
-      
-      <%=student.roll%>. <%= student.name %>  &ensp;Ab <input type="checkbox" name="status[<%= student.reg %>]" value="ABSENT" data-reg="<%= student.reg %>" <%= ['ABSENT', '1'].includes(String(existingData.find(item => String(item.reg) === String(student.reg))?.status || '').toUpperCase()) ? 'checked' : '' %>>
-    </td>
-    <td>
-  <select
-    class="theoryGrade"
-    name="theorymarks[<%= student.reg %>]"
-    data-reg="<%= student.reg %>"
-  >
-    <option value="">Select Grade</option>
-
-    <option value="4.0">A+</option>
-    <option value="3.6">A</option>
-    <option value="3.2">B+</option>
-    <option value="2.8">B</option>
-    <option value="2.4">C+</option>
-    <option value="2.0">C</option>
-    <option value="1.6">D</option>
-    <option value="0.0">NG</option>
-  
-  </select>
-</td>
-    <td><select class="worksheetGrade" id="worksheetgrade_<%= student._id %>" name="worksheetGrades[<%= student.reg %>]" data-reg="<%= student.reg %>">
-      <option selected disabled>Select Grade</option>
-      <option value="A+" >A+</option>
-      
-      <option value="A" >A</option>
-      <option value="B+" >B+</option>
-      <option value="B" >B</option>
-      <option value="C+" >C+</option>
-      <option value="C" >C</option>
-      <option value="D" >D</option>
-      <option value="NG" >NG</option>
-      <option value="Ab">Absent</option>
-    </select></td>
-   <td>
-  <input
-    type="number"
-    name="attendance[<%= student.reg %>]"
-    value="<%= existingData.find(item => item.reg === student.reg)?.attendance ?? '' %>"
-    data-reg="<%= student.reg %>"
-  >
-</td>
-  </tr>
-<% }) %>
-</table>
-
-
-</form>
+    </div>
+  </section>
+  </form>
+  </main>
 
 <!-- script to auto load  -->
  <script>
   const subjectSelect = document.getElementById('subjectSelect');
+  const totalAttendanceParams = new URLSearchParams(window.location.search);
+  document.getElementById('addTotalAttendance').href =
+    `/total-attendanceentry?${totalAttendanceParams.toString()}`;
   const studentClassSection = document.querySelector('select[name="classSection"]').value;
   const separated = studentClassSection.split('-');
   const studentClass = separated[0];
@@ -250,7 +323,7 @@ input[type="number"] {
       const worksheetParam = urlParams.get('worksheet');
       if (worksheetParam) {
         document.querySelector('select[name="worksheet"]').value = worksheetParam;
-        document.getElementById('worksheetheader').textContent = `W${worksheetParam}`;
+        document.getElementById('worksheetheader').textContent = `Worksheet ${worksheetParam}`;
       } else {
         document.querySelector('select[name="worksheet"]').value = currentWorksheetSelect;
 
@@ -281,6 +354,7 @@ input[type="number"] {
 
   <script>
     const studentSaveTimers = new Map();
+    const saveStatus = document.getElementById('saveStatus');
 
     function autoSaveStudent(input) {
       const reg = input?.dataset.reg;
@@ -312,6 +386,8 @@ input[type="number"] {
           name: studentField('name')?.value || ''
         };
 
+        saveStatus.textContent = 'Saving changes…';
+        saveStatus.className = 'save-status';
         try {
           const response = await fetch(`/entryformpreprimary?studentClass=${encodeURIComponent(studentData.studentClass)}&section=${encodeURIComponent(studentData.section)}&terminal=${encodeURIComponent(studentData.terminal)}&academicYear=${encodeURIComponent(studentData.academicYear)}`, {
             method: 'POST',
@@ -320,8 +396,12 @@ input[type="number"] {
           });
           const result = await response.json();
           if (!response.ok || !result.success) throw new Error(result.message || 'Save failed');
+          saveStatus.textContent = 'All changes saved';
+          saveStatus.className = 'save-status success';
         } catch (error) {
           console.error('Auto-save error:', error);
+          saveStatus.textContent = 'Could not save changes. Please try again.';
+          saveStatus.className = 'save-status error';
         } finally {
           studentSaveTimers.delete(reg);
         }
@@ -331,10 +411,70 @@ input[type="number"] {
     document.querySelectorAll('.worksheetGrade, .theoryGrade, input[name^="status["]').forEach((input) => {
       input.addEventListener('change', () => autoSaveStudent(input));
     });
-    document.querySelectorAll('input[name^="attendance["]').forEach((input) => {
-      input.addEventListener('input', () => autoSaveStudent(input));
+  </script>
+
+  <% if (isAdminUser) { %>
+  <script>
+    const saveWorksheetCountButton = document.getElementById('saveWorksheetCount');
+    saveWorksheetCountButton.addEventListener('click', async () => {
+      const countInput = document.getElementById('totalWorksheet');
+      const count = Number(countInput.value);
+      if (!Number.isInteger(count) || count < 1 || count > 100) {
+        countInput.setCustomValidity('Enter a whole number from 1 to 100.');
+        countInput.reportValidity();
+        return;
+      }
+      countInput.setCustomValidity('');
+
+      const params = new URLSearchParams(window.location.search);
+      const details = ['studentClass', 'section', 'subject', 'terminal', 'academicYear'];
+      if (details.some((key) => !params.get(key))) {
+        saveStatus.textContent = 'Select a subject, class, terminal and academic year first.';
+        saveStatus.className = 'save-status error';
+        return;
+      }
+
+      const url = `/entryform/setTotalWorksheet?${params.toString()}`;
+      saveWorksheetCountButton.disabled = true;
+      saveWorksheetCountButton.textContent = 'Saving…';
+      saveStatus.textContent = 'Saving worksheet count…';
+      saveStatus.className = 'save-status';
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ totalWorksheet: count })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.error || 'Unable to save worksheet count');
+
+        const worksheetSelect = document.querySelector('select[name="worksheet"]');
+        const selectedWorksheet = Number(worksheetSelect.value) || 1;
+        worksheetSelect.replaceChildren(new Option('Select worksheet', '', true, false));
+        worksheetSelect.options[0].disabled = true;
+        for (let i = 1; i <= count; i++) {
+          worksheetSelect.add(new Option(`Worksheet ${i}`, String(i), false, i === Math.min(selectedWorksheet, count)));
+        }
+        if (selectedWorksheet > count) {
+          worksheetSelect.value = '1';
+          const updatedParams = new URLSearchParams(window.location.search);
+          updatedParams.set('worksheet', '1');
+          window.history.replaceState(null, '', `${window.location.pathname}?${updatedParams.toString()}`);
+          document.getElementById('worksheetheader').textContent = 'Worksheet 1';
+        }
+        saveStatus.textContent = 'Worksheet count saved';
+        saveStatus.className = 'save-status success';
+      } catch (error) {
+        console.error('Worksheet count save error:', error);
+        saveStatus.textContent = error.message;
+        saveStatus.className = 'save-status error';
+      } finally {
+        saveWorksheetCountButton.disabled = false;
+        saveWorksheetCountButton.textContent = 'Save count';
+      }
     });
   </script>
+  <% } %>
 
    <script>
   // Hide table only when no worksheet is selected
@@ -342,6 +482,7 @@ input[type="number"] {
   const entryTable = document.getElementById('entrytable');
 
   function updateTableVisibility() {
+    if (!entryTable) return;
     if (worksheetSelect.value) {
       entryTable.style.display = 'table';
     } else {

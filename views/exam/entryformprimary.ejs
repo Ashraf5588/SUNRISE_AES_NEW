@@ -3,380 +3,431 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pre primary Entry Form</title>
+  <title>Primary Assessment Entry</title>
   <style>
-/* Chrome, Edge, Safari, and other WebKit browsers */
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-/* Firefox */
-input[type="number"] {
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
-</style>
+    :root {
+      color-scheme: light;
+      --ink: #172b4d;
+      --muted: #66758b;
+      --line: #e2e8f0;
+      --surface: #fff;
+      --canvas: #f4f7fb;
+      --accent: #2457c5;
+      --accent-dark: #1946a3;
+      --success: #16804a;
+      --danger: #c43d48;
+      font-family: Inter, "Segoe UI", Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--canvas); color: var(--ink); }
+    .page { width: 100%; max-width: 1500px; margin: 0 auto; padding: 24px 20px 48px; }
+    .page-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 22px; }
+    .page-heading-copy { min-width: 0; }
+    .eyebrow { margin: 0 0 6px; color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(24px, 3vw, 32px); letter-spacing: -.03em; }
+    .subtitle { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+    .page-action { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 9px 16px; border-radius: 8px; background: var(--accent); color: #fff; font-size: 13px; font-weight: 700; text-decoration: none; }
+    .page-action:hover { background: var(--accent-dark); }
+    .card { margin-bottom: 18px; padding: 22px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: 0 4px 18px rgba(23, 43, 77, .045); }
+    .filter-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 15px; }
+    .worksheet-filter { grid-template-columns: minmax(180px, 260px); margin-bottom: 16px; }
+    .field { display: flex; min-width: 0; flex-direction: column; gap: 7px; }
+    .field label { color: #35445c; font-size: 12px; font-weight: 700; }
+    select, input[type="number"], input[type="text"] {
+      width: 100%; min-height: 42px; padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 8px;
+      background: #fff; color: var(--ink); font: inherit; font-size: 14px;
+    }
+    select:focus, input:focus { outline: 3px solid rgba(36, 87, 197, .14); border-color: var(--accent); }
+    input[readonly] { background: #f6f8fb; color: #59677d; }
+    .detail-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+    .context { color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .context strong { color: var(--ink); }
+    .worksheet-tools { display: flex; align-items: end; gap: 10px; }
+    .worksheet-tools .field { width: 155px; }
+    button { min-height: 42px; padding: 9px 16px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .15s ease, transform .15s ease; }
+    button:hover { background: var(--accent-dark); }
+    button:active { transform: translateY(1px); }
+    button:disabled { opacity: .65; cursor: wait; }
+    .entry-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .entry-heading h2 { margin: 0; font-size: 18px; }
+    .entry-heading p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    .save-status { min-height: 18px; color: var(--muted); font-size: 12px; text-align: right; }
+    .save-status.success { color: var(--success); }
+    .save-status.error { color: var(--danger); }
+    .table-wrap { overflow: visible; border: 1px solid #b8c7dc; border-radius: 10px; }
+    #entrytable { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; }
+    #entrytable th:nth-child(1), #entrytable td:nth-child(1) { width: 36%; }
+    #entrytable th:nth-child(2), #entrytable td:nth-child(2) { width: 22%; }
+    #entrytable th:nth-child(3), #entrytable td:nth-child(3) { width: 22%; }
+    #entrytable th:nth-child(4), #entrytable td:nth-child(4) { width: 20%; }
+    #entrytable th { position: sticky; top: 58px; z-index: 2; padding: 12px 10px; border: 1px solid #24477f; background: #24477f; color: #fff; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-align: left; text-transform: uppercase; }
+    #entrytable th:not(:first-child), #entrytable td:not(:first-child) { text-align: center; }
+    #entrytable th:first-child { border-top-left-radius: 8px; }
+    #entrytable th:last-child { border-top-right-radius: 8px; }
+    #entrytable td { padding: 9px 10px; border-right: 1px solid #d9e2ef; border-bottom: 1px solid #d9e2ef; background: #fff; vertical-align: middle; overflow-wrap: anywhere; }
+    #entrytable td:first-child { border-left: 1px solid #d9e2ef; }
+    #entrytable tbody tr:nth-child(even) td { background: #f5f8fc; }
+    #entrytable tbody tr:hover td { background: #eaf1fb; }
+    #entrytable td select, #entrytable td input:not([type="checkbox"]) { width: 100%; min-width: 0; min-height: 38px; }
+    .student-name { font-weight: 600; }
+    .invalid-registration { color: var(--danger); }
+    .valid-registration { color: var(--ink); }
+    .assessment-banner { position: sticky; top: 0; z-index: 4; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; margin: 0 0 12px; padding: 12px 15px; border: 1px solid #1e40af; border-radius: 10px; background: #eaf1ff; box-shadow: 0 3px 10px rgba(23, 43, 77, .12); }
+    .assessment-banner .banner-label { color: #34558b; font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .assessment-banner .banner-value { color: #163b84; font-size: 16px; font-weight: 800; }
+    .assessment-banner .banner-detail { color: #35445c; font-size: 13px; font-weight: 700; }
+    .theory-entry { display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .theory-entry input[type="text"] { flex: 1; }
+    .absent-toggle { display: inline-flex; align-items: center; gap: 3px; color: #a12632; font-size: 11px; font-weight: 800; white-space: nowrap; }
+    .absent-toggle input { width: 16px; height: 16px; accent-color: #c43d48; }
+    .empty-state { padding: 32px 16px; color: var(--muted); text-align: center; }
+    @media (max-width: 800px) {
+      .page { padding: 18px 12px 36px; }
+      .filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .detail-bar { align-items: stretch; flex-direction: column; }
+      .worksheet-tools { justify-content: space-between; }
+      .worksheet-tools .field { width: min(50%, 200px); }
+      #entrytable th { top: 68px; }
+    }
+    @media (max-width: 560px) {
+      .filter-grid { grid-template-columns: 1fr; }
+      .page { padding: 12px 6px 28px; }
+      .card { padding: 10px; border-radius: 10px; }
+      .page-heading { align-items: flex-start; flex-direction: column; }
+      .page-action { padding: 8px 10px; font-size: 11px; white-space: nowrap; }
+      .entry-heading { align-items: flex-start; flex-direction: column; }
+      .save-status { text-align: left; }
+      .worksheet-tools { align-items: end; }
+      .worksheet-tools button { flex: 1; }
+      .assessment-banner { top: 0; flex-wrap: nowrap; gap: 4px 8px; min-height: 54px; margin-bottom: 8px; padding: 8px 10px; }
+      .assessment-banner .banner-label { flex: 0 0 auto; }
+      .assessment-banner .banner-value { min-width: 0; overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+      .assessment-banner .banner-detail { flex: 0 0 auto; font-size: 11px; white-space: nowrap; }
+      .assessment-banner .banner-detail:last-child { display: none; }
+      #entrytable th { top: 54px; padding: 8px 3px; border-width: 1px; font-size: 9px; letter-spacing: 0; text-align: center; overflow-wrap: anywhere; }
+      #entrytable th:nth-child(1), #entrytable td:nth-child(1) { width: 36%; }
+      #entrytable th:nth-child(2), #entrytable td:nth-child(2) { width: 22%; }
+      #entrytable th:nth-child(3), #entrytable td:nth-child(3) { width: 22%; }
+      #entrytable th:nth-child(4), #entrytable td:nth-child(4) { width: 20%; }
+      #entrytable td { padding: 6px 3px; font-size: 11px; }
+      #entrytable td select, #entrytable td input:not([type="checkbox"]) { min-height: 34px; padding: 4px 2px; font-size: 11px; }
+      .theory-entry { flex-direction: column; gap: 3px; }
+      .theory-entry input[type="text"] { min-height: 30px !important; }
+      .absent-toggle { gap: 2px; font-size: 10px; }
+      .absent-toggle input { width: 14px; height: 14px; }
+    }
+  </style>
 </head>
 <body>
-  <form action="/entryformpreprimary?studentClass=<%= studentClass %>&section=<%= section %>&terminal=<%= terminal %>&academicYear=<%= academicYear %>" method="POST" id="entryForm" >  
-  <select name="subject" id="subjectSelect" class="formloader">
-    <option selected disabled>Select Subject</option>
-    <%
-    const preprimarysubjects = subjects.filter(sub=> sub.forClass.toLowerCase() === "nursery" || sub.forClass.toLowerCase() === "playgroup" || sub.forClass.toLowerCase() === "lkg" || sub.forClass.toLowerCase() === "ukg");
-    const uniqueSubjects = new Set(preprimarysubjects.map(sub => sub.newsubject));
-    uniqueSubjects.forEach(subject => { %>
-      <option value="<%= subject %>"><%= subject %></option>
-    <% }) %>
-  </select>
+  <% const isAdminUser = String(user?.role || '').toUpperCase() === 'ADMIN'; %>
+  <% const worksheetCount = Math.max(1, Number(configuredWorksheetCount || existingData[0]?.totalWorksheet) || 1); %>
+  <% const selectedWorksheet = Math.min(Math.max(1, Number(worksheet) || 1), worksheetCount); %>
+  <main class="page">
+    <header class="page-heading">
+      <div class="page-heading-copy">
+        <p class="eyebrow">Assessment entry</p>
+        <h1>Primary student assessments</h1>
+        <p class="subtitle">Choose the assessment period, then enter each student's marks, worksheet grade and attendance.</p>
+      </div>
+      <a class="page-action" id="addTotalAttendance" href="/total-attendanceentry">Add total attendance</a>
+    </header>
 
-      <select name="classSection" class="formloader">
-        <option selected disabled>Select Class Section</option>
-        <% const classOrder = {
-          "Nursery": 1,
-          "LKG": 2,
-          "UKG": 3,
-          "One": 4,
-          "Two": 5,
-          "Three": 6,
-          "Four": 7,
-          "Five": 8,
-          "Six": 9,
-          "Seven": 10,
-          "Eight": 11,
-          "Nine": 12,
-          "Ten": 13,
-        }; %>
-        <% studentClassdata.sort((a, b) => classOrder[a.studentClass] - classOrder[b.studentClass]).forEach(classItem => { %>
-          <option value="<%= classItem.studentClass %>-<%= classItem.section %>"><%= classItem.studentClass %>-<%= classItem.section %></option>
-        <% }) %>
-      </select>
-  <!-- hidden field for class & section -->
-   <input type="hidden" name="studentClass" value="<%= studentClass %>">
-   <input type="hidden" name="section" value="<%= section %>">
-<select name="terminal" class="formloader">
-  <option selected disabled>Select Terminal</option>
-  <% terminals.forEach(terminal => { %>
-    <option value="<%= terminal.terminal %>"><%= terminal.terminal%></option>
-  <% }) %>
+    <form id="entryForm">
+      <section class="card" aria-label="Assessment selection">
+        <div class="filter-grid">
+          <div class="field">
+            <label for="subjectSelect">Subject</label>
+            <select name="subject" id="subjectSelect" class="formloader">
+              <option value="" disabled>Select subject</option>
+              <% const uniqueSubjects = new Set(subjects.map(item => item.newsubject)); %>
+              <% uniqueSubjects.forEach(subjectOption => { %><option value="<%= subjectOption %>"><%= subjectOption %></option><% }) %>
+            </select>
+          </div>
+          <div class="field">
+            <label for="classSection">Class and section</label>
+            <select name="classSection" id="classSection" class="formloader">
+              <option value="" disabled>Select class and section</option>
+              <% const classOrder = { "Nursery": 1, "LKG": 2, "UKG": 3, "One": 4, "Two": 5, "Three": 6, "Four": 7, "Five": 8, "Six": 9, "Seven": 10, "Eight": 11, "Nine": 12, "Ten": 13 }; %>
+              <% studentClassdata.sort((a, b) => (classOrder[a.studentClass] || 99) - (classOrder[b.studentClass] || 99)).forEach(classItem => { %>
+                <option value="<%= classItem.studentClass %>-<%= classItem.section %>"><%= classItem.studentClass %> - <%= classItem.section %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="field">
+            <label for="terminalSelect">Terminal</label>
+            <select name="terminal" id="terminalSelect" class="formloader">
+              <option value="" disabled>Select terminal</option>
+              <% terminals.forEach(terminalItem => { %><option value="<%= terminalItem.terminal %>"><%= terminalItem.terminal %></option><% }) %>
+            </select>
+          </div>
+          <div class="field">
+            <label for="academicYearSelect">Academic year</label>
+            <select name="academicYear" id="academicYearSelect" class="formloader">
+              <option value="" disabled>Select academic year</option>
+              <% marksheetSetups.forEach(setup => { %>
+                <% for (let i = 0; i < 5; i++) { %><option value="<%= setup.academicYear - i %>"><%= setup.academicYear - i %></option><% } %>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+        <input type="hidden" name="studentClass" value="<%= studentClass %>">
+        <input type="hidden" name="section" value="<%= section %>">
+        <div class="detail-bar">
+          <div class="context">
+            <strong><%= subject || 'Select a subject' %></strong> · <%= studentClass %> - <%= section %>
+            · <%= terminal %> Terminal · Academic year <%= academicYear %>
+          </div>
+          <div class="worksheet-tools">
+            <div class="field">
+              <label for="totalWorksheet">Total worksheets<%= isAdminUser ? ' (admin)' : '' %></label>
+              <input type="number" id="totalWorksheet" value="<%= worksheetCount %>" min="1" max="100" step="1" <%= isAdminUser ? '' : 'readonly aria-readonly="true"' %>>
+            </div>
+            <% if (isAdminUser) { %><button type="button" id="saveWorksheetCount">Save count</button><% } %>
+          </div>
+        </div>
+      </section>
 
-</select>
-<select name="academicYear" class="formloader">
-  <option selected disabled>Select Academic Year</option>
-<% marksheetSetups.forEach(setup => { %>
-  <% for (i=0;i<5;i++){ %>
-    <option value="<%= setup.academicYear - i %>" ><%= setup.academicYear - i %></option>
-  <% } %>
+      <section class="card" aria-label="Student assessment entries">
+        <div class="assessment-banner" aria-label="Current class and subject">
+          <span class="banner-label">Entering</span>
+          <span class="banner-value"><%= subject || 'No subject selected' %></span>
+          <span class="banner-detail">Class <%= studentClass %> - <%= section %></span>
+          <span class="banner-detail"><%= terminal %> Terminal · <%= academicYear %></span>
+        </div>
+        <div class="entry-heading">
+          <div>
+            <h2>Student entries</h2>
+            <p>Select a worksheet and enter marks. Student changes save automatically.</p>
+          </div>
+          <div class="save-status" id="saveStatus" role="status" aria-live="polite">Ready</div>
+        </div>
+        <div class="filter-grid worksheet-filter">
+          <div class="field">
+            <label for="worksheetSelect">Worksheet</label>
+            <select name="worksheet" id="worksheetSelect">
+              <% for (let i = 1; i <= worksheetCount; i++) { %>
+                <option value="<%= i %>" <%= selectedWorksheet === i ? 'selected' : '' %>>Worksheet <%= i %></option>
+              <% } %>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <% const sortedStudent = studentData.sort((a, b) => Number(a.roll) - Number(b.roll)); %>
+          <% if (sortedStudent.length) { %>
+            <table id="entrytable">
+              <thead><tr><th>Student</th><th>Theory</th><th id="worksheetheader">Worksheet <%= selectedWorksheet %></th><th>Attendance</th></tr></thead>
+              <tbody>
+                <% sortedStudent.forEach(student => { const savedStudent = existingData.find(item => String(item.reg) === String(student.reg)); %>
+                  <tr>
+                    <td class="<%= !student.reg || student.reg === 'N/A' ? 'invalid-registration' : 'valid-registration' %>">
+                      <input type="hidden" name="roll[<%= student.reg %>]" value="<%= student.roll %>">
+                      <input type="hidden" name="gender[<%= student.reg %>]" value="<%= student.gender %>">
+                      <input type="hidden" name="reg[<%= student.reg %>]" value="<%= student.reg %>">
+                      <input type="hidden" name="name[<%= student.reg %>]" value="<%= student.name %>">
+                      <span class="student-name"><%= student.roll %>. <%= student.name %></span>
+                    </td>
+                    <td data-label="Theory">
+                      <div class="theory-entry">
+                        <input type="text" name="theorymarks[<%= student.reg %>]" value="<%= savedStudent?.theorymarks ?? 0 %>" data-reg="<%= student.reg %>" aria-label="Theory marks for <%= student.name %>">
+                        <label class="absent-toggle" title="Mark absent">
+                          <input type="checkbox" name="status[<%= student.reg %>]" value="ABSENT" data-reg="<%= student.reg %>" <%= String(savedStudent?.status || '').toUpperCase() === 'ABSENT' ? 'checked' : '' %>>
+                          <span>Ab</span>
+                        </label>
+                    </td>
+                    <td data-label="Worksheet grade">
+                      <select class="worksheetGrade" id="worksheetgrade_<%= student._id %>" name="worksheetGrades[<%= student.reg %>]" data-reg="<%= student.reg %>" aria-label="Worksheet grade for <%= student.name %>">
+                        <option value="">Select grade</option>
+                        <% ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D', 'NG', 'Ab'].forEach(grade => { %>
+                          <option value="<%= grade %>"><%= grade === 'Ab' ? 'Absent' : grade %></option>
+                        <% }) %>
+                      </select>
+                    </td>
+                    <td data-label="Attendance">
+                      <input type="number" name="attendance[<%= student.reg %>]" min="0" value="<%= totalAttendanceByReg?.[String(student.reg)] ?? savedStudent?.attendance ?? '' %>" data-reg="<%= student.reg %>" aria-label="Attendance for <%= student.name %>" readonly aria-readonly="true">
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          <% } else { %>
+            <div class="empty-state">No students are available for this class and section.</div>
+          <% } %>
+        </div>
+      </section>
+    </form>
+  </main>
 
-<% }) %>
-</select>
+  <script type="application/json" id="existingData"><%- JSON.stringify(existingData || []).replace(/</g, '\\u003c') %></script>
+  <script>
+    const pageParams = new URLSearchParams(window.location.search);
+    const subjectSelect = document.getElementById('subjectSelect');
+    const classSectionSelect = document.getElementById('classSection');
+    const terminalSelect = document.getElementById('terminalSelect');
+    const academicYearSelect = document.getElementById('academicYearSelect');
+    const worksheetSelect = document.getElementById('worksheetSelect');
+    const saveStatus = document.getElementById('saveStatus');
+    const existingData = JSON.parse(document.getElementById('existingData').textContent || '[]');
 
-<br>
-<%= subject %> | <%=studentClass%>-<%section%> | <%=terminal%> Terminal | <%=academicYear%>
+    document.getElementById('addTotalAttendance').href =
+      `/total-attendanceentry?${new URLSearchParams(pageParams).toString()}`;
 
- 
-  Total Worksheet: <input type="number" name="totalWorksheet" value="<%= existingData[0]?.totalWorksheet || 1 %>" readonly>
-  <select name="worksheet">
-    <option selected disabled>Select Worksheet</option>
-    <% for (let i = 1; i <= (existingData[0]?.totalWorksheet || 1); i++) { %>
-      <option value="<%= i %>" <%= existingData[0]?.worksheet === i ? 'selected' : '' %>>Worksheet <%= i %></option>
-    <% } %>
-  </select>
+    subjectSelect.value = pageParams.get('subject') || '';
+    classSectionSelect.value = `${pageParams.get('studentClass') || ''}-${pageParams.get('section') || ''}`;
+    terminalSelect.value = pageParams.get('terminal') || '';
+    academicYearSelect.value = pageParams.get('academicYear') || '';
+    worksheetSelect.value = pageParams.get('worksheet') || '<%= selectedWorksheet %>';
 
-
-<table cellspacing="0" border="1" id="entrytable"> 
-  <tr>
-   
-  <Th>Name</Th>
-  <th>Th</th>
-  <th id="worksheetheader"></th>
-  <th>Attendance</th>
-</tr>
-<% const sortedStudent = studentData.sort((a,b)=>Number(a.roll) - Number(b.roll)); %>
-<% sortedStudent.forEach(student => { %>
-  <tr>
-     <input type="hidden" name="roll[<%= student.reg %>]" value="<%= student.roll %>">
-      <input type="hidden" name="gender[<%= student.reg %>]" value="<%= student.gender %>">
-
-    <td style="color: <%= student.reg == '' || student.reg == null || student.reg == undefined || student.reg == 'N/A'|| !student.reg ? 'red' : 'black' %>">
-      <input type="hidden" name="reg[<%= student.reg %>]" value="<%= student.reg %>">
-      <input type="hidden" name="name[<%= student.reg %>]" value="<%= student.name %>">
-      
-      <%=student.roll%>. <%= student.name %></td>
-   <td>
-  <input
-    type="text"
-    name="theorymarks[<%= student.reg %>]"
-     value="<%= existingData.find(item => item.reg === student.reg)?.theorymarks ?? 0 %>"
-    data-reg="<%= student.reg %>"
-  />
-</td>
-    <td><select  class="worksheetGrade" id="worksheetgrade_<%= student._id %>" name="worksheetGrades[<%= student.reg %>]" data-reg = <%=student.reg%>  >
-      <option selected disabled>Select Grade</option>
-      <option value="A+" >A+</option>
-      
-      <option value="A" >A</option>
-      <option value="B+" >B+</option>
-      <option value="B" >B</option>
-      <option value="C+" >C+</option>
-      <option value="C" >C</option>
-      <option value="D" >D</option>
-      <option value="NG" >NG</option>
-      <option value="Ab">Absent</option>
-    </select></td>
-   <td>
-  <input
-    type="number"
-    name="attendance[<%= student.reg %>]"
-    value="<%= existingData.find(item => item.reg === student.reg)?.attendance ?? '' %>"
-    data-reg="<%= student.reg %>"
-  >
-</td>
-  </tr>
-<% }) %>
-</table>
-
-
-</form>
-
-<!-- script to auto load  -->
- <script>
-  const subjectSelect = document.getElementById('subjectSelect');
-  const studentClassSection = document.querySelector('select[name="classSection"]').value;
-  const separated = studentClassSection.split('-');
-  const studentClass = separated[0];
-  const section = separated[1];
-  const terminal = document.querySelector('select[name="terminal"]').value;
-  const academicYear = document.querySelector('select[name="academicYear"]').value;
-
-  // if all values are selected, redirect to the entry form
-  if (subjectSelect.value && studentClass && section && terminal && academicYear) {
-    const url = `/entryform?subject=${encodeURIComponent(subjectSelect.value)}&studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&terminal=${encodeURIComponent(terminal)}&academicYear=${encodeURIComponent(academicYear)}`;
-    window.location.href = url;
-  }
-  else
-  {
-    // highlight the missing fields
-    if (!subjectSelect.value) {
-      subjectSelect.style.border = '2px solid red';
-    }
-    if (!studentClass) {
-      document.querySelector('select[name="classSection"]').style.border = '2px solid red';
-    }
- 
-    if (!terminal) {
-      document.querySelector('select[name="terminal"]').style.border = '2px solid red';
-    }
-    if (!academicYear) {
-      document.querySelector('select[name="academicYear"]').style.border = '2px solid red';
-    }
-
-
-    // make selected value from query on page load
-    const urlParams = new URLSearchParams(window.location.search);
-    const subjectParam = urlParams.get('subject');
-    const studentClassParam = urlParams.get('studentClass');
-    const sectionParam = urlParams.get('section');
-    const terminalParam = urlParams.get('terminal');
-    // terminal param value become empty fix
-    if (terminalParam === '') {
-      document.querySelector('select[name="terminal"]').value = '';
-    }
-
-    const academicYearParam = urlParams.get('academicYear');
-
-    if (subjectParam) {
-      subjectSelect.value = subjectParam;
-    }
-    if (studentClassParam) {
-      document.querySelector('select[name="classSection"]').value = `${studentClassParam}-${sectionParam}`;
-    }
-    if (terminalParam) {
-      document.querySelector('select[name="terminal"]').value = terminalParam;
-    }
-    if (academicYearParam) {
-      document.querySelector('select[name="academicYear"]').value = academicYearParam;
-    }
-
-    document.querySelectorAll('.formloader').forEach(select => {
+    document.querySelectorAll('.formloader').forEach((select) => {
       select.addEventListener('change', () => {
-        const selectedSubject = subjectSelect.value;
-        const selectedClassSection = document.querySelector('select[name="classSection"]').value;
-        const selectedTerminal = document.querySelector('select[name="terminal"]').value;
-        const selectedAcademicYear = document.querySelector('select[name="academicYear"]').value;
-
-        if (selectedSubject && selectedClassSection && selectedTerminal && selectedAcademicYear) {
-          const [selectedClass, selectedSection] = selectedClassSection.split('-');
-          const url = `/entryform?subject=${encodeURIComponent(selectedSubject)}&studentClass=${encodeURIComponent(selectedClass)}&section=${encodeURIComponent(selectedSection)}&terminal=${encodeURIComponent(selectedTerminal)}&academicYear=${encodeURIComponent(selectedAcademicYear)}&worksheet=1`;
-          window.location.href = url;
-        }
+        const [selectedClass, selectedSection] = classSectionSelect.value.split('-');
+        if (!subjectSelect.value || !selectedClass || !selectedSection || !terminalSelect.value || !academicYearSelect.value) return;
+        const params = new URLSearchParams({
+          subject: subjectSelect.value,
+          studentClass: selectedClass,
+          section: selectedSection,
+          terminal: terminalSelect.value,
+          academicYear: academicYearSelect.value,
+          worksheet: '1'
+        });
+        window.location.href = `/entryform?${params.toString()}`;
       });
     });
 
-  }
+    function showSaveStatus(message, state) {
+      saveStatus.textContent = message;
+      saveStatus.className = `save-status${state ? ` ${state}` : ''}`;
+    }
 
- </script>
+    document.querySelectorAll('.worksheetGrade').forEach((select) => {
+      const savedStudent = existingData.find(item => String(item.reg) === String(select.dataset.reg));
+      const savedGrade = savedStudent?.worksheetGrades?.[Number(worksheetSelect.value) - 1];
+      if (savedGrade) select.value = savedGrade;
+    });
+    document.getElementById('worksheetheader').textContent = `Worksheet ${worksheetSelect.value}`;
 
- <!-- making as per worksheet select value shown in table  -->
-  <script>
-    const currentWorksheetSelect = document.querySelector('select[name="worksheet"]').value;
-    document.querySelector('select[name="worksheet"]').addEventListener('change', (event) => {
-      const selectedWorksheet = event.target.value;
-      const urlParams = new URLSearchParams(window.location.search);
-      urlParams.set('worksheet', selectedWorksheet);
-      window.location.search = urlParams.toString();
+    worksheetSelect.addEventListener('change', () => {
+      const params = new URLSearchParams(window.location.search);
+      params.set('worksheet', worksheetSelect.value);
+      window.location.search = params.toString();
     });
 
-    window.addEventListener('load', () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const worksheetParam = urlParams.get('worksheet');
-      if (worksheetParam) {
-        document.querySelector('select[name="worksheet"]').value = worksheetParam;
-        document.getElementById('worksheetheader').textContent = `W${worksheetParam}`;
-      } else {
-        document.querySelector('select[name="worksheet"]').value = currentWorksheetSelect;
+    const studentSaveTimers = new Map();
+    function autoSaveStudent(input) {
+      const reg = input.dataset.reg;
+      if (!reg) return;
+      clearTimeout(studentSaveTimers.get(reg));
+      studentSaveTimers.set(reg, setTimeout(async () => {
+        const field = (name) => document.querySelector(`[name="${name}[${CSS.escape(reg)}]"]`);
+        const studentData = {
+          reg,
+          studentClass: pageParams.get('studentClass'),
+          section: pageParams.get('section'),
+          terminal: pageParams.get('terminal'),
+          academicYear: pageParams.get('academicYear'),
+          subject: pageParams.get('subject'),
+          worksheet: worksheetSelect.value,
+          worksheetGrades: field('worksheetGrades')?.value || '',
+          theorymarks: field('theorymarks')?.value || 0,
+          attendance: field('attendance')?.value || 0,
+          status: field('status')?.checked ? 'ABSENT' : 'PRESENT',
+          roll: field('roll')?.value || '',
+          gender: field('gender')?.value || '',
+          name: field('name')?.value || ''
+        };
+        showSaveStatus('Saving changes…');
+        try {
+          const params = new URLSearchParams({
+            studentClass: studentData.studentClass,
+            section: studentData.section,
+            terminal: studentData.terminal,
+            academicYear: studentData.academicYear
+          });
+          const response = await fetch(`/entryformpreprimary?${params.toString()}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(studentData)
+          });
+          const result = await response.json();
+          if (!response.ok || !result.success) throw new Error(result.message || 'Save failed');
+          showSaveStatus('All changes saved', 'success');
+        } catch (error) {
+          console.error('Auto-save error:', error);
+          showSaveStatus('Could not save changes. Please try again.', 'error');
+        } finally {
+          studentSaveTimers.delete(reg);
+        }
+      }, 250));
+    }
 
+    document.querySelectorAll('.worksheetGrade').forEach(input => input.addEventListener('change', () => autoSaveStudent(input)));
+    document.querySelectorAll('input[name^="status["]').forEach(input => {
+      input.addEventListener('change', () => {
+        if (input.checked) {
+          const theoryInput = document.querySelector(`[name="theorymarks[${CSS.escape(input.dataset.reg)}]"]`);
+          if (theoryInput) theoryInput.value = '0';
+        }
+        autoSaveStudent(input);
+      });
+    });
+    document.querySelectorAll('input[name^="theorymarks["]').forEach(input => {
+      input.addEventListener('input', () => autoSaveStudent(input));
+    });
+
+    <% if (isAdminUser) { %>
+    document.getElementById('saveWorksheetCount').addEventListener('click', async () => {
+      const countInput = document.getElementById('totalWorksheet');
+      const count = Number(countInput.value);
+      if (!Number.isInteger(count) || count < 1 || count > 100) {
+        countInput.setCustomValidity('Enter a whole number from 1 to 100.');
+        countInput.reportValidity();
+        return;
+      }
+      countInput.setCustomValidity('');
+      const requiredParams = ['studentClass', 'section', 'subject', 'terminal', 'academicYear'];
+      if (requiredParams.some(key => !pageParams.get(key))) {
+        showSaveStatus('Choose a subject, class, terminal and academic year first.', 'error');
+        return;
+      }
+
+      const button = document.getElementById('saveWorksheetCount');
+      button.disabled = true;
+      button.textContent = 'Saving…';
+      showSaveStatus('Saving worksheet count…');
+      try {
+        const response = await fetch(`/entryform/setTotalWorksheet?${pageParams.toString()}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ totalWorksheet: count })
+        });
+        const result = await response.json();
+        if (!response.ok || !result.success) throw new Error(result.error || 'Unable to save worksheet count');
+
+        const selected = Math.min(Number(worksheetSelect.value) || 1, count);
+        worksheetSelect.replaceChildren();
+        for (let i = 1; i <= count; i++) {
+          worksheetSelect.add(new Option(`Worksheet ${i}`, String(i), false, i === selected));
+        }
+        document.getElementById('worksheetheader').textContent = `Worksheet ${selected}`;
+        if (selected !== Number(pageParams.get('worksheet') || 1)) {
+          pageParams.set('worksheet', String(selected));
+          window.history.replaceState(null, '', `${window.location.pathname}?${pageParams.toString()}`);
+        }
+        showSaveStatus('Worksheet count saved', 'success');
+      } catch (error) {
+        console.error('Worksheet count save error:', error);
+        showSaveStatus(error.message || 'Could not save worksheet count.', 'error');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Save count';
       }
     });
-   
-  </script>
+    <% } %>
 
-   <input type="hidden" id = "exisingData" value = "<%= JSON.stringify(existingData) %>">
-  <script>
-       const existingData = document.getElementById('exisingData').value ? JSON.parse(document.getElementById('exisingData').value) : [];
-        const urlParams = new URLSearchParams(window.location.search);
-        const currentWorksheet = urlParams.get('worksheet') ? parseInt(urlParams.get('worksheet')) : 1; // Default to 1 if not present
-    document.querySelectorAll('.worksheetGrade').forEach(select => {  
-   const reg = select.dataset.reg;
-
-   const existingGrade = existingData.find(item => item.reg === reg)?.worksheetGrades[currentWorksheet-1];
- 
-   if (existingGrade) {
-     select.value = existingGrade;
-   }
-  
-
-
-
+    document.querySelectorAll('input[type="number"]').forEach(input => {
+      input.addEventListener('wheel', event => {
+        if (document.activeElement === input) event.preventDefault();
+      }, { passive: false });
     });
   </script>
-
-  <!-- script for autosave -->
-   <script>
-    async function autoSave() {
-      const form = document.getElementById('entryForm');
-     const reg = this.dataset.reg; // Get the reg value from the data attribute
-      const urlParams = new URLSearchParams(window.location.search);
-      const studentClass = urlParams.get('studentClass');
-      const section = urlParams.get('section');
-      const terminal = urlParams.get('terminal');
-      const academicYear = urlParams.get('academicYear');
- const studentInputs = form.querySelectorAll(
-        `[name$="[${reg}]"]`
-    );
-
-        const studentData = {
-        reg: reg,
-        studentClass: studentClass,
-        section: section,
-        terminal: terminal,
-        academicYear: academicYear,
-        subject: form.querySelector('[name="subject"]').value,
-        worksheet: form.querySelector('[name="worksheet"]').value,
-        totalWorksheet: form.querySelector('[name="totalWorksheet"]').value,
-        worksheetGrades: form.querySelector(`[name="worksheetGrades[${reg}]"]`).value,
-        theorymarks: form.querySelector(`[name="theorymarks[${reg}]"]`)?.value || 0, // Default to 0 if empty
-        attendance: form.querySelector(`[name="attendance[${reg}]"]`).value
-
-    };
-    console.log("Student data to be saved:", studentData);
-    studentInputs.forEach(input => {
-
-        const match = input.name.match(/^([^\[]+)\[([^\]]+)\]$/);
-
-        if (!match) return;
-
-        const field = match[1];
-
-        // Remove [REG] from field name
-        studentData[field] = input.value;
-    });
-
-    console.log("Saving ONLY student:", studentData);
-
-    try {
-
-        const response = await fetch(
-            `/entryformpreprimary?studentClass=${encodeURIComponent(studentClass)}&section=${encodeURIComponent(section)}&terminal=${encodeURIComponent(terminal)}&academicYear=${encodeURIComponent(academicYear)}`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(studentData)
-            }
-        );
-
-        const data = await response.json();
-
-        console.log("Student auto-saved:", data);
-
-    } catch (error) {
-
-        console.error("Auto-save error:", error);
-
-    }
-}
-      
-   </script>
-
-   <!-- script to trigger auto-save -->
-    <script>
-      document.querySelector('input[name="totalWorksheet"]').addEventListener('change', autoSave);
-      document.querySelectorAll('.worksheetGrade').forEach(select => {
-        select.addEventListener('change', autoSave);
-      });
-      document.querySelectorAll('input[name^="theorymarks"]').forEach(input => {
-        input.addEventListener('input', autoSave);
-      });
-      document.querySelectorAll('input[name^="attendance"]').forEach(input => {
-        input.addEventListener('input', autoSave);
-      });
-      document.querySelector('select[name="worksheet"]').addEventListener('change', autoSave);
-      
-
-    </script>
-
-   <script>
-  // Hide table only when no worksheet is selected
-  const worksheetSelect = document.querySelector('select[name="worksheet"]');
-  const entryTable = document.getElementById('entrytable');
-
-  function updateTableVisibility() {
-    if (worksheetSelect.value) {
-      entryTable.style.display = 'table';
-    } else {
-      entryTable.style.display = 'none';
-    }
-  }
-
-  // Run immediately after page loads
-  updateTableVisibility();
-
-  // Run whenever worksheet changes
-  worksheetSelect.addEventListener('change', function () {
-    updateTableVisibility();
-  });
-  
-document.querySelectorAll('input[type="number"]').forEach(input => {
-  input.addEventListener('wheel', function (event) {
-    if (document.activeElement === this) {
-      event.preventDefault();
-    }
-  }, { passive: false });
-});
-
-</script>
 </body>
 </html>

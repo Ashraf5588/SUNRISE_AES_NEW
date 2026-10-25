@@ -11,6 +11,7 @@ const { studentSchema } = require("../model/schema");
 const { studentrecordschema } = require("../model/adminschema");
 const { classSchema, subjectSchema,terminalSchema,newsubjectSchema } = require("../model/adminschema");
 const {examSchema}= require("../model/examschema");
+const { worksheetSettingSchema } = require("../model/worksheetsettingschema");
 const { onlineAttendanceSchema } = require("../model/onlineattendanceschema");
 const { holidaySchema } = require("../model/holidayschema");
 const bs = require("bikram-sambat-js");
@@ -30,6 +31,8 @@ const { marksheetsetupschemaForAdmin } = require("../model/marksheetschema");
 const upload = multer({ dest: "uploads/" });
 const onlineAttendance = mongoose.model("onlineAttendance", onlineAttendanceSchema, "onlineAttendance");
 const holiday = mongoose.model("holiday", holidaySchema, "holiday");
+const WorksheetSetting = mongoose.models.worksheetSetting
+  || mongoose.model("worksheetSetting", worksheetSettingSchema, "worksheetsettings");
 
 const { addChapterSchema } = require("../model/addchapterschema");
 const addChapter = mongoose.model("addChapter", addChapterSchema, "addChapter");
@@ -450,7 +453,13 @@ exports.entryform = async (req,res,next)=>
   if (configuredFormType !== 'auto') {
     if (configuredFormType === 'entryformpreprimary') {
       const existingData = await getSlipModel().find({studentClass, section, subject, terminal, academicYear}).lean();
-      return res.render("./exam/entryformpreprimary",{studentData,studentClass,section,subject,academicYear,terminal,worksheet:Number(worksheet) || 1,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData,existingData});
+      const worksheetSetting = await WorksheetSetting.findOne({ studentClass, section, subject, terminal, academicYear })
+        .select('totalWorksheet').lean();
+      return res.render("./exam/entryformpreprimary",{studentData,studentClass,section,subject,academicYear,terminal,worksheet:Number(worksheet) || 1,subjectData,subjects:accessibleSubject,
+        userRole: user.role,
+        studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData,existingData,
+        totalAttendanceByReg,
+        configuredWorksheetCount: worksheetSetting?.totalWorksheet});
     }
     if (configuredFormType === 'entryformlocalsubject') {
       return res.render("./exam/entryformlocalsubject",{studentData,studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData});
@@ -460,7 +469,13 @@ exports.entryform = async (req,res,next)=>
       return res.render("./exam/entryformfourfive",{studentData,studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData,savedMarks,totalAttendanceByReg});
     }
     if (configuredFormType === 'entryformprimary') {
-      return res.render("./exam/entryformprimary",{studentData,studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData});
+      const existingData = await getSlipModel().find({studentClass, section, subject, terminal, academicYear}).lean();
+      const worksheetSetting = await WorksheetSetting.findOne({ studentClass, section, subject, terminal, academicYear })
+        .select('totalWorksheet').lean();
+      return res.render("./exam/entryformprimary",{studentData,studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,
+
+        studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData,existingData,
+        worksheet: Number(worksheet) || 1, configuredWorksheetCount: worksheetSetting?.totalWorksheet});
     }
     return res.render("./exam/entryform",{studentData,studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,theoryData,totalAttendanceByReg});
   }
@@ -487,7 +502,11 @@ exports.entryform = async (req,res,next)=>
   }
   else if (studentClass<=3 || studentClass=="THREE" || studentClass=="Three" || studentClass=="three" || studentClass=="3" || studentClass=="TWO" || studentClass=="Two" || studentClass=="two" || studentClass=="2" || studentClass=="ONE" || studentClass=="One" || studentClass=="one" || studentClass=="1")
   {
-    res.render("./exam/entryformprimary",{studentData,studentClass:studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData});
+    const existingData = await getSlipModel().find({studentClass: studentClass,section: section,subject: subject,terminal: terminal,academicYear: academicYear}).lean();
+    const worksheetSetting = await WorksheetSetting.findOne({ studentClass, section, subject, terminal, academicYear })
+      .select('totalWorksheet').lean();
+    res.render("./exam/entryformprimary",{studentData,studentClass:studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData,existingData,
+      worksheet: Number(worksheet) || 1, configuredWorksheetCount: worksheetSetting?.totalWorksheet});
   }
   else if( studentClass && studentClass.toLowerCase() === "nursery" || studentClass.toLowerCase() === "playgroup" || studentClass.toLowerCase() === "lkg" || studentClass.toLowerCase() === "ukg")
   {
@@ -631,6 +650,10 @@ exports.saveEntryform = async (req, res, next) => {
 // Endpoint to set totalWorksheet for all students matching the class/section/subject/terminal/year
 exports.setTotalWorksheetForClass = async (req, res, next) => {
   try {
+    if (String(req.user?.role || '').toUpperCase() !== 'ADMIN') {
+      return res.status(403).json({ success: false, error: 'Only administrators can change the worksheet count' });
+    }
+
     let { studentClass, section, subject, academicYear, terminal } = req.query;
     if (!studentClass) studentClass = req.body.studentClass;
     if (!section) section = req.body.section;
@@ -638,24 +661,29 @@ exports.setTotalWorksheetForClass = async (req, res, next) => {
     if (!academicYear) academicYear = req.body.academicYear;
     if (!terminal) terminal = req.body.terminal;
 
-    const total = Number(req.body.totalWorksheet) || 0;
-    if (!Number.isFinite(total) || total < 0) {
+    const total = Number(req.body.totalWorksheet);
+    if (!Number.isInteger(total) || total < 1 || total > 100) {
       return res.status(400).json({ success: false, error: 'Invalid totalWorksheet' });
+    }
+    if (![studentClass, section, subject, academicYear, terminal].every((value) => String(value || '').trim())) {
+      return res.status(400).json({ success: false, error: 'Class, section, subject, terminal and academic year are required' });
     }
 
     const model = getSlipModel();
+    const settingQuery = { studentClass, section, subject, terminal, academicYear };
     const findQuery = {
-      subject: subject,
-      terminal: terminal,
-      studentClass: studentClass,
-      section: section,
-      academicYear: academicYear,
+      ...settingQuery
     };
 
     console.log('[Backend] setTotalWorksheetForClass - query:', JSON.stringify(findQuery), 'total:', total);
 
     const updateData = { $set: { totalWorksheet: total } };
 
+    await WorksheetSetting.updateOne(
+      settingQuery,
+      { $set: { ...settingQuery, totalWorksheet: total } },
+      { upsert: true, runValidators: true }
+    );
     const result = await model.updateMany(findQuery, updateData);
     console.log('[Backend] setTotalWorksheetForClass result:', result);
     return res.json({ success: true, result });
@@ -1674,7 +1702,6 @@ exports.saveEntryFormPrePrimay = async (req, res) => {
       academicYear,
       subject,
       worksheet,
-      totalWorksheet,
       worksheetGrades,
       theorymarks,
       attendance,
@@ -1704,16 +1731,39 @@ exports.saveEntryFormPrePrimay = async (req, res) => {
     const absentStatus = ['ABSENT', '1'].includes(String(status || '').trim().toUpperCase()) ? 'ABSENT' : 'PRESENT';
     const parsedTheoryMarks = Number(theorymarks);
     const savedTheoryMarks = Number.isFinite(parsedTheoryMarks) ? parsedTheoryMarks : 0;
-
-    // Find ONLY this student's record
-    let student = await getSlipModel().findOne({
+    const model = getSlipModel();
+    const worksheetSetting = await WorksheetSetting.findOne({
+      studentClass,
+      section,
+      subject,
+      terminal,
+      academicYear
+    }).select('totalWorksheet').lean();
+    const recordQuery = {
       reg: reg,
       studentClass: studentClass,
       section: section,
       subject: subject,
       terminal: terminal,
       academicYear: academicYear
-    });
+    };
+    const existingClassRecord = worksheetSetting ? null : await model.findOne({
+      studentClass,
+      section,
+      subject,
+      terminal,
+      academicYear
+    }).select('totalWorksheet').lean();
+    const savedWorksheetCount = Math.max(1, Number(worksheetSetting?.totalWorksheet || existingClassRecord?.totalWorksheet) || 1);
+    if (worksheetNumber > savedWorksheetCount) {
+      return res.status(400).json({
+        success: false,
+        message: `Worksheet number cannot exceed the configured total of ${savedWorksheetCount}`
+      });
+    }
+
+    // Find ONLY this student's record
+    let student = await model.findOne(recordQuery);
 
     // =====================================================
     // CREATE NEW STUDENT RECORD
@@ -1728,7 +1778,6 @@ exports.saveEntryFormPrePrimay = async (req, res) => {
       }
 
       savedWorksheetGrades[worksheetNumber - 1] = String(worksheetGrades || '');
-      const model = getSlipModel();
       student = new model({
         reg,
         studentClass,
@@ -1741,7 +1790,7 @@ exports.saveEntryFormPrePrimay = async (req, res) => {
         roll,
         gender,
 
-        totalWorksheet,
+        totalWorksheet: savedWorksheetCount,
 
         worksheetGrades: savedWorksheetGrades,
 
@@ -1786,7 +1835,6 @@ exports.saveEntryFormPrePrimay = async (req, res) => {
     student.worksheetGrades = grades;
 
     // Update other student information
-    student.totalWorksheet = totalWorksheet;
     student.theorymarks = savedTheoryMarks;
     student.attendance = Number(attendance) || 0;
     student.status = absentStatus;

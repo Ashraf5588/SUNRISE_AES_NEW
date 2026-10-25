@@ -7,7 +7,7 @@ const cron = require("node-cron");
 const { adminSchema,superadminSchema, teacherSchema} = require("../model/admin");
 
 const Users = mongoose.model("userlist", teacherSchema, "users");
-const admin = require(".././firebase");
+const messaging = require(".././firebase");
 
 const { classSchema, subjectSchema, terminalSchema,newsubjectSchema} = require("../model/adminschema");
 const { marksheetsetupschemaForAdmin } = require("../model/marksheetschema");
@@ -588,7 +588,7 @@ const sendPushNotification = async (tokens, title, body) => {
       tokens: tokens // array of FCM tokens
     };
 
-    const response = await admin.messaging().sendEachForMulticast(message);
+    const response = await messaging.sendEachForMulticast(message);
     console.log("✅ Success:", response.successCount);
 console.log("❌ Failure:", response.failureCount);
 console.log("✅ Success:", response.successCount);
@@ -617,4 +617,3 @@ console.log("Sending push for event:", title);
   );
   
 };
-

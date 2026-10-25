@@ -191,11 +191,11 @@ const sendNoticePush = async notice => {
 		const tokens = [...new Set(users.flatMap(user => user.fcmTokens || []).filter(Boolean))];
 		if (!tokens.length) return;
 
-		const admin = require('../../firebase');
+		const messaging = require('../../firebase');
 		const baseUrl = normalize(process.env.APP_BASE_URL).replace(/\/$/, '');
 		const link = baseUrl ? `${baseUrl}/notice/${notice._id}` : `/notice/${notice._id}`;
 		for (let index = 0; index < tokens.length; index += 500) {
-			const response = await admin.messaging().sendEachForMulticast({
+			const response = await messaging.sendEachForMulticast({
 				notification: {
 					title: `New notice: ${notice.title}`,
 					body: normalize(notice.description).slice(0, 180) || `A new notice has been added for ${notice.noticeDate}.`

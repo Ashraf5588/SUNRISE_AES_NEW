@@ -389,7 +389,7 @@ student.post('/entryform',verifytoken,authorized,lockcontroller.checkEntryLocker
 
 student.post('/entryformpreprimary',verifytoken,authorized,lockcontroller.checkEntryLocker,examcontroller.saveEntryFormPrePrimay)
 // Persist totalWorksheet for entire class/section/subject
-student.post('/entryform/setTotalWorksheet',verifytoken,authorized,lockcontroller.checkEntryLocker,examcontroller.setTotalWorksheetForClass)
+student.post('/entryform/setTotalWorksheet',verifytoken,authorized,isAdmin,lockcontroller.checkEntryLocker,examcontroller.setTotalWorksheetForClass)
 student.get('/getPreviousmarks',verifytoken,authorized,examcontroller.getPreviousmarks)
 student.get('/getAttendanceData',verifytoken,authorized,examcontroller.getAttendanceData)
 student.get('/exammanagement',verifytoken,authorized,isAdmin,examdashboardcontroller.examManagement)
