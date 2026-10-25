@@ -71,6 +71,8 @@
     </div>
 </div>
 
+<% const reportThemes = (themeData || []).flatMap(subjectDocument => Array.isArray(subjectDocument.themes) ? subjectDocument.themes : []); %>
+
 <% studentData.forEach((student, studentIndex) => { %>
 
 <div class="studentContainer" data-student-index="<%= studentIndex %>" data-roll="<%= student.roll %>" hidden>
@@ -95,11 +97,12 @@
         <%= student.section %>
     </h3>
 
-    <% themeData[0].themes.forEach(theme => { %>
+    <% reportThemes.forEach(theme => { %>
         <% let sumAfter = 0; %>
         <% let sumBefore = 0; %>
         <% let totalLoCount = 0; %>
         <% let completedLoCount = 0; %>
+        <% const normalizeReportKeyPart = value => String(value ?? '').normalize('NFC').trim().toLocaleLowerCase(); %>
 
         <div class="themeTitle">
             Theme Name:
@@ -126,21 +129,18 @@
             <% theme.learningOutcome.forEach((lo,index)=>{ %>
 
                 <%
-                    const key =
-                        `${student.reg}|` +
-                        `${theme.themeName.trim()}|` +
-                        `${lo.learningOutcomeName.trim()}`;
-
-                        console.log("LOOKUP KEY =", key);
-console.log("FOUND =", marksMap[key]);
+                    const key = [
+                        student.reg,
+                        theme.themeName,
+                        lo.learningOutcomeName
+                    ].map(normalizeReportKeyPart).join('|');
 
                     const record = marksMap[key];
 
-                    // Check if this LO has any data (either before or after marks)
-                    const hasData = record && (
-                        (record.obtainedMarksBefore !== undefined && record.obtainedMarksBefore !== null && record.obtainedMarksBefore !== '') ||
-                        (record.obtainedMarksAfter !== undefined && record.obtainedMarksAfter !== null && record.obtainedMarksAfter !== '')
-                    );
+                    const hasData = record && [
+                        record.obtainedMarksBefore,
+                        record.obtainedMarksAfter
+                    ].some(mark => mark !== undefined && mark !== null && mark !== '' && Number.isFinite(Number(mark)));
 
                     // Increment completed LO count if data exists
                     if (hasData) {
@@ -196,8 +196,8 @@ console.log("FOUND =", marksMap[key]);
 
                 </tr>
               
-                <% sumAfter += record ? record.obtainedMarksAfter : 0; %>
-                <% sumBefore += record ? record.obtainedMarksBefore : 0; %>
+                <% sumAfter += record && Number.isFinite(Number(record.obtainedMarksAfter)) ? Number(record.obtainedMarksAfter) : 0; %>
+                <% sumBefore += record && Number.isFinite(Number(record.obtainedMarksBefore)) ? Number(record.obtainedMarksBefore) : 0; %>
                 <% totalLoCount++; %>
             <% }) %>
 <tr>

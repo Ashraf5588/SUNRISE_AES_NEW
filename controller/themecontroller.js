@@ -1400,7 +1400,6 @@ exports.thememarksheetOfStudent = async (req, res) => {
         const subjectInfo = {};
 
         themeData.forEach(subjectDoc => {
-
             subjectInfo[subjectDoc.subject] = {
                 credit: Number(subjectDoc.credit || 0)
             };
@@ -1689,10 +1688,11 @@ students.forEach(student => {
 exports.themewisemarks = async (req, res) => {
   try {
     const { studentClass, section, subject,terminal } = req.query;
-      const ThemeModel = await getStudentThemeData(studentClass);
+    const ThemeModel = await getStudentThemeData(studentClass);
     const themewisemarks = await ThemeModel.find({
       studentClass: studentClass,
       section: section,
+      subject: subject,
     }).lean();
     const ThemeDataModel = await getThemeFormat(studentClass);
     const themeData = await ThemeDataModel.find({
@@ -1704,16 +1704,21 @@ exports.themewisemarks = async (req, res) => {
     const studentData = await studentRecord.find({ studentClass: studentClass, section: section }).lean();
  const marksMap = {};
 
-      console.log("Total DB Records:", themewisemarks.length);
+    const normalizeReportKeyPart = (value) =>
+      String(value ?? "").normalize("NFC").trim().toLocaleLowerCase();
 
-themewisemarks.forEach(record => {
-    const key =
-        `${record.reg}|${record.themeName}|${record.learningOutcomeName}`;
+    themewisemarks.forEach((record) => {
+      const key = [
+        record.reg,
+        record.themeName,
+        record.learningOutcomeName,
+      ].map(normalizeReportKeyPart).join("|");
 
-    marksMap[key] = record;
-
-    
-});
+      const existingRecord = marksMap[key];
+      if (!existingRecord || new Date(record.updatedAt || record.createdAt || 0) >= new Date(existingRecord.updatedAt || existingRecord.createdAt || 0)) {
+        marksMap[key] = record;
+      }
+    });
 
     return res.render("theme/newthemewisemarks", {
       ...await getSidenavData(req),
@@ -2557,6 +2562,9 @@ exports.sendthemeData = async (req, res) => {
             section
         } = req.query;
 
+        const normalizeThemeMarkPart = value =>
+            String(value ?? "").normalize("NFC").trim().toLocaleLowerCase();
+
         // -------------------------------
         // Dynamic student marks model
         // -------------------------------
@@ -2603,11 +2611,38 @@ exports.sendthemeData = async (req, res) => {
         // All assessment records
         // -------------------------------
 
-        const marks =
+        const allMarks =
             await MarksModel.find({
                 studentClass,
                 section
             }).lean();
+
+        const latestMarkByOutcome = new Map();
+
+        allMarks.forEach((record, index) => {
+            const hasOutcomeIdentity = record.themeName && record.learningOutcomeName;
+            const key = hasOutcomeIdentity
+                ? JSON.stringify([
+                    record.reg,
+                    record.subject,
+                    record.themeName,
+                    record.learningOutcomeName
+                ].map(normalizeThemeMarkPart))
+                : `unidentified-outcome-${record._id || index}`;
+            const existingRecord = latestMarkByOutcome.get(key);
+            const recordDate = new Date(record.updatedAt || record.createdAt || 0).getTime();
+            const existingDate = existingRecord
+                ? new Date(existingRecord.updatedAt || existingRecord.createdAt || 0).getTime()
+                : -1;
+            const safeRecordDate = Number.isFinite(recordDate) ? recordDate : 0;
+            const safeExistingDate = Number.isFinite(existingDate) ? existingDate : -1;
+
+            if (!existingRecord || safeRecordDate >= safeExistingDate) {
+                latestMarkByOutcome.set(key, record);
+            }
+        });
+
+        const marks = [...latestMarkByOutcome.values()];
 
         // ======================================
         // SUBJECT CREDIT MAP
@@ -2617,7 +2652,7 @@ exports.sendthemeData = async (req, res) => {
 
         themeData.forEach(subjectDoc => {
 
-            subjectInfo[subjectDoc.subject] = {
+            subjectInfo[normalizeThemeMarkPart(subjectDoc.subject)] = {
                 credit: Number(subjectDoc.credit || 0)
             };
 
@@ -2633,17 +2668,17 @@ exports.sendthemeData = async (req, res) => {
 
         marks.forEach(record => {
 
-            const key =
-                `${record.reg}|${record.subject}`;
+            const key = JSON.stringify([
+                record.reg,
+                record.subject
+            ].map(normalizeThemeMarkPart));
 
             if (!marksMap[key]) {
                 marksMap[key] = 0;
             }
 
-            marksMap[key] +=
-                Number(
-                    record.obtainedMarksAfter || 0
-                );
+            const obtainedMarks = Number(record.obtainedMarksAfter);
+            marksMap[key] += Number.isFinite(obtainedMarks) ? obtainedMarks : 0;
 
         });
 
@@ -2655,8 +2690,10 @@ exports.sendthemeData = async (req, res) => {
 
         marks.forEach(record => {
 
-            const key =
-                `${record.reg}|${record.subject}`;
+            const key = JSON.stringify([
+                record.reg,
+                record.subject
+            ].map(normalizeThemeMarkPart));
 
             if (!loCountMap[key]) {
                 loCountMap[key] = new Set();
@@ -2745,10 +2782,10 @@ students.forEach(student => {
         // Total obtained marks of student
         // -----------------------------------
 
+        const subjectKey = normalizeThemeMarkPart(subjectName);
+        const studentKey = normalizeThemeMarkPart(student.reg);
         const obtained =
-            marksMap[
-                `${student.reg}|${subjectName}`
-            ] || 0;
+            marksMap[JSON.stringify([studentKey, subjectKey])] || 0;
 
         // -----------------------------------
         // Count unique learning outcomes
@@ -2758,8 +2795,8 @@ students.forEach(student => {
 
         const studentSubjectRecords =
             marks.filter(record =>
-                record.reg === student.reg &&
-                record.subject === subjectName
+            normalizeThemeMarkPart(record.reg) === studentKey &&
+            normalizeThemeMarkPart(record.subject) === subjectKey
             );
 
         const uniqueLO = new Set();
@@ -2767,7 +2804,7 @@ students.forEach(student => {
         studentSubjectRecords.forEach(record => {
 
             uniqueLO.add(
-                `${record.themeName}|${record.learningOutcomeName}`
+                `${normalizeThemeMarkPart(record.themeName)}|${normalizeThemeMarkPart(record.learningOutcomeName)}`
             );
 
         });
@@ -2804,7 +2841,7 @@ students.forEach(student => {
 
         const credit =
             Number(
-                subjectInfo[subjectName]?.credit || 0
+            subjectInfo[subjectKey]?.credit || 0
             );
 
         const weightedGP =
