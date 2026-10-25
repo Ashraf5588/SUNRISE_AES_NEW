@@ -17,6 +17,7 @@ const newThemeFormSchema = new mongoose.Schema(
     evalDateAfter: { type: String, required: false },
     obtainedMarksBefore: { type: Number, required: false },
     obtainedMarksAfter: { type: Number, required: false },
+    marksEntered: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
   }

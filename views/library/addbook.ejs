@@ -49,12 +49,23 @@
     .grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
     .card { min-width: 0; background: var(--panel); border-radius: 18px; box-shadow: var(--shadow); border: 1px solid rgba(148,163,184,0.12); padding: 18px; }
     .card h3 { margin: 0 0 16px; font-size: 18px; }
-    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(200px,1fr)); gap: 14px; }
-    .field { display: flex; flex-direction: column; gap: 8px; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .book-basics-grid { grid-template-columns: minmax(120px, .8fr) minmax(280px, 3fr) minmax(190px, 1.7fr) minmax(120px, .8fr); }
+    .book-form-section { min-width: 0; margin: 22px 0 0; padding: 12px 20px 20px; border: 1.5px solid #94a3b8; border-radius: 14px; background: #fff; }
+    .book-form-section legend { padding: 0 10px; color: #111827; font-size: 18px; font-weight: 800; }
+    .book-form-section-description { margin: 0 0 18px; color: #475569; font-size: 14px; line-height: 1.5; }
+    .field { display: flex; min-width: 0; flex-direction: column; gap: 8px; }
     .field.full { grid-column: 1 / -1; }
-    .field label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
-    .field input, .field select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; }
-    .btn-wrap { margin-top: 18px; }
+    #bookForm .field label { color: #111827; font-size: 15px; font-weight: 700; }
+    #bookForm .field input, #bookForm .field select { width: 100%; min-height: 48px; padding: 11px 13px; border: 1px solid #94a3b8; border-radius: 9px; background: #fff; color: #111827; font: inherit; font-size: 16px; }
+    #bookForm .field input::placeholder { color: #64748b; opacity: 1; }
+    #bookForm .field input:focus, #bookForm .field select:focus { outline: 3px solid rgba(37, 99, 235, .17); border-color: var(--primary); }
+    .field-hint { color: #475569; font-size: 13px; line-height: 1.45; }
+    .category-color-display { display: flex; align-items: center; gap: 9px; min-height: 24px; }
+    .book-codes-field { margin-top: 18px; }
+    #generatedBookCodes { padding: 12px 14px; border: 1px solid #cbd5e1; border-radius: 10px; background: #f8fafc; min-height: 48px; color: #334155; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+    .btn-wrap { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; padding-top: 18px; border-top: 1px solid #e2e8f0; }
+    @media (max-width: 1200px) { .book-basics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 0 0 18px; flex-wrap: wrap; }
     .search-box { flex: 1; min-width: 260px; position: relative; }
     .search-box input { width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; font-size: 14px; background: #fff; }
@@ -120,7 +131,8 @@
     .upload-progress-track { height: 12px; overflow: hidden; border-radius: 999px; background: #e2e8f0; }
     .upload-progress-bar { width: 0%; height: 100%; border-radius: inherit; background: var(--primary); transition: width .2s ease; }
     .upload-progress-value { display: block; margin-top: 10px; color: var(--primary); font-size: 13px; font-weight: 700; }
-    @media (max-width: 900px) { .library-shell { display: block; } .sidebar { width: 100%; height: auto; position: static; } .content { padding: 18px; } .grid { grid-template-columns: 1fr; } .form-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 900px) { .library-shell { display: block; } .sidebar { width: 100%; height: auto; position: static; } .content { padding: 18px; } .grid { grid-template-columns: 1fr; } }
+    @media (max-width: 600px) { .content { padding: 14px; } .card { padding: 14px; border-radius: 14px; } .book-form-section { padding: 10px 14px 15px; } .form-grid, .book-basics-grid { grid-template-columns: 1fr; gap: 15px; } .field.full { grid-column: auto; } .btn-wrap .btn { flex: 1 1 100%; } }
   </style>
   <link rel="stylesheet" href="/library-nav.css">
   <script src="/library-nav.js" defer></script>
@@ -149,104 +161,122 @@
 
       <div class="grid">
         <div class="card">
-          <h3>Book Details</h3>
+          <h3 style="font-size:24px; color:#111827; margin-bottom:6px;">Add a book</h3>
+          <p style="margin:0 0 20px; color:#475569; font-size:15px; line-height:1.5;">Enter the key book information first. Additional details are optional and can be added whenever available.</p>
           <form action="/library/books" method="POST" id="bookForm">
             <input type="hidden" id="bookId" name="bookId" />
-            <div class="form-grid">
-              <div class="field">
-                <label for="date">Date</label>
-                <input type="text" id="date" name="date" class="nepali-datepicker" placeholder="Select Nepali date" value="">
-              </div>
+            <fieldset class="book-form-section">
+              <legend>Book essentials</legend>
+              <p class="book-form-section-description">Date, book name, category and shelf location.</p>
+              <div class="form-grid book-basics-grid">
+                <div class="field">
+                  <label for="date">Date</label>
+                  <input type="text" id="date" name="date" class="nepali-datepicker" placeholder="Select Nepali date" value="" autocomplete="off">
+                  <span class="field-hint">Choose the date the book was added.</span>
+                </div>
 
-              <div class="field full">
-                <label for="title">Book Name</label>
-                <input type="text" id="title" name="title" required>
-              </div>
+                <div class="field">
+                  <label for="title">Book name <span aria-hidden="true">*</span></label>
+                  <input type="text" id="title" name="title" required placeholder="Enter the book title">
+                </div>
 
-              <div class="field">
-                <label for="author">Author</label>
-                <input type="text" id="author" name="author" placeholder="Author name">
-              </div>
+                <div class="field">
+                  <label for="category">Category <span aria-hidden="true">*</span></label>
+                  <select id="category" name="category" required>
+                    <% if (categories && categories.length) { %>
+                      <% categories.forEach((category) => { %>
+                        <option
+                          value="<%= category.name %>"
+                          data-color="<%= category.colorHex || '#2563eb' %>"
+                          data-color-name="<%= category.colorName || category.name %>"
+                          style="background-color:<%= category.colorHex || '#2563eb' %>; color:<%= (category.colorHex && category.colorHex.toLowerCase() === '#080808') ? '#ffffff' : '#111827' %>;"
+                        >
+                          <%= category.name %> (<%= category.colorName || category.colorHex || 'Default' %>)
+                        </option>
+                      <% }) %>
+                    <% } %>
+                  </select>
+                  <div class="category-color-display">
+                    <span id="categoryColorPreview" style="display:inline-block; width:18px; height:18px; border-radius:6px; border:1px solid var(--border); background:#2563eb;"></span>
+                    <span id="categoryColorText" style="font-size:13px; color:#334155;">Default</span>
+                  </div>
+                </div>
 
-              <div class="field">
-                <label for="category">Category</label>
-                <select id="category" name="category" required>
-                  <% if (categories && categories.length) { %>
-                    <% categories.forEach((category) => { %>
-                      <option
-                        value="<%= category.name %>"
-                        data-color="<%= category.colorHex || '#2563eb' %>"
-                        data-color-name="<%= category.colorName || category.name %>"
-                        style="background-color:<%= category.colorHex || '#2563eb' %>; color:<%= (category.colorHex && category.colorHex.toLowerCase() === '#080808') ? '#ffffff' : '#111827' %>;"
-                      >
-                        <%= category.name %> (<%= category.colorName || category.colorHex || 'Default' %>)
-                      </option>
-                    <% }) %>
-                  <% } %>
-                </select>
-                <div style="display:flex; align-items:center; gap:10px; margin-top:4px;">
-                  <span id="categoryColorPreview" style="display:inline-block; width:18px; height:18px; border-radius:6px; border:1px solid var(--border); background:#2563eb;"></span>
-                  <span id="categoryColorText" style="font-size:12px; color:var(--muted);">Default</span>
+                <div class="field">
+                  <label for="shelvesNo">Shelves No</label>
+                  <input type="text" id="shelvesNo" name="shelvesNo" placeholder="e.g. A-12 or Shelf 2">
                 </div>
               </div>
+            </fieldset>
 
-              <div class="field">
-                <label for="edition">Edition</label>
-                <input type="text" id="edition" name="edition" placeholder="Optional">
+            <fieldset class="book-form-section">
+              <legend>Important details</legend>
+              <p class="book-form-section-description">Add the information used to identify and keep track of this book.</p>
+              <div class="form-grid">
+                <div class="field">
+                  <label for="totalQuantity">Total quantity <span aria-hidden="true">*</span></label>
+                  <input type="number" id="totalQuantity" name="totalQuantity" min="1" value="1" required>
+                  <span class="field-hint">Number of copies being added.</span>
+                </div>
+                <div class="field">
+                  <label for="price">Book cost</label>
+                  <input type="number" id="price" name="price" min="0" step="0.01" placeholder="0.00">
+                </div>
+                <div class="field">
+                  <label for="author">Author</label>
+                  <input type="text" id="author" name="author" placeholder="Enter the author's name">
+                </div>
+                <div class="field">
+                  <label for="edition">Edition</label>
+                  <input type="text" id="edition" name="edition" placeholder="e.g. 2nd edition">
+                </div>
               </div>
+            </fieldset>
 
-              <div class="field">
-                <label for="shelvesNo">Shelves No</label>
-                <input type="text" id="shelvesNo" name="shelvesNo" placeholder="e.g. A-12 or Shelf 2">
+            <fieldset class="book-form-section">
+              <legend>Other details</legend>
+              <p class="book-form-section-description">Publication and acquisition information, when available.</p>
+              <div class="form-grid">
+                <div class="field">
+                  <label for="publisherName">Publisher name</label>
+                  <input type="text" id="publisherName" name="publisherName" placeholder="Publisher or publishing house">
+                </div>
+                <div class="field">
+                  <label for="publishedYear">Published year</label>
+                  <input type="text" id="publishedYear" name="publishedYear" inputmode="numeric" placeholder="e.g. 2024">
+                </div>
+                <div class="field">
+                  <label for="page">Page count</label>
+                  <input type="text" id="page" name="page" inputmode="numeric" placeholder="Number of pages">
+                </div>
+                <div class="field">
+                  <label for="source">Source</label>
+                  <input type="text" id="source" name="source" placeholder="e.g. Purchased, donated">
+                </div>
               </div>
+            </fieldset>
 
-              <div class="field">
-                <label for="publisherName">Publisher Name</label>
-                <input type="text" id="publisherName" name="publisherName" placeholder="Optional">
+            <fieldset class="book-form-section">
+              <legend>Optional details</legend>
+              <p class="book-form-section-description">Add extra notes or reference information if useful.</p>
+              <div class="form-grid">
+                <div class="field">
+                  <label for="isbn">ISBN</label>
+                  <input type="text" id="isbn" name="isbn" placeholder="International book number">
+                </div>
+                <div class="field full">
+                  <label for="remarks">Remarks</label>
+                  <input type="text" id="remarks" name="remarks" placeholder="Add notes about the book (optional)">
+                </div>
               </div>
+            </fieldset>
 
-              <div class="field">
-                <label for="publishedYear">Published Year</label>
-                <input type="text" id="publishedYear" name="publishedYear" placeholder="Optional">
-              </div>
-
-              <div class="field">
-                <label for="page">Page</label>
-                <input type="text" id="page" name="page" placeholder="Optional">
-              </div>
-
-              <div class="field">
-                <label for="source">Source</label>
-                <input type="text" id="source" name="source" placeholder="Optional">
-              </div>
-
-              <div class="field">
-                <label for="price">Book Cost</label>
-                <input type="number" id="price" name="price" min="0" step="0.01" placeholder="0">
-              </div>
-
-              <div class="field full">
-                <label for="remarks">Remarks</label>
-                <input type="text" id="remarks" name="remarks" placeholder="Optional notes">
-              </div>
-
-              <div class="field">
-                <label for="isbn">ISBN</label>
-                <input type="text" id="isbn" name="isbn" placeholder="Optional">
-              </div>
-
-              <div class="field">
-                <label for="totalQuantity">Total Quantity</label>
-                <input type="number" id="totalQuantity" name="totalQuantity" min="1" value="1" required>
-              </div>
+            <div class="field book-codes-field">
+              <label for="generatedBookCodes">Generated copy codes</label>
+              <div id="generatedBookCodes" role="status" aria-live="polite">Enter a quantity to preview the generated book codes.</div>
             </div>
 
-            <div class="field full">
-              <label>Generated Copy Codes</label>
-              <div id="generatedBookCodes" style="padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:#f8fafc; min-height:48px; font-size:13px; color:var(--muted);">Enter quantity to preview generated book codes.</div>
-            </div>
-
-            <div class="btn-wrap" style="display:flex; gap:10px; flex-wrap:wrap;">
+            <div class="btn-wrap">
               <button type="submit" class="btn btn-primary" id="submitBookBtn">Add Book</button>
               <button type="button" class="btn btn-secondary" id="printBookCodesBtn">Print Sticker Labels</button>
               <button type="button" class="btn btn-secondary" id="downloadBookTemplateBtn">Download CSV Template</button>
@@ -605,21 +635,35 @@
     categoryInput.addEventListener('change', syncCategoryColorDisplay);
     syncCategoryColorDisplay();
 
+    const codePreviewLimit = 30;
+    let codePreviewTimer;
+
     function generateCodes() {
       const title = titleInput.value.trim();
       const author = authorInput.value.trim();
       const publisher = publisherInput.value.trim();
       const quantity = Number(quantityInput.value || 1);
-      const prefix = buildPrefix(title, author, publisher);
 
       if (!title || !quantity || quantity <= 0) {
         generatedBookCodes.textContent = 'Enter quantity to preview generated book codes.';
         return;
       }
 
-      const codes = Array.from({ length: quantity }, (_, index) => `${prefix}-${String(index + 1).padStart(3, '0')}`);
-      generatedBookCodes.textContent = codes.join(', ');
-      return codes;
+      const prefix = buildPrefix(title, author, publisher);
+      const previewCount = Math.min(Math.floor(quantity), codePreviewLimit);
+      const previewCodes = Array.from(
+        { length: previewCount },
+        (_, index) => `${prefix}-${String(index + 1).padStart(3, '0')}`
+      );
+      const remainingCount = Math.max(0, Math.floor(quantity) - previewCount);
+      generatedBookCodes.textContent = remainingCount
+        ? `${previewCodes.join(', ')} … and ${remainingCount} more code${remainingCount === 1 ? '' : 's'}`
+        : previewCodes.join(', ');
+    }
+
+    function scheduleCodePreview() {
+      clearTimeout(codePreviewTimer);
+      codePreviewTimer = setTimeout(generateCodes, 150);
     }
 
     function getStickerDetailRows(bookInfo = {}) {
@@ -923,10 +967,10 @@
       closeBulkPrintModal();
     }
 
-    titleInput.addEventListener('input', generateCodes);
-    authorInput.addEventListener('input', generateCodes);
-    publisherInput.addEventListener('input', generateCodes);
-    quantityInput.addEventListener('input', generateCodes);
+    titleInput.addEventListener('input', scheduleCodePreview);
+    authorInput.addEventListener('input', scheduleCodePreview);
+    publisherInput.addEventListener('input', scheduleCodePreview);
+    quantityInput.addEventListener('input', scheduleCodePreview);
     printBookCodesBtn.addEventListener('click', openStickerPrintWindow);
     exportBooksExcelBtn.addEventListener('click', () => {
       window.location.href = '/library/books/export-excel';
@@ -1069,7 +1113,13 @@
         if (target && sourceInput) target.value = sourceInput.value;
       });
       const codeLabel = newRow.querySelector('[name="bookCode"]');
-      if (codeLabel) codeLabel.value = generatedBookCodes.textContent.trim() || 'Code will be generated on save';
+      if (codeLabel) {
+        const quantity = Math.max(0, Math.floor(Number(quantityInput.value) || 0));
+        const prefix = buildPrefix(titleInput.value, authorInput.value, publisherInput.value);
+        codeLabel.value = quantity
+          ? Array.from({ length: quantity }, (_, index) => `${prefix}-${String(index + 1).padStart(3, '0')}`).join(', ')
+          : 'Code will be generated on save';
+      }
     });
 
     document.querySelectorAll('.print-book-codes').forEach((button) => {

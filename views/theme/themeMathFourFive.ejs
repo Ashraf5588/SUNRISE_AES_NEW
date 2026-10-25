@@ -42,7 +42,18 @@
     border-color: #ff8c42;
     box-shadow: 0 0 0 3px rgba(255,140,66,0.18);
   }
+  .evaluation-date-row { display: flex; flex-wrap: nowrap; align-items: center; gap: 20px; margin: 14px 0; }
+  .evaluation-date-field { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; }
+  .evaluation-date-field > div { display: flex; align-items: center; gap: 8px; }
+  .evaluation-date-field label { display: block; margin: 0; font-size: 13px; font-weight: 700; color: #1f2937; white-space: nowrap; }
+  .evaluation-date-field input { width: 150px; min-height: 36px; padding: 6px 8px; border: 1px solid #94a3b8; border-radius: 7px; font-size: 14px; }
+  .apply-date-button { min-height: 34px; padding: 6px 10px; border: 0; border-radius: 7px; background: #2563eb; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .apply-date-button:hover { background: #1d4ed8; }
+  .theme-form-actions { display: flex; justify-content: flex-end; margin: 16px 0 24px; }
+  .theme-form-actions input[type="submit"] { padding: 10px 20px; border: 0; border-radius: 8px; background: #2563eb; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
   @media (max-width: 768px) {
+    .evaluation-date-row { flex-wrap: wrap; gap: 12px; }
+    .evaluation-date-field { flex-wrap: wrap; }
     .theme-selector-row {
       flex-direction: column;
       align-items: stretch;
@@ -117,10 +128,16 @@
 
 <input type="hidden" id="existingMap" value="<%=JSON.stringify(existingMap)%>"
 
- <th>Eval.Date Before: <input type="text" id="nepali-datepicker" class="masterDateBefore nepali-datepicker" placeholder="Select Nepali Date" /></th>
- <th>Eval.Date After: <input type="text" id="nepali-datepicker" class="masterDateAfter nepali-datepicker" placeholder="Select Nepali Date" /></th>
-
- <button type="button" id="applydate" onclick="loadDate()">Apply Date</button>
+ <div class="evaluation-date-row">
+   <div class="evaluation-date-field">
+     <div><label for="masterDateBefore">Eval. date before</label><input type="text" id="masterDateBefore" class="masterDateBefore nepali-datepicker" placeholder="Select date" /></div>
+     <button type="button" class="apply-date-button" onclick="applyDateBeforeToAll()">Apply to all</button>
+   </div>
+   <div class="evaluation-date-field">
+     <div><label for="masterDateAfter">Eval. date after</label><input type="text" id="masterDateAfter" class="masterDateAfter nepali-datepicker" placeholder="Select date" /></div>
+     <button type="button" class="apply-date-button" onclick="applyDateAfterToAll()">Apply to all</button>
+   </div>
+ </div>
   <table border="1" cellspacing="0" cellpadding="5" class="themeTable" style="display:none;">
   
 
@@ -167,7 +184,7 @@
     </tr>
     <%});%>
   </table> <br>
-<input type="submit">
+<div class="theme-form-actions"><input type="submit" value="Save marks"></div>
 
     </form>
 <input type="hidden" value="<%=JSON.stringify(studentData)%>" id="studentData">
@@ -242,6 +259,36 @@ uniqueAspects.forEach((index, aspectName) => {
 </script>
 
 <script>
+function rejectDifferentToolForOutcome(themeName, learningOutcomeName, selectedToolName) {
+    if (!selectedToolName || !themeName || !learningOutcomeName) return false;
+
+    const submitButton = document.querySelector('form[action^="/themeform"] input[type="submit"], form[action^="/themeform"] button[type="submit"]');
+    const existingMap = JSON.parse(document.getElementById("existingMap").value);
+    const conflictingRecord = Object.values(existingMap).find(record =>
+        record.themeName === themeName &&
+        record.learningOutcomeName === learningOutcomeName &&
+        record.toolName !== selectedToolName &&
+        (
+            record.marksEntered === true ||
+            Number(record.obtainedMarksBefore) > 0 ||
+            Number(record.obtainedMarksAfter) > 0 ||
+            (Array.isArray(record.indicatorBefore) && record.indicatorBefore.length > 0) ||
+            (Array.isArray(record.indicatorAfter) && record.indicatorAfter.length > 0)
+        )
+    );
+
+    if (!conflictingRecord) {
+        if (submitButton) submitButton.disabled = false;
+        return false;
+    }
+
+    alert(`Marks are already entered for this Learning Outcome using tool "${conflictingRecord.toolName}". You cannot enter marks using another tool.`);
+    document.getElementById("toolselect").selectedIndex = 0;
+    document.querySelector(".themeTable").style.display = "none";
+    if (submitButton) submitButton.disabled = true;
+    return true;
+}
+
     function showTable() {
     const tables = document.querySelectorAll(".themeTable");
     const indicatorTDs = document.querySelectorAll("#indicatorTD");
@@ -290,6 +337,12 @@ uniqueAspects.forEach((index, aspectName) => {
         tables[0].style.display = "none";
         return;
     }
+
+    if (rejectDifferentToolForOutcome(
+        themeData[0].themes[selectedThemeIndex].themeName,
+        selectedLO.learningOutcomeName,
+        selectedToolName
+    )) return;
 
     console.log("Selected LO:", selectedLO.learningOutcomeName);
 
@@ -540,18 +593,28 @@ function filterAspect() {
 
     <script>
         
+        function applyDateBeforeToAll() {
+            const value = document.querySelector(".masterDateBefore").value;
+            document.querySelectorAll(".studentDateBefore").forEach(input => { input.value = value; });
+        }
+        function applyDateAfterToAll() {
+            const value = document.querySelector(".masterDateAfter").value;
+            document.querySelectorAll(".studentDateAfter").forEach(input => { input.value = value; });
+        }
         function loadDate() {
-            const masterDateBefore = document.querySelector(".masterDateBefore").value;
-            const masterDateAfter = document.querySelector(".masterDateAfter").value;
-
-            document.querySelectorAll(".studentDateBefore").forEach(input => {
-                input.value = masterDateBefore;
-            });
-
-            document.querySelectorAll(".studentDateAfter").forEach(input => {
-                input.value = masterDateAfter;
-            });
+            applyDateBeforeToAll();
+            applyDateAfterToAll();
         }
     </script>
-</body>
+    <script>
+      const toolConflict = new URLSearchParams(window.location.search).get("toolConflict");
+      if (toolConflict) {
+        alert(`Marks are already entered for this Learning Outcome using tool "${toolConflict}". You cannot enter marks using another tool.`);
+        const params = new URLSearchParams(window.location.search);
+        params.delete("toolConflict");
+        const query = params.toString();
+        history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+      }
+    </script>
+    </body>
 </html>

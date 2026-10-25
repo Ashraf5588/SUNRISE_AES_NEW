@@ -140,6 +140,31 @@ const {studentClass,section,subject,terminal}= req.query;
 const model = await getStudentThemeData(studentClass);
 
 const data = req.body;
+const existingTool = await model.findOne({
+    studentClass: data.studentClass,
+    section: data.section,
+    subject: data.subject,
+    themeName: data.themeName,
+    learningOutcomeName: data.learningOutcomeName,
+    toolName: { $ne: data.toolName },
+    $or: [
+        { marksEntered: true },
+        { obtainedMarksBefore: { $gt: 0 } },
+        { obtainedMarksAfter: { $gt: 0 } },
+        { indicatorBefore: { $exists: true, $ne: [] } },
+        { indicatorAfter: { $exists: true, $ne: [] } }
+    ]
+}).select("toolName").lean();
+
+if (existingTool) {
+    const redirectParams = new URLSearchParams();
+    ["studentClass", "section", "subject", "terminal"].forEach((key) => {
+        if (req.query[key]) redirectParams.set(key, req.query[key]);
+    });
+    redirectParams.set("toolConflict", existingTool.toolName || "another tool");
+    return res.redirect(`/themeform?${redirectParams.toString()}`);
+}
+
 const isHamroSerofero =
     data.subject.toLowerCase() === "hamro serofero" || data.subject.toLowerCase() === "hamro serophero";
 
@@ -156,20 +181,23 @@ const records = data.reg.map((reg, index) => ({
     toolName: data.toolName,
 
     obtainedMarksBefore: isHamroSerofero
-        ? Number(data.students[reg]?.obtainedMarksBefore || 0)
-        : Number(data.students[reg]?.obtainedMarksBefore || 0),
+        ? Number(data.students?.[reg]?.obtainedMarksBefore || 0)
+        : Number(data.students?.[reg]?.obtainedMarksBefore || 0),
 
     obtainedMarksAfter: isHamroSerofero
-        ? Number(data.students[reg]?.obtainedMarksAfter || 0)
-        : Number(data.students[reg]?.obtainedMarksAfter || 0),
+        ? Number(data.students?.[reg]?.obtainedMarksAfter || 0)
+        : Number(data.students?.[reg]?.obtainedMarksAfter || 0),
 
     indicatorBefore: isHamroSerofero
-        ? JSON.parse(data.students[reg]?.indicatorBefore || "[]")
+        ? JSON.parse(data.students?.[reg]?.indicatorBefore || "[]")
         : [],
 
     indicatorAfter: isHamroSerofero
-        ? JSON.parse(data.students[reg]?.indicatorAfter || "[]")
+        ? JSON.parse(data.students?.[reg]?.indicatorAfter || "[]")
         : [],
+    marksEntered:
+        data.students?.[reg]?.obtainedMarksBefore !== undefined ||
+        data.students?.[reg]?.obtainedMarksAfter !== undefined,
 
     evalDateBefore:
         data.evalDateBefore[index] || "select date",
@@ -201,7 +229,7 @@ const operations = records.map(record => ({
                 evalDateAfter: record.evalDateAfter,
                 indicatorBefore: record.indicatorBefore,
                 indicatorAfter: record.indicatorAfter,
-             
+                marksEntered: record.marksEntered,
                 updatedAt: new Date()
             }
         },

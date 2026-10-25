@@ -4,28 +4,50 @@
     <title>Theme Wise Report</title>
 
     <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 24px; color: #172033; background: #f4f7fb; font-family: Arial, sans-serif; }
+        h1 { margin: 0 0 20px; color: #14213d; font-size: 26px; text-align: center; }
+        .student-picker { position: sticky; top: 0; z-index: 10; margin: 0 0 20px; padding: 14px; border: 1px solid #d6deea; border-radius: 12px; background: #fff; box-shadow: 0 4px 14px rgba(23, 43, 77, .08); }
+        .student-picker-label { display: block; margin-bottom: 10px; color: #172033; font-size: 15px; font-weight: 700; }
+        .student-list { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; scrollbar-width: thin; scrollbar-color: #94a3b8 #edf1f7; }
+        .student-list::-webkit-scrollbar { height: 8px; }
+        .student-list::-webkit-scrollbar-track { border-radius: 8px; background: #edf1f7; }
+        .student-list::-webkit-scrollbar-thumb { border-radius: 8px; background: #94a3b8; }
+        .student-option { flex: 0 0 auto; min-height: 38px; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; background: #f8fafc; color: #172033; font-size: 14px; font-weight: 600; cursor: pointer; }
+        .student-option:hover { border-color: #2563eb; background: #eff6ff; }
+        .student-option[aria-pressed="true"] { border-color: #1d4ed8; background: #1d4ed8; color: #fff; }
         table{
             width:100%;
             border-collapse: collapse;
             margin-bottom:20px;
+            background: #f3f4f6;
+            border-radius: 8px;
+            border: 2px solid black;
         }
 
-        th,td{
-            border:1px solid black;
-            padding:5px;
-            font-size:12px;
+        th, td{
+            border:1px solid #000000;
+            padding:8px;
+            font-size:13.5px;
+            color: black;
         }
+        th { background: #e5e7eb; color: #111827; text-align: left; }
+        tbody tr:nth-child(odd) { background: #f3f4f6; }
+        tbody tr:nth-child(even) { background: #fff; }
 
         .studentContainer{
             margin-bottom:50px;
             page-break-after:always;
         }
+        .studentContainer[hidden] { display: none; }
 
         .themeTitle{
             margin-top:20px;
             font-weight:bold;
             font-size:18px;
+            color: #1d4ed8;
         }
+        @media (max-width: 600px) { body { padding: 12px; } h1 { font-size: 21px; } .student-picker { padding: 10px; } }
     </style>
 </head>
 
@@ -35,9 +57,23 @@
     Student Theme Wise Assessment Report
 </h1>
 
-<% studentData.forEach(student => { %>
+<div class="student-picker">
+    <span class="student-picker-label">Select student to view report</span>
+    <div class="student-list" role="group" aria-label="Students">
+        <% studentData.forEach((student, index) => { %>
+            <button
+                type="button"
+                class="student-option"
+                data-student-index="<%= index %>"
+                aria-pressed="false"
+            ><%= student.roll %>. <%= student.name %></button>
+        <% }) %>
+    </div>
+</div>
 
-<div class="studentContainer">
+<% studentData.forEach((student, studentIndex) => { %>
+
+<div class="studentContainer" data-student-index="<%= studentIndex %>" data-roll="<%= student.roll %>" hidden>
 
     <h3>
         Student Name:
@@ -165,25 +201,24 @@ console.log("FOUND =", marksMap[key]);
                 <% totalLoCount++; %>
             <% }) %>
 <tr>
-  <td colspan="7" style="background-color: #f0f0f0;">Total Obtained</td>
-  <td><%= sumAfter %></td>
-  
-  
+  <td colspan="7" style="background-color: #f0f0f0;"><b>Total Obtained</b></td>
+  <td><b><%= sumAfter %></b></td>
+
 </tr>
 <tr>
-   <td colspan="7" style="background-color: #f0f0f0;">Achievement Percentage</td>
+   <td colspan="7" style="background-color: #f0f0f0;"><b>Achievement Percentage</b></td>
    <td> 
         <% 
             // Calculate percentage based on completed LOs only
             const maxPossibleMarks = completedLoCount * 4;
             const percentage = completedLoCount > 0 ? ((sumAfter / maxPossibleMarks) * 100).toFixed(2) : 0;
         %>
-        <%= percentage %> %
+        <b><%= percentage %> %</b>
    </td>
 </tr>
 <tr>
-   <td colspan="7" style="background-color: #f0f0f0;">Learning Outcomes Completed</td>
-   <td> <%= completedLoCount %> / <%= totalLoCount %></td>
+   <td colspan="7" style="background-color: #f0f0f0;"><b>Learning Outcomes Completed</b></td>
+   <td> <b><%= completedLoCount %> / <%= totalLoCount %></b></td>
 </tr>
             </tbody>
 
@@ -194,6 +229,33 @@ console.log("FOUND =", marksMap[key]);
 </div>
 
 <% }) %>
+
+<script>
+    const studentButtons = [...document.querySelectorAll(".student-option")];
+    const studentReports = [...document.querySelectorAll(".studentContainer")];
+
+    function showStudentReport(index) {
+        studentReports.forEach((report, reportIndex) => {
+            report.hidden = reportIndex !== index;
+        });
+        studentButtons.forEach((button, buttonIndex) => {
+            const isSelected = buttonIndex === index;
+            button.setAttribute("aria-pressed", String(isSelected));
+            if (isSelected) button.scrollIntoView({ block: "nearest", inline: "nearest" });
+        });
+    }
+
+    studentButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+            showStudentReport(Number(button.dataset.studentIndex));
+        });
+    });
+
+    if (studentButtons.length) {
+        const rollOneIndex = studentReports.findIndex((report) => Number(report.dataset.roll) === 1);
+        showStudentReport(rollOneIndex >= 0 ? rollOneIndex : 0);
+    }
+</script>
 
 </body>
 </html>
