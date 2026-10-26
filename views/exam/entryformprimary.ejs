@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<% const attendanceTotalsByReg = typeof totalAttendanceByReg === 'undefined' ? {} : totalAttendanceByReg; %>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -243,7 +244,7 @@
                       </select>
                     </td>
                     <td data-label="Attendance">
-                      <input type="number" name="attendance[<%= student.reg %>]" min="0" value="<%= totalAttendanceByReg?.[String(student.reg)] ?? savedStudent?.attendance ?? '' %>" data-reg="<%= student.reg %>" aria-label="Attendance for <%= student.name %>" readonly aria-readonly="true">
+                      <input type="number" name="attendance[<%= student.reg %>]" min="0" value="<%= attendanceTotalsByReg[String(student.reg)] ?? savedStudent?.attendance ?? '' %>" data-reg="<%= student.reg %>" aria-label="Attendance for <%= student.name %>" readonly aria-readonly="true">
                     </td>
                   </tr>
                 <% }) %>

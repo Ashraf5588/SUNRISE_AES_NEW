@@ -475,6 +475,7 @@ exports.entryform = async (req,res,next)=>
       return res.render("./exam/entryformprimary",{studentData,studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,
 
         studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData,existingData,
+        totalAttendanceByReg,
         worksheet: Number(worksheet) || 1, configuredWorksheetCount: worksheetSetting?.totalWorksheet});
     }
     return res.render("./exam/entryform",{studentData,studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,theoryData,totalAttendanceByReg});
@@ -506,6 +507,7 @@ exports.entryform = async (req,res,next)=>
     const worksheetSetting = await WorksheetSetting.findOne({ studentClass, section, subject, terminal, academicYear })
       .select('totalWorksheet').lean();
     res.render("./exam/entryformprimary",{studentData,studentClass:studentClass,section,subject,academicYear,terminal,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData,existingData,
+      totalAttendanceByReg,
       worksheet: Number(worksheet) || 1, configuredWorksheetCount: worksheetSetting?.totalWorksheet});
   }
   else if( studentClass && studentClass.toLowerCase() === "nursery" || studentClass.toLowerCase() === "playgroup" || studentClass.toLowerCase() === "lkg" || studentClass.toLowerCase() === "ukg")

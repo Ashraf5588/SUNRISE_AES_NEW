@@ -371,7 +371,7 @@
            <% }) %>
             <td class="col-total-th"><%= data.totalTh %></td>
             <td class="col-total-pr"><%= Number(data.totalPr ?? 0).toFixed(2) %></td>
-            <td class="col-per"><%= data.theorypercentage ? data.theorypercentage.toFixed(2) : '-' %></td>
+            <td class="col-per"><%= Number.isFinite(Number(data.theorypercentage)) ? Number(data.theorypercentage).toFixed(2) : '-' %></td>
             <td class="col-gpa"><%= Number(data.gpa ?? 0).toFixed(2) %></td>
             <td class="col-result <%= data.failcount > 0 ? 'status-fail' : 'status-pass' %>"><% if (data.failcount>0) { %>Fail<% } else { %>Pass<% } %></td>
             <td class="col-rank"><%= data.rank %></td>

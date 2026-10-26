@@ -2657,6 +2657,24 @@ exports.ledger = async (req, res, next) => {
       });
     }
 
+    ledgerData.forEach((student) => {
+      const subjects = Array.isArray(student.subjects) ? student.subjects : [];
+      student.totalTh = subjects.reduce((total, subject) =>
+        total + (Number(subject.theorymarks ?? subject.theoryMarks) || 0), 0);
+      student.totalPr = subjects.reduce((total, subject) =>
+        total + (Number(subject.totalpracticalmarks ?? subject.practicalmarks ?? subject.practicalMarks) || 0), 0);
+      student.totalTheoryFullMarks = subjects.reduce((total, subject) =>
+        total + (Number(subject.theoryfullmarks ?? subject.theoryFullMarks) || 0), 0);
+      student.theorypercentage = student.totalTheoryFullMarks > 0
+        ? (student.totalTh / student.totalTheoryFullMarks) * 100
+        : 0;
+      student.failcount = subjects.filter((subject) => {
+        const subjectResult = student.subjectMap?.[subject.subject];
+        const subjectGP = Number(subject.finalGP ?? subjectResult?.finalGP);
+        return Number.isFinite(subjectGP) && subjectGP < 1.6;
+      }).length;
+    });
+
     // ============================================
     // CALCULATE ANALYSIS DATA
     // ============================================
