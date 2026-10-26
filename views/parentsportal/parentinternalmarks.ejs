@@ -46,6 +46,10 @@
 		.theme-table th:nth-child(n+3) { width:14.5%; }
 		.theme-table tbody tr:nth-child(even) { background:#f7f9fc; }
 		.theme-empty { padding:12px; color:var(--muted); font-size:11px; }
+		.theme-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; margin-top:9px; }
+		.theme-summary-card { min-width:0; padding:9px; border:1px solid var(--line); border-radius:6px; background:#f8fafc; }
+		.theme-summary-label { display:block; color:var(--muted); font-size:9px; font-weight:700; }
+		.theme-summary-value { display:block; margin-top:4px; color:var(--blue-dark); font:800 13px 'Manrope',sans-serif; overflow-wrap:anywhere; }
 		.marks { color:var(--blue-dark); font-weight:800; white-space:nowrap; }
 		.indicator-list { display:grid; gap:5px; }
 		.indicator-name { color:#344b65; line-height:1.35; }
@@ -97,6 +101,20 @@
 					<section class="subject-block primary-subject" data-subject-panel="<%= index %>">
 						<h3 class="subject-heading"><%= subject.subject %></h3>
 						<% if (subject.themes.length) { subject.themes.forEach(theme => { %>
+							<%
+								let totalObtained = 0;
+								let totalLearningOutcomesDone = 0;
+								theme.learningOutcomes.forEach(outcome => {
+									const record = outcome.record;
+									if (record?.marksEntered) totalLearningOutcomesDone++;
+									if (record?.marksAfter !== null && record?.marksAfter !== undefined && record?.marksAfter !== '' && Number.isFinite(Number(record.marksAfter))) {
+										totalObtained += Number(record.marksAfter);
+									}
+								});
+								const achievementPercentage = totalLearningOutcomesDone
+									? ((totalObtained / (totalLearningOutcomesDone * 4)) * 100).toFixed(2)
+									: '0.00';
+							%>
 							<section class="theme-block">
 								<h4 class="theme-heading">Theme: <%= theme.themeName %></h4>
 								<% if (theme.learningOutcomes.length) { %>
@@ -112,6 +130,11 @@
 											</tr>
 										<% }) %>
 									</tbody></table></div>
+									<div class="theme-summary" aria-label="Theme assessment summary">
+										<div class="theme-summary-card"><span class="theme-summary-label">Total obtained</span><strong class="theme-summary-value"><%= totalObtained %></strong></div>
+										<div class="theme-summary-card"><span class="theme-summary-label">Learning outcomes done</span><strong class="theme-summary-value"><%= totalLearningOutcomesDone %> / <%= theme.learningOutcomes.length %></strong></div>
+										<div class="theme-summary-card"><span class="theme-summary-label">Learning achievement</span><strong class="theme-summary-value"><%= achievementPercentage %>%</strong></div>
+									</div>
 								<% } else { %><div class="theme-empty">No learning outcomes are configured for this theme.</div><% } %>
 							</section>
 						<% }) } else { %><div class="theme-empty">No themes are configured for this subject.</div><% } %>

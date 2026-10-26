@@ -410,14 +410,19 @@ exports.internalMarksPage = async (req, res) => {
 				.find({ studentClass }).toArray();
 
 			const addPrimaryRow = record => {
-				const marksBefore = Number(record.obtainedMarksBefore ?? record.totalMarksBeforeIntervention ?? 0);
-				const marksAfter = Number(record.obtainedMarksAfter ?? record.totalMarksAfterIntervention ?? 0);
+				const rawMarksBefore = record.obtainedMarksBefore ?? record.totalMarksBeforeIntervention;
+				const rawMarksAfter = record.obtainedMarksAfter ?? record.totalMarksAfterIntervention;
+				const hasMarksBefore = rawMarksBefore !== undefined && rawMarksBefore !== null && rawMarksBefore !== '';
+				const hasMarksAfter = rawMarksAfter !== undefined && rawMarksAfter !== null && rawMarksAfter !== '';
+				const marksBefore = hasMarksBefore ? Number(rawMarksBefore) : null;
+				const marksAfter = hasMarksAfter ? Number(rawMarksAfter) : null;
 				const indicatorsBefore = Array.isArray(record.indicatorBefore) ? record.indicatorBefore.map(String) : [];
 				const indicatorsAfter = Array.isArray(record.indicatorAfter) ? record.indicatorAfter.map(String) : [];
 				const nestedIndicators = Array.isArray(record.indicators) ? record.indicators : [];
 				const indicatorBefore = indicatorsBefore.length ? indicatorsBefore : nestedIndicators.map(item => item.indicatorName || item.name).filter(Boolean);
 				const indicatorAfter = indicatorsAfter.length ? indicatorsAfter : nestedIndicators.map(item => item.indicatorName || item.name).filter(Boolean);
-				const remark = [marksBefore, marksAfter].some(mark => mark > 0 && mark <= 2) ? 'Needs improvement' : 'On track';
+				const markValues = [marksBefore, marksAfter].filter(Number.isFinite);
+				const remark = markValues.some(mark => mark > 0 && mark <= 2) ? 'Needs improvement' : 'On track';
 				primaryRows.push({
 					subject: String(record.subject || record.subjectName || '').trim(),
 					unitName: String(record.themeName || record.unitName || '').trim(),
@@ -426,6 +431,7 @@ exports.internalMarksPage = async (req, res) => {
 					indicatorAfter,
 					marksBefore,
 					marksAfter,
+					marksEntered: record.marksEntered === true || hasMarksBefore || hasMarksAfter,
 					remark,
 					evaluationDateBefore: String(record.evalDateBefore || record.evaluationDateBefore || '').trim(),
 					evaluationDateAfter: String(record.evalDateAfter || record.evaluationDateAfter || '').trim(),
@@ -444,6 +450,10 @@ exports.internalMarksPage = async (req, res) => {
 						const outcomes = theme.learningOutcomes || theme.learningOutcome || [];
 						outcomes.forEach(outcome => {
 							const indicators = Array.isArray(outcome.indicators) ? outcome.indicators : [];
+							const hasBeforeMarks = outcome.totalMarksBeforeIntervention !== undefined
+								|| indicators.some(item => item.marksBeforeIntervention !== undefined && item.marksBeforeIntervention !== null);
+							const hasAfterMarks = outcome.totalMarksAfterIntervention !== undefined
+								|| indicators.some(item => item.marksAfterIntervention !== undefined && item.marksAfterIntervention !== null);
 							const beforeTotal = Number(outcome.totalMarksBeforeIntervention ?? indicators.reduce((sum, item) => sum + Number(item.marksBeforeIntervention || 0), 0));
 							const afterTotal = Number(outcome.totalMarksAfterIntervention ?? indicators.reduce((sum, item) => sum + Number(item.marksAfterIntervention || 0), 0));
 							addPrimaryRow({
@@ -451,8 +461,9 @@ exports.internalMarksPage = async (req, res) => {
 								themeName: theme.themeName,
 								learningOutcomeName: outcome.name || outcome.learningOutcomeName,
 								indicators,
-								obtainedMarksBefore: beforeTotal,
-								obtainedMarksAfter: afterTotal
+								obtainedMarksBefore: hasBeforeMarks ? beforeTotal : undefined,
+								obtainedMarksAfter: hasAfterMarks ? afterTotal : undefined,
+								marksEntered: hasBeforeMarks || hasAfterMarks
 							});
 						});
 					});
@@ -511,6 +522,7 @@ exports.internalMarksPage = async (req, res) => {
 					outcome.record = {
 						marksBefore: row.marksBefore,
 						marksAfter: row.marksAfter,
+						marksEntered: row.marksEntered,
 						evaluationDateBefore: row.evaluationDateBefore,
 						evaluationDateAfter: row.evaluationDateAfter,
 						updatedAt: row.updatedAt,
