@@ -54,17 +54,21 @@
     .save-status { min-height: 18px; color: var(--muted); font-size: 12px; text-align: right; }
     .save-status.success { color: var(--success); }
     .save-status.error { color: var(--danger); }
-    .table-wrap { overflow: hidden; border: 1px solid var(--line); border-radius: 10px; }
-    #entrytable { width: 100%; table-layout: fixed; border-collapse: collapse; }
-    #entrytable th:nth-child(1), #entrytable td:nth-child(1) { width: 36%; }
-    #entrytable th:nth-child(2), #entrytable td:nth-child(2) { width: 22%; }
-    #entrytable th:nth-child(3), #entrytable td:nth-child(3) { width: 22%; }
-    #entrytable th:nth-child(4), #entrytable td:nth-child(4) { width: 20%; }
-    #entrytable th { position: sticky; top: 0; z-index: 1; padding: 12px 14px; background: #f3f6fb; color: #46556c; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-align: left; text-transform: uppercase; }
+    .table-wrap { overflow-x: auto; border: 1px solid #b8c7dc; border-radius: 10px; }
+    #entrytable { width: 100%; min-width: 560px; table-layout: fixed; border-collapse: separate; border-spacing: 0; }
+    #entrytable th:nth-child(1), #entrytable td:nth-child(1) { width: 34%; }
+    #entrytable th:nth-child(2), #entrytable td:nth-child(2) { width: 20%; }
+    #entrytable th:nth-child(3), #entrytable td:nth-child(3) { width: 30%; }
+    #entrytable th:nth-child(4), #entrytable td:nth-child(4) { width: 16%; }
+    #entrytable th { position: sticky; top: 58px; z-index: 2; padding: 12px 10px; border: 1px solid #24477f; background: #24477f; color: #fff; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-align: left; text-transform: uppercase; }
+    #entrytable th:first-child { border-top-left-radius: 8px; }
+    #entrytable th:last-child { border-top-right-radius: 8px; }
     #entrytable th:not(:first-child), #entrytable td:not(:first-child) { text-align: center; }
-    #entrytable td { padding: 10px 14px; border-top: 1px solid #edf1f6; vertical-align: middle; }
-    #entrytable tbody tr:hover { background: #f8faff; }
-    #entrytable td select, #entrytable td input[type="number"] { width: 100%; min-width: 0; min-height: 38px; }
+    #entrytable td { padding: 9px 10px; border-right: 1px solid #d9e2ef; border-bottom: 1px solid #d9e2ef; background: #fff; vertical-align: middle; overflow-wrap: anywhere; }
+    #entrytable td:first-child { border-left: 1px solid #d9e2ef; }
+    #entrytable tbody tr:nth-child(even) td { background: #f5f8fc; }
+    #entrytable tbody tr:hover td { background: #eaf1fb; }
+    #entrytable td select, #entrytable td input[type="number"] { display: block; width: 100%; max-width: 100%; min-width: 0; min-height: 38px; padding: 6px 8px; }
     .student-name { font-weight: 600; }
     .invalid-registration { color: var(--danger); }
     .valid-registration { color: var(--ink); }
@@ -77,6 +81,7 @@
       .detail-bar { align-items: stretch; flex-direction: column; }
       .worksheet-tools { justify-content: space-between; }
       .worksheet-tools .field { width: min(50%, 200px); }
+      #entrytable th { top: 68px; }
     }
     @media (max-width: 480px) {
       .filter-grid { grid-template-columns: 1fr; }
@@ -85,6 +90,15 @@
       .card { padding: 10px; }
       .entry-heading { align-items: flex-start; flex-direction: column; }
       .save-status { text-align: left; }
+      #entrytable { min-width: 0; }
+      #entrytable th:nth-child(1), #entrytable td:nth-child(1) { width: 32%; }
+      #entrytable th:nth-child(2), #entrytable td:nth-child(2) { width: 20%; }
+      #entrytable th:nth-child(3), #entrytable td:nth-child(3) { width: 32%; }
+      #entrytable th:nth-child(4), #entrytable td:nth-child(4) { width: 16%; }
+      #entrytable th { top: 0; padding: 8px 3px; font-size: 9px; letter-spacing: 0; text-align: center; }
+      #entrytable td { padding: 6px 3px; font-size: 11px; }
+      #entrytable td select, #entrytable td input[type="number"] { min-height: 34px; padding: 4px 2px; font-size: 11px; }
+      .absent-control { display: flex; width: fit-content; margin: 5px 0 0; font-size: 10px; }
     }
   </style>
 </head>
@@ -207,14 +221,14 @@
           </td>
           <td>
             <select class="theoryGrade" name="theorymarks[<%= student.reg %>]" data-reg="<%= student.reg %>" aria-label="Theory grade for <%= student.name %>">
-              <option value="">Select grade</option>
+              <option value="">Grade</option>
               <option value="4.0">A+</option><option value="3.6">A</option><option value="3.2">B+</option>
               <option value="2.8">B</option><option value="2.4">C+</option><option value="2.0">C</option>
               <option value="1.6">D</option><option value="0.0">NG</option>
             </select>
           </td>
           <td><select class="worksheetGrade" id="worksheetgrade_<%= student._id %>" name="worksheetGrades[<%= student.reg %>]" data-reg="<%= student.reg %>" aria-label="Worksheet grade for <%= student.name %>">
-            <option value="">Select grade</option><option value="A+">A+</option><option value="A">A</option>
+            <option value="">Grade</option><option value="A+">A+</option><option value="A">A</option>
             <option value="B+">B+</option><option value="B">B</option><option value="C+">C+</option>
             <option value="C">C</option><option value="D">D</option><option value="NG">NG</option><option value="Ab">Absent</option>
           </select></td>
