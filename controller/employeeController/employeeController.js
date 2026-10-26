@@ -158,6 +158,7 @@ exports.uploadEmployeeDocuments = (req, res, next) => employeeDocumentUpload.any
     const message = error instanceof multer.MulterError
         ? 'Upload up to 30 documents, each no larger than 10 MB.'
         : error.message || 'Unable to read employee documents.';
+    if (req.accepts('json')) return res.status(400).json({ message });
     return res.status(400).send(message);
 });
 
@@ -347,9 +348,11 @@ const getPrivateEmployeeDocument = async (req, res) => {
         const safeFilename = String(document.originalName || document.documentName || 'staff-document')
             .replace(/[\r\n"\\/]/g, '_')
             .replace(/[^\w.-]/g, '_');
+        const allowedMimeTypes = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+        const contentType = allowedMimeTypes.has(document.mimeType) ? document.mimeType : 'application/octet-stream';
         res.set({
-            'Content-Type': 'application/octet-stream',
-            'Content-Disposition': `attachment; filename="${safeFilename}"`,
+            'Content-Type': contentType,
+            'Content-Disposition': `inline; filename="${safeFilename}"`,
             'Cache-Control': 'private, no-store',
             'X-Content-Type-Options': 'nosniff'
         });
@@ -359,6 +362,127 @@ const getPrivateEmployeeDocument = async (req, res) => {
         console.error('Unable to download employee document:', error);
         if (res.headersSent) return res.destroy(error);
         return res.status(502).send('Unable to retrieve this document.');
+    }
+};
+
+const authorizeEmployeeDocumentMutation = async (req, res) => {
+    const employeeId = String(req.params.employeeId || '');
+    if (!mongoose.isValidObjectId(employeeId)) {
+        res.status(404).json({ message: 'Employee profile not found.' });
+        return null;
+    }
+    const employee = await Staff.findById(employeeId).lean();
+    if (!employee) {
+        res.status(404).json({ message: 'Employee profile not found.' });
+        return null;
+    }
+    if (String(req.user?.role || '').toUpperCase() === 'ADMIN') return employee;
+    if (String(req.user?.role || '').toUpperCase() !== 'TEACHER') {
+        res.status(403).json({ message: 'You are not authorized to change this profile.' });
+        return null;
+    }
+    const linkedEmployee = await findEmployeeForUser(req.user);
+    if (!linkedEmployee || String(linkedEmployee._id) !== String(employee._id)) {
+        res.status(403).json({ message: 'You are not authorized to change this profile.' });
+        return null;
+    }
+    return employee;
+};
+
+const uploadReplacementEmployeeDocument = async (file, employee, documentName) => {
+    const { containerClient, containerName } = await getEmployeeDocumentContainer();
+    const extension = path.extname(file.originalname).toLowerCase();
+    const safeExtension = /^\.(pdf|jpe?g|png|webp|gif)$/.test(extension) ? extension : '';
+    const blobName = `employee-documents/${employee.employeeCode}/${Date.now()}-${crypto.randomUUID()}${safeExtension}`;
+    const blobClient = containerClient.getBlockBlobClient(blobName);
+    await blobClient.uploadData(file.buffer, { blobHTTPHeaders: { blobContentType: file.mimetype } });
+    return {
+        documentName,
+        url: blobClient.url,
+        blobName,
+        containerName,
+        originalName: getText(file.originalname, 180),
+        mimeType: file.mimetype,
+        uploadedAt: new Date()
+    };
+};
+
+exports.updateEmployeeDocument = async (req, res) => {
+    let uploadedDocument = null;
+    try {
+        const employee = await authorizeEmployeeDocumentMutation(req, res);
+        if (!employee) return;
+        const currentBlobName = String(req.body.blobName || '');
+        const documentName = getText(req.body.documentName, 120);
+        if (!currentBlobName || !documentName) return res.status(400).json({ message: 'A document name is required.' });
+        const existingDocument = (employee.documents || []).find(document => document.blobName === currentBlobName);
+        if (!existingDocument) return res.status(404).json({ message: 'Document not found.' });
+
+        const replacementFile = (req.files || []).find(file => file.fieldname === 'replacementFile');
+        if (replacementFile) {
+            uploadedDocument = await uploadReplacementEmployeeDocument(replacementFile, employee, documentName);
+            const result = await Staff.updateOne(
+                { _id: employee._id, 'documents.blobName': currentBlobName },
+                { $set: { 'documents.$': uploadedDocument } },
+                { runValidators: true }
+            );
+            if (!result.matchedCount) {
+                await deleteUploadedDocuments([uploadedDocument]);
+                return res.status(409).json({ message: 'This document changed. Refresh the page and try again.' });
+            }
+            await deleteUploadedDocuments([existingDocument]);
+        } else {
+            const result = await Staff.updateOne(
+                { _id: employee._id, 'documents.blobName': currentBlobName },
+                { $set: { 'documents.$.documentName': documentName } },
+                { runValidators: true }
+            );
+            if (!result.matchedCount) return res.status(409).json({ message: 'This document changed. Refresh the page and try again.' });
+        }
+        return res.json({ message: 'Document saved.' });
+    } catch (error) {
+        if (uploadedDocument) await deleteUploadedDocuments([uploadedDocument]);
+        console.error('Unable to update employee document:', error);
+        return res.status(500).json({ message: 'Unable to update this document.' });
+    }
+};
+
+exports.deleteEmployeeDocument = async (req, res) => {
+    try {
+        const employee = await authorizeEmployeeDocumentMutation(req, res);
+        if (!employee) return;
+        const blobName = String(req.body.blobName || '');
+        const document = (employee.documents || []).find(item => item.blobName === blobName);
+        if (!document) return res.status(404).json({ message: 'Document not found.' });
+        const result = await Staff.updateOne(
+            { _id: employee._id, 'documents.blobName': blobName },
+            { $pull: { documents: { blobName } } }
+        );
+        if (!result.matchedCount) return res.status(409).json({ message: 'This document changed. Refresh the page and try again.' });
+        await deleteUploadedDocuments([document]);
+        return res.json({ message: 'Document deleted.' });
+    } catch (error) {
+        console.error('Unable to delete employee document:', error);
+        return res.status(500).json({ message: 'Unable to delete this document.' });
+    }
+};
+
+exports.deleteEmployeePhoto = async (req, res) => {
+    try {
+        const employee = await authorizeEmployeeDocumentMutation(req, res);
+        if (!employee) return;
+        const photo = employee.employeePhoto;
+        if (!photo?.blobName) return res.status(404).json({ message: 'Profile photo not found.' });
+        const result = await Staff.updateOne(
+            { _id: employee._id, 'employeePhoto.blobName': photo.blobName },
+            { $unset: { employeePhoto: 1 } }
+        );
+        if (!result.matchedCount) return res.status(409).json({ message: 'The profile photo changed. Refresh the page and try again.' });
+        await deleteUploadedDocuments([photo]);
+        return res.json({ message: 'Profile photo deleted.' });
+    } catch (error) {
+        console.error('Unable to delete employee photo:', error);
+        return res.status(500).json({ message: 'Unable to delete the profile photo.' });
     }
 };
 
@@ -2362,8 +2486,15 @@ const teacherProfileFields = [
 const renderTeacherProfileFillup = async (req, res, options = {}) => {
     const employee = options.employee || await findEmployeeForUser(req.user);
     if (!employee) return res.status(403).send('Your login is not linked to an employee profile.');
+    const employeeForView = {
+        ...employee,
+        documents: (employee.documents || []).map(document => ({
+            ...document,
+            url: getEmployeeDocumentUrl(employee._id, document.blobName)
+        }))
+    };
     return res.status(options.status || 200).render('employee/employeprofilefillupform', {
-        employee,
+        employee: employeeForView,
         formData: options.formData || toEmployeeFormData(employee),
         error: options.error || '',
         saved: options.saved || false

@@ -6,6 +6,9 @@ const { verifytoken, verifytokenApi, isAdmin } = require('../middleware/auth');
 
 
 employee.get('/employee-document/:employeeId', verifytokenApi, employeeController.showPrivateEmployeeDocument);
+employee.post('/employee-document/:employeeId/update', verifytokenApi, employeeController.uploadEmployeeDocuments, employeeController.updateEmployeeDocument);
+employee.post('/employee-document/:employeeId/delete', verifytokenApi, employeeController.deleteEmployeeDocument);
+employee.post('/employee-photo/:employeeId/delete', verifytokenApi, employeeController.deleteEmployeePhoto);
 employee.get('/employeedetail', verifytoken, isAdmin, employeeController.showEmployeeDetails);
 employee.get('/employeedetail/csv-template', verifytoken, isAdmin, employeeController.downloadEmployeeProfileCsvTemplate);
 employee.get('/employeedetail/check-code', verifytoken, isAdmin, employeeController.checkEmployeeIdentifier);
