@@ -363,11 +363,12 @@
           <thead>
             <tr>
               <th style="width:60px">SN</th>
-              <th>Teacher Name</th>
+              <th>Employee Name</th>
               <th style="width:110px">Half Leave</th>
               <th style="width:110px">Full Leave</th>
               <th style="width:110px">Late In</th>
               <th style="width:110px">Early Out</th>
+              <th style="width:110px">Absent</th>
               <th style="width:110px">Issue Count</th>
               <th>Issue List</th>
             </tr>
@@ -385,6 +386,7 @@
                   <td><%= row.fullLeaveCount || 0 %></td>
                   <td><%= row.lateInCount || 0 %></td>
                   <td><%= row.earlyOutCount || 0 %></td>
+                  <td><%= row.absentCount || 0 %></td>
                   <td><%= row.issueCount || 0 %></td>
                   <td class="issue-list">
                     <% if (row.issues && row.issues.length) { %>
@@ -425,7 +427,7 @@
               <% }) %>
             <% } else { %>
               <tr>
-                <td colspan="8">No teacher records found.</td>
+                <td colspan="9">No teacher records found.</td>
               </tr>
             <% } %>
           </tbody>

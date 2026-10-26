@@ -113,18 +113,65 @@ const normalizeName = value => String(value || '').trim().replace(/\s+/g, ' ').t
 const getDepartmentAdmins = (users, profiles) => users.map(user => {
 	const profile = findStaffProfile(user, profiles);
 	return {
+		id: String(user._id),
 		name: String(profile.staffName || user.teacherName || user.username || '').trim(),
+		username: String(user.username || '').trim(),
+		role: getRole(user),
+		employeeCode: String(profile.employeeCode || user.employeeCode || '').trim(),
 		department: String(profile.department || user.department || '').trim()
 	};
 }).filter(admin => admin.name);
 const getAdminDepartmentStaff = (users, profiles) => [...new Map(
 	getDepartmentAdmins(users, profiles)
-		.filter(admin => normalizeName(admin.department) === 'admin')
-		.map(admin => [normalizeName(admin.name), admin])
+		.filter(admin => normalizeName(admin.department) === 'admin' || admin.role === 'ADMIN')
+		.map(admin => [admin.id, admin])
 ).values()];
-const getDepartmentAdminNames = (users, profiles) => new Map(
-	getAdminDepartmentStaff(users, profiles).map(admin => [normalizeName(admin.name), admin.name])
-);
+const resolveDepartmentAdmin = (value, users, profiles) => {
+	const normalized = String(value || '').trim();
+	if (!normalized) return null;
+	const admins = getAdminDepartmentStaff(users, profiles);
+	return admins.find(admin => admin.id === normalized)
+		|| admins.find(admin => [admin.name, admin.username, admin.employeeCode]
+			.some(candidate => normalizeName(candidate) === normalizeName(normalized)))
+		|| null;
+};
+const getAssignedApprover = (application, admin, eligibleAdmins = [admin]) => {
+	if (!admin?.id) return false;
+	if (application.assignedApproverUserId) {
+		return String(application.assignedApproverUserId) === admin.id;
+	}
+	const assignedCode = String(application.assignedApproverEmployeeCode || '').trim().toUpperCase();
+	if (assignedCode) {
+		const matches = eligibleAdmins.filter(candidate => candidate.employeeCode.toUpperCase() === assignedCode);
+		return matches.length === 1 && matches[0].id === admin.id;
+	}
+	const assignedName = normalizeName(application.assignedApproverName || application.approverName);
+	if (!assignedName) return false;
+	const matches = eligibleAdmins.filter(candidate => [
+		candidate.name,
+		candidate.username,
+		candidate.employeeCode
+	].some(value => normalizeName(value) === assignedName));
+	return matches.length === 1 && matches[0].id === admin.id;
+};
+
+const authorizeAssignedApprover = async (req, res, application) => {
+	const users = await User.find({}).select('teacherName username role employeeCode department').lean();
+	const user = users.find(candidate => String(candidate._id) === String(req.user?._id));
+	if (!user) {
+		res.status(403).send('Only the assigned leave approver can perform this action.');
+		return false;
+	}
+	const profiles = await Staff.find({}).select('employeeCode staffName department').lean();
+	const eligibleAdmins = getAdminDepartmentStaff(users, profiles);
+	const admin = eligibleAdmins.find(candidate => candidate.id === String(user._id));
+	if (!admin || !getAssignedApprover(application, admin, eligibleAdmins)) {
+		res.status(403).send('Only the assigned leave approver can perform this action.');
+		return false;
+	}
+	req.leaveApprover = admin;
+	return true;
+};
 
 const getRole = (user) => String(user?.role || '').trim().toUpperCase();
 const appliesToUser = (leaveType, user) => {
@@ -214,12 +261,19 @@ exports.leavePage = async (req, res) => {
 	try {
 		const admin = isAdmin(req.user);
 		const profiles = await Staff.find({}).select('employeeCode staffName companyName branchName designation department section employeePhoto').lean();
+		const approverUsers = await User.find({}).select('teacherName username role employeeCode department').sort({ teacherName: 1, username: 1 }).lean();
+		const currentUser = approverUsers.find(user => String(user._id) === String(req.user._id));
+		const eligibleApprovers = getAdminDepartmentStaff(approverUsers, profiles);
+		const currentApprover = eligibleApprovers.find(candidate => candidate.id === String(currentUser?._id)) || null;
 		const userFilter = admin ? {} : getEmployeeLeaveFilter(req.user, findStaffProfile(req.user, profiles));
+		const visibleApplicationFilter = admin || currentApprover
+			? {}
+			: userFilter;
 		const currentBsYear = String(bs.ADToBS(new Date()) || '').slice(0, 4);
 		const yearSetup = await mongoose.connection.collection('marksheetSetup').findOne({}, { projection: { academicYear: 1 } });
 		const currentAcademicYear = String(yearSetup?.academicYear || currentBsYear);
 		const storedYears = await LeaveApplication.aggregate([
-			{ $match: { ...userFilter, startDateNepali: /^\d{4}-/ } },
+			{ $match: { ...visibleApplicationFilter, startDateNepali: /^\d{4}-/ } },
 			{ $project: { year: { $substrBytes: ['$startDateNepali', 0, 4] } } },
 			{ $group: { _id: '$year' } }
 		]);
@@ -229,7 +283,7 @@ exports.leavePage = async (req, res) => {
 		const requestedAcademicYear = String(req.query.academicYear || '');
 		const academicYear = academicYearOptions.includes(requestedAcademicYear) ? requestedAcademicYear : currentAcademicYear;
 		const yearFilter = { startDateNepali: { $regex: `^${academicYear}-` } };
-		const applicationFilter = { $and: [userFilter, yearFilter] };
+		const applicationFilter = { $and: [visibleApplicationFilter, yearFilter] };
 		const [summaryResult] = await LeaveApplication.aggregate([
 			{ $match: applicationFilter },
 			{ $group: {
@@ -249,18 +303,26 @@ exports.leavePage = async (req, res) => {
 			.skip((page - 1) * pageSizeNumber);
 		if (pageSize !== 'all') applicationQuery.limit(pageSizeNumber);
 		else if (applicationCount) applicationQuery.limit(applicationCount);
-		const [allLeaveTypes, applicationRecords, users, branches, approverUsers, holidays] = await Promise.all([
+		const [allLeaveTypes, applicationRecords, users, branches, holidays] = await Promise.all([
 			LeaveType.find({ isActive: true }).sort({ leavename: 1 }).lean(),
 			applicationQuery.lean(),
-			admin ? User.find({}).select('teacherName username role employeeCode department').sort({ teacherName: 1, username: 1 }).lean() : Promise.resolve([req.user]),
+			admin || currentApprover ? Promise.resolve(approverUsers) : Promise.resolve([req.user]),
 			Branch.find({}).select('name').sort({ name: 1 }).lean(),
-			User.find({}).select('teacherName username role employeeCode department').sort({ teacherName: 1, username: 1 }).lean(),
 			EmployeeWeekend.find({}).select('dateBs').lean()
 		]);
+		const reviewerNames = new Map();
+		approverUsers.forEach(user => {
+			const profileName = findStaffProfile(user, profiles).staffName;
+			const displayName = String(profileName || user.teacherName || user.username || '').trim();
+			if (user.username) reviewerNames.set(normalizeName(user.username), displayName);
+			if (user.teacherName) reviewerNames.set(normalizeName(user.teacherName), displayName);
+		});
 		const applications = applicationRecords.map(application => ({
 			...application,
 			startDateAd: application.startDateAd || parseNepaliDate(application.startDateNepali)?.toISOString().slice(0, 10) || '',
-			endDateAd: application.endDateAd || parseNepaliDate(application.endDateNepali)?.toISOString().slice(0, 10) || ''
+			endDateAd: application.endDateAd || parseNepaliDate(application.endDateNepali)?.toISOString().slice(0, 10) || '',
+			reviewedByDisplay: reviewerNames.get(normalizeName(application.reviewedBy)) || application.reviewedBy,
+			canManage: Boolean(currentApprover && getAssignedApprover(application, currentApprover, eligibleApprovers))
 		}));
 		const employees = users.map(user => {
 			const profile = findStaffProfile(user, profiles);
@@ -278,7 +340,7 @@ exports.leavePage = async (req, res) => {
 				photoUrl: profile.employeePhoto?.url || ''
 			};
 		});
-		const availableLeaveTypes = admin ? allLeaveTypes : allLeaveTypes.filter(type => appliesToUser(type, req.user));
+		const availableLeaveTypes = admin || currentApprover ? allLeaveTypes : allLeaveTypes.filter(type => appliesToUser(type, req.user));
 		let leaveBalances = [];
 		if (!admin) {
 			const balanceRecords = await LeaveApplication.find({
@@ -312,8 +374,8 @@ exports.leavePage = async (req, res) => {
 		const remainingQuotaTypeCount = leaveBalances.filter(balance => balance.remainingDays !== null).length;
 		const totalRemainingLeave = leaveBalances.reduce((total, balance) => total + (balance.remainingDays || 0), 0);
 		const departmentAdmins = getAdminDepartmentStaff(approverUsers, profiles);
-		const editingApplication = admin && mongoose.isValidObjectId(req.query.edit)
-			? applications.find(application => String(application._id) === String(req.query.edit) && application.status === 'pending') || null
+		const editingApplication = currentApprover && mongoose.isValidObjectId(req.query.edit)
+			? applications.find(application => String(application._id) === String(req.query.edit) && application.status === 'pending' && application.canManage) || null
 			: null;
 		const selectedEmployeeId = editingApplication ? String(editingApplication.requester) : String(req.user._id);
 		const currentEmployee = employees.find(employee => employee.id === selectedEmployeeId) || {};
@@ -358,7 +420,13 @@ exports.leavePage = async (req, res) => {
 
 exports.leaveUsage = async (req, res) => {
 	try {
-		const admin = isAdmin(req.user);
+		let admin = isAdmin(req.user);
+		if (!admin && req.query.excludeApplicationId) {
+			if (!mongoose.isValidObjectId(req.query.excludeApplicationId)) return res.status(400).json({ message: 'Invalid leave application.' });
+			const application = await LeaveApplication.findOne({ _id: req.query.excludeApplicationId, status: 'pending' }).lean();
+			if (!application || !await authorizeAssignedApprover(req, res, application)) return;
+			admin = true;
+		}
 		let applicant = req.user;
 		if (admin) {
 			const employeeId = String(req.query.employeeId || '').trim();
@@ -478,16 +546,15 @@ exports.submitLeaveApplication = [handleLeaveDocumentUpload, async (req, res) =>
 		const profile = findStaffProfile(applicant, profiles);
 		const applicantLeaveFilter = getEmployeeLeaveFilter(applicant, profile);
 		const department = String(profile.department || applicant.department || '').trim();
-		const departmentAdminNames = getDepartmentAdminNames(
-			await User.find({}).select('teacherName username employeeCode department').lean(),
-			profiles
-		);
+		const approverUsers = await User.find({}).select('teacherName username role employeeCode department').lean();
 		const requestedApproverName = String(req.body.approverName || '').trim();
 		const requestedRecommendedBy = String(req.body.recommendedBy || '').trim();
-		const approverName = departmentAdminNames.get(normalizeName(requestedApproverName)) || '';
-		const recommendedBy = departmentAdminNames.get(normalizeName(requestedRecommendedBy)) || '';
-		if ((requestedApproverName && !approverName) || (requestedRecommendedBy && !recommendedBy)) {
-			return res.status(400).send('Choose approver and recommender names from the administrator list.');
+		const assignedApprover = resolveDepartmentAdmin(requestedApproverName, approverUsers, profiles);
+		const recommendedByAdmin = resolveDepartmentAdmin(requestedRecommendedBy, approverUsers, profiles);
+		const approverName = assignedApprover?.name || '';
+		const recommendedBy = recommendedByAdmin?.name || '';
+		if ((!admin && !assignedApprover) || (requestedApproverName && !assignedApprover) || (requestedRecommendedBy && !recommendedByAdmin)) {
+			return res.status(400).send('Choose an assigned administrator and a valid recommender from the administrator list.');
 		}
 		const activeStatuses = ['pending', 'approved'];
 		const overlapping = await LeaveApplication.find({
@@ -536,7 +603,7 @@ exports.submitLeaveApplication = [handleLeaveDocumentUpload, async (req, res) =>
 			department,
 			section: profile.section || '',
 			status: admin ? 'approved' : 'pending',
-			reviewedBy: admin ? String(req.user.username || req.user.teacherName || '').trim() : '',
+			reviewedBy: admin ? String(req.user.teacherName || req.user.username || '').trim() : '',
 			reviewedAt: admin ? new Date() : null,
 			leaveType: leaveType._id,
 			leaveTypeName: leaveType.leavename,
@@ -553,6 +620,9 @@ exports.submitLeaveApplication = [handleLeaveDocumentUpload, async (req, res) =>
 			yearlyAllocations: toAllocationRecords(allocations.years),
 			reason,
 			approverName,
+			assignedApproverUserId: assignedApprover?.id || null,
+			assignedApproverEmployeeCode: assignedApprover?.employeeCode || '',
+			assignedApproverName: assignedApprover?.name || '',
 			recommendedBy,
 			supportingDocument: req.file?.buffer,
 			supportingDocumentName: req.file?.originalname || '',
@@ -568,8 +638,14 @@ exports.submitLeaveApplication = [handleLeaveDocumentUpload, async (req, res) =>
 
 exports.editLeaveApplication = async (req, res) => {
 	if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Leave application not found.');
-	const application = await LeaveApplication.findById(req.params.id).select('status').lean();
+	const application = await LeaveApplication.findById(req.params.id).lean();
 	if (!application || application.status !== 'pending') return res.status(404).send('Pending leave application not found.');
+	try {
+		if (!await authorizeAssignedApprover(req, res, application)) return;
+	} catch (error) {
+		console.error('Unable to authorize leave edit:', error);
+		return res.status(500).send('Unable to authorize leave edit.');
+	}
 	req.query.edit = String(req.params.id);
 	return exports.leavePage(req, res);
 };
@@ -579,6 +655,7 @@ exports.updateLeaveApplication = [handleLeaveDocumentUpload, async (req, res) =>
 	try {
 		const application = await LeaveApplication.findById(req.params.id);
 		if (!application || application.status !== 'pending') return res.status(404).send('Pending leave application not found.');
+		if (!await authorizeAssignedApprover(req, res, application)) return;
 		const employeeId = String(req.body.employeeId || '').trim();
 		const applicant = mongoose.isValidObjectId(employeeId)
 			? await User.findById(employeeId).select('teacherName username role employeeCode department').lean()
@@ -619,16 +696,15 @@ exports.updateLeaveApplication = [handleLeaveDocumentUpload, async (req, res) =>
 		const requestedDays = totalAllocations(allocations.years);
 		if (!requestedDays) return res.status(400).send('The selected dates contain no chargeable leave days.');
 		const department = String(profile.department || applicant.department || '').trim();
-		const departmentAdminNames = getDepartmentAdminNames(
-			await User.find({}).select('teacherName username employeeCode department').lean(),
-			profiles
-		);
+		const approverUsers = await User.find({}).select('teacherName username role employeeCode department').lean();
 		const requestedApproverName = String(req.body.approverName || '').trim();
 		const requestedRecommendedBy = String(req.body.recommendedBy || '').trim();
-		const approverName = departmentAdminNames.get(normalizeName(requestedApproverName)) || '';
-		const recommendedBy = departmentAdminNames.get(normalizeName(requestedRecommendedBy)) || '';
-		if ((requestedApproverName && !approverName) || (requestedRecommendedBy && !recommendedBy)) {
-			return res.status(400).send('Choose approver and recommender names from the administrator list.');
+		const assignedApprover = resolveDepartmentAdmin(requestedApproverName, approverUsers, profiles);
+		const recommendedByAdmin = resolveDepartmentAdmin(requestedRecommendedBy, approverUsers, profiles);
+		const approverName = assignedApprover?.name || '';
+		const recommendedBy = recommendedByAdmin?.name || '';
+		if (!assignedApprover || (requestedApproverName && !assignedApprover) || (requestedRecommendedBy && !recommendedByAdmin)) {
+			return res.status(400).send('Choose an assigned administrator and a valid recommender from the administrator list.');
 		}
 		const update = {
 			requester: applicant._id,
@@ -656,6 +732,9 @@ exports.updateLeaveApplication = [handleLeaveDocumentUpload, async (req, res) =>
 			yearlyAllocations: toAllocationRecords(allocations.years),
 			reason,
 			approverName,
+			assignedApproverUserId: assignedApprover.id,
+			assignedApproverEmployeeCode: assignedApprover.employeeCode,
+			assignedApproverName: assignedApprover.name,
 			recommendedBy
 		};
 		if (req.file) {
@@ -675,30 +754,26 @@ exports.updateLeaveApplication = [handleLeaveDocumentUpload, async (req, res) =>
 exports.transferLeaveApplication = async (req, res) => {
 	if (!mongoose.isValidObjectId(req.params.id) || !mongoose.isValidObjectId(req.body.employeeId)) return res.status(400).send('Choose a valid employee.');
 	try {
-		const [application, applicant] = await Promise.all([
-			LeaveApplication.findOne({ _id: req.params.id, status: 'pending' }),
-			User.findById(req.body.employeeId).select('teacherName username role employeeCode department').lean()
-		]);
+		const application = await LeaveApplication.findOne({ _id: req.params.id, status: 'pending' });
 		if (!application) return res.status(404).send('Pending leave application not found.');
-		if (!applicant) return res.status(404).send('Employee not found.');
+		if (!await authorizeAssignedApprover(req, res, application)) return;
 		const profiles = await Staff.find({}).select('employeeCode staffName companyName branchName designation department section').lean();
-		const profile = findStaffProfile(applicant, profiles);
-		const previousEmployeeName = application.employeeName;
-		const result = await LeaveApplication.updateOne({ _id: application._id, status: 'pending' }, { $set: {
-			requester: applicant._id,
-			username: String(applicant.username || '').trim(),
-			employeeName: String(profile.staffName || applicant.teacherName || applicant.username || '').trim(),
-			employeeRole: getRole(applicant),
-			companyName: profile.companyName || 'United English Boarding School',
-			branchName: profile.branchName || '',
-			employeeCode: profile.employeeCode || applicant.employeeCode || '',
-			designation: profile.designation || '',
-			department: profile.department || applicant.department || '',
-			section: profile.section || '',
-			transferredFrom: previousEmployeeName,
+		const approverUsers = await User.find({}).select('teacherName username role employeeCode department').lean();
+		const transferredApprover = resolveDepartmentAdmin(req.body.employeeId, approverUsers, profiles);
+		if (!transferredApprover) return res.status(400).send('Choose another eligible administrator to receive this leave approval.');
+		if (transferredApprover.id === req.leaveApprover.id) return res.status(400).send('Choose a different administrator to receive this leave approval.');
+		const result = await LeaveApplication.updateOne(
+			{ _id: application._id, status: 'pending' },
+			{ $set: {
+			approverName: transferredApprover.name,
+			assignedApproverUserId: transferredApprover.id,
+			assignedApproverEmployeeCode: transferredApprover.employeeCode,
+			assignedApproverName: transferredApprover.name,
+			transferredFrom: String(application.assignedApproverName || application.approverName || '').trim(),
 			transferredBy: String(req.user.teacherName || req.user.username || '').trim(),
 			transferredAt: new Date()
-		} });
+			} }
+		);
 		if (!result.modifiedCount) return res.status(409).send('The leave application could not be transferred.');
 		return res.redirect('/leave?saved=1');
 	} catch (error) {
@@ -710,6 +785,9 @@ exports.transferLeaveApplication = async (req, res) => {
 exports.deleteLeaveApplication = async (req, res) => {
 	if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Leave application not found.');
 	try {
+		const application = await LeaveApplication.findById(req.params.id);
+		if (!application) return res.status(404).send('Leave application not found.');
+		if (!await authorizeAssignedApprover(req, res, application)) return;
 		const result = await LeaveApplication.deleteOne({ _id: req.params.id });
 		return result.deletedCount ? res.redirect('/leave?saved=1') : res.status(404).send('Leave application not found.');
 	} catch (error) {
@@ -727,13 +805,14 @@ exports.reviewLeaveApplication = async (req, res) => {
 	try {
 		const application = await LeaveApplication.findById(req.params.id);
 		if (!application) return res.status(404).send('Leave application not found.');
+		if (!await authorizeAssignedApprover(req, res, application)) return;
 		if (application.status !== 'pending') return res.status(409).send('This leave application has already been reviewed.');
 		const result = await LeaveApplication.updateOne(
 			{ _id: application._id, status: 'pending' },
 			{ $set: {
 				status,
 				reviewReason: status === 'rejected' ? reviewReason : '',
-				reviewedBy: String(req.user.username || req.user.teacherName || '').trim(),
+				reviewedBy: String(req.user.teacherName || req.user.username || '').trim(),
 				reviewedAt: new Date()
 			} }
 		);
@@ -748,9 +827,9 @@ exports.reviewLeaveApplication = async (req, res) => {
 exports.downloadSupportingDocument = async (req, res) => {
 	if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Document not found.');
 	try {
-		const application = await LeaveApplication.findById(req.params.id).select('requester supportingDocument supportingDocumentName supportingDocumentMimeType').lean();
+		const application = await LeaveApplication.findById(req.params.id).select('requester assignedApproverUserId assignedApproverEmployeeCode assignedApproverName approverName supportingDocument supportingDocumentName supportingDocumentMimeType').lean();
 		if (!application?.supportingDocument) return res.status(404).send('Document not found.');
-		if (!isAdmin(req.user) && String(application.requester) !== String(req.user._id)) return res.status(403).send('You cannot access this document.');
+		if (String(application.requester) !== String(req.user._id) && !await authorizeAssignedApprover(req, res, application)) return;
 		res.type(application.supportingDocumentMimeType || 'application/octet-stream');
 		res.setHeader('Content-Disposition', `inline; filename="${String(application.supportingDocumentName || 'leave-document').replace(/[\\"\r\n]/g, '_')}"`);
 		return res.send(application.supportingDocument);

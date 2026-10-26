@@ -10,6 +10,7 @@
 </head>
 <body>
 	<% const isUserAdmin = typeof isAdmin !== 'undefined' ? Boolean(isAdmin) : false; %>
+	<% const isLeaveEditor = isUserAdmin || Boolean(editingApplication); %>
 	<% if (isUserAdmin) { %><%- include('../employee/employeesidenav', { currentPage: 'leave', selectedEmployee: null, isAdmin: true }) %><% } %>
 	<div class="leave-shell">
 		<header class="leave-topbar">
@@ -35,11 +36,11 @@
 						<button type="button" class="leave-modal-close" aria-label="Close leave form" data-close-modal="true">×</button>
 					</div>
 					<% if (leaveTypes.length) { %>
-					<form method="post" action="<%= editingApplication ? `/leave/${editingApplication._id}/edit` : '/leave' %>" enctype="multipart/form-data" id="leaveApplicationForm" data-is-admin="<%= isUserAdmin ? 'true' : 'false' %>" data-editing-id="<%= editingApplication?._id || '' %>" data-holidays="<%= JSON.stringify(holidayDatesAd || []) %>">
+					<form method="post" action="<%= editingApplication ? `/leave/${editingApplication._id}/edit` : '/leave' %>" enctype="multipart/form-data" id="leaveApplicationForm" data-is-admin="<%= isLeaveEditor ? 'true' : 'false' %>" data-editing-id="<%= editingApplication?._id || '' %>" data-holidays="<%= JSON.stringify(holidayDatesAd || []) %>">
 						<div class="leave-field-grid">
-							<% if (isUserAdmin) { %><div class="leave-field"><label for="branchFilter">Select Branch</label><select id="branchFilter"><option value="">All branches</option><% branches.forEach(branch => { %><option value="<%= branch %>"><%= branch %></option><% }) %></select></div><% } %>
+							<% if (isLeaveEditor) { %><div class="leave-field"><label for="branchFilter">Select Branch</label><select id="branchFilter"><option value="">All branches</option><% branches.forEach(branch => { %><option value="<%= branch %>"><%= branch %></option><% }) %></select></div><% } %>
 							<div class="leave-field"><label for="employeeId">Employee Name *</label>
-								<% if (isUserAdmin) { %><select id="employeeId" name="employeeId" required><option value="">Select employee</option><% employees.forEach(employee => { %><option value="<%= employee.id %>" data-role="<%= employee.role %>" data-name="<%= employee.name %>" data-code="<%= employee.employeeCode %>" data-company="<%= employee.companyName %>" data-branch="<%= employee.branchName %>" data-designation="<%= employee.designation %>" data-department="<%= employee.department %>" data-section="<%= employee.section %>" data-photo="<%= employee.photoUrl %>" <%= employee.id === selectedEmployeeId ? 'selected' : '' %>><%= employee.name %> / <%= employee.role %> (<%= employee.username %>)</option><% }) %></select>
+								<% if (isLeaveEditor) { %><select id="employeeId" name="employeeId" required><option value="">Select employee</option><% employees.forEach(employee => { %><option value="<%= employee.id %>" data-role="<%= employee.role %>" data-name="<%= employee.name %>" data-code="<%= employee.employeeCode %>" data-company="<%= employee.companyName %>" data-branch="<%= employee.branchName %>" data-designation="<%= employee.designation %>" data-department="<%= employee.department %>" data-section="<%= employee.section %>" data-photo="<%= employee.photoUrl %>" <%= employee.id === selectedEmployeeId ? 'selected' : '' %>><%= employee.name %> / <%= employee.role %> (<%= employee.username %>)</option><% }) %></select>
 								<% } else { %><input id="employeeId" type="hidden" value="<%= selectedEmployeeId %>"><input id="employeeName" value="<%= currentEmployee.name || employeeName %>" readonly><% } %>
 							</div>
 							<div class="leave-field"><label for="companyName">Company Name</label><input id="companyName" value="<%= currentEmployee.companyName || 'United English Boarding School' %>" readonly></div>
@@ -61,9 +62,9 @@
 							<div class="leave-field"><label for="startDateBs">From (BS) *</label><input id="startDateBs" name="startDateBs" class="nepali-date-input" type="text" data-nepali-date-input value="<%= editingApplication?.startDateNepali || todayNepaliDate %>" placeholder="YYYY-MM-DD" required><input id="startDateAd" name="startDateAd" type="hidden" value="<%= editingApplication?.startDateAd || '' %>"></div>
 							<div class="leave-field"><label for="endDateBs">To (BS) *</label><input id="endDateBs" name="endDateBs" class="nepali-date-input" type="text" data-nepali-date-input value="<%= editingApplication?.endDateNepali || todayNepaliDate %>" placeholder="YYYY-MM-DD" required><input id="endDateAd" name="endDateAd" type="hidden" value="<%= editingApplication?.endDateAd || '' %>"></div>
 							<div class="leave-field"><label>Days</label><output class="leave-duration" id="durationPreview" aria-live="polite">Choose leave dates</output></div>
-							<div class="leave-field leave-field-wide sandwich-field"><label class="leave-check"><input id="sandwichLeave" name="sandwichLeave" type="checkbox" <%= editingApplication?.sandwichLeave !== false || !isUserAdmin ? 'checked' : '' %> <%= isUserAdmin ? '' : 'disabled' %>><% if (!isUserAdmin) { %><input type="hidden" name="sandwichLeave" value="on"><% } %><span>Sandwich Leave: Include weekends and holidays in the leave count. <%= isUserAdmin ? 'Disable to remove them.' : 'This setting is required for staff applications.' %></span></label></div>
-							<div class="leave-field"><label for="approverName">Approved By</label><select id="approverName" name="approverName"><option value="">Department admin assigns approval</option><% departmentAdmins.forEach(admin => { %><option value="<%= admin.name %>" data-department="<%= admin.department %>" <%= editingApplication?.approverName === admin.name ? 'selected' : '' %>><%= admin.name %></option><% }) %></select></div>
-							<div class="leave-field"><label for="recommendedBy">Recommended By</label><select id="recommendedBy" name="recommendedBy"><option value="">Select department admin</option><% departmentAdmins.forEach(admin => { %><option value="<%= admin.name %>" data-department="<%= admin.department %>" <%= editingApplication?.recommendedBy === admin.name ? 'selected' : '' %>><%= admin.name %></option><% }) %></select></div>
+							<div class="leave-field leave-field-wide sandwich-field"><label class="leave-check"><input id="sandwichLeave" name="sandwichLeave" type="checkbox" <%= editingApplication?.sandwichLeave !== false || !isLeaveEditor ? 'checked' : '' %> <%= isLeaveEditor ? '' : 'disabled' %>><% if (!isLeaveEditor) { %><input type="hidden" name="sandwichLeave" value="on"><% } %><span>Sandwich Leave: Include weekends and holidays in the leave count. <%= isLeaveEditor ? 'Disable to remove them.' : 'This setting is required for staff applications.' %></span></label></div>
+							<div class="leave-field"><label for="approverName">Approved By *</label><select id="approverName" name="<%= editingApplication ? '' : 'approverName' %>" required <%= editingApplication ? 'disabled' : '' %>><option value="">Select assigned administrator</option><% departmentAdmins.forEach(admin => { %><option value="<%= admin.id %>" data-department="<%= admin.department %>" <%= String(editingApplication?.assignedApproverUserId || '') === admin.id || (!editingApplication?.assignedApproverUserId && editingApplication?.approverName === admin.name) ? 'selected' : '' %>><%= admin.name %><%= admin.employeeCode ? ` / ${admin.employeeCode}` : '' %></option><% }) %></select><% if (editingApplication) { %><input type="hidden" name="approverName" value="<%= editingApplication.assignedApproverUserId || editingApplication.approverName %>"><small>Use Transfer to change the assigned approver.</small><% } %></div>
+							<div class="leave-field"><label for="recommendedBy">Recommended By</label><select id="recommendedBy" name="recommendedBy"><option value="">Select department admin</option><% departmentAdmins.forEach(admin => { %><option value="<%= admin.id %>" data-department="<%= admin.department %>" <%= editingApplication?.recommendedBy === admin.name ? 'selected' : '' %>><%= admin.name %></option><% }) %></select></div>
 							<div class="leave-field leave-field-wide"><label for="reason">Description *</label><textarea id="reason" name="reason" maxlength="1000" required placeholder="Description is required"><%= editingApplication?.reason || '' %></textarea></div>
 							<div class="leave-field leave-field-wide" id="documentField" hidden><label for="supportingDocument">Supporting document <span class="required-note">Required by this leave policy</span></label><input id="supportingDocument" name="supportingDocument" type="file" accept=".pdf,.jpg,.jpeg,.png,.docx"><small>PDF, JPG, PNG, or DOCX. Maximum 5 MB.</small></div>
 						</div>
@@ -84,8 +85,8 @@
 					<form id="leaveTransferForm" method="post" class="leave-transfer-form-modal">
 						<label for="transferEmployeeId">Transfer to</label>
 						<select id="transferEmployeeId" name="employeeId" required>
-							<option value="">Select employee</option>
-							<% employees.forEach(employee => { %><option value="<%= employee.id %>"><%= employee.name %> / <%= employee.employeeCode || employee.role %></option><% }) %>
+							<option value="">Select administrator</option>
+							<% departmentAdmins.forEach(admin => { %><option value="<%= admin.id %>"><%= admin.name %> / <%= admin.employeeCode || admin.role %></option><% }) %>
 						</select>
 						<div class="leave-submit-row compact">
 							<button type="submit" class="leave-button secondary">Transfer</button>
@@ -175,16 +176,16 @@
 					<td data-label="To"><strong class="leave-date-range"><%= application.endDateNepali %></strong></td>
 					<td data-label="Days"><strong class="leave-duration-days"><%= application.requestedDays %></strong></td>
 					<td data-label="Leave Day"><%= application.leaveDay || 'Full day' %><% if (application.sandwichLeave === false) { %><small>Sandwich excluded</small><% } %></td>
-					<td data-label="Approved By"><%= application.status === 'approved' ? application.reviewedBy || application.approverName || '-' : '-' %><% if (application.status === 'pending' && application.approverName) { %><small>Assigned: <%= application.approverName %></small><% } %></td>
+					<td data-label="Approved By"><%= application.status === 'approved' ? application.reviewedByDisplay || application.reviewedBy || application.approverName || '-' : '-' %><% if (application.status === 'pending' && application.approverName) { %><small>Assigned: <%= application.approverName %></small><% } %></td>
 					<td data-label="Approved On"><%= application.status === 'approved' && application.reviewedAt ? new Date(application.reviewedAt).toLocaleDateString('en-CA') : '-' %></td>
 					<td data-label="Status"><span class="leave-status <%= String(application.status || 'pending').toLowerCase() %>"><%= String(application.status || 'pending').toLowerCase() === 'reverted' ? 'Reverted' : application.status %></span></td>
 					<td class="leave-actions-cell" data-label="Action">
-						<% if (isUserAdmin) { %>
+						<% if (application.canManage) { %>
 							<div class="leave-action-icons">
 								<% if (application.status === 'pending') { %>
 								<form method="post" action="/leave/<%= application._id %>/review" class="inline-review-form"><input type="hidden" name="status" value="approved"><button type="submit" class="leave-icon-button approve" title="Approve leave" aria-label="Approve leave"><i class="fa-solid fa-check"></i></button></form>
 								<button type="button" class="leave-icon-button reject" data-reject-id="<%= application._id %>" data-reject-label="<%= application.employeeName %>" title="Reject leave" aria-label="Reject leave"><i class="fa-solid fa-xmark"></i></button>
-								<button type="button" class="leave-icon-button transfer" data-transfer-id="<%= application._id %>" data-transfer-label="<%= application.employeeName %>" title="Transfer leave"><i class="fa-solid fa-arrow-right-arrow-left"></i></button>
+								<button type="button" class="leave-icon-button transfer" data-transfer-id="<%= application._id %>" data-transfer-label="<%= application.employeeName %>" title="Transfer approval to another administrator"><i class="fa-solid fa-arrow-right-arrow-left"></i></button>
 								<a class="leave-icon-button edit" href="/leave/<%= application._id %>/edit?page=<%= page %>&perPage=<%= pageSize %>&academicYear=<%= academicYear %>" title="Edit leave" aria-label="Edit leave for <%= application.employeeName %>"><i class="fa-solid fa-pen-to-square"></i></a>
 								<% } %>
 								<form method="post" action="/leave/<%= application._id %>/delete" onsubmit="return confirm('Delete this leave application?')" class="inline-delete-form">

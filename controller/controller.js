@@ -84,7 +84,7 @@ const getAdminHomeMetrics = async () => {
     { 'attendance.callLoggedAt': { $exists: true, $ne: null } }
   ] };
 
-  const [employees, teachingSections, punches, leaves, pendingLeaveApplications, pendingManualPunchRequests, pendingProductRequests, isEmployeeHoliday, complaintResults, allHealthRecords, callResults, studentAttendanceDocs, currentClasses, studentRosterGroups, events] = await Promise.all([
+  const [employees, teachingSections, punches, leaves, pendingLeaveRequests, pendingManualPunchRequests, pendingProductRequests, isEmployeeHoliday, complaintResults, allHealthRecords, callResults, studentAttendanceDocs, currentClasses, studentRosterGroups, events] = await Promise.all([
     Staff.find({ employeeCode: { $exists: true, $ne: '' }, isActive: { $ne: false } })
       .select('employeeCode staffName plannedIn midTime employmentStatus jobStatus dateOfBirth designation department section mobileNumber officeContact')
       .lean(),
@@ -99,7 +99,7 @@ const getAdminHomeMetrics = async () => {
       startDateNepali: { $lte: todayBs },
       endDateNepali: { $gte: todayBs }
     }).select('employeeName leaveTypeName endDateNepali').lean(),
-    LeaveApplication.find({ status: 'pending' }).select('employeeName').lean(),
+    LeaveApplication.countDocuments({ status: 'pending' }),
     ManualPunchRequest.countDocuments({ status: 'pending' }),
     InventoryProductRequest.countDocuments({ status: 'pending' }),
     EmployeeWeekend.exists({ dateBs: todayBs }),
@@ -142,8 +142,6 @@ const getAdminHomeMetrics = async () => {
   const activeEmployees = employees.filter(employee => employee.isActive !== false
     && ![employee.employmentStatus, employee.jobStatus].some(status => ['resigned', 'terminated'].includes(String(status || '').trim().toLowerCase())));
   const teachingEmployees = activeEmployees.filter(employee => String(employee.department || '').trim().toLowerCase() === 'teaching staff');
-  const teachingEmployeeNames = new Set(teachingEmployees.map(employee => String(employee.staffName || '').trim().toLowerCase()));
-  const pendingLeaveRequests = pendingLeaveApplications.filter(request => teachingEmployeeNames.has(String(request.employeeName || '').trim().toLowerCase())).length;
   const sectionOrder = new Map([['ecd-3', 0], ['4-7', 1], ['8-10', 2]]);
   const teachingSectionBreakdown = teachingSections
     .map(section => ({ name: section.name, onLeave: 0, absent: 0 }))
