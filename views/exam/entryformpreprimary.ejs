@@ -89,8 +89,9 @@
   </style>
 </head>
 <body>
-  <% const isAdminUser = String(userRole || '').toUpperCase() === 'ADMIN'; %>
-  <% const worksheetCount = Math.max(1, Number(configuredWorksheetCount || existingData[0]?.totalWorksheet) || 1); %>
+  <% const isAdminUser = String(typeof userRole === 'undefined' ? '' : userRole || '').toUpperCase() === 'ADMIN'; %>
+  <% const preprimaryExistingData = typeof existingData === 'undefined' || !Array.isArray(existingData) ? [] : existingData; %>
+  <% const worksheetCount = Math.max(1, Number(typeof configuredWorksheetCount === 'undefined' ? 0 : configuredWorksheetCount) || Number(preprimaryExistingData[0]?.totalWorksheet) || 1); %>
   <main class="page">
   <header class="page-heading">
     <div class="page-heading-copy">
@@ -170,9 +171,12 @@
     <div class="entry-heading">
       <div>
         <h2>Student entries</h2>
-        <p>Select a worksheet and enter grades. Changes save automatically.</p>
+        <p>Select a worksheet and enter grades. Changes save automatically, or use Save marks.</p>
       </div>
-      <div class="save-status" id="saveStatus" role="status" aria-live="polite">Ready</div>
+      <div class="worksheet-tools">
+        <div class="save-status" id="saveStatus" role="status" aria-live="polite">Ready</div>
+        <button type="button" id="saveMarks">Save marks</button>
+      </div>
     </div>
     <div class="filter-grid worksheet-filter">
       <div class="field">
@@ -180,7 +184,7 @@
         <select name="worksheet" id="worksheetSelect">
           <option value="" disabled>Select worksheet</option>
           <% for (let i = 1; i <= worksheetCount; i++) { %>
-            <option value="<%= i %>" <%= Number(worksheet) === i ? 'selected' : '' %>>Worksheet <%= i %></option>
+            <option value="<%= i %>" <%= Number(worksheet || 1) === i ? 'selected' : '' %>>Worksheet <%= i %></option>
           <% } %>
         </select>
       </div>
@@ -199,7 +203,7 @@
             <input type="hidden" name="reg[<%= student.reg %>]" value="<%= student.reg %>">
             <input type="hidden" name="name[<%= student.reg %>]" value="<%= student.name %>">
             <span class="student-name"><%= student.roll %>. <%= student.name %></span>
-            <label class="absent-control">Absent <input type="checkbox" name="status[<%= student.reg %>]" value="ABSENT" data-reg="<%= student.reg %>" <%= ['ABSENT', '1'].includes(String(existingData.find(item => String(item.reg) === String(student.reg))?.status || '').toUpperCase()) ? 'checked' : '' %>></label>
+            <label class="absent-control">Absent <input type="checkbox" name="status[<%= student.reg %>]" value="ABSENT" data-reg="<%= student.reg %>" <%= ['ABSENT', '1'].includes(String(preprimaryExistingData.find(item => String(item.reg) === String(student.reg))?.status || '').toUpperCase()) ? 'checked' : '' %>></label>
           </td>
           <td>
             <select class="theoryGrade" name="theorymarks[<%= student.reg %>]" data-reg="<%= student.reg %>" aria-label="Theory grade for <%= student.name %>">
@@ -214,7 +218,7 @@
             <option value="B+">B+</option><option value="B">B</option><option value="C+">C+</option>
             <option value="C">C</option><option value="D">D</option><option value="NG">NG</option><option value="Ab">Absent</option>
           </select></td>
-          <td><input type="number" name="attendance[<%= student.reg %>]" min="0" value="<%= totalAttendanceByReg?.[String(student.reg)] ?? existingData.find(item => item.reg === student.reg)?.attendance ?? '' %>" data-reg="<%= student.reg %>" aria-label="Attendance for <%= student.name %>" readonly aria-readonly="true"></td>
+          <td>          <input type="number" name="attendance[<%= student.reg %>]" min="0" value="<%= (typeof totalAttendanceByReg === 'undefined' ? {} : totalAttendanceByReg)[String(student.reg)] ?? preprimaryExistingData.find(item => String(item.reg) === String(student.reg))?.attendance ?? '' %>" data-reg="<%= student.reg %>" aria-label="Attendance for <%= student.name %>" readonly aria-readonly="true"></td>
         </tr>
       <% }) %>
       </tbody>
@@ -332,7 +336,7 @@
    
   </script>
 
-   <input type="hidden" id = "exisingData" value = "<%= JSON.stringify(existingData) %>">
+   <input type="hidden" id = "exisingData" value = "<%= JSON.stringify(preprimaryExistingData) %>">
   <script>
        const existingData = document.getElementById('exisingData').value ? JSON.parse(document.getElementById('exisingData').value) : [];
         const urlParams = new URLSearchParams(window.location.search);
@@ -356,46 +360,51 @@
     const studentSaveTimers = new Map();
     const saveStatus = document.getElementById('saveStatus');
 
+    function buildStudentSaveData(reg) {
+      const form = document.getElementById('entryForm');
+      const urlParams = new URLSearchParams(window.location.search);
+      const studentField = (field) => form.querySelector(`[name="${field}[${reg}]"]`);
+
+      return {
+        reg,
+        studentClass: urlParams.get('studentClass'),
+        section: urlParams.get('section'),
+        terminal: urlParams.get('terminal'),
+        academicYear: urlParams.get('academicYear'),
+        subject: form.querySelector('[name="subject"]').value,
+        worksheet: form.querySelector('[name="worksheet"]').value || urlParams.get('worksheet') || 1,
+        totalWorksheet: form.querySelector('[name="totalWorksheet"]').value || 1,
+        worksheetGrades: studentField('worksheetGrades')?.value || '',
+        theorymarks: studentField('theorymarks')?.value || 0,
+        attendance: studentField('attendance')?.value || 0,
+        status: studentField('status')?.checked ? 'ABSENT' : 'PRESENT',
+        roll: studentField('roll')?.value || '',
+        gender: studentField('gender')?.value || '',
+        name: studentField('name')?.value || ''
+      };
+    }
+
+    async function saveStudentData(reg) {
+      const studentData = buildStudentSaveData(reg);
+      const response = await fetch(`/entryformpreprimary?studentClass=${encodeURIComponent(studentData.studentClass)}&section=${encodeURIComponent(studentData.section)}&terminal=${encodeURIComponent(studentData.terminal)}&academicYear=${encodeURIComponent(studentData.academicYear)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(studentData)
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) throw new Error(result.message || 'Save failed');
+    }
+
     function autoSaveStudent(input) {
       const reg = input?.dataset.reg;
       if (!reg) return;
 
       clearTimeout(studentSaveTimers.get(reg));
       studentSaveTimers.set(reg, setTimeout(async () => {
-        const form = document.getElementById('entryForm');
-        const urlParams = new URLSearchParams(window.location.search);
-        const studentField = (field) => form.querySelector(`[name="${field}[${reg}]"]`);
-        const worksheet = form.querySelector('[name="worksheet"]').value || urlParams.get('worksheet');
-        if (!worksheet) return;
-
-        const studentData = {
-          reg,
-          studentClass: urlParams.get('studentClass'),
-          section: urlParams.get('section'),
-          terminal: urlParams.get('terminal'),
-          academicYear: urlParams.get('academicYear'),
-          subject: form.querySelector('[name="subject"]').value,
-          worksheet,
-          totalWorksheet: form.querySelector('[name="totalWorksheet"]').value,
-          worksheetGrades: studentField('worksheetGrades')?.value || '',
-          theorymarks: studentField('theorymarks')?.value || 0,
-          attendance: studentField('attendance')?.value || 0,
-          status: studentField('status')?.checked ? 'ABSENT' : 'PRESENT',
-          roll: studentField('roll')?.value || '',
-          gender: studentField('gender')?.value || '',
-          name: studentField('name')?.value || ''
-        };
-
         saveStatus.textContent = 'Saving changes…';
         saveStatus.className = 'save-status';
         try {
-          const response = await fetch(`/entryformpreprimary?studentClass=${encodeURIComponent(studentData.studentClass)}&section=${encodeURIComponent(studentData.section)}&terminal=${encodeURIComponent(studentData.terminal)}&academicYear=${encodeURIComponent(studentData.academicYear)}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(studentData)
-          });
-          const result = await response.json();
-          if (!response.ok || !result.success) throw new Error(result.message || 'Save failed');
+          await saveStudentData(reg);
           saveStatus.textContent = 'All changes saved';
           saveStatus.className = 'save-status success';
         } catch (error) {
@@ -410,6 +419,37 @@
 
     document.querySelectorAll('.worksheetGrade, .theoryGrade, input[name^="status["]').forEach((input) => {
       input.addEventListener('change', () => autoSaveStudent(input));
+    });
+
+    document.getElementById('saveMarks').addEventListener('click', async (event) => {
+      const saveButton = event.currentTarget;
+      const registrations = [...new Set(
+        [...document.querySelectorAll('#entrytable [data-reg]')]
+          .map(input => String(input.dataset.reg || '').trim())
+          .filter(Boolean)
+      )];
+      if (!registrations.length) return;
+
+      registrations.forEach(reg => {
+        clearTimeout(studentSaveTimers.get(reg));
+        studentSaveTimers.delete(reg);
+      });
+      saveButton.disabled = true;
+      saveButton.textContent = 'Saving…';
+      saveStatus.textContent = 'Saving student marks…';
+      saveStatus.className = 'save-status';
+      try {
+        for (const reg of registrations) await saveStudentData(reg);
+        saveStatus.textContent = 'All student marks saved';
+        saveStatus.className = 'save-status success';
+      } catch (error) {
+        console.error('Save marks error:', error);
+        saveStatus.textContent = `Unable to save all marks: ${error.message}`;
+        saveStatus.className = 'save-status error';
+      } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = 'Save marks';
+      }
     });
   </script>
 

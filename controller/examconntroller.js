@@ -513,10 +513,14 @@ exports.entryform = async (req,res,next)=>
   else if( studentClass && studentClass.toLowerCase() === "nursery" || studentClass.toLowerCase() === "playgroup" || studentClass.toLowerCase() === "lkg" || studentClass.toLowerCase() === "ukg")
   {
     const existingData = await getSlipModel().find({studentClass: studentClass,section: section,subject: subject,terminal: terminal,academicYear: academicYear}).lean();
+    const worksheetSetting = await WorksheetSetting.findOne({ studentClass, section, subject, terminal, academicYear })
+      .select('totalWorksheet').lean();
     // entryformpreprimary.ejs will handle the rendering for pre-primary classes
     res.render("./exam/entryformpreprimary",{studentData,studentClass:studentClass,section,subject,academicYear,terminal,worksheet:Number(worksheet) || 1,subjectData,subjects:accessibleSubject,
       userRole: user.role,
-      studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData,existingData});
+      studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData,existingData,
+      totalAttendanceByReg,
+      configuredWorksheetCount: worksheetSetting?.totalWorksheet || existingData[0]?.totalWorksheet || 1});
   }
  
 }
