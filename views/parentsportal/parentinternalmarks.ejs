@@ -35,6 +35,17 @@
 		.primary-table th:nth-child(3) { width:25%; }
 		.primary-table th:nth-child(4) { width:14%; }
 		.primary-table th:nth-child(5) { width:14%; }
+		.subject-filters { display:flex; gap:7px; overflow-x:auto; margin:0 0 13px; padding:2px 1px 7px; }
+		.subject-filter { flex:0 0 auto; min-height:36px; padding:0 12px; border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--blue-dark); font-size:11px; font-weight:700; cursor:pointer; }
+		.subject-filter[aria-pressed="true"] { border-color:var(--blue); background:var(--blue); color:#fff; }
+		.primary-subject[hidden] { display:none; }
+		.theme-block { margin:12px 0; overflow:hidden; border:1px solid var(--line); border-radius:7px; background:#fff; }
+		.theme-heading { margin:0; padding:11px 12px; background:#edf4fb; color:var(--blue-dark); font:800 13px 'Manrope',sans-serif; }
+		.theme-table th:first-child { width:8%; }
+		.theme-table th:nth-child(2) { width:34%; }
+		.theme-table th:nth-child(n+3) { width:14.5%; }
+		.theme-table tbody tr:nth-child(even) { background:#f7f9fc; }
+		.theme-empty { padding:12px; color:var(--muted); font-size:11px; }
 		.marks { color:var(--blue-dark); font-weight:800; white-space:nowrap; }
 		.indicator-list { display:grid; gap:5px; }
 		.indicator-name { color:#344b65; line-height:1.35; }
@@ -74,24 +85,39 @@
 			<a class="back-link" href="/parents">Back to home</a>
 		</header>
 		<p class="intro">Academic records · <%= academicYear || 'Current year' %></p>
-		<h2 class="page-title">Internal Marks</h2>
+		<h2 class="page-title"><%= isPrimary ? 'Theme Marks' : 'Internal Marks' %></h2>
 
 		<% if (isPrimary) { %>
-			<form class="filter" method="get" action="/parents/internal-marks">
-				<label for="unit">Unit / Theme<select id="unit" name="unit"><option value="all" <%= selectedUnit === 'all' ? 'selected' : '' %>>All units</option><% unitOptions.forEach(unit => { %><option value="<%= unit %>" <%= selectedUnit === unit ? 'selected' : '' %>><%= unit %></option><% }) %></select></label>
-				<button type="submit">Show unit</button>
-			</form>
-			<% if (primaryRows.length) { %>
-				<div class="table-wrap"><table class="primary-table"><thead><tr><th>Subject / Unit</th><th>Learning outcome</th><th>Obtained indicator</th><th>Before / After</th><th>Remarks</th></tr></thead><tbody>
-					<% primaryRows.forEach(row => { %><tr>
-						<td><strong><%= row.subject || 'Subject' %></strong><br><%= row.unitName || '-' %></td>
-						<td><%= row.learningOutcomeName || '-' %></td>
-						<td><div class="indicator-list"><% if (row.indicatorBefore.length) { %><div class="indicator-name"><small>Before</small><%= row.indicatorBefore.join(', ') %></div><% } %><% if (row.indicatorAfter.length) { %><div class="indicator-name"><small>After</small><%= row.indicatorAfter.join(', ') %></div><% } %><% if (!row.indicatorBefore.length && !row.indicatorAfter.length) { %>-<% } %></div></td>
-						<td class="marks"><%= row.marksBefore %> / <%= row.marksAfter %></td>
-						<td class="remark <%= row.remark === 'Needs improvement' ? 'needs-improvement' : '' %>"><%= row.remark %></td>
-					</tr><% }) %>
-				</tbody></table></div>
-			<% } else { %><div class="empty">No internal assessment marks are available for this unit yet.</div><% } %>
+			<% if (primaryThemeSubjects.length) { %>
+				<div class="subject-filters" role="group" aria-label="Filter by subject">
+					<button class="subject-filter" type="button" data-subject-filter="all" aria-pressed="true">All subjects</button>
+					<% primaryThemeSubjects.forEach((subject, index) => { %><button class="subject-filter" type="button" data-subject-filter="<%= index %>" aria-pressed="false"><%= subject.subject %></button><% }) %>
+				</div>
+				<% primaryThemeSubjects.forEach((subject, index) => { %>
+					<section class="subject-block primary-subject" data-subject-panel="<%= index %>">
+						<h3 class="subject-heading"><%= subject.subject %></h3>
+						<% if (subject.themes.length) { subject.themes.forEach(theme => { %>
+							<section class="theme-block">
+								<h4 class="theme-heading">Theme: <%= theme.themeName %></h4>
+								<% if (theme.learningOutcomes.length) { %>
+									<div class="table-wrap"><table class="theme-table"><thead><tr><th>S.No</th><th>Learning outcome</th><th>Before date</th><th>Before marks</th><th>After date</th><th>After marks</th></tr></thead><tbody>
+										<% theme.learningOutcomes.forEach((outcome, outcomeIndex) => { const record = outcome.record; %>
+											<tr>
+												<td><%= outcomeIndex + 1 %></td>
+												<td><%= outcome.learningOutcomeName %></td>
+												<td><%= record?.evaluationDateBefore || '-' %></td>
+												<td class="marks"><%= record?.marksBefore ?? '-' %></td>
+												<td><%= record?.evaluationDateAfter || '-' %></td>
+												<td class="marks"><%= record?.marksAfter ?? '-' %></td>
+											</tr>
+										<% }) %>
+									</tbody></table></div>
+								<% } else { %><div class="theme-empty">No learning outcomes are configured for this theme.</div><% } %>
+							</section>
+						<% }) } else { %><div class="theme-empty">No themes are configured for this subject.</div><% } %>
+					</section>
+				<% }) %>
+			<% } else { %><div class="empty">No theme assessment data is available for this student yet.</div><% } %>
 		<% } else { %>
 			<form class="filter" method="get" action="/parents/internal-marks">
 				<label for="terminal">Terminal<select id="terminal" name="terminal"><option value="all" <%= selectedTerminal === 'all' ? 'selected' : '' %>>All terminals</option><% terminalOptions.forEach(terminal => { %><option value="<%= terminal %>" <%= selectedTerminal === terminal ? 'selected' : '' %>><%= terminal %></option><% }) %></select></label>
@@ -117,5 +143,18 @@
 		<a class="nav-link" href="/parents?tab=attendance"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4m8-4v4M3 9h18m-13 5 2 2 4-4"/></svg>Attendance</a>
 		<a class="nav-link" href="/parents/portfolio"><svg viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 1 4 17.5zM4 6h13M8 10h8M8 14h6"/></svg>Portfolio</a>
 	</nav>
+	<% if (isPrimary) { %>
+		<script>
+			const subjectFilterButtons = [...document.querySelectorAll('[data-subject-filter]')];
+			const subjectPanels = [...document.querySelectorAll('[data-subject-panel]')];
+			subjectFilterButtons.forEach(button => button.addEventListener('click', () => {
+				const selectedSubject = button.dataset.subjectFilter;
+				subjectFilterButtons.forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+				subjectPanels.forEach(panel => {
+					panel.hidden = selectedSubject !== 'all' && panel.dataset.subjectPanel !== selectedSubject;
+				});
+			}));
+		</script>
+	<% } %>
 </body>
 </html>

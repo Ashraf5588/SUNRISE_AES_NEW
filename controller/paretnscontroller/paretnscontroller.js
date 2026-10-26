@@ -393,10 +393,9 @@ exports.internalMarksPage = async (req, res) => {
 		const academicYear = String(setup?.academicYear || '');
 		const isPrimary = classNumber >= 1 && classNumber <= 5;
 		let primaryRows = [];
+		let primaryThemeSubjects = [];
 		let middleSubjects = [];
-		let unitOptions = [];
 		let terminalOptions = [];
-		let selectedUnit = String(req.query.unit || 'all');
 		let selectedTerminal = String(req.query.terminal || 'all');
 
 		if (isPrimary && academicYear) {
@@ -407,6 +406,8 @@ exports.internalMarksPage = async (req, res) => {
 			}
 			const records = await mongoose.connection.collection(collectionName)
 				.find({ studentClass, section, $or: identityClauses }).toArray();
+			const themeDefinitions = await mongoose.connection.collection(`themeFor${studentClass}`)
+				.find({ studentClass }).toArray();
 
 			const addPrimaryRow = record => {
 				const marksBefore = Number(record.obtainedMarksBefore ?? record.totalMarksBeforeIntervention ?? 0);
@@ -427,7 +428,9 @@ exports.internalMarksPage = async (req, res) => {
 					marksAfter,
 					remark,
 					evaluationDateBefore: String(record.evalDateBefore || record.evaluationDateBefore || '').trim(),
-					evaluationDateAfter: String(record.evalDateAfter || record.evaluationDateAfter || '').trim()
+					evaluationDateAfter: String(record.evalDateAfter || record.evaluationDateAfter || '').trim(),
+					updatedAt: record.updatedAt,
+					createdAt: record.createdAt
 				});
 			};
 
@@ -455,9 +458,72 @@ exports.internalMarksPage = async (req, res) => {
 					});
 				});
 			});
-			unitOptions = [...new Set(primaryRows.map(row => row.unitName).filter(Boolean))].sort((first, second) => first.localeCompare(second));
-			if (selectedUnit !== 'all' && !unitOptions.includes(selectedUnit)) selectedUnit = 'all';
-			if (selectedUnit !== 'all') primaryRows = primaryRows.filter(row => row.unitName === selectedUnit);
+
+			const normalizeThemeKey = value => String(value ?? '').normalize('NFC').trim().toLocaleLowerCase();
+			const subjectMap = new Map();
+			const ensureSubject = subjectName => {
+				const subject = String(subjectName || '').trim();
+				const key = normalizeThemeKey(subject);
+				if (!key) return null;
+				if (!subjectMap.has(key)) subjectMap.set(key, { subject, themes: [] });
+				return subjectMap.get(key);
+			};
+			const ensureTheme = (subjectEntry, themeName) => {
+				const name = String(themeName || '').trim() || 'Theme';
+				let theme = subjectEntry.themes.find(item => normalizeThemeKey(item.themeName) === normalizeThemeKey(name));
+				if (!theme) {
+					theme = { themeName: name, learningOutcomes: [] };
+					subjectEntry.themes.push(theme);
+				}
+				return theme;
+			};
+			const findOutcome = (theme, outcomeName) => theme.learningOutcomes.find(item =>
+				normalizeThemeKey(item.learningOutcomeName) === normalizeThemeKey(outcomeName)
+			);
+
+			themeDefinitions.forEach(subjectDocument => {
+				const subjectEntry = ensureSubject(subjectDocument.subject || subjectDocument.subjectName);
+				if (!subjectEntry) return;
+				(Array.isArray(subjectDocument.themes) ? subjectDocument.themes : []).forEach(themeDefinition => {
+					const theme = ensureTheme(subjectEntry, themeDefinition.themeName);
+					(Array.isArray(themeDefinition.learningOutcome) ? themeDefinition.learningOutcome : []).forEach(outcome => {
+						const learningOutcomeName = String(outcome.learningOutcomeName || outcome.name || '').trim();
+						if (learningOutcomeName && !findOutcome(theme, learningOutcomeName)) {
+							theme.learningOutcomes.push({ learningOutcomeName, record: null });
+						}
+					});
+				});
+			});
+
+			primaryRows.forEach(row => {
+				const subjectEntry = ensureSubject(row.subject);
+				if (!subjectEntry || !row.learningOutcomeName) return;
+				const theme = ensureTheme(subjectEntry, row.unitName);
+				const existingOutcome = findOutcome(theme, row.learningOutcomeName);
+				const outcome = existingOutcome || { learningOutcomeName: row.learningOutcomeName, record: null };
+				const rowTimestamp = new Date(row.updatedAt || row.createdAt || 0).getTime();
+				const existingTimestamp = existingOutcome?.record
+					? new Date(existingOutcome.record.updatedAt || existingOutcome.record.createdAt || 0).getTime()
+					: -1;
+				const rowDate = Number.isFinite(rowTimestamp) ? rowTimestamp : 0;
+				const existingDate = Number.isFinite(existingTimestamp) ? existingTimestamp : -1;
+				if (!existingOutcome?.record || rowDate >= existingDate) {
+					outcome.record = {
+						marksBefore: row.marksBefore,
+						marksAfter: row.marksAfter,
+						evaluationDateBefore: row.evaluationDateBefore,
+						evaluationDateAfter: row.evaluationDateAfter,
+						updatedAt: row.updatedAt,
+						createdAt: row.createdAt
+					};
+				}
+				if (!existingOutcome) theme.learningOutcomes.push(outcome);
+			});
+
+			primaryThemeSubjects = [...subjectMap.values()].sort((first, second) => first.subject.localeCompare(second.subject));
+			primaryThemeSubjects.forEach(subject => subject.themes.forEach(theme => theme.learningOutcomes.sort((first, second) =>
+				first.learningOutcomeName.localeCompare(second.learningOutcomeName)
+			)));
 		} else if (classNumber >= 6 && studentClass && section && academicYear) {
 			const subjectRows = await Subject.find({ forClass: studentClass }).select('subject newsubject').lean();
 			const subjectNames = [...new Set(subjectRows.map(row => String(row.newsubject || row.subject || '').trim()).filter(Boolean))];
@@ -501,8 +567,7 @@ exports.internalMarksPage = async (req, res) => {
 			academicYear,
 			isPrimary,
 			primaryRows,
-			unitOptions,
-			selectedUnit,
+			primaryThemeSubjects,
 			middleSubjects,
 			terminalOptions,
 			selectedTerminal
