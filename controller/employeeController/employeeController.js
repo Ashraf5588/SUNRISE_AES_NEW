@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const path = require('path');
 const csvParser = require('csv-parser');
 const { Readable } = require('stream');
+const { pipeline } = require('stream/promises');
 const { BlobServiceClient } = require('@azure/storage-blob');
 const { staffSchema } = require('../../model/staffschema');
 const { leaveApplicationSchema } = require('../../model/leaveschema/leavetypeschma');
@@ -285,6 +286,82 @@ const findEmployeeForUser = async user => {
     return findEmployeeByNormalizedValue('employeeCode', user?.username);
 };
 
+const getEmployeeDocumentContainer = async () => {
+    const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+    if (!connectionString) throw new Error('Azure document storage is not configured.');
+    const containerName = process.env.AZURE_DOCUMENT_CONTAINER_NAME
+        || process.env.AZURE_EMPLOYEE_DOCUMENT_CONTAINER_NAME
+        || process.env.AZURE_CONTAINER_NAME
+        || 'sunriseimages';
+    const containerClient = BlobServiceClient.fromConnectionString(connectionString).getContainerClient(containerName);
+    await containerClient.createIfNotExists();
+    const accessPolicy = await containerClient.getAccessPolicy();
+    if (accessPolicy.blobPublicAccess) {
+        await containerClient.setAccessPolicy(undefined, accessPolicy.signedIdentifiers || []);
+    }
+    return { containerClient, containerName };
+};
+
+const getLegacyEmployeeContainerName = () => process.env.AZURE_EMPLOYEE_DOCUMENT_CONTAINER_NAME
+    || process.env.AZURE_CONTAINER_NAME
+    || 'sunriseimages';
+
+const getPrivateEmployeeDocument = async (req, res) => {
+    const employeeId = String(req.params.employeeId || '');
+    const blobName = String(req.query.blobName || '');
+    if (!mongoose.isValidObjectId(employeeId) || !blobName || blobName.length > 1024) {
+        return res.status(404).send('Document not found.');
+    }
+
+    const employee = await Staff.findById(employeeId).lean();
+    if (!employee) return res.status(404).send('Document not found.');
+
+    const isAdmin = String(req.user?.role || '').toUpperCase() === 'ADMIN';
+    if (!isAdmin) {
+        if (String(req.user?.role || '').toUpperCase() !== 'TEACHER') {
+            return res.status(403).send('You are not authorized to view this document.');
+        }
+        const linkedEmployee = await findEmployeeForUser(req.user);
+        if (!linkedEmployee || String(linkedEmployee._id) !== String(employee._id)) {
+            return res.status(403).send('You are not authorized to view this document.');
+        }
+    }
+
+    const document = (employee.documents || []).find(item => item.blobName === blobName)
+        || (employee.previousCompanyTds?.blobName === blobName ? employee.previousCompanyTds : null);
+    if (!document) return res.status(404).send('Document not found.');
+
+    const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+    if (!connectionString) {
+        console.error('Azure document storage is not configured.');
+        return res.status(500).send('Document storage is unavailable.');
+    }
+
+    try {
+        const containerName = document.containerName || getLegacyEmployeeContainerName();
+        const serviceClient = BlobServiceClient.fromConnectionString(connectionString);
+        const blobClient = serviceClient.getContainerClient(containerName).getBlobClient(document.blobName);
+        const download = await blobClient.download();
+        if (!download.readableStreamBody) throw new Error('Azure did not return a document stream.');
+
+        const safeFilename = String(document.originalName || document.documentName || 'staff-document')
+            .replace(/[\r\n"\\/]/g, '_')
+            .replace(/[^\w.-]/g, '_');
+        res.set({
+            'Content-Type': 'application/octet-stream',
+            'Content-Disposition': `attachment; filename="${safeFilename}"`,
+            'Cache-Control': 'private, no-store',
+            'X-Content-Type-Options': 'nosniff'
+        });
+        await pipeline(download.readableStreamBody, res);
+    } catch (error) {
+        if (error.statusCode === 404) return res.status(404).send('Document not found.');
+        console.error('Unable to download employee document:', error);
+        if (res.headersSent) return res.destroy(error);
+        return res.status(502).send('Unable to retrieve this document.');
+    }
+};
+
 const getEmployeeMidTime = employee => {
     if (getMinutes(employee?.midTime) !== null) return employee.midTime;
     const plannedIn = getMinutes(employee?.plannedIn || '09:00');
@@ -327,12 +404,26 @@ const toEmployeeFormData = employee => {
     };
 };
 
+const getEmployeeDocumentUrl = (employeeId, blobName) =>
+    `/employee-document/${employeeId}?blobName=${encodeURIComponent(blobName)}`;
+
 const renderEmployeeDetails = async (res, options = {}) => {
     const [employees, setupOptions] = await Promise.all([getEmployeeProfiles(), getEmployeeSetupOptions()]);
-    const selectedEmployee = options.employee
+    const selectedEmployeeRecord = options.employee
         || employees.find(employee => String(employee._id) === String(options.employeeId || ''))
         || (options.newEmployee ? null : employees[0])
         || null;
+    const selectedEmployee = selectedEmployeeRecord && {
+        ...selectedEmployeeRecord,
+        documents: (selectedEmployeeRecord.documents || []).map(document => ({
+            ...document,
+            url: getEmployeeDocumentUrl(selectedEmployeeRecord._id, document.blobName)
+        }))
+    };
+    const formData = options.formData || toEmployeeFormData(selectedEmployeeRecord);
+    if (selectedEmployeeRecord && formData.previousCompanyTds?.blobName) {
+        formData.previousCompanyTds.url = getEmployeeDocumentUrl(selectedEmployeeRecord._id, formData.previousCompanyTds.blobName);
+    }
     return res.status(options.status || 200).render('employee/employeeworkspace', {
         employees,
         ...setupOptions,
@@ -342,8 +433,18 @@ const renderEmployeeDetails = async (res, options = {}) => {
         error: options.error || '',
         saved: options.saved || false,
         importResult: options.importResult || null,
-        formData: options.formData || toEmployeeFormData(selectedEmployee)
+        formData
     });
+};
+
+exports.showPrivateEmployeeDocument = async (req, res) => {
+    try {
+        return await getPrivateEmployeeDocument(req, res);
+    } catch (error) {
+        console.error('Unable to authorize or load employee document:', error);
+        if (res.headersSent) return res.destroy(error);
+        return res.status(500).send('Unable to retrieve this document.');
+    }
 };
 
 exports.showEmployeeDetails = async (req, res) => {
@@ -1138,10 +1239,7 @@ const buildEmployeeFormData = body => {
 const uploadDocumentsToAzure = async (files, formData) => {
     const documentFiles = (files || []).filter(file => /^documentFile_\d+$/.test(file.fieldname));
     if (!documentFiles.length) return [];
-    const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
-    if (!connectionString) throw new Error('Azure document storage is not configured.');
-    const containerName = process.env.AZURE_EMPLOYEE_DOCUMENT_CONTAINER_NAME || process.env.AZURE_CONTAINER_NAME || 'sunriseimages';
-    const containerClient = BlobServiceClient.fromConnectionString(connectionString).getContainerClient(containerName);
+    const { containerClient, containerName } = await getEmployeeDocumentContainer();
     const uploaded = [];
 
     try {
@@ -1159,6 +1257,7 @@ const uploadDocumentsToAzure = async (files, formData) => {
                 documentName,
                 url: blobClient.url,
                 blobName,
+                containerName,
                 originalName: getText(file.originalname, 180),
                 mimeType: file.mimetype
             });
@@ -1186,24 +1285,24 @@ const uploadEmployeePhotoToAzure = async (file, employeeCode) => {
 
 const uploadPreviousTdsDocumentToAzure = async (file, employeeCode) => {
     if (!file) return null;
-    const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
-    if (!connectionString) throw new Error('Azure document storage is not configured.');
-    const containerName = process.env.AZURE_EMPLOYEE_DOCUMENT_CONTAINER_NAME || process.env.AZURE_CONTAINER_NAME || 'sunriseimages';
-    const containerClient = BlobServiceClient.fromConnectionString(connectionString).getContainerClient(containerName);
+    const { containerClient, containerName } = await getEmployeeDocumentContainer();
     const extension = path.extname(file.originalname).toLowerCase();
     const blobName = `employee-documents/${employeeCode}/previous-tds-${Date.now()}-${crypto.randomUUID()}${extension}`;
     const blobClient = containerClient.getBlockBlobClient(blobName);
     await blobClient.uploadData(file.buffer, { blobHTTPHeaders: { blobContentType: file.mimetype } });
-    return { url: blobClient.url, blobName, originalName: getText(file.originalname, 180) };
+    return { url: blobClient.url, blobName, containerName, originalName: getText(file.originalname, 180) };
 };
 
 const deleteUploadedDocuments = async documents => {
     if (!documents.length) return;
     const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
     if (!connectionString) return;
-    const containerName = process.env.AZURE_EMPLOYEE_DOCUMENT_CONTAINER_NAME || process.env.AZURE_CONTAINER_NAME || 'sunriseimages';
-    const containerClient = BlobServiceClient.fromConnectionString(connectionString).getContainerClient(containerName);
-    await Promise.all(documents.map(document => containerClient.getBlockBlobClient(document.blobName).deleteIfExists().catch(() => {})));
+    const serviceClient = BlobServiceClient.fromConnectionString(connectionString);
+    await Promise.all(documents.map(document => serviceClient
+        .getContainerClient(document.containerName || getLegacyEmployeeContainerName())
+        .getBlockBlobClient(document.blobName)
+        .deleteIfExists()
+        .catch(() => {})));
 };
 
 const validateEmployeeFormData = formData => {
@@ -1255,6 +1354,7 @@ exports.createEmployeeDetails = async (req, res) => {
             employeeData.previousCompanyTds.documentName = uploadedTdsDocument.originalName;
             employeeData.previousCompanyTds.url = uploadedTdsDocument.url;
             employeeData.previousCompanyTds.blobName = uploadedTdsDocument.blobName;
+            employeeData.previousCompanyTds.containerName = uploadedTdsDocument.containerName;
         }
         await Staff.create({ ...employeeData, documents: uploadedDocuments, employeePhoto: uploadedPhoto || {} });
         return res.redirect('/employeedetail?saved=1');
@@ -1320,6 +1420,11 @@ exports.updateEmployeeDetails = async (req, res) => {
             employeeData.previousCompanyTds.documentName = uploadedTdsDocument.originalName;
             employeeData.previousCompanyTds.url = uploadedTdsDocument.url;
             employeeData.previousCompanyTds.blobName = uploadedTdsDocument.blobName;
+            employeeData.previousCompanyTds.containerName = uploadedTdsDocument.containerName;
+        } else {
+            employeeData.previousCompanyTds.url = existingEmployee.previousCompanyTds?.url || '';
+            employeeData.previousCompanyTds.blobName = existingEmployee.previousCompanyTds?.blobName || '';
+            employeeData.previousCompanyTds.containerName = existingEmployee.previousCompanyTds?.containerName || '';
         }
         const previousWeekOff = [...(existingEmployee.activeWeekOff || [])].sort();
         const submittedWeekOff = [...(employeeData.activeWeekOff || [])].sort();
@@ -1336,7 +1441,10 @@ exports.updateEmployeeDetails = async (req, res) => {
             await deleteUploadedDocuments([{ blobName: existingEmployee.employeePhoto.blobName }]);
         }
         if (uploadedTdsDocument && existingEmployee.previousCompanyTds?.blobName) {
-            await deleteUploadedDocuments([{ blobName: existingEmployee.previousCompanyTds.blobName }]);
+            await deleteUploadedDocuments([{
+                blobName: existingEmployee.previousCompanyTds.blobName,
+                containerName: existingEmployee.previousCompanyTds.containerName
+            }]);
         }
         return res.redirect(`/employeedetail?employeeId=${employeeId}&module=${encodeURIComponent(activeModule)}&saved=1`);
     } catch (error) {

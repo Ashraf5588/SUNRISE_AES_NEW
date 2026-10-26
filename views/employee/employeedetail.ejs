@@ -307,7 +307,7 @@
 									<td><%= employee.department || '-' %></td>
 									<td><%= employee.mobileNumber || '-' %></td>
 									<td><%= employee.email || '-' %></td>
-									<td><% if (employee.documents?.length) { %><% employee.documents.forEach((document, index) => { %><a href="<%= document.url %>" target="_blank" rel="noopener"><%= document.documentName %></a><%= index < employee.documents.length - 1 ? ', ' : '' %><% }) %><% } else { %>-<% } %></td>
+									<td><% if (employee.documents?.length) { %><% employee.documents.forEach((document, index) => { %><a href="/employee-document/<%= employee._id %>?blobName=<%= encodeURIComponent(document.blobName) %>"><%= document.documentName %></a><%= index < employee.documents.length - 1 ? ', ' : '' %><% }) %><% } else { %>-<% } %></td>
 									<td><span class="status"><%= employee.employmentStatus || 'Active' %></span></td>
 								</tr>
 							<% }) %>

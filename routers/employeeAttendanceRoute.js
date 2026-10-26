@@ -2,9 +2,10 @@ const express = require('express');
 const employee = express.Router();
 
 const employeeController = require('../controller/employeeController/employeeController');
-const { verifytoken, isAdmin } = require('../middleware/auth');
+const { verifytoken, verifytokenApi, isAdmin } = require('../middleware/auth');
 
 
+employee.get('/employee-document/:employeeId', verifytokenApi, employeeController.showPrivateEmployeeDocument);
 employee.get('/employeedetail', verifytoken, isAdmin, employeeController.showEmployeeDetails);
 employee.get('/employeedetail/csv-template', verifytoken, isAdmin, employeeController.downloadEmployeeProfileCsvTemplate);
 employee.get('/employeedetail/check-code', verifytoken, isAdmin, employeeController.checkEmployeeIdentifier);

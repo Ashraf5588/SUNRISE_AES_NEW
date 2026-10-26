@@ -52,6 +52,29 @@ const verifytoken = async (req, res, next) => {
     return res.redirect("/admin/login"); // Or res.status(403).json({ message: "Invalid token" })
   }
 };
+const verifytokenApi = async (req, res, next) => {
+  const authorization = String(req.headers.authorization || '');
+  const token = req.cookies?.token || (authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '');
+  if (!token) return res.status(401).json({ message: 'Authentication required.' });
+
+  let decoded;
+  try {
+    decoded = jwt.verify(token, process.env.JWT_SECRET || "aas_amedtech_solutions_789");
+  } catch (error) {
+    return res.status(401).json({ message: 'Authentication required.' });
+  }
+
+  try {
+    const user = await userlist.findById(decoded.id);
+    if (!user || (user.tokenVersion && decoded.tokenVersion && user.tokenVersion !== decoded.tokenVersion)) {
+      return res.status(401).json({ message: 'Authentication required.' });
+    }
+    req.user = user;
+    return next();
+  } catch (error) {
+    return next(error);
+  }
+};
 const authorized = (req, res, next) => {
   const token = req.cookies.token || (req.headers.authorization ? req.headers.authorization.split(" ")[1] : undefined);
   const user = req.user;
@@ -159,4 +182,4 @@ const isAllowedHome = (req, res, next) => {
 };
 
 
-module.exports = { generateToken, verifytoken, authorized, isAdmin, isnewsAdmin, isLibrarian, isFrontdesk,isNurse, isAllowedHome };
+module.exports = { generateToken, verifytoken, verifytokenApi, authorized, isAdmin, isnewsAdmin, isLibrarian, isFrontdesk,isNurse, isAllowedHome };

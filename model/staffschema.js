@@ -45,6 +45,7 @@ const employeeDocumentSchema = new mongoose.Schema({
   documentName: { type: String, required: true, trim: true },
   url: { type: String, required: true, trim: true },
   blobName: { type: String, required: true, trim: true },
+  containerName: { type: String, default: '', trim: true },
   originalName: { type: String, default: '', trim: true },
   mimeType: { type: String, default: '', trim: true },
   uploadedAt: { type: Date, default: Date.now }
@@ -338,7 +339,8 @@ const staffSchema = new mongoose.Schema(
       fiscalYear: { type: String, default: '', trim: true },
       documentName: { type: String, default: '', trim: true },
       url: { type: String, default: '', trim: true },
-      blobName: { type: String, default: '', trim: true }
+      blobName: { type: String, default: '', trim: true },
+      containerName: { type: String, default: '', trim: true }
     },
     advances: { type: [advanceSchema], default: [] },
     contracts: { type: [contractSchema], default: [] },
