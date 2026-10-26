@@ -514,7 +514,9 @@ exports.entryform = async (req,res,next)=>
   {
     const existingData = await getSlipModel().find({studentClass: studentClass,section: section,subject: subject,terminal: terminal,academicYear: academicYear}).lean();
     // entryformpreprimary.ejs will handle the rendering for pre-primary classes
-    res.render("./exam/entryformpreprimary",{studentData,studentClass:studentClass,section,subject,academicYear,terminal,worksheet:Number(worksheet) || 1,subjectData,subjects:accessibleSubject,studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData,existingData});
+    res.render("./exam/entryformpreprimary",{studentData,studentClass:studentClass,section,subject,academicYear,terminal,worksheet:Number(worksheet) || 1,subjectData,subjects:accessibleSubject,
+      userRole: user.role,
+      studentClassdata:accessibleClass,terminals, marksheetSetups,user,theoryData,existingData});
   }
  
 }
