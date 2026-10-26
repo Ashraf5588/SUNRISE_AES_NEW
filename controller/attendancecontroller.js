@@ -195,6 +195,28 @@ const getMonthVariants = (monthName) => {
   return aliases.map((name) => normalizeText(name));
 };
 
+const getCurrentAttendanceBsDate = (now = new Date()) => {
+  const dateParts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kathmandu',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(now);
+  const dateValues = Object.fromEntries(dateParts.map(({ type, value }) => [type, value]));
+  const adDate = `${dateValues.year}-${dateValues.month}-${dateValues.day}`;
+  const convertedDate = String(bs.ADToBS(adDate) || '');
+  const [bsYear, bsMonth] = convertedDate.split('-').map(Number);
+
+  // The converter's 2083 Kartik-through-Chaitra dates are one day ahead.
+  if (bsYear === 2083 && bsMonth >= 7 && bsMonth <= 12) {
+    const previousAdDate = new Date(`${adDate}T00:00:00Z`);
+    previousAdDate.setUTCDate(previousAdDate.getUTCDate() - 1);
+    return String(bs.ADToBS(previousAdDate.toISOString().slice(0, 10)) || '');
+  }
+
+  return convertedDate;
+};
+
 const getPreferredContact = (student) => {
   return (
     (student && student.numberofmobile) ||
@@ -211,7 +233,7 @@ const toDialableNumber = (value) => String(value || '').replace(/[^\d+]/g, '');
 exports.onlineAttendancePage = async (req, res) => {
     try {
         const {studentClass,section,academicYear,month,day}= req.query;
-    const todayBs = String(bs.ADToBS(new Date()) || '');
+    const todayBs = getCurrentAttendanceBsDate();
     const [todayYearPart, todayMonthPart, todayDayPart] = todayBs.split('-');
     const todayYear = String(todayYearPart || '');
     const todayDay = Number.parseInt(todayDayPart, 10);
@@ -1013,7 +1035,7 @@ exports.getFrontdeskAbsentRecordsExport = async (req, res) => {
 
 exports.frontdeskPage = async (req, res) => {
   try {
-    const todayBs = String(bs.ADToBS(new Date()) || '');
+    const todayBs = getCurrentAttendanceBsDate();
     const [yearPart, monthPart, dayPart] = todayBs.split('-');
     const requestedAcademicYear = String(req.query.academicYear || '').trim();
     const requestedMonth = String(req.query.month || '').trim();
@@ -1252,7 +1274,7 @@ exports.frontdeskPage = async (req, res) => {
 
 exports.absentRecordPage = async (req, res) => {
   try {
-    const todayBs = String(bs.ADToBS(new Date()) || '');
+    const todayBs = getCurrentAttendanceBsDate();
     const [yearPart, monthPart, dayPart] = todayBs.split('-');
     const requestedAcademicYear = String(req.query.academicYear || '').trim();
     const requestedMonth = String(req.query.month || '').trim();
@@ -1703,7 +1725,7 @@ function getCurrentBSDate() {
     }
     
     if (typeof bs.ADToBS === 'function') {
-      const result = bs.ADToBS(new Date());
+      const result = getCurrentAttendanceBsDate();
       if (typeof result === 'string') {
         const parts = result.split('-');
         if (parts.length === 3) {
