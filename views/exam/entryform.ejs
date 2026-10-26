@@ -342,9 +342,12 @@ input[type="number"] {
   function populatePracticalMarks(marksData, studentClass, subject) {
     console.log("marks data in populate", marksData);
 
-    // Determine multiplier based on subject
+    const normalizedClass = String(studentClass || '').trim().toLowerCase().replace(/^class\s+/, '');
+    const isClassNineOrTen = ['9', '10', 'nine', 'ten'].includes(normalizedClass);
+
+    // Classes 9 and 10 always use unscaled practical marks.
     let multiplier = 1;
-    if ( subject.toUpperCase() === "SOCIAL" || subject.toUpperCase() === "HAMRO HETAUDA" || subject.toUpperCase() === "SCIENCE") {
+    if (!isClassNineOrTen && ['SOCIAL', 'HAMRO HETAUDA', 'SCIENCE'].includes(String(subject || '').toUpperCase())) {
       multiplier = 2;
     }
 
