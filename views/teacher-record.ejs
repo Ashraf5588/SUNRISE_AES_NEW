@@ -273,7 +273,15 @@
         <h1>Teacher Record</h1>
         <span>Today (BS): <%= todayBs %></span>
       </div>
-      <div style="display:flex;align-items:center;gap:12px;">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div class="field no-print">
+          <label for="academicYear">Academic Year</label>
+          <select id="academicYear" name="academicYear" onchange="applyAcademicYearFilter(this.value)" style="padding:8px 10px;border:1px solid var(--border);border-radius:10px;font:inherit;">
+            <% academicYears.forEach(function(year) { %>
+              <option value="<%= year %>" <%= year === academicYear ? 'selected' : '' %>><%= year %></option>
+            <% }) %>
+          </select>
+        </div>
         <div class="language-toggle-container no-print">
           <span class="lang-label">English</span>
           <label class="switch">
@@ -928,14 +936,23 @@
     function applyFilter() {
       const teacherName = (filterTeacherInput.value || '').trim();
       const params = new URLSearchParams();
+      params.set('academicYear', document.getElementById('academicYear').value);
       if (teacherName) {
         params.set('teacherName', teacherName);
       }
       window.location.href = `/teacher-record${params.toString() ? `?${params.toString()}` : ''}`;
     }
 
+    function applyAcademicYearFilter(year) {
+      const params = new URLSearchParams();
+      params.set('academicYear', year);
+      const teacherName = (filterTeacherInput.value || '').trim();
+      if (teacherName) params.set('teacherName', teacherName);
+      window.location.href = `/teacher-record?${params.toString()}`;
+    }
+
     function clearFilter() {
-      window.location.href = '/teacher-record';
+      window.location.href = `/teacher-record?academicYear=${encodeURIComponent(document.getElementById('academicYear').value)}`;
     }
   </script>
   <script src="/js/preeti.js"></script>

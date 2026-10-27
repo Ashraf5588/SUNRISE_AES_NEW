@@ -425,7 +425,7 @@ input[type="number"] {
     console.log("Refreshing practical marks...");
 
     const subject = document.getElementById('subjectHidden')?.value || '';
-    const subjectsWithPracticalSlips = ['SCIENCE', 'SOCIAL', 'NEPALI', 'ENGLISH','MATHEMATICS', 'HEALTH','HAMRO HETAUDA','COMPUTER'];
+    const subjectsWithPracticalSlips = ['SCIENCE', 'SOCIAL', 'NEPALI', 'ENGLISH','MATHEMATICS', 'HEALTH','HAMRO HETAUDA','COMPUTER','O.MATH','OPT.MATH'];
 
     // Only clear and refresh for subjects with practical slips
     if (subjectsWithPracticalSlips.includes(subject.toUpperCase())) {
@@ -514,7 +514,7 @@ input[type="number"] {
     }
 
     let attendanceMarks = 0;
-    const isMainSubject = ['NEPALI', 'ENGLISH', 'SOCIAL','SCIENCE','MATHEMATICS','HEALTH','HAMRO HETAUDA','COMPUTER'].includes(subject.toUpperCase());
+    const isMainSubject = ['NEPALI', 'ENGLISH', 'SOCIAL','SCIENCE','MATHEMATICS','HEALTH','HAMRO HETAUDA','COMPUTER','O.MATH','OPT.MATH'].includes(subject.toUpperCase());
 
     if (attendancePercent >= 90) {
       attendanceMarks = isClassNineOrTen ? 1 : (isMainSubject ? 2 : (fullMarks <= 25 ? 2 : 4));
@@ -731,7 +731,7 @@ input[type="number"] {
     const attendanceResult = await attendanceResponse.json();
 
     // Determine if subject should get practical marks from API
-    const subjectsWithPracticalSlips = [ 'SOCIAL', 'NEPALI', 'ENGLISH','SCIENCE', 'MATHEMATICS', 'HEALTH','HAMRO HETAUDA','COMPUTER'];
+    const subjectsWithPracticalSlips = [ 'SOCIAL', 'NEPALI', 'ENGLISH','SCIENCE', 'MATHEMATICS', 'HEALTH','HAMRO HETAUDA','COMPUTER','O.MATH','OPT.MATH'];
     const shouldFetchPracticalSlips = subjectsWithPracticalSlips.includes(subject.toUpperCase());
 
     function applyAbsentStatusFromData(reg, item) {

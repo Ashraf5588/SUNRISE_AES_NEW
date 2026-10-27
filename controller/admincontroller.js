@@ -2949,12 +2949,31 @@ exports.showTeacherRecord = async (req, res) => {
       const match = String(value || '').match(/^(\d{1,2}):(\d{2})$/);
       return match ? Number(match[1]) * 60 + Number(match[2]) : null;
     };
-    const [staffProfiles, oldestPunch, approvedLeaves] = await Promise.all([
+    const [staffProfiles, academicYearSetups, defaultAcademicSetup, approvedLeaves] = await Promise.all([
       Staff.find({}).select('staffName employeeCode plannedIn plannedOut midTime dateOfJoining isActive employmentStatus jobStatus').lean(),
-      EmployeeAttendance.findOne({}).sort({ punchTime: 1 }).select('punchTime').lean(),
+      marksheetSetup.find({ academicYear: { $exists: true, $ne: '' } }).select('academicYear').lean(),
+      marksheetSetup.findOne({}).select('academicYear').lean(),
       LeaveApplication.find({ status: 'approved' })
         .select('employeeName employeeCode leaveDay requestedDays startDateAd endDateAd startDateNepali endDateNepali').lean()
     ]);
+    const setupAcademicYear = String(defaultAcademicSetup?.academicYear || '').trim();
+    const defaultAcademicYear = /^\d{4}$/.test(setupAcademicYear) ? setupAcademicYear : todayBs.slice(0, 4);
+    const academicYears = [...new Set(academicYearSetups
+      .map(setup => String(setup.academicYear || '').trim())
+      .filter(year => /^\d{4}$/.test(year)))];
+    if (!academicYears.includes(defaultAcademicYear)) academicYears.push(defaultAcademicYear);
+    academicYears.sort((first, second) => Number(second) - Number(first));
+    const requestedAcademicYear = String(req.query.academicYear || '').trim();
+    const academicYear = academicYears.includes(requestedAcademicYear) ? requestedAcademicYear : defaultAcademicYear;
+    const academicStart = parseBsDate(`${academicYear}-01-01`);
+    const academicEnd = parseBsDate(`${Number(academicYear) + 1}-01-01`);
+    if (!academicStart || !academicEnd) throw new Error(`Unable to resolve dates for academic year ${academicYear}`);
+    const academicStartKey = toDateKey(academicStart);
+    const academicEndKey = toDateKey(academicEnd);
+    const isInAcademicYear = (date) => {
+      const key = toDateKey(date);
+      return Boolean(key && key >= academicStartKey && key < academicEndKey);
+    };
     const normalizeQuery = parseTeacherRecordEmployeeLabel(teacherQuery);
     const queriedEmployee = staffProfiles.find(profile =>
       normalizeQuery.employeeCode && String(profile.employeeCode || '').trim().toUpperCase() === normalizeQuery.employeeCode
@@ -2962,11 +2981,19 @@ exports.showTeacherRecord = async (req, res) => {
     const queryName = queriedEmployee?.staffName || normalizeQuery.name;
     const queryCode = String(queriedEmployee?.employeeCode || normalizeQuery.employeeCode || '').trim().toUpperCase();
     const recordFilter = teacherQuery
-      ? { teacherName: { $regex: queryCode
-        ? `^(?:${escapeRegex(queryCode)}\\s*-\\s*)?${escapeRegex(queryName)}$`
-        : `^${escapeRegex(teacherQuery)}$`, $options: 'i' } }
+      ? { teacherName: { $regex: `${escapeRegex(queryName)}$`, $options: 'i' } }
       : {};
-    const records = await TeacherRecord.find(recordFilter).sort({ teacherName: 1 }).lean();
+    const records = (await TeacherRecord.find(recordFilter).sort({ teacherName: 1 }).lean())
+      .map(record => ({
+        ...record,
+        issues: (Array.isArray(record.issues) ? record.issues : []).filter(item => {
+          const issueDate = parseBsDate(item.dateBs) || (item.createdAt ? new Date(item.createdAt) : null);
+          return issueDate && !Number.isNaN(issueDate.getTime()) && isInAcademicYear(issueDate);
+        })
+      }))
+      .filter(record => record.issues.length)
+      .filter(record => !teacherQuery
+        || normalizeName(parseTeacherRecordEmployeeLabel(record.teacherName).name) === normalizeName(queryName));
     const employeesByCode = new Map();
     const employeesByName = new Map();
     staffProfiles.forEach(profile => {
@@ -2977,8 +3004,10 @@ exports.showTeacherRecord = async (req, res) => {
     });
     const getRecordEmployee = (record) => {
       const label = parseTeacherRecordEmployeeLabel(record.teacherName);
-      return (label.employeeCode ? employeesByCode.get(label.employeeCode) : null)
-        || employeesByName.get(normalizeName(label.name))
+      const nameMatch = employeesByName.get(normalizeName(label.name));
+      const codeMatch = label.employeeCode ? employeesByCode.get(label.employeeCode) : null;
+      return (codeMatch && normalizeName(codeMatch.staffName) === normalizeName(label.name) ? codeMatch : null)
+        || nameMatch
         || null;
     };
     const reportByEmployee = new Map();
@@ -3010,16 +3039,15 @@ exports.showTeacherRecord = async (req, res) => {
             : normalizeName(profile.staffName) === normalizeName(queryName))))
         .map(profile => ({ teacherName: profile.staffName, issues: [] }))
     ].sort((first, second) => String(first.teacherName || '').localeCompare(String(second.teacherName || '')));
-    const firstTrackedDate = oldestPunch?.punchTime ? new Date(oldestPunch.punchTime) : null;
-    const throughDate = new Date();
-    const from = firstTrackedDate ? new Date(firstTrackedDate) : null;
-    if (from) from.setHours(0, 0, 0, 0);
-    throughDate.setHours(23, 59, 59, 999);
-    const attendanceQuery = from ? { punchTime: { $gte: from, $lte: throughDate } } : { _id: null };
-    const [punches, holidays] = await Promise.all([
+    const attendanceQuery = { punchTime: { $gte: academicStart, $lt: academicEnd } };
+    const [punches, oldestAcademicPunch, holidays] = await Promise.all([
       EmployeeAttendance.find(attendanceQuery).select('pin punchTime isHoliday').sort({ punchTime: 1 }).lean(),
+      EmployeeAttendance.findOne(attendanceQuery).sort({ punchTime: 1 }).select('punchTime').lean(),
       EmployeeWeekend.find({}).select('dateBs').lean()
     ]);
+    const attendanceCoverageStart = oldestAcademicPunch?.punchTime
+      ? new Date(oldestAcademicPunch.punchTime)
+      : null;
     const dayPunches = new Map();
     const attendanceDaysByCode = new Map();
     punches.forEach(punch => {
@@ -3045,12 +3073,23 @@ exports.showTeacherRecord = async (req, res) => {
     approvedLeaves.forEach(leave => {
       const code = String(leave.employeeCode || '').trim().toUpperCase();
       const name = normalizeName(leave.employeeName);
-      addToMap(leaveByCode, code, leave);
-      addToMap(leaveByName, name, leave);
       const startDate = leave.startDateAd ? new Date(`${leave.startDateAd}T00:00:00`) : parseBsDate(leave.startDateNepali);
       const endDate = leave.endDateAd ? new Date(`${leave.endDateAd}T00:00:00`) : parseBsDate(leave.endDateNepali);
       if (startDate && endDate && !Number.isNaN(startDate.getTime()) && !Number.isNaN(endDate.getTime())) {
-        const range = { start: toDateKey(startDate), end: toDateKey(endDate) };
+        if (toDateKey(endDate) < academicStartKey || toDateKey(startDate) >= academicEndKey) return;
+        const totalDays = Math.floor((endDate - startDate) / 86400000) + 1;
+        const overlapStart = new Date(Math.max(startDate.getTime(), academicStart.getTime()));
+        const overlapEnd = new Date(Math.min(endDate.getTime(), academicEnd.getTime() - 86400000));
+        const overlapDays = Math.floor((overlapEnd - overlapStart) / 86400000) + 1;
+        const selectedLeave = {
+          ...leave,
+          selectedRequestedDays: totalDays > 0
+            ? (Number(leave.requestedDays) || 0) * overlapDays / totalDays
+            : 0
+        };
+        addToMap(leaveByCode, code, selectedLeave);
+        addToMap(leaveByName, name, selectedLeave);
+        const range = { start: toDateKey(overlapStart), end: toDateKey(overlapEnd) };
         addToMap(leaveRangesByCode, code, range);
         addToMap(leaveRangesByName, name, range);
       }
@@ -3080,10 +3119,11 @@ exports.showTeacherRecord = async (req, res) => {
     const absenceCountByCode = new Map();
     staffProfiles.forEach(profile => {
       const code = String(profile.employeeCode || '').trim().toUpperCase();
-      if (!code || !from || profile.isActive === false || ['resigned', 'terminated'].includes(String(profile.employmentStatus || profile.jobStatus || '').toLowerCase())) return;
-      const parsedJoiningDate = profile.dateOfJoining ? new Date(profile.dateOfJoining) : from;
-      const joiningDate = Number.isNaN(parsedJoiningDate.getTime()) ? from : parsedJoiningDate;
-      const startDate = new Date(Math.max(from.getTime(), joiningDate.getTime()));
+      if (!code || profile.isActive === false || ['resigned', 'terminated'].includes(String(profile.employmentStatus || profile.jobStatus || '').toLowerCase())) return;
+      const parsedJoiningDate = profile.dateOfJoining ? new Date(profile.dateOfJoining) : academicStart;
+      const joiningDate = Number.isNaN(parsedJoiningDate.getTime()) ? academicStart : parsedJoiningDate;
+      if (!attendanceCoverageStart) return;
+      const startDate = new Date(Math.max(academicStart.getTime(), joiningDate.getTime(), attendanceCoverageStart.getTime()));
       if (Number.isNaN(startDate.getTime())) return;
       startDate.setHours(0, 0, 0, 0);
       let absentCount = 0;
@@ -3091,7 +3131,7 @@ exports.showTeacherRecord = async (req, res) => {
       const leaveRanges = leaveRangesByCode.get(code)?.length
         ? leaveRangesByCode.get(code)
         : leaveRangesByName.get(normalizeName(profile.staffName)) || [];
-      while (toDateKey(date) <= todayKey) {
+      while (toDateKey(date) < academicEndKey && toDateKey(date) <= todayKey) {
         const dateKey = toDateKey(date);
         const isWeekend = date.getDay() === 6;
         const approvedLeave = leaveRanges.some(range => dateKey >= range.start && dateKey <= range.end);
@@ -3111,7 +3151,7 @@ exports.showTeacherRecord = async (req, res) => {
       const halfLeaveCount = matchingLeaves.filter(leave => ['Early leave', 'Late leave'].includes(String(leave.leaveDay || ''))).length;
       const fullLeaveCount = matchingLeaves
         .filter(leave => !['Early leave', 'Late leave'].includes(String(leave.leaveDay || '')))
-        .reduce((sum, leave) => sum + (Number(leave.requestedDays) || 0), 0);
+        .reduce((sum, leave) => sum + (Number(leave.selectedRequestedDays) || 0), 0);
       const attendanceStats = attendanceStatsByCode.get(employeeCode) || { lateInCount: 0, earlyOutCount: 0 };
       const absentCount = absenceCountByCode.get(employeeCode) || 0;
       // Ensure issues are ordered oldest-first so first entry shows first
@@ -3126,6 +3166,7 @@ exports.showTeacherRecord = async (req, res) => {
         earlyOutCount: attendanceStats.earlyOutCount,
         absentCount,
         issues: orderedIssues.map((item) => ({
+          _id: item && item._id ? String(item._id) : '',
           dateBs: String(item && item.dateBs || ''),
           issue: String(item && item.issue || ''),
           halfLeave: Boolean(item && item.halfLeave),
@@ -3144,11 +3185,18 @@ exports.showTeacherRecord = async (req, res) => {
           addedByName: String(item && item.addedByName || '')
         }))
       };
-    });
+    }).filter(row => row.issues.length
+      || row.halfLeaveCount
+      || row.fullLeaveCount
+      || row.lateInCount
+      || row.earlyOutCount
+      || row.absentCount);
 
     res.render('teacher-record', {
       todayBs,
       teacherQuery,
+      academicYear,
+      academicYears,
       rows
     });
   } catch (error) {
@@ -3163,32 +3211,44 @@ exports.searchTeacherRecordTeachers = async (req, res) => {
     if (query.length < 1) {
       return res.status(200).json([]);
     }
+    const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
     const staffRows = await Staff.find({
-      staffName: { $regex: query, $options: 'i' }
+      staffName: { $regex: escapedQuery, $options: 'i' }
     })
       .select('staffName')
       .limit(10)
       .lean();
 
-    let results = staffRows
-      .map((staff) => String(staff.staffName || '').trim())
-      .filter(Boolean);
+    const recordRows = await TeacherRecord.find({
+      teacherName: { $regex: escapedQuery, $options: 'i' }
+    })
+      .select('teacherName')
+      .limit(20)
+      .lean();
 
+    const results = [
+      ...staffRows
+      .map((staff) => String(staff.staffName || '').trim())
+      .filter(Boolean),
+      ...recordRows
+        .map(record => parseTeacherRecordEmployeeLabel(record.teacherName).name)
+        .filter(name => name && name.toLowerCase().includes(query.toLowerCase()))
+    ];
     if (!results.length) {
       const userRows = await userlist.find({
-        teacherName: { $regex: query, $options: 'i' }
+        teacherName: { $regex: escapedQuery, $options: 'i' }
       })
         .select('teacherName')
         .limit(10)
         .lean();
 
-      results = userRows
+      results.push(...userRows
         .map((user) => String(user.teacherName || '').trim())
-        .filter(Boolean);
+        .filter(Boolean));
     }
 
-    res.status(200).json(results);
+    res.status(200).json([...new Set(results)]);
   } catch (error) {
     console.error('Error searching teachers:', error);
     res.status(500).json({ message: 'Internal Server Error' });
