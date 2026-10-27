@@ -1265,9 +1265,6 @@ exports.getPracticalSlipData = async (req, res, next) => {
       } else if (subject === "MATHEMATICS" || subject === "Mathematics" || subject === "mathematics" || subject== "O.MATH" || subject=="OPT.MATH") {
         // Mathematics: Attendance & Participation (4) + Project Work & Practical Work (36) + Terminal (10) = 50
         // Practical: 20 marks, Project: 16 marks (total 36)
-        if (isHigherClass) {
-          totalPracticalproject = (((((totalObtainedAllPractical / 10) * 10) + (((totalObtainedAllProject) / 6) * 6))) / unitsCount);
-        }
         totalPracticalproject = (((((totalObtainedAllPractical / 20) * 20) + (((totalObtainedAllProject) / 12) * 16))) / unitsCount);
         totalPractical = ((student.attendanceMarks || 0) + (student.participationMarks || 0) + totalPracticalproject + (student.terminalMarks || 0)) / 50 * 100;
 
