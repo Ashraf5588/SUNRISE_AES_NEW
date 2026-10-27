@@ -37,6 +37,21 @@ const controllerModule = require("./controller");
 const {allowedSubjectData} = controllerModule;
 const {generateToken} = require("../middleware/auth");
 
+const parseTeacherRecordEmployeeLabel = (value) => {
+  const label = String(value || '').trim();
+  const separatedCode = label.match(/^([A-Za-z0-9_-]+)\s*-\s*(.+)$/);
+  if (separatedCode) {
+    return { employeeCode: separatedCode[1].trim().toUpperCase(), name: separatedCode[2].trim() };
+  }
+
+  const compactCode = label.match(/^(\d+)\s*([^\d\s].+)$/);
+  if (compactCode) {
+    return { employeeCode: compactCode[1], name: compactCode[2].trim() };
+  }
+
+  return { employeeCode: '', name: label };
+};
+
 app.set("view engine", "ejs");
 app.set("view", path.join(rootDir, "views"));
 const {marksheetsetupschemaForAdmin} = require("../model/masrksheetschema");
@@ -2930,10 +2945,6 @@ exports.showTeacherRecord = async (req, res) => {
       }
     };
     const normalizeName = (value) => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
-    const parseEmployeeLabel = (value) => {
-      const match = String(value || '').trim().match(/^([A-Za-z0-9_-]+)\s*-\s*(.+)$/);
-      return match ? { employeeCode: match[1].trim().toUpperCase(), name: match[2].trim() } : { employeeCode: '', name: String(value || '').trim() };
-    };
     const getMinutes = (value) => {
       const match = String(value || '').match(/^(\d{1,2}):(\d{2})$/);
       return match ? Number(match[1]) * 60 + Number(match[2]) : null;
@@ -2944,7 +2955,7 @@ exports.showTeacherRecord = async (req, res) => {
       LeaveApplication.find({ status: 'approved' })
         .select('employeeName employeeCode leaveDay requestedDays startDateAd endDateAd startDateNepali endDateNepali').lean()
     ]);
-    const normalizeQuery = parseEmployeeLabel(teacherQuery);
+    const normalizeQuery = parseTeacherRecordEmployeeLabel(teacherQuery);
     const queriedEmployee = staffProfiles.find(profile =>
       normalizeQuery.employeeCode && String(profile.employeeCode || '').trim().toUpperCase() === normalizeQuery.employeeCode
     ) || staffProfiles.find(profile => normalizeName(profile.staffName) === normalizeName(normalizeQuery.name));
@@ -2965,7 +2976,7 @@ exports.showTeacherRecord = async (req, res) => {
       if (name) employeesByName.set(name, profile);
     });
     const getRecordEmployee = (record) => {
-      const label = parseEmployeeLabel(record.teacherName);
+      const label = parseTeacherRecordEmployeeLabel(record.teacherName);
       return (label.employeeCode ? employeesByCode.get(label.employeeCode) : null)
         || employeesByName.get(normalizeName(label.name))
         || null;
@@ -2973,7 +2984,7 @@ exports.showTeacherRecord = async (req, res) => {
     const reportByEmployee = new Map();
     records.forEach(record => {
       const employee = getRecordEmployee(record);
-      const label = parseEmployeeLabel(record.teacherName);
+      const label = parseTeacherRecordEmployeeLabel(record.teacherName);
       const key = employee?.employeeCode
         ? `code:${String(employee.employeeCode).trim().toUpperCase()}`
         : `name:${normalizeName(label.name)}`;
@@ -3322,9 +3333,7 @@ exports.getTeacherRecordData = async (req, res) => {
     const teacherName = String(req.query.teacherName || '').trim();
     if (!teacherName) return res.status(400).json({ success: false, message: 'teacherName required' });
 
-    const labelMatch = teacherName.match(/^([A-Za-z0-9_-]+)\s*-\s*(.+)$/);
-    const requestedCode = labelMatch ? labelMatch[1].trim().toUpperCase() : '';
-    const requestedName = labelMatch ? labelMatch[2].trim() : teacherName;
+    const { employeeCode: requestedCode, name: requestedName } = parseTeacherRecordEmployeeLabel(teacherName);
     const normalizeName = value => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
     const profile = requestedCode
       ? await Staff.findOne({ employeeCode: new RegExp(`^${requestedCode.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') }).select('staffName employeeCode').lean()
