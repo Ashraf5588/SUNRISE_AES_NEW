@@ -78,6 +78,16 @@ const DEFAULT_EMPLOYEE_DOCUMENTS = [
     'CIT document',
     'Qualification certificate'
 ];
+const EMPLOYEE_OFFICE_PROOF_SECTIONS = [
+    { prefix: 'contract', collection: 'contracts' },
+    { prefix: 'transfer', collection: 'transferHistory' },
+    { prefix: 'promotion', collection: 'promotionHistory' },
+    { prefix: 'resignation', collection: 'resignations' },
+    { prefix: 'termination', collection: 'terminations' },
+    { prefix: 'disciplinary', collection: 'disciplinaryCases' },
+    { prefix: 'exitInterview', collection: 'exitInterviews' },
+    { prefix: 'letter', collection: 'lettersIssued' }
+];
 const employeeProfileCsvHeaders = Object.keys(staffSchema.paths)
     .filter(field => !['_id', '__v', 'createdAt', 'updatedAt'].includes(field))
     .map(field => field === 'dateOfJoining' ? 'dateOfJoiningBs' : field === 'dateOfBirth' ? 'dateOfBirthBs' : field);
@@ -156,7 +166,7 @@ exports.uploadEmployeeWeekendCsv = (req, res, next) => employeeWeekendCsvUpload.
 exports.uploadEmployeeDocuments = (req, res, next) => employeeDocumentUpload.any()(req, res, error => {
     if (!error) return next();
     const message = error instanceof multer.MulterError
-        ? 'Upload up to 30 documents, each no larger than 10 MB.'
+        ? 'Upload no more than 30 employee files, each no larger than 10 MB.'
         : error.message || 'Unable to read employee documents.';
     if (req.accepts('json')) return res.status(400).json({ message });
     return res.status(400).send(message);
@@ -365,6 +375,60 @@ const getPrivateEmployeeDocument = async (req, res) => {
     }
 };
 
+exports.showPrivateEmployeeOfficeProof = async (req, res) => {
+    if (String(req.user?.role || '').toUpperCase() !== 'ADMIN') {
+        return res.status(403).send('You are not authorized to view this proof document.');
+    }
+
+    const employeeId = String(req.params.employeeId || '');
+    const collection = String(req.params.collection || '');
+    const blobName = String(req.query.blobName || '');
+    if (!mongoose.isValidObjectId(employeeId) || !blobName || blobName.length > 1024) {
+        return res.status(404).send('Proof document not found.');
+    }
+    const section = EMPLOYEE_OFFICE_PROOF_SECTIONS.find(item => item.collection === collection);
+    if (!section) return res.status(404).send('Proof document not found.');
+
+    try {
+        const employee = await Staff.findById(employeeId).lean();
+        if (!employee) return res.status(404).send('Proof document not found.');
+        const proofDocument = (employee[section.collection] || [])
+            .map(row => row.proofDocument)
+            .find(proof => proof?.blobName === blobName);
+        if (!proofDocument) return res.status(404).send('Proof document not found.');
+
+        const connectionString = process.env.AZURE_STORAGE_CONNECTION_STRING;
+        if (!connectionString) {
+            console.error('Azure document storage is not configured.');
+            return res.status(500).send('Proof document storage is unavailable.');
+        }
+        const serviceClient = BlobServiceClient.fromConnectionString(connectionString);
+        const blobClient = serviceClient
+            .getContainerClient(proofDocument.containerName || getLegacyEmployeeContainerName())
+            .getBlobClient(proofDocument.blobName);
+        const download = await blobClient.download();
+        if (!download.readableStreamBody) throw new Error('Azure did not return a proof document stream.');
+
+        const safeFilename = String(proofDocument.originalName || 'employee-proof')
+            .replace(/[\r\n"\\/]/g, '_')
+            .replace(/[^\w.-]/g, '_');
+        const allowedMimeTypes = new Set(['application/pdf', 'image/jpeg', 'image/png']);
+        const contentType = allowedMimeTypes.has(proofDocument.mimeType) ? proofDocument.mimeType : 'application/octet-stream';
+        res.set({
+            'Content-Type': contentType,
+            'Content-Disposition': `inline; filename="${safeFilename}"`,
+            'Cache-Control': 'private, no-store',
+            'X-Content-Type-Options': 'nosniff'
+        });
+        await pipeline(download.readableStreamBody, res);
+    } catch (error) {
+        if (error.statusCode === 404) return res.status(404).send('Proof document not found.');
+        console.error('Unable to retrieve employee office proof:', error);
+        if (res.headersSent) return res.destroy(error);
+        return res.status(502).send('Unable to retrieve this proof document.');
+    }
+};
+
 const authorizeEmployeeDocumentMutation = async (req, res) => {
     const employeeId = String(req.params.employeeId || '');
     if (!mongoose.isValidObjectId(employeeId)) {
@@ -531,6 +595,30 @@ const toEmployeeFormData = employee => {
 const getEmployeeDocumentUrl = (employeeId, blobName) =>
     `/employee-document/${employeeId}?blobName=${encodeURIComponent(blobName)}`;
 
+const getEmployeeOfficeProofUrl = (employeeId, collection, blobName) =>
+    `/employee-office-proof/${employeeId}/${collection}?blobName=${encodeURIComponent(blobName)}`;
+
+const attachEmployeeOfficeProofUrls = (formData, employee) => {
+    EMPLOYEE_OFFICE_PROOF_SECTIONS.forEach(({ collection }) => {
+        const rows = formData[collection] || [];
+        const storedRows = employee?.[collection] || [];
+        formData[collection] = rows.map(row => {
+            const requestedBlobName = getText(row.proofBlobName || row.proofDocument?.blobName, 1024);
+            const storedRow = storedRows.find(item => item.proofDocument?.blobName === requestedBlobName);
+            const proofDocument = storedRow?.proofDocument || null;
+            const { proofBlobName, proofFileSelected, formIndex, ...safeRow } = row;
+            return {
+                ...safeRow,
+                proofDocument: proofDocument ? {
+                    ...proofDocument,
+                    url: getEmployeeOfficeProofUrl(employee._id, collection, proofDocument.blobName)
+                } : null,
+                proofBlobName: proofDocument?.blobName || ''
+            };
+        });
+    });
+};
+
 const renderEmployeeDetails = async (res, options = {}) => {
     const [employees, setupOptions] = await Promise.all([getEmployeeProfiles(), getEmployeeSetupOptions()]);
     const selectedEmployeeRecord = options.employee
@@ -545,6 +633,7 @@ const renderEmployeeDetails = async (res, options = {}) => {
         }))
     };
     const formData = options.formData || toEmployeeFormData(selectedEmployeeRecord);
+    attachEmployeeOfficeProofUrls(formData, selectedEmployeeRecord);
     if (selectedEmployeeRecord && formData.previousCompanyTds?.blobName) {
         formData.previousCompanyTds.url = getEmployeeDocumentUrl(selectedEmployeeRecord._id, formData.previousCompanyTds.blobName);
     }
@@ -1195,6 +1284,22 @@ const getIndexedRowsWithFlags = (body, prefix, countName, fieldNames, flagFields
     }).filter(row => Object.entries(row).some(([key, value]) => flagFields.includes(key) ? value : Boolean(value)));
 };
 
+const getIndexedRowsWithProof = (body, prefix, countName, fieldNames, flagFields = [], maxRows = 50) => {
+    const count = Math.min(maxRows, Math.max(0, Number.parseInt(body[countName], 10) || 0));
+    return Array.from({ length: count }, (_, formIndex) => {
+        const row = Object.fromEntries(fieldNames.map(fieldName => [fieldName, getText(body[`${prefix}_${formIndex}_${fieldName}`])]));
+        flagFields.forEach(fieldName => { row[fieldName] = getBoolean(body[`${prefix}_${formIndex}_${fieldName}`]); });
+        row.proofBlobName = getText(body[`${prefix}_${formIndex}_proofBlobName`], 1024);
+        row.proofFileSelected = getBoolean(body[`${prefix}_${formIndex}_proofFileSelected`]);
+        row.formIndex = formIndex;
+        const hasData = Object.entries(row).some(([key, value]) => {
+            if (['proofBlobName', 'proofFileSelected', 'formIndex'].includes(key)) return false;
+            return flagFields.includes(key) ? value : Boolean(value);
+        });
+        return hasData || row.proofBlobName || row.proofFileSelected ? row : null;
+    }).filter(Boolean);
+};
+
 const buildEmployeeFormData = body => {
     const dateOfJoiningBs = String(body.dateOfJoiningBs || '').trim();
     const dateOfBirthBs = String(body.dateOfBirthBs || '').trim();
@@ -1338,14 +1443,14 @@ const buildEmployeeFormData = body => {
             url: getText(body.previousTdsDocumentUrl, 500),
             blobName: getText(body.previousTdsDocumentBlobName, 300)
         },
-        contracts: getIndexedRows(body, 'contract', 'contractCount', ['status', 'beganOn', 'endedOn']),
-        transferHistory: getIndexedRows(body, 'transfer', 'transferCount', ['transferDate', 'transferType', 'from', 'to', 'transferredBy']),
-        promotionHistory: getIndexedRows(body, 'promotion', 'promotionCount', ['status', 'promotionDate', 'fromDesignation', 'toDesignation', 'promotedBy']),
-        resignations: getIndexedRowsWithFlags(body, 'resignation', 'resignationCount', ['eventDate', 'lastWorkingDate', 'reason', 'details', 'approvedBy'], ['approved']),
-        terminations: getIndexedRowsWithFlags(body, 'termination', 'terminationCount', ['eventDate', 'lastWorkingDate', 'reason', 'details', 'approvedBy'], ['approved']),
-        disciplinaryCases: getIndexedRows(body, 'disciplinary', 'disciplinaryCount', ['caseName', 'description', 'createdOn', 'status', 'forwardTo', 'actions']),
-        exitInterviews: getIndexedRows(body, 'exitInterview', 'exitInterviewCount', ['description']),
-        lettersIssued: getIndexedRows(body, 'letter', 'letterCount', ['type', 'issueDate', 'issuedBy', 'letterUrl']),
+        contracts: getIndexedRowsWithProof(body, 'contract', 'contractCount', ['status', 'beganOn', 'endedOn']),
+        transferHistory: getIndexedRowsWithProof(body, 'transfer', 'transferCount', ['transferDate', 'transferType', 'from', 'to', 'transferredBy']),
+        promotionHistory: getIndexedRowsWithProof(body, 'promotion', 'promotionCount', ['status', 'promotionDate', 'fromDesignation', 'toDesignation', 'promotedBy']),
+        resignations: getIndexedRowsWithProof(body, 'resignation', 'resignationCount', ['eventDate', 'lastWorkingDate', 'reason', 'details', 'approvedBy'], ['approved']),
+        terminations: getIndexedRowsWithProof(body, 'termination', 'terminationCount', ['eventDate', 'lastWorkingDate', 'reason', 'details', 'approvedBy'], ['approved']),
+        disciplinaryCases: getIndexedRowsWithProof(body, 'disciplinary', 'disciplinaryCount', ['caseName', 'description', 'createdOn', 'status', 'forwardTo', 'actions']),
+        exitInterviews: getIndexedRowsWithProof(body, 'exitInterview', 'exitInterviewCount', ['description']),
+        lettersIssued: getIndexedRowsWithProof(body, 'letter', 'letterCount', ['type', 'issueDate', 'issuedBy', 'letterUrl']),
         loans: getIndexedRowsWithFlags(body, 'loan', 'loanCount', ['loanName', 'principalAmount', 'interestRate', 'status', 'matureDate'], ['approved']),
         assets: getIndexedRows(body, 'asset', 'assetCount', ['name', 'assetNumber', 'assetType', 'issueDate', 'condition', 'note']),
         facilities: getIndexedRows(body, 'facility', 'facilityCount', ['facility', 'description', 'startDate', 'endDate', 'note']),
@@ -1389,6 +1494,60 @@ const uploadDocumentsToAzure = async (files, formData) => {
         return uploaded;
     } catch (error) {
         await Promise.all(uploaded.map(document => containerClient.getBlockBlobClient(document.blobName).deleteIfExists().catch(() => {})));
+        throw error;
+    }
+};
+
+const uploadEmployeeOfficeProofs = async (formData, files, employee) => {
+    const uploaded = [];
+    const keptBlobNames = new Set();
+    try {
+        let containerClient;
+        let containerName;
+        for (const { prefix, collection } of EMPLOYEE_OFFICE_PROOF_SECTIONS) {
+            const existingRows = employee?.[collection] || [];
+            for (const row of formData[collection] || []) {
+                const formIndex = row.formIndex;
+                const file = (files || []).find(item => item.fieldname === `${prefix}_${formIndex}_proofFile`);
+                const existingProof = existingRows.find(item =>
+                    item.proofDocument?.blobName === row.proofBlobName
+                )?.proofDocument;
+                if (file) {
+                    if (!['application/pdf', 'image/jpeg', 'image/png'].includes(String(file.mimetype || '').toLowerCase())) {
+                        throw new Error('Proof documents must be PDF, JPG, or PNG files.');
+                    }
+                    if (!containerClient) ({ containerClient, containerName } = await getEmployeeDocumentContainer());
+                    const extension = path.extname(file.originalname).toLowerCase();
+                    const safeExtension = /^\.(pdf|jpe?g|png)$/.test(extension) ? extension : '';
+                    const safeEmployeeCode = String(formData.employeeCode || '').replace(/[^a-z0-9_-]/gi, '_');
+                    const blobName = `employee-office-proofs/${safeEmployeeCode}/${Date.now()}-${crypto.randomUUID()}${safeExtension}`;
+                    await containerClient.getBlockBlobClient(blobName).uploadData(file.buffer, {
+                        blobHTTPHeaders: { blobContentType: file.mimetype }
+                    });
+                    row.proofDocument = {
+                        blobName,
+                        containerName,
+                        originalName: getText(file.originalname, 180),
+                        mimeType: file.mimetype
+                    };
+                    uploaded.push(row.proofDocument);
+                } else {
+                    row.proofDocument = existingProof || null;
+                }
+                if (row.proofDocument?.blobName) keptBlobNames.add(row.proofDocument.blobName);
+                delete row.proofBlobName;
+                delete row.proofFileSelected;
+                delete row.formIndex;
+            }
+        }
+        const removed = EMPLOYEE_OFFICE_PROOF_SECTIONS.flatMap(({ collection }) =>
+            (employee?.[collection] || [])
+                .map(row => row.proofDocument)
+                .filter(proof => proof?.blobName && !keptBlobNames.has(proof.blobName))
+        );
+        return { uploaded, removed };
+    } catch (error) {
+        await deleteUploadedDocuments(uploaded);
         throw error;
     }
 };
@@ -1457,6 +1616,7 @@ exports.createEmployeeDetails = async (req, res) => {
     }
 
     let uploadedDocuments = [];
+    let uploadedOfficeProofs = [];
     let uploadedPhoto = null;
     let uploadedTdsDocument = null;
     try {
@@ -1473,6 +1633,8 @@ exports.createEmployeeDetails = async (req, res) => {
         uploadedDocuments = await uploadDocumentsToAzure(req.files, formData);
         uploadedPhoto = await uploadEmployeePhotoToAzure((req.files || []).find(file => file.fieldname === 'employeePhoto'), formData.employeeCode);
         uploadedTdsDocument = await uploadPreviousTdsDocumentToAzure((req.files || []).find(file => file.fieldname === 'previousTdsDocument'), formData.employeeCode);
+        const officeProofs = await uploadEmployeeOfficeProofs(formData, req.files, null);
+        uploadedOfficeProofs = officeProofs.uploaded;
         const { documentRows, ...employeeData } = formData;
         if (uploadedTdsDocument) {
             employeeData.previousCompanyTds.documentName = uploadedTdsDocument.originalName;
@@ -1483,7 +1645,7 @@ exports.createEmployeeDetails = async (req, res) => {
         await Staff.create({ ...employeeData, documents: uploadedDocuments, employeePhoto: uploadedPhoto || {} });
         return res.redirect('/employeedetail?saved=1');
     } catch (error) {
-        await deleteUploadedDocuments([...uploadedDocuments, ...(uploadedPhoto ? [uploadedPhoto] : []), ...(uploadedTdsDocument ? [uploadedTdsDocument] : [])]);
+        await deleteUploadedDocuments([...uploadedDocuments, ...uploadedOfficeProofs, ...(uploadedPhoto ? [uploadedPhoto] : []), ...(uploadedTdsDocument ? [uploadedTdsDocument] : [])]);
         if (error.code === 11000) {
             return renderEmployeeDetails(res, {
                 status: 409,
@@ -1518,6 +1680,7 @@ exports.updateEmployeeDetails = async (req, res) => {
     }
 
     let uploadedDocuments = [];
+    let uploadedOfficeProofs = [];
     let uploadedPhoto = null;
     let uploadedTdsDocument = null;
     try {
@@ -1537,6 +1700,8 @@ exports.updateEmployeeDetails = async (req, res) => {
         uploadedDocuments = await uploadDocumentsToAzure(req.files, formData);
         uploadedPhoto = await uploadEmployeePhotoToAzure((req.files || []).find(file => file.fieldname === 'employeePhoto'), formData.employeeCode);
         uploadedTdsDocument = await uploadPreviousTdsDocumentToAzure((req.files || []).find(file => file.fieldname === 'previousTdsDocument'), formData.employeeCode);
+        const officeProofs = await uploadEmployeeOfficeProofs(formData, req.files, existingEmployee);
+        uploadedOfficeProofs = officeProofs.uploaded;
         const { documentRows, ...employeeData } = formData;
         employeeData.documents = [...(existingEmployee.documents || []), ...uploadedDocuments];
         employeeData.employeePhoto = uploadedPhoto || existingEmployee.employeePhoto || {};
@@ -1561,6 +1726,7 @@ exports.updateEmployeeDetails = async (req, res) => {
             });
         }
         await Staff.updateOne({ _id: employeeId }, { $set: employeeData }, { runValidators: true });
+        await deleteUploadedDocuments(officeProofs.removed);
         if (uploadedPhoto && existingEmployee.employeePhoto?.blobName) {
             await deleteUploadedDocuments([{ blobName: existingEmployee.employeePhoto.blobName }]);
         }
@@ -1572,7 +1738,7 @@ exports.updateEmployeeDetails = async (req, res) => {
         }
         return res.redirect(`/employeedetail?employeeId=${employeeId}&module=${encodeURIComponent(activeModule)}&saved=1`);
     } catch (error) {
-        await deleteUploadedDocuments([...uploadedDocuments, ...(uploadedPhoto ? [uploadedPhoto] : []), ...(uploadedTdsDocument ? [uploadedTdsDocument] : [])]);
+        await deleteUploadedDocuments([...uploadedDocuments, ...uploadedOfficeProofs, ...(uploadedPhoto ? [uploadedPhoto] : []), ...(uploadedTdsDocument ? [uploadedTdsDocument] : [])]);
         if (error.code === 11000) {
             return renderEmployeeDetails(res, { status: 409, employeeId, activeModule, error: 'That employee code is already in use.', formData });
         }
@@ -2493,9 +2659,14 @@ const renderTeacherProfileFillup = async (req, res, options = {}) => {
             url: getEmployeeDocumentUrl(employee._id, document.blobName)
         }))
     };
+    const formData = options.formData || toEmployeeFormData(employee);
+    EMPLOYEE_OFFICE_PROOF_SECTIONS.forEach(({ collection }) => {
+        delete employeeForView[collection];
+        delete formData[collection];
+    });
     return res.status(options.status || 200).render('employee/employeprofilefillupform', {
         employee: employeeForView,
-        formData: options.formData || toEmployeeFormData(employee),
+        formData,
         error: options.error || '',
         saved: options.saved || false
     });

@@ -88,10 +88,18 @@ const advanceSchema = new mongoose.Schema({
   matureDate: { type: String, default: '', trim: true }
 }, { _id: false });
 
+const employeeOfficeProofSchema = new mongoose.Schema({
+  blobName: { type: String, required: true, trim: true },
+  containerName: { type: String, default: '', trim: true },
+  originalName: { type: String, default: '', trim: true },
+  mimeType: { type: String, default: '', trim: true }
+}, { _id: false });
+
 const contractSchema = new mongoose.Schema({
   status: { type: String, default: '', trim: true },
   beganOn: { type: String, default: '', trim: true },
-  endedOn: { type: String, default: '', trim: true }
+  endedOn: { type: String, default: '', trim: true },
+  proofDocument: { type: employeeOfficeProofSchema, default: null }
 }, { _id: false });
 
 const transferSchema = new mongoose.Schema({
@@ -99,7 +107,8 @@ const transferSchema = new mongoose.Schema({
   transferType: { type: String, default: '', trim: true },
   from: { type: String, default: '', trim: true },
   to: { type: String, default: '', trim: true },
-  transferredBy: { type: String, default: '', trim: true }
+  transferredBy: { type: String, default: '', trim: true },
+  proofDocument: { type: employeeOfficeProofSchema, default: null }
 }, { _id: false });
 
 const promotionSchema = new mongoose.Schema({
@@ -107,7 +116,8 @@ const promotionSchema = new mongoose.Schema({
   promotionDate: { type: String, default: '', trim: true },
   fromDesignation: { type: String, default: '', trim: true },
   toDesignation: { type: String, default: '', trim: true },
-  promotedBy: { type: String, default: '', trim: true }
+  promotedBy: { type: String, default: '', trim: true },
+  proofDocument: { type: employeeOfficeProofSchema, default: null }
 }, { _id: false });
 
 const exitSchema = new mongoose.Schema({
@@ -116,7 +126,8 @@ const exitSchema = new mongoose.Schema({
   reason: { type: String, default: '', trim: true },
   details: { type: String, default: '', trim: true },
   approved: { type: Boolean, default: false },
-  approvedBy: { type: String, default: '', trim: true }
+  approvedBy: { type: String, default: '', trim: true },
+  proofDocument: { type: employeeOfficeProofSchema, default: null }
 }, { _id: false });
 
 const disciplinarySchema = new mongoose.Schema({
@@ -125,15 +136,22 @@ const disciplinarySchema = new mongoose.Schema({
   createdOn: { type: String, default: '', trim: true },
   status: { type: String, default: '', trim: true },
   forwardTo: { type: String, default: '', trim: true },
-  actions: { type: String, default: '', trim: true }
+  actions: { type: String, default: '', trim: true },
+  proofDocument: { type: employeeOfficeProofSchema, default: null }
 }, { _id: false });
 
 const letterSchema = new mongoose.Schema({
   type: { type: String, default: '', trim: true },
   issueDate: { type: String, default: '', trim: true },
   issuedBy: { type: String, default: '', trim: true },
-  letterUrl: { type: String, default: '', trim: true }
+  letterUrl: { type: String, default: '', trim: true },
+  proofDocument: { type: employeeOfficeProofSchema, default: null }
 }, { _id: false });
+
+const exitInterviewSchema = new mongoose.Schema({
+  description: { type: String, default: '', trim: true },
+  proofDocument: { type: employeeOfficeProofSchema, default: null }
+});
 
 const loanSchema = new mongoose.Schema({
   loanName: { type: String, default: '', trim: true },
@@ -349,7 +367,7 @@ const staffSchema = new mongoose.Schema(
     resignations: { type: [exitSchema], default: [] },
     terminations: { type: [exitSchema], default: [] },
     disciplinaryCases: { type: [disciplinarySchema], default: [] },
-    exitInterviews: [{ description: { type: String, default: '', trim: true } }],
+    exitInterviews: { type: [exitInterviewSchema], default: [] },
     lettersIssued: { type: [letterSchema], default: [] },
     loans: { type: [loanSchema], default: [] },
     assets: { type: [assetSchema], default: [] },

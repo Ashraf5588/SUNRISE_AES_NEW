@@ -480,7 +480,7 @@ const attendanceData = await attendancemodel.find({}).lean();
       
     } 
 
-   else if (subject === "MATHEMATICS" ) {
+   else if (subject === "MATHEMATICS" || subject=== "O.MATH" || subject=== "OPT.MATH") {
       console.log('🔬 === SUBJECT DETECTED ===');      
       console.log('=== SEARCHING FOR SCIENCE DATA ===');
       console.log('ScienceModel:', typeof ScienceModel);

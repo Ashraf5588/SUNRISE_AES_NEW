@@ -32,8 +32,8 @@
 		.profile-fact { display: grid; grid-template-columns: 95px minmax(0, 1fr); gap: 8px; font-size: .78rem; }
 		.profile-fact dt { color: var(--muted); font-weight: 700; }
 		.profile-fact dd { margin: 0; overflow-wrap: anywhere; }
-		.employee-switcher { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--line); }
-		.employee-switcher select { min-width: 0; flex: 1; }
+		.employee-switcher { display: flex; justify-content: center; margin: 0 0 14px; }
+		.employee-switcher select { width: min(420px, 100%); min-width: 0; }
 		.rail-links { display: grid; gap: 3px; padding: 8px; }
 		.rail-link { display: flex; align-items: center; min-height: 42px; padding: 0 12px; border: 0; border-radius: 4px; background: transparent; color: #46594f; text-align: left; text-decoration: none; cursor: pointer; font-weight: 700; }
 		.rail-link:hover { background: #edf1f6; }
@@ -45,7 +45,7 @@
 		.required-note { color: var(--muted); font-size: .78rem; }
 		.required-note span { color: var(--orange); font-weight: 800; }
 		form.profile-form { padding: 0; }
-		form.employee-switcher { margin: 0; padding: 0; }
+		form.employee-switcher { margin: 0 0 14px; padding: 0; }
 		input, select, textarea { width: 100%; min-height: 40px; padding: 9px 10px; border: 1px solid #cddad1; border-radius: 4px; background: white; color: var(--ink); }
 		.identifier-duplicate { border-color: var(--red) !important; background: #fff5f5 !important; box-shadow: 0 0 0 1px rgba(165,53,53,.16); }
 		.identifier-shake { animation: identifier-shake .36s ease-in-out; }
@@ -113,6 +113,12 @@
 		.document-link, .photo-preview-trigger { color: var(--blue); cursor: pointer; }
 		.document-link { display: inline-flex; align-items: center; }
 		.document-thumbnail { display: block; width: 100px; height: 72px; border: 1px solid var(--line); border-radius: 4px; background: #f5f7fa; object-fit: contain; }
+		.office-proof-cell { min-width: 180px; }
+		.office-proof-preview { display: inline-flex; align-items: center; justify-content: center; width: 76px; height: 54px; margin-bottom: 5px; border: 1px solid var(--line); border-radius: 4px; background: #f5f7fa; color: var(--blue); cursor: pointer; text-decoration: none; }
+		.office-proof-thumbnail { display: block; width: 100%; height: 100%; border-radius: 3px; object-fit: contain; }
+		.office-proof-file { font-size: .75rem; font-weight: 800; }
+		.office-proof-input { display: block; width: 175px; min-height: 34px; padding: 4px; font-size: .72rem; }
+		.office-proof-remove { min-height: 28px; margin-top: 4px; padding: 0 7px; }
 		.photo-preview-trigger { display: block; padding: 0; border: 0; }
 		.photo-delete-button { display: block; margin: 0 auto 12px; }
 		.media-preview { width: 100vw; max-width: none; height: 100dvh; max-height: none; padding: 48px 16px 16px; border: 0; background: #111; color: #fff; }
@@ -198,6 +204,7 @@ const activeModuleName = activeModule || 'profile';
 			<form class="csv-upload" action="/employeedetail/import-csv" method="post" enctype="multipart/form-data"><input type="file" name="employeeCsv" accept=".csv,text/csv" aria-label="Employee profile CSV file" required><button class="button button-primary" type="submit"><i class="fa-solid fa-upload" aria-hidden="true"></i> Upload CSV</button></form>
 		</div>
 	</section>
+	<% if (employees.length) { %><form class="employee-switcher" action="/employeedetail" method="get"><select name="employeeId" aria-label="Select employee" onchange="this.form.submit()"><% employees.forEach(employee => { %><option value="<%= employee._id %>" <%= String(employee._id) === String(selectedEmployee?._id) ? 'selected' : '' %>><%= employee.staffName %> / <%= employee.employeeCode %></option><% }) %></select></form><% } %>
 	<% if (importResult) { %>
 		<section class="csv-result" aria-live="polite" aria-labelledby="employee-csv-result-title">
 			<h2 id="employee-csv-result-title">CSV import results</h2>
@@ -222,7 +229,6 @@ const activeModuleName = activeModule || 'profile';
 						<div class="profile-fact"><dt>Blood group</dt><dd><%= formData.health?.bloodGroup || selectedEmployee?.bloodGroup || '-' %></dd></div>
 					</dl>
 				</div>
-				<% if (employees.length) { %><form class="employee-switcher" action="/employeedetail" method="get"><select name="employeeId" aria-label="Select employee" onchange="this.form.submit()"><% employees.forEach(employee => { %><option value="<%= employee._id %>" <%= String(employee._id) === String(selectedEmployee?._id) ? 'selected' : '' %>><%= employee.staffName %> / <%= employee.employeeCode %></option><% }) %></select></form><% } %>
 			</section>
 			<nav class="rail-panel rail-links" aria-label="Employee profile modules">
 				<button class="rail-link" type="button" data-module-target="profile" aria-current="<%= activeModuleName === 'profile' ? 'page' : 'false' %>"><i class="fa-regular fa-id-badge" aria-hidden="true"></i> Employee Profile</button>
@@ -283,7 +289,50 @@ const activeModuleName = activeModule || 'profile';
 					<section class="tab-panel" id="profileOthersPanel" role="tabpanel" hidden><div class="field"><label for="otherInformation">Other information</label><textarea id="otherInformation" name="otherInformation"><%= formData.otherInformation||'' %></textarea></div></section>
 				</div>
 				<div class="module-panel" data-module="pay" <%= activeModuleName!=='pay'?'hidden':'' %>><nav class="tab-list" role="tablist" aria-label="Pay and benefits" data-tab-group="pay"><button class="tab-button" type="button" role="tab" aria-selected="true" data-tab-target="payDetailsPanel">Pay &amp; Benefits</button><button class="tab-button" type="button" role="tab" aria-selected="false" data-tab-target="advanceRecordsPanel">Advance</button></nav><section class="tab-panel" id="payDetailsPanel" role="tabpanel"><nav class="tab-list sub-tabs" role="tablist" aria-label="Pay details" data-tab-group="payDetails"><button class="tab-button" type="button" role="tab" aria-selected="true" data-tab-target="salaryRecordsPanel">Basic Salary</button><button class="tab-button" type="button" role="tab" aria-selected="false" data-tab-target="allowanceRecordsPanel">Allowance</button><button class="tab-button" type="button" role="tab" aria-selected="false" data-tab-target="deductionRecordsPanel">Deduction</button><button class="tab-button" type="button" role="tab" aria-selected="false" data-tab-target="taxConfigPanel">Tax Configuration</button></nav><% tableConfigs.filter(config=>config.group==='pay'&&config.prefix!=='advance').forEach((config,index)=> { %><section class="tab-panel" id="<%= configPanelId(config) %>" role="tabpanel" <%= index===0?'':'hidden' %>><div class="section-heading"><h3><%= config.title %></h3><button class="add-row" type="button" data-add-row="<%= config.prefix %>">+ <%= config.action %></button></div><div class="repeat-table-wrap"><table class="repeat-table"><thead><tr><th>S.N</th><% config.fields.forEach(field=> { %><th><%= field.label %></th><% }) %><th>Action</th></tr></thead><tbody id="<%= config.prefix %>Rows" data-row-prefix="<%= config.prefix %>"><% currentRows(config).forEach((row,index)=> { %><tr data-repeat-row><td class="row-number"><%= index+1 %></td><% config.fields.forEach(field=> { %><td><% if(field.type==='select'){ %><select name="<%= config.prefix %>_<%= index %>_<%= field.name %>" aria-label="<%= field.label %>"><% field.options.forEach(option=> { %><option value="<%= option==='Yes'?'true':option==='No'?'false':option %>" <%= String(row[field.name]??'')===(option==='Yes'?'true':option==='No'?'false':option)?'selected':'' %>><%= option %></option><% }) %></select><% } else { %><input type="<%= field.type==='date'?'text':field.type||'text' %>" class="<%= field.type==='date'?'nepali-date-input':'' %>" name="<%= config.prefix %>_<%= index %>_<%= field.name %>" value="<%= row[field.name]??'' %>" aria-label="<%= field.label %>" <%= field.type==='number'?'step="any" min="0"':'' %>><% } %></td><% }) %><td><button class="remove-row" type="button" data-remove-row>Remove</button></td></tr><% }) %></tbody></table></div></section><% }) %><section class="tab-panel" id="taxConfigPanel" role="tabpanel" hidden><div class="section-heading"><h3>Tax Configuration</h3></div><div class="field-grid"><div class="field"><label for="taxPanNumber">PAN Number</label><input id="taxPanNumber" name="taxPanNumber" value="<%= formData.taxConfiguration?.panNumber||formData.panNumber||'' %>"></div><div class="field"><label for="taxSsfNumber">SSF Number</label><input id="taxSsfNumber" name="taxSsfNumber" value="<%= formData.taxConfiguration?.ssfNumber||formData.ssfNumber||'' %>"></div><div class="field"><label for="taxSsfEffectiveDate">SSF Effective Date (BS)</label><input id="taxSsfEffectiveDate" class="nepali-date-input" name="taxSsfEffectiveDate" value="<%= formData.taxConfiguration?.ssfEffectiveDate||'' %>"></div></div><div class="section-heading" style="margin-top:22px"><h3>Contribution configuration</h3><button class="add-row" type="button" data-add-row="taxContribution">+ Add contribution</button></div><div class="repeat-table-wrap"><table class="repeat-table"><thead><tr><th>S.N</th><th>Title</th><th>Number</th><th>Enabled</th><th>Rate (Employee)</th><th>Rate (Employer)</th><th>Action</th></tr></thead><tbody id="taxContributionRows" data-row-prefix="taxContribution"><% const contributions=formData.taxConfiguration?.contributions?.length?formData.taxConfiguration.contributions:[{title:'PF'},{title:'CIT'}];contributions.forEach((row,index)=> { %><tr data-repeat-row><td class="row-number"><%= index+1 %></td><td><input name="taxContribution_<%= index %>_title" value="<%= row.title||'' %>"></td><td><input name="taxContribution_<%= index %>_number" value="<%= row.number||'' %>"></td><td><select name="taxContribution_<%= index %>_enabled"><option value="false">No</option><option value="true" <%= row.enabled?'selected':'' %>>Yes</option></select></td><td><input type="number" min="0" step="any" name="taxContribution_<%= index %>_employeeRate" value="<%= row.employeeRate??'' %>"></td><td><input type="number" min="0" step="any" name="taxContribution_<%= index %>_employerRate" value="<%= row.employerRate??'' %>"></td><td><button class="remove-row" type="button" data-remove-row>Remove</button></td></tr><% }) %></tbody></table></div></section></section><% const advanceConfig=tableConfigs.find(config=>config.prefix==='advance'); %><section class="tab-panel" id="advanceRecordsPanel" role="tabpanel" hidden><div class="section-heading"><h3>Advance</h3><button class="add-row" type="button" data-add-row="advance">+ Add Advance</button></div><div class="repeat-table-wrap"><table class="repeat-table"><thead><tr><th>S.N</th><% advanceConfig.fields.forEach(field=> { %><th><%= field.label %></th><% }) %><th>Action</th></tr></thead><tbody id="advanceRows" data-row-prefix="advance"><% currentRows(advanceConfig).forEach((row,index)=> { %><tr data-repeat-row><td class="row-number"><%= index+1 %></td><% advanceConfig.fields.forEach(field=> { %><td><% if(field.type==='select'){ %><select name="advance_<%= index %>_<%= field.name %>"><% field.options.forEach(option=> { %><option value="<%= option==='Yes'?'true':option==='No'?'false':option %>" <%= String(row[field.name]??'')===(option==='Yes'?'true':option==='No'?'false':option)?'selected':'' %>><%= option %></option><% }) %></select><% } else { %><input type="<%= field.type==='date'?'text':field.type||'text' %>" class="<%= field.type==='date'?'nepali-date-input':'' %>" name="advance_<%= index %>_<%= field.name %>" value="<%= row[field.name]??'' %>"><% } %></td><% }) %><td><button class="remove-row" type="button" data-remove-row>Remove</button></td></tr><% }) %></tbody></table></div></section></div>
-				<div class="module-panel" data-module="office" hidden><nav class="tab-list" role="tablist" aria-label="Office activities" data-tab-group="office"><% groupedTabs.office.forEach((title,index)=> {const config=tableConfigs.find(item=>item.group==='office'&&item.title===title); %><button class="tab-button" type="button" role="tab" aria-selected="<%= index===0 %>" data-tab-target="<%= configPanelId(config) %>"><%= title %></button><% }) %></nav><% tableConfigs.filter(config=>config.group==='office').forEach((config,index)=> { %><section class="tab-panel" id="<%= configPanelId(config) %>" role="tabpanel" <%= index===0?'':'hidden' %>><div class="section-heading"><h3><%= config.title %></h3><button class="add-row" type="button" data-add-row="<%= config.prefix %>">+ <%= config.action %></button></div><div class="repeat-table-wrap"><table class="repeat-table"><thead><tr><th>S.N</th><% config.fields.forEach(field=> { %><th><%= field.label %></th><% }) %><th>Action</th></tr></thead><tbody id="<%= config.prefix %>Rows" data-row-prefix="<%= config.prefix %>"><% currentRows(config).forEach((row,index)=> { %><tr data-repeat-row><td class="row-number"><%= index+1 %></td><% config.fields.forEach(field=> { %><td><% if(field.type==='select'){ %><select name="<%= config.prefix %>_<%= index %>_<%= field.name %>" aria-label="<%= field.label %>"><% field.options.forEach(option=> { %><option value="<%= option==='Yes'?'true':option==='No'?'false':option %>" <%= String(row[field.name]??'')===(option==='Yes'?'true':option==='No'?'false':option)?'selected':'' %>><%= option %></option><% }) %></select><% } else { %><input type="<%= field.type==='date'?'text':field.type||'text' %>" class="<%= field.type==='date'?'nepali-date-input':'' %>" name="<%= config.prefix %>_<%= index %>_<%= field.name %>" value="<%= row[field.name]??'' %>" aria-label="<%= field.label %>"><% } %></td><% }) %><td><button class="remove-row" type="button" data-remove-row>Remove</button></td></tr><% }) %></tbody></table></div></section><% }) %><section class="tab-panel" role="tabpanel"><div class="section-heading"><h3>Experience Letter</h3><a class="button button-secondary" href="/teacher-record">Template setup / issue letter</a></div><p class="muted-copy">Select Experience Letter in Letter Issued to record an issued letter.</p></section></div>
+				<div class="module-panel" data-module="office" hidden>
+					<nav class="tab-list" role="tablist" aria-label="Office activities" data-tab-group="office">
+						<% groupedTabs.office.forEach((title,index)=> { const config=tableConfigs.find(item=>item.group==='office'&&item.title===title); %>
+							<button class="tab-button" type="button" role="tab" aria-selected="<%= index===0 %>" data-tab-target="<%= configPanelId(config) %>"><%= title %></button>
+						<% }) %>
+					</nav>
+					<% tableConfigs.filter(config=>config.group==='office').forEach((config,index)=> { %>
+						<section class="tab-panel" id="<%= configPanelId(config) %>" role="tabpanel" <%= index===0?'':'hidden' %>>
+							<div class="section-heading"><h3><%= config.title %></h3><button class="add-row" type="button" data-add-row="<%= config.prefix %>">+ <%= config.action %></button></div>
+							<div class="repeat-table-wrap">
+								<table class="repeat-table">
+									<thead><tr><th>S.N</th><% config.fields.forEach(field=> { %><th><%= field.label %></th><% }) %><th>Proof document</th><th>Action</th></tr></thead>
+									<tbody id="<%= config.prefix %>Rows" data-row-prefix="<%= config.prefix %>">
+										<% currentRows(config).forEach((row,index)=> { const proof=row.proofDocument; %>
+											<tr data-repeat-row>
+												<td class="row-number"><%= index+1 %></td>
+												<% config.fields.forEach(field=> { %>
+													<td>
+														<% if(field.type==='select'){ %>
+															<select name="<%= config.prefix %>_<%= index %>_<%= field.name %>" aria-label="<%= field.label %>"><% field.options.forEach(option=> { %><option value="<%= option==='Yes'?'true':option==='No'?'false':option %>" <%= String(row[field.name]??'')===(option==='Yes'?'true':option==='No'?'false':option)?'selected':'' %>><%= option %></option><% }) %></select>
+														<% } else { %>
+															<input type="<%= field.type==='date'?'text':field.type||'text' %>" class="<%= field.type==='date'?'nepali-date-input':'' %>" name="<%= config.prefix %>_<%= index %>_<%= field.name %>" value="<%= row[field.name]??'' %>" aria-label="<%= field.label %>">
+														<% } %>
+													</td>
+												<% }) %>
+												<td class="office-proof-cell">
+													<a class="office-proof-preview" <% if(proof?.url) { %>href="<%= proof.url %>" data-preview-url="<%= proof.url %>" data-preview-type="<%= proof.mimeType || '' %>" aria-label="Preview <%= proof.originalName || 'proof document' %>" title="<%= proof.originalName || 'Proof document' %>"<% } else { %>hidden<% } %>>
+														<% if(proof?.mimeType?.startsWith('image/')) { %><img class="office-proof-thumbnail" src="<%= proof.url %>" alt="<%= proof.originalName || 'Proof document' %>"><% } else { %><span class="office-proof-file">PDF</span><% } %>
+													</a>
+													<input type="hidden" name="<%= config.prefix %>_<%= index %>_proofBlobName" value="<%= proof?.blobName || row.proofBlobName || '' %>">
+													<input class="office-proof-input" type="file" name="<%= config.prefix %>_<%= index %>_proofFile" accept="application/pdf,image/jpeg,image/png" aria-label="Upload proof document for <%= config.title %> row <%= index+1 %>">
+													<input type="hidden" name="<%= config.prefix %>_<%= index %>_proofFileSelected" value="">
+													<button class="remove-row office-proof-remove" type="button" data-remove-office-proof <%= proof?.blobName ? '' : 'hidden' %>>Remove proof</button>
+												</td>
+												<td><button class="remove-row" type="button" data-remove-row>Remove</button></td>
+											</tr>
+										<% }) %>
+									</tbody>
+								</table>
+							</div>
+						</section>
+					<% }) %>
+					<section class="tab-panel" role="tabpanel"><div class="section-heading"><h3>Experience Letter</h3><a class="button button-secondary" href="/teacher-record">Template setup / issue letter</a></div><p class="muted-copy">Select Experience Letter in Letter Issued to record an issued letter.</p></section>
+				</div>
 				<div class="module-panel" data-module="loan" hidden><section class="tab-panel"><div class="section-heading"><h3>Loan</h3><button class="add-row" type="button" data-add-row="loan">+ Add Loan</button></div><div class="repeat-table-wrap"><table class="repeat-table"><thead><tr><th>S.N</th><% const loanConfig=tableConfigs.find(config=>config.prefix==='loan');loanConfig.fields.forEach(field=> { %><th><%= field.label %></th><% }) %><th>Action</th></tr></thead><tbody id="loanRows" data-row-prefix="loan"><% currentRows(loanConfig).forEach((row,index)=> { %><tr data-repeat-row><td class="row-number"><%= index+1 %></td><% loanConfig.fields.forEach(field=> { %><td><% if(field.type==='select'){ %><select name="loan_<%= index %>_<%= field.name %>"><% field.options.forEach(option=> { %><option value="<%= option==='Yes'?'true':option==='No'?'false':option %>" <%= String(row[field.name]??'')===(option==='Yes'?'true':option==='No'?'false':option)?'selected':'' %>><%= option %></option><% }) %></select><% } else { %><input type="<%= field.type==='date'?'text':field.type||'text' %>" class="<%= field.type==='date'?'nepali-date-input':'' %>" name="loan_<%= index %>_<%= field.name %>" value="<%= row[field.name]??'' %>"><% } %></td><% }) %><td><button class="remove-row" type="button" data-remove-row>Remove</button></td></tr><% }) %></tbody></table></div></section></div>
 				<div class="module-panel" data-module="assets" hidden><nav class="tab-list" role="tablist" aria-label="Assets and facilities" data-tab-group="assets"><% groupedTabs.assets.forEach((title,index)=> {const config=tableConfigs.find(item=>item.group==='assets'&&item.title===title); %><button class="tab-button" type="button" role="tab" aria-selected="<%= index===0 %>" data-tab-target="<%= configPanelId(config) %>"><%= title %></button><% }) %></nav><% tableConfigs.filter(config=>config.group==='assets').forEach((config,index)=> { %><section class="tab-panel" id="<%= configPanelId(config) %>" role="tabpanel" <%= index===0?'':'hidden' %>><div class="section-heading"><h3><%= config.title %></h3><button class="add-row" type="button" data-add-row="<%= config.prefix %>">+ <%= config.action %></button></div><div class="repeat-table-wrap"><table class="repeat-table"><thead><tr><th>S.N</th><% config.fields.forEach(field=> { %><th><%= field.label %></th><% }) %><th>Action</th></tr></thead><tbody id="<%= config.prefix %>Rows" data-row-prefix="<%= config.prefix %>"><% currentRows(config).forEach((row,index)=> { %><tr data-repeat-row><td class="row-number"><%= index+1 %></td><% config.fields.forEach(field=> { %><td><input type="<%= field.type==='date'?'text':field.type||'text' %>" class="<%= field.type==='date'?'nepali-date-input':'' %>" name="<%= config.prefix %>_<%= index %>_<%= field.name %>" value="<%= row[field.name]??'' %>" aria-label="<%= field.label %>"></td><% }) %><td><button class="remove-row" type="button" data-remove-row>Remove</button></td></tr><% }) %></tbody></table></div></section><% }) %></div>
 				<div class="module-panel" data-module="reporting" hidden><section class="management-block"><h3>Management Hierarchy</h3><div class="management-target"><strong><%= selectedEmployee?.staffName || 'Target employee' %></strong><span>Active node / <%= selectedEmployee?.designation || 'Employee' %></span></div><div class="field" style="max-width:420px;margin-top:16px"><label for="reportsTo">Reports to</label><select id="reportsTo" name="reportsTo"><option value="">No manager assigned</option><% employees.filter(employee=>String(employee._id)!==String(selectedEmployee?._id)).forEach(employee=> { %><option value="<%= employee._id %>" <%= String(formData.reportsTo||'')===String(employee._id)?'selected':'' %>><%= employee.staffName %> / <%= employee.designation||employee.employeeCode %></option><% }) %></select></div></section><section class="management-block"><h3>Direct Subordinates (<%= employees.filter(employee=>String(employee.reportsTo||'')===String(selectedEmployee?._id||'')).length %>)</h3><div class="repeat-table-wrap"><table><thead><tr><th>Employee</th><th>Designation</th><th>Department</th></tr></thead><tbody><% const reports=employees.filter(employee=>String(employee.reportsTo||'')===String(selectedEmployee?._id||''));reports.forEach(employee=> { %><tr><td><%= employee.staffName %></td><td><%= employee.designation||'-' %></td><td><%= employee.department||'-' %></td></tr><% }) %></tbody></table></div></section></div>
@@ -366,7 +415,32 @@ const activeModuleName = activeModule || 'profile';
 	</div>
 </main>
 <template id="documentRowTemplate"><div class="document-entry" data-repeat-row><span class="row-number"></span><input type="text" name="documentName___index__" placeholder="Document name" aria-label="Document name" required><input type="file" name="documentFile___index__" accept="application/pdf,image/jpeg,image/png,image/webp,image/gif" aria-label="Upload document"><button class="remove-row" type="button" data-remove-row>Remove</button></div></template>
-<% tableConfigs.forEach(config=> { %><template id="<%= config.prefix %>RowTemplate"><tr data-repeat-row><td class="row-number"></td><% config.fields.forEach(field=> { %><td><% if(field.type==='select'){ %><select name="<%= config.prefix %>___index___<%= field.name %>" aria-label="<%= field.label %>"><% field.options.forEach(option=> { %><option value="<%= option==='Yes'?'true':option==='No'?'false':option %>"><%= option %></option><% }) %></select><% } else { %><input type="<%= field.type==='date'?'text':field.type||'text' %>" class="<%= field.type==='date'?'nepali-date-input':'' %>" name="<%= config.prefix %>___index___<%= field.name %>" aria-label="<%= field.label %>" <%= field.type==='number'?'step="any" min="0"':'' %>><% } %></td><% }) %><td><button class="remove-row" type="button" data-remove-row>Remove</button></td></tr></template><% }) %>
+<% tableConfigs.forEach(config=> { %>
+	<template id="<%= config.prefix %>RowTemplate">
+		<tr data-repeat-row>
+			<td class="row-number"></td>
+			<% config.fields.forEach(field=> { %>
+				<td>
+					<% if(field.type==='select'){ %>
+						<select name="<%= config.prefix %>___index___<%= field.name %>" aria-label="<%= field.label %>"><% field.options.forEach(option=> { %><option value="<%= option==='Yes'?'true':option==='No'?'false':option %>"><%= option %></option><% }) %></select>
+					<% } else { %>
+						<input type="<%= field.type==='date'?'text':field.type||'text' %>" class="<%= field.type==='date'?'nepali-date-input':'' %>" name="<%= config.prefix %>___index___<%= field.name %>" aria-label="<%= field.label %>" <%= field.type==='number'?'step="any" min="0"':'' %>>
+					<% } %>
+				</td>
+			<% }) %>
+			<% if(config.group==='office') { %>
+				<td class="office-proof-cell">
+					<a class="office-proof-preview" hidden></a>
+					<input type="hidden" name="<%= config.prefix %>___index___proofBlobName" value="">
+					<input class="office-proof-input" type="file" name="<%= config.prefix %>___index___proofFile" accept="application/pdf,image/jpeg,image/png" aria-label="Upload proof document">
+					<input type="hidden" name="<%= config.prefix %>___index___proofFileSelected" value="">
+					<button class="remove-row office-proof-remove" type="button" data-remove-office-proof hidden>Remove proof</button>
+				</td>
+			<% } %>
+			<td><button class="remove-row" type="button" data-remove-row>Remove</button></td>
+		</tr>
+	</template>
+<% }) %>
 <template id="familyRowTemplate"><tr data-repeat-row><td class="row-number"></td><td><input name="family___index___name" aria-label="Family member name"></td><td><input name="family___index___relation" aria-label="Relation"></td><td><input name="family___index___note" aria-label="Note"></td><td><button class="remove-row" type="button" data-remove-row>Remove</button></td></tr></template>
 <template id="taxContributionRowTemplate"><tr data-repeat-row><td class="row-number"></td><td><input name="taxContribution___index___title" aria-label="Title"></td><td><input name="taxContribution___index___number" aria-label="Number"></td><td><select name="taxContribution___index___enabled"><option value="false">No</option><option value="true">Yes</option></select></td><td><input type="number" min="0" step="any" name="taxContribution___index___employeeRate" aria-label="Employee rate"></td><td><input type="number" min="0" step="any" name="taxContribution___index___employerRate" aria-label="Employer rate"></td><td><button class="remove-row" type="button" data-remove-row>Remove</button></td></tr></template>
 <dialog class="media-preview" id="mediaPreview" aria-label="Document preview"><button class="media-preview-close" type="button" aria-label="Close preview">&times;</button><img id="mediaPreviewImage" alt="" hidden><iframe id="mediaPreviewFrame" title="Document preview" hidden></iframe></dialog>
@@ -466,6 +540,8 @@ const activeModuleName = activeModule || 'profile';
 	document.addEventListener('click',async event=>{
 		const preview=event.target.closest('[data-preview-url]');
 		if(preview){event.preventDefault();const url=preview.dataset.previewUrl,type=preview.dataset.previewType||'';if(type.startsWith('image/')){previewImage.src=url;previewImage.hidden=false;previewFrame.hidden=true;previewFrame.removeAttribute('src');}else{previewFrame.src=url;previewFrame.hidden=false;previewImage.hidden=true;previewImage.removeAttribute('src');}mediaDialog.showModal();return;}
+		const removeOfficeProof=event.target.closest('[data-remove-office-proof]');
+		if(removeOfficeProof){const cell=removeOfficeProof.closest('.office-proof-cell'),previewLink=cell.querySelector('.office-proof-preview');cell.querySelector('[name$="_proofBlobName"]').value='';cell.querySelector('.office-proof-input').value='';cell.querySelector('[name$="_proofFileSelected"]').value='';previewLink.hidden=true;previewLink.removeAttribute('href');previewLink.removeAttribute('data-preview-url');previewLink.replaceChildren();removeOfficeProof.hidden=true;return;}
 		const saveButton=event.target.closest('[data-save-document]');
 		if(saveButton){const row=saveButton.closest('[data-saved-document]'),data=new FormData();data.set('blobName',saveButton.dataset.blobName);data.set('documentName',row.querySelector('[data-document-name]').value);const file=row.querySelector('[data-replacement-file]').files[0];if(file)data.set('replacementFile',file);await submitDocumentAction(`/employee-document/${saveButton.dataset.saveDocument}/update`,data);return;}
 		const deleteButton=event.target.closest('[data-delete-document]');
@@ -473,6 +549,7 @@ const activeModuleName = activeModule || 'profile';
 		const deletePhoto=event.target.closest('[data-delete-photo]');
 		if(deletePhoto&&window.confirm('Delete this profile photo?')){await submitDocumentAction(`/employee-photo/${deletePhoto.dataset.deletePhoto}/delete`,new FormData());}
 	});
+	document.addEventListener('change',event=>{const input=event.target.closest('.office-proof-input');if(!input)return;input.closest('.office-proof-cell').querySelector('[name$="_proofFileSelected"]').value=input.files.length?'true':'';});
 	async function submitDocumentAction(url,data){const feedback=document.querySelector('.document-actions-feedback, .document-feedback');try{const response=await fetch(url,{method:'POST',body:data,headers:{Accept:'application/json'},credentials:'same-origin'});const result=await response.json();if(!response.ok)throw new Error(result.message||'The action could not be completed.');location.reload();}catch(error){if(feedback)feedback.textContent=error.message;}}
 	document.querySelector('.media-preview-close')?.addEventListener('click',()=>mediaDialog.close());
 	mediaDialog?.addEventListener('click',event=>{if(event.target===mediaDialog)mediaDialog.close();});
