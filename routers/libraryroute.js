@@ -76,6 +76,7 @@ library.delete("/library/books/:id", librarycontroller.deleteBook);
 library.get("/library/inventory", librarycontroller.inventoryPage);
 library.get("/library/shelf-assignment", librarycontroller.shelfAssignmentPage);
 library.put("/library/shelf-assignment", librarycontroller.assignShelfToBooks);
+library.delete("/library/shelf-assignment", librarycontroller.removeBookFromShelf);
 library.get("/library/categories", librarycontroller.listCategories);
 library.post("/library/categories", librarycontroller.addCategory);
 library.put("/library/categories/:id", librarycontroller.updateCategory);

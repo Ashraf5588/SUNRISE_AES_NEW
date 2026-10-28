@@ -20,6 +20,14 @@
     .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:22px; }
     h1 { margin:0; font-size:30px; }
     .actions { display:flex; gap:10px; flex-wrap:wrap; }
+    .copy-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; max-width:1000px; margin-bottom:22px; }
+    .copy-summary-card { display:flex; align-items:center; gap:14px; min-width:0; padding:18px; border:1px solid var(--border); border-radius:14px; background:var(--panel); box-shadow:var(--shadow); }
+    .copy-summary-icon { display:grid; place-items:center; flex:0 0 44px; width:44px; height:44px; border-radius:12px; color:#1d4ed8; background:#dbeafe; }
+    .copy-summary-icon svg { width:22px; height:22px; }
+    .copy-summary-card.assigned .copy-summary-icon { color:#15803d; background:#dcfce7; }
+    .copy-summary-card.unassigned .copy-summary-icon { color:#b45309; background:#fef3c7; }
+    .copy-summary-value { display:block; font-size:24px; line-height:1.1; font-weight:800; }
+    .copy-summary-label { display:block; margin-top:5px; color:var(--muted); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; }
     .btn { border:0; border-radius:10px; padding:10px 16px; font-weight:700; cursor:pointer; }
     .primary { color:#fff; background:var(--primary); }
     .secondary { color:var(--text); background:#e2e8f0; }
@@ -53,8 +61,11 @@
     .shelf-book-count { color:var(--primary); font-weight:700; }
     .shelf-book-name-scroll { width:345px; max-width:100%; height:132px; overflow:auto; border:1px solid var(--border); border-radius:8px; background:#fff; }
     .shelf-book-name-list { margin:0; padding:4px 0; list-style:none; }
-    .shelf-book-name-list li { width:max-content; min-width:100%; padding:6px 10px; border-bottom:1px solid #eef2f7; font-weight:600; white-space:nowrap; }
+    .shelf-book-name-list li { display:flex; align-items:center; justify-content:space-between; gap:8px; width:max-content; min-width:100%; padding:6px 10px; border-bottom:1px solid #eef2f7; font-weight:600; white-space:nowrap; }
     .shelf-book-name-list li:last-child { border-bottom:0; }
+    .remove-shelf-book { flex:0 0 auto; width:24px; height:24px; padding:0; border:0; border-radius:6px; color:#b91c1c; background:#fee2e2; font-size:18px; line-height:1; cursor:pointer; }
+    .remove-shelf-book:hover { color:#fff; background:#dc2626; }
+    .remove-shelf-book:focus-visible { outline:2px solid #dc2626; outline-offset:2px; }
     .shelf-categories { display:flex; flex-wrap:wrap; gap:6px; }
     .shelf-category-tag { padding:5px 8px; border-radius:6px; color:#1e40af; background:#eff6ff; font-size:12px; font-weight:600; }
     .shelf-empty { padding:24px; color:var(--muted); text-align:center; }
@@ -62,6 +73,7 @@
     .error { color:#991b1b; background:#fee2e2; }
     .success { color:#166534; background:#dcfce7; }
     @media (max-width:900px) { .shell { display:block; } .sidebar { width:100%; min-height:auto; position:static; } .content { padding:18px; } .form-row { grid-template-columns:1fr; } }
+    @media (max-width:600px) { .copy-summary { grid-template-columns:1fr; gap:10px; } .copy-summary-card { padding:14px; } }
     @media (max-width:520px) { .content { padding:12px; } h1 { font-size:25px; } .card { padding:14px; } .btn { min-height:44px; } }
   </style>
   <link rel="stylesheet" href="/library-nav.css">
@@ -76,6 +88,20 @@
         <h1>Assign Book Shelves</h1>
         <div class="actions"><a class="btn primary" href="/library/books">Books</a><a class="btn secondary" href="/library/dashboard">Dashboard</a></div>
       </div>
+      <section class="copy-summary" aria-label="Book copy summary">
+        <div class="copy-summary-card">
+          <span class="copy-summary-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 1 4 17.5z"/><path d="M4 5.5v12M8 7h8M8 11h8"/></svg></span>
+          <span><strong class="copy-summary-value"><%= shelfCounts.totalCopies %></strong><span class="copy-summary-label">Total copies</span></span>
+        </div>
+        <div class="copy-summary-card assigned">
+          <span class="copy-summary-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9v11h14V9M9 20v-7h6v7"/></svg></span>
+          <span><strong class="copy-summary-value"><%= shelfCounts.assignedCopies %></strong><span class="copy-summary-label">Assigned</span></span>
+        </div>
+        <div class="copy-summary-card unassigned">
+          <span class="copy-summary-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5"/><path d="M6 9v10h12V9M9 13h6"/></svg></span>
+          <span><strong class="copy-summary-value"><%= shelfCounts.unassignedCopies %></strong><span class="copy-summary-label">Unassigned</span></span>
+        </div>
+      </section>
       <div class="card">
         <div id="message" hidden></div>
         <form id="shelfForm">
@@ -109,7 +135,7 @@
                 <tr>
                   <td><strong><%= group.shelfNumber %></strong></td>
                   <td class="shelf-book-count"><%= group.totalBooks %></td>
-                  <td><div class="shelf-book-name-scroll" tabindex="0" aria-label="Book names on shelf <%= group.shelfNumber %>"><ul class="shelf-book-name-list"><% group.books.forEach((book) => { %><li><%= book.title %> (<%= book.code %>)</li><% }) %></ul></div></td>
+                  <td><div class="shelf-book-name-scroll" tabindex="0" aria-label="Book names on shelf <%= group.shelfNumber %>"><ul class="shelf-book-name-list"><% group.books.forEach((book) => { %><li><span><%= book.title %> (<%= book.code %>)</span><% if (group.shelfNumber !== 'Unassigned') { %><button type="button" class="remove-shelf-book" data-book-id="<%= book._id %>" data-book-code="<%= book.code %>" data-book-title="<%= book.title %>" data-shelf="<%= group.shelfNumber %>" aria-label="Remove <%= book.title %> (<%= book.code %>) from shelf <%= group.shelfNumber %>" title="Remove from shelf">&times;</button><% } %></li><% }) %></ul></div></td>
                   <td><div class="shelf-categories"><% group.categories.forEach((category) => { %><span class="shelf-category-tag"><%= category %></span><% }) %></div></td>
                 </tr>
               <% }) %>
@@ -138,6 +164,32 @@
       message.className = type;
       message.textContent = text;
     }
+    document.querySelectorAll('.remove-shelf-book').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const { bookId, bookCode, bookTitle, shelf } = button.dataset;
+        if (!window.confirm(`Remove "${bookTitle} (${bookCode})" from shelf ${shelf} and make it unassigned?`)) return;
+
+        button.disabled = true;
+        try {
+          const response = await fetch('/library/shelf-assignment', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookId, code: bookCode })
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            button.disabled = false;
+            return showMessage(result.message || 'Could not remove book from shelf.', 'error');
+          }
+          showMessage(result.message || 'Book copy is now unassigned.', 'success');
+          setTimeout(() => window.location.reload(), 700);
+        } catch (error) {
+          console.error('Error removing book copy from shelf:', error);
+          button.disabled = false;
+          showMessage('Could not remove book from shelf. Please try again.', 'error');
+        }
+      });
+    });
     searchInput.addEventListener('input', () => {
       const value = searchInput.value.trim().toLowerCase();
       bookOptions.forEach((option) => { option.style.display = !value || option.dataset.search.includes(value) ? 'flex' : 'none'; });

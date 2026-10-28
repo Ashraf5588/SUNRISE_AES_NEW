@@ -84,6 +84,7 @@ bookSchema.pre('save', async function(next) {
 
       const newCopies = generatedCodes.map((code) => ({
         code,
+        shelvesNo: this.shelvesNo || '',
         status: 'available',
         condition: 'good',
         issuedTo: null,

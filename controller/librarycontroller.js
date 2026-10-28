@@ -416,6 +416,7 @@ exports.shelfAssignmentPage = async (req, res) => {
         const shelfNumber = normalizeText(copy.shelvesNo) || normalizeText(book.shelvesNo) || 'Unassigned';
         if (!shelfGroupsByNumber.has(shelfNumber)) shelfGroupsByNumber.set(shelfNumber, []);
         shelfGroupsByNumber.get(shelfNumber).push({
+          _id: book._id,
           title: book.title || 'Untitled book',
           code: normalizeText(copy.code) || 'No code',
           category: normalizeText(book.category) || 'Uncategorized'
@@ -434,7 +435,13 @@ exports.shelfAssignmentPage = async (req, res) => {
         totalBooks: shelfBooks.length,
         categories: [...new Set(shelfBooks.map((book) => book.category))]
       }));
-    res.render('library/shelfassignment', { books, shelfGroups, error: '', success: '' });
+    const shelfCounts = shelfGroups.reduce((counts, group) => {
+      counts.totalCopies += group.totalBooks;
+      if (group.shelfNumber === 'Unassigned') counts.unassignedCopies += group.totalBooks;
+      else counts.assignedCopies += group.totalBooks;
+      return counts;
+    }, { totalCopies: 0, assignedCopies: 0, unassignedCopies: 0 });
+    res.render('library/shelfassignment', { books, shelfGroups, shelfCounts, error: '', success: '' });
   } catch (error) {
     console.error('Error loading shelf assignment page:', error);
     res.status(500).send('Error loading shelf assignment page.');
@@ -496,6 +503,42 @@ exports.assignShelfToBooks = async (req, res) => {
   } catch (error) {
     console.error('Error assigning shelf to books:', error);
     res.status(500).json({ message: 'Error assigning shelf to books.' });
+  }
+};
+
+exports.removeBookFromShelf = async (req, res) => {
+  try {
+    const bookId = normalizeText(req.body.bookId);
+    const code = normalizeText(req.body.code).toUpperCase();
+    if (!mongoose.isValidObjectId(bookId) || !code) {
+      return res.status(400).json({ message: 'A valid book and copy barcode are required.' });
+    }
+
+    const book = await Book.findById(bookId);
+    if (!book) return res.status(404).json({ message: 'Book not found.' });
+
+    if (Array.isArray(book.bookCodes) && book.bookCodes.length) {
+      const targetIndex = book.bookCodes.findIndex((copy) => String(copy.code || '').trim().toUpperCase() === code);
+      if (targetIndex === -1) return res.status(404).json({ message: 'Book copy was not found.' });
+
+      book.bookCodes.forEach((copy, index) => {
+        copy.shelvesNo = index === targetIndex
+          ? ''
+          : normalizeText(copy.shelvesNo) || normalizeText(book.shelvesNo);
+      });
+      const shelfNumbers = [...new Set(book.bookCodes.map((copy) => normalizeText(copy.shelvesNo)))];
+      book.shelvesNo = shelfNumbers.length === 1 ? shelfNumbers[0] : '';
+    } else {
+      const fallbackCode = normalizeText(book.bookCodePrefix) || 'No code';
+      if (fallbackCode.toUpperCase() !== code) return res.status(404).json({ message: 'Book copy was not found.' });
+      book.shelvesNo = '';
+    }
+
+    await book.save();
+    return res.json({ message: `${book.title} (${code}) is now unassigned.` });
+  } catch (error) {
+    console.error('Error removing book copy from shelf:', error);
+    return res.status(500).json({ message: 'Error removing book copy from shelf.' });
   }
 };
 
