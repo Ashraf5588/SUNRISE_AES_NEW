@@ -50,10 +50,10 @@
     .overview-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap; margin-bottom:15px; }
     .overview-heading h2 { margin:0; font-size:19px; }
     .overview-heading p { margin:5px 0 0; color:var(--muted); font-size:13px; }
-    .shelf-table-wrap { width:100%; overflow-x:auto; }
-    .shelf-table { width:100%; min-width:820px; border-collapse:collapse; table-layout:fixed; }
+    .shelf-table-wrap { width:100%; max-height:65vh; overflow:auto; }
+    .shelf-table { width:100%; min-width:820px; border-collapse:separate; border-spacing:0; table-layout:fixed; }
     .shelf-table th, .shelf-table td { padding:11px 12px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
-    .shelf-table th { background:#eff6ff; color:#334155; font-size:12px; text-transform:uppercase; }
+    .shelf-table th { position:sticky; top:0; z-index:1; background:#eff6ff; color:#334155; font-size:12px; text-transform:uppercase; }
     .shelf-table th:nth-child(1) { width:150px; }
     .shelf-table th:nth-child(2) { width:110px; }
     .shelf-table th:nth-child(3), .shelf-table td:nth-child(3) { width:370px; }

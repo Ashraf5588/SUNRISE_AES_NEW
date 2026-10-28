@@ -95,19 +95,29 @@
     .batch-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; }
     .code-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 10px; }
     .code-check { display: flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; font-size: 12px; background: #f8fafc; }
-    .table-action-btn { padding: 8px 12px; font-size: 12px; border-radius: 8px; line-height: 1.2; }
+    .table-action-btn { display: inline-grid; place-items: center; flex: 0 0 32px; width: 32px; height: 32px; padding: 0; border-radius: 8px; line-height: 1; box-shadow: none; }
+    .table-action-btn svg { width: 16px; height: 16px; }
+    .table-action-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .action-btns { display: flex; align-items: center; justify-content: center; gap: 5px; flex-wrap: nowrap; white-space: nowrap; }
     .table-scroll { width: 100%; max-width: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-color: #8ca39a #edf1ee; scrollbar-width: thin; }
     .table-scroll::-webkit-scrollbar { height: 10px; }
     .table-scroll::-webkit-scrollbar-track { background: #edf1ee; }
     .table-scroll::-webkit-scrollbar-thumb { border: 2px solid #edf1ee; border-radius: 999px; background: #8ca39a; }
-    .table-scroll table { min-width: 1450px; }
+    .table-scroll table { min-width: 1520px; }
     table { width: 100%; border-collapse: collapse; background: #fff; }
-    th, td { padding: 0; border: 1px solid #dfe6ee; text-align: left; }
-    th { padding: 9px 8px; background: #eef5ff; font-size: 12px; }
-    tbody tr:nth-child(even) { background: #f8fafc; }
-    tbody tr:hover { background: #eff6ff; }
+    .inventory-table { table-layout: fixed; }
+    .inventory-table th, .inventory-table td { padding: 7px 8px; border: 1px solid #e2e8f0; text-align: left; vertical-align: middle; }
+    .inventory-table th { padding-top: 9px; padding-bottom: 9px; background: #eef5ff; color: #334155; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .35px; white-space: nowrap; }
+    .inventory-table tbody tr:nth-child(even) { background: #f8fafc; }
+    .inventory-table tbody tr:hover { background: #eff6ff; }
     .code-scroll { max-width: 220px; max-height: 42px; overflow-x: auto; overflow-y: hidden; white-space: nowrap; }
     .code-scroll small { white-space: nowrap; }
+    .inventory-table .code-scroll { max-height: 28px; }
+    .inventory-table .title-cell { min-width: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.35; font-weight: 600; }
+    .inventory-table .compact-cell .code-scroll { max-width: 100%; }
+    .inventory-table .category-cell > div { min-width: 0; padding: 0 4px !important; }
+    .inventory-table .category-cell > div > span:last-child { overflow-wrap: anywhere; }
+    .inventory-table .action-cell { width: 164px; }
     .dense-book-input { display: block; width: 100%; min-width: 90px; min-height: 38px; padding: 7px 8px; border: 0; border-radius: 0; font: inherit; color: var(--text); background: transparent; }
     .dense-book-input:focus { outline: 2px solid var(--primary); outline-offset: -2px; background: #fff; }
     .dense-book-input[readonly] { color: var(--muted); background: #f8fafc; }
@@ -118,6 +128,11 @@
     .scroll-indicator-arrow { color: var(--primary); font-size: 13px; font-weight: 700; }
     .scroll-indicator-track { position: relative; display: block; width: 110px; height: 8px; border-radius: 999px; background: #dfe9e3; overflow: hidden; }
     .scroll-indicator-thumb { position: absolute; top: 0; left: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #176b50, #6aa683); }
+    .table-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; color: var(--muted); font-size: 13px; }
+    .pagination-controls { display: flex; align-items: center; gap: 8px; }
+    .pagination-controls .btn { padding: 8px 12px; box-shadow: none; }
+    .pagination-controls .btn:disabled { cursor: not-allowed; opacity: .5; transform: none; }
+    .pagination-page { min-width: 88px; text-align: center; color: var(--text); font-weight: 700; }
     .status-ok { color: var(--green); font-weight: 700; }
     .status-low { color: #b45309; font-weight: 700; }
     .message { margin-top: 12px; padding: 10px 12px; border-radius: 8px; font-size: 14px; }
@@ -311,7 +326,13 @@
               <button type="submit" form="bookInventoryForm" class="btn btn-primary">Save Book</button>
             </div>
             <div class="table-scroll">
-              <table>
+              <table class="inventory-table">
+                <colgroup>
+                  <col style="width:105px"><col style="width:165px"><col style="width:135px"><col style="width:220px">
+                  <col style="width:145px"><col style="width:76px"><col style="width:95px"><col style="width:130px">
+                  <col style="width:68px"><col style="width:58px"><col style="width:100px"><col style="width:72px">
+                  <col style="width:72px"><col style="width:110px"><col style="width:164px">
+                </colgroup>
                 <thead>
                   <tr>
                     <th>Date</th>
@@ -326,6 +347,7 @@
                     <th>Page</th>
                     <th>Source</th>
                     <th>Cost</th>
+                    <th>Quantity</th>
                     <th>Remarks</th>
                     <th>Actions</th>
                   </tr>
@@ -351,37 +373,45 @@
               <% if (books && books.length) { %>
                 <% books.forEach((book) => { %>
                   <tr data-book-id="<%= book._id %>" data-category="<%= book.category || '' %>" data-category-color="<%= book.categoryDisplayColor || book.categoryColor || '#2563eb' %>" data-isbn="<%= book.isbn || '' %>" data-total-quantity="<%= book.totalQuantity || 1 %>" data-search-text="<%= [book.date, (book.bookCodes || []).map((copy) => copy.code).join(' '), book.author, book.title, book.category, book.shelvesNo, book.edition, book.publisherName, book.publishedYear, book.page, book.source, book.price, book.remarks].join(' ') %>">
-                    <td><div class="code-scroll"><small><%= book.date || '—' %></small></div></td>
+                    <td class="compact-cell"><div class="code-scroll"><small><%= book.date || '—' %></small></div></td>
                     <td><div class="code-scroll"><small><%= (book.bookCodes || []).map((copy) => copy.code).join(', ') || book.bookCodePrefix || '—' %></small></div></td>
                     <td><div class="code-scroll"><small><%= book.author || '—' %></small></div></td>
-                    <td><div class="code-scroll"><small><%= book.title || '—' %></small></div></td>
-                    <td><div style="display:flex; align-items:center; gap:8px; padding:7px 8px;"><span style="display:inline-block; width:14px; height:14px; border-radius:4px; border:1px solid rgba(15,23,42,0.15); background:<%= book.categoryDisplayColor || book.categoryColor || '#2563eb' %>;"></span><span><%= book.category || '—' %></span></div></td>
-                    <td><div class="code-scroll"><small><%= book.shelvesNo || '—' %></small></div></td>
+                    <td class="title-cell"><%= book.title || '—' %></td>
+                    <td class="category-cell"><div style="display:flex; align-items:center; gap:8px; padding:7px 8px;"><span style="display:inline-block; width:14px; height:14px; border-radius:4px; border:1px solid rgba(15,23,42,0.15); background:<%= book.categoryDisplayColor || book.categoryColor || '#2563eb' %>;"></span><span><%= book.category || '—' %></span></div></td>
+                    <td class="compact-cell"><div class="code-scroll"><small><%= book.shelvesNo || '—' %></small></div></td>
                     <td><div class="code-scroll"><small><%= book.edition || '—' %></small></div></td>
                     <td><div class="code-scroll"><small><%= book.publisherName || '—' %></small></div></td>
-                    <td><div class="code-scroll"><small><%= book.publishedYear || '—' %></small></div></td>
-                    <td><div class="code-scroll"><small><%= book.page || '—' %></small></div></td>
+                    <td class="compact-cell"><div class="code-scroll"><small><%= book.publishedYear || '—' %></small></div></td>
+                    <td class="compact-cell"><div class="code-scroll"><small><%= book.page || '—' %></small></div></td>
                     <td><div class="code-scroll"><small><%= book.source || '—' %></small></div></td>
-                    <td><div class="code-scroll"><small><%= book.price || '—' %></small></div></td>
-                    <td><div class="code-scroll"><small><%= book.totalQuantity || '—' %></small></div></td>
+                    <td class="compact-cell"><div class="code-scroll"><small><%= book.price || '—' %></small></div></td>
+                    <td class="compact-cell"><div class="code-scroll"><small><%= book.totalQuantity || '—' %></small></div></td>
                     <td><div class="code-scroll"><small><%= book.remarks || '—' %></small></div></td>
-                    <td>
+                    <td class="action-cell">
                       <div class="action-btns">
-                        <button type="button" class="btn btn-secondary table-action-btn edit-book" data-id="<%= book._id %>">Edit</button>
-                        <button type="button" class="btn btn-primary table-action-btn add-stock-btn" data-id="<%= book._id %>">Add Stock</button>
-                        <button type="button" class="btn btn-success table-action-btn print-book-codes" data-id="<%= book._id %>">Print Sticker</button>
-                        <button type="button" class="btn btn-danger table-action-btn delete-book" data-id="<%= book._id %>" style="background:#ef4444; color:#fff;">Delete</button>
+                        <button type="button" class="btn btn-secondary table-action-btn edit-book" data-id="<%= book._id %>" aria-label="Edit book" title="Edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg></button>
+                        <button type="button" class="btn btn-primary table-action-btn add-stock-btn" data-id="<%= book._id %>" aria-label="Add stock" title="Add stock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+                        <button type="button" class="btn btn-success table-action-btn print-book-codes" data-id="<%= book._id %>" aria-label="Print book labels" title="Print"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/><path d="M18 12h.01"/></svg></button>
+                        <button type="button" class="btn table-action-btn delete-book" data-id="<%= book._id %>" aria-label="Delete book" title="Delete" style="background:#fee2e2; color:#b91c1c;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg></button>
                       </div>
                     </td>
                   </tr>
                 <% }) %>
               <% } else { %>
                 <tr>
-                  <td colspan="14">No books added yet.</td>
+                  <td colspan="15">No books added yet.</td>
                 </tr>
               <% } %>
                 </tbody>
               </table>
+            </div>
+            <div class="table-pagination" aria-label="Book inventory pagination">
+              <span id="bookPaginationSummary" aria-live="polite"></span>
+              <div class="pagination-controls">
+                <button type="button" class="btn btn-secondary" id="bookPreviousPage" aria-label="Previous page">Previous</button>
+                <span class="pagination-page" id="bookPageLabel"></span>
+                <button type="button" class="btn btn-secondary" id="bookNextPage" aria-label="Next page">Next</button>
+              </div>
             </div>
           </form>
         </div>
@@ -568,15 +598,37 @@
     let newStockCodes = [];
     let activePrintBook = null;
     let activePrintMode = 'last';
+    const bookPageSize = 100;
+    let currentBookPage = 1;
+    const bookPaginationSummary = document.getElementById('bookPaginationSummary');
+    const bookPageLabel = document.getElementById('bookPageLabel');
+    const bookPreviousPage = document.getElementById('bookPreviousPage');
+    const bookNextPage = document.getElementById('bookNextPage');
+
+    function updateBookTable(resetPage = false) {
+      const searchValue = String(bookSearchInput.value || '').trim().toLowerCase();
+      const allRows = Array.from(document.querySelectorAll('#bookTableBody tr[data-book-id]'));
+      const matchingRows = allRows
+        .filter((row) => !searchValue || (row.dataset.searchText || '').toLowerCase().includes(searchValue));
+      const totalPages = Math.max(1, Math.ceil(matchingRows.length / bookPageSize));
+      if (resetPage) currentBookPage = 1;
+      currentBookPage = Math.min(currentBookPage, totalPages);
+
+      const startIndex = (currentBookPage - 1) * bookPageSize;
+      const endIndex = Math.min(startIndex + bookPageSize, matchingRows.length);
+      matchingRows.forEach((row, index) => {
+        row.style.display = index >= startIndex && index < endIndex ? '' : 'none';
+      });
+      bookPaginationSummary.textContent = matchingRows.length
+        ? `Showing ${startIndex + 1}-${endIndex} of ${matchingRows.length} ${matchingRows.length === 1 ? 'book' : 'books'}`
+        : searchValue ? 'No books match your search.' : 'No books added yet.';
+      bookPageLabel.textContent = `Page ${currentBookPage} of ${totalPages}`;
+      bookPreviousPage.disabled = currentBookPage <= 1;
+      bookNextPage.disabled = currentBookPage >= totalPages;
+    }
 
     function filterBookRows() {
-      const searchValue = String(bookSearchInput.value || '').trim().toLowerCase();
-      const rows = document.querySelectorAll('#bookTableBody tr[data-book-id]');
-      rows.forEach((row) => {
-        const haystack = (row.dataset.searchText || '').toLowerCase();
-        const show = !searchValue || haystack.includes(searchValue);
-        row.style.display = show ? '' : 'none';
-      });
+      updateBookTable(true);
     }
 
     function openStockModal(book) {
@@ -1305,11 +1357,22 @@
     });
 
     bookSearchInput.addEventListener('input', filterBookRows);
+    bookPreviousPage.addEventListener('click', () => {
+      if (currentBookPage > 1) {
+        currentBookPage -= 1;
+        updateBookTable();
+      }
+    });
+    bookNextPage.addEventListener('click', () => {
+      currentBookPage += 1;
+      updateBookTable();
+    });
     clearSearchBtn.addEventListener('click', () => {
       bookSearchInput.value = '';
       filterBookRows();
       bookSearchInput.focus();
     });
+    updateBookTable();
 
     bookForm.addEventListener('submit', async function (event) {
       event.preventDefault();
