@@ -2712,6 +2712,7 @@ const renderTeacherProfileFillup = async (req, res, options = {}) => {
         ...employee,
         documents: (employee.documents || []).map(document => ({
             ...document,
+            previewMimeType: getEmployeeDocumentMimeType(document),
             url: getEmployeeDocumentUrl(employee._id, document.blobName)
         }))
     };
