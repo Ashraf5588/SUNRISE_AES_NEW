@@ -21,21 +21,23 @@
 		.report-button { display:inline-flex; min-height:40px; align-items:center; justify-content:center; padding:0 15px; border:1px solid var(--leave-deep); border-radius:4px; background:var(--leave-deep); color:#fff; cursor:pointer; font-weight:700; }
 		.report-button.secondary { border-color:var(--leave-line); background:#fff; color:var(--leave-ink); }
 		.report-message { margin:0; color:var(--leave-red); font-weight:700; }
-		.report-sheet { padding:26px; border:1px solid var(--leave-line); border-radius:7px; background:#fff; box-shadow:0 7px 20px rgba(24,54,43,.045); }
-		.report-employee + .report-employee { margin-top:22px; }
-		.report-sheet-header { display:flex; justify-content:space-between; gap:20px; padding-bottom:18px; border-bottom:2px solid var(--leave-deep); }
-		.report-sheet-header h2 { margin:0 0 5px; font:800 22px Manrope,sans-serif; }
-		.report-sheet-header p,.report-meta p { margin:3px 0; color:var(--leave-muted); }
-		.report-meta { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px 18px; padding:16px 0; }
-		.report-meta strong { color:var(--leave-ink); }
-		.report-subheading { margin:20px 0 9px; font:700 16px Manrope,sans-serif; }
+		.report-sheet { padding:18px; border:1px solid var(--leave-line); border-radius:7px; background:#fff; box-shadow:0 7px 20px rgba(24,54,43,.045); }
+		.report-title { margin:0 0 14px; font:800 20px Manrope,sans-serif; }
 		.report-table-wrap { overflow-x:auto; }
-		.report-table { width:100%; border-collapse:collapse; font-size:12px; }
-		.report-table th,.report-table td { padding:9px 10px; border:1px solid var(--leave-line); text-align:left; vertical-align:top; }
-		.report-table th { background:#f2f6f3; color:var(--leave-ink); font-size:10px; letter-spacing:.04em; text-transform:uppercase; }
-		.report-table td.numeric,.report-table th.numeric { text-align:right; white-space:nowrap; }
-		.report-table .reason-cell { min-width:190px; white-space:normal; overflow-wrap:anywhere; }
+		.report-table { width:100%; min-width:1120px; border-collapse:collapse; font-size:12px; }
+		.report-table th,.report-table td { padding:8px 9px; border:1px solid #aeb8c2; text-align:left; vertical-align:middle; }
+		.report-table thead th { background:#f2f6f3; color:#17212b; font-size:11px; font-weight:800; }
+		.report-table .group-heading { text-align:center; }
+		.report-table .employee-number,.report-table .summary-cell { text-align:center; vertical-align:middle; }
+		.report-table .employee-number { font-weight:800; }
+		.report-table .employee-name { min-width:125px; font-weight:800; }
+		.report-table .detail-number,.report-table .duration-cell,.report-table .summary-cell { white-space:nowrap; }
+		.report-table .reason-cell { min-width:130px; white-space:normal; overflow-wrap:anywhere; }
+		.report-table .approver-cell { min-width:125px; white-space:normal; overflow-wrap:anywhere; }
 		.report-table .date-cell { white-space:nowrap; }
+		.report-table .summary-cell { min-width:95px; font-weight:700; }
+		.report-table .leave-status { display:block; margin-top:3px; color:var(--leave-muted); font-size:10px; font-weight:700; }
+		.report-table .empty-detail { color:var(--leave-muted); font-style:italic; }
 		.status-badge { display:inline-block; padding:3px 7px; border-radius:99px; background:#edf2f7; color:#334155; font-size:10px; font-weight:800; }
 		.status-badge.approved { background:#e8f5eb; color:#17633b; }
 		.status-badge.pending { background:#fff5d9; color:#805c00; }
@@ -44,9 +46,7 @@
 		.report-footnote { margin:12px 0 0; color:var(--leave-muted); font-size:11px; }
 		@media(max-width:700px) {
 			.report-filters { grid-template-columns:1fr; }
-			.report-sheet { padding:16px 12px; }
-			.report-sheet-header { flex-direction:column; }
-			.report-meta { grid-template-columns:repeat(2,minmax(0,1fr)); }
+			.report-sheet { padding:12px 8px; }
 			.report-actions .report-button { flex:1; }
 		}
 		@media print {
@@ -56,13 +56,13 @@
 			.employee-sidenav,.leave-topbar,.leave-page-heading,.report-filter-panel,.screen-only { display:none !important; }
 			.leave-main { width:100%; max-width:none; padding:0; }
 			.report-sheet { padding:0; border:0; border-radius:0; box-shadow:none; }
-			.report-employee + .report-employee { margin-top:0; padding-top:18px; border-top:2px solid #111; }
+			.report-title { margin-bottom:8px; }
 			.report-table-wrap { overflow:visible; }
 			.report-table { font-size:9pt; }
 			.report-table th,.report-table td { padding:6px 7px; }
 			.report-table thead { display:table-header-group; }
 			.report-table tr { break-inside:avoid; }
-			.report-subheading { break-after:avoid; }
+			.report-employee-block { break-inside:avoid; }
 		}
 	</style>
 </head>
@@ -90,45 +90,40 @@
 
 			<% if (errorMessage) { %><section class="leave-panel"><p class="report-message" role="alert"><%= errorMessage %></p></section><% } %>
 			<% if (reportData.length) { %>
-			<% reportData.forEach(({ employee, applications, leaveBalances, approvedDays }, employeeIndex) => { %><section class="report-sheet report-employee" aria-labelledby="reportTitle-<%= employeeIndex %>">
-				<header class="report-sheet-header">
-					<div><p class="leave-eyebrow">Confidential / Employee record</p><h2 id="reportTitle-<%= employeeIndex %>">Leave statement</h2><p>Leave year: <strong>BS <%= selectedYear %></strong></p></div>
-					<div class="report-meta">
-						<p><strong>Employee:</strong> <%= employee.name %></p>
-						<p><strong>Employee code:</strong> <%= employee.employeeCode || '—' %></p>
-						<p><strong>Designation:</strong> <%= employee.designation || '—' %></p>
-						<p><strong>Department:</strong> <%= employee.department || '—' %></p>
-						<p><strong>Branch:</strong> <%= employee.branchName || '—' %></p>
-						<p><strong>Company:</strong> <%= employee.companyName || '—' %></p>
-					</div>
-				</header>
-
-				<h3 class="report-subheading">Leave allocation and balance</h3>
-				<% if (leaveBalances.length) { %>
-				<div class="report-table-wrap"><table class="report-table">
-					<thead><tr><th>SN</th><th>Leave type</th><th class="numeric">Allocated</th><th class="numeric">Taken</th><th class="numeric">Remaining</th></tr></thead>
-					<tbody><% leaveBalances.forEach((balance,index) => { %><tr><td><%= index + 1 %></td><td><%= balance.name %></td><td class="numeric"><%= balance.allocatedDays === null ? 'No annual limit' : `${balance.allocatedDays} days` %></td><td class="numeric"><%= balance.takenDays %> days</td><td class="numeric"><%= balance.remainingDays === null ? '—' : `${balance.remainingDays} days` %></td></tr><% }) %></tbody>
-				</table></div>
-				<% } else { %><div class="report-empty">No leave types apply to this employee.</div><% } %>
-
-				<h3 class="report-subheading">Leave applications</h3>
-				<% if (applications.length) { %>
-				<div class="report-table-wrap"><table class="report-table">
-					<thead><tr><th>SN</th><th>Employee</th><th>Date range (BS)</th><th class="numeric">Days in <%= selectedYear %></th><th>Leave type</th><th>Status</th><th>Paid</th><th>Reason</th></tr></thead>
-					<tbody><% applications.forEach((application,index) => { %><tr>
-						<td><%= index + 1 %></td>
-						<td><strong><%= application.employeeName || employee.name %></strong><% if (application.employeeCode || employee.employeeCode) { %><br><small><%= application.employeeCode || employee.employeeCode %></small><% } %></td>
-						<td class="date-cell"><%= application.startDateNepali %> to <%= application.endDateNepali %><% if (application.leaveDay && application.leaveDay !== 'Full day') { %><br><small><%= application.leaveDay %></small><% } %></td>
-						<td class="numeric"><%= application.daysInYear %></td>
-						<td><%= application.leaveTypeName %></td>
-						<td><span class="status-badge <%= application.status %>"><%= application.statusLabel %></span></td>
-						<td><%= application.isPaid ? 'Yes' : 'No' %></td>
-						<td class="reason-cell"><%= application.reason || '—' %></td>
+			<section class="report-sheet">
+				<h2 class="report-title">Employee Leave Report — BS <%= selectedYear %></h2>
+				<div class="report-table-wrap"><% reportData.forEach(({ employee, applications, leaveBalances, approvedDays }, employeeIndex) => {
+					const detailRows = applications.length ? applications : [null];
+					const finiteBalances = leaveBalances.filter(balance => balance.allocatedDays !== null);
+					const allocatedTotal = finiteBalances.reduce((total, balance) => total + balance.allocatedDays, 0);
+					const remainingTotal = finiteBalances.reduce((total, balance) => total + balance.remainingDays, 0);
+					const hasUnlimitedBalance = leaveBalances.some(balance => balance.allocatedDays === null);
+				%><table class="report-table report-employee-block">
+					<thead>
+						<tr><th rowspan="2">SN</th><th rowspan="2">Employee</th><th colspan="7" class="group-heading">Leave Detail</th><th rowspan="2">Allocated Leave</th><th rowspan="2">Total Taken</th><th rowspan="2">Remaining</th></tr>
+						<tr><th>SN</th><th>Leave Type</th><th>Taken from</th><th>Taken to</th><th>Duration</th><th>Reason</th><th>Approved by</th></tr>
+					</thead>
+					<tbody><% detailRows.forEach((application, detailIndex) => { %><tr>
+						<% if (detailIndex === 0) { %>
+						<td class="employee-number" rowspan="<%= detailRows.length %>"><%= employeeIndex + 1 %></td>
+						<td class="employee-name" rowspan="<%= detailRows.length %>"><%= employee.name %><% if (employee.employeeCode) { %><br><small><%= employee.employeeCode %></small><% } %></td>
+						<% } %>
+						<td class="detail-number"><%= detailIndex + 1 %></td>
+						<td><% if (application) { %><%= application.leaveTypeName %><span class="leave-status"><%= application.statusLabel %><%= application.isPaid ? ' / Paid' : ' / Unpaid' %></span><% } else { %><span class="empty-detail">No leave applications in this year</span><% } %></td>
+						<td class="date-cell"><%= application?.startDateNepali || '—' %></td>
+						<td class="date-cell"><%= application?.endDateNepali || '—' %></td>
+						<td class="duration-cell"><% if (application) { %><%= application.daysInYear %> <%= application.daysInYear === 1 ? 'day' : 'days' %><% if (application.leaveDay && application.leaveDay !== 'Full day') { %><br><small><%= application.leaveDay %></small><% } %><% } else { %>—<% } %></td>
+						<td class="reason-cell"><%= application?.reason || '—' %></td>
+						<td class="approver-cell"><%= application?.approvedBy || '—' %></td>
+						<% if (detailIndex === 0) { %>
+						<td class="summary-cell" rowspan="<%= detailRows.length %>"><%= hasUnlimitedBalance ? 'No limit' : finiteBalances.length ? `${allocatedTotal} days` : '—' %></td>
+						<td class="summary-cell" rowspan="<%= detailRows.length %>"><%= approvedDays %> <%= approvedDays === 1 ? 'day' : 'days' %></td>
+						<td class="summary-cell" rowspan="<%= detailRows.length %>"><%= hasUnlimitedBalance ? 'No limit' : finiteBalances.length ? `${remainingTotal} days` : '—' %></td>
+						<% } %>
 					</tr><% }) %></tbody>
-				</table></div>
-				<p class="report-footnote">Approved leave taken in BS <%= selectedYear %>: <strong><%= approvedDays %> days</strong>. Pending and rejected requests appear for reference and are not included in taken totals. Allocation follows the configured annual leave limits.</p>
-				<% } else { %><div class="report-empty">No leave applications found for this employee in BS <%= selectedYear %>.</div><% } %>
-			</section><% }) %>
+				</table><% }) %></div>
+				<p class="report-footnote">Totals include approved leave only. Pending, rejected, and reverted applications are shown for reference and are not included in leave taken.</p>
+			</section>
 			<p class="report-footnote screen-only">Generated on <%= new Date().toLocaleString('en-GB', { timeZone: 'Asia/Kathmandu' }) %> (Nepal Time)</p>
 			<% } else if (!errorMessage) { %>
 			<section class="report-sheet"><div class="report-empty">Check one or more employees and choose <strong>Generate preview</strong> to view their leave reports.</div></section>

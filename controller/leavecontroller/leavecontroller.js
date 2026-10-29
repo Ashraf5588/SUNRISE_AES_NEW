@@ -314,6 +314,7 @@ exports.leavePage = async (req, res) => {
 		approverUsers.forEach(user => {
 			const profileName = findStaffProfile(user, profiles).staffName;
 			const displayName = String(profileName || user.teacherName || user.username || '').trim();
+			if (user._id) reviewerNames.set(normalizeName(user._id), displayName);
 			if (user.username) reviewerNames.set(normalizeName(user.username), displayName);
 			if (user.teacherName) reviewerNames.set(normalizeName(user.teacherName), displayName);
 		});
@@ -528,6 +529,13 @@ exports.leaveReport = async (req, res) => {
 			};
 		}).filter(employee => employee.name && employee.role !== 'ADMIN')
 			.sort((first, second) => first.name.localeCompare(second.name));
+		const reviewerNames = new Map();
+		users.forEach(user => {
+			const profileName = findStaffProfile(user, profiles).staffName;
+			const displayName = String(profileName || user.teacherName || user.username || '').trim();
+			if (user.username) reviewerNames.set(normalizeName(user.username), displayName);
+			if (user.teacherName) reviewerNames.set(normalizeName(user.teacherName), displayName);
+		});
 		const currentBsYear = String(bs.ADToBS(new Date()) || '').slice(0, 4);
 		const requestedEmployeeIds = (Array.isArray(req.query.employeeId) ? req.query.employeeId : [req.query.employeeId])
 			.map(value => String(value || '').trim())
@@ -549,7 +557,7 @@ exports.leaveReport = async (req, res) => {
 				const employeeFilter = getEmployeeLeaveFilter(user, profile);
 				const records = await LeaveApplication.find(employeeFilter)
 					.sort({ startDateNepali: 1, createdAt: 1 })
-					.select('employeeName employeeCode department designation branchName leaveType leaveTypeName isPaid startDateNepali endDateNepali leaveDay sandwichLeave requestedDays yearlyAllocations reason status')
+					.select('employeeName employeeCode department designation branchName leaveType leaveTypeName isPaid startDateNepali endDateNepali leaveDay sandwichLeave requestedDays yearlyAllocations reason status reviewedBy assignedApproverName approverName')
 					.lean();
 				const leaveTypeById = new Map(leaveTypes.map(type => [String(type._id), type]));
 				const leaveTypeByName = new Map(leaveTypes.map(type => [normalizeName(type.leavename), type]));
@@ -590,6 +598,15 @@ exports.leaveReport = async (req, res) => {
 						leaveTypeName,
 						daysInYear,
 						balanceKey,
+						approvedBy: record.status === 'approved'
+							? reviewerNames.get(normalizeName(record.reviewedBy))
+								|| reviewerNames.get(normalizeName(record.assignedApproverName))
+								|| reviewerNames.get(normalizeName(record.approverName))
+								|| record.assignedApproverName
+								|| record.approverName
+								|| record.reviewedBy
+								|| ''
+								: '',
 						statusLabel: String(record.status || 'pending').replace(/^\w/, letter => letter.toUpperCase())
 					});
 				}
