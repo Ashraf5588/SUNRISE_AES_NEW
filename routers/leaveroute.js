@@ -5,6 +5,7 @@ const { verifytoken } = require('../middleware/auth');
 
 leave.get('/', verifytoken, leaveController.leavePage);
 leave.get('/usage', verifytoken, leaveController.leaveUsage);
+leave.get('/report', verifytoken, leaveController.isAdmin, leaveController.leaveReport);
 leave.post('/', verifytoken, leaveController.submitLeaveApplication);
 leave.get('/setup', verifytoken, leaveController.isAdmin, leaveController.setupPage);
 leave.post('/setup', verifytoken, leaveController.isAdmin, leaveController.createLeaveType);

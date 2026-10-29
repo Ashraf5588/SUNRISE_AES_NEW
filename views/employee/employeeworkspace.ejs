@@ -554,7 +554,7 @@ const activeModuleName = activeModule || 'profile';
 		const saveButton=event.target.closest('[data-save-document]');
 		if(saveButton){const row=saveButton.closest('[data-saved-document]'),data=new FormData();data.set('blobName',saveButton.dataset.blobName);data.set('documentName',row.querySelector('[data-document-name]').value);const file=row.querySelector('[data-replacement-file]').files[0];if(file)data.set('replacementFile',file);await submitDocumentAction(`/employee-document/${saveButton.dataset.saveDocument}/update`,data);return;}
 		const deleteButton=event.target.closest('[data-delete-document]');
-		if(deleteButton&&window.confirm('Delete this saved document?')){const data=new FormData();data.set('blobName',deleteButton.dataset.blobName);await submitDocumentAction(`/employee-document/${deleteButton.dataset.deleteDocument}/delete`,data);return;}
+		if(deleteButton&&window.confirm('Delete this saved document?')){const data=new URLSearchParams({blobName:deleteButton.dataset.blobName});await submitDocumentAction(`/employee-document/${deleteButton.dataset.deleteDocument}/delete`,data);return;}
 		const deletePhoto=event.target.closest('[data-delete-photo]');
 		if(deletePhoto&&window.confirm('Delete this profile photo?')){await submitDocumentAction(`/employee-photo/${deletePhoto.dataset.deletePhoto}/delete`,new FormData());}
 	});

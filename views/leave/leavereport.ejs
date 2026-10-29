@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Employee leave report</title>
+	<link rel="stylesheet" href="/leave-management.css">
+	<style>
+		.report-filters { display:grid; grid-template-columns:minmax(140px,1fr) auto; align-items:end; gap:12px; }
+		.report-field label { display:block; margin-bottom:6px; color:#3e4b46; font-size:13px; font-weight:700; }
+		.report-field select,.report-field input { width:100%; min-height:43px; padding:9px 11px; border:1px solid #d7e1da; border-radius:4px; background:#fff; color:var(--leave-ink); }
+		.employee-picker { grid-column:1 / -1; display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:7px; max-height:260px; overflow:auto; padding:10px; border:1px solid var(--leave-line); border-radius:5px; background:#fbfdfb; }
+		.employee-choice { display:flex; align-items:center; gap:9px; min-width:0; padding:8px; border:1px solid var(--leave-line); border-radius:4px; background:#fff; cursor:pointer; }
+		.employee-choice input,.select-all-employees input { width:18px; min-height:18px; flex:0 0 auto; margin:0; accent-color:var(--leave-deep); }
+		.employee-choice span { overflow-wrap:anywhere; font-size:12px; }
+		.employee-choice small { color:var(--leave-muted); }
+		.employee-picker-toolbar { display:flex; grid-column:1 / -1; align-items:center; justify-content:space-between; gap:8px; }
+		.select-all-employees { display:inline-flex; align-items:center; gap:8px; font-size:12px; font-weight:700; }
+		.selection-count { color:var(--leave-muted); font-size:12px; }
+		.report-actions { display:flex; flex-wrap:wrap; gap:8px; }
+		.report-button { display:inline-flex; min-height:40px; align-items:center; justify-content:center; padding:0 15px; border:1px solid var(--leave-deep); border-radius:4px; background:var(--leave-deep); color:#fff; cursor:pointer; font-weight:700; }
+		.report-button.secondary { border-color:var(--leave-line); background:#fff; color:var(--leave-ink); }
+		.report-message { margin:0; color:var(--leave-red); font-weight:700; }
+		.report-sheet { padding:26px; border:1px solid var(--leave-line); border-radius:7px; background:#fff; box-shadow:0 7px 20px rgba(24,54,43,.045); }
+		.report-employee + .report-employee { margin-top:22px; }
+		.report-sheet-header { display:flex; justify-content:space-between; gap:20px; padding-bottom:18px; border-bottom:2px solid var(--leave-deep); }
+		.report-sheet-header h2 { margin:0 0 5px; font:800 22px Manrope,sans-serif; }
+		.report-sheet-header p,.report-meta p { margin:3px 0; color:var(--leave-muted); }
+		.report-meta { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px 18px; padding:16px 0; }
+		.report-meta strong { color:var(--leave-ink); }
+		.report-subheading { margin:20px 0 9px; font:700 16px Manrope,sans-serif; }
+		.report-table-wrap { overflow-x:auto; }
+		.report-table { width:100%; border-collapse:collapse; font-size:12px; }
+		.report-table th,.report-table td { padding:9px 10px; border:1px solid var(--leave-line); text-align:left; vertical-align:top; }
+		.report-table th { background:#f2f6f3; color:var(--leave-ink); font-size:10px; letter-spacing:.04em; text-transform:uppercase; }
+		.report-table td.numeric,.report-table th.numeric { text-align:right; white-space:nowrap; }
+		.report-table .reason-cell { min-width:190px; white-space:normal; overflow-wrap:anywhere; }
+		.report-table .date-cell { white-space:nowrap; }
+		.status-badge { display:inline-block; padding:3px 7px; border-radius:99px; background:#edf2f7; color:#334155; font-size:10px; font-weight:800; }
+		.status-badge.approved { background:#e8f5eb; color:#17633b; }
+		.status-badge.pending { background:#fff5d9; color:#805c00; }
+		.status-badge.rejected,.status-badge.reverted { background:#fff0ee; color:#993c32; }
+		.report-empty { padding:18px; border:1px dashed var(--leave-line); color:var(--leave-muted); text-align:center; }
+		.report-footnote { margin:12px 0 0; color:var(--leave-muted); font-size:11px; }
+		@media(max-width:700px) {
+			.report-filters { grid-template-columns:1fr; }
+			.report-sheet { padding:16px 12px; }
+			.report-sheet-header { flex-direction:column; }
+			.report-meta { grid-template-columns:repeat(2,minmax(0,1fr)); }
+			.report-actions .report-button { flex:1; }
+		}
+		@media print {
+			@page { size:landscape; margin:12mm; }
+			body { min-width:0; background:#fff !important; color:#111; font-size:10pt; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+			body.employee-nav-visible .leave-shell,body.employee-nav-visible.employee-nav-collapsed .leave-shell,body.employee-nav-collapsed .leave-shell { width:100% !important; margin:0 !important; }
+			.employee-sidenav,.leave-topbar,.leave-page-heading,.report-filter-panel,.screen-only { display:none !important; }
+			.leave-main { width:100%; max-width:none; padding:0; }
+			.report-sheet { padding:0; border:0; border-radius:0; box-shadow:none; }
+			.report-employee + .report-employee { margin-top:0; padding-top:18px; border-top:2px solid #111; }
+			.report-table-wrap { overflow:visible; }
+			.report-table { font-size:9pt; }
+			.report-table th,.report-table td { padding:6px 7px; }
+			.report-table thead { display:table-header-group; }
+			.report-table tr { break-inside:avoid; }
+			.report-subheading { break-after:avoid; }
+		}
+	</style>
+</head>
+<body>
+	<%- include('../employee/employeesidenav', { currentPage: 'leave-report', selectedEmployee: null, isAdmin: true }) %>
+	<div class="leave-shell">
+		<header class="leave-topbar">
+			<a class="leave-brand" href="/leave">Staff leave management</a>
+			<nav aria-label="Leave navigation"><a href="/leave">Applications</a><a href="/leave/setup">Leave setup</a><a class="active" href="/leave/report">Leave report</a></nav>
+		</header>
+		<main class="leave-main">
+			<header class="leave-page-heading"><div><p class="leave-eyebrow">Administration / Reports</p><h1>Employee leave report</h1><p>Preview approved leave, annual allocation, and request details for an employee.</p></div></header>
+
+			<section class="leave-panel report-filter-panel">
+				<div class="leave-section-heading"><div><h2>Choose report criteria</h2><p>Select an employee and Nepali calendar year, then generate the report preview.</p></div></div>
+				<form method="get" action="/leave/report" class="report-filters">
+					<div class="report-field"><label for="year">Nepali year (BS)</label><input id="year" name="year" type="number" min="1970" max="2100" step="1" value="<%= selectedYear %>" required></div>
+					<div class="employee-picker" role="group" aria-label="Select employees">
+						<div class="employee-picker-toolbar"><label class="select-all-employees"><input type="checkbox" id="selectAllEmployees"><span>Select all employees</span></label><span class="selection-count" id="selectionCount" aria-live="polite"></span></div>
+						<% employees.forEach(employee => { %><label class="employee-choice"><input type="checkbox" name="employeeId" value="<%= employee.id %>" <%= selectedEmployeeIds.includes(employee.id) ? 'checked' : '' %>><span><strong><%= employee.name %></strong><% if (employee.employeeCode || employee.department) { %><br><small><%= [employee.employeeCode, employee.department].filter(Boolean).join(' / ') %></small><% } %></span></label><% }) %>
+					</div>
+					<div class="report-actions"><button class="report-button" type="submit">Generate preview</button><% if (reportData.length) { %><button class="report-button secondary" type="button" onclick="window.print()">Print all reports</button><% } %></div>
+				</form>
+			</section>
+
+			<% if (errorMessage) { %><section class="leave-panel"><p class="report-message" role="alert"><%= errorMessage %></p></section><% } %>
+			<% if (reportData.length) { %>
+			<% reportData.forEach(({ employee, applications, leaveBalances, approvedDays }, employeeIndex) => { %><section class="report-sheet report-employee" aria-labelledby="reportTitle-<%= employeeIndex %>">
+				<header class="report-sheet-header">
+					<div><p class="leave-eyebrow">Confidential / Employee record</p><h2 id="reportTitle-<%= employeeIndex %>">Leave statement</h2><p>Leave year: <strong>BS <%= selectedYear %></strong></p></div>
+					<div class="report-meta">
+						<p><strong>Employee:</strong> <%= employee.name %></p>
+						<p><strong>Employee code:</strong> <%= employee.employeeCode || '—' %></p>
+						<p><strong>Designation:</strong> <%= employee.designation || '—' %></p>
+						<p><strong>Department:</strong> <%= employee.department || '—' %></p>
+						<p><strong>Branch:</strong> <%= employee.branchName || '—' %></p>
+						<p><strong>Company:</strong> <%= employee.companyName || '—' %></p>
+					</div>
+				</header>
+
+				<h3 class="report-subheading">Leave allocation and balance</h3>
+				<% if (leaveBalances.length) { %>
+				<div class="report-table-wrap"><table class="report-table">
+					<thead><tr><th>SN</th><th>Leave type</th><th class="numeric">Allocated</th><th class="numeric">Taken</th><th class="numeric">Remaining</th></tr></thead>
+					<tbody><% leaveBalances.forEach((balance,index) => { %><tr><td><%= index + 1 %></td><td><%= balance.name %></td><td class="numeric"><%= balance.allocatedDays === null ? 'No annual limit' : `${balance.allocatedDays} days` %></td><td class="numeric"><%= balance.takenDays %> days</td><td class="numeric"><%= balance.remainingDays === null ? '—' : `${balance.remainingDays} days` %></td></tr><% }) %></tbody>
+				</table></div>
+				<% } else { %><div class="report-empty">No leave types apply to this employee.</div><% } %>
+
+				<h3 class="report-subheading">Leave applications</h3>
+				<% if (applications.length) { %>
+				<div class="report-table-wrap"><table class="report-table">
+					<thead><tr><th>SN</th><th>Employee</th><th>Date range (BS)</th><th class="numeric">Days in <%= selectedYear %></th><th>Leave type</th><th>Status</th><th>Paid</th><th>Reason</th></tr></thead>
+					<tbody><% applications.forEach((application,index) => { %><tr>
+						<td><%= index + 1 %></td>
+						<td><strong><%= application.employeeName || employee.name %></strong><% if (application.employeeCode || employee.employeeCode) { %><br><small><%= application.employeeCode || employee.employeeCode %></small><% } %></td>
+						<td class="date-cell"><%= application.startDateNepali %> to <%= application.endDateNepali %><% if (application.leaveDay && application.leaveDay !== 'Full day') { %><br><small><%= application.leaveDay %></small><% } %></td>
+						<td class="numeric"><%= application.daysInYear %></td>
+						<td><%= application.leaveTypeName %></td>
+						<td><span class="status-badge <%= application.status %>"><%= application.statusLabel %></span></td>
+						<td><%= application.isPaid ? 'Yes' : 'No' %></td>
+						<td class="reason-cell"><%= application.reason || '—' %></td>
+					</tr><% }) %></tbody>
+				</table></div>
+				<p class="report-footnote">Approved leave taken in BS <%= selectedYear %>: <strong><%= approvedDays %> days</strong>. Pending and rejected requests appear for reference and are not included in taken totals. Allocation follows the configured annual leave limits.</p>
+				<% } else { %><div class="report-empty">No leave applications found for this employee in BS <%= selectedYear %>.</div><% } %>
+			</section><% }) %>
+			<p class="report-footnote screen-only">Generated on <%= new Date().toLocaleString('en-GB', { timeZone: 'Asia/Kathmandu' }) %> (Nepal Time)</p>
+			<% } else if (!errorMessage) { %>
+			<section class="report-sheet"><div class="report-empty">Check one or more employees and choose <strong>Generate preview</strong> to view their leave reports.</div></section>
+			<% } %>
+		</main>
+	</div>
+<script>
+	const employeeCheckboxes = [...document.querySelectorAll('input[name="employeeId"]')];
+	const selectAllEmployees = document.getElementById('selectAllEmployees');
+	const selectionCount = document.getElementById('selectionCount');
+	function updateEmployeeSelection() {
+		const checkedCount = employeeCheckboxes.filter(checkbox => checkbox.checked).length;
+		selectAllEmployees.checked = employeeCheckboxes.length > 0 && checkedCount === employeeCheckboxes.length;
+		selectAllEmployees.indeterminate = checkedCount > 0 && checkedCount < employeeCheckboxes.length;
+		selectionCount.textContent = `${checkedCount} selected`;
+	}
+	selectAllEmployees.addEventListener('change', () => {
+		employeeCheckboxes.forEach(checkbox => { checkbox.checked = selectAllEmployees.checked; });
+		updateEmployeeSelection();
+	});
+	employeeCheckboxes.forEach(checkbox => checkbox.addEventListener('change', updateEmployeeSelection));
+	updateEmployeeSelection();
+</script>
+</body>
+</html>

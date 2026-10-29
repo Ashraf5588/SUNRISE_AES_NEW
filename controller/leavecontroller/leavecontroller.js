@@ -507,6 +507,135 @@ exports.leaveUsage = async (req, res) => {
 	}
 };
 
+exports.leaveReport = async (req, res) => {
+	try {
+		const [users, profiles, leaveTypes] = await Promise.all([
+			User.find({}).select('teacherName username role employeeCode department').lean(),
+			Staff.find({}).select('employeeCode staffName companyName branchName designation department section').lean(),
+			LeaveType.find({}).sort({ leavename: 1 }).lean()
+		]);
+		const employees = users.map(user => {
+			const profile = findStaffProfile(user, profiles);
+			return {
+				id: String(user._id),
+				name: String(profile.staffName || user.teacherName || user.username || '').trim(),
+				role: getRole(user),
+				employeeCode: String(profile.employeeCode || user.employeeCode || '').trim(),
+				department: String(profile.department || user.department || '').trim(),
+				companyName: String(profile.companyName || '').trim(),
+				branchName: String(profile.branchName || '').trim(),
+				designation: String(profile.designation || '').trim()
+			};
+		}).filter(employee => employee.name && employee.role !== 'ADMIN')
+			.sort((first, second) => first.name.localeCompare(second.name));
+		const currentBsYear = String(bs.ADToBS(new Date()) || '').slice(0, 4);
+		const requestedEmployeeIds = (Array.isArray(req.query.employeeId) ? req.query.employeeId : [req.query.employeeId])
+			.map(value => String(value || '').trim())
+			.filter(Boolean);
+		const selectedEmployeeIds = [...new Set(requestedEmployeeIds)];
+		const selectedYear = String(req.query.year || currentBsYear).trim();
+		let reportData = [];
+		let errorMessage = '';
+
+		if (!/^\d{4}$/.test(selectedYear)) {
+			errorMessage = 'Choose a valid Nepali year.';
+		} else if (selectedEmployeeIds.some(id => !employees.some(employee => employee.id === id))) {
+			errorMessage = 'One or more selected employees are invalid.';
+		} else if (selectedEmployeeIds.length) {
+			const selectedEmployees = employees.filter(employee => selectedEmployeeIds.includes(employee.id));
+			reportData = await Promise.all(selectedEmployees.map(async selectedEmployee => {
+				const user = users.find(candidate => String(candidate._id) === selectedEmployee.id);
+				const profile = findStaffProfile(user, profiles);
+				const employeeFilter = getEmployeeLeaveFilter(user, profile);
+				const records = await LeaveApplication.find(employeeFilter)
+					.sort({ startDateNepali: 1, createdAt: 1 })
+					.select('employeeName employeeCode department designation branchName leaveType leaveTypeName isPaid startDateNepali endDateNepali leaveDay sandwichLeave requestedDays yearlyAllocations reason status')
+					.lean();
+				const leaveTypeById = new Map(leaveTypes.map(type => [String(type._id), type]));
+				const leaveTypeByName = new Map(leaveTypes.map(type => [normalizeName(type.leavename), type]));
+				const takenByLeaveType = new Map();
+				let approvedDays = 0;
+				const applications = [];
+
+				for (const record of records) {
+					const savedDays = (record.yearlyAllocations || [])
+						.filter(allocation => String(allocation.period) === selectedYear)
+						.reduce((total, allocation) => total + Number(allocation.days || 0), 0);
+					let daysInYear = savedDays;
+					if (!daysInYear) {
+						const startDate = parseNepaliDate(record.startDateNepali);
+						const endDate = parseNepaliDate(record.endDateNepali);
+						if (startDate && endDate) {
+							const allocations = await getDateAllocations(startDate, endDate, {
+								halfDay: record.leaveDay && record.leaveDay !== 'Full day',
+								sandwichLeave: record.sandwichLeave !== false
+							});
+							daysInYear = allocations.years.get(selectedYear) || 0;
+						} else if (String(record.startDateNepali || '').startsWith(`${selectedYear}-`)) {
+							daysInYear = Number(record.requestedDays || 0);
+						}
+					}
+					if (!daysInYear) continue;
+
+					const leaveType = leaveTypeById.get(String(record.leaveType || ''))
+						|| leaveTypeByName.get(normalizeName(record.leaveTypeName));
+					const leaveTypeName = String(record.leaveTypeName || leaveType?.leavename || 'Other leave');
+					const balanceKey = leaveType ? String(leaveType._id) : normalizeName(leaveTypeName);
+					if (record.status === 'approved') {
+						takenByLeaveType.set(balanceKey, (takenByLeaveType.get(balanceKey) || 0) + daysInYear);
+						approvedDays += daysInYear;
+					}
+					applications.push({
+						...record,
+						leaveTypeName,
+						daysInYear,
+						balanceKey,
+						statusLabel: String(record.status || 'pending').replace(/^\w/, letter => letter.toUpperCase())
+					});
+				}
+
+				const applicableTypes = leaveTypes.filter(type => appliesToUser(type, user));
+				const balanceTypes = new Map(applicableTypes.map(type => [String(type._id), {
+					name: type.leavename,
+					allocatedDays: Number(type.maxDaysPerYear) || null,
+					takenDays: takenByLeaveType.get(String(type._id)) || 0
+				}]));
+				applications.forEach(application => {
+					if (!balanceTypes.has(application.balanceKey)) {
+						balanceTypes.set(application.balanceKey, {
+							name: application.leaveTypeName,
+							allocatedDays: null,
+							takenDays: takenByLeaveType.get(application.balanceKey) || 0
+						});
+					}
+				});
+				const leaveBalances = [...balanceTypes.values()]
+					.map(balance => ({
+						...balance,
+						remainingDays: balance.allocatedDays === null
+							? null
+							: Math.max(0, balance.allocatedDays - balance.takenDays)
+					}))
+					.sort((first, second) => first.name.localeCompare(second.name));
+				return { employee: selectedEmployee, applications, leaveBalances, approvedDays };
+			}));
+		}
+
+		return renderPage(res, 'leavereport', {
+			isAdmin: true,
+			employees,
+			selectedEmployeeIds,
+			selectedYear,
+			currentBsYear,
+			reportData,
+			errorMessage
+		});
+	} catch (error) {
+		console.error('Unable to generate leave report:', error);
+		return res.status(500).send('Unable to generate leave report.');
+	}
+};
+
 exports.submitLeaveApplication = [handleLeaveDocumentUpload, async (req, res) => {
 	try {
 		const admin = isAdmin(req.user);
