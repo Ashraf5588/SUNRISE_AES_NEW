@@ -362,8 +362,7 @@ const getPrivateEmployeeDocument = async (req, res) => {
         const safeFilename = String(document.originalName || document.documentName || 'staff-document')
             .replace(/[\r\n"\\/]/g, '_')
             .replace(/[^\w.-]/g, '_');
-        const allowedMimeTypes = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif']);
-        const contentType = allowedMimeTypes.has(document.mimeType) ? document.mimeType : 'application/octet-stream';
+        const contentType = getEmployeeDocumentMimeType(document);
         res.set({
             'Content-Type': contentType,
             'Content-Disposition': `inline; filename="${safeFilename}"`,
@@ -603,6 +602,22 @@ const toEmployeeFormData = employee => {
 const getEmployeeDocumentUrl = (employeeId, blobName) =>
     `/employee-document/${employeeId}?blobName=${encodeURIComponent(blobName)}`;
 
+const getEmployeeDocumentMimeType = document => {
+    const allowedMimeTypes = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+    const mimeType = String(document?.mimeType || '').toLowerCase().trim();
+    if (allowedMimeTypes.has(mimeType)) return mimeType;
+
+    const extension = path.extname(String(document?.originalName || document?.blobName || '')).toLowerCase();
+    return ({
+        '.pdf': 'application/pdf',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.webp': 'image/webp',
+        '.gif': 'image/gif'
+    })[extension] || 'application/octet-stream';
+};
+
 const getEmployeeOfficeProofUrl = (employeeId, collection, blobName) =>
     `/employee-office-proof/${employeeId}/${collection}?blobName=${encodeURIComponent(blobName)}`;
 
@@ -637,6 +652,7 @@ const renderEmployeeDetails = async (res, options = {}) => {
         ...selectedEmployeeRecord,
         documents: (selectedEmployeeRecord.documents || []).map(document => ({
             ...document,
+            previewMimeType: getEmployeeDocumentMimeType(document),
             url: getEmployeeDocumentUrl(selectedEmployeeRecord._id, document.blobName)
         }))
     };

@@ -38,6 +38,7 @@
 		.required { color:var(--red); }
 		input,select,textarea { width:100%; min-height:39px; padding:8px 9px; border:1px solid #cbd8e6; border-radius:5px; background:#fff; color:var(--ink); font-size:.78rem; }
 		.invalid-field { border-color:var(--red) !important; background:#fff7f7 !important; box-shadow:0 0 0 2px rgba(180,64,77,.12); }
+		.field.has-invalid > label { color:var(--red); }
 		input[readonly] { background:#f3f6fa; color:#5c6d82; }
 		textarea { min-height:75px; resize:vertical; }
 		input:focus,select:focus,textarea:focus { outline:2px solid rgba(36,71,123,.18); border-color:var(--blue); }
@@ -104,22 +105,25 @@
 		document.querySelectorAll('.nepali-date-input').forEach(input => { if (typeof input.NepaliDatePicker === 'function') input.NepaliDatePicker({ dateFormat:'YYYY-MM-DD', language:'english' }); });
 		const profileForm=document.getElementById('teacherProfileForm');
 		const markInvalidFields=()=>{
-			profileForm.querySelectorAll('.invalid-field').forEach(field=>field.classList.remove('invalid-field'));
+			profileForm.querySelectorAll('.invalid-field').forEach(field=>{field.classList.remove('invalid-field');field.removeAttribute('aria-invalid');});
+			profileForm.querySelectorAll('.field.has-invalid').forEach(field=>field.classList.remove('has-invalid'));
 			const invalid=[...profileForm.querySelectorAll('input:invalid,select:invalid,textarea:invalid')];
-			invalid.forEach(field=>{field.classList.add('invalid-field');field.setAttribute('aria-invalid','true');});
+			invalid.forEach(field=>{field.classList.add('invalid-field');field.setAttribute('aria-invalid','true');field.closest('.field')?.classList.add('has-invalid');});
 			return invalid;
 		};
-		profileForm.addEventListener('input',event=>{if(event.target.matches('input,select,textarea')&&event.target.checkValidity()){event.target.classList.remove('invalid-field');event.target.removeAttribute('aria-invalid');}});
-		profileForm.addEventListener('change',event=>{if(event.target.matches('input,select,textarea')&&event.target.checkValidity()){event.target.classList.remove('invalid-field');event.target.removeAttribute('aria-invalid');}});
+		const clearInvalidField=event=>{const field=event.target;if(field.matches('input,select,textarea')&&field.checkValidity()){field.classList.remove('invalid-field');field.removeAttribute('aria-invalid');field.closest('.field')?.classList.remove('has-invalid');}};
+		const focusFirstInvalid=invalid=>requestAnimationFrame(()=>{invalid[0].focus({preventScroll:true});invalid[0].scrollIntoView({behavior:'smooth',block:'center'});});
+		profileForm.addEventListener('input',clearInvalidField);
+		profileForm.addEventListener('change',clearInvalidField);
 		profileForm.addEventListener('submit',event=>{
 			const invalid=markInvalidFields();
 			if(!invalid.length)return;
 			event.preventDefault();
-			requestAnimationFrame(()=>{invalid[0].scrollIntoView({behavior:'smooth',block:'center'});invalid[0].focus({preventScroll:true});});
+			focusFirstInvalid(invalid);
 		});
 		if(document.body.dataset.hasError === 'true'){
 			const invalid=markInvalidFields();
-			if(invalid.length)requestAnimationFrame(()=>invalid[0].scrollIntoView({behavior:'smooth',block:'center'}));
+			if(invalid.length)focusFirstInvalid(invalid);
 		}
 		const sameAddress=document.getElementById('sameAddressAsPermanent');
 		const addressPairs=[['address','temporaryAddress'],['permanentDistrict','temporaryDistrict'],['permanentMunicipality','temporaryMunicipality'],['permanentWard','temporaryWard'],['permanentAddressNepali','temporaryAddressNepali']];
