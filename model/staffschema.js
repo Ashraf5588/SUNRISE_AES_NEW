@@ -48,6 +48,8 @@ const employeeDocumentSchema = new mongoose.Schema({
   containerName: { type: String, default: '', trim: true },
   originalName: { type: String, default: '', trim: true },
   mimeType: { type: String, default: '', trim: true },
+  fileSizeBytes: { type: Number, default: 0, min: 0 },
+  originalSizeBytes: { type: Number, default: 0, min: 0 },
   uploadedAt: { type: Date, default: Date.now }
 }, { _id: false });
 
@@ -92,7 +94,9 @@ const employeeOfficeProofSchema = new mongoose.Schema({
   blobName: { type: String, required: true, trim: true },
   containerName: { type: String, default: '', trim: true },
   originalName: { type: String, default: '', trim: true },
-  mimeType: { type: String, default: '', trim: true }
+  mimeType: { type: String, default: '', trim: true },
+  fileSizeBytes: { type: Number, default: 0, min: 0 },
+  originalSizeBytes: { type: Number, default: 0, min: 0 }
 }, { _id: false });
 
 const contractSchema = new mongoose.Schema({
@@ -358,7 +362,10 @@ const staffSchema = new mongoose.Schema(
       documentName: { type: String, default: '', trim: true },
       url: { type: String, default: '', trim: true },
       blobName: { type: String, default: '', trim: true },
-      containerName: { type: String, default: '', trim: true }
+      containerName: { type: String, default: '', trim: true },
+      mimeType: { type: String, default: '', trim: true },
+      fileSizeBytes: { type: Number, default: 0, min: 0 },
+      originalSizeBytes: { type: Number, default: 0, min: 0 }
     },
     advances: { type: [advanceSchema], default: [] },
     contracts: { type: [contractSchema], default: [] },

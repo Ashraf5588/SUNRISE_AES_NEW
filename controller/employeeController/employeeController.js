@@ -9,6 +9,10 @@ const csvParser = require('csv-parser');
 const { Readable } = require('stream');
 const { pipeline } = require('stream/promises');
 const { BlobServiceClient } = require('@azure/storage-blob');
+const {
+    compressEmployeeDocument,
+    MAX_EMPLOYEE_DOCUMENT_UPLOAD_SIZE_BYTES
+} = require('../../utils/employeeDocumentCompression');
 const { staffSchema } = require('../../model/staffschema');
 const { leaveApplicationSchema } = require('../../model/leaveschema/leavetypeschma');
 const Event = require('../../model/eventmodel');
@@ -99,7 +103,7 @@ const employeeProfileCsvRequiredHeaders = [
 
 const employeeDocumentUpload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024, files: 30, fields: 1200 },
+    limits: { fileSize: MAX_EMPLOYEE_DOCUMENT_UPLOAD_SIZE_BYTES, files: 30, fields: 1200 },
     fileFilter: (req, file, callback) => {
         const type = String(file.mimetype || '').toLowerCase();
         if (type === 'application/pdf' || ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(type)) {
@@ -166,7 +170,7 @@ exports.uploadEmployeeWeekendCsv = (req, res, next) => employeeWeekendCsvUpload.
 exports.uploadEmployeeDocuments = (req, res, next) => employeeDocumentUpload.any()(req, res, error => {
     if (!error) return next();
     const message = error instanceof multer.MulterError
-        ? 'Upload no more than 30 employee files, each no larger than 10 MB.'
+        ? 'Upload no more than 30 employee files, each no larger than 20 MB before compression. Saved documents must be 8 MB or smaller.'
         : error.message || 'Unable to read employee documents.';
     if (req.accepts('json')) return res.status(400).json({ message });
     return res.status(400).send(message);
@@ -412,7 +416,7 @@ exports.showPrivateEmployeeOfficeProof = async (req, res) => {
         const safeFilename = String(proofDocument.originalName || 'employee-proof')
             .replace(/[\r\n"\\/]/g, '_')
             .replace(/[^\w.-]/g, '_');
-        const allowedMimeTypes = new Set(['application/pdf', 'image/jpeg', 'image/png']);
+        const allowedMimeTypes = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']);
         const contentType = allowedMimeTypes.has(proofDocument.mimeType) ? proofDocument.mimeType : 'application/octet-stream';
         res.set({
             'Content-Type': contentType,
@@ -455,18 +459,20 @@ const authorizeEmployeeDocumentMutation = async (req, res) => {
 
 const uploadReplacementEmployeeDocument = async (file, employee, documentName) => {
     const { containerClient, containerName } = await getEmployeeDocumentContainer();
-    const extension = path.extname(file.originalname).toLowerCase();
-    const safeExtension = /^\.(pdf|jpe?g|png|webp|gif)$/.test(extension) ? extension : '';
+    const compressed = await compressEmployeeDocument(file);
+    const safeExtension = /^\.(pdf|jpe?g|png|webp|gif)$/.test(compressed.extension) ? compressed.extension : '';
     const blobName = `employee-documents/${employee.employeeCode}/${Date.now()}-${crypto.randomUUID()}${safeExtension}`;
     const blobClient = containerClient.getBlockBlobClient(blobName);
-    await blobClient.uploadData(file.buffer, { blobHTTPHeaders: { blobContentType: file.mimetype } });
+    await blobClient.uploadData(compressed.buffer, { blobHTTPHeaders: { blobContentType: compressed.mimeType } });
     return {
         documentName,
         url: blobClient.url,
         blobName,
         containerName,
         originalName: getText(file.originalname, 180),
-        mimeType: file.mimetype,
+        mimeType: compressed.mimeType,
+        fileSizeBytes: compressed.fileSizeBytes,
+        originalSizeBytes: compressed.originalSizeBytes,
         uploadedAt: new Date()
     };
 };
@@ -507,7 +513,9 @@ exports.updateEmployeeDocument = async (req, res) => {
     } catch (error) {
         if (uploadedDocument) await deleteUploadedDocuments([uploadedDocument]);
         console.error('Unable to update employee document:', error);
-        return res.status(500).json({ message: 'Unable to update this document.' });
+        return res.status(error.statusCode || 500).json({
+            message: error.statusCode === 400 ? error.message : 'Unable to update this document.'
+        });
     }
 };
 
@@ -1477,18 +1485,20 @@ const uploadDocumentsToAzure = async (files, formData) => {
             const documentRow = match ? formData.documentRows[Number(match[1])] : null;
             const documentName = getText(documentRow?.name, 120);
             if (!documentName) throw new Error('Enter a document name for each selected file.');
-            const extension = path.extname(file.originalname).toLowerCase();
-            const safeExtension = /^\.(pdf|jpe?g|png|webp|gif)$/.test(extension) ? extension : '';
+            const compressed = await compressEmployeeDocument(file);
+            const safeExtension = /^\.(pdf|jpe?g|png|webp|gif)$/.test(compressed.extension) ? compressed.extension : '';
             const blobName = `employee-documents/${formData.employeeCode}/${Date.now()}-${crypto.randomUUID()}${safeExtension}`;
             const blobClient = containerClient.getBlockBlobClient(blobName);
-            await blobClient.uploadData(file.buffer, { blobHTTPHeaders: { blobContentType: file.mimetype } });
+            await blobClient.uploadData(compressed.buffer, { blobHTTPHeaders: { blobContentType: compressed.mimeType } });
             uploaded.push({
                 documentName,
                 url: blobClient.url,
                 blobName,
                 containerName,
                 originalName: getText(file.originalname, 180),
-                mimeType: file.mimetype
+                mimeType: compressed.mimeType,
+                fileSizeBytes: compressed.fileSizeBytes,
+                originalSizeBytes: compressed.originalSizeBytes
             });
         }
         return uploaded;
@@ -1517,18 +1527,20 @@ const uploadEmployeeOfficeProofs = async (formData, files, employee) => {
                         throw new Error('Proof documents must be PDF, JPG, or PNG files.');
                     }
                     if (!containerClient) ({ containerClient, containerName } = await getEmployeeDocumentContainer());
-                    const extension = path.extname(file.originalname).toLowerCase();
-                    const safeExtension = /^\.(pdf|jpe?g|png)$/.test(extension) ? extension : '';
+                    const compressed = await compressEmployeeDocument(file);
+                    const safeExtension = /^\.(pdf|jpe?g|png|webp)$/.test(compressed.extension) ? compressed.extension : '';
                     const safeEmployeeCode = String(formData.employeeCode || '').replace(/[^a-z0-9_-]/gi, '_');
                     const blobName = `employee-office-proofs/${safeEmployeeCode}/${Date.now()}-${crypto.randomUUID()}${safeExtension}`;
-                    await containerClient.getBlockBlobClient(blobName).uploadData(file.buffer, {
-                        blobHTTPHeaders: { blobContentType: file.mimetype }
+                    await containerClient.getBlockBlobClient(blobName).uploadData(compressed.buffer, {
+                        blobHTTPHeaders: { blobContentType: compressed.mimeType }
                     });
                     row.proofDocument = {
                         blobName,
                         containerName,
                         originalName: getText(file.originalname, 180),
-                        mimeType: file.mimetype
+                        mimeType: compressed.mimeType,
+                        fileSizeBytes: compressed.fileSizeBytes,
+                        originalSizeBytes: compressed.originalSizeBytes
                     };
                     uploaded.push(row.proofDocument);
                 } else {
@@ -1569,11 +1581,20 @@ const uploadEmployeePhotoToAzure = async (file, employeeCode) => {
 const uploadPreviousTdsDocumentToAzure = async (file, employeeCode) => {
     if (!file) return null;
     const { containerClient, containerName } = await getEmployeeDocumentContainer();
-    const extension = path.extname(file.originalname).toLowerCase();
-    const blobName = `employee-documents/${employeeCode}/previous-tds-${Date.now()}-${crypto.randomUUID()}${extension}`;
+    const compressed = await compressEmployeeDocument(file);
+    const safeExtension = /^\.(pdf|jpe?g|png|webp|gif)$/.test(compressed.extension) ? compressed.extension : '';
+    const blobName = `employee-documents/${employeeCode}/previous-tds-${Date.now()}-${crypto.randomUUID()}${safeExtension}`;
     const blobClient = containerClient.getBlockBlobClient(blobName);
-    await blobClient.uploadData(file.buffer, { blobHTTPHeaders: { blobContentType: file.mimetype } });
-    return { url: blobClient.url, blobName, containerName, originalName: getText(file.originalname, 180) };
+    await blobClient.uploadData(compressed.buffer, { blobHTTPHeaders: { blobContentType: compressed.mimeType } });
+    return {
+        url: blobClient.url,
+        blobName,
+        containerName,
+        originalName: getText(file.originalname, 180),
+        mimeType: compressed.mimeType,
+        fileSizeBytes: compressed.fileSizeBytes,
+        originalSizeBytes: compressed.originalSizeBytes
+    };
 };
 
 const deleteUploadedDocuments = async documents => {
@@ -1641,6 +1662,9 @@ exports.createEmployeeDetails = async (req, res) => {
             employeeData.previousCompanyTds.url = uploadedTdsDocument.url;
             employeeData.previousCompanyTds.blobName = uploadedTdsDocument.blobName;
             employeeData.previousCompanyTds.containerName = uploadedTdsDocument.containerName;
+            employeeData.previousCompanyTds.mimeType = uploadedTdsDocument.mimeType;
+            employeeData.previousCompanyTds.fileSizeBytes = uploadedTdsDocument.fileSizeBytes;
+            employeeData.previousCompanyTds.originalSizeBytes = uploadedTdsDocument.originalSizeBytes;
         }
         await Staff.create({ ...employeeData, documents: uploadedDocuments, employeePhoto: uploadedPhoto || {} });
         return res.redirect('/employeedetail?saved=1');
@@ -1657,7 +1681,9 @@ exports.createEmployeeDetails = async (req, res) => {
         console.error('Unable to save employee details:', error);
         return renderEmployeeDetails(res, {
             status: 400,
-            error: 'Employee details could not be saved. Check the entered values and try again.',
+            error: error.statusCode === 400
+                ? error.message
+                : 'Employee details could not be saved. Check the entered values and try again.',
             formData
         });
     }
@@ -1710,10 +1736,16 @@ exports.updateEmployeeDetails = async (req, res) => {
             employeeData.previousCompanyTds.url = uploadedTdsDocument.url;
             employeeData.previousCompanyTds.blobName = uploadedTdsDocument.blobName;
             employeeData.previousCompanyTds.containerName = uploadedTdsDocument.containerName;
+            employeeData.previousCompanyTds.mimeType = uploadedTdsDocument.mimeType;
+            employeeData.previousCompanyTds.fileSizeBytes = uploadedTdsDocument.fileSizeBytes;
+            employeeData.previousCompanyTds.originalSizeBytes = uploadedTdsDocument.originalSizeBytes;
         } else {
             employeeData.previousCompanyTds.url = existingEmployee.previousCompanyTds?.url || '';
             employeeData.previousCompanyTds.blobName = existingEmployee.previousCompanyTds?.blobName || '';
             employeeData.previousCompanyTds.containerName = existingEmployee.previousCompanyTds?.containerName || '';
+            employeeData.previousCompanyTds.mimeType = existingEmployee.previousCompanyTds?.mimeType || '';
+            employeeData.previousCompanyTds.fileSizeBytes = existingEmployee.previousCompanyTds?.fileSizeBytes || 0;
+            employeeData.previousCompanyTds.originalSizeBytes = existingEmployee.previousCompanyTds?.originalSizeBytes || 0;
         }
         const previousWeekOff = [...(existingEmployee.activeWeekOff || [])].sort();
         const submittedWeekOff = [...(employeeData.activeWeekOff || [])].sort();
@@ -1743,7 +1775,15 @@ exports.updateEmployeeDetails = async (req, res) => {
             return renderEmployeeDetails(res, { status: 409, employeeId, activeModule, error: 'That employee code is already in use.', formData });
         }
         console.error('Unable to update employee details:', error);
-        return renderEmployeeDetails(res, { status: 400, employeeId, activeModule, error: 'Employee details could not be saved. Check the entered values and try again.', formData });
+        return renderEmployeeDetails(res, {
+            status: 400,
+            employeeId,
+            activeModule,
+            error: error.statusCode === 400
+                ? error.message
+                : 'Employee details could not be saved. Check the entered values and try again.',
+            formData
+        });
     }
 };
 
@@ -2717,9 +2757,11 @@ exports.saveEmployeeProfileFillup = async (req, res) => {
             formData: errorFormData
         });
     }
+    let uploadedDocuments = [];
+    let uploadedPhoto = null;
     try {
-        const uploadedDocuments = await uploadDocumentsToAzure(req.files, formData);
-        const uploadedPhoto = await uploadEmployeePhotoToAzure((req.files || []).find(file => file.fieldname === 'employeePhoto'), employee.employeeCode);
+        uploadedDocuments = await uploadDocumentsToAzure(req.files, formData);
+        uploadedPhoto = await uploadEmployeePhotoToAzure((req.files || []).find(file => file.fieldname === 'employeePhoto'), employee.employeeCode);
         const updates = {};
         teacherProfileFields.forEach(field => {
             if (formData[field] !== undefined) updates[field] = formData[field];
@@ -2730,11 +2772,14 @@ exports.saveEmployeeProfileFillup = async (req, res) => {
         await Staff.updateOne({ _id: employee._id }, { $set: updates }, { runValidators: true });
         return res.redirect('/employeeprofile?saved=1');
     } catch (error) {
+        await deleteUploadedDocuments([...uploadedDocuments, ...(uploadedPhoto ? [uploadedPhoto] : [])]);
         console.error('Unable to save teacher profile:', error);
         return renderTeacherProfileFillup(req, res, {
             status: 400,
             employee,
-            error: 'Unable to save your profile. Check the entered values and try again.',
+            error: error.statusCode === 400
+                ? error.message
+                : 'Unable to save your profile. Check the entered values and try again.',
             formData: errorFormData
         });
     }

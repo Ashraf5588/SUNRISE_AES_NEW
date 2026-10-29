@@ -265,7 +265,7 @@
 
 				<section class="tab-panel" id="documentsPanel" role="tabpanel" hidden>
 					<div class="section-heading"><h3>Employee documents</h3><button class="add-row" type="button" id="addEmployeeDocument">+ Add other document</button></div>
-					<p class="document-hint">Upload PDF, JPG, PNG, WebP, or GIF files. Maximum 10 MB per file. Files are stored in Azure.</p>
+					<p class="document-hint">Upload PDF, JPG, PNG, WebP, or GIF files up to 20 MB each. Files over 8 MB are compressed before saving; the final stored file must be 8 MB or smaller.</p>
 					<div class="document-list" id="employeeDocumentRows">
 						<% const currentDocumentRows = formData.documentRows?.length ? formData.documentRows : defaultDocuments.map((name, index) => ({ index, name })); currentDocumentRows.forEach((row, index) => { %>
 							<div class="document-entry" data-repeat-row><span class="row-number"><%= index + 1 %></span><input type="text" name="documentName_<%= index %>" value="<%= row.name || '' %>" aria-label="Document name" maxlength="120" required><input type="file" name="documentFile_<%= index %>" accept="application/pdf,image/jpeg,image/png,image/webp,image/gif" aria-label="Upload <%= row.name || 'document' %>"><button class="row-action" type="button" data-remove-row aria-label="Remove document">Remove</button></div>
@@ -307,7 +307,7 @@
 									<td><%= employee.department || '-' %></td>
 									<td><%= employee.mobileNumber || '-' %></td>
 									<td><%= employee.email || '-' %></td>
-									<td><% if (employee.documents?.length) { %><% employee.documents.forEach((document, index) => { %><a href="/employee-document/<%= employee._id %>?blobName=<%= encodeURIComponent(document.blobName) %>"><%= document.documentName %></a><%= index < employee.documents.length - 1 ? ', ' : '' %><% }) %><% } else { %>-<% } %></td>
+									<td><% if (employee.documents?.length) { %><% employee.documents.forEach((document, index) => { %><a href="/employee-document/<%= employee._id %>?blobName=<%= encodeURIComponent(document.blobName) %>"><%= document.documentName %></a><% if (document.fileSizeBytes) { %> (<%= (document.fileSizeBytes / 1024 / 1024).toFixed(2) %> MB)<% } %><%= index < employee.documents.length - 1 ? ', ' : '' %><% }) %><% } else { %>-<% } %></td>
 									<td><span class="status"><%= employee.employmentStatus || 'Active' %></span></td>
 								</tr>
 							<% }) %>

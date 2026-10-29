@@ -3431,6 +3431,10 @@ exports.deleteTeacher = async (req, res, next) => {
     await userlist.findByIdAndDelete(teacherId);
 
     console.log(`User ${userToDelete.teacherName} deleted successfully`);
+    if (String(req.user?._id) === String(userToDelete._id)) {
+      res.clearCookie('token');
+      return res.redirect("/admin/login");
+    }
     res.redirect("/user");
 
   } catch (err) {

@@ -32,7 +32,10 @@ const verifytoken = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || "aas_amedtech_solutions_789");
     const user = await userlist.findById(decoded.id);
-    if (!user) return res.status(401).json({ message: "User not found" });
+    if (!user) {
+      res.clearCookie('token');
+      return res.redirect("/admin/login");
+    }
     if (user.role === "STUDENT") return res.redirect('/parents');
     
     // Check tokenVersion only if it exists in both places
@@ -67,6 +70,7 @@ const verifytokenApi = async (req, res, next) => {
   try {
     const user = await userlist.findById(decoded.id);
     if (!user || (user.tokenVersion && decoded.tokenVersion && user.tokenVersion !== decoded.tokenVersion)) {
+      res.clearCookie('token');
       return res.status(401).json({ message: 'Authentication required.' });
     }
     req.user = user;

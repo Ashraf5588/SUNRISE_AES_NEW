@@ -111,8 +111,11 @@
 		.saved-document-controls { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(150px, 1fr) auto auto; gap: 7px; align-items: center; }
 		.saved-document-controls input { min-width: 0; min-height: 36px; padding: 5px 7px; }
 		.document-link, .photo-preview-trigger { color: var(--blue); cursor: pointer; }
-		.document-link { display: inline-flex; align-items: center; }
+		.document-link { display: inline-flex; align-items: center; justify-content: center; width: 100px; height: 72px; overflow: hidden; border: 1px solid var(--line); border-radius: 4px; background: #f5f7fa; }
 		.document-thumbnail { display: block; width: 100px; height: 72px; border: 1px solid var(--line); border-radius: 4px; background: #f5f7fa; object-fit: contain; }
+		.document-pdf-preview { display: block; width: 100%; height: 100%; border: 0; background: #fff; pointer-events: none; }
+		.document-file-placeholder { display: grid; place-items: center; width: 100%; height: 100%; color: var(--blue); font-size: 1.5rem; }
+		.document-size { grid-column: 2 / -1; color: var(--muted); font-size: .75rem; }
 		.office-proof-cell { min-width: 180px; }
 		.office-proof-preview { display: inline-flex; align-items: center; justify-content: center; width: 76px; height: 54px; margin-bottom: 5px; border: 1px solid var(--line); border-radius: 4px; background: #f5f7fa; color: var(--blue); cursor: pointer; text-decoration: none; }
 		.office-proof-thumbnail { display: block; width: 100%; height: 100%; border-radius: 3px; object-fit: contain; }
@@ -274,11 +277,12 @@ const activeModuleName = activeModule || 'profile';
 							<div><label>Mobile</label><strong><%= formData.mobileNumber || '-' %></strong></div><div><label>Personal email</label><strong><%= formData.email || '-' %></strong></div><div><label>Blood group</label><strong><%= formData.health?.bloodGroup || formData.bloodGroup || '-' %></strong></div>
 							<div class="field-wide"><label>Address</label><strong><%= formData.permanentAddress || formData.address || '-' %></strong></div>
 						</div>
-						<div class="section-heading" style="margin-top:22px"><div><h3>Saved documents</h3><p class="muted-copy">Click a document to preview it full screen. Edit its name or choose a replacement file, then save.</p></div></div>
+						<div class="section-heading" style="margin-top:22px"><div><h3>Saved documents</h3><p class="muted-copy">Click a document to preview it full screen. Files up to 20 MB can be uploaded; larger files are compressed and must be 8 MB or smaller after optimization.</p></div></div>
 						<div class="document-actions-feedback" role="status" aria-live="polite"></div>
 						<% if (selectedEmployee?.documents?.length) { %><div class="document-list"><% selectedEmployee.documents.forEach((document,index) => { %><div class="document-entry saved-document-entry" data-saved-document>
 							<i class="fa-regular fa-file-lines" aria-hidden="true"></i>
-							<a class="document-link" href="<%= document.url %>" data-preview-url="<%= document.url %>" data-preview-type="<%= document.mimeType || '' %>" aria-label="Preview <%= document.originalName || document.documentName %>" title="<%= document.originalName || document.documentName %>"><% if (document.mimeType && document.mimeType.startsWith('image/')) { %><img class="document-thumbnail" src="<%= document.url %>" alt="<%= document.originalName || document.documentName %>"><% } else { %><%= document.originalName || document.documentName %><% } %></a>
+							<a class="document-link" href="<%= document.url %>" data-preview-url="<%= document.url %>" data-preview-type="<%= document.mimeType || '' %>" aria-label="Preview <%= document.originalName || document.documentName %>" title="<%= document.originalName || document.documentName %>"><% if (document.mimeType && document.mimeType.startsWith('image/')) { %><img class="document-thumbnail" src="<%= document.url %>" alt="<%= document.originalName || document.documentName %>" loading="lazy"><% } else if (document.mimeType === 'application/pdf') { %><iframe class="document-pdf-preview" src="<%= document.url %>#toolbar=0&amp;navpanes=0&amp;scrollbar=0" title="PDF preview: <%= document.originalName || document.documentName %>" loading="lazy" tabindex="-1"></iframe><% } else { %><span class="document-file-placeholder" aria-hidden="true"><i class="fa-regular fa-file-lines"></i></span><% } %></a>
+							<% if (document.fileSizeBytes) { %><span class="document-size"><%= (document.fileSizeBytes / 1024 / 1024).toFixed(2) %> MB stored<% if (document.originalSizeBytes > document.fileSizeBytes) { %> (compressed from <%= (document.originalSizeBytes / 1024 / 1024).toFixed(2) %> MB)<% } %></span><% } %>
 							<div class="saved-document-controls"><input type="text" value="<%= document.documentName %>" data-document-name aria-label="Document name"><input type="file" accept="application/pdf,image/jpeg,image/png,image/webp,image/gif" data-replacement-file aria-label="Replace <%= document.documentName %>"><button class="add-row" type="button" data-save-document="<%= selectedEmployee._id %>" data-blob-name="<%= document.blobName %>">Save</button><button class="remove-row" type="button" data-delete-document="<%= selectedEmployee._id %>" data-blob-name="<%= document.blobName %>">Delete</button></div>
 						</div><% }) %></div><% } else { %><p class="muted-copy">No documents have been uploaded yet.</p><% } %>
 					</section>
