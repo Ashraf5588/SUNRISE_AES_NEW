@@ -16,6 +16,17 @@ const { generateBookCopyCodes, calculateLateFine, normalizeBookIsbn } = require(
 const studentRecord = mongoose.model("studentRecord", studentrecordschema, "studentrecord");
 const userModel = mongoose.model("userlist", teacherSchema, "users");
 
+const getCurrentNepaliDate = () => {
+  const dateParts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kathmandu",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(new Date());
+  const dateValues = Object.fromEntries(dateParts.map(({ type, value }) => [type, value]));
+  return String(bs.ADToBS(`${dateValues.year}-${dateValues.month}-${dateValues.day}`) || "").trim();
+};
+
 const normalizeText = (value = "") => String(value || "").trim();
 
 const normalizeCategoryColorHex = (value = "") => {
@@ -397,7 +408,13 @@ exports.listBooks = async (req, res) => {
       ...book,
       categoryDisplayColor: categoryColors.get(String(book.category || '').trim().toLowerCase()) || book.categoryColor || '#2563eb'
     }));
-    res.render("library/addbook", { books: booksWithCategoryColor, categories, success: "", error: "" });
+    res.render("library/addbook", {
+      books: booksWithCategoryColor,
+      categories,
+      todayNepaliDate: getCurrentNepaliDate(),
+      success: "",
+      error: ""
+    });
   } catch (error) {
     console.error("Error fetching books:", error);
     res.status(500).json({ message: "Error fetching books.", error });
@@ -1234,7 +1251,13 @@ exports.listBooksPage = async (req, res) => {
   try {
     const books = await Book.find().sort({ title: 1 }).lean();
     const categories = await bookcategory.find().sort({ displayOrder: 1, name: 1 }).lean();
-    res.render("library/addbook", { books, categories, error: "", success: "" });
+    res.render("library/addbook", {
+      books,
+      categories,
+      todayNepaliDate: getCurrentNepaliDate(),
+      error: "",
+      success: ""
+    });
   } catch (error) {
     console.error("Error listing books page:", error);
     res.status(500).send("Error loading books page.");

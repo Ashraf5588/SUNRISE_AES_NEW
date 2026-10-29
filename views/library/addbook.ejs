@@ -186,7 +186,7 @@
               <div class="form-grid book-basics-grid">
                 <div class="field">
                   <label for="date">Date</label>
-                  <input type="text" id="date" name="date" class="nepali-datepicker" placeholder="Select Nepali date" value="" autocomplete="off">
+                  <input type="text" id="date" name="date" class="nepali-datepicker" placeholder="Select Nepali date" value="<%= todayNepaliDate || '' %>" autocomplete="off">
                   <span class="field-hint">Choose the date the book was added.</span>
                 </div>
 
@@ -483,15 +483,20 @@
 
   <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
   <script>
+    function formatLocalDate(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
     function getTodayNepaliDate() {
       if (typeof NepaliFunctions !== 'undefined' && typeof NepaliFunctions.AD2BS === 'function') {
         try {
-          const today = new Date();
-          const adDate = today.toISOString().slice(0, 10);
+          const adDate = formatLocalDate(new Date());
           const bsDate = NepaliFunctions.AD2BS(adDate);
-          if (bsDate && String(bsDate).trim() !== 'Invalid Date' && String(bsDate).trim() !== 'Invalid') {
-            return String(bsDate).trim();
-          }
+          const normalized = normalizeNepaliDateValue(bsDate);
+          if (normalized && normalized !== 'Invalid Date' && normalized !== 'Invalid') return normalized;
         } catch (error) {
           console.warn('Nepali date conversion failed:', error);
         }
@@ -503,7 +508,7 @@
       if (!value) return '';
       if (typeof value === 'string') return value.trim();
       if (typeof value === 'number') return String(value);
-      if (value instanceof Date) return value.toISOString().slice(0, 10);
+      if (value instanceof Date) return formatLocalDate(value);
       if (typeof value === 'object') {
         if (typeof value.bs === 'string' && value.bs.trim()) return value.bs.trim();
         if (typeof value.formatted === 'string' && value.formatted.trim()) return value.formatted.trim();
