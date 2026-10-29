@@ -26,6 +26,7 @@
 		.report-table-wrap { overflow-x:auto; }
 		.report-table { width:100%; min-width:1120px; border-collapse:collapse; font-size:12px; }
 		.report-table th,.report-table td { padding:8px 9px; border:1px solid #aeb8c2; text-align:left; vertical-align:middle; }
+		.report-table thead { position:sticky; top:0; z-index:2; }
 		.report-table thead th { background:#f2f6f3; color:#17212b; font-size:11px; font-weight:800; }
 		.report-table .group-heading { text-align:center; }
 		.report-table .employee-number,.report-table .summary-cell { text-align:center; vertical-align:middle; }
@@ -60,9 +61,8 @@
 			.report-table-wrap { overflow:visible; }
 			.report-table { font-size:9pt; }
 			.report-table th,.report-table td { padding:6px 7px; }
-			.report-table thead { display:table-header-group; }
+			.report-table thead { position:static; display:table-row-group; }
 			.report-table tr { break-inside:avoid; }
-			.report-employee-block { break-inside:avoid; }
 		}
 	</style>
 </head>
@@ -92,18 +92,18 @@
 			<% if (reportData.length) { %>
 			<section class="report-sheet">
 				<h2 class="report-title">Employee Leave Report — BS <%= selectedYear %></h2>
-				<div class="report-table-wrap"><% reportData.forEach(({ employee, applications, leaveBalances, approvedDays }, employeeIndex) => {
+				<div class="report-table-wrap"><table class="report-table">
+					<thead>
+						<tr><th rowspan="2">SN</th><th rowspan="2">Employee</th><th colspan="7" class="group-heading">Leave Detail</th><th rowspan="2">Allocated Leave</th><th rowspan="2">Total Taken</th><th rowspan="2">Remaining</th></tr>
+						<tr><th>SN</th><th>Leave Type</th><th>Taken from</th><th>Taken to</th><th>Duration</th><th>Reason</th><th>Approved by</th></tr>
+					</thead>
+					<tbody><% reportData.forEach(({ employee, applications, leaveBalances, approvedDays }, employeeIndex) => {
 					const detailRows = applications.length ? applications : [null];
 					const finiteBalances = leaveBalances.filter(balance => balance.allocatedDays !== null);
 					const allocatedTotal = finiteBalances.reduce((total, balance) => total + balance.allocatedDays, 0);
 					const remainingTotal = finiteBalances.reduce((total, balance) => total + balance.remainingDays, 0);
 					const hasUnlimitedBalance = leaveBalances.some(balance => balance.allocatedDays === null);
-				%><table class="report-table report-employee-block">
-					<thead>
-						<tr><th rowspan="2">SN</th><th rowspan="2">Employee</th><th colspan="7" class="group-heading">Leave Detail</th><th rowspan="2">Allocated Leave</th><th rowspan="2">Total Taken</th><th rowspan="2">Remaining</th></tr>
-						<tr><th>SN</th><th>Leave Type</th><th>Taken from</th><th>Taken to</th><th>Duration</th><th>Reason</th><th>Approved by</th></tr>
-					</thead>
-					<tbody><% detailRows.forEach((application, detailIndex) => { %><tr>
+					%><% detailRows.forEach((application, detailIndex) => { %><tr>
 						<% if (detailIndex === 0) { %>
 						<td class="employee-number" rowspan="<%= detailRows.length %>"><%= employeeIndex + 1 %></td>
 						<td class="employee-name" rowspan="<%= detailRows.length %>"><%= employee.name %><% if (employee.employeeCode) { %><br><small><%= employee.employeeCode %></small><% } %></td>
@@ -120,8 +120,9 @@
 						<td class="summary-cell" rowspan="<%= detailRows.length %>"><%= approvedDays %> <%= approvedDays === 1 ? 'day' : 'days' %></td>
 						<td class="summary-cell" rowspan="<%= detailRows.length %>"><%= hasUnlimitedBalance ? 'No limit' : finiteBalances.length ? `${remainingTotal} days` : '—' %></td>
 						<% } %>
-					</tr><% }) %></tbody>
-				</table><% }) %></div>
+					</tr><% }) %>
+					<% }) %></tbody>
+				</table></div>
 				<p class="report-footnote">Totals include approved leave only. Pending, rejected, and reverted applications are shown for reference and are not included in leave taken.</p>
 			</section>
 			<p class="report-footnote screen-only">Generated on <%= new Date().toLocaleString('en-GB', { timeZone: 'Asia/Kathmandu' }) %> (Nepal Time)</p>
