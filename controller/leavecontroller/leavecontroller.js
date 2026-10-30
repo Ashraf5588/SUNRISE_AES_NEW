@@ -91,23 +91,19 @@ const addStoredUsage = async (records, usedMonths, usedYears) => {
 
 const findStaffProfile = (user, profiles) => {
 	const employeeCode = String(user?.employeeCode || '').trim().toUpperCase();
-	return profiles.find(profile => employeeCode && String(profile.employeeCode || '').trim().toUpperCase() === employeeCode)
-		|| profiles.find(profile => String(profile.staffName || '').trim().toLowerCase() === String(user?.teacherName || user?.username || '').trim().toLowerCase())
+	if (employeeCode) {
+		return profiles.find(profile => String(profile.employeeCode || '').trim().toUpperCase() === employeeCode) || {};
+	}
+	return profiles.find(profile => String(profile.staffName || '').trim().toLowerCase() === String(user?.teacherName || '').trim().toLowerCase())
 		|| {};
 };
 
 const getEmployeeLeaveFilter = (user, profile = {}, { includeName = false } = {}) => {
-	const identifiers = [];
-	if (user?._id) identifiers.push({ requester: user._id });
 	const employeeCode = String(profile.employeeCode || user?.employeeCode || '').trim();
-	const username = String(user?.username || '').trim();
-	if (employeeCode) identifiers.push({ employeeCode });
-	if (username) identifiers.push({ username });
-	if (includeName || (!employeeCode && !username)) {
-		const employeeName = String(profile.staffName || user?.teacherName || '').trim();
-		if (employeeName) identifiers.push({ employeeName });
-	}
-	return { $or: identifiers };
+	if (employeeCode) return { employeeCode };
+	if (user?._id) return { requester: user._id };
+	const employeeName = includeName ? String(profile.staffName || '').trim() : '';
+	return employeeName ? { employeeName } : { _id: null };
 };
 
 const normalizeName = value => String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
@@ -266,7 +262,9 @@ exports.leavePage = async (req, res) => {
 		const currentUser = approverUsers.find(user => String(user._id) === String(req.user._id));
 		const eligibleApprovers = getAdminDepartmentStaff(approverUsers, profiles);
 		const currentApprover = eligibleApprovers.find(candidate => candidate.id === String(currentUser?._id)) || null;
-		const userFilter = admin ? {} : getEmployeeLeaveFilter(req.user, findStaffProfile(req.user, profiles));
+		const leavePageUser = currentUser || req.user;
+		const leavePageProfile = findStaffProfile(leavePageUser, profiles);
+		const userFilter = admin ? {} : getEmployeeLeaveFilter(leavePageUser, leavePageProfile);
 		const visibleApplicationFilter = admin || currentApprover
 			? {}
 			: userFilter;
@@ -520,9 +518,9 @@ exports.leaveReport = async (req, res) => {
 		profiles.forEach(profile => {
 			const profileCode = normalizeName(profile.employeeCode).toUpperCase();
 			const profileName = normalizeName(profile.staffName);
-			const user = users.find(candidate => profileCode && normalizeName(candidate.employeeCode).toUpperCase() === profileCode)
-				|| users.find(candidate => profileName && [candidate.teacherName, candidate.username]
-					.some(name => normalizeName(name) === profileName));
+			const user = profileCode
+				? users.find(candidate => normalizeName(candidate.employeeCode).toUpperCase() === profileCode)
+				: users.find(candidate => profileName && normalizeName(candidate.teacherName) === profileName);
 			employees.push({
 				id: user ? String(user._id) : `staff:${profile._id}`,
 				userId: user ? String(user._id) : '',
