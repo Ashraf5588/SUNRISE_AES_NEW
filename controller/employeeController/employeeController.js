@@ -2133,7 +2133,16 @@ async function buildEmployeeAttendanceReport(queryParams) {
     from.setHours(0, 0, 0, 0);
     const through = new Date(end);
     through.setHours(23, 59, 59, 999);
-
+console.log('=== EMPLOYEE ATTENDANCE DATE DEBUG ===');
+console.log('Requested BS start:', requestedStartBs);
+console.log('Requested BS end:', requestedEndBs);
+console.log('Converted start:', start.toString());
+console.log('Converted start ISO:', start.toISOString());
+console.log('Converted end:', end.toString());
+console.log('Converted end ISO:', end.toISOString());
+console.log('Server timezone:', Intl.DateTimeFormat().resolvedOptions().timeZone);
+console.log('Mongo query from:', from.toISOString());
+console.log('Mongo query through:', through.toISOString());
     const startDateBs = getNepaliDate(start).slice(0, 10);
     const endDateBs = getNepaliDate(end).slice(0, 10);
     const reportDatesBs = dates.map(date => getNepaliDate(date).slice(0, 10));
