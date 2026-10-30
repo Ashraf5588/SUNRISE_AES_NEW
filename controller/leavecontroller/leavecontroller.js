@@ -96,14 +96,14 @@ const findStaffProfile = (user, profiles) => {
 		|| {};
 };
 
-const getEmployeeLeaveFilter = (user, profile = {}) => {
+const getEmployeeLeaveFilter = (user, profile = {}, { includeName = false } = {}) => {
 	const identifiers = [];
 	if (user?._id) identifiers.push({ requester: user._id });
 	const employeeCode = String(profile.employeeCode || user?.employeeCode || '').trim();
 	const username = String(user?.username || '').trim();
 	if (employeeCode) identifiers.push({ employeeCode });
 	if (username) identifiers.push({ username });
-	if (!employeeCode && !username) {
+	if (includeName || (!employeeCode && !username)) {
 		const employeeName = String(profile.staffName || user?.teacherName || '').trim();
 		if (employeeName) identifiers.push({ employeeName });
 	}
@@ -517,15 +517,12 @@ exports.leaveReport = async (req, res) => {
 			LeaveType.find({}).sort({ leavename: 1 }).lean()
 		]);
 		const employees = [];
-		const matchedUserIds = new Set();
 		profiles.forEach(profile => {
 			const profileCode = normalizeName(profile.employeeCode).toUpperCase();
 			const profileName = normalizeName(profile.staffName);
 			const user = users.find(candidate => profileCode && normalizeName(candidate.employeeCode).toUpperCase() === profileCode)
 				|| users.find(candidate => profileName && [candidate.teacherName, candidate.username]
 					.some(name => normalizeName(name) === profileName));
-			if (user && getRole(user) === 'ADMIN') return;
-			if (user) matchedUserIds.add(String(user._id));
 			employees.push({
 				id: user ? String(user._id) : `staff:${profile._id}`,
 				userId: user ? String(user._id) : '',
@@ -534,28 +531,6 @@ exports.leaveReport = async (req, res) => {
 				role: user ? getRole(user) : 'STAFF',
 				employeeCode: String(profile.employeeCode || user?.employeeCode || '').trim(),
 				department: String(profile.department || user?.department || '').trim(),
-				companyName: String(profile.companyName || '').trim(),
-				branchName: String(profile.branchName || '').trim(),
-				designation: String(profile.designation || '').trim()
-			});
-		});
-		users.forEach(user => {
-			if (getRole(user) === 'ADMIN' || matchedUserIds.has(String(user._id))) return;
-			const profile = findStaffProfile(user, profiles);
-			const name = String(profile.staffName || user.teacherName || user.username || '').trim();
-			const employeeCode = String(profile.employeeCode || user.employeeCode || '').trim();
-			if (employees.some(employee =>
-				(employeeCode && normalizeName(employee.employeeCode) === normalizeName(employeeCode))
-				|| normalizeName(employee.name) === normalizeName(name)
-			)) return;
-			employees.push({
-				id: String(user._id),
-				userId: String(user._id),
-				profileId: '',
-				name,
-				role: getRole(user),
-				employeeCode,
-				department: String(profile.department || user.department || '').trim(),
 				companyName: String(profile.companyName || '').trim(),
 				branchName: String(profile.branchName || '').trim(),
 				designation: String(profile.designation || '').trim()
@@ -588,8 +563,8 @@ exports.leaveReport = async (req, res) => {
 				const user = users.find(candidate => String(candidate._id) === selectedEmployee.userId);
 				const profile = profiles.find(candidate => String(candidate._id) === selectedEmployee.profileId)
 					|| findStaffProfile(user, profiles);
-				const employeeFilter = getEmployeeLeaveFilter(user, profile);
-				const records = await LeaveApplication.find(employeeFilter)
+				const employeeFilter = getEmployeeLeaveFilter(user, profile, { includeName: true });
+				const records = await LeaveApplication.find({ ...employeeFilter, status: 'approved' })
 					.sort({ startDateNepali: 1, createdAt: 1 })
 					.select('employeeName employeeCode department designation branchName leaveType leaveTypeName isPaid startDateNepali endDateNepali leaveDay sandwichLeave requestedDays yearlyAllocations reason status reviewedBy assignedApproverName approverName')
 					.lean();
@@ -623,6 +598,7 @@ exports.leaveReport = async (req, res) => {
 						|| leaveTypeByName.get(normalizeName(record.leaveTypeName));
 					const leaveTypeName = String(record.leaveTypeName || leaveType?.leavename || 'Other leave');
 					const balanceKey = leaveType ? String(leaveType._id) : normalizeName(leaveTypeName);
+					if (record.status !== 'approved') continue;
 					takenByLeaveType.set(balanceKey, (takenByLeaveType.get(balanceKey) || 0) + daysInYear);
 					totalTakenDays += daysInYear;
 					applications.push({

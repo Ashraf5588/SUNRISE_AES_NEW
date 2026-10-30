@@ -87,7 +87,7 @@
 					<div class="report-field employee-search"><label for="employeeSearch">Search staff by name or employee code</label><input id="employeeSearch" type="search" placeholder="Type a staff name or code"></div>
 					<div class="employee-picker" role="group" aria-label="Select employees">
 						<div class="employee-picker-toolbar"><label class="select-all-employees"><input type="checkbox" id="selectAllEmployees"><span>Select all shown staff</span></label><span class="selection-count" id="selectionCount" aria-live="polite"></span></div>
-						<% employees.forEach(employee => { %><label class="employee-choice" data-search="<%= `${employee.name} ${employee.employeeCode} ${employee.department}`.toLowerCase() %>"><input type="checkbox" name="employeeId" value="<%= employee.id %>" <%= selectedEmployeeIds.includes(employee.id) ? 'checked' : '' %>><span><strong><%= employee.name %></strong><% if (employee.employeeCode || employee.department) { %><br><small><%= [employee.employeeCode, employee.department].filter(Boolean).join(' / ') %></small><% } %></span></label><% }) %>
+						<% employees.forEach(employee => { %><label class="employee-choice" data-search="<%= `${employee.name} ${employee.employeeCode} ${employee.department} ${employee.role}`.toLowerCase() %>"><input type="checkbox" name="employeeId" value="<%= employee.id %>" <%= selectedEmployeeIds.includes(employee.id) ? 'checked' : '' %>><span><strong><%= employee.name %></strong><br><small><%= [employee.employeeCode, employee.role, employee.department].filter(Boolean).join(' / ') %></small></span></label><% }) %>
 					</div>
 					<div class="report-actions"><button class="report-button" type="submit">Generate preview</button><% if (reportData.length) { %><button class="report-button secondary" type="button" onclick="window.print()">Print all reports</button><% } %></div>
 				</form>
@@ -128,7 +128,7 @@
 					</tr><% }) %>
 					<% }) %></tbody>
 				</table></div>
-				<p class="report-footnote">Leave totals sum the durations of all listed applications, including rejected applications. Application status is shown in the leave detail.</p>
+				<p class="report-footnote">Only approved leave applications are included in these details and totals.</p>
 			</section>
 			<p class="report-footnote screen-only">Generated on <%= new Date().toLocaleString('en-GB', { timeZone: 'Asia/Kathmandu' }) %> (Nepal Time)</p>
 			<% } else if (!errorMessage) { %>
