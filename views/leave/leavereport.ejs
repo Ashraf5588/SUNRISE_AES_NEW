@@ -9,8 +9,10 @@
 		.report-filters { display:grid; grid-template-columns:minmax(140px,1fr) auto; align-items:end; gap:12px; }
 		.report-field label { display:block; margin-bottom:6px; color:#3e4b46; font-size:13px; font-weight:700; }
 		.report-field select,.report-field input { width:100%; min-height:43px; padding:9px 11px; border:1px solid #d7e1da; border-radius:4px; background:#fff; color:var(--leave-ink); }
+		.employee-search { grid-column:1 / -1; }
 		.employee-picker { grid-column:1 / -1; display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:7px; max-height:260px; overflow:auto; padding:10px; border:1px solid var(--leave-line); border-radius:5px; background:#fbfdfb; }
 		.employee-choice { display:flex; align-items:center; gap:9px; min-width:0; padding:8px; border:1px solid var(--leave-line); border-radius:4px; background:#fff; cursor:pointer; }
+		.employee-choice[hidden] { display:none; }
 		.employee-choice input,.select-all-employees input { width:18px; min-height:18px; flex:0 0 auto; margin:0; accent-color:var(--leave-deep); }
 		.employee-choice span { overflow-wrap:anywhere; font-size:12px; }
 		.employee-choice small { color:var(--leave-muted); }
@@ -36,7 +38,9 @@
 		.report-table .reason-cell { min-width:130px; white-space:normal; overflow-wrap:anywhere; }
 		.report-table .approver-cell { min-width:125px; white-space:normal; overflow-wrap:anywhere; }
 		.report-table .date-cell { white-space:nowrap; }
-		.report-table .summary-cell { min-width:95px; font-weight:700; }
+		.report-table .summary-cell { min-width:130px; font-weight:700; }
+		.balance-line,.balance-total { display:block; margin:2px 0; white-space:normal; }
+		.balance-total { margin-top:7px; padding-top:5px; border-top:1px solid #cbd3da; }
 		.report-table .leave-status { display:block; margin-top:3px; color:var(--leave-muted); font-size:10px; font-weight:700; }
 		.report-table .empty-detail { color:var(--leave-muted); font-style:italic; }
 		.status-badge { display:inline-block; padding:3px 7px; border-radius:99px; background:#edf2f7; color:#334155; font-size:10px; font-weight:800; }
@@ -74,15 +78,16 @@
 			<nav aria-label="Leave navigation"><a href="/leave">Applications</a><a href="/leave/setup">Leave setup</a><a class="active" href="/leave/report">Leave report</a></nav>
 		</header>
 		<main class="leave-main">
-			<header class="leave-page-heading"><div><p class="leave-eyebrow">Administration / Reports</p><h1>Employee leave report</h1><p>Preview approved leave, annual allocation, and request details for an employee.</p></div></header>
+			<header class="leave-page-heading"><div><p class="leave-eyebrow">Administration / Reports</p><h1>Employee leave report</h1><p>Preview leave applications and annual allocation for employees.</p></div></header>
 
 			<section class="leave-panel report-filter-panel">
 				<div class="leave-section-heading"><div><h2>Choose report criteria</h2><p>Select an employee and Nepali calendar year, then generate the report preview.</p></div></div>
 				<form method="get" action="/leave/report" class="report-filters">
 					<div class="report-field"><label for="year">Nepali year (BS)</label><input id="year" name="year" type="number" min="1970" max="2100" step="1" value="<%= selectedYear %>" required></div>
+					<div class="report-field employee-search"><label for="employeeSearch">Search staff by name or employee code</label><input id="employeeSearch" type="search" placeholder="Type a staff name or code"></div>
 					<div class="employee-picker" role="group" aria-label="Select employees">
-						<div class="employee-picker-toolbar"><label class="select-all-employees"><input type="checkbox" id="selectAllEmployees"><span>Select all employees</span></label><span class="selection-count" id="selectionCount" aria-live="polite"></span></div>
-						<% employees.forEach(employee => { %><label class="employee-choice"><input type="checkbox" name="employeeId" value="<%= employee.id %>" <%= selectedEmployeeIds.includes(employee.id) ? 'checked' : '' %>><span><strong><%= employee.name %></strong><% if (employee.employeeCode || employee.department) { %><br><small><%= [employee.employeeCode, employee.department].filter(Boolean).join(' / ') %></small><% } %></span></label><% }) %>
+						<div class="employee-picker-toolbar"><label class="select-all-employees"><input type="checkbox" id="selectAllEmployees"><span>Select all shown staff</span></label><span class="selection-count" id="selectionCount" aria-live="polite"></span></div>
+						<% employees.forEach(employee => { %><label class="employee-choice" data-search="<%= `${employee.name} ${employee.employeeCode} ${employee.department}`.toLowerCase() %>"><input type="checkbox" name="employeeId" value="<%= employee.id %>" <%= selectedEmployeeIds.includes(employee.id) ? 'checked' : '' %>><span><strong><%= employee.name %></strong><% if (employee.employeeCode || employee.department) { %><br><small><%= [employee.employeeCode, employee.department].filter(Boolean).join(' / ') %></small><% } %></span></label><% }) %>
 					</div>
 					<div class="report-actions"><button class="report-button" type="submit">Generate preview</button><% if (reportData.length) { %><button class="report-button secondary" type="button" onclick="window.print()">Print all reports</button><% } %></div>
 				</form>
@@ -97,7 +102,7 @@
 						<tr><th rowspan="2">SN</th><th rowspan="2">Employee</th><th colspan="7" class="group-heading">Leave Detail</th><th rowspan="2">Allocated Leave</th><th rowspan="2">Total Taken</th><th rowspan="2">Remaining</th></tr>
 						<tr><th>SN</th><th>Leave Type</th><th>Taken from</th><th>Taken to</th><th>Duration</th><th>Reason</th><th>Approved by</th></tr>
 					</thead>
-					<tbody><% reportData.forEach(({ employee, applications, leaveBalances, approvedDays }, employeeIndex) => {
+					<tbody><% reportData.forEach(({ employee, applications, leaveBalances, totalTakenDays }, employeeIndex) => {
 					const detailRows = applications.length ? applications : [null];
 					const finiteBalances = leaveBalances.filter(balance => balance.allocatedDays !== null);
 					const allocatedTotal = finiteBalances.reduce((total, balance) => total + balance.allocatedDays, 0);
@@ -116,14 +121,14 @@
 						<td class="reason-cell"><%= application?.reason || '—' %></td>
 						<td class="approver-cell"><%= application?.approvedBy || '—' %></td>
 						<% if (detailIndex === 0) { %>
-						<td class="summary-cell" rowspan="<%= detailRows.length %>"><%= hasUnlimitedBalance ? 'No limit' : finiteBalances.length ? `${allocatedTotal} days` : '—' %></td>
-						<td class="summary-cell" rowspan="<%= detailRows.length %>"><%= approvedDays %> <%= approvedDays === 1 ? 'day' : 'days' %></td>
-						<td class="summary-cell" rowspan="<%= detailRows.length %>"><%= hasUnlimitedBalance ? 'No limit' : finiteBalances.length ? `${remainingTotal} days` : '—' %></td>
+						<td class="summary-cell" rowspan="<%= detailRows.length %>"><% leaveBalances.forEach(balance => { %><span class="balance-line"><%= balance.name %>: <%= balance.allocatedDays === null ? 'No limit' : `${balance.allocatedDays} days` %></span><% }); %><strong class="balance-total">Total: <%= hasUnlimitedBalance ? 'No limit' : finiteBalances.length ? `${allocatedTotal} days` : '—' %></strong></td>
+						<td class="summary-cell" rowspan="<%= detailRows.length %>"><% leaveBalances.forEach(balance => { %><span class="balance-line"><%= balance.name %>: <%= balance.takenDays %> <%= balance.takenDays === 1 ? 'day' : 'days' %></span><% }); %><strong class="balance-total">Total: <%= totalTakenDays %> <%= totalTakenDays === 1 ? 'day' : 'days' %></strong></td>
+						<td class="summary-cell" rowspan="<%= detailRows.length %>"><% leaveBalances.forEach(balance => { %><span class="balance-line"><%= balance.name %>: <%= balance.remainingDays === null ? 'No limit' : `${balance.remainingDays} days` %></span><% }); %><strong class="balance-total">Total: <%= hasUnlimitedBalance ? 'No limit' : finiteBalances.length ? `${remainingTotal} days` : '—' %></strong></td>
 						<% } %>
 					</tr><% }) %>
 					<% }) %></tbody>
 				</table></div>
-				<p class="report-footnote">Totals include approved leave only. Pending, rejected, and reverted applications are shown for reference and are not included in leave taken.</p>
+				<p class="report-footnote">Leave totals sum the durations of all listed applications, including rejected applications. Application status is shown in the leave detail.</p>
 			</section>
 			<p class="report-footnote screen-only">Generated on <%= new Date().toLocaleString('en-GB', { timeZone: 'Asia/Kathmandu' }) %> (Nepal Time)</p>
 			<% } else if (!errorMessage) { %>
@@ -135,17 +140,31 @@
 	const employeeCheckboxes = [...document.querySelectorAll('input[name="employeeId"]')];
 	const selectAllEmployees = document.getElementById('selectAllEmployees');
 	const selectionCount = document.getElementById('selectionCount');
+	const employeeSearch = document.getElementById('employeeSearch');
+	const employeeChoices = [...document.querySelectorAll('.employee-choice')];
+	function filterEmployees() {
+		const query = employeeSearch.value.trim().toLowerCase();
+		employeeChoices.forEach(choice => {
+			choice.hidden = !choice.dataset.search.includes(query);
+		});
+		updateEmployeeSelection();
+	}
 	function updateEmployeeSelection() {
 		const checkedCount = employeeCheckboxes.filter(checkbox => checkbox.checked).length;
-		selectAllEmployees.checked = employeeCheckboxes.length > 0 && checkedCount === employeeCheckboxes.length;
-		selectAllEmployees.indeterminate = checkedCount > 0 && checkedCount < employeeCheckboxes.length;
+		const visibleCheckboxes = employeeChoices.filter(choice => !choice.hidden).map(choice => choice.querySelector('input'));
+		const visibleCheckedCount = visibleCheckboxes.filter(checkbox => checkbox.checked).length;
+		selectAllEmployees.checked = visibleCheckboxes.length > 0 && visibleCheckedCount === visibleCheckboxes.length;
+		selectAllEmployees.indeterminate = visibleCheckedCount > 0 && visibleCheckedCount < visibleCheckboxes.length;
 		selectionCount.textContent = `${checkedCount} selected`;
 	}
 	selectAllEmployees.addEventListener('change', () => {
-		employeeCheckboxes.forEach(checkbox => { checkbox.checked = selectAllEmployees.checked; });
+		employeeChoices.filter(choice => !choice.hidden).forEach(choice => {
+			choice.querySelector('input').checked = selectAllEmployees.checked;
+		});
 		updateEmployeeSelection();
 	});
 	employeeCheckboxes.forEach(checkbox => checkbox.addEventListener('change', updateEmployeeSelection));
+	employeeSearch.addEventListener('input', filterEmployees);
 	updateEmployeeSelection();
 </script>
 </body>

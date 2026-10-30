@@ -97,13 +97,14 @@ const findStaffProfile = (user, profiles) => {
 };
 
 const getEmployeeLeaveFilter = (user, profile = {}) => {
-	const identifiers = [{ requester: user._id }];
-	const employeeCode = String(profile.employeeCode || user.employeeCode || '').trim();
-	const username = String(user.username || '').trim();
+	const identifiers = [];
+	if (user?._id) identifiers.push({ requester: user._id });
+	const employeeCode = String(profile.employeeCode || user?.employeeCode || '').trim();
+	const username = String(user?.username || '').trim();
 	if (employeeCode) identifiers.push({ employeeCode });
 	if (username) identifiers.push({ username });
 	if (!employeeCode && !username) {
-		const employeeName = String(profile.staffName || user.teacherName || '').trim();
+		const employeeName = String(profile.staffName || user?.teacherName || '').trim();
 		if (employeeName) identifiers.push({ employeeName });
 	}
 	return { $or: identifiers };
@@ -515,20 +516,52 @@ exports.leaveReport = async (req, res) => {
 			Staff.find({}).select('employeeCode staffName companyName branchName designation department section').lean(),
 			LeaveType.find({}).sort({ leavename: 1 }).lean()
 		]);
-		const employees = users.map(user => {
+		const employees = [];
+		const matchedUserIds = new Set();
+		profiles.forEach(profile => {
+			const profileCode = normalizeName(profile.employeeCode).toUpperCase();
+			const profileName = normalizeName(profile.staffName);
+			const user = users.find(candidate => profileCode && normalizeName(candidate.employeeCode).toUpperCase() === profileCode)
+				|| users.find(candidate => profileName && [candidate.teacherName, candidate.username]
+					.some(name => normalizeName(name) === profileName));
+			if (user && getRole(user) === 'ADMIN') return;
+			if (user) matchedUserIds.add(String(user._id));
+			employees.push({
+				id: user ? String(user._id) : `staff:${profile._id}`,
+				userId: user ? String(user._id) : '',
+				profileId: String(profile._id),
+				name: String(profile.staffName || user?.teacherName || user?.username || '').trim(),
+				role: user ? getRole(user) : 'STAFF',
+				employeeCode: String(profile.employeeCode || user?.employeeCode || '').trim(),
+				department: String(profile.department || user?.department || '').trim(),
+				companyName: String(profile.companyName || '').trim(),
+				branchName: String(profile.branchName || '').trim(),
+				designation: String(profile.designation || '').trim()
+			});
+		});
+		users.forEach(user => {
+			if (getRole(user) === 'ADMIN' || matchedUserIds.has(String(user._id))) return;
 			const profile = findStaffProfile(user, profiles);
-			return {
+			const name = String(profile.staffName || user.teacherName || user.username || '').trim();
+			const employeeCode = String(profile.employeeCode || user.employeeCode || '').trim();
+			if (employees.some(employee =>
+				(employeeCode && normalizeName(employee.employeeCode) === normalizeName(employeeCode))
+				|| normalizeName(employee.name) === normalizeName(name)
+			)) return;
+			employees.push({
 				id: String(user._id),
-				name: String(profile.staffName || user.teacherName || user.username || '').trim(),
+				userId: String(user._id),
+				profileId: '',
+				name,
 				role: getRole(user),
-				employeeCode: String(profile.employeeCode || user.employeeCode || '').trim(),
+				employeeCode,
 				department: String(profile.department || user.department || '').trim(),
 				companyName: String(profile.companyName || '').trim(),
 				branchName: String(profile.branchName || '').trim(),
 				designation: String(profile.designation || '').trim()
-			};
-		}).filter(employee => employee.name && employee.role !== 'ADMIN')
-			.sort((first, second) => first.name.localeCompare(second.name));
+			});
+		});
+		employees.sort((first, second) => first.name.localeCompare(second.name));
 		const reviewerNames = new Map();
 		users.forEach(user => {
 			const profileName = findStaffProfile(user, profiles).staffName;
@@ -552,8 +585,9 @@ exports.leaveReport = async (req, res) => {
 		} else if (selectedEmployeeIds.length) {
 			const selectedEmployees = employees.filter(employee => selectedEmployeeIds.includes(employee.id));
 			reportData = await Promise.all(selectedEmployees.map(async selectedEmployee => {
-				const user = users.find(candidate => String(candidate._id) === selectedEmployee.id);
-				const profile = findStaffProfile(user, profiles);
+				const user = users.find(candidate => String(candidate._id) === selectedEmployee.userId);
+				const profile = profiles.find(candidate => String(candidate._id) === selectedEmployee.profileId)
+					|| findStaffProfile(user, profiles);
 				const employeeFilter = getEmployeeLeaveFilter(user, profile);
 				const records = await LeaveApplication.find(employeeFilter)
 					.sort({ startDateNepali: 1, createdAt: 1 })
@@ -562,7 +596,7 @@ exports.leaveReport = async (req, res) => {
 				const leaveTypeById = new Map(leaveTypes.map(type => [String(type._id), type]));
 				const leaveTypeByName = new Map(leaveTypes.map(type => [normalizeName(type.leavename), type]));
 				const takenByLeaveType = new Map();
-				let approvedDays = 0;
+				let totalTakenDays = 0;
 				const applications = [];
 
 				for (const record of records) {
@@ -589,10 +623,8 @@ exports.leaveReport = async (req, res) => {
 						|| leaveTypeByName.get(normalizeName(record.leaveTypeName));
 					const leaveTypeName = String(record.leaveTypeName || leaveType?.leavename || 'Other leave');
 					const balanceKey = leaveType ? String(leaveType._id) : normalizeName(leaveTypeName);
-					if (record.status === 'approved') {
-						takenByLeaveType.set(balanceKey, (takenByLeaveType.get(balanceKey) || 0) + daysInYear);
-						approvedDays += daysInYear;
-					}
+					takenByLeaveType.set(balanceKey, (takenByLeaveType.get(balanceKey) || 0) + daysInYear);
+					totalTakenDays += daysInYear;
 					applications.push({
 						...record,
 						leaveTypeName,
@@ -634,7 +666,7 @@ exports.leaveReport = async (req, res) => {
 							: Math.max(0, balance.allocatedDays - balance.takenDays)
 					}))
 					.sort((first, second) => first.name.localeCompare(second.name));
-				return { employee: selectedEmployee, applications, leaveBalances, approvedDays };
+				return { employee: selectedEmployee, applications, leaveBalances, totalTakenDays };
 			}));
 		}
 
