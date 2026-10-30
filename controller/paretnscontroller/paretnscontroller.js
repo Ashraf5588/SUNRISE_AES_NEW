@@ -1,7 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
-const bs = require('bikram-sambat-js');
+const bs = require('../../utils/bikramSambat');
 const ParentPortalAccount = require('../../model/parentPortalAccount');
 const { teacherSchema } = require('../../model/admin');
 const { studentrecordschema, newsubjectSchema } = require('../../model/adminschema');

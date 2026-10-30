@@ -31,7 +31,7 @@ const {holidaySchema} = require("../model/holidayschema");
 const holiday = mongoose.model("holiday", holidaySchema, "holiday");
 const { inventoryProductRequestSchema } = require("../model/inventoryschema/inventorySchema");
 const InventoryProductRequest = mongoose.model("inventoryProductRequest", inventoryProductRequestSchema, "inventoryProductRequests");
-const bs = require('bikram-sambat-js');
+const bs = require('../utils/bikramSambat');
 const getSidenavData = async (req) => {
   try {
     const subjects = await subjectlist.find({}).lean();

@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const bs = require('bikram-sambat-js');
+const bs = require('../../utils/bikramSambat');
 const multer = require('multer');
 const csvParser = require('csv-parser');
 const { Readable } = require('stream');

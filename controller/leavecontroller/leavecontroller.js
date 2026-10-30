@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const multer = require('multer');
-const bs = require('bikram-sambat-js');
+const bs = require('../../utils/bikramSambat');
 const { leaveSchema, leaveApplicationSchema } = require('../../model/leaveschema/leavetypeschma');
 const { teacherSchema } = require('../../model/admin');
 const { staffSchema } = require('../../model/staffschema');

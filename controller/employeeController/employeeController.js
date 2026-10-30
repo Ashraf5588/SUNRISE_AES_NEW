@@ -1,7 +1,7 @@
 
 const employeeAttendance = require('../../model/employeeSchema/employeeattendanceSchema');
 const mongoose = require('mongoose');
-const bs = require('bikram-sambat-js');
+const bs = require('../../utils/bikramSambat');
 const multer = require('multer');
 const crypto = require('crypto');
 const path = require('path');

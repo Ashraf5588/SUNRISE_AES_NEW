@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const Event = require('../model/eventmodel');
-const bs = require('bikram-sambat-js');
+const bs = require('../utils/bikramSambat');
 
 const nodemailer = require("nodemailer");
 const cron = require("node-cron");

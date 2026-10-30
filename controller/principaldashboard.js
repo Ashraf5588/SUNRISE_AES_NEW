@@ -1,6 +1,6 @@
 const Cirriculum = require('../model/cirriculumSchema');
 const mongoose = require('mongoose');
-const bs = require('bikram-sambat-js');
+const bs = require('../utils/bikramSambat');
 
 const Event = require('../model/eventmodel');
 
@@ -581,5 +581,4 @@ exports.principaldashboard = async (req, res) => {
   console.error('Error fetching yearly plans entry:', error);
 }
 }
-
 

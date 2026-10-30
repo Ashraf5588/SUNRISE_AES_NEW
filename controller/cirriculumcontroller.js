@@ -1,6 +1,6 @@
 const Cirriculum = require('../model/cirriculumSchema');
 const mongoose = require('mongoose');
-const bs = require('bikram-sambat-js');
+const bs = require('../utils/bikramSambat');
 
 
 
