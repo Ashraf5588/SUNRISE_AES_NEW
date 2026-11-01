@@ -1506,20 +1506,25 @@
 
                 Object.entries(termdata).forEach(([terminal, data]) => {
                     allTerminals.add(terminal);
-                    subjectPerformance[subject][terminal] = data.theory;
-                    
+                    const hasTheoryMarks = data.theory !== null
+                       && data.theory !== undefined
+                       && data.theory !== '';
                     const theoryMarks = Number(data.theory);
                     const passMarks = Number(data.passMarks);
                     const hasPassMarks = data.passMarks !== null
                        && data.passMarks !== undefined
                        && data.passMarks !== ''
                        && Number.isFinite(passMarks);
-                    if (hasPassMarks && Number.isFinite(theoryMarks) && theoryMarks < passMarks) {
+                    if (!hasTheoryMarks || !Number.isFinite(theoryMarks)) {
+                       return;
+                    }
+
+                    subjectPerformance[subject][terminal] = theoryMarks;
+                    if (hasPassMarks && theoryMarks < passMarks) {
                        failedSubjects++;
                     }
                     totalSubjects++;
-                    
-                    yearTotal += data.theory;
+                    yearTotal += theoryMarks;
                     yearCount++;
                 });
                 
@@ -1870,18 +1875,21 @@
                                   <tr>
                                      <% sortedTerms.forEach(term => { 
                                           const data = termdata[term];
+                                          const hasTheoryMarks = data.theory !== null
+                                             && data.theory !== undefined
+                                             && data.theory !== '';
                                           const theoryMarks = Number(data.theory);
                                           const passMarks = Number(data.passMarks);
                                           const hasPassMarks = data.passMarks !== null
                                              && data.passMarks !== undefined
                                              && data.passMarks !== ''
                                              && Number.isFinite(passMarks);
-                                          const markClass = hasPassMarks && Number.isFinite(theoryMarks)
+                                          const markClass = hasTheoryMarks && hasPassMarks && Number.isFinite(theoryMarks)
                                              ? (theoryMarks < passMarks ? 'mark-fail' : 'mark-pass')
                                              : '';
                                      %>
                                         <td class="mark-cell <%= markClass %>">
-                                           <%= data.theory %>
+                                          <%= hasTheoryMarks && Number.isFinite(theoryMarks) ? theoryMarks : '-' %>
                                         </td>
                                      <% }) %>
                                   </tr>

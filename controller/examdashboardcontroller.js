@@ -2871,7 +2871,9 @@ exports.studentPortfolio = async (req, res, next) => {
   try {
     const {studentClass,section,terminal,academicYear: requestedAcademicYear,reg} = req.query;
     const user = req.user;
-    const allClassData = await studentClassModel.find({}).lean().sort({ studentClass: 1, section: 1 });
+    const allClassData = await studentClassModel.find({})
+      .sort({ classorder: 1, studentClass: 1, section: 1 })
+      .lean();
 
     const normalize = (value) => String(value || '').trim().toLowerCase();
     const studentClassdata = user && user.role !== 'ADMIN'
