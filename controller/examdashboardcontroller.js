@@ -2869,7 +2869,7 @@ exports.formatChooseStudent = async (req, res, next) => {
 }
 exports.studentPortfolio = async (req, res, next) => {
   try {
-    const {studentClass,section,terminal,academicYear,reg} = req.query;
+    const {studentClass,section,terminal,academicYear: requestedAcademicYear,reg} = req.query;
     const user = req.user;
     const allClassData = await studentClassModel.find({}).lean().sort({ studentClass: 1, section: 1 });
 
@@ -2884,7 +2884,9 @@ exports.studentPortfolio = async (req, res, next) => {
       : allClassData;
     
     
-       const marksheetSetups = await marksheetSetup.find({}).lean();
+       const marksheetSetups = await marksheetSetup.find({}).lean().sort({ academicYear: -1 });
+       const currentAcademicYear = String(marksheetSetups[0]?.academicYear || bs.ADToBS(new Date()) || new Date().getFullYear()).slice(0, 4);
+       const academicYear = String(requestedAcademicYear || currentAcademicYear).trim();
        const model = getSlipModel();
        const rosterFilter = { studentClass, section };
        if (reg) {
@@ -2918,12 +2920,23 @@ exports.studentPortfolio = async (req, res, next) => {
               theorymarks: { $first: "$theorymarks" },
               practicalmarks: { $first: "$practicalmarks" },
               totalmarks: { $first: { $add: ["$theorymarks", "$practicalmarks"] } },
+              theoryfullmarks: { $first: "$theoryfullmarks" },
               passMarks: { $first: "$passMarks" },
               terminal: { $first: "$terminal" }
             }
           },
           { $sort: { "roll": 1, "_id.subject": 1, "_id.terminal": 1 } }
         ]);
+const subjectMarkSettings = await newsubject.find({ forClass: studentClass })
+  .select('newsubject subject theory total passingMarks')
+  .lean();
+const subjectMarkSettingsByName = subjectMarkSettings.reduce((acc, item) => {
+  const subjectName = normalize(item.newsubject || item.subject);
+  if (subjectName) {
+    acc[subjectName] = item;
+  }
+  return acc;
+}, {});
 const studentWisedatastructured = {};
 
 for (const student of roster) {
@@ -2948,6 +2961,7 @@ for (const student of studentWisedata) {
   const section = student.section;
   const subject = student._id.subject;
   const terminal = student._id.terminal;
+  const subjectSettings = subjectMarkSettingsByName[normalize(subject)];
 
   if (!studentWisedatastructured[reg]) {
     studentWisedatastructured[reg] = {
@@ -2972,7 +2986,9 @@ for (const student of studentWisedata) {
     theory: student.theorymarks,
     practical: student.practicalmarks,
     total: student.totalmarks,
-    passMarks: student.passMarks
+    theoryFullMarks: subjectSettings?.theory ?? student.theoryfullmarks,
+    fullMarks: subjectSettings?.total,
+    passMarks: subjectSettings?.passingMarks ?? student.passMarks
   };
 }
 
@@ -3112,7 +3128,8 @@ for (const student of studentWisedata) {
        res.render("./exam/studentportfolio", {
       currentPage: "exammanagement",
       studentClassdata,
-      section,
+      studentClass: studentClass || '',
+      section: section || '',
       terminal,
       academicYear,
       reg,

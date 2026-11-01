@@ -14,7 +14,7 @@
     /* CSS Variables & Reset */
     :root {
       --primary: #042c83;
-      --secondary: #f8ab4d;
+      --secondary: #001483;
       --success: #10b981;
       --danger: #ef4444;
       --warning: #f59e0b;
@@ -46,6 +46,11 @@
     .form-row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 15px; }
     .form-group { flex: 1; min-width: 200px; }
    .student-search { position: relative; }
+   .student-search-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+   .student-search-row input { min-width: 0; width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font: inherit; }
+   .student-search-button,.load-portfolio-button,.portfolio-filter-button { min-height: 42px; border: 0; border-radius: 8px; padding: 0 16px; background: var(--primary); color: #fff; font: inherit; font-weight: 700; cursor: pointer; transition: background .18s ease, transform .18s ease, box-shadow .18s ease; }
+   .student-search-button:hover,.load-portfolio-button:hover,.portfolio-filter-button:hover { background: #0b409e; box-shadow: 0 5px 14px rgba(4,44,131,.2); transform: translateY(-1px); }
+   .student-search-status { display: block; min-height: 18px; margin-top: 5px; color: #64748b; font-size: .78rem; }
    .student-suggestions { position: absolute; left: 0; right: 0; top: 100%; margin-top: 6px; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 24px rgba(15,23,42,.12); max-height: 240px; overflow: auto; z-index: 20; display: none; }
    .student-suggestion-item { padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #eef2f7; }
    .student-suggestion-item:last-child { border-bottom: 0; }
@@ -67,6 +72,20 @@
       display: grid;
       gap: 12px;
    }
+   .filter-tools[hidden] { display: none; }
+   .student-picker { max-width: 1200px; margin: 0 auto 16px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: #fff; box-shadow: 0 2px 6px rgba(15,23,42,.05); }
+   .student-picker-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+   .student-picker-heading strong { color: #0f172a; font-size: .95rem; }
+   .student-picker-heading span { color: #64748b; font-size: .78rem; }
+   .student-picker-list { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch; }
+   .student-picker-button { flex: 0 0 auto; min-width: 145px; max-width: 230px; min-height: 52px; padding: 8px 12px; border: 1px solid #dbe3ee; border-radius: 10px; background: #f8fafc; color: #334155; text-align: left; cursor: pointer; scroll-snap-align: start; }
+   .student-picker-button strong,.student-picker-button small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+   .student-picker-button strong { font-size: .82rem; }
+   .student-picker-button small { margin-top: 3px; color: #64748b; font-size: .72rem; }
+   .student-picker-button[aria-pressed="true"] { border-color: var(--primary); background: var(--primary); color: #fff; box-shadow: 0 4px 12px rgba(4,44,131,.18); }
+   .student-picker-button[aria-pressed="true"] small { color: #dbeafe; }
+   .portfolio-empty-results { display: none; max-width: 1200px; margin: 0 auto 18px; padding: 16px; border: 1px dashed #cbd5e1; border-radius: 10px; background: #fff; color: #64748b; text-align: center; }
+   .portfolio-empty-results.is-visible { display: block; }
 
    .filter-tools-row {
       display: grid;
@@ -90,6 +109,34 @@
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
+   }
+   @media (max-width: 640px) {
+      body { padding: 12px; }
+      .filter-container { padding: 16px; margin-bottom: 18px; }
+      .header { align-items: flex-start; }
+      .header-actions { width: 100%; }
+      .header-actions button { width: 100%; }
+      .form-row { display: grid; grid-template-columns: 1fr; gap: 12px; }
+      .form-group { min-width: 0; }
+      .student-search-row { grid-template-columns: 1fr; }
+      .student-search-button,.load-portfolio-button,.portfolio-filter-button { width: 100%; min-height: 46px; }
+      .filter-tools { padding: 12px; margin-bottom: 18px; }
+      .filter-tools-row { grid-template-columns: 1fr; }
+      #medicalMultiFilter .filter-multi-content { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 8px; }
+      .filter-multi .filter-checkbox { gap: 7px; min-height: 42px; padding: 7px; font-size: .76rem; }
+      .filter-actions { align-items: stretch; }
+      .filter-actions .portfolio-filter-button { width: auto; flex: 1; }
+      .student-picker { padding: 12px; margin-bottom: 12px; }
+      .student-picker-heading { align-items: flex-start; flex-direction: column; gap: 3px; }
+      .student-picker-button { min-width: 155px; }
+      .student-card { margin-bottom: 20px; border-radius: 12px; }
+      .profile-header { align-items: flex-start; flex-direction: column; gap: 14px; padding: 18px; }
+      .profile-left { gap: 12px; }
+      .profile-img { width: 64px; height: 64px; }
+      .profile-info h2 { font-size: 1.2rem; }
+      .profile-info p { font-size: .8rem; }
+      .profile-right { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); text-align: left; }
+      .portfolio-content { padding: 16px; }
    }
 
    .filter-multi {
@@ -126,6 +173,39 @@
       padding: 10px;
       max-height: 230px;
       overflow-y: auto;
+   }
+   #medicalMultiFilter .filter-multi-content {
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 8px;
+   }
+   .filter-multi .filter-checkbox {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 8px;
+      min-width: 0;
+      min-height: 40px;
+      padding: 8px 10px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fff;
+      line-height: 1.3;
+      cursor: pointer;
+   }
+   .filter-multi .filter-checkbox input[type="checkbox"] {
+      flex: 0 0 18px;
+      width: 18px;
+      min-width: 18px;
+      height: 18px;
+      min-height: 18px;
+      margin: 0;
+      padding: 0;
+      accent-color: var(--primary);
+      cursor: pointer;
+   }
+   .filter-multi .filter-checkbox:hover {
+      border-color: #b8c8e5;
+      background: #f8faff;
    }
 
    .filter-multi-group {
@@ -201,43 +281,85 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 3rem;
         background-color: #fff;
         flex-shrink: 0;
     }
     
     .profile-img img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-img svg { width: 58%; height: 58%; fill: none; stroke: var(--primary); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
     .profile-info h2 { margin: 0 0 5px 0; font-size: 1.8rem; font-weight: 700; }
     .profile-info p { margin: 0; color: #cbd5e1; font-size: 0.95rem; }
 
     .profile-right {
-        text-align: right;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        align-items: stretch;
+        gap: 8px;
+        width: min(570px, 58%);
     }
 
-      .print-btn {
-         background: #0f766e;
-         color: #fff;
-         border: none;
-         padding: 10px 20px;
-         border-radius: 6px;
-         cursor: pointer;
-         font-weight: 700;
-         margin-right: 10px;
-      }
+    .profile-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        min-width: 0;
+        min-height: 42px;
+        padding: 9px 10px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        color: #fff;
+        font: 600 0.78rem/1.2 'Inter', sans-serif;
+        text-align: center;
+        cursor: pointer;
+        transition: filter .18s ease, transform .18s ease, box-shadow .18s ease;
+    }
 
-      .print-btn:hover {
-         opacity: 0.9;
-      }
+    .profile-action:hover {
+        filter: brightness(.94);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(15, 23, 42, .16);
+    }
+
+    .profile-action:focus-visible {
+        outline: 3px solid rgba(255, 255, 255, .9);
+        outline-offset: 2px;
+    }
+
+    .profile-action svg,
+    .zone-badge svg {
+        width: 17px;
+        height: 17px;
+        flex: 0 0 17px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .profile-action-print { background: #0f766e; }
+    .profile-action-complaint { background: #2563eb; }
+    .profile-action-meeting { background: #7c3aed; }
+    .profile-action-participation { background: #1d4ed8; }
+    .profile-action-award { background: #b45309; }
+    .profile-action-scholarship { background: #047857; }
+    .profile-action-call { background: #0f766e; }
+    .profile-action-information { background: #334155; }
 
     .zone-badge {
+        grid-column: 1 / -1;
+        justify-self: end;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
         padding: 8px 20px;
         border-radius: 30px;
         font-weight: 700;
         text-transform: uppercase;
         font-size: 0.9rem;
         letter-spacing: 0.5px;
-        display: inline-block;
     }
     .zone-green { background: var(--success); color: white; box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); }
     .zone-red { background: var(--danger); color: white; box-shadow: 0 0 15px rgba(239, 68, 68, 0.4); }
@@ -847,20 +969,45 @@
    .modal-field textarea { min-height: 70px; resize: vertical; }
 
    .radio-inline-group {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(125px, 1fr));
+      gap: 8px;
       margin-top: 4px;
    }
 
    .radio-inline-group label {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 8px;
+      min-width: 0;
+      min-height: 42px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
       font-weight: 500;
       color: #64748b;
       margin: 0;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
+      line-height: 1.3;
+      cursor: pointer;
+   }
+
+   .modal-field .radio-inline-group input[type="radio"] {
+      flex: 0 0 18px;
+      width: 18px;
+      min-width: 18px;
+      height: 18px;
+      margin: 0;
+      padding: 0;
+      accent-color: var(--primary);
+      cursor: pointer;
+   }
+
+   .radio-inline-group label:focus-within,
+   .radio-inline-group label:hover {
+      border-color: #94a3b8;
+      background: #f8fafc;
    }
 
    .toggle-control {
@@ -1049,13 +1196,14 @@
       .filter-container { padding: 14px; border-radius: 10px; }
       .form-row { flex-direction: column; gap: 12px; }
       .form-group { min-width: 0; }
-      .profile-header { flex-direction: column; align-items: flex-start; }
-      .profile-left { width: 100%; flex-direction: column; align-items: flex-start; }
-      .profile-img { width: 86px; height: 86px; font-size: 2.5rem; }
+      .profile-header { flex-direction: column; align-items: stretch; }
+      .profile-left { width: 100%; align-items: center; }
+      .profile-img { width: 64px; height: 64px; }
       .profile-info h2 { font-size: 1.4rem; }
       .profile-info p { font-size: 0.85rem; }
-      .profile-right { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 10px; }
-      .zone-badge { width: fit-content; }
+      .profile-right { width: 100%; grid-template-columns: repeat(2, minmax(0, 1fr)); text-align: left; }
+      .profile-action { min-height: 44px; }
+      .zone-badge { justify-self: start; width: fit-content; }
       .portfolio-content { padding: 16px; }
       .charts-grid { grid-template-columns: 1fr; }
       .chart-box { height: 260px; min-width: 520px; }
@@ -1081,6 +1229,8 @@
   </style>
 </head>
 <body>
+  <% const selectedStudentClass = typeof studentClass === 'undefined' ? '' : String(studentClass || ''); %>
+  <% const selectedSection = typeof section === 'undefined' ? '' : String(section || ''); %>
   
    <div class="filter-container no-print">
     <div class="header">
@@ -1089,21 +1239,24 @@
          <p>Select criteria to view individual student performance</p>
       </div>
       <div class="header-actions">
+         <% if (Object.keys(studentWisedatastructured || {}).length) { %>
          <button type="button" class="export-btn" onclick="openExportModal()">Export to Excel</button>
+         <% } %>
       </div>
     </div>
     <div class="form-row">
          <div class="form-group student-search">
             <label for="studentSearch">Student Name</label>
-            <input id="studentSearch" type="text" placeholder="Type 2 letters to search" />
+            <div class="student-search-row"><input id="studentSearch" type="search" placeholder="Enter at least 2 letters" autocomplete="off" /><button class="student-search-button" type="button" id="searchStudentButton">Search</button></div>
             <div id="studentSuggestions" class="student-suggestions"></div>
+            <span id="studentSearchStatus" class="student-search-status" role="status" aria-live="polite"></span>
          </div>
       <div class="form-group">
         <label for="classSection">Class & Section</label>
         <select name="classSection" id="classSection">
-          <option value="" selected disabled>Choose class & section</option>
+          <option value="" <%= !selectedStudentClass || !selectedSection ? 'selected' : '' %> disabled>Choose class & section</option>
           <% studentClassdata.forEach((data)=>{%>
-            <option value="<%=data.studentClass%>-<%=data.section%>"><%=data.studentClass%>-<%=data.section%></option>
+            <option value="<%=data.studentClass%>-<%=data.section%>" data-class="<%=data.studentClass%>" data-section="<%=data.section%>" <%= selectedStudentClass === String(data.studentClass) && selectedSection === String(data.section) ? 'selected' : '' %>><%=data.studentClass%>-<%=data.section%></option>
           <%})%>
         </select>
       </div>
@@ -1111,20 +1264,39 @@
       <div class="form-group">
         <label for="academicYear">Academic Year</label>
             <select name="academicYear" id="academicYear">
-               <option value="" selected disabled>Choose Academic Year</option>
-               <% const baseYear = (marksheetSetups && marksheetSetups[0] && Number(marksheetSetups[0].academicYear)) || new Date().getFullYear(); %>
-                  <% for (let i = 0; i < 5; i++) { %>
-                     <option value="<%= baseYear - i %>"><%= baseYear - i %></option>
-                  <% } %>
+               <% const baseYear = Number(academicYear || (marksheetSetups && marksheetSetups[0] && marksheetSetups[0].academicYear)) || new Date().getFullYear(); %>
+               <% const portfolioYears = [...new Set([...(marksheetSetups || []).map(setup => String(setup.academicYear || '').trim()), String(baseYear)])].filter(Boolean).sort((a, b) => Number(b) - Number(a)); %>
+               <% portfolioYears.forEach(year => { %>
+                  <option value="<%= year %>" <%= String(year) === String(baseYear) ? 'selected' : '' %>><%= year %></option>
+               <% }) %>
             </select>
       </div>
     </div>
-    <div style="text-align: right;">
-      <button onclick="loadform()">Load Portfolio</button>
+    <div class="filter-actions">
+      <span class="student-search-status">Choose a class or search by name, then load one student or the whole class.</span>
+      <button class="load-portfolio-button" type="button" onclick="loadform()">Load Portfolio</button>
     </div>
   </div>
 
-   <div class="filter-tools no-print">
+  <% const safeStudentData = studentWisedatastructured || {}; %>
+  <% const hasStudentData = Object.keys(safeStudentData).length > 0; %>
+  <% const initialStudentReg = String(reg || Object.keys(safeStudentData)[0] || ''); %>
+  <% if (hasStudentData) { %>
+   <nav class="student-picker no-print" aria-label="Choose student profile">
+      <div class="student-picker-heading"><strong>Students in this class</strong><span>Tap a name to open only that student’s portfolio</span></div>
+      <div class="student-picker-list" id="studentPickerList">
+         <% Object.entries(safeStudentData).forEach(([studentReg, student]) => { const roster = rosterByReg && rosterByReg[studentReg] ? rosterByReg[studentReg] : {}; %>
+            <button type="button" class="student-picker-button" data-student-nav-reg="<%= studentReg %>" aria-pressed="<%= studentReg === initialStudentReg ? 'true' : 'false' %>">
+               <strong><%= roster.name || student.name || 'Unnamed student' %></strong>
+               <small>Roll <%= roster.roll || student.roll || '—' %> · Reg <%= studentReg %></small>
+            </button>
+         <% }) %>
+      </div>
+   </nav>
+   <% } %>
+
+   <div class="filter-tools no-print" id="portfolioFilters" <%= hasStudentData ? '' : 'hidden' %>>
+      <div class="student-picker-heading"><strong>Filter students</strong><span>Filters are available after student data loads.</span></div>
       <div class="filter-tools-row">
          <input id="filterSearch" type="text" placeholder="Search name, reg, roll, family..." />
          <input id="filterFamily" type="text" placeholder="Family keyword (parent/guardian/occupation)" />
@@ -1178,14 +1350,16 @@
       </div>
       <div class="filter-actions">
          <span id="filterCount" class="filter-count"></span>
-         <button type="button" class="btn-secondary" onclick="resetPortfolioFilters()">Clear Filters</button>
+         <button type="button" class="btn-secondary portfolio-filter-button" onclick="resetPortfolioFilters()">Clear Filters</button>
       </div>
    </div>
 
    <script>
       const studentSearchInput = document.getElementById('studentSearch');
       const studentSuggestions = document.getElementById('studentSuggestions');
-      const defaultAcademicYear = <%= (marksheetSetups && marksheetSetups[0] && Number(marksheetSetups[0].academicYear)) || new Date().getFullYear() %>;
+      const defaultAcademicYear = <%= Number(academicYear || (marksheetSetups && marksheetSetups[0] && marksheetSetups[0].academicYear)) || new Date().getFullYear() %>;
+      const studentSearchStatus = document.getElementById('studentSearchStatus');
+      const searchStudentButton = document.getElementById('searchStudentButton');
 
       const debounce = (fn, delay) => {
          let timer;
@@ -1202,6 +1376,7 @@
          if (!items.length) {
             studentSuggestions.innerHTML = '<div class="student-suggestion-item"><span class="student-suggestion-meta">No matches found</span></div>';
             studentSuggestions.style.display = 'block';
+            if (studentSearchStatus) studentSearchStatus.textContent = 'No students matched that search.';
             return;
          }
 
@@ -1218,6 +1393,7 @@
          }).join('');
 
          studentSuggestions.style.display = 'block';
+         if (studentSearchStatus) studentSearchStatus.textContent = `${items.length} student${items.length === 1 ? '' : 's'} found. Select a name to open the portfolio.`;
       };
 
       const clearStudentSuggestions = () => {
@@ -1235,10 +1411,12 @@
          const value = studentSearchInput.value.trim();
          if (value.length < 2) {
             clearStudentSuggestions();
+            if (studentSearchStatus) studentSearchStatus.textContent = 'Enter at least 2 letters to search.';
             return;
          }
 
          try {
+            if (studentSearchStatus) studentSearchStatus.textContent = 'Searching students…';
             const response = await fetch(`/healthrecord/students?q=${encodeURIComponent(value)}`);
             if (!response.ok) {
                throw new Error('Failed to load students');
@@ -1247,24 +1425,38 @@
             showStudentSuggestions(Array.isArray(data) ? data : []);
          } catch (error) {
             clearStudentSuggestions();
+            if (studentSearchStatus) studentSearchStatus.textContent = 'Unable to search students right now. Please try again.';
+            console.error('Unable to search students:', error);
          }
       };
 
       function loadform()
       {
-            const classSection = document.getElementById('classSection').value
-            if(!classSection) return alert("Please select Class & Section");
-        
-            const studentClass = classSection.split("-")[0];
-            const section = classSection.split("-")[1];
-            const academicYear = document.getElementById('academicYear').value;
-     
-            window.location.href=(`/studentportfolio?studentClass=${studentClass}&section=${section}&academicYear=${academicYear}`)
+            const classSelect = document.getElementById('classSection');
+            const selectedClass = classSelect.options[classSelect.selectedIndex];
+            if (!selectedClass || !selectedClass.dataset.class || !selectedClass.dataset.section) {
+               alert('Please select Class & Section, or search for a student by name.');
+               classSelect.focus();
+               return;
+            }
+            const params = new URLSearchParams({
+               studentClass: selectedClass.dataset.class,
+               section: selectedClass.dataset.section,
+               academicYear: document.getElementById('academicYear').value || String(defaultAcademicYear)
+            });
+            window.location.href = `/studentportfolio?${params.toString()}`;
       }
 
       if (studentSearchInput) {
          studentSearchInput.addEventListener('input', debounce(fetchStudents, 200));
+         studentSearchInput.addEventListener('keydown', event => {
+            if (event.key === 'Enter') {
+               event.preventDefault();
+               fetchStudents();
+            }
+         });
       }
+      if (searchStudentButton) searchStudentButton.addEventListener('click', fetchStudents);
 
       if (studentSuggestions) {
          studentSuggestions.addEventListener('click', (event) => {
@@ -1288,9 +1480,8 @@
       });
    </script>
 
-  <% const safeStudentData = studentWisedatastructured || {}; %>
-  <% const hasStudentData = Object.keys(safeStudentData).length > 0; %>
   <% if (hasStudentData) { %>
+    <div id="portfolioEmptyResults" class="portfolio-empty-results" role="status">No students match the current filters. Clear filters to see the class list.</div>
     <% Object.entries(safeStudentData).forEach(([reg, student]) => { %>
        <!-- Logic to determine Zone -->
        <% 
@@ -1317,8 +1508,15 @@
                     allTerminals.add(terminal);
                     subjectPerformance[subject][terminal] = data.theory;
                     
-                    // Assuming < passMark is fail for visual indication
-                    if(data.theory < data.passMarks) failedSubjects++; 
+                    const theoryMarks = Number(data.theory);
+                    const passMarks = Number(data.passMarks);
+                    const hasPassMarks = data.passMarks !== null
+                       && data.passMarks !== undefined
+                       && data.passMarks !== ''
+                       && Number.isFinite(passMarks);
+                    if (hasPassMarks && Number.isFinite(theoryMarks) && theoryMarks < passMarks) {
+                       failedSubjects++;
+                    }
                     totalSubjects++;
                     
                     yearTotal += data.theory;
@@ -1352,6 +1550,7 @@
       <% const absentSummary = absentSummaryByReg && absentSummaryByReg[reg] ? absentSummaryByReg[reg] : { totalAbsent: 0, monthCounts: {}, reasons: [] }; %>
 
         <div class="student-card"
+           style="<%= String(reg) === initialStudentReg ? '' : 'display:none;' %>"
            data-name="<%= roster.name || student.name || '' %>"
            data-reg="<%= reg || '' %>"
            data-roll="<%= roster.roll || student.roll || '' %>"
@@ -1377,8 +1576,12 @@
           <header class="profile-header">
              <div class="profile-left">
                  <div class="profile-img">
-                    <!-- Placeholder for student image -->
-                    <span>🧑🏻‍🎓</span>
+                    <svg viewBox="0 0 48 48" aria-hidden="true">
+                       <path d="M5 17 24 8l19 9-19 9L5 17Z"></path>
+                       <path d="M13 21v9c6 5 16 5 22 0v-9M43 18v12"></path>
+                       <circle cx="24" cy="27" r="6"></circle>
+                       <path d="M13 42c1-5 5-8 11-8s10 3 11 8"></path>
+                    </svg>
                  </div>
                  <div class="profile-info">
                      <h2 class="student-name"><%= student.name %></h2>
@@ -1386,17 +1589,42 @@
                  </div>
              </div>
                    <div class="profile-right">
-                      <button type="button" class="print-btn no-print" onclick="window.print()">Print Portfolio</button>
-                      <button type="button" class="no-print" onclick="addComplaint('<%= reg %>')" style="background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Add Complaint</button>
-                      <button type="button" class="no-print" onclick="openParentMeetingModal('<%= reg %>')" style="background-color: #7c3aed; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Add Parent Meet</button>
-                      <button type="button" class="no-print" onclick="openAchievementModal('<%= reg %>', 'participation')" style="background-color: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Add Participation</button>
-                      <button type="button" class="no-print" onclick="openAchievementModal('<%= reg %>', 'award')" style="background-color: #d97706; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Add Award</button>
-                      <button type="button" class="no-print" onclick="openAchievementModal('<%= reg %>', 'scholarship')" style="background-color: #059669; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Add Scholarship</button>
-                      <button type="button" class="no-print" onclick="openCallLogModal('<%= reg %>')" style="background-color: #0f766e; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Add Call Record</button>
-                         <button type="button" class="no-print" onclick="addInformation('<%= reg %>')" style="background-color: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer;">Add Information</button>
-                         <div class="zone-badge <%= zoneClass %>">
-                              <%= zoneText %>
-                         </div>
+                <button type="button" class="profile-action profile-action-print no-print" onclick="window.print()">
+                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5M7 17H5a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><path d="M7 14h10v7H7zM17 11h.01"></path></svg>
+                   <span>Print Portfolio</span>
+                </button>
+                <button type="button" class="profile-action profile-action-complaint no-print" onclick="addComplaint('<%= reg %>')">
+                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8A8.5 8.5 0 0 1 8.7 3.9a8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5Z"></path><path d="M12 8v4M12 16h.01"></path></svg>
+                   <span>Add Complaint</span>
+                </button>
+                <button type="button" class="profile-action profile-action-meeting no-print" onclick="openParentMeetingModal('<%= reg %>')">
+                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM20 8v6M23 11h-6"></path></svg>
+                   <span>Add Parent Meet</span>
+                </button>
+                <button type="button" class="profile-action profile-action-participation no-print" onclick="openAchievementModal('<%= reg %>', 'participation')">
+                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12ZM8 14l-2 7 6-3 6 3-2-7"></path><path d="m12 6 1 2 2 .3-1.5 1.4.4 2-1.9-1-1.9 1 .4-2L9 8.3l2-.3 1-2Z"></path></svg>
+                   <span>Add Participation</span>
+                </button>
+                <button type="button" class="profile-action profile-action-award no-print" onclick="openAchievementModal('<%= reg %>', 'award')">
+                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4ZM7 6H4v2a4 4 0 0 0 4 4M17 6h3v2a4 4 0 0 1-4 4"></path></svg>
+                   <span>Add Award</span>
+                </button>
+                <button type="button" class="profile-action profile-action-scholarship no-print" onclick="openAchievementModal('<%= reg %>', 'scholarship')">
+                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m2 8 10-5 10 5-10 5L2 8ZM6 10v6c3.5 3 8.5 3 12 0v-6M22 8v7"></path></svg>
+                   <span>Add Scholarship</span>
+                </button>
+                <button type="button" class="profile-action profile-action-call no-print" onclick="openCallLogModal('<%= reg %>')">
+                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.4 19.4 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7l.5 3a2 2 0 0 1-.6 1.7L7.1 10.3a16 16 0 0 0 6 6l1.9-1.9a2 2 0 0 1 1.7-.6l3 .5a2 2 0 0 1 2.3 2.6Z"></path></svg>
+                   <span>Add Call Record</span>
+                </button>
+                <button type="button" class="profile-action profile-action-information no-print" onclick="addInformation('<%= reg %>')">
+                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6M8 13h8M8 17h8"></path></svg>
+                   <span>Add Information</span>
+                </button>
+                   <div class="zone-badge <%= zoneClass %>">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><% if (zoneClass === 'zone-red') { %><path d="M12 9v4M12 17h.01"></path><path d="M10.3 3.9 2.7 17a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3l-7.6-13.1a2 2 0 0 0-3.4 0Z"></path><% } else { %><path d="m5 12 4 4L19 6"></path><circle cx="12" cy="12" r="10"></circle><% } %></svg>
+                        <span><%= zoneText %></span>
+                   </div>
                    </div>
           </header>
 
@@ -1642,8 +1870,17 @@
                                   <tr>
                                      <% sortedTerms.forEach(term => { 
                                           const data = termdata[term];
+                                          const theoryMarks = Number(data.theory);
+                                          const passMarks = Number(data.passMarks);
+                                          const hasPassMarks = data.passMarks !== null
+                                             && data.passMarks !== undefined
+                                             && data.passMarks !== ''
+                                             && Number.isFinite(passMarks);
+                                          const markClass = hasPassMarks && Number.isFinite(theoryMarks)
+                                             ? (theoryMarks < passMarks ? 'mark-fail' : 'mark-pass')
+                                             : '';
                                      %>
-                                        <td class="mark-cell <%= data.theory < 35 ? 'mark-fail' : 'mark-pass' %>">
+                                        <td class="mark-cell <%= markClass %>">
                                            <%= data.theory %>
                                         </td>
                                      <% }) %>
@@ -2317,6 +2554,9 @@
    const achievementForm = document.getElementById('achievementForm');
    const achievementStatus = document.getElementById('achievementStatus');
    const studentCards = Array.from(document.querySelectorAll('.student-card'));
+   const studentNavButtons = Array.from(document.querySelectorAll('[data-student-nav-reg]'));
+   const portfolioEmptyResults = document.getElementById('portfolioEmptyResults');
+   let selectedStudentReg = <%- JSON.stringify(initialStudentReg) %>;
    const filterSearch = document.getElementById('filterSearch');
    const filterFamily = document.getElementById('filterFamily');
    const filterMedicalChecks = Array.from(document.querySelectorAll('.filter-medical-check'));
@@ -2396,7 +2636,7 @@
       const selectedTv = getCheckedValues(filterTvChecks);
       const selectedInternet = getCheckedValues(filterInternetChecks);
 
-      let visibleCount = 0;
+      const matchingRegs = [];
 
       studentCards.forEach((card) => {
          const data = card.dataset;
@@ -2447,14 +2687,41 @@
             && matchesParentView
             && matchesTv
             && matchesInternet;
-         card.style.display = visible ? '' : 'none';
-         if (visible) visibleCount += 1;
+         card.dataset.filterVisible = visible ? 'true' : 'false';
+         if (visible) matchingRegs.push(card.dataset.reg);
       });
 
+      if (!matchingRegs.includes(selectedStudentReg)) {
+         selectedStudentReg = matchingRegs[0] || '';
+      }
+
+      studentCards.forEach(card => {
+         card.style.display = card.dataset.filterVisible === 'true' && card.dataset.reg === selectedStudentReg ? '' : 'none';
+      });
+      studentNavButtons.forEach(button => {
+         const matchesFilters = matchingRegs.includes(button.dataset.studentNavReg);
+         button.hidden = !matchesFilters;
+         button.setAttribute('aria-pressed', button.dataset.studentNavReg === selectedStudentReg ? 'true' : 'false');
+      });
+      if (portfolioEmptyResults) portfolioEmptyResults.classList.toggle('is-visible', matchingRegs.length === 0);
+
       if (filterCount) {
-         filterCount.textContent = `${visibleCount} student${visibleCount === 1 ? '' : 's'} shown`;
+         const selectedCard = studentCards.find(card => card.dataset.reg === selectedStudentReg);
+         filterCount.textContent = matchingRegs.length
+            ? `${matchingRegs.length} student${matchingRegs.length === 1 ? '' : 's'} found${selectedCard ? ` · Viewing ${selectedCard.dataset.name}` : ''}`
+            : 'No students match these filters';
       }
    }
+
+   studentNavButtons.forEach(button => {
+      button.addEventListener('click', () => {
+         selectedStudentReg = button.dataset.studentNavReg;
+         applyPortfolioFilters();
+         const selectedCard = studentCards.find(card => card.dataset.reg === selectedStudentReg);
+         button.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+         if (selectedCard) selectedCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+   });
 
    function resetPortfolioFilters() {
       if (filterSearch) filterSearch.value = '';
