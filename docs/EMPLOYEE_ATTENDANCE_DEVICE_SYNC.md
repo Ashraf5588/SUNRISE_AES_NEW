@@ -2,7 +2,7 @@
 
 ## What the manual action does
 
-The employee attendance page lists ZKTeco serial numbers that have contacted `/iclock/cdata`. **Monitor Incoming Device Records** starts a ten-minute monitoring window for the selected serial number. It does not send a command to the terminal. The status and counts come from ATTLOG requests actually received and processed during that window.
+The employee attendance page lists ZKTeco serial numbers that have contacted `/iclock/cdata`. **Check Connection** refreshes the latest request recorded by the server for a device. It is not a direct network ping: a new request appears only after the terminal contacts the configured ADMS endpoint. **Monitor Incoming Device Records** starts a ten-minute monitoring window for the selected serial number. It does not send a command to the terminal. The status and counts come from ATTLOG requests actually received and processed during that window.
 
 The page shows the most recently processed successful batch separately from historical synchronization completion. ADMS does not provide a completion signal in the implementation currently present in this project, so the page deliberately reports historical sync completion as unverified. A quiet device or an empty window is not proof that there are no pending records.
 

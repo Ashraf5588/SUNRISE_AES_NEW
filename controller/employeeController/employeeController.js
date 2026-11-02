@@ -2241,6 +2241,29 @@ exports.getEmployeeAttendanceDeviceSync = async (req, res) => {
     }
 };
 
+exports.checkEmployeeAttendanceDeviceConnection = async (req, res) => {
+    try {
+        const serialNumber = String(req.params.serialNumber || '').trim();
+        if (!isValidDeviceSerial(serialNumber)) {
+            return res.status(400).json({ message: 'Invalid device serial number.' });
+        }
+
+        const device = await EmployeeAttendanceDevice.findOne({ serialNumber }).lean();
+        if (!device) return res.status(404).json({ message: 'No device request has reached the attendance server for this serial number.' });
+
+        const run = device.latestSyncRunId
+            ? await EmployeeAttendanceSyncRun.findById(device.latestSyncRunId).lean()
+            : null;
+        return res.json({
+            checkedAt: new Date(),
+            ...getAttendanceDeviceStatus(device, run)
+        });
+    } catch (error) {
+        console.error('Unable to check attendance device connection:', error);
+        return res.status(500).json({ message: 'Unable to check the device connection status.' });
+    }
+};
+
 exports.getEmployeeAttendanceDeviceOptions = async (req, res) => {
     const receivedAt = new Date();
     const serialNumber = String(req.query.SN || '').trim();

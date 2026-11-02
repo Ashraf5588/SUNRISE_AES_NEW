@@ -52,6 +52,7 @@ employee.get('/iclock/cdata', employeeController.getEmployeeAttendanceDeviceOpti
 employee.all('/iclock/cdata', (req, res) => {
 	res.set('Allow', 'POST').sendStatus(405);
 });
+employee.get('/employeeattendance/device-status/:serialNumber', verifytoken, isAdmin, employeeController.checkEmployeeAttendanceDeviceConnection);
 employee.post('/employeeattendance/device-sync', verifytoken, isAdmin, employeeController.startEmployeeAttendanceDeviceSync);
 employee.get('/employeeattendance/device-sync/:runId', verifytoken, isAdmin, employeeController.getEmployeeAttendanceDeviceSync);
 employee.get('/employeeattendance/export', employeeController.exportEmployeeAttendance);

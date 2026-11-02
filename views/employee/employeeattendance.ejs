@@ -64,6 +64,7 @@
 		.device-offline { color: var(--red); }
 		.sync-result { color: var(--muted); font-size: .78rem; line-height: 1.5; }
 		.sync-result strong { color: var(--ink); }
+		.device-check { display: grid; justify-items: start; gap: 7px; }
 		.sync-note { margin: 0 0 12px; padding: 10px 12px; border: 1px solid #ead8a8; border-radius: 5px; background: #fff9e8; color: #705814; font-size: .82rem; line-height: 1.5; }
 		@media (max-width: 1000px) { .device-card { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 		@media (max-width: 700px) { .page-shell { width: calc(100% - 24px); padding-top: 22px; } .page-header { align-items: flex-start; flex-direction: column; } .toolbar { align-items: stretch; } .filter { justify-content: space-between; width: 100%; } .filter input { flex: 1; } .table-heading { align-items: flex-start; flex-direction: column; } .pagination { align-items: flex-start; flex-direction: column; } }
@@ -82,7 +83,7 @@
 		</header>
 		<section class="panel sync-panel" aria-labelledby="deviceSyncHeading">
 			<h2 id="deviceSyncHeading">Device attendance synchronization</h2>
-			<p class="sync-intro">Connection status shows whether the server has received a device request within the configured recent-activity window (five minutes by default); saved attendance remains in MongoDB even when a device later shows offline. A successful connection means a request reached the server, not that the physical device identity was verified.</p>
+			<p class="sync-intro">Use Check Connection to refresh the latest request recorded by the attendance server. Recent contact (five minutes by default) shows the terminal can reach the server; this checks server-received activity, not a direct ping or physical device identity. Saved attendance remains in MongoDB even when a device later shows offline.</p>
 			<p class="sync-note">This ADMS connection receives data pushed by the terminal. The monitor button below watches for incoming records and saves valid records to MongoDB; it cannot read unsent records stored only on the terminal. Historical replay requires the exact device model and firmware protocol. Do not clear device records until exported or received records are checked.</p>
 			<% if (attendanceDevices.length) { %>
 				<div class="device-list">
@@ -105,6 +106,10 @@
 									Status: <strong data-role="status">No manual monitoring session</strong><br>
 									Received 0 · Saved 0 · Duplicates 0 · Failed 0
 								<% } %>
+							</div>
+							<div class="device-check">
+								<button class="button button-secondary check-device-connection" type="button">Check Connection</button>
+								<span class="device-meta" data-role="connection-check" aria-live="polite">Refresh server-observed status after updating device network settings.</span>
 							</div>
 							<button class="button button-primary sync-device-button" type="button">Monitor Incoming Device Records</button>
 						</article>
@@ -182,6 +187,28 @@
 			failed: 'Processing failed'
 		};
 		const formatSyncDate = value => value ? new Date(value).toLocaleString() : 'Not recorded';
+		document.querySelectorAll('.check-device-connection').forEach(button => button.addEventListener('click', async () => {
+			const card = button.closest('.device-card');
+			const serialNumber = card.dataset.serial;
+			const result = card.querySelector('[data-role="connection-check"]');
+			button.disabled = true;
+			result.textContent = 'Checking the latest request recorded by the server…';
+
+			try {
+				const response = await fetch(`/employeeattendance/device-status/${encodeURIComponent(serialNumber)}`);
+				const data = await response.json();
+				if (!response.ok) throw new Error(data.message || 'Unable to check device connection.');
+				updateDeviceConnection(card, data);
+				const lastContact = data.lastCommunicationAt
+					? ` Last server contact: ${formatSyncDate(data.lastCommunicationAt)} (${data.lastRequestType || 'request type unknown'}).`
+					: ' No device request has reached the server yet.';
+				result.textContent = `${data.connectionLabel}.${lastContact}`;
+			} catch (error) {
+				result.textContent = error.message;
+			} finally {
+				button.disabled = false;
+			}
+		}));
 		document.querySelectorAll('.sync-device-button').forEach(button => button.addEventListener('click', async () => {
 			const card = button.closest('.device-card');
 			const serialNumber = card.dataset.serial;
@@ -207,16 +234,8 @@
 
 		function updateSyncCard(card, data) {
 			const run = data.run;
+			updateDeviceConnection(card, data);
 			if (!run) return;
-			card.querySelector('[data-role="connection"]').textContent = data.connectionLabel;
-			card.querySelector('[data-role="connection"]').className = `device-status ${data.online ? 'device-online' : 'device-offline'}`;
-			card.querySelector('[data-role="last-communication"]').textContent = formatSyncDate(data.lastCommunicationAt);
-			card.querySelector('[data-role="last-attendance"]').textContent = formatSyncDate(data.lastAttendanceReceived);
-			card.querySelector('[data-role="last-batch"]').textContent = formatSyncDate(data.lastSuccessfulBatchAt);
-			card.querySelector('[data-role="request-type"]').textContent = data.lastRequestType || 'None';
-			card.querySelector('[data-role="request-status"]').textContent = data.lastRequestStatus || 'No request status';
-			card.querySelector('[data-role="request-source"]').textContent = String(data.lastRequestSource || 'unverified').replace(/_/g, ' ');
-			card.querySelector('[data-role="device-totals"]').textContent = `${data.totalReceivedRecords || 0} / ${data.totalInsertedRecords || 0}`;
 			card.querySelector('[data-role="status"]').textContent = syncStatusLabels[run.status] || run.status;
 			for (const [field, key] of [['received', 'receivedRecords'], ['saved', 'savedRecords'], ['duplicates', 'duplicateRecords'], ['failed', 'failedRecords']]) {
 				const target = card.querySelector(`[data-role="${field}"]`);
@@ -228,6 +247,18 @@
 			} else {
 				result.removeAttribute('title');
 			}
+		}
+
+		function updateDeviceConnection(card, data) {
+			card.querySelector('[data-role="connection"]').textContent = data.connectionLabel;
+			card.querySelector('[data-role="connection"]').className = `device-status ${data.online ? 'device-online' : 'device-offline'}`;
+			card.querySelector('[data-role="last-communication"]').textContent = formatSyncDate(data.lastCommunicationAt);
+			card.querySelector('[data-role="last-attendance"]').textContent = formatSyncDate(data.lastAttendanceReceived);
+			card.querySelector('[data-role="last-batch"]').textContent = formatSyncDate(data.lastSuccessfulBatchAt);
+			card.querySelector('[data-role="request-type"]').textContent = data.lastRequestType || 'None';
+			card.querySelector('[data-role="request-status"]').textContent = data.lastRequestStatus || 'No request status';
+			card.querySelector('[data-role="request-source"]').textContent = String(data.lastRequestSource || 'unverified').replace(/_/g, ' ');
+			card.querySelector('[data-role="device-totals"]').textContent = `${data.totalReceivedRecords || 0} / ${data.totalInsertedRecords || 0}`;
 		}
 
 		function monitorSync(card, runId) {
