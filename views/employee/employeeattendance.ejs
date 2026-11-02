@@ -82,8 +82,8 @@
 		</header>
 		<section class="panel sync-panel" aria-labelledby="deviceSyncHeading">
 			<h2 id="deviceSyncHeading">Device attendance synchronization</h2>
-			<p class="sync-intro">The attendance server receives ADMS punches sent by a device. Starting a manual sync here opens a 10-minute monitoring window; it does not send an unverified command to request historic logs. Counts below are based on records actually processed by the server.</p>
-			<p class="sync-note">Historical replay cannot be confirmed for this device from its serial number alone. Use the export or retransmission procedure documented for the exact ZKTeco model and firmware; if the device exports CSV, use the attendance CSV import below. Do not clear device records until exported or received records are checked.</p>
+			<p class="sync-intro">Connection status shows whether the server has received a device request within the configured recent-activity window (five minutes by default); saved attendance remains in MongoDB even when a device later shows offline. A successful connection means a request reached the server, not that the physical device identity was verified.</p>
+			<p class="sync-note">This ADMS connection receives data pushed by the terminal. The monitor button below watches for incoming records and saves valid records to MongoDB; it cannot read unsent records stored only on the terminal. Historical replay requires the exact device model and firmware protocol. Do not clear device records until exported or received records are checked.</p>
 			<% if (attendanceDevices.length) { %>
 				<div class="device-list">
 					<% attendanceDevices.forEach(device => { %>
@@ -106,7 +106,7 @@
 									Received 0 · Saved 0 · Duplicates 0 · Failed 0
 								<% } %>
 							</div>
-							<button class="button button-primary sync-device-button" type="button">Sync Device Attendance</button>
+							<button class="button button-primary sync-device-button" type="button">Monitor Incoming Device Records</button>
 						</article>
 					<% }) %>
 				</div>

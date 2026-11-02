@@ -2159,16 +2159,21 @@ exports.saveEmployeeAttendance = async (req, res) => {
 function getAttendanceDeviceStatus(device, run, now = new Date()) {
     const lastActivity = device.lastActivity || device.lastCommunicationAt || null;
     const online = isAttendanceDeviceOnline(lastActivity, now, getDeviceOnlineTimeoutMs());
+    const onlineTimeoutMinutes = Math.ceil(getDeviceOnlineTimeoutMs() / 60_000);
     const requestSource = device.lastRequestSource || 'unverified';
     return {
         serialNumber: device.serialNumber,
         deviceName: device.name,
         online,
-        connectionLabel: !online
-            ? 'Offline'
-            : requestSource === 'likely_simulated'
-                ? 'Online by activity timeout; likely test request, physical device unverified'
-                : 'Online by activity timeout; physical device unverified',
+        connectionLabel: !lastActivity
+            ? device.lastRequestType === 'LEGACY_ATTENDANCE_RECORDS'
+                ? 'Not recently connected; saved historical records exist'
+                : 'No successful device connection recorded'
+            : !online
+                ? `Offline; no server contact in the last ${onlineTimeoutMinutes} minutes`
+                : requestSource === 'likely_simulated'
+                    ? 'Recent server contact; request may be simulated'
+                    : 'Connected to server recently; device identity unverified',
         lastActivity,
         lastCommunicationAt: lastActivity,
         lastAttendanceReceived: device.lastAttendanceReceived || null,

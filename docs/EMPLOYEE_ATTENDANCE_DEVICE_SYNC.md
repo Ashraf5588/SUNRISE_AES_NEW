@@ -2,7 +2,7 @@
 
 ## What the manual action does
 
-The employee attendance page lists ZKTeco serial numbers that have contacted `/iclock/cdata`. **Sync Device Attendance** starts a ten-minute monitoring window for the selected serial number. It does not send a command to the terminal. The status and counts come from ATTLOG requests actually received and processed during that window.
+The employee attendance page lists ZKTeco serial numbers that have contacted `/iclock/cdata`. **Monitor Incoming Device Records** starts a ten-minute monitoring window for the selected serial number. It does not send a command to the terminal. The status and counts come from ATTLOG requests actually received and processed during that window.
 
 The page shows the most recently processed successful batch separately from historical synchronization completion. ADMS does not provide a completion signal in the implementation currently present in this project, so the page deliberately reports historical sync completion as unverified. A quiet device or an empty window is not proof that there are no pending records.
 
@@ -19,7 +19,7 @@ The receiver returns a non-success HTTP response when a batch is invalid or coul
 ## Device status and record handling
 
 - A serial number from the `SN` query parameter is upserted when GET or POST cdata requests arrive; its display name defaults to `ZKTeco device <serial>`.
-- Online/offline is calculated from `lastActivity` and `EMPLOYEE_DEVICE_ONLINE_TIMEOUT_MS` (five minutes by default). This is only recent HTTP activity, not a live probe or proof that the physical terminal originated the request.
+- Online/offline is calculated from `lastActivity` and `EMPLOYEE_DEVICE_ONLINE_TIMEOUT_MS` (five minutes by default). This is only recent HTTP activity, not a live probe or proof that the physical terminal originated the request. Existing saved attendance is retained if the device later appears offline; historic records alone do not prove a current connection.
 - Requests whose User-Agent resembles curl, Postman, PowerShell, Python requests, or common Node clients are marked `likely_simulated`; other requests are `unverified`. User-Agent cannot prove a request came from the physical terminal.
 - Device metadata records last activity, attendance receipt time, total non-empty records received, records inserted, request type, request result, source classification, User-Agent, and remote address. Empty ATTLOG requests update activity and receipt metadata but add zero to record totals.
 - A record identity uses the device serial, PIN, punch time, status, and verification mode. A sparse unique event-key index protects new records, and logical matching avoids duplicating older records that predate the key.
