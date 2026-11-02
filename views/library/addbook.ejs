@@ -590,6 +590,8 @@
       shelvesNo: book.shelvesNo || '',
       author: book.author || '',
       category: book.category || '',
+      categoryColor: book.categoryDisplayColor || book.categoryColor || '',
+      categoryColorName: (categories || []).find((category) => category.name === book.category)?.colorName || '',
       publisherName: book.publisherName || '',
       edition: book.edition || '',
       publishedYear: book.publishedYear || '',
@@ -762,72 +764,104 @@
     }
 
     function printStickerSheet(bookInfo, codes) {
-      const providedBook = (typeof bookInfo === 'string' || !bookInfo) ? { title: bookInfo || 'Book' } : bookInfo;
-      const safeTitle = String(providedBook.title || 'Book').trim();
-      const safeCodes = Array.from(new Set((codes || [])
-        .map((code) => String(code || '').trim())
-        .filter(Boolean)));
+      const stickerEntries = Array.isArray(bookInfo)
+        ? bookInfo
+        : (codes || []).map((code) => ({ bookInfo, code }));
+      const stickers = stickerEntries.map((entry) => {
+        const providedBook = (typeof entry.bookInfo === 'string' || !entry.bookInfo)
+          ? { title: entry.bookInfo || 'Book' }
+          : entry.bookInfo;
+        return {
+          book: { ...providedBook, title: String(providedBook.title || 'Book').trim() },
+          code: String(entry.code || '').trim()
+        };
+      }).filter((sticker) => sticker.code);
 
-      if (!safeTitle || !safeCodes.length) {
+      if (!stickers.length) {
         alert('No book stickers are available to print for this book.');
         return;
       }
 
-      const metaRows = [
-        { label: 'Date', value: providedBook.date },
-        { label: 'Book', value: safeTitle },
-        
-        { label: 'Author', value: providedBook.author },
-          { label: 'Edition', value: providedBook.edition },
-        { label: 'Shlv No', value: providedBook.shelvesNo || providedBook.shelfNo || providedBook.shelvesno },
-        { label: 'Publisher', value: providedBook.publisherName },
-        
-       
-        { label: 'Price', value: providedBook.price !== undefined && providedBook.price !== null && providedBook.price !== '' ? `Rs. ${providedBook.price}` : '' },
-      
-        { label: 'Year', value: providedBook.publishedYear },
-        { label: 'Category', value: providedBook.category ? `${providedBook.category}${providedBook.categoryColorName ? ` (${providedBook.categoryColorName})` : ''}` : '' },
-        
-      ].filter((row) => String(row.value ?? '').trim());
+      const printWindow = window.open('', '_blank', 'width=1100,height=850');
+      if (!printWindow) {
+        alert('The sticker preview was blocked. Allow pop-ups for this site and try again.');
+        return;
+      }
+      const pageCount = Math.ceil(stickers.length / 18);
+      const barcodeItems = [];
+      const sheets = Array.from({ length: pageCount }, (_, pageIndex) => {
+        const pageStickers = stickers.slice(pageIndex * 18, (pageIndex + 1) * 18);
+        const stickerMarkup = Array.from({ length: 18 }, (_, position) => {
+          const row = Math.floor(position / 3);
+          const column = position % 3;
+          const left = (7 + column * 65) / 10;
+          const top = (8 + row * 46) / 10;
+          const sticker = pageStickers[position];
+          if (!sticker) {
+            return `<div class="sticker sticker-empty" style="left:${left}cm;top:${top}cm"></div>`;
+          }
 
-      const firstLine = metaRows.slice(0, 3).map((row) => `<span><strong>${row.label}:</strong> ${row.value}</span>`).join('');
-      const secondLine = metaRows.slice(3, 6).map((row) => `<span><strong>${row.label}:</strong> ${row.value}</span>`).join('');
-      const thirdLine = metaRows.slice(6, 12).map((row) => `<span><strong>${row.label}:</strong> ${row.value}</span>`).join('');
-
-      const printWindow = window.open('', '_blank', 'width=900,height=700');
+          const index = pageIndex * 18 + position;
+          const barcodeId = `barcode-${index}`;
+          barcodeItems.push({ id: barcodeId, code: sticker.code });
+          const details = getStickerDetailRows(sticker.book)
+            .map(({ label, value }) => `<span><strong>${escapePrintText(label)}:</strong> ${escapePrintText(value)}</span>`)
+            .join('');
+          return `
+            <div class="sticker" style="left:${left}cm;top:${top}cm">
+              <div class="sticker-title">${escapePrintText(sticker.book.title)}</div>
+              <canvas class="barcode" id="${barcodeId}"></canvas>
+              <div class="sticker-code">${escapePrintText(sticker.code)}</div>
+              <div class="sticker-details">${details}</div>
+            </div>
+          `;
+        }).join('');
+        return `<section class="sticker-sheet">${stickerMarkup}</section>`;
+      }).join('');
+      const barcodeData = JSON.stringify(barcodeItems).replace(/</g, '\\u003c');
       const html = `
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
           <head>
             <title>Book Label Print</title>
             <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"><\/script>
             <style>
-              body { font-family: Arial, sans-serif; margin: 20px; }
-              .sheet { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
-              .label { border: 2px solid #0f172a; border-radius: 10px; padding: 12px; text-align: left; min-height: 220px; page-break-inside: avoid; }
-              .meta-line { display: flex; flex-wrap: wrap; gap: 8px 12px; font-size: 10px; line-height: 1.5; margin-bottom: 8px; }
-              .meta-line span { display: inline-flex; align-items: center; gap: 3px; }
-              .barcode-wrap { display: flex; justify-content: center; margin: 8px 0; }
-              .code { font-size: 18px; font-weight: 800; margin: 2px 0 8px; text-align: center; }
-              canvas { max-width: 100%; }
-              @media print { body { margin: 0; } .label { border: 1px solid #000; } }
+              @page { size: A4 portrait; margin: 0; }
+              * { box-sizing: border-box; }
+              html, body { width: 21cm; margin: 0; padding: 0; font-family: Arial, sans-serif; }
+              body { color: #111827; }
+              .print-guidance { width: 21cm; padding: 3mm 4mm; background: #eff6ff; font-size: 3.7mm; line-height: 1.5; }
+              .sticker-sheet { position: relative; width: 21cm; height: 29.7cm; padding: 0; margin: 0; overflow: hidden; background: #fff; break-inside: avoid; page-break-inside: avoid; }
+              .sticker-sheet:not(:last-child) { break-after: page; page-break-after: always; }
+              .sticker { position: absolute; width: 6.3cm; height: 4.6cm; padding: 0.12cm; border: 0.3mm solid #000; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
+              .sticker-empty { border: 0; }
+              .sticker-title { width: 100%; overflow: hidden; text-align: center; white-space: nowrap; text-overflow: ellipsis; font-size: 2.8mm; line-height: 1.15; font-weight: 700; }
+              .barcode { display: block; width: 5.7cm; height: 0.75cm; margin-top: 0.04cm; }
+              .sticker-code { width: 100%; overflow: hidden; text-align: center; white-space: nowrap; text-overflow: ellipsis; font-size: 2.5mm; line-height: 1.1; font-weight: 800; }
+              .sticker-details { display: flex; flex-wrap: wrap; align-content: flex-start; justify-content: flex-start; gap: 0 0.1cm; width: 100%; margin-top: 0.04cm; overflow: hidden; font-size: 1.9mm; line-height: 1.2; text-align: left; overflow-wrap: anywhere; }
+              .sticker-details span { max-width: 100%; }
+              .sticker-details strong { white-space: nowrap; }
+              @media screen {
+                html, body { min-height: 100%; background: #e2e8f0; }
+                .print-guidance { margin: 0 auto; }
+                .sticker-sheet { margin: 0 auto 16px; box-shadow: 0 4px 18px rgba(15, 23, 42, .2); }
+              }
+              @media print {
+                html, body { width: 21cm; height: auto; margin: 0; padding: 0; background: #fff; }
+                .print-guidance { display: none; }
+                .sticker-sheet { margin: 0; }
+              }
             </style>
           </head>
           <body>
-            <div class="sheet">
-              ${safeCodes.map((code) => `
-                <div class="label">
-                  <div class="meta-line">${firstLine}</div>
-                  <div class="barcode-wrap"><canvas id="barcode-${code}"></canvas></div>
-                  <div class="code">${code}</div>
-                  <div class="meta-line">${secondLine}</div>
-                  <div class="meta-line">${thirdLine}</div>
-                </div>
-              `).join('')}
-            </div>
+            <div class="print-guidance">Print settings: A4, Portrait, Scale 100% / Actual Size, Margins None, and Headers and Footers disabled. Do not use Fit to Page.</div>
+            ${sheets}
             <script>
-              window.onload = function () {
-                ${safeCodes.map((code) => `JsBarcode('#barcode-${code}', '${code}', { format: 'CODE128', displayValue: false, width: 1.8, height: 34, margin: 6, background: '#fff', lineColor: '#111827' });`).join('\n')}
+              window.onload = function() {
+                const barcodes = ${barcodeData};
+                barcodes.forEach(({ id, code }) => {
+                  JsBarcode(document.getElementById(id), code, { format: 'CODE128', displayValue: false, width: 1.4, height: 28, margin: 2, background: '#fff', lineColor: '#111827' });
+                });
                 setTimeout(() => window.print(), 400);
               };
             <\/script>
@@ -874,11 +908,12 @@
         publisherName: publisherInput.value,
         publishedYear: document.getElementById('publishedYear').value,
         edition: document.getElementById('edition').value,
-      
+        page: document.getElementById('page').value,
+        source: document.getElementById('source').value,
         price: document.getElementById('price').value,
-        
+        remarks: document.getElementById('remarks').value,
         date: document.getElementById('date').value,
-        
+        isbn: document.getElementById('isbn')?.value,
       }, codes);
     }
 
@@ -987,40 +1022,7 @@
         return;
       }
 
-      const printWindow = window.open('', '_blank', 'width=1000,height=750');
-      const labels = selectedEntries.map((entry, index) => {
-        const detailRows = [
-          ['Date', entry.date],
-          ['Shelf No', entry.shelvesNo],
-          ['Author', entry.author],
-          ['Category', entry.category],
-          ['Publisher', entry.publisherName],
-          ['Edition', entry.edition],
-          ['Year', entry.publishedYear],
-          ['Page', entry.page],
-          ['Source', entry.source],
-          ['Cost', entry.price === '' ? '' : `Rs. ${entry.price}`],
-          ['Remarks', entry.remarks],
-          ['ISBN', entry.isbn]
-        ].filter((row) => String(row[1] ?? '').trim());
-        const detailMarkup = detailRows.map(([label, value]) => `<span><strong>${label}:</strong> ${escapePrintText(value)}</span>`).join('');
-        return `
-        <div class="label">
-          <div class="title">${escapePrintText(entry.title)}</div>
-          <canvas id="bulk-barcode-${index}"></canvas>
-          <div class="code">${escapePrintText(entry.code)}</div>
-          <div class="meta-line">${detailMarkup}</div>
-        </div>
-      `;
-      }).join('');
-      const barcodeCalls = selectedEntries.map((entry, index) => `JsBarcode('#bulk-barcode-${index}', '${String(entry.code).replace(/'/g, "\\'")}', { format: 'CODE128', displayValue: false, width: 1.8, height: 38, margin: 6, background: '#fff', lineColor: '#111827' });`).join('\n');
-      printWindow.document.write(`
-        <!DOCTYPE html><html><head><title>Book Sticker Print</title>
-        <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.0/dist/JsBarcode.all.min.js"><\/script>
-        <style>body{font-family:Arial,sans-serif;margin:20px}.sheet{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:16px}.label{border:2px solid #0f172a;border-radius:10px;padding:12px;text-align:center;page-break-inside:avoid;min-height:190px}.title{font-size:12px;font-weight:700;margin-bottom:8px}.code{font-size:18px;font-weight:800;margin-top:8px}.meta-line{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:4px 10px;margin-top:8px;text-align:left;font-size:9px;line-height:1.35}.meta-line span{display:inline-flex;gap:3px;max-width:100%;word-break:break-word}.meta-line strong{white-space:nowrap}canvas{max-width:100%}@media print{body{margin:0}.label{border:1px solid #000}}</style>
-        </head><body><div class="sheet">${labels}</div><script>window.onload=function(){${barcodeCalls}setTimeout(function(){window.print()},400)};<\/script></body></html>
-      `);
-      printWindow.document.close();
+      printStickerSheet(selectedEntries.map((entry) => ({ bookInfo: entry, code: entry.code })));
       closeBulkPrintModal();
     }
 
@@ -1264,14 +1266,18 @@
         title: activePrintBook.title || 'Book',
         author: activePrintBook.author,
         category: activePrintBook.category,
-        categoryColorName: activePrintBook.categoryColorName || activePrintBook.categoryColor || '',
+        categoryColorName: activePrintBook.categoryColorName || '',
         categoryColor: activePrintBook.categoryColor,
         shelvesNo: activePrintBook.shelvesNo,
         publisherName: activePrintBook.publisherName,
         publishedYear: activePrintBook.publishedYear,
         edition: activePrintBook.edition,
+        page: activePrintBook.page,
+        source: activePrintBook.source,
         price: activePrintBook.price,
+        remarks: activePrintBook.remarks,
         date: activePrintBook.date,
+        isbn: activePrintBook.isbn,
       }, selectedCodes);
       closePrintModal();
     });
@@ -1339,7 +1345,7 @@
           title: activeStockBook.title || 'Book',
           author: activeStockBook.author,
           category: activeStockBook.category,
-          categoryColorName: activeStockBook.categoryColorName || activeStockBook.categoryColor || '',
+          categoryColorName: activeStockBook.categoryColorName || '',
           categoryColor: activeStockBook.categoryColor,
           shelvesNo: activeStockBook.shelvesNo,
           publisherName: activeStockBook.publisherName,
