@@ -790,7 +790,6 @@
       uploadBlocker.classList.add('show');
       uploadBlocker.setAttribute('aria-hidden', 'false');
       setCsvUploadProgress(0, 'Preparing stickers', 'Building the A4 preview and generating barcodes. The print dialog will open automatically.');
-      printWindow.document.write('<!DOCTYPE html><html><head><title>Preparing Book Stickers</title><style>body{font:16px Arial,sans-serif;display:grid;place-items:center;min-height:90vh;color:#1f2937}</style></head><body>Preparing your sticker preview…</body></html>');
       setTimeout(() => {
       setCsvUploadProgress(10, 'Preparing stickers', `Preparing ${stickers.length} sticker(s) for the A4 sheet(s).`);
       const pageCount = Math.ceil(stickers.length / 18);
@@ -839,7 +838,7 @@
               .print-guidance { width: 21cm; padding: 3mm 4mm; background: #eff6ff; font-size: 3.7mm; line-height: 1.5; }
               .sticker-sheet { position: relative; width: 21cm; height: 29.7cm; padding: 0; margin: 0; overflow: hidden; background: #fff; break-inside: avoid; page-break-inside: avoid; }
               .sticker-sheet:not(:last-child) { break-after: page; page-break-after: always; }
-              .sticker { position: absolute; width: 6.3cm; height: 4.6cm; padding: 3mm; border: 0.3mm solid #000; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
+              .sticker { position: absolute; width: 6.3cm; height: 4.6cm; padding: 4mm 3.5mm 3mm; border: 0.3mm solid #000; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
               .sticker-empty { border: 0; }
               .sticker-title { display: -webkit-box; flex: 0 0 auto; width: 100%; max-height: 10.5mm; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; text-align: center; white-space: normal; overflow-wrap: anywhere; font-size: 3.1mm; line-height: 1.12; font-weight: 700; }
               .barcode { display: block; width: 100%; max-width: 5.3cm; height: 0.65cm; margin-top: 0.04cm; }
