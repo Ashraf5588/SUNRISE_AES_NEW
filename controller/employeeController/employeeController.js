@@ -24,8 +24,11 @@ const { classifyPunchesByMidTime } = require('../../utils/employeePunchClassific
 const {
     getAttendanceEventKey,
     getAttendanceLogicalKey,
+    getAttendanceRequestSource,
     getAttendanceSyncStatus,
+    getDeviceOnlineTimeoutMs,
     isValidDeviceSerial,
+    isAttendanceDeviceOnline,
     parseAttendanceRow
 } = require('../../utils/employeeAttendanceSync');
 const {
@@ -1829,26 +1832,80 @@ function ensureAttendanceEventKeyIndex() {
     return attendanceEventKeyIndexPromise;
 }
 
-async function markAttendanceDeviceCommunication(serialNumber, communicatedAt = new Date()) {
-    return EmployeeAttendanceDevice.findOneAndUpdate(
-        { serialNumber },
-        {
-            $set: { lastCommunicationAt: communicatedAt },
-            $setOnInsert: { name: `ZKTeco device ${serialNumber}` }
-        },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-}
-
-async function recordAttendanceDeviceCommunication(serialNumber, communicatedAt) {
+async function updateAttendanceDeviceRequest(serialNumber, requestDetails, setFields, increments = {}) {
     try {
-        await markAttendanceDeviceCommunication(serialNumber, communicatedAt);
+        const update = {
+            $set: setFields,
+            $setOnInsert: {
+                serialNumber,
+                name: `ZKTeco device ${serialNumber}`
+            }
+        };
+        if (Object.keys(increments).length) update.$inc = increments;
+
+        await EmployeeAttendanceDevice.updateOne(
+            { serialNumber },
+            update,
+            { upsert: true, setDefaultsOnInsert: false }
+        );
+        return true;
     } catch (error) {
-        console.error('Unable to update device communication status:', {
+        console.error('Device activity update failed:', {
             serialNumber,
+            requestType: requestDetails.requestType,
+            requestStatus: setFields.lastRequestStatus,
+            requestSource: requestDetails.requestSource,
+            remoteAddress: requestDetails.remoteAddress,
+            userAgent: requestDetails.userAgent,
             message: error.message
         });
+        return false;
     }
+}
+
+function getAttendanceDeviceRequestDetails(req, requestType) {
+    const userAgent = String(req.get('user-agent') || '').slice(0, 200);
+    return {
+        requestType,
+        requestSource: getAttendanceRequestSource(userAgent),
+        remoteAddress: String(req.ip || req.socket?.remoteAddress || '').slice(0, 100),
+        userAgent
+    };
+}
+
+async function startAttendanceDeviceRequest(serialNumber, req, requestType, receivedAt, isAttendanceRequest) {
+    const requestDetails = getAttendanceDeviceRequestDetails(req, requestType);
+    const setFields = {
+        lastActivity: receivedAt,
+        lastCommunicationAt: receivedAt,
+        lastRequestType: requestType,
+        lastRequestStatus: 'processing',
+        lastRequestSource: requestDetails.requestSource,
+        lastRequestUserAgent: requestDetails.userAgent,
+        lastRequestRemoteAddress: requestDetails.remoteAddress
+    };
+    if (isAttendanceRequest) setFields.lastAttendanceReceived = receivedAt;
+
+    const updated = await updateAttendanceDeviceRequest(serialNumber, requestDetails, setFields);
+    console.info('ADMS device request observed:', {
+        serialNumber,
+        requestTimestamp: receivedAt.toISOString(),
+        requestType,
+        requestSource: requestDetails.requestSource,
+        activityUpdateSucceeded: updated,
+        remoteAddress: requestDetails.remoteAddress,
+        userAgent: requestDetails.userAgent
+    });
+    return { requestDetails, activityUpdateSucceeded: updated };
+}
+
+async function finishAttendanceDeviceRequest(serialNumber, requestDetails, status, receivedRecords = 0, insertedRecords = 0) {
+    await updateAttendanceDeviceRequest(
+        serialNumber,
+        requestDetails,
+        { lastRequestStatus: status },
+        { totalReceivedRecords: receivedRecords, totalInsertedRecords: insertedRecords }
+    );
 }
 
 async function updateAttendanceSyncRun(serialNumber, receivedRecords, savedRecords, duplicateRecords, failedRecords, errors) {
@@ -1950,11 +2007,13 @@ exports.saveEmployeeAttendance = async (req, res) => {
     let savedRecords = 0;
     let duplicateRecords = 0;
     let failedRecords = 0;
+    let requestDetails = null;
+    let requestFinalized = false;
     const errors = [];
 
     try {
         const fields = req.body && typeof req.body === 'object' ? req.body : {};
-        serialNumber = String(req.query.SN || fields.SN || fields.sn || '').trim();
+        serialNumber = String(req.query.SN || '').trim();
         const table = String(req.query.table || fields.table || '').trim().toUpperCase();
         let payload = '';
 
@@ -1962,21 +2021,43 @@ exports.saveEmployeeAttendance = async (req, res) => {
         else if (Buffer.isBuffer(req.body)) payload = req.body.toString('utf8');
         else payload = String(fields.data || fields.attlog || fields.body || '');
 
-        if (table !== 'ATTLOG') {
-            if (isValidDeviceSerial(serialNumber)) {
-                await recordAttendanceDeviceCommunication(serialNumber, receivedAt);
-            }
-            return res.status(200).send('OK');
-        }
-
         if (!isValidDeviceSerial(serialNumber)) {
+            console.warn('ADMS attendance request missing a valid query-string serial number:', {
+                requestTimestamp: receivedAt.toISOString(),
+                requestType: table || 'UNKNOWN',
+                remoteAddress: String(req.ip || req.socket?.remoteAddress || ''),
+                userAgent: String(req.get('user-agent') || '').slice(0, 200)
+            });
             return res.status(400).type('text/plain').send('Invalid or missing device serial number');
         }
 
-        await recordAttendanceDeviceCommunication(serialNumber, receivedAt);
+        const requestType = table === 'ATTLOG'
+            ? 'POST_ATTLOG'
+            : `POST_${table.replace(/[^A-Z0-9_-]/g, '').slice(0, 40) || 'UNKNOWN'}`;
+        const request = await startAttendanceDeviceRequest(
+            serialNumber,
+            req,
+            requestType,
+            receivedAt,
+            table === 'ATTLOG'
+        );
+        requestDetails = request.requestDetails;
+
+        if (table !== 'ATTLOG') {
+            await finishAttendanceDeviceRequest(serialNumber, requestDetails, 'responded');
+            requestFinalized = true;
+            return res.status(200).send('OK');
+        }
 
         if (!payload.trim()) {
-            return res.status(400).type('text/plain').send('Empty attendance payload');
+            await finishAttendanceDeviceRequest(serialNumber, requestDetails, 'empty');
+            requestFinalized = true;
+            console.info('Empty ADMS ATTLOG request recorded:', {
+                serialNumber,
+                requestTimestamp: receivedAt.toISOString(),
+                requestSource: requestDetails.requestSource
+            });
+            return res.status(200).send('OK');
         }
 
         lines = payload.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
@@ -2023,6 +2104,16 @@ exports.saveEmployeeAttendance = async (req, res) => {
             );
         }
 
+        const requestStatus = failedRecords > 0 ? (savedRecords > 0 ? 'partial' : 'failed') : 'processed';
+        await finishAttendanceDeviceRequest(
+            serialNumber,
+            requestDetails,
+            requestStatus,
+            receivedRecords,
+            savedRecords
+        );
+        requestFinalized = true;
+
         console.info('Device attendance batch processed:', {
             serialNumber,
             requestTimestamp: receivedAt.toISOString(),
@@ -2030,6 +2121,8 @@ exports.saveEmployeeAttendance = async (req, res) => {
             savedRecordCount: savedRecords,
             duplicateRecordCount: duplicateRecords,
             failedRecordCount: failedRecords,
+            requestSource: requestDetails.requestSource,
+            requestStatus,
             errorDetails: errors.slice(0, 10)
         });
 
@@ -2046,20 +2139,45 @@ exports.saveEmployeeAttendance = async (req, res) => {
             savedRecordCount: savedRecords,
             duplicateRecordCount: duplicateRecords,
             failedRecordCount: failedRecords,
+            requestSource: requestDetails?.requestSource,
             errorDetails: errors.slice(0, 10),
             message: error.message
         });
+        if (requestDetails && !requestFinalized) {
+            await finishAttendanceDeviceRequest(
+                serialNumber,
+                requestDetails,
+                savedRecords > 0 ? 'partial' : 'failed',
+                receivedRecords,
+                savedRecords
+            );
+        }
         return res.status(500).type('text/plain').send('Unable to process attendance batch');
     }
 };
 
 function getAttendanceDeviceStatus(device, run, now = new Date()) {
-    const lastCommunicationAt = device.lastCommunicationAt || null;
+    const lastActivity = device.lastActivity || device.lastCommunicationAt || null;
+    const online = isAttendanceDeviceOnline(lastActivity, now, getDeviceOnlineTimeoutMs());
+    const requestSource = device.lastRequestSource || 'unverified';
     return {
         serialNumber: device.serialNumber,
         deviceName: device.name,
-        online: Boolean(lastCommunicationAt && now - new Date(lastCommunicationAt) <= 5 * 60_000),
-        lastCommunicationAt,
+        online,
+        connectionLabel: !online
+            ? 'Offline'
+            : requestSource === 'likely_simulated'
+                ? 'Online by activity timeout; likely test request, physical device unverified'
+                : 'Online by activity timeout; physical device unverified',
+        lastActivity,
+        lastCommunicationAt: lastActivity,
+        lastAttendanceReceived: device.lastAttendanceReceived || null,
+        totalReceivedRecords: device.totalReceivedRecords || 0,
+        totalInsertedRecords: device.totalInsertedRecords || 0,
+        lastRequestType: device.lastRequestType || '',
+        lastRequestStatus: device.lastRequestStatus || '',
+        lastRequestSource: requestSource,
+        lastRequestUserAgent: device.lastRequestUserAgent || '',
         lastSuccessfulBatchAt: device.lastSuccessfulBatchAt || null,
         lastSuccessfulSynchronization: null,
         historicalSyncCompletionConfirmed: false,
@@ -2119,13 +2237,18 @@ exports.getEmployeeAttendanceDeviceSync = async (req, res) => {
 };
 
 exports.getEmployeeAttendanceDeviceOptions = async (req, res) => {
+    const receivedAt = new Date();
     const serialNumber = String(req.query.SN || '').trim();
     if (!isValidDeviceSerial(serialNumber)) {
+        console.warn('ADMS options request missing a valid query-string serial number:', {
+            requestTimestamp: receivedAt.toISOString(),
+            remoteAddress: String(req.ip || req.socket?.remoteAddress || ''),
+            userAgent: String(req.get('user-agent') || '').slice(0, 200)
+        });
         return res.status(400).type('text/plain').send('Invalid or missing device serial number');
     }
 
     try {
-        await recordAttendanceDeviceCommunication(serialNumber, new Date());
         const options = [
             `GET OPTION FROM: ${serialNumber}`,
             'Stamp=9999',
@@ -2140,6 +2263,19 @@ exports.getEmployeeAttendanceDeviceOptions = async (req, res) => {
             'Encrypt=0',
             'ATTLOGStamp=9999'
         ].join('\r\n');
+        const { requestDetails } = await startAttendanceDeviceRequest(
+            serialNumber,
+            req,
+            'GET_OPTIONS',
+            receivedAt,
+            false
+        );
+        await finishAttendanceDeviceRequest(serialNumber, requestDetails, 'responded');
+        console.info('ADMS device options response prepared:', {
+            serialNumber,
+            requestTimestamp: receivedAt.toISOString(),
+            requestSource: requestDetails.requestSource
+        });
         return res.type('text/plain').send(`${options}\r\n`);
     } catch (error) {
         console.error('Unable to respond to ZKTeco device options request:', {
@@ -2367,11 +2503,60 @@ console.log('Mongo query through:', through.toISOString());
 }
 
 /** Display the daily employee report with optional date filtering. */
+async function registerDevicesFromLegacyAttendance() {
+    const serialNumbers = await employeeAttendance.distinct('sn', {
+        source: 'Device',
+        sn: { $type: 'string', $nin: ['', 'MANUAL', 'CSV_IMPORT'] }
+    });
+
+    for (const serialNumber of serialNumbers) {
+        if (!isValidDeviceSerial(serialNumber)) continue;
+        const alreadyRegistered = await EmployeeAttendanceDevice.exists({ serialNumber });
+        if (alreadyRegistered) continue;
+
+        const storedPunchCount = await employeeAttendance.countDocuments({
+            sn: serialNumber,
+            source: 'Device'
+        });
+        try {
+            const result = await EmployeeAttendanceDevice.updateOne(
+                { serialNumber },
+                {
+                    $setOnInsert: {
+                        serialNumber,
+                        name: `ZKTeco device ${serialNumber}`,
+                        totalReceivedRecords: storedPunchCount,
+                        totalInsertedRecords: storedPunchCount,
+                        lastRequestType: 'LEGACY_ATTENDANCE_RECORDS',
+                        lastRequestStatus: 'historical records found; current activity not observed',
+                        lastRequestSource: 'unverified'
+                    }
+                },
+                { upsert: true, setDefaultsOnInsert: false }
+            );
+            if (result.upsertedCount) {
+                console.info('Registered device from existing attendance records; current activity is unknown:', {
+                    serialNumber,
+                    storedPunchCount
+                });
+            }
+        } catch (error) {
+            if (error.code !== 11000) {
+                console.error('Unable to register device from existing attendance records:', {
+                    serialNumber,
+                    message: error.message
+                });
+            }
+        }
+    }
+}
+
 exports.getEmployeeAttendance = async (req, res) => {
     try {
+        await registerDevicesFromLegacyAttendance();
         const [report, devices] = await Promise.all([
             buildEmployeeAttendanceReport(req.query),
-            EmployeeAttendanceDevice.find().sort({ lastCommunicationAt: -1 }).limit(50).lean()
+            EmployeeAttendanceDevice.find().sort({ lastActivity: -1, lastCommunicationAt: -1 }).limit(50).lean()
         ]);
         const latestRunIds = devices.map(device => device.latestSyncRunId).filter(Boolean);
         const latestRuns = latestRunIds.length

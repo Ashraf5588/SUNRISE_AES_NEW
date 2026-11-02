@@ -91,10 +91,11 @@
 							<div>
 								<p class="device-title"><%= device.deviceName %></p>
 								<div class="device-sn">SN: <%= device.serialNumber %></div>
-								<span class="device-status <%= device.online ? 'device-online' : 'device-offline' %>" data-role="connection"><%= device.online ? 'Recently communicating' : 'No recent communication / offline' %></span>
+								<span class="device-status <%= device.online ? 'device-online' : 'device-offline' %>" data-role="connection"><%= device.connectionLabel %></span>
 							</div>
-							<div class="device-meta">Last communication<br><strong data-role="last-communication"><%= device.lastCommunicationAt ? new Date(device.lastCommunicationAt).toLocaleString() : 'Not recorded' %></strong></div>
+							<div class="device-meta">Last activity<br><strong data-role="last-communication"><%= device.lastActivity ? new Date(device.lastActivity).toLocaleString() : device.lastCommunicationAt ? new Date(device.lastCommunicationAt).toLocaleString() : 'Not recorded' %></strong><br>Last attendance <span data-role="last-attendance"><%= device.lastAttendanceReceived ? new Date(device.lastAttendanceReceived).toLocaleString() : 'None received' %></span></div>
 							<div class="device-meta">Last successfully processed batch<br><strong data-role="last-batch"><%= device.lastSuccessfulBatchAt ? new Date(device.lastSuccessfulBatchAt).toLocaleString() : 'None recorded' %></strong></div>
+							<div class="device-meta">Request<br><strong data-role="request-type"><%= device.lastRequestType || 'None' %></strong> · <span data-role="request-status"><%= device.lastRequestStatus || 'No request status' %></span><br>Source: <span data-role="request-source"><%= device.lastRequestSource.replace(/_/g, ' ') %></span><br>Records received / inserted: <span data-role="device-totals"><%= device.totalReceivedRecords %> / <%= device.totalInsertedRecords %></span></div>
 							<div class="device-meta">Last successful synchronization<br><strong>Not verifiable from ADMS</strong></div>
 							<div class="sync-result" data-role="result" aria-live="polite">
 								<% if (device.run) { %>
@@ -207,12 +208,15 @@
 		function updateSyncCard(card, data) {
 			const run = data.run;
 			if (!run) return;
-			card.querySelector('[data-role="connection"]').textContent = data.online
-				? 'Recently communicating'
-				: 'No recent communication / offline';
+			card.querySelector('[data-role="connection"]').textContent = data.connectionLabel;
 			card.querySelector('[data-role="connection"]').className = `device-status ${data.online ? 'device-online' : 'device-offline'}`;
 			card.querySelector('[data-role="last-communication"]').textContent = formatSyncDate(data.lastCommunicationAt);
+			card.querySelector('[data-role="last-attendance"]').textContent = formatSyncDate(data.lastAttendanceReceived);
 			card.querySelector('[data-role="last-batch"]').textContent = formatSyncDate(data.lastSuccessfulBatchAt);
+			card.querySelector('[data-role="request-type"]').textContent = data.lastRequestType || 'None';
+			card.querySelector('[data-role="request-status"]').textContent = data.lastRequestStatus || 'No request status';
+			card.querySelector('[data-role="request-source"]').textContent = String(data.lastRequestSource || 'unverified').replace(/_/g, ' ');
+			card.querySelector('[data-role="device-totals"]').textContent = `${data.totalReceivedRecords || 0} / ${data.totalInsertedRecords || 0}`;
 			card.querySelector('[data-role="status"]').textContent = syncStatusLabels[run.status] || run.status;
 			for (const [field, key] of [['received', 'receivedRecords'], ['saved', 'savedRecords'], ['duplicates', 'duplicateRecords'], ['failed', 'failedRecords']]) {
 				const target = card.querySelector(`[data-role="${field}"]`);

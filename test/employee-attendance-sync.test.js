@@ -3,8 +3,11 @@ const test = require('node:test');
 const {
     getAttendanceEventKey,
     getAttendanceLogicalKey,
+    getAttendanceRequestSource,
     getAttendanceSyncStatus,
+    getDeviceOnlineTimeoutMs,
     isValidDeviceSerial,
+    isAttendanceDeviceOnline,
     parseAttendanceRow
 } = require('../utils/employeeAttendanceSync');
 
@@ -49,4 +52,20 @@ test('reports observation progress without implying an unconfirmed replay comple
     assert.equal(getAttendanceSyncStatus({ ...run, receivedRecords: 1, savedRecords: 1, lastReceivedAt: now }, now), 'receiving');
     assert.equal(getAttendanceSyncStatus({ ...run, requestedAt: new Date(now - 11 * 60_000) }, now), 'no_data');
     assert.equal(getAttendanceSyncStatus({ ...run, failedRecords: 1 }, now), 'failed');
+});
+
+test('marks command-line requests as simulated or unknown without asserting device identity', () => {
+    assert.equal(getAttendanceRequestSource('curl/8.1.0'), 'likely_simulated');
+    assert.equal(getAttendanceRequestSource('ZKTeco'), 'unverified');
+    assert.equal(getAttendanceRequestSource(''), 'unverified');
+});
+
+test('calculates device online status using a configurable timeout', () => {
+    const now = new Date('2026-11-02T10:00:00Z');
+
+    assert.equal(getDeviceOnlineTimeoutMs('60000'), 60_000);
+    assert.equal(getDeviceOnlineTimeoutMs('invalid'), 5 * 60_000);
+    assert.equal(isAttendanceDeviceOnline(new Date(now - 30_000), now, 60_000), true);
+    assert.equal(isAttendanceDeviceOnline(new Date(now - 61_000), now, 60_000), false);
+    assert.equal(isAttendanceDeviceOnline(null, now, 60_000), false);
 });

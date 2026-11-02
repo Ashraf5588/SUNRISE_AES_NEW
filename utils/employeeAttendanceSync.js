@@ -2,6 +2,23 @@ const crypto = require('crypto');
 
 const isValidDeviceSerial = value => /^[A-Za-z0-9._-]{1,64}$/.test(String(value || '').trim());
 
+function getAttendanceRequestSource(userAgent) {
+    return /(?:curl|postman|insomnia|powershell|python-requests|node-fetch|axios)/i.test(String(userAgent || ''))
+        ? 'likely_simulated'
+        : 'unverified';
+}
+
+function getDeviceOnlineTimeoutMs(value = process.env.EMPLOYEE_DEVICE_ONLINE_TIMEOUT_MS) {
+    const timeoutMs = Number(value);
+    return Number.isSafeInteger(timeoutMs) && timeoutMs > 0 ? timeoutMs : 5 * 60_000;
+}
+
+function isAttendanceDeviceOnline(lastActivity, now = new Date(), timeoutMs = getDeviceOnlineTimeoutMs()) {
+    if (!lastActivity) return false;
+    const activityTime = new Date(lastActivity).getTime();
+    return Number.isFinite(activityTime) && now.getTime() - activityTime <= timeoutMs;
+}
+
 function parseAttendanceRow(line, serialNumber) {
     const trimmedLine = String(line || '').trim();
     if (!trimmedLine || !isValidDeviceSerial(serialNumber)) return null;
@@ -85,7 +102,10 @@ function getAttendanceSyncStatus(run, now = new Date()) {
 module.exports = {
     getAttendanceEventKey,
     getAttendanceLogicalKey,
+    getAttendanceRequestSource,
     getAttendanceSyncStatus,
+    getDeviceOnlineTimeoutMs,
+    isAttendanceDeviceOnline,
     isValidDeviceSerial,
     parseAttendanceRow
 };

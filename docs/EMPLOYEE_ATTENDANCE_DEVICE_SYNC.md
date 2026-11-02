@@ -18,8 +18,10 @@ The receiver returns a non-success HTTP response when a batch is invalid or coul
 
 ## Device status and record handling
 
-- A serial number is registered when the terminal communicates with the cdata endpoint; its display name defaults to `ZKTeco device <serial>`.
-- "Recently communicating" means a cdata request was seen within the preceding five minutes; it is an observed server-side indicator, not a live network probe.
+- A serial number from the `SN` query parameter is upserted when GET or POST cdata requests arrive; its display name defaults to `ZKTeco device <serial>`.
+- Online/offline is calculated from `lastActivity` and `EMPLOYEE_DEVICE_ONLINE_TIMEOUT_MS` (five minutes by default). This is only recent HTTP activity, not a live probe or proof that the physical terminal originated the request.
+- Requests whose User-Agent resembles curl, Postman, PowerShell, Python requests, or common Node clients are marked `likely_simulated`; other requests are `unverified`. User-Agent cannot prove a request came from the physical terminal.
+- Device metadata records last activity, attendance receipt time, total non-empty records received, records inserted, request type, request result, source classification, User-Agent, and remote address. Empty ATTLOG requests update activity and receipt metadata but add zero to record totals.
 - A record identity uses the device serial, PIN, punch time, status, and verification mode. A sparse unique event-key index protects new records, and logical matching avoids duplicating older records that predate the key.
 - Unknown PINs are retained as attendance records, preserving the existing employee-code mapping behavior. Dates are not restricted to the current day.
 - Invalid rows and database write failures are counted and logged without logging employee PINs or names. A batch that is not fully processed is not acknowledged as successful.
