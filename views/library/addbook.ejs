@@ -794,7 +794,7 @@
         const stickerMarkup = Array.from({ length: 18 }, (_, position) => {
           const row = Math.floor(position / 3);
           const column = position % 3;
-          const left = (7 + column * 65) / 10;
+          const left = (8 + column * 65) / 10;
           const top = (8 + row * 46) / 10;
           const sticker = pageStickers[position];
           if (!sticker) {
@@ -833,10 +833,10 @@
               .print-guidance { width: 21cm; padding: 3mm 4mm; background: #eff6ff; font-size: 3.7mm; line-height: 1.5; }
               .sticker-sheet { position: relative; width: 21cm; height: 29.7cm; padding: 0; margin: 0; overflow: hidden; background: #fff; break-inside: avoid; page-break-inside: avoid; }
               .sticker-sheet:not(:last-child) { break-after: page; page-break-after: always; }
-              .sticker { position: absolute; width: 6.3cm; height: 4.6cm; padding: 0.12cm; border: 0.3mm solid #000; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
+              .sticker { position: absolute; width: 6.3cm; height: 4.6cm; padding: 2.5mm; border: 0.3mm solid #000; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
               .sticker-empty { border: 0; }
               .sticker-title { width: 100%; overflow: hidden; text-align: center; white-space: nowrap; text-overflow: ellipsis; font-size: 3.4mm; line-height: 1.1; font-weight: 700; }
-              .barcode { display: block; width: 5.7cm; height: 0.65cm; margin-top: 0.04cm; }
+              .barcode { display: block; width: 100%; max-width: 5.3cm; height: 0.65cm; margin-top: 0.04cm; }
               .sticker-code { width: 100%; overflow: hidden; text-align: center; white-space: nowrap; text-overflow: ellipsis; font-size: 2.7mm; line-height: 1.1; font-weight: 800; }
               .sticker-details { display: flex; flex: 1; flex-direction: column; justify-content: space-evenly; width: 100%; min-height: 0; margin-top: 0.04cm; overflow: hidden; font-size: 2.2mm; line-height: 1.05; text-align: left; overflow-wrap: anywhere; }
               .sticker-details span { display: block; width: 100%; }
