@@ -53,6 +53,19 @@
 		.page-controls button { min-height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 5px; background: #fff; color: var(--ink); cursor: pointer; }
 		.page-controls button:disabled { opacity: .45; cursor: not-allowed; }
 		.empty-state { padding: 30px; color: var(--muted); text-align: center; }
+		.sync-panel { margin-bottom: 18px; padding: 18px; }
+		.sync-intro { max-width: 900px; margin: 8px 0 16px; color: var(--muted); font-size: .86rem; line-height: 1.55; }
+		.device-list { display: grid; gap: 12px; }
+		.device-card { display: grid; grid-template-columns: minmax(180px, 1fr) repeat(3, minmax(130px, .7fr)) minmax(220px, 1.1fr) auto; align-items: center; gap: 14px; padding: 14px; border: 1px solid var(--line); border-radius: 6px; }
+		.device-title { margin: 0 0 4px; font-weight: 800; }
+		.device-sn, .device-meta { color: var(--muted); font-size: .78rem; overflow-wrap: anywhere; }
+		.device-status { display: inline-block; margin-top: 5px; font-size: .75rem; font-weight: 800; }
+		.device-online { color: var(--green-dark); }
+		.device-offline { color: var(--red); }
+		.sync-result { color: var(--muted); font-size: .78rem; line-height: 1.5; }
+		.sync-result strong { color: var(--ink); }
+		.sync-note { margin: 0 0 12px; padding: 10px 12px; border: 1px solid #ead8a8; border-radius: 5px; background: #fff9e8; color: #705814; font-size: .82rem; line-height: 1.5; }
+		@media (max-width: 1000px) { .device-card { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 		@media (max-width: 700px) { .page-shell { width: calc(100% - 24px); padding-top: 22px; } .page-header { align-items: flex-start; flex-direction: column; } .toolbar { align-items: stretch; } .filter { justify-content: space-between; width: 100%; } .filter input { flex: 1; } .table-heading { align-items: flex-start; flex-direction: column; } .pagination { align-items: flex-start; flex-direction: column; } }
 	</style>
 </head>
@@ -67,6 +80,39 @@
 			</div>
 			<% if (deviceSN) { %><span class="count">Device SN: <%= deviceSN %></span><% } %>
 		</header>
+		<section class="panel sync-panel" aria-labelledby="deviceSyncHeading">
+			<h2 id="deviceSyncHeading">Device attendance synchronization</h2>
+			<p class="sync-intro">The attendance server receives ADMS punches sent by a device. Starting a manual sync here opens a 10-minute monitoring window; it does not send an unverified command to request historic logs. Counts below are based on records actually processed by the server.</p>
+			<p class="sync-note">Historical replay cannot be confirmed for this device from its serial number alone. Use the export or retransmission procedure documented for the exact ZKTeco model and firmware; if the device exports CSV, use the attendance CSV import below. Do not clear device records until exported or received records are checked.</p>
+			<% if (attendanceDevices.length) { %>
+				<div class="device-list">
+					<% attendanceDevices.forEach(device => { %>
+						<article class="device-card" data-serial="<%= device.serialNumber %>">
+							<div>
+								<p class="device-title"><%= device.deviceName %></p>
+								<div class="device-sn">SN: <%= device.serialNumber %></div>
+								<span class="device-status <%= device.online ? 'device-online' : 'device-offline' %>" data-role="connection"><%= device.online ? 'Recently communicating' : 'No recent communication / offline' %></span>
+							</div>
+							<div class="device-meta">Last communication<br><strong data-role="last-communication"><%= device.lastCommunicationAt ? new Date(device.lastCommunicationAt).toLocaleString() : 'Not recorded' %></strong></div>
+							<div class="device-meta">Last successfully processed batch<br><strong data-role="last-batch"><%= device.lastSuccessfulBatchAt ? new Date(device.lastSuccessfulBatchAt).toLocaleString() : 'None recorded' %></strong></div>
+							<div class="device-meta">Last successful synchronization<br><strong>Not verifiable from ADMS</strong></div>
+							<div class="sync-result" data-role="result" aria-live="polite">
+								<% if (device.run) { %>
+									Status: <strong data-role="status"><%= device.run.status.replace(/_/g, ' ') %></strong><br>
+									Received <span data-role="received"><%= device.run.receivedRecords %></span> · Saved <span data-role="saved"><%= device.run.savedRecords %></span> · Duplicates <span data-role="duplicates"><%= device.run.duplicateRecords %></span> · Failed <span data-role="failed"><%= device.run.failedRecords %></span>
+								<% } else { %>
+									Status: <strong data-role="status">No manual monitoring session</strong><br>
+									Received 0 · Saved 0 · Duplicates 0 · Failed 0
+								<% } %>
+							</div>
+							<button class="button button-primary sync-device-button" type="button">Sync Device Attendance</button>
+						</article>
+					<% }) %>
+				</div>
+			<% } else { %>
+				<div class="empty-state">No device has contacted the attendance server yet. Its serial number will appear here after it connects to the configured ADMS endpoint.</div>
+			<% } %>
+		</section>
 		<section class="panel" aria-label="Attendance report">
 			<form class="toolbar" method="get" action="/employeeattendance">
 				<div class="filter"><label for="startDateBs">From (BS)</label><input id="startDateBs" class="nepali-date-input" name="startDateBs" type="text" inputmode="numeric" autocomplete="off" placeholder="YYYY-MM-DD" value="<%= startDateBs %>" required></div>
@@ -126,6 +172,82 @@
 	</main>
 	<script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
 	<script>
+		const syncStatusLabels = {
+			waiting: 'Waiting for device data',
+			receiving: 'Receiving and processing records',
+			records_received: 'Records received; replay completion is unknown',
+			no_data: 'No data observed during monitoring',
+			partial: 'Partial processing; some records failed',
+			failed: 'Processing failed'
+		};
+		const formatSyncDate = value => value ? new Date(value).toLocaleString() : 'Not recorded';
+		document.querySelectorAll('.sync-device-button').forEach(button => button.addEventListener('click', async () => {
+			const card = button.closest('.device-card');
+			const serialNumber = card.dataset.serial;
+			const status = card.querySelector('[data-role="status"]');
+			button.disabled = true;
+			status.textContent = 'Starting monitor…';
+
+			try {
+				const response = await fetch('/employeeattendance/device-sync', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ serialNumber })
+				});
+				const data = await response.json();
+				if (!response.ok) throw new Error(data.message || 'Unable to start attendance monitoring.');
+				updateSyncCard(card, data);
+				if (data.run) monitorSync(card, data.run.id);
+			} catch (error) {
+				status.textContent = error.message;
+				button.disabled = false;
+			}
+		}));
+
+		function updateSyncCard(card, data) {
+			const run = data.run;
+			if (!run) return;
+			card.querySelector('[data-role="connection"]').textContent = data.online
+				? 'Recently communicating'
+				: 'No recent communication / offline';
+			card.querySelector('[data-role="connection"]').className = `device-status ${data.online ? 'device-online' : 'device-offline'}`;
+			card.querySelector('[data-role="last-communication"]').textContent = formatSyncDate(data.lastCommunicationAt);
+			card.querySelector('[data-role="last-batch"]').textContent = formatSyncDate(data.lastSuccessfulBatchAt);
+			card.querySelector('[data-role="status"]').textContent = syncStatusLabels[run.status] || run.status;
+			for (const [field, key] of [['received', 'receivedRecords'], ['saved', 'savedRecords'], ['duplicates', 'duplicateRecords'], ['failed', 'failedRecords']]) {
+				const target = card.querySelector(`[data-role="${field}"]`);
+				if (target) target.textContent = run[key];
+			}
+			const result = card.querySelector('[data-role="result"]');
+			if (run.errorDetails && run.errorDetails.length) {
+				result.title = run.errorDetails.join('\n');
+			} else {
+				result.removeAttribute('title');
+			}
+		}
+
+		function monitorSync(card, runId) {
+			const button = card.querySelector('.sync-device-button');
+			let pollCount = 0;
+			const timer = setInterval(async () => {
+				pollCount += 1;
+				try {
+					const response = await fetch(`/employeeattendance/device-sync/${encodeURIComponent(runId)}`);
+					const data = await response.json();
+					if (!response.ok) throw new Error(data.message || 'Unable to read sync status.');
+					updateSyncCard(card, data);
+					if (!['waiting', 'receiving'].includes(data.run.status) || pollCount >= 120) {
+						clearInterval(timer);
+						button.disabled = false;
+					}
+				} catch (error) {
+					clearInterval(timer);
+					card.querySelector('[data-role="status"]').textContent = error.message;
+					button.disabled = false;
+				}
+			}, 5000);
+		}
+
 		document.querySelectorAll('.nepali-date-input').forEach(input => {
 			if (typeof input.NepaliDatePicker === 'function') {
 				input.NepaliDatePicker({ dateFormat: 'YYYY-MM-DD', language: 'english' });

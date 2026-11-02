@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const EmployeeAttendanceSchema = new mongoose.Schema({
   sn:         { type: String, required: true },
   pin:        { type: String, required: true },
+  eventKey:   { type: String },
   name:       { type: String },
   punchTime:  { type: Date, required: true },
   source:     { type: String, enum: ['Device', 'Manual'], default: 'Device' },
@@ -23,4 +24,5 @@ const EmployeeAttendanceSchema = new mongoose.Schema({
   isHoliday: { type: Boolean, default: false },
   holidayName: { type: String, trim: true, default: '' },
 });   
+EmployeeAttendanceSchema.index({ eventKey: 1 }, { unique: true, sparse: true });
 module.exports = mongoose.models.EmployeeAttendance || mongoose.model('EmployeeAttendance', EmployeeAttendanceSchema);

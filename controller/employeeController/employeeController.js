@@ -21,6 +21,17 @@ const ManualPunchRequest = require('../../model/employeeSchema/manualPunchReques
 const { Branch, Department, DepartmentSection, Designation, Shift } = require('../../model/employeeSchema/employeeSetupSchema');
 const EmployeeWeekend = require('../../model/employeeSchema/employeeWeekendSchema');
 const { classifyPunchesByMidTime } = require('../../utils/employeePunchClassification');
+const {
+    getAttendanceEventKey,
+    getAttendanceLogicalKey,
+    getAttendanceSyncStatus,
+    isValidDeviceSerial,
+    parseAttendanceRow
+} = require('../../utils/employeeAttendanceSync');
+const {
+    EmployeeAttendanceDevice,
+    EmployeeAttendanceSyncRun
+} = require('../../model/employeeSchema/employeeAttendanceDeviceSchema');
 const Staff = mongoose.models.staff || mongoose.model('staff', staffSchema, 'staff');
 const LeaveApplication = mongoose.models.LeaveApplication || mongoose.model('LeaveApplication', leaveApplicationSchema, 'leaveApplications');
 const employeeSetupConfigs = {
@@ -1803,238 +1814,339 @@ exports.updateEmployeeDetails = async (req, res) => {
     }
 };
 
-/**
- * Parse one attendance timestamp safely.
- */
-function parsePunchTime(value) {
-    if (!value) return null;
+let attendanceEventKeyIndexPromise;
 
-    const date = new Date(String(value).trim());
-
-    return Number.isNaN(date.getTime()) ? null : date;
+function ensureAttendanceEventKeyIndex() {
+    if (!attendanceEventKeyIndexPromise) {
+        attendanceEventKeyIndexPromise = employeeAttendance.collection.createIndex(
+            { eventKey: 1 },
+            { unique: true, sparse: true }
+        ).catch(error => {
+            attendanceEventKeyIndexPromise = null;
+            throw error;
+        });
+    }
+    return attendanceEventKeyIndexPromise;
 }
 
-/**
- * Parse an attendance row.
- *
- * Standard tab format:
- * PIN    YYYY-MM-DD HH:mm:ss    STATUS    VERIFY_MODE
- *
- * Legacy CSV format:
- * PIN,NAME,YYYY-MM-DD HH:mm:ss,VERIFY_MODE,STATUS
- */
-function parseAttendanceRow(line, serialNumber) {
-    const trimmedLine = String(line || '').trim();
-
-    if (!trimmedLine) return null;
-
-    // Support tab-separated or comma-separated records.
-    const delimiter = trimmedLine.includes('\t') ? '\t' : ',';
-    const values = trimmedLine.split(delimiter).map(value => value.trim());
-
-    if (values.length < 2 || !values[0]) {
-        return null;
-    }
-
-    let pin;
-    let name;
-    let timestamp;
-    let status;
-    let verifyMode;
-
-    // Standard ZKTeco tab-separated format.
-    if (/^\d{4}-\d{2}-\d{2}[ T]/.test(values[1])) {
-        pin = values[0];
-        timestamp = values[1];
-        status = values[2];
-        verifyMode = values[3];
-    }
-
-    // Legacy CSV: PIN,NAME,TIMESTAMP,VERIFY_MODE,STATUS.
-    else if (values.length >= 3 &&
-             /^\d{4}-\d{2}-\d{2}[ T]/.test(values[2])) {
-        pin = values[0];
-        name = values[1];
-        timestamp = values[2];
-        verifyMode = values[3];
-        status = values[4];
-    }
-
-    else {
-        return null;
-    }
-
-    const punchTime = parsePunchTime(timestamp);
-
-    if (!pin || !punchTime) {
-        return null;
-    }
-
-    const document = {
-        sn: serialNumber,
-        pin,
-        punchTime
-    };
-
-    if (name) document.name = name;
-
-    if (status !== undefined && status !== '') {
-        const parsedStatus = Number.parseInt(status, 10);
-
-        if (Number.isInteger(parsedStatus)) {
-            document.status = parsedStatus;
-        }
-    }
-
-    if (verifyMode !== undefined && verifyMode !== '') {
-        const parsedVerifyMode = Number.parseInt(verifyMode, 10);
-
-        if (Number.isInteger(parsedVerifyMode)) {
-            document.verifyMode = parsedVerifyMode;
-        }
-    }
-
-    return document;
+async function markAttendanceDeviceCommunication(serialNumber, communicatedAt = new Date()) {
+    return EmployeeAttendanceDevice.findOneAndUpdate(
+        { serialNumber },
+        {
+            $set: { lastCommunicationAt: communicatedAt },
+            $setOnInsert: { name: `ZKTeco device ${serialNumber}` }
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 }
 
-/**
- * Receive attendance data from a ZKTeco device or test client.
- *
- * Route example:
- * router.post('/iclock/cdata', controller.saveEmployeeAttendance);
- */
-exports.saveEmployeeAttendance = async (req, res) => {
+async function recordAttendanceDeviceCommunication(serialNumber, communicatedAt) {
     try {
-        const fields =
-            req.body && typeof req.body === 'object'
-                ? req.body
-                : {};
+        await markAttendanceDeviceCommunication(serialNumber, communicatedAt);
+    } catch (error) {
+        console.error('Unable to update device communication status:', {
+            serialNumber,
+            message: error.message
+        });
+    }
+}
 
-        const serialNumber = String(
-            req.query.SN ||
-            fields.SN ||
-            fields.sn ||
-            ''
-        ).trim();
+async function updateAttendanceSyncRun(serialNumber, receivedRecords, savedRecords, duplicateRecords, failedRecords, errors) {
+    const since = new Date(Date.now() - 10 * 60_000);
+    const run = await EmployeeAttendanceSyncRun.findOne({
+        serialNumber,
+        requestedAt: { $gte: since }
+    }).sort({ requestedAt: -1 });
+    if (!run) return;
 
-        const table = String(
-            req.query.table ||
-            fields.table ||
-            ''
-        ).trim().toUpperCase();
+    run.receivedRecords += receivedRecords;
+    run.savedRecords += savedRecords;
+    run.duplicateRecords += duplicateRecords;
+    run.failedRecords += failedRecords;
+    run.lastReceivedAt = new Date();
+    run.lastErrorDetails = errors.slice(0, 10);
+    await run.save();
+}
 
-        // Express text middleware normally makes req.body a string.
+async function processDeviceAttendanceRows(docs) {
+    let savedRecords = 0;
+    let duplicateRecords = 0;
+    let failedRecords = 0;
+    const errors = [];
+    const eventKeys = new Set();
+    const uniqueDocs = [];
+
+    await ensureAttendanceEventKeyIndex();
+
+    docs.forEach((doc, index) => {
+        const eventKey = getAttendanceEventKey(doc);
+        if (eventKeys.has(eventKey)) {
+            duplicateRecords += 1;
+            return;
+        }
+        eventKeys.add(eventKey);
+        uniqueDocs.push({ ...doc, eventKey, source: 'Device', sourceLine: index + 1 });
+    });
+
+    if (!uniqueDocs.length) return { savedRecords, duplicateRecords, failedRecords, errors };
+
+    const pins = [...new Set(uniqueDocs.map(doc => doc.pin))];
+    const punchTimes = [...new Map(uniqueDocs.map(doc => [new Date(doc.punchTime).toISOString(), doc.punchTime])).values()];
+    const legacyRecords = await employeeAttendance.find({
+        sn: uniqueDocs[0].sn,
+        pin: { $in: pins },
+        punchTime: { $in: punchTimes },
+        source: { $ne: 'Manual' }
+    }).select('sn pin punchTime status verifyMode').lean();
+    const existingLogicalKeys = new Set(legacyRecords.map(getAttendanceLogicalKey));
+
+    const pendingDocs = uniqueDocs.filter(doc => {
+        const logicalKey = getAttendanceLogicalKey(doc);
+        if (existingLogicalKeys.has(logicalKey)) {
+            duplicateRecords += 1;
+            return false;
+        }
+        existingLogicalKeys.add(logicalKey);
+        return true;
+    });
+
+    for (let offset = 0; offset < pendingDocs.length; offset += 10) {
+        const chunk = pendingDocs.slice(offset, offset + 10);
+        await Promise.all(chunk.map(async doc => {
+            const { sourceLine, ...attendanceRecord } = doc;
+            try {
+                const result = await employeeAttendance.updateOne(
+                    { eventKey: attendanceRecord.eventKey },
+                    { $setOnInsert: attendanceRecord },
+                    { upsert: true }
+                );
+                if (result.upsertedCount) savedRecords += 1;
+                else duplicateRecords += 1;
+            } catch (error) {
+                if (error.code === 11000) {
+                    duplicateRecords += 1;
+                    return;
+                }
+                failedRecords += 1;
+                errors.push(`Line ${sourceLine}: attendance could not be saved.`);
+                console.error('Device attendance record persistence failed:', {
+                    serialNumber: attendanceRecord.sn,
+                    line: sourceLine,
+                    errorCode: error.code,
+                    message: error.message
+                });
+            }
+        }));
+    }
+
+    return { savedRecords, duplicateRecords, failedRecords, errors };
+}
+
+exports.saveEmployeeAttendance = async (req, res) => {
+    const receivedAt = new Date();
+    let serialNumber = '';
+    let lines = [];
+    let receivedRecords = 0;
+    let savedRecords = 0;
+    let duplicateRecords = 0;
+    let failedRecords = 0;
+    const errors = [];
+
+    try {
+        const fields = req.body && typeof req.body === 'object' ? req.body : {};
+        serialNumber = String(req.query.SN || fields.SN || fields.sn || '').trim();
+        const table = String(req.query.table || fields.table || '').trim().toUpperCase();
         let payload = '';
 
-        if (typeof req.body === 'string') {
-            payload = req.body;
-        } else if (Buffer.isBuffer(req.body)) {
-            payload = req.body.toString('utf8');
-        } else {
-            payload = String(
-                fields.data ||
-                fields.attlog ||
-                fields.body ||
-                ''
-            );
-        }
+        if (typeof req.body === 'string') payload = req.body;
+        else if (Buffer.isBuffer(req.body)) payload = req.body.toString('utf8');
+        else payload = String(fields.data || fields.attlog || fields.body || '');
 
-        // Device configuration and other protocol requests
-        // should be handled by the appropriate route/controller.
         if (table !== 'ATTLOG') {
+            if (isValidDeviceSerial(serialNumber)) {
+                await recordAttendanceDeviceCommunication(serialNumber, receivedAt);
+            }
             return res.status(200).send('OK');
         }
 
-        if (!serialNumber) {
-            return res.status(400).send(
-                'Missing device serial number'
-            );
+        if (!isValidDeviceSerial(serialNumber)) {
+            return res.status(400).type('text/plain').send('Invalid or missing device serial number');
         }
+
+        await recordAttendanceDeviceCommunication(serialNumber, receivedAt);
 
         if (!payload.trim()) {
-            return res.status(400).send(
-                'Empty attendance payload'
-            );
+            return res.status(400).type('text/plain').send('Empty attendance payload');
         }
 
-        const lines = payload
-            .split(/\r?\n/)
-            .map(line => line.trim())
-            .filter(Boolean);
+        lines = payload.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+        receivedRecords = lines.length;
+        const docs = [];
+        lines.forEach((line, index) => {
+            const record = parseAttendanceRow(line, serialNumber);
+            if (record) docs.push(record);
+            else {
+                failedRecords += 1;
+                if (errors.length < 10) errors.push(`Line ${index + 1}: invalid ATTLOG data.`);
+            }
+        });
 
-        const parsedRows = lines.map(line =>
-            parseAttendanceRow(line, serialNumber)
+        if (docs.length) {
+            const punchDatesBs = [...new Set(docs.map(doc => getNepaliDate(new Date(doc.punchTime)).slice(0, 10)))];
+            const employeeHolidays = await EmployeeWeekend.find({ dateBs: { $in: punchDatesBs } }).select('dateBs name').lean();
+            const holidaysByDate = new Map(employeeHolidays.map(item => [item.dateBs, item.name]));
+            docs.forEach(doc => {
+                doc.holidayName = holidaysByDate.get(getNepaliDate(new Date(doc.punchTime)).slice(0, 10)) || '';
+                doc.isHoliday = Boolean(doc.holidayName);
+            });
+
+            const outcome = await processDeviceAttendanceRows(docs);
+            savedRecords = outcome.savedRecords;
+            duplicateRecords = outcome.duplicateRecords;
+            failedRecords += outcome.failedRecords;
+            errors.push(...outcome.errors);
+        }
+
+        await updateAttendanceSyncRun(
+            serialNumber,
+            lines.length,
+            savedRecords,
+            duplicateRecords,
+            failedRecords,
+            errors
         );
 
-        const docs = parsedRows.filter(Boolean);
-
-        if (!docs.length) {
-            console.warn('No valid ATTLOG rows received', {
-                serialNumber,
-                table,
-                contentType: req.headers['content-type'],
-                bodyType: typeof req.body,
-                bodyPreview: payload.slice(0, 300)
-            });
-
-            return res.status(400).send(
-                'No valid ATTLOG rows received'
+        if (lines.length > 0 && failedRecords === 0) {
+            await EmployeeAttendanceDevice.updateOne(
+                { serialNumber },
+                { $set: { lastSuccessfulBatchAt: receivedAt } }
             );
         }
 
-        const punchDatesBs = [...new Set(docs.map(doc => getNepaliDate(new Date(doc.punchTime)).slice(0, 10)))];
-        const employeeHolidays = await EmployeeWeekend.find({ dateBs: { $in: punchDatesBs } }).select('dateBs name').lean();
-        const holidaysByDate = new Map(employeeHolidays.map(item => [item.dateBs, item.name]));
-        docs.forEach(doc => {
-            doc.holidayName = holidaysByDate.get(getNepaliDate(new Date(doc.punchTime)).slice(0, 10)) || '';
-            doc.isHoliday = Boolean(doc.holidayName);
-        });
-
-        // Insert records. ordered:false allows valid rows to be
-        // inserted even if an individual row causes a DB error.
-        let insertedCount = 0;
-
-        try {
-            const inserted = await employeeAttendance.insertMany(
-                docs,
-                { ordered: false }
-            );
-
-            insertedCount = inserted.length;
-        } catch (dbError) {
-            // MongoDB may partially insert records with ordered:false.
-            if (Array.isArray(dbError.insertedDocs)) {
-                insertedCount = dbError.insertedDocs.length;
-            }
-
-            console.error('Attendance database insertion error:', {
-                message: dbError.message,
-                insertedCount
-            });
-
-            // Do not report a successful full import if insertion failed.
-            return res.status(500).json({
-                message: 'Attendance database insertion failed',
-                insertedCount,
-                error: dbError.message
-            });
-        }
-
-        console.log('Attendance received:', {
+        console.info('Device attendance batch processed:', {
             serialNumber,
-            receivedRows: lines.length,
-            validRows: docs.length,
-            insertedCount
+            requestTimestamp: receivedAt.toISOString(),
+            receivedRecordCount: receivedRecords,
+            savedRecordCount: savedRecords,
+            duplicateRecordCount: duplicateRecords,
+            failedRecordCount: failedRecords,
+            errorDetails: errors.slice(0, 10)
         });
 
+        if (failedRecords > 0) {
+            return res.status(500).type('text/plain').send('Attendance batch was not fully processed; retry is safe');
+        }
+        if (!lines.length) return res.status(400).type('text/plain').send('No attendance records received');
         return res.status(200).send('OK');
-
     } catch (error) {
-        console.error('saveEmployeeAttendance error:', error);
-
-        return res.status(500).json({
+        console.error('saveEmployeeAttendance error:', {
+            serialNumber,
+            requestTimestamp: receivedAt.toISOString(),
+            receivedRecordCount: receivedRecords,
+            savedRecordCount: savedRecords,
+            duplicateRecordCount: duplicateRecords,
+            failedRecordCount: failedRecords,
+            errorDetails: errors.slice(0, 10),
             message: error.message
         });
+        return res.status(500).type('text/plain').send('Unable to process attendance batch');
+    }
+};
+
+function getAttendanceDeviceStatus(device, run, now = new Date()) {
+    const lastCommunicationAt = device.lastCommunicationAt || null;
+    return {
+        serialNumber: device.serialNumber,
+        deviceName: device.name,
+        online: Boolean(lastCommunicationAt && now - new Date(lastCommunicationAt) <= 5 * 60_000),
+        lastCommunicationAt,
+        lastSuccessfulBatchAt: device.lastSuccessfulBatchAt || null,
+        lastSuccessfulSynchronization: null,
+        historicalSyncCompletionConfirmed: false,
+        run: run ? {
+            id: String(run._id),
+            status: getAttendanceSyncStatus(run, now),
+            requestedAt: run.requestedAt,
+            receivedRecords: run.receivedRecords,
+            savedRecords: run.savedRecords,
+            duplicateRecords: run.duplicateRecords,
+            failedRecords: run.failedRecords,
+            lastReceivedAt: run.lastReceivedAt || null,
+            errorDetails: run.lastErrorDetails || []
+        } : null,
+        message: 'ADMS attendance is device-push. This action only monitors incoming records; it does not request historical replay.'
+    };
+}
+
+exports.startEmployeeAttendanceDeviceSync = async (req, res) => {
+    try {
+        const serialNumber = String(req.body?.serialNumber || '').trim();
+        if (!isValidDeviceSerial(serialNumber)) {
+            return res.status(400).json({ message: 'Select a valid registered device.' });
+        }
+
+        const device = await EmployeeAttendanceDevice.findOne({ serialNumber }).lean();
+        if (!device) return res.status(404).json({ message: 'This device has not communicated with the attendance server yet.' });
+
+        const run = await EmployeeAttendanceSyncRun.create({
+            serialNumber,
+            deviceName: device.name,
+            requestedBy: String(req.user?.username || req.user?.teacherName || '').slice(0, 120)
+        });
+        await EmployeeAttendanceDevice.updateOne({ serialNumber }, { $set: { latestSyncRunId: run._id } });
+        const updatedDevice = await EmployeeAttendanceDevice.findOne({ serialNumber }).lean();
+        return res.status(202).json(getAttendanceDeviceStatus(updatedDevice, run));
+    } catch (error) {
+        console.error('Unable to start device attendance monitoring:', error);
+        return res.status(500).json({ message: 'Unable to start device attendance monitoring.' });
+    }
+};
+
+exports.getEmployeeAttendanceDeviceSync = async (req, res) => {
+    try {
+        if (!mongoose.isValidObjectId(req.params.runId)) {
+            return res.status(400).json({ message: 'Invalid attendance sync reference.' });
+        }
+        const run = await EmployeeAttendanceSyncRun.findById(req.params.runId).lean();
+        if (!run) return res.status(404).json({ message: 'Attendance monitoring session not found.' });
+        const device = await EmployeeAttendanceDevice.findOne({ serialNumber: run.serialNumber }).lean();
+        if (!device) return res.status(404).json({ message: 'Attendance device not found.' });
+        return res.json(getAttendanceDeviceStatus(device, run));
+    } catch (error) {
+        console.error('Unable to read device attendance monitoring status:', error);
+        return res.status(500).json({ message: 'Unable to read device attendance status.' });
+    }
+};
+
+exports.getEmployeeAttendanceDeviceOptions = async (req, res) => {
+    const serialNumber = String(req.query.SN || '').trim();
+    if (!isValidDeviceSerial(serialNumber)) {
+        return res.status(400).type('text/plain').send('Invalid or missing device serial number');
+    }
+
+    try {
+        await recordAttendanceDeviceCommunication(serialNumber, new Date());
+        const options = [
+            `GET OPTION FROM: ${serialNumber}`,
+            'Stamp=9999',
+            'OpStamp=9999',
+            'PhotoStamp=9999',
+            'ErrorDelay=30',
+            'Delay=10',
+            'TransTimes=00:00;14:05',
+            'TransInterval=1',
+            'TransFlag=1111000000',
+            'Realtime=1',
+            'Encrypt=0',
+            'ATTLOGStamp=9999'
+        ].join('\r\n');
+        return res.type('text/plain').send(`${options}\r\n`);
+    } catch (error) {
+        console.error('Unable to respond to ZKTeco device options request:', {
+            serialNumber,
+            message: error.message
+        });
+        return res.status(500).type('text/plain').send('Unable to provide device options');
     }
 };
 
@@ -2257,10 +2369,23 @@ console.log('Mongo query through:', through.toISOString());
 /** Display the daily employee report with optional date filtering. */
 exports.getEmployeeAttendance = async (req, res) => {
     try {
-        const report = await buildEmployeeAttendanceReport(req.query);
+        const [report, devices] = await Promise.all([
+            buildEmployeeAttendanceReport(req.query),
+            EmployeeAttendanceDevice.find().sort({ lastCommunicationAt: -1 }).limit(50).lean()
+        ]);
+        const latestRunIds = devices.map(device => device.latestSyncRunId).filter(Boolean);
+        const latestRuns = latestRunIds.length
+            ? await EmployeeAttendanceSyncRun.find({ _id: { $in: latestRunIds } }).lean()
+            : [];
+        const runsById = new Map(latestRuns.map(run => [String(run._id), run]));
+        const attendanceDevices = devices.map(device => ({
+            ...getAttendanceDeviceStatus(device, runsById.get(String(device.latestSyncRunId || ''))),
+            serialNumber: device.serialNumber
+        }));
         return res.render('employee/employeeattendance', {
             ...report,
             deviceSN: req.query.SN || '',
+            attendanceDevices,
             importMessage: req.query.imported
                 ? `${req.query.importRows || 0} rows processed; ${req.query.imported} new attendance punches saved.`
                 : '',
