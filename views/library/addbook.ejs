@@ -787,6 +787,12 @@
         alert('The sticker preview was blocked. Allow pop-ups for this site and try again.');
         return;
       }
+      uploadBlocker.classList.add('show');
+      uploadBlocker.setAttribute('aria-hidden', 'false');
+      setCsvUploadProgress(0, 'Preparing stickers', 'Building the A4 preview and generating barcodes. The print dialog will open automatically.');
+      printWindow.document.write('<!DOCTYPE html><html><head><title>Preparing Book Stickers</title><style>body{font:16px Arial,sans-serif;display:grid;place-items:center;min-height:90vh;color:#1f2937}</style></head><body>Preparing your sticker preview…</body></html>');
+      setTimeout(() => {
+      setCsvUploadProgress(10, 'Preparing stickers', `Preparing ${stickers.length} sticker(s) for the A4 sheet(s).`);
       const pageCount = Math.ceil(stickers.length / 18);
       const barcodeItems = [];
       const sheets = Array.from({ length: pageCount }, (_, pageIndex) => {
@@ -833,9 +839,9 @@
               .print-guidance { width: 21cm; padding: 3mm 4mm; background: #eff6ff; font-size: 3.7mm; line-height: 1.5; }
               .sticker-sheet { position: relative; width: 21cm; height: 29.7cm; padding: 0; margin: 0; overflow: hidden; background: #fff; break-inside: avoid; page-break-inside: avoid; }
               .sticker-sheet:not(:last-child) { break-after: page; page-break-after: always; }
-              .sticker { position: absolute; width: 6.3cm; height: 4.6cm; padding: 2.5mm; border: 0.3mm solid #000; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
+              .sticker { position: absolute; width: 6.3cm; height: 4.6cm; padding: 3mm; border: 0.3mm solid #000; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
               .sticker-empty { border: 0; }
-              .sticker-title { width: 100%; overflow: hidden; text-align: center; white-space: nowrap; text-overflow: ellipsis; font-size: 3.4mm; line-height: 1.1; font-weight: 700; }
+              .sticker-title { display: -webkit-box; flex: 0 0 auto; width: 100%; max-height: 10.5mm; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; text-align: center; white-space: normal; overflow-wrap: anywhere; font-size: 3.1mm; line-height: 1.12; font-weight: 700; }
               .barcode { display: block; width: 100%; max-width: 5.3cm; height: 0.65cm; margin-top: 0.04cm; }
               .sticker-code { width: 100%; overflow: hidden; text-align: center; white-space: nowrap; text-overflow: ellipsis; font-size: 2.7mm; line-height: 1.1; font-weight: 800; }
               .sticker-details { display: flex; flex: 1; flex-direction: column; justify-content: space-evenly; width: 100%; min-height: 0; margin-top: 0.04cm; overflow: hidden; font-size: 2.2mm; line-height: 1.05; text-align: left; overflow-wrap: anywhere; }
@@ -859,10 +865,29 @@
             <script>
               window.onload = function() {
                 const barcodes = ${barcodeData};
-                barcodes.forEach(({ id, code }) => {
-                  JsBarcode(document.getElementById(id), code, { format: 'CODE128', displayValue: false, width: 1.4, height: 28, margin: 2, background: '#fff', lineColor: '#111827' });
-                });
-                setTimeout(() => window.print(), 400);
+                const updateProgress = (percent, title, message, failed = false) => {
+                  if (window.opener && typeof window.opener.setStickerPrintProgress === 'function') {
+                    window.opener.setStickerPrintProgress(percent, title, message, failed);
+                  }
+                };
+                if (typeof JsBarcode !== 'function') {
+                  updateProgress(0, 'Sticker printing failed', 'Barcode library did not load. Check your internet connection and try again.', true);
+                  return;
+                }
+                for (let index = 0; index < barcodes.length; index += 1) {
+                  const { id, code } = barcodes[index];
+                  try {
+                    JsBarcode(document.getElementById(id), code, { format: 'CODE128', displayValue: false, width: 1.4, height: 28, margin: 2, background: '#fff', lineColor: '#111827' });
+                  } catch (error) {
+                    console.error('Failed to generate a book sticker barcode:', error);
+                    updateProgress(0, 'Sticker printing failed', 'A barcode could not be generated. Please check the selected book codes and try again.', true);
+                    return;
+                  }
+                  const progress = 20 + Math.round(((index + 1) / barcodes.length) * 80);
+                  updateProgress(progress, 'Preparing stickers', 'Generated ' + (index + 1) + ' of ' + barcodes.length + ' barcode(s).');
+                }
+                updateProgress(100, 'Stickers ready', 'Opening the print dialog…');
+                setTimeout(() => window.print(), 350);
               };
             <\/script>
           </body>
@@ -870,6 +895,7 @@
       `;
       printWindow.document.write(html);
       printWindow.document.close();
+      });
     }
 
     function collectUniqueNextCodes(prefix, quantity, existingCodes) {
@@ -993,6 +1019,23 @@
       uploadProgressMessage.textContent = message;
       uploadProgressBar.style.width = `${safePercent}%`;
       uploadProgressValue.textContent = `${safePercent}%`;
+    }
+
+    function setStickerPrintProgress(percent, title, message, failed = false) {
+      setCsvUploadProgress(percent, title, message);
+      if (failed) {
+        uploadBlocker.classList.remove('show');
+        uploadBlocker.setAttribute('aria-hidden', 'true');
+        alert(message);
+        return;
+      }
+
+      if (percent >= 100) {
+        setTimeout(() => {
+          uploadBlocker.classList.remove('show');
+          uploadBlocker.setAttribute('aria-hidden', 'true');
+        }, 250);
+      }
     }
 
     function beginCsvUpload() {
