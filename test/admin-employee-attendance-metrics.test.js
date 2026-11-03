@@ -45,18 +45,23 @@ test('counts and lists missing morning and evening punches independently', () =>
   assert.equal(result.lateInList[0].lateMinutes, 20);
 });
 
-test('does not report an evening punch missing before the planned checkout time', () => {
+test('reports a missing evening punch consistently with daily attendance details', () => {
   const result = calculateAdminEmployeeAttendanceMetrics({
-    employees: [employee('MORNING')],
+    employees: [employee('MORNING', { department: 'Teaching' })],
     teachingSections: [],
     punches: [punch('MORNING', '09:00')],
     leaves: [],
     isEmployeeHoliday: false,
-    now: new Date('2026-11-03T15:00:00')
+    now: new Date('2026-11-03T15:43:00')
   });
 
-  assert.equal(result.missedAttendance, 0);
-  assert.deepEqual(result.missedTeacherList, []);
+  assert.equal(result.missedAttendance, 1);
+  assert.deepEqual(result.missedTeacherList, [{
+    name: 'Employee MORNING',
+    designation: 'Teaching',
+    contact: 'Contact not listed',
+    missing: 'Missed evening check-out'
+  }]);
 });
 
 test('does not count an employee absent before their planned check-in time', () => {
@@ -71,5 +76,5 @@ test('does not count an employee absent before their planned check-in time', () 
 
   assert.equal(result.absentToday, 0);
   assert.equal(result.teachingSectionBreakdown[0].absent, 0);
-  assert.equal(result.missedAttendance, 0);
+  assert.equal(result.missedAttendance, 1);
 });

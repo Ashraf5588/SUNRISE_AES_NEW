@@ -14,7 +14,8 @@ function calculateAdminEmployeeAttendanceMetrics({ employees, teachingSections, 
 
   const activeEmployees = employees.filter(employee => employee.isActive !== false
     && ![employee.employmentStatus, employee.jobStatus].some(status => ['resigned', 'terminated'].includes(String(status || '').trim().toLowerCase())));
-  const teachingEmployees = activeEmployees.filter(employee => String(employee.department || '').trim().toLowerCase() === 'teaching staff');
+  const teachingEmployees = activeEmployees.filter(employee => ['teaching', 'teaching staff']
+    .includes(String(employee.department || '').trim().toLowerCase()));
   const sectionOrder = new Map([['ecd-3', 0], ['4-7', 1], ['8-10', 2]]);
   const teachingSectionBreakdown = teachingSections
     .map(section => ({ name: section.name, onLeave: 0, absent: 0 }))
@@ -46,7 +47,6 @@ function calculateAdminEmployeeAttendanceMetrics({ employees, teachingSections, 
     const isOnLeave = Boolean(leave);
     const sectionBreakdown = sectionBreakdownByName.get(String(employee.section || '').trim().toLowerCase());
     const plannedInMinutes = getMinutes(employee.plannedIn, 9 * 60);
-    const plannedOutMinutes = getMinutes(employee.plannedOut, 17 * 60);
     const employeeSummary = {
       name: employee.staffName || 'Staff member',
       designation: employee.designation || employee.department || '',
@@ -75,7 +75,7 @@ function calculateAdminEmployeeAttendanceMetrics({ employees, teachingSections, 
     const missingPeriods = [];
 
     if (!morningPunches.length && currentMinutes >= plannedInMinutes) missingPeriods.push('Missed morning check-in');
-    if (!eveningPunches.length && currentMinutes >= plannedOutMinutes) missingPeriods.push('Missed evening check-out');
+    if (!eveningPunches.length) missingPeriods.push('Missed evening check-out');
     if (missingPeriods.length) missedTeacherList.push({ ...employeeSummary, missing: missingPeriods.join(' and ') });
 
     const checkIn = morningPunches.find(punch => punch.manualPunchType === 'Check-in' || Number(punch.status) === 0)
