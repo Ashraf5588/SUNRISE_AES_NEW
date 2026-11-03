@@ -82,12 +82,12 @@ test('does not count an employee absent before their planned check-in time', () 
 test('counts and lists named employees without a department, section, or employee code', () => {
   const result = calculateAdminEmployeeAttendanceMetrics({
     employees: [
-      employee('', { staffName: 'No metadata teacher', department: '', section: '', designation: '' }),
-      employee('', { staffName: 'Teacher with name-matched punch', department: '', section: '', designation: '' })
+      employee('', { staffName: 'No metadata teacher', department: '-', section: '', designation: '-' }),
+      employee('EXPECTED-CODE', { staffName: 'Teacher with name-matched punch', department: '-', section: '', designation: '-' })
     ],
     teachingSections: [],
     punches: [{
-      pin: '',
+      pin: 'DEVICE-PIN',
       name: 'Teacher with name-matched punch',
       punchTime: new Date('2026-11-03T09:10:00')
     }],

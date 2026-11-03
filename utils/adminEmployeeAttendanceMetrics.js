@@ -1,3 +1,5 @@
+const { getActiveEmployeeProfiles } = require('./employeeManagementDashboard');
+
 function getMinutes(value, fallback) {
   const match = String(value || '').match(/^(\d{1,2}):(\d{2})$/);
   return match ? Number(match[1]) * 60 + Number(match[2]) : fallback;
@@ -17,12 +19,10 @@ function calculateAdminEmployeeAttendanceMetrics({ employees, teachingSections, 
     }
   });
 
-  const activeEmployees = employees.filter(employee => employee.isActive !== false
-    && String(employee.staffName || '').trim()
-    && ![employee.employmentStatus, employee.jobStatus].some(status => ['resigned', 'terminated'].includes(String(status || '').trim().toLowerCase())));
+  const activeEmployees = getActiveEmployeeProfiles(employees);
   const teachingEmployees = activeEmployees.filter(employee => {
-    const department = String(employee.department || '').trim().toLowerCase();
-    const designation = String(employee.designation || '').trim().toLowerCase();
+    const department = String(employee.department || '').trim().toLowerCase().replace(/^-+$/, '');
+    const designation = String(employee.designation || '').trim().toLowerCase().replace(/^-+$/, '');
     return /\bteach(?:ing|er)\b/.test(department)
       || /\bteach(?:ing|er)\b/.test(designation)
       || (!department && !designation);
@@ -54,7 +54,9 @@ function calculateAdminEmployeeAttendanceMetrics({ employees, teachingSections, 
   teachingEmployees.forEach(employee => {
     const employeeName = String(employee.staffName || '').trim().toLowerCase();
     const employeeCode = String(employee.employeeCode || '').trim().toUpperCase();
-    const punchesForEmployee = (employeeCode ? punchesByCode.get(employeeCode) : punchesByName.get(employeeName)) || [];
+    const punchesForEmployee = (employeeCode ? punchesByCode.get(employeeCode) : null)
+      || punchesByName.get(employeeName)
+      || [];
     const leave = leaves.find(item => String(item.employeeName || '').trim().toLowerCase() === employeeName);
     const isOnLeave = Boolean(leave);
     const sectionBreakdown = sectionBreakdownByName.get(String(employee.section || '').trim().toLowerCase());
