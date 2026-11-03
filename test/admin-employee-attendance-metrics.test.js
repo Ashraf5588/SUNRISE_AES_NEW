@@ -78,3 +78,30 @@ test('does not count an employee absent before their planned check-in time', () 
   assert.equal(result.teachingSectionBreakdown[0].absent, 0);
   assert.equal(result.missedAttendance, 1);
 });
+
+test('counts and lists named employees without a department, section, or employee code', () => {
+  const result = calculateAdminEmployeeAttendanceMetrics({
+    employees: [
+      employee('', { staffName: 'No metadata teacher', department: '', section: '', designation: '' }),
+      employee('', { staffName: 'Teacher with name-matched punch', department: '', section: '', designation: '' })
+    ],
+    teachingSections: [],
+    punches: [{
+      pin: '',
+      name: 'Teacher with name-matched punch',
+      punchTime: new Date('2026-11-03T09:10:00')
+    }],
+    leaves: [],
+    isEmployeeHoliday: false,
+    now: new Date('2026-11-03T16:00:00')
+  });
+
+  assert.equal(result.absentToday, 1);
+  assert.deepEqual(result.absentList.map(item => item.name), ['No metadata teacher']);
+  assert.equal(result.missedAttendance, 2);
+  assert.deepEqual(result.missedTeacherList.map(item => [item.name, item.missing]), [
+    ['No metadata teacher', 'Missed morning check-in and Missed evening check-out'],
+    ['Teacher with name-matched punch', 'Missed evening check-out']
+  ]);
+  assert.equal(result.lateToday, 1);
+});

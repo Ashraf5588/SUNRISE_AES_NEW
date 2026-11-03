@@ -31,6 +31,21 @@
 		.employee-code { color:var(--blue); font-weight:800; }
 		.status { color:#285c47; font-weight:700; }
 		.empty { padding:28px; color:var(--muted); text-align:center; }
+		.enrollment-button { min-height:32px; padding:0 10px; border:1px solid var(--blue); border-radius:4px; background:#fff; color:var(--blue); font:inherit; font-weight:700; cursor:pointer; }
+		dialog { width:min(520px,calc(100% - 28px)); padding:0; border:1px solid var(--line); border-radius:8px; color:var(--ink); box-shadow:0 18px 60px #10233b40; }
+		dialog::backdrop { background:#10233b80; }
+		.dialog-content { padding:22px; }
+		.dialog-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; }
+		.dialog-heading h2 { margin:0; font-size:1.15rem; }
+		.dialog-close { border:0; background:none; color:var(--muted); font-size:1.5rem; cursor:pointer; }
+		.enrollment-notice { padding:12px; border:1px solid #e8d59b; border-radius:4px; background:#fff9e8; line-height:1.5; }
+		.device-picker { display:grid; gap:6px; margin:18px 0; font-weight:700; }
+		.device-picker select { min-height:40px; padding:7px; border:1px solid #cbd4df; border-radius:4px; font:inherit; }
+		.enrollment-values { display:grid; grid-template-columns:1fr auto; gap:8px 12px; align-items:center; padding-top:4px; }
+		.enrollment-values dt { color:var(--muted); }
+		.enrollment-values dd { margin:0; font-weight:800; overflow-wrap:anywhere; }
+		.copy-button { min-height:30px; padding:0 9px; border:1px solid var(--line); border-radius:4px; background:#fff; color:var(--blue); cursor:pointer; }
+		.dialog-status { min-height:1.4em; color:var(--muted); }
 		@media(max-width:700px) { .page-shell { width:calc(100% - 20px); padding-top:18px; } .page-header,.panel-heading { align-items:flex-start; flex-direction:column; } .controls { width:100%; } input { flex:1; width:auto; } }
 	</style>
 </head>
@@ -39,9 +54,61 @@
 	<main class="page-shell">
 		<header class="page-header"><div><p class="muted">People / Employee management</p><h1>Employee list</h1></div><a class="button" href="/employeedetail?new=1"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add employee</a></header>
 		<section class="panel"><div class="panel-heading"><h2><%= employees.length %> employees</h2><div class="controls"><input id="employeeSearch" type="search" placeholder="Search employees" aria-label="Search employees"><a class="button" href="/employeeattendance"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i> Attendance</a></div></div>
-			<% if (employees.length) { %><div class="table-wrap"><table id="employeeList"><thead><tr><th>S.N</th><th>Employee code</th><th>Name</th><th>Designation</th><th>Department</th><th>Branch</th><th>Contact</th><th>Office email</th><th>Status</th><th>Profile</th></tr></thead><tbody><% employees.forEach((employee,index) => { %><tr><td><%= index+1 %></td><td class="employee-code"><%= employee.employeeCode %></td><td><%= employee.staffName %></td><td><%= employee.designation || '-' %></td><td><%= employee.department || '-' %></td><td><%= employee.branchName || '-' %></td><td><%= employee.mobileNumber || '-' %></td><td><%= employee.officeEmail || employee.email || '-' %></td><td class="status"><%= employee.jobStatus || employee.employmentStatus || 'Active' %></td><td><a href="/employeedetail?employeeId=<%= employee._id %>">Open profile</a></td></tr><% }) %></tbody></table></div><% } else { %><div class="empty">No employee profiles have been added yet.</div><% } %>
+			<% if (employees.length) { %><div class="table-wrap"><table id="employeeList"><thead><tr><th>S.N</th><th>Employee code</th><th>Name</th><th>Designation</th><th>Department</th><th>Branch</th><th>Contact</th><th>Office email</th><th>Status</th><th>Profile</th><th>Device enrollment</th></tr></thead><tbody><% employees.forEach((employee,index) => { %><tr><td><%= index+1 %></td><td class="employee-code"><%= employee.employeeCode %></td><td><%= employee.staffName %></td><td><%= employee.designation || '-' %></td><td><%= employee.department || '-' %></td><td><%= employee.branchName || '-' %></td><td><%= employee.mobileNumber || '-' %></td><td><%= employee.officeEmail || employee.email || '-' %></td><td class="status"><%= employee.jobStatus || employee.employmentStatus || 'Active' %></td><td><a href="/employeedetail?employeeId=<%= employee._id %>">Open profile</a></td><td><button class="enrollment-button" type="button" data-employee-code="<%= employee.employeeCode %>" data-employee-name="<%= employee.staffName %>">Prepare enrollment</button></td></tr><% }) %></tbody></table></div><% } else { %><div class="empty">No employee profiles have been added yet.</div><% } %>
 		</section>
 	</main>
-	<script>document.getElementById('employeeSearch').addEventListener('input',event=>{const query=event.target.value.trim().toLowerCase();document.querySelectorAll('#employeeList tbody tr').forEach(row=>row.hidden=!row.textContent.toLowerCase().includes(query));});</script>
+	<dialog id="enrollmentDialog" aria-labelledby="enrollmentTitle">
+		<div class="dialog-content">
+			<div class="dialog-heading"><div><h2 id="enrollmentTitle">Manual device enrollment</h2><p class="muted">Use these details to add the employee on the terminal.</p></div><button class="dialog-close" type="button" aria-label="Close dialog">&times;</button></div>
+			<p class="enrollment-notice">This app does not send employee data to the device. Select a registered terminal for reference, enter the code and name on that machine, then enroll the employee’s fingerprint there.</p>
+			<label class="device-picker" for="enrollmentDevice">Terminal
+				<select id="enrollmentDevice" <%= devices.length ? '' : 'disabled' %>>
+					<% devices.forEach(device => { %><option value="<%= device.serialNumber %>"><%= device.name %> — <%= device.serialNumber %></option><% }) %>
+				</select>
+			</label>
+			<% if (!devices.length) { %><p class="muted">No ZKTeco terminal has connected to this server yet.</p><% } %>
+			<dl class="enrollment-values">
+				<dt>Employee code</dt><dd id="enrollmentCode"></dd><dt></dt><dd><button class="copy-button" type="button" data-copy="code">Copy code</button></dd>
+				<dt>Employee name</dt><dd id="enrollmentName"></dd><dt></dt><dd><button class="copy-button" type="button" data-copy="name">Copy name</button></dd>
+			</dl>
+			<p id="enrollmentStatus" class="dialog-status" role="status" aria-live="polite"></p>
+		</div>
+	</dialog>
+	<script>
+		const employeeSearch = document.getElementById('employeeSearch');
+		employeeSearch.addEventListener('input', event => {
+			const query = event.target.value.trim().toLowerCase();
+			document.querySelectorAll('#employeeList tbody tr').forEach(row => {
+				row.hidden = !row.textContent.toLowerCase().includes(query);
+			});
+		});
+
+		const enrollmentDialog = document.getElementById('enrollmentDialog');
+		const enrollmentStatus = document.getElementById('enrollmentStatus');
+		document.querySelectorAll('.enrollment-button').forEach(button => {
+			button.addEventListener('click', () => {
+				document.getElementById('enrollmentCode').textContent = button.dataset.employeeCode || '(no employee code)';
+				document.getElementById('enrollmentName').textContent = button.dataset.employeeName || '(no employee name)';
+				enrollmentStatus.textContent = '';
+				enrollmentDialog.showModal();
+			});
+		});
+		enrollmentDialog.querySelector('.dialog-close').addEventListener('click', () => enrollmentDialog.close());
+		enrollmentDialog.addEventListener('click', event => {
+			if (event.target === enrollmentDialog) enrollmentDialog.close();
+		});
+		enrollmentDialog.querySelectorAll('[data-copy]').forEach(button => {
+			button.addEventListener('click', async () => {
+				const valueId = button.dataset.copy === 'code' ? 'enrollmentCode' : 'enrollmentName';
+				const value = document.getElementById(valueId).textContent;
+				try {
+					await navigator.clipboard.writeText(value);
+					enrollmentStatus.textContent = `${button.dataset.copy === 'code' ? 'Employee code' : 'Employee name'} copied.`;
+				} catch (error) {
+					enrollmentStatus.textContent = 'Copy is unavailable in this browser context; select the displayed value and copy it manually.';
+				}
+			});
+		});
+	</script>
 </body>
 </html>

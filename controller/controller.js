@@ -51,12 +51,12 @@ const getSlipModel = () => {
 
 async function getTodayEmployeeAttendanceMetrics(todayBs, todayStart, tomorrow, now = new Date()) {
   const [employees, teachingSections, punches, leaves, isEmployeeHoliday] = await Promise.all([
-    Staff.find({ employeeCode: { $exists: true, $ne: '' }, isActive: { $ne: false } })
+    Staff.find({ isActive: { $ne: false }, staffName: { $exists: true, $ne: '' } })
       .select('employeeCode staffName plannedIn plannedOut midTime employmentStatus jobStatus dateOfBirth designation department section mobileNumber officeContact isActive')
       .lean(),
-    DepartmentSection.find({ departmentName: /^Teaching Staff$/i }).select('name').lean(),
+    DepartmentSection.find({ departmentName: /^Teaching(?: Staff)?$/i }).select('name').lean(),
     EmployeeAttendance.find({ punchTime: { $gte: todayStart, $lt: tomorrow } })
-      .select('pin punchTime status manualPunchType')
+      .select('pin name punchTime status manualPunchType')
       .sort({ punchTime: 1 })
       .lean(),
     LeaveApplication.find({

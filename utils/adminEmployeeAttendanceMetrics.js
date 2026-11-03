@@ -4,18 +4,29 @@ function getMinutes(value, fallback) {
 }
 
 function calculateAdminEmployeeAttendanceMetrics({ employees, teachingSections, punches, leaves, isEmployeeHoliday, now = new Date() }) {
-  const leaveNames = new Set(leaves.map(leave => String(leave.employeeName || '').trim().toLowerCase()));
   const punchesByCode = new Map();
+  const punchesByName = new Map();
   punches.forEach(punch => {
     const code = String(punch.pin || '').trim().toUpperCase();
     if (!punchesByCode.has(code)) punchesByCode.set(code, []);
     punchesByCode.get(code).push(punch);
+    const name = String(punch.name || '').trim().toLowerCase();
+    if (name) {
+      if (!punchesByName.has(name)) punchesByName.set(name, []);
+      punchesByName.get(name).push(punch);
+    }
   });
 
   const activeEmployees = employees.filter(employee => employee.isActive !== false
+    && String(employee.staffName || '').trim()
     && ![employee.employmentStatus, employee.jobStatus].some(status => ['resigned', 'terminated'].includes(String(status || '').trim().toLowerCase())));
-  const teachingEmployees = activeEmployees.filter(employee => ['teaching', 'teaching staff']
-    .includes(String(employee.department || '').trim().toLowerCase()));
+  const teachingEmployees = activeEmployees.filter(employee => {
+    const department = String(employee.department || '').trim().toLowerCase();
+    const designation = String(employee.designation || '').trim().toLowerCase();
+    return /\bteach(?:ing|er)\b/.test(department)
+      || /\bteach(?:ing|er)\b/.test(designation)
+      || (!department && !designation);
+  });
   const sectionOrder = new Map([['ecd-3', 0], ['4-7', 1], ['8-10', 2]]);
   const teachingSectionBreakdown = teachingSections
     .map(section => ({ name: section.name, onLeave: 0, absent: 0 }))
@@ -41,8 +52,9 @@ function calculateAdminEmployeeAttendanceMetrics({ employees, teachingSections, 
   });
 
   teachingEmployees.forEach(employee => {
-    const punchesForEmployee = punchesByCode.get(String(employee.employeeCode || '').trim().toUpperCase()) || [];
     const employeeName = String(employee.staffName || '').trim().toLowerCase();
+    const employeeCode = String(employee.employeeCode || '').trim().toUpperCase();
+    const punchesForEmployee = (employeeCode ? punchesByCode.get(employeeCode) : punchesByName.get(employeeName)) || [];
     const leave = leaves.find(item => String(item.employeeName || '').trim().toLowerCase() === employeeName);
     const isOnLeave = Boolean(leave);
     const sectionBreakdown = sectionBreakdownByName.get(String(employee.section || '').trim().toLowerCase());

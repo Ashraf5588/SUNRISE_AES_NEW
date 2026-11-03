@@ -955,9 +955,16 @@ exports.reviewManualPunchRequest = async (req, res) => {
 
 exports.showEmployeeData = async (req, res) => {
     try {
-        const employees = await getEmployeeProfiles();
+        const [employees, devices] = await Promise.all([
+            getEmployeeProfiles(),
+            EmployeeAttendanceDevice.find({})
+                .select('serialNumber name lastActivity')
+                .sort({ lastActivity: -1, name: 1 })
+                .lean()
+        ]);
         return res.render('employee/employeedata', {
             employees,
+            devices,
             currentPage: 'employee-list',
             selectedEmployee: null
         });
