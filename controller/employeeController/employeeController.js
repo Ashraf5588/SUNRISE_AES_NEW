@@ -35,6 +35,7 @@ const {
     EmployeeAttendanceDevice,
     EmployeeAttendanceSyncRun
 } = require('../../model/employeeSchema/employeeAttendanceDeviceSchema');
+const { getActiveEmployeeProfiles } = require('../../utils/employeeManagementDashboard');
 const Staff = mongoose.models.staff || mongoose.model('staff', staffSchema, 'staff');
 const LeaveApplication = mongoose.models.LeaveApplication || mongoose.model('LeaveApplication', leaveApplicationSchema, 'leaveApplications');
 const employeeSetupConfigs = {
@@ -715,8 +716,8 @@ exports.showEmployeeDetails = async (req, res) => {
 
 exports.showEmployeeManagementDashboard = async (req, res) => {
     try {
-        const employees = await getEmployeeProfiles();
-        const activeEmployees = employees.filter(employee => employee.isActive !== false && !['Resigned', 'Terminated'].includes(employee.employmentStatus));
+        const employees = await Staff.find({ staffName: { $exists: true, $ne: '' } }).lean();
+        const activeEmployees = getActiveEmployeeProfiles(employees);
         const today = new Date();
         const todayStart = new Date(today);
         todayStart.setHours(0, 0, 0, 0);
@@ -733,7 +734,7 @@ exports.showEmployeeManagementDashboard = async (req, res) => {
         weekEnd.setDate(weekEnd.getDate() + 7);
 
         const [punches, approvedLeaves, notices, events, manualPunchRequestCount] = await Promise.all([
-            employeeAttendance.find({ punchTime: { $gte: selectedDate, $lt: nextDate } }).select('pin punchTime').sort({ punchTime: 1 }).lean(),
+            employeeAttendance.find({ punchTime: { $gte: selectedDate, $lt: nextDate } }).select('pin name punchTime').sort({ punchTime: 1 }).lean(),
             LeaveApplication.find({
                 status: 'approved',
                 startDateNepali: { $lte: selectedDateNepali },
@@ -745,20 +746,28 @@ exports.showEmployeeManagementDashboard = async (req, res) => {
             ManualPunchRequest.countDocuments({ status: 'pending' })
         ]);
 
-        const employeesByCode = new Map(activeEmployees.map(employee => [String(employee.employeeCode || '').trim().toUpperCase(), employee]));
         const punchesByCode = new Map();
+        const punchesByName = new Map();
         punches.forEach(punch => {
             const code = String(punch.pin || '').trim().toUpperCase();
             if (!punchesByCode.has(code)) punchesByCode.set(code, []);
             punchesByCode.get(code).push(punch);
+            const name = normalizeEmployeeName(punch.name);
+            if (name) {
+                if (!punchesByName.has(name)) punchesByName.set(name, []);
+                punchesByName.get(name).push(punch);
+            }
         });
         const leavesByName = new Map(approvedLeaves.map(leave => [normalizeEmployeeName(leave.employeeName), leave]));
         const attendanceLists = { present: [], onLeave: [], absent: [], late: [] };
 
         activeEmployees.forEach(employee => {
             const employeeCode = String(employee.employeeCode || '').trim().toUpperCase();
-            const employeePunches = punchesByCode.get(employeeCode) || [];
-            const leave = leavesByName.get(normalizeEmployeeName(employee.staffName));
+            const employeeName = normalizeEmployeeName(employee.staffName);
+            const employeePunches = (employeeCode ? punchesByCode.get(employeeCode) : null)
+                || punchesByName.get(employeeName)
+                || [];
+            const leave = leavesByName.get(employeeName);
             const contact = employee.mobileNumber || employee.officeContact || '-';
             const employeeSummary = {
                 name: employee.staffName,
