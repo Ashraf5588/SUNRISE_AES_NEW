@@ -1,0 +1,110 @@
+function getMinutes(value, fallback) {
+  const match = String(value || '').match(/^(\d{1,2}):(\d{2})$/);
+  return match ? Number(match[1]) * 60 + Number(match[2]) : fallback;
+}
+
+function calculateAdminEmployeeAttendanceMetrics({ employees, teachingSections, punches, leaves, isEmployeeHoliday, now = new Date() }) {
+  const leaveNames = new Set(leaves.map(leave => String(leave.employeeName || '').trim().toLowerCase()));
+  const punchesByCode = new Map();
+  punches.forEach(punch => {
+    const code = String(punch.pin || '').trim().toUpperCase();
+    if (!punchesByCode.has(code)) punchesByCode.set(code, []);
+    punchesByCode.get(code).push(punch);
+  });
+
+  const activeEmployees = employees.filter(employee => employee.isActive !== false
+    && ![employee.employmentStatus, employee.jobStatus].some(status => ['resigned', 'terminated'].includes(String(status || '').trim().toLowerCase())));
+  const teachingEmployees = activeEmployees.filter(employee => String(employee.department || '').trim().toLowerCase() === 'teaching staff');
+  const sectionOrder = new Map([['ecd-3', 0], ['4-7', 1], ['8-10', 2]]);
+  const teachingSectionBreakdown = teachingSections
+    .map(section => ({ name: section.name, onLeave: 0, absent: 0 }))
+    .sort((sectionA, sectionB) => {
+      const orderA = sectionOrder.get(String(sectionA.name || '').trim().toLowerCase()) ?? 3;
+      const orderB = sectionOrder.get(String(sectionB.name || '').trim().toLowerCase()) ?? 3;
+      return orderA - orderB || sectionA.name.localeCompare(sectionB.name);
+    });
+  const sectionBreakdownByName = new Map(teachingSectionBreakdown.map(section => [String(section.name || '').trim().toLowerCase(), section]));
+  const absentList = [];
+  const lateInList = [];
+  const missedTeacherList = [];
+  const onLeaveList = [];
+  const birthdaysToday = [];
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  activeEmployees.forEach(employee => {
+    if (!employee.dateOfBirth) return;
+    const birthday = new Date(employee.dateOfBirth);
+    if (birthday.getMonth() === now.getMonth() && birthday.getDate() === now.getDate()) {
+      birthdaysToday.push({ name: employee.staffName || 'Staff member', designation: employee.designation || employee.department || '' });
+    }
+  });
+
+  teachingEmployees.forEach(employee => {
+    const punchesForEmployee = punchesByCode.get(String(employee.employeeCode || '').trim().toUpperCase()) || [];
+    const employeeName = String(employee.staffName || '').trim().toLowerCase();
+    const leave = leaves.find(item => String(item.employeeName || '').trim().toLowerCase() === employeeName);
+    const isOnLeave = Boolean(leave);
+    const sectionBreakdown = sectionBreakdownByName.get(String(employee.section || '').trim().toLowerCase());
+    const plannedInMinutes = getMinutes(employee.plannedIn, 9 * 60);
+    const plannedOutMinutes = getMinutes(employee.plannedOut, 17 * 60);
+    const employeeSummary = {
+      name: employee.staffName || 'Staff member',
+      designation: employee.designation || employee.department || '',
+      contact: employee.mobileNumber || employee.officeContact || 'Contact not listed'
+    };
+
+    if (!punchesForEmployee.length && isOnLeave) {
+      if (sectionBreakdown) sectionBreakdown.onLeave += 1;
+      onLeaveList.push({ ...employeeSummary, leave: leave.leaveTypeName || 'Approved leave' });
+    } else if (!punchesForEmployee.length && !isEmployeeHoliday && currentMinutes >= plannedInMinutes) {
+      absentList.push(employeeSummary);
+      if (sectionBreakdown) sectionBreakdown.absent += 1;
+    }
+
+    if (isEmployeeHoliday || isOnLeave) return;
+
+    const midTime = getMinutes(employee.midTime, 13 * 60);
+    const morningPunches = punchesForEmployee.filter(punch => {
+      const time = new Date(punch.punchTime);
+      return time.getHours() * 60 + time.getMinutes() < midTime;
+    });
+    const eveningPunches = punchesForEmployee.filter(punch => {
+      const time = new Date(punch.punchTime);
+      return time.getHours() * 60 + time.getMinutes() >= midTime;
+    });
+    const missingPeriods = [];
+
+    if (!morningPunches.length && currentMinutes >= plannedInMinutes) missingPeriods.push('Missed morning check-in');
+    if (!eveningPunches.length && currentMinutes >= plannedOutMinutes) missingPeriods.push('Missed evening check-out');
+    if (missingPeriods.length) missedTeacherList.push({ ...employeeSummary, missing: missingPeriods.join(' and ') });
+
+    const checkIn = morningPunches.find(punch => punch.manualPunchType === 'Check-in' || Number(punch.status) === 0)
+      || morningPunches[0];
+    if (checkIn) {
+      const actualTime = new Date(checkIn.punchTime);
+      const actualMinutes = actualTime.getHours() * 60 + actualTime.getMinutes();
+      const lateMinutes = actualMinutes - plannedInMinutes;
+      if (lateMinutes > 0) {
+        lateInList.push({
+          ...employeeSummary,
+          actualIn: actualTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+          lateMinutes
+        });
+      }
+    }
+  });
+
+  return {
+    absentToday: absentList.length,
+    teachingSectionBreakdown,
+    lateToday: lateInList.length,
+    missedAttendance: missedTeacherList.length,
+    onLeaveList,
+    absentList,
+    lateInList,
+    missedTeacherList,
+    birthdaysToday
+  };
+}
+
+module.exports = { calculateAdminEmployeeAttendanceMetrics };

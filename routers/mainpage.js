@@ -73,6 +73,7 @@ student.get('/admin/logout', (req, res) => {
 });
 
 student.get('/',verifytoken,authorized,isAllowedHome,controller.homePage)
+student.get('/dashboard/today-employee-attendance',verifytoken,authorized,isAdmin,controller.getTodayEmployeeAttendanceDashboardMetrics)
 
 student.get('/admin/term/:terminal',verifytoken,authorized,isAdmin,admincontrol.admin)
 student.get('/analysisentrycounter',verifytoken,authorized,isAdmin,admincontrol.analysisEntryCounter)

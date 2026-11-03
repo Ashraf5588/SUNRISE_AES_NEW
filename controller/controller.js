@@ -30,6 +30,7 @@ const Staff = mongoose.models.staff || mongoose.model('staff', staffSchema, 'sta
 const LeaveApplication = mongoose.models.LeaveApplication || mongoose.model('LeaveApplication', leaveApplicationSchema, 'leaveApplications');
 const EmployeeAttendance = require('../model/employeeSchema/employeeattendanceSchema');
 const EmployeeWeekend = require('../model/employeeSchema/employeeWeekendSchema');
+const { calculateAdminEmployeeAttendanceMetrics } = require('../utils/adminEmployeeAttendanceMetrics');
 const Portfolio = require('../model/portfolio');
 const HealthRecord = require('../model/nurseschema');
 const onlineAttendance = mongoose.models.onlineAttendance || mongoose.model('onlineAttendance', onlineAttendanceSchema, 'onlineAttendance');
@@ -48,8 +49,28 @@ const getSlipModel = () => {
   return mongoose.model(`exam_marks`, examSchema, `exam_marks`);
 };
 
-const getAdminHomeMetrics = async () => {
-  const todayBs = String(bs.ADToBS(new Date()) || '').trim().slice(0, 10);
+async function getTodayEmployeeAttendanceMetrics(todayBs, todayStart, tomorrow, now = new Date()) {
+  const [employees, teachingSections, punches, leaves, isEmployeeHoliday] = await Promise.all([
+    Staff.find({ employeeCode: { $exists: true, $ne: '' }, isActive: { $ne: false } })
+      .select('employeeCode staffName plannedIn plannedOut midTime employmentStatus jobStatus dateOfBirth designation department section mobileNumber officeContact isActive')
+      .lean(),
+    DepartmentSection.find({ departmentName: /^Teaching Staff$/i }).select('name').lean(),
+    EmployeeAttendance.find({ punchTime: { $gte: todayStart, $lt: tomorrow } })
+      .select('pin punchTime status manualPunchType')
+      .sort({ punchTime: 1 })
+      .lean(),
+    LeaveApplication.find({
+      status: 'approved',
+      startDateNepali: { $lte: todayBs },
+      endDateNepali: { $gte: todayBs }
+    }).select('employeeName leaveTypeName').lean(),
+    EmployeeWeekend.exists({ dateBs: todayBs })
+  ]);
+  return calculateAdminEmployeeAttendanceMetrics({ employees, teachingSections, punches, leaves, isEmployeeHoliday, now });
+}
+
+function getDashboardTodayRange(now = new Date()) {
+  const todayBs = String(bs.ADToBS(now) || '').trim().slice(0, 10);
   let todayStart;
   try {
     const convertedToday = bs.BSToAD(todayBs);
@@ -58,11 +79,16 @@ const getAdminHomeMetrics = async () => {
       : new Date(`${String(convertedToday || '').slice(0, 10)}T00:00:00`);
     if (Number.isNaN(todayStart.getTime())) throw new Error('Invalid converted BS date');
   } catch (error) {
-    todayStart = new Date();
+    todayStart = new Date(now);
   }
   todayStart.setHours(0, 0, 0, 0);
   const tomorrow = new Date(todayStart);
   tomorrow.setDate(tomorrow.getDate() + 1);
+  return { todayBs, todayStart, tomorrow };
+}
+
+const getAdminHomeMetrics = async () => {
+  const { todayBs, todayStart, tomorrow } = getDashboardTodayRange();
   const [, bsYear, bsMonth, bsDay] = todayBs.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/) || [];
   const monthNames = ['', 'Baisakh', 'Jestha', 'Asar', 'Shrawan', 'Bhadra', 'Ashwin', 'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'];
   const monthNumber = Number(bsMonth);
@@ -84,25 +110,11 @@ const getAdminHomeMetrics = async () => {
     { 'attendance.callLoggedAt': { $exists: true, $ne: null } }
   ] };
 
-  const [employees, teachingSections, punches, leaves, pendingLeaveRequests, pendingManualPunchRequests, pendingProductRequests, isEmployeeHoliday, complaintResults, allHealthRecords, callResults, studentAttendanceDocs, currentClasses, studentRosterGroups, events] = await Promise.all([
-    Staff.find({ employeeCode: { $exists: true, $ne: '' }, isActive: { $ne: false } })
-      .select('employeeCode staffName plannedIn midTime employmentStatus jobStatus dateOfBirth designation department section mobileNumber officeContact')
-      .lean(),
-    DepartmentSection.find({ departmentName: /^Teaching Staff$/i }).select('name').lean(),
-    EmployeeAttendance.find({ punchTime: { $gte: todayStart, $lt: tomorrow } })
-      .select('pin punchTime status manualPunchType')
-      .sort({ punchTime: 1 })
-      .lean(),
-    LeaveApplication.find({
-      status: 'approved',
-    
-      startDateNepali: { $lte: todayBs },
-      endDateNepali: { $gte: todayBs }
-    }).select('employeeName leaveTypeName endDateNepali').lean(),
+  const [todayAttendanceMetrics, pendingLeaveRequests, pendingManualPunchRequests, pendingProductRequests, complaintResults, allHealthRecords, callResults, studentAttendanceDocs, currentClasses, studentRosterGroups, events] = await Promise.all([
+    getTodayEmployeeAttendanceMetrics(todayBs, todayStart, tomorrow),
     LeaveApplication.countDocuments({ status: 'pending' }),
     ManualPunchRequest.countDocuments({ status: 'pending' }),
     InventoryProductRequest.countDocuments({ status: 'pending' }),
-    EmployeeWeekend.exists({ dateBs: todayBs }),
     Portfolio.aggregate([
       { $unwind: '$complaints' },
       { $match: complaintDateFilter },
@@ -132,87 +144,17 @@ const getAdminHomeMetrics = async () => {
     Event.find({ date: { $gte: todayStart, $lt: weekEnd }, status: { $nin: ['cancelled', 'completed'] } }).select('title date nepaliDate time location').sort({ date: 1 }).limit(6).lean()
   ]);
 
-  const leaveNames = new Set(leaves.map(leave => String(leave.employeeName || '').trim().toLowerCase()));
-  const punchesByCode = new Map();
-  punches.forEach(punch => {
-    const code = String(punch.pin || '').trim().toUpperCase();
-    if (!punchesByCode.has(code)) punchesByCode.set(code, []);
-    punchesByCode.get(code).push(punch);
-  });
-  const activeEmployees = employees.filter(employee => employee.isActive !== false
-    && ![employee.employmentStatus, employee.jobStatus].some(status => ['resigned', 'terminated'].includes(String(status || '').trim().toLowerCase())));
-  const teachingEmployees = activeEmployees.filter(employee => String(employee.department || '').trim().toLowerCase() === 'teaching staff');
-  const sectionOrder = new Map([['ecd-3', 0], ['4-7', 1], ['8-10', 2]]);
-  const teachingSectionBreakdown = teachingSections
-    .map(section => ({ name: section.name, onLeave: 0, absent: 0 }))
-    .sort((sectionA, sectionB) => {
-      const orderA = sectionOrder.get(String(sectionA.name || '').trim().toLowerCase()) ?? 3;
-      const orderB = sectionOrder.get(String(sectionB.name || '').trim().toLowerCase()) ?? 3;
-      return orderA - orderB || sectionA.name.localeCompare(sectionB.name);
-    });
-  const sectionBreakdownByName = new Map(teachingSectionBreakdown.map(section => [String(section.name || '').trim().toLowerCase(), section]));
-  let absentToday = 0;
-  let lateToday = 0;
-  const absentList = [];
-  const lateInList = [];
-  const missedTeacherList = [];
-  const onLeaveList = [];
-  const birthdaysToday = [];
-
-  teachingEmployees.forEach(employee => {
-    const punchesForEmployee = punchesByCode.get(String(employee.employeeCode || '').trim().toUpperCase()) || [];
-    const isOnLeave = leaveNames.has(String(employee.staffName || '').trim().toLowerCase());
-    const sectionBreakdown = sectionBreakdownByName.get(String(employee.section || '').trim().toLowerCase());
-    const employeeSummary = {
-      name: employee.staffName || 'Staff member',
-      designation: employee.designation || employee.department || '',
-      contact: employee.mobileNumber || employee.officeContact || 'Contact not listed'
-    };
-    if (!punchesForEmployee.length) {
-      if (isOnLeave) {
-        if (sectionBreakdown) sectionBreakdown.onLeave += 1;
-        onLeaveList.push({ ...employeeSummary, leave: leaves.find(leave => String(leave.employeeName || '').trim().toLowerCase() === String(employee.staffName || '').trim().toLowerCase())?.leaveTypeName || 'Approved leave' });
-      } else if (!isEmployeeHoliday) {
-        absentToday += 1;
-        if (sectionBreakdown) sectionBreakdown.absent += 1;
-        absentList.push(employeeSummary);
-        missedTeacherList.push({ ...employeeSummary, missing: 'No punches recorded' });
-      }
-      return;
-    }
-
-    if (!isEmployeeHoliday) {
-      const midTime = String(employee.midTime || '13:00').match(/^(\d{1,2}):(\d{2})$/);
-      const midTimeMinutes = midTime ? Number(midTime[1]) * 60 + Number(midTime[2]) : 13 * 60;
-      const isAfterMidTime = punch => {
-        const time = new Date(punch.punchTime);
-        return time.getHours() * 60 + time.getMinutes() >= midTimeMinutes;
-      };
-      const isExplicitCheckIn = punch => punch.manualPunchType === 'Check-in' || Number(punch.status) === 0;
-      const morningPunches = punchesForEmployee.filter(punch => !isAfterMidTime(punch));
-      if (!morningPunches.length) missedTeacherList.push({ ...employeeSummary, missing: 'Missed morning check-in' });
-      const checkIn = morningPunches.find(isExplicitCheckIn) || morningPunches[0];
-      if (checkIn) {
-        const [plannedHour, plannedMinute] = String(employee.plannedIn || '09:00').split(':').map(Number);
-        const actualDate = new Date(checkIn.punchTime);
-        const actualMinutes = actualDate.getHours() * 60 + actualDate.getMinutes();
-        const lateMinutes = actualMinutes - (plannedHour * 60 + plannedMinute);
-        if (lateMinutes > 0) {
-          lateToday += 1;
-          lateInList.push({ ...employeeSummary, actualIn: actualDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }), lateMinutes });
-        }
-      }
-    }
-
-  });
-
-  activeEmployees.forEach(employee => {
-    if (!employee.dateOfBirth) return;
-    const birthday = new Date(employee.dateOfBirth);
-    if (birthday.getMonth() === todayStart.getMonth() && birthday.getDate() === todayStart.getDate()) {
-      birthdaysToday.push({ name: employee.staffName || 'Staff member', designation: employee.designation || employee.department || '' });
-    }
-  });
+  const {
+    absentToday,
+    teachingSectionBreakdown,
+    lateToday,
+    missedAttendance,
+    onLeaveList,
+    absentList,
+    lateInList,
+    missedTeacherList,
+    birthdaysToday
+  } = todayAttendanceMetrics;
 
   const currentClassKeys = new Set(currentClasses.map(item => `${String(item.studentClass || '').trim()}||${String(item.section || '').trim()}`));
   const studentTotalsByClass = new Map();
@@ -235,8 +177,6 @@ const getAdminHomeMetrics = async () => {
     });
   });
   const studentPresent = Math.max(totalStudents - studentAbsent, 0);
-  const missedAttendance = missedTeacherList.length;
-
   const complaintData = complaintResults[0] || { count: [], items: [] };
   const complaintItems = complaintData.items || [];
   const complaintRegs = [...new Set(complaintItems.map(item => String(item.reg || '').trim()).filter(Boolean))];
@@ -290,6 +230,18 @@ const getAdminHomeMetrics = async () => {
     todayBs
   };
 };
+
+exports.getTodayEmployeeAttendanceDashboardMetrics = async (req, res) => {
+  try {
+    const { todayBs, todayStart, tomorrow } = getDashboardTodayRange();
+    const attendanceMetrics = await getTodayEmployeeAttendanceMetrics(todayBs, todayStart, tomorrow);
+    return res.json({ todayBs, ...attendanceMetrics });
+  } catch (error) {
+    console.error('Unable to refresh today employee attendance dashboard metrics:', error);
+    return res.status(500).json({ message: 'Unable to refresh today attendance metrics.' });
+  }
+};
+
 // Helper function to fetch sidenav data
 const getSidenavData = async (req) => {
   try {

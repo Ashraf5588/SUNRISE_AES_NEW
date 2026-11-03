@@ -989,7 +989,7 @@
             <h2 id="todayOverviewTitle">Today at a glance <span class="home-overview-date">BS <%= adminDashboardMetrics.todayBs %></span></h2>
             <div class="home-stat-grid">
                 <a class="home-stat" style="--stat-color:#347a62;--stat-tint:#eaf5ef" href="/leave"><span class="home-stat-icon"><i class="fa-solid fa-person-circle-check" aria-hidden="true"></i></span><span class="home-stat-copy"><span class="home-stat-label">On leave</span><strong class="home-stat-value"><%= adminDashboardMetrics.onLeaveToday %></strong><span class="home-stat-breakdown"><% adminDashboardMetrics.teachingSectionBreakdown.forEach(section => { %><span><%= section.name %> <strong><%= section.onLeave %></strong></span><% }) %></span></span></a>
-                <a class="home-stat" style="--stat-color:#b44f46;--stat-tint:#fff0ed" href="/employeeattendance"><span class="home-stat-icon"><i class="fa-solid fa-user-xmark" aria-hidden="true"></i></span><span class="home-stat-copy"><span class="home-stat-label">Absent teachers</span><strong class="home-stat-value"><%= adminDashboardMetrics.absentToday %></strong><span class="home-stat-breakdown"><% adminDashboardMetrics.teachingSectionBreakdown.forEach(section => { %><span><%= section.name %> <strong><%= section.absent %></strong></span><% }) %></span></span></a>
+                <a class="home-stat" style="--stat-color:#b44f46;--stat-tint:#fff0ed" href="/employeeattendance"><span class="home-stat-icon"><i class="fa-solid fa-user-xmark" aria-hidden="true"></i></span><span class="home-stat-copy"><span class="home-stat-label">Absent teachers</span><strong class="home-stat-value" id="homeAbsentTodayCount"><%= adminDashboardMetrics.absentToday %></strong><span class="home-stat-breakdown"><% adminDashboardMetrics.teachingSectionBreakdown.forEach(section => { %><span data-home-section="<%= section.name %>"><%= section.name %> <strong data-home-section-absent><%= section.absent %></strong></span><% }) %></span></span></a>
                 <a class="home-stat" style="--stat-color:#a87823;--stat-tint:#fff7e7" href="/leave"><span class="home-stat-icon"><i class="fa-solid fa-file-circle-exclamation" aria-hidden="true"></i></span><span class="home-stat-copy"><span class="home-stat-label">Leave requests</span><strong class="home-stat-value"><%= adminDashboardMetrics.pendingLeaveRequests %></strong></span></a>
                 <a class="home-stat" style="--stat-color:#397aa1;--stat-tint:#eaf4fb" href="/inventory/productrequests"><span class="home-stat-icon"><i class="fa-solid fa-cart-shopping" aria-hidden="true"></i></span><span class="home-stat-copy"><span class="home-stat-label">Product requests</span><strong class="home-stat-value"><%= adminDashboardMetrics.pendingProductRequests %></strong></span></a>
                 <a class="home-stat" style="--stat-color:#7963a4;--stat-tint:#f2effa" href="/manualpunch"><span class="home-stat-icon"><i class="fa-solid fa-fingerprint" aria-hidden="true"></i></span><span class="home-stat-copy"><span class="home-stat-label">Manual punch requests</span><strong class="home-stat-value"><%= adminDashboardMetrics.pendingManualPunchRequests %></strong></span></a>
@@ -997,7 +997,7 @@
                 <a class="home-stat" style="--stat-color:#bd6948;--stat-tint:#fff0e9" href="/dailydashboard"><span class="home-stat-icon"><i class="fa-solid fa-message" aria-hidden="true"></i></span><span class="home-stat-copy"><span class="home-stat-label">Complaints</span><strong class="home-stat-value"><%= adminDashboardMetrics.complaintsToday %></strong></span></a>
                 <a class="home-stat" style="--stat-color:#4c8985;--stat-tint:#eaf5f3" href="/healthrecord"><span class="home-stat-icon"><i class="fa-solid fa-kit-medical" aria-hidden="true"></i></span><span class="home-stat-copy"><span class="home-stat-label">Health visits</span><strong class="home-stat-value"><%= adminDashboardMetrics.healthVisitsToday %></strong></span></a>
                 <a class="home-stat" style="--stat-color:#526da1;--stat-tint:#edf1fa" href="/frontdesk"><span class="home-stat-icon"><i class="fa-solid fa-phone-volume" aria-hidden="true"></i></span><span class="home-stat-copy"><span class="home-stat-label">Call log</span><strong class="home-stat-value"><%= adminDashboardMetrics.callsDoneToday %></strong></span></a>
-                <a class="home-stat" style="--stat-color:#8b6b41;--stat-tint:#f7f1e9" href="/employeeattendance"><span class="home-stat-icon"><i class="fa-solid fa-calendar-minus" aria-hidden="true"></i></span><span class="home-stat-copy"><span class="home-stat-label">Missed attendance</span><strong class="home-stat-value"><%= adminDashboardMetrics.missedAttendance %></strong></span></a>
+                <a class="home-stat" style="--stat-color:#8b6b41;--stat-tint:#f7f1e9" href="/employeeattendance"><span class="home-stat-icon"><i class="fa-solid fa-calendar-minus" aria-hidden="true"></i></span><span class="home-stat-copy"><span class="home-stat-label">Missed attendance</span><strong class="home-stat-value" id="homeMissedAttendanceCount"><%= adminDashboardMetrics.missedAttendance %></strong></span></a>
             </div>
         </section>
         <% } %>
@@ -1008,11 +1008,11 @@
                 <h2>Daily activity</h2>
                 <div class="home-activity-grid">
                     <section class="home-list-panel"><header><h3><i class="fa-solid fa-person-circle-check" aria-hidden="true"></i> On leave teachers</h3><span><%= adminDashboardMetrics.onLeaveList.length %></span></header><div class="home-table-wrap"><table class="home-data-table"><thead><tr><th>SN</th><th>Name</th><th>Contact</th></tr></thead><tbody><% if (adminDashboardMetrics.onLeaveList.length) { adminDashboardMetrics.onLeaveList.forEach((item, index) => { %><tr><td><%= index + 1 %></td><td><strong><%= item.name %></strong><small><%= item.leave %></small></td><td><%= item.contact %></td></tr><% }) } else { %><tr><td colspan="3" class="home-list-empty">No teachers on leave today.</td></tr><% } %></tbody></table></div></section>
-                    <section class="home-list-panel"><header><h3><i class="fa-solid fa-user-xmark" aria-hidden="true"></i> Absent teachers</h3><span><%= adminDashboardMetrics.absentList.length %></span></header><div class="home-table-wrap"><table class="home-data-table"><thead><tr><th>SN</th><th>Name</th><th>Contact</th></tr></thead><tbody><% if (adminDashboardMetrics.absentList.length) { adminDashboardMetrics.absentList.forEach((item, index) => { %><tr><td><%= index + 1 %></td><td><strong><%= item.name %></strong><small><%= item.designation || 'Staff' %></small></td><td><%= item.contact %></td></tr><% }) } else { %><tr><td colspan="3" class="home-list-empty">No absent teachers today.</td></tr><% } %></tbody></table></div></section>
+                    <section class="home-list-panel"><header><h3><i class="fa-solid fa-user-xmark" aria-hidden="true"></i> Absent teachers</h3><span id="homeAbsentTeacherListCount"><%= adminDashboardMetrics.absentList.length %></span></header><div class="home-table-wrap"><table class="home-data-table"><thead><tr><th>SN</th><th>Name</th><th>Contact</th></tr></thead><tbody id="homeAbsentTeacherRows"><% if (adminDashboardMetrics.absentList.length) { adminDashboardMetrics.absentList.forEach((item, index) => { %><tr><td><%= index + 1 %></td><td><strong><%= item.name %></strong><small><%= item.designation || 'Staff' %></small></td><td><%= item.contact %></td></tr><% }) } else { %><tr><td colspan="3" class="home-list-empty">No absent teachers today.</td></tr><% } %></tbody></table></div></section>
                     <section class="home-list-panel"><header><h3><i class="fa-solid fa-comments" aria-hidden="true"></i> Complaints</h3><span><%= adminDashboardMetrics.complaintsToday %></span></header><div class="home-table-wrap"><table class="home-data-table"><thead><tr><th>SN</th><th>Student</th><th>Complaint</th></tr></thead><tbody><% if (adminDashboardMetrics.complaintList.length) { adminDashboardMetrics.complaintList.forEach((item, index) => { %><tr><td><%= index + 1 %></td><td><strong><%= item.studentName || 'Student' %></strong><small><%= [item.studentClass, item.section].filter(Boolean).join(' / ') || 'Class / section not listed' %></small></td><td><%= item.reason || 'Complaint recorded' %><small>By: <%= item.by || 'Unknown' %></small><a class="home-complaint-see-all" href="/studentportfolio?studentClass=<%= encodeURIComponent(item.studentClass || '') %>&amp;section=<%= encodeURIComponent(item.section || '') %>&amp;academicYear=<%= encodeURIComponent(adminDashboardMetrics.todayBs.slice(0, 4)) %>&amp;reg=<%= encodeURIComponent(item.reg || '') %>">See all</a></td></tr><% }) } else { %><tr><td colspan="3" class="home-list-empty">No complaints today.</td></tr><% } %></tbody></table></div></section>
                     <section class="home-list-panel"><header><h3><i class="fa-solid fa-kit-medical" aria-hidden="true"></i> Health visits</h3><span><%= adminDashboardMetrics.healthVisitsToday %></span></header><div class="home-table-wrap"><table class="home-data-table home-health-table"><thead><tr><th>Name</th><th>Diagnosis</th><th>Treatment</th><th>Contact</th></tr></thead><tbody><% if (adminDashboardMetrics.healthVisitList.length) { adminDashboardMetrics.healthVisitList.forEach(item => { %><tr><td><strong><%= item.name %></strong><small><%= item.className || 'Class / section not listed' %></small></td><td><%= item.diagnosis %></td><td><%= item.treatment %></td><td><%= item.contact %></td></tr><% }) } else { %><tr><td colspan="4" class="home-list-empty">No health visits today.</td></tr><% } %></tbody></table></div></section>
-                    <section class="home-list-panel"><header><h3>Late in</h3><span><%= adminDashboardMetrics.lateInList.length %></span></header><ul><% if (adminDashboardMetrics.lateInList.length) { adminDashboardMetrics.lateInList.forEach(item => { %><li><strong><%= item.name %></strong><span>In <%= item.actualIn %>, late <%= item.lateMinutes %> min</span></li><% }) } else { %><li class="home-list-empty">No late arrivals today.</li><% } %></ul></section>
-                    <section class="home-list-panel"><header><h3>Missed attendance</h3><span><%= adminDashboardMetrics.missedTeacherList.length %></span></header><ul><% if (adminDashboardMetrics.missedTeacherList.length) { adminDashboardMetrics.missedTeacherList.forEach(item => { %><li><strong><%= item.name %></strong><span><%= item.contact %> · <%= item.missing %></span></li><% }) } else { %><li class="home-list-empty">No missing teacher punches today.</li><% } %></ul></section>
+                    <section class="home-list-panel"><header><h3>Late in</h3><span id="homeLateInCount"><%= adminDashboardMetrics.lateInList.length %></span></header><ul id="homeLateInRows"><% if (adminDashboardMetrics.lateInList.length) { adminDashboardMetrics.lateInList.forEach(item => { %><li><strong><%= item.name %></strong><span>In <%= item.actualIn %>, late <%= item.lateMinutes %> min</span></li><% }) } else { %><li class="home-list-empty">No late arrivals today.</li><% } %></ul></section>
+                    <section class="home-list-panel"><header><h3>Missed attendance</h3><span id="homeMissedTeacherListCount"><%= adminDashboardMetrics.missedTeacherList.length %></span></header><ul id="homeMissedTeacherRows"><% if (adminDashboardMetrics.missedTeacherList.length) { adminDashboardMetrics.missedTeacherList.forEach(item => { %><li><strong><%= item.name %></strong><span><%= item.contact %> · <%= item.missing %></span></li><% }) } else { %><li class="home-list-empty">No missing teacher punches today.</li><% } %></ul></section>
                 </div>
             </div>
             <aside class="home-right-stack" aria-label="Notices and upcoming items">
@@ -1584,6 +1584,85 @@
     <script src="/index.js"></script>
     <script src="/home-dashboard.js" defer></script>
 
+    <% if (userrole === 'ADMIN' && adminDashboardMetrics) { %>
+    <script>
+        (() => {
+            const refreshAttendance = async () => {
+                if (document.hidden) return;
+                try {
+                    const response = await fetch('/dashboard/today-employee-attendance', {
+                        headers: { Accept: 'application/json' },
+                        cache: 'no-store'
+                    });
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.message || 'Attendance dashboard refresh failed.');
+
+                    document.getElementById('homeAbsentTodayCount').textContent = data.absentToday;
+                    document.getElementById('homeMissedAttendanceCount').textContent = data.missedAttendance;
+                    document.getElementById('homeAbsentTeacherListCount').textContent = data.absentList.length;
+                    document.getElementById('homeLateInCount').textContent = data.lateInList.length;
+                    document.getElementById('homeMissedTeacherListCount').textContent = data.missedTeacherList.length;
+                    document.querySelectorAll('[data-home-section]').forEach(sectionElement => {
+                        const section = data.teachingSectionBreakdown.find(item => item.name === sectionElement.dataset.homeSection);
+                        const absentElement = sectionElement.querySelector('[data-home-section-absent]');
+                        if (section && absentElement) absentElement.textContent = section.absent;
+                    });
+
+                    const absentRows = document.getElementById('homeAbsentTeacherRows');
+                    absentRows.replaceChildren();
+                    data.absentList.forEach((item, index) => {
+                        const row = document.createElement('tr');
+                        const number = document.createElement('td');
+                        number.textContent = index + 1;
+                        const nameCell = document.createElement('td');
+                        const name = document.createElement('strong');
+                        name.textContent = item.name;
+                        const designation = document.createElement('small');
+                        designation.textContent = item.designation || 'Staff';
+                        nameCell.append(name, designation);
+                        const contact = document.createElement('td');
+                        contact.textContent = item.contact;
+                        row.append(number, nameCell, contact);
+                        absentRows.append(row);
+                    });
+                    if (!data.absentList.length) {
+                        absentRows.innerHTML = '<tr><td colspan="3" class="home-list-empty">No absent teachers today.</td></tr>';
+                    }
+
+                    const updateItems = (listId, items, getDetail, emptyMessage) => {
+                        const list = document.getElementById(listId);
+                        list.replaceChildren();
+                        if (!items.length) {
+                            const empty = document.createElement('li');
+                            empty.className = 'home-list-empty';
+                            empty.textContent = emptyMessage;
+                            list.append(empty);
+                            return;
+                        }
+                        items.forEach(item => {
+                            const row = document.createElement('li');
+                            const name = document.createElement('strong');
+                            name.textContent = item.name;
+                            const detail = document.createElement('span');
+                            detail.textContent = getDetail(item);
+                            row.append(name, detail);
+                            list.append(row);
+                        });
+                    };
+                    updateItems('homeLateInRows', data.lateInList, item => `In ${item.actualIn}, late ${item.lateMinutes} min`, 'No late arrivals today.');
+                    updateItems('homeMissedTeacherRows', data.missedTeacherList, item => `${item.contact} · ${item.missing}`, 'No missing teacher punches today.');
+                    const dateLabel = document.querySelector('#todayOverviewTitle .home-overview-date');
+                    if (dateLabel) dateLabel.textContent = `BS ${data.todayBs}`;
+                } catch (error) {
+                    console.error('Unable to refresh today attendance dashboard:', error);
+                }
+            };
+
+            window.setInterval(refreshAttendance, 60_000);
+            document.addEventListener('visibilitychange', refreshAttendance);
+        })();
+    </script>
+    <% } %>
 
 
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
