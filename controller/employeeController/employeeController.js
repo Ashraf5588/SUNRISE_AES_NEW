@@ -55,6 +55,7 @@ const {
 const {
     MANUAL_SYNC_TEST_SERIAL_NUMBER,
     getCommandAcknowledgementStatus,
+    isManualTestCommandEligible,
     getManualTestPollFilter,
     isManualAdmsSyncTestEnabled,
     queueManualEmployeeSyncTest: queueManualEmployeeSyncTestForOrganization
@@ -150,23 +151,6 @@ async function queueAdmsEmployeeCommand(device, employee, command, requestedBy =
         employeeReference: String(employee._id)
     });
     return created.toObject();
-}
-
-async function queueManualEmployeeSyncTest(employeeId, requestedBy = '') {
-    const organizationId = getOrganizationId();
-    return queueManualEmployeeSyncTestForOrganization({
-        employeeId,
-        requestedBy,
-        isEnabled: isManualAdmsSyncTestEnabled(),
-        isValidEmployeeId: mongoose.isValidObjectId,
-        organizationId,
-        loadEmployee: id => Staff.findById(id).lean(),
-        loadDevice: (currentOrganizationId, serialNumber) => EmployeeAttendanceDevice.findOne({
-            organizationId: currentOrganizationId,
-            serialNumber
-        }).lean(),
-        queueCommand: queueAdmsEmployeeCommand
-    });
 }
 
 async function queueEmployeeForConfiguredDevices(employee, requestedBy = '') {
@@ -2615,10 +2599,19 @@ exports.syncEmployeeToAttendanceDevices = async (req, res) => {
 
 exports.manualSyncEmployeeTest = async (req, res) => {
     try {
-        const outcome = await queueManualEmployeeSyncTest(
-            req.params.employeeId,
-            req.user?.username || req.user?.teacherName
-        );
+        const outcome = await queueManualEmployeeSyncTestForOrganization({
+            employeeId: req.params.employeeId,
+            requestedBy: req.user?.username || req.user?.teacherName,
+            isEnabled: isManualAdmsSyncTestEnabled(),
+            isValidEmployeeId: mongoose.isValidObjectId,
+            organizationId: getOrganizationId(),
+            loadEmployee: employeeId => Staff.findById(employeeId).lean(),
+            loadDevice: (organizationId, serialNumber) => EmployeeAttendanceDevice.findOne({
+                organizationId,
+                serialNumber
+            }).lean(),
+            queueCommand: queueAdmsEmployeeCommand
+        });
         if (!outcome.queued) {
             return res.status(outcome.status).json({ message: outcome.message });
         }
@@ -2806,7 +2799,7 @@ exports.getAdmsDeviceCommand = async (req, res) => {
         const request = await startAttendanceDeviceRequest(serialNumber, req, 'GET_COMMAND_REQUEST', receivedAt, false);
         const globalQueueEnabled = isAdmsCommandQueueEnabled();
         const manualTestPollFilter = !globalQueueEnabled && isManualAdmsSyncTestEnabled()
-            ? getManualTestPollFilter(serialNumber)
+            ? getManualTestPollFilter(serialNumber, organizationId)
             : null;
         const deviceCanReceiveCommands = device.supportsUserSyncCommands || device.supportsUserDeletion;
         if (
@@ -2887,6 +2880,18 @@ exports.getAdmsDeviceCommand = async (req, res) => {
             ).lean();
         }
         if (!command) {
+            await finishAttendanceDeviceRequest(serialNumber, request.requestDetails, 'no-command');
+            return res.type('text/plain').send('OK');
+        }
+        if (
+            !globalQueueEnabled
+            && !isManualTestCommandEligible(command, serialNumber, organizationId)
+        ) {
+            console.error('Manual ADMS poll selected a command outside its restricted scope:', {
+                organizationId,
+                serialNumber,
+                commandId: command.commandId
+            });
             await finishAttendanceDeviceRequest(serialNumber, request.requestDetails, 'no-command');
             return res.type('text/plain').send('OK');
         }

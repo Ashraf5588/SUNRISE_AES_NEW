@@ -28,12 +28,26 @@ function buildManualTestUserUpdateCommand(employee) {
     return command;
 }
 
-function getManualTestPollFilter(serialNumber) {
-    if (String(serialNumber || '').trim() !== MANUAL_SYNC_TEST_SERIAL_NUMBER) return null;
+function getManualTestPollFilter(serialNumber, organizationId) {
+    if (
+        String(serialNumber || '').trim() !== MANUAL_SYNC_TEST_SERIAL_NUMBER
+        || !String(organizationId || '').trim()
+    ) return null;
     return {
+        organizationId: String(organizationId).trim(),
+        serialNumber: MANUAL_SYNC_TEST_SERIAL_NUMBER,
         manualTest: true,
         commandType: COMMAND_TYPES.UPDATE_USER
     };
+}
+
+function isManualTestCommandEligible(command, serialNumber, organizationId) {
+    return String(serialNumber || '').trim() === MANUAL_SYNC_TEST_SERIAL_NUMBER
+        && Boolean(String(organizationId || '').trim())
+        && command?.organizationId === String(organizationId).trim()
+        && command?.serialNumber === MANUAL_SYNC_TEST_SERIAL_NUMBER
+        && command?.manualTest === true
+        && command?.commandType === COMMAND_TYPES.UPDATE_USER;
 }
 
 function getCommandAcknowledgementStatus(returnCode) {
@@ -102,6 +116,7 @@ module.exports = {
     MANUAL_SYNC_TEST_SERIAL_NUMBER,
     buildManualTestUserUpdateCommand,
     getCommandAcknowledgementStatus,
+    isManualTestCommandEligible,
     getManualTestPollFilter,
     isManualAdmsSyncTestEnabled,
     queueManualEmployeeSyncTest

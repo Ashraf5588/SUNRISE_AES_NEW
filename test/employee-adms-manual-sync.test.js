@@ -1,14 +1,18 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const test = require('node:test');
 const {
     MANUAL_SYNC_TEST_SERIAL_NUMBER,
     buildManualTestUserUpdateCommand,
     getCommandAcknowledgementStatus,
+    isManualTestCommandEligible,
     getManualTestPollFilter,
     isManualAdmsSyncTestEnabled,
     queueManualEmployeeSyncTest
 } = require('../utils/employeeAdmsManualSync');
 const { COMMAND_TYPES } = require('../utils/employeeAdmsCommands');
+const { EmployeeAttendanceDeviceCommand } = require('../model/employeeSchema/employeeAttendanceDeviceCommandSchema');
 
 const employee = {
     _id: '507f1f77bcf86cd799439011',
@@ -157,12 +161,73 @@ test('rejects unknown devices and devices from another organization', async () =
     }
 });
 
-test('manual polling is limited to the configured serial and update commands marked for manual tests', () => {
-    assert.deepEqual(getManualTestPollFilter(MANUAL_SYNC_TEST_SERIAL_NUMBER), {
+test('controller passes all required dependencies to the manual queue utility', () => {
+    const source = fs.readFileSync(path.join(__dirname, '..', 'controller', 'employeeController', 'employeeController.js'), 'utf8');
+    const handlerStart = source.indexOf('exports.manualSyncEmployeeTest = async (req, res) => {');
+    const handlerEnd = source.indexOf('exports.retryEmployeeAttendanceDeviceCommand = async', handlerStart);
+    const handler = source.slice(handlerStart, handlerEnd);
+    const call = handler.match(/queueManualEmployeeSyncTestForOrganization\(\{([\s\S]*?)\n        \}\)/);
+
+    assert.ok(call, 'controller must pass an object to the queue utility');
+    for (const dependency of [
+        'employeeId:',
+        'requestedBy:',
+        'isEnabled:',
+        'isValidEmployeeId:',
+        'organizationId:',
+        'loadEmployee:',
+        'loadDevice:',
+        'queueCommand:'
+    ]) {
+        assert.ok(call[1].includes(dependency), `controller dependency missing: ${dependency}`);
+    }
+});
+
+test('manual flag is persisted by the queue helper and defaults false for legacy commands', () => {
+    const source = fs.readFileSync(path.join(__dirname, '..', 'controller', 'employeeController', 'employeeController.js'), 'utf8');
+    const queueStart = source.indexOf('async function queueAdmsEmployeeCommand(');
+    const queueEnd = source.indexOf('async function queueEmployeeForConfiguredDevices(', queueStart);
+    const queueImplementation = source.slice(queueStart, queueEnd);
+    assert.match(queueImplementation, /const manualTest = options\.manualTest === true/);
+    assert.match(queueImplementation, /manualTest,\s*\n\s*employeeReference:/);
+
+    const base = {
+        organizationId,
+        serialNumber: MANUAL_SYNC_TEST_SERIAL_NUMBER,
+        commandId: 31,
+        commandType: COMMAND_TYPES.UPDATE_USER,
+        commandPayload: 'DATA UPDATE USERINFO PIN=202\tName=Subina Subedi\tPri=0',
+        employeeReference: employee._id,
+        deviceCode: '202'
+    };
+    assert.equal(new EmployeeAttendanceDeviceCommand(base).manualTest, false);
+    assert.equal(new EmployeeAttendanceDeviceCommand({ ...base, manualTest: true }).toObject().manualTest, true);
+});
+
+test('manual polling query is scoped to the exact serial, organization, marker, and update type', () => {
+    assert.deepEqual(getManualTestPollFilter(MANUAL_SYNC_TEST_SERIAL_NUMBER, organizationId), {
+        organizationId,
+        serialNumber: MANUAL_SYNC_TEST_SERIAL_NUMBER,
         manualTest: true,
         commandType: COMMAND_TYPES.UPDATE_USER
     });
-    assert.equal(getManualTestPollFilter('OTHER-DEVICE'), null);
+    assert.equal(getManualTestPollFilter('OTHER-DEVICE', organizationId), null);
+    assert.equal(getManualTestPollFilter(MANUAL_SYNC_TEST_SERIAL_NUMBER, ''), null);
+});
+
+test('ordinary commands, other serials, other organizations, and deletion commands fail manual poll eligibility', () => {
+    const validCommand = {
+        organizationId,
+        serialNumber: MANUAL_SYNC_TEST_SERIAL_NUMBER,
+        manualTest: true,
+        commandType: COMMAND_TYPES.UPDATE_USER
+    };
+    assert.equal(isManualTestCommandEligible(validCommand, MANUAL_SYNC_TEST_SERIAL_NUMBER, organizationId), true);
+    assert.equal(isManualTestCommandEligible({ ...validCommand, manualTest: false }, MANUAL_SYNC_TEST_SERIAL_NUMBER, organizationId), false);
+    assert.equal(isManualTestCommandEligible({ ...validCommand, serialNumber: 'OTHER-DEVICE' }, MANUAL_SYNC_TEST_SERIAL_NUMBER, organizationId), false);
+    assert.equal(isManualTestCommandEligible(validCommand, 'OTHER-DEVICE', organizationId), false);
+    assert.equal(isManualTestCommandEligible({ ...validCommand, organizationId: 'other-school' }, MANUAL_SYNC_TEST_SERIAL_NUMBER, organizationId), false);
+    assert.equal(isManualTestCommandEligible({ ...validCommand, commandType: COMMAND_TYPES.DELETE_USER }, MANUAL_SYNC_TEST_SERIAL_NUMBER, organizationId), false);
 });
 
 test('manual update builder always uses privilege zero and never creates delete commands', () => {
