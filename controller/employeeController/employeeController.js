@@ -52,6 +52,13 @@ const {
     normalizeAdmsPin,
     parseDeviceCommandResult
 } = require('../../utils/employeeAdmsCommands');
+const {
+    MANUAL_SYNC_TEST_SERIAL_NUMBER,
+    getCommandAcknowledgementStatus,
+    getManualTestPollFilter,
+    isManualAdmsSyncTestEnabled,
+    queueManualEmployeeSyncTest: queueManualEmployeeSyncTestForOrganization
+} = require('../../utils/employeeAdmsManualSync');
 const Staff = mongoose.models.staff || mongoose.model('staff', staffSchema, 'staff');
 const LeaveApplication = mongoose.models.LeaveApplication || mongoose.model('LeaveApplication', leaveApplicationSchema, 'leaveApplications');
 const getOrganizationId = () => String(mongoose.connection.name || '').trim();
@@ -78,21 +85,33 @@ async function allocateAdmsCommandId(organizationId, serialNumber) {
     }
 }
 
-async function queueAdmsEmployeeCommand(device, employee, command, requestedBy = '') {
+async function queueAdmsEmployeeCommand(device, employee, command, requestedBy = '', options = {}) {
     const organizationId = getOrganizationId();
     const serialNumber = String(device.serialNumber || '').trim();
+    const manualTest = options.manualTest === true;
     if (!organizationId || device.organizationId !== organizationId) {
         throw new Error('Device organization does not match the current database.');
     }
-    if (command.commandType === COMMAND_TYPES.UPDATE_USER && !device.supportsUserSyncCommands) return null;
+    if (manualTest && (
+        serialNumber !== MANUAL_SYNC_TEST_SERIAL_NUMBER
+        || command.commandType !== COMMAND_TYPES.UPDATE_USER
+        || command.privilege !== 0
+    )) {
+        throw new Error('Manual test sync is restricted to normal-user updates on the configured test device.');
+    }
+    if (!manualTest && command.commandType === COMMAND_TYPES.UPDATE_USER && !device.supportsUserSyncCommands) return null;
     if (command.commandType === COMMAND_TYPES.DELETE_USER && !device.supportsUserDeletion) return null;
 
+    const manualTestFilter = manualTest
+        ? { manualTest: true }
+        : { $or: [{ manualTest: false }, { manualTest: { $exists: false } }] };
     const existing = await EmployeeAttendanceDeviceCommand.findOne({
         organizationId,
         serialNumber,
         employeeReference: employee._id,
         commandType: command.commandType,
         commandPayload: command.commandPayload,
+        ...manualTestFilter,
         status: { $in: ['PENDING', 'SENT'] }
     }).sort({ createdAt: -1 }).lean();
     if (existing) return existing;
@@ -102,6 +121,7 @@ async function queueAdmsEmployeeCommand(device, employee, command, requestedBy =
         serialNumber,
         employeeReference: employee._id,
         commandType: command.commandType,
+        ...manualTestFilter,
         status: 'PENDING'
     }, {
         $set: { status: 'FAILED', lastError: 'Superseded by newer employee data.' }
@@ -114,6 +134,7 @@ async function queueAdmsEmployeeCommand(device, employee, command, requestedBy =
         commandId,
         commandType: command.commandType,
         commandPayload: command.commandPayload,
+        manualTest,
         employeeReference: employee._id,
         employeeCode: String(employee.employeeCode || ''),
         deviceCode: command.deviceCode || String(employee.deviceCode || ''),
@@ -129,6 +150,23 @@ async function queueAdmsEmployeeCommand(device, employee, command, requestedBy =
         employeeReference: String(employee._id)
     });
     return created.toObject();
+}
+
+async function queueManualEmployeeSyncTest(employeeId, requestedBy = '') {
+    const organizationId = getOrganizationId();
+    return queueManualEmployeeSyncTestForOrganization({
+        employeeId,
+        requestedBy,
+        isEnabled: isManualAdmsSyncTestEnabled(),
+        isValidEmployeeId: mongoose.isValidObjectId,
+        organizationId,
+        loadEmployee: id => Staff.findById(id).lean(),
+        loadDevice: (currentOrganizationId, serialNumber) => EmployeeAttendanceDevice.findOne({
+            organizationId: currentOrganizationId,
+            serialNumber
+        }).lean(),
+        queueCommand: queueAdmsEmployeeCommand
+    });
 }
 
 async function queueEmployeeForConfiguredDevices(employee, requestedBy = '') {
@@ -1132,13 +1170,13 @@ exports.showEmployeeData = async (req, res) => {
         const [employees, devices, commands, enrollments] = await Promise.all([
             getEmployeeProfiles(),
             EmployeeAttendanceDevice.find({})
-                .select('serialNumber name model firmwareVersion supportsUserSyncCommands supportsUserDeletion supportsManagerPrivilege lastActivity')
+                .select('organizationId serialNumber name model firmwareVersion supportsUserSyncCommands supportsUserDeletion supportsManagerPrivilege lastActivity')
                 .sort({ lastActivity: -1, name: 1 })
                 .lean(),
             EmployeeAttendanceDeviceCommand.find({ organizationId })
                 .sort({ createdAt: -1 })
                 .limit(500)
-                .select('employeeReference status createdAt')
+                .select('employeeReference status createdAt manualTest _id')
                 .lean(),
             EmployeeAttendanceManualEnrollment.find({ organizationId })
                 .sort({ confirmedAt: -1 })
@@ -1150,8 +1188,10 @@ exports.showEmployeeData = async (req, res) => {
             const employeeId = String(command.employeeReference);
             if (syncStatusByEmployee.has(employeeId)) continue;
             syncStatusByEmployee.set(employeeId, {
+                _id: String(command._id),
                 status: command.status,
-                createdAt: command.createdAt
+                createdAt: command.createdAt,
+                manualTest: command.manualTest === true
             });
         }
         const manualEnrollmentByEmployee = new Map();
@@ -1173,6 +1213,13 @@ exports.showEmployeeData = async (req, res) => {
             syncStatusByEmployee: Object.fromEntries(syncStatusByEmployee),
             manualEnrollmentByEmployee: Object.fromEntries(manualEnrollmentByEmployee),
             commandQueueEnabled: isAdmsCommandQueueEnabled(),
+            manualSyncTestEnabled: isManualAdmsSyncTestEnabled(),
+            manualSyncTestDeviceAvailable: deviceStatuses.some(device =>
+                device.organizationId === organizationId && device.serialNumber === MANUAL_SYNC_TEST_SERIAL_NUMBER
+            ),
+            manualSyncTestEligibleEmployeeIds: employees
+                .filter(employee => getDeviceEmployeeActiveState(employee) && isValidAdmsPin(employee.deviceCode))
+                .map(employee => String(employee._id)),
             currentPage: 'employee-list',
             selectedEmployee: null
         });
@@ -2566,6 +2613,32 @@ exports.syncEmployeeToAttendanceDevices = async (req, res) => {
     }
 };
 
+exports.manualSyncEmployeeTest = async (req, res) => {
+    try {
+        const outcome = await queueManualEmployeeSyncTest(
+            req.params.employeeId,
+            req.user?.username || req.user?.teacherName
+        );
+        if (!outcome.queued) {
+            return res.status(outcome.status).json({ message: outcome.message });
+        }
+        return res.status(202).json({
+            message: outcome.commandStatus === 'PENDING'
+                ? 'Manual test command queued and awaiting device acknowledgement.'
+                : 'An identical manual test command is already pending device acknowledgement.',
+            commandId: outcome.commandId,
+            status: outcome.commandStatus
+        });
+    } catch (error) {
+        console.error('Unable to queue restricted manual ADMS test sync:', {
+            employeeReference: String(req.params.employeeId || ''),
+            serialNumber: MANUAL_SYNC_TEST_SERIAL_NUMBER,
+            message: error.message
+        });
+        return res.status(500).json({ message: 'Unable to queue the manual test synchronization.' });
+    }
+};
+
 exports.retryEmployeeAttendanceDeviceCommand = async (req, res) => {
     try {
         if (!mongoose.isValidObjectId(req.params.commandId)) {
@@ -2731,16 +2804,30 @@ exports.getAdmsDeviceCommand = async (req, res) => {
             return res.status(404).type('text/plain').send('Unknown device');
         }
         const request = await startAttendanceDeviceRequest(serialNumber, req, 'GET_COMMAND_REQUEST', receivedAt, false);
+        const globalQueueEnabled = isAdmsCommandQueueEnabled();
+        const manualTestPollFilter = !globalQueueEnabled && isManualAdmsSyncTestEnabled()
+            ? getManualTestPollFilter(serialNumber)
+            : null;
         const deviceCanReceiveCommands = device.supportsUserSyncCommands || device.supportsUserDeletion;
-        if (!request.activityUpdateSucceeded || !isAdmsCommandQueueEnabled() || !deviceCanReceiveCommands) {
+        if (
+            !request.activityUpdateSucceeded
+            || (globalQueueEnabled && !deviceCanReceiveCommands)
+            || (!globalQueueEnabled && !manualTestPollFilter)
+        ) {
             await finishAttendanceDeviceRequest(serialNumber, request.requestDetails, 'no-command');
             return res.type('text/plain').send('OK');
         }
 
-        const eligibleCommandTypes = [];
-        if (device.supportsUserSyncCommands) eligibleCommandTypes.push(COMMAND_TYPES.UPDATE_USER);
-        if (device.supportsUserDeletion) eligibleCommandTypes.push(COMMAND_TYPES.DELETE_USER);
-        const eligibleCommandFilter = { commandType: { $in: eligibleCommandTypes } };
+        const eligibleCommandFilter = globalQueueEnabled
+            ? {
+                commandType: {
+                    $in: [
+                        ...(device.supportsUserSyncCommands ? [COMMAND_TYPES.UPDATE_USER] : []),
+                        ...(device.supportsUserDeletion ? [COMMAND_TYPES.DELETE_USER] : [])
+                    ]
+                }
+            }
+            : manualTestPollFilter;
         const oldestSent = await EmployeeAttendanceDeviceCommand.findOne({
             organizationId,
             serialNumber,
@@ -2768,7 +2855,10 @@ exports.getAdmsDeviceCommand = async (req, res) => {
                     if (!command) {
                         command = await EmployeeAttendanceDeviceCommand.findOne({
                             _id: oldestSent._id,
-                            status: 'SENT'
+                            status: 'SENT',
+                            organizationId,
+                            serialNumber,
+                            ...eligibleCommandFilter
                         }).lean();
                     }
                 }
@@ -2777,7 +2867,10 @@ exports.getAdmsDeviceCommand = async (req, res) => {
         if (!command && oldestSent && receivedAt.getTime() - new Date(oldestSent.sentAt || 0).getTime() < 2 * 60_000) {
             command = await EmployeeAttendanceDeviceCommand.findOne({
                 _id: oldestSent._id,
-                status: 'SENT'
+                status: 'SENT',
+                organizationId,
+                serialNumber,
+                ...eligibleCommandFilter
             }).lean();
         }
 
@@ -2803,6 +2896,7 @@ exports.getAdmsDeviceCommand = async (req, res) => {
             serialNumber,
             commandId: command.commandId,
             commandType: command.commandType,
+            manualTest: command.manualTest === true,
             attempt: command.attempts
         });
         await finishAttendanceDeviceRequest(serialNumber, request.requestDetails, 'command-sent');
@@ -2831,7 +2925,8 @@ exports.receiveAdmsDeviceCommandResult = async (req, res) => {
         const request = await startAttendanceDeviceRequest(serialNumber, req, 'POST_DEVICE_COMMAND_RESULT', receivedAt, false);
         if (!request.activityUpdateSucceeded) return res.status(500).type('text/plain').send('Unable to record device communication');
 
-        const success = result.returnCode === 0;
+        const status = getCommandAcknowledgementStatus(result.returnCode);
+        const success = status === 'SUCCESS';
         const updated = await EmployeeAttendanceDeviceCommand.updateOne(
             {
                 organizationId,
@@ -2871,6 +2966,14 @@ exports.receiveAdmsDeviceCommandResult = async (req, res) => {
                 returnCode: result.returnCode,
                 status: success ? 'SUCCESS' : 'FAILED'
             });
+            if (!success) {
+                console.warn('ADMS device rejected employee command:', {
+                    organizationId,
+                    serialNumber,
+                    commandId: result.commandId,
+                    failureReason: `Device returned code ${result.returnCode}.`
+                });
+            }
         }
         await finishAttendanceDeviceRequest(serialNumber, request.requestDetails, 'command-result');
         return res.status(200).type('text/plain').send('OK');

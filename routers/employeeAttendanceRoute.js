@@ -64,6 +64,7 @@ employee.get('/employeeattendance/device-status/:serialNumber', verifytoken, isA
 employee.post('/employeeattendance/device-sync', verifytoken, isAdmin, employeeController.startEmployeeAttendanceDeviceSync);
 employee.get('/employeeattendance/device-sync/:runId', verifytoken, isAdmin, employeeController.getEmployeeAttendanceDeviceSync);
 employee.post('/employeeattendance/staff/:employeeId/sync', verifytoken, isAdmin, employeeController.syncEmployeeToAttendanceDevices);
+employee.post('/employeeattendance/staff/:employeeId/manual-sync-test', verifytoken, isAdmin, employeeController.manualSyncEmployeeTest);
 employee.get('/employeeattendance/staff/:employeeId/commands', verifytoken, isAdmin, employeeController.getEmployeeAttendanceDeviceCommandHistory);
 employee.post('/employeeattendance/device-command/:commandId/retry', verifytoken, isAdmin, employeeController.retryEmployeeAttendanceDeviceCommand);
 employee.post('/employeeattendance/staff/:employeeId/manual-fingerprint-enrollment', verifytoken, isAdmin, employeeController.confirmManualEmployeeFingerprintEnrollment);

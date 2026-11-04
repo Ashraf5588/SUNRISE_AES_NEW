@@ -5,6 +5,7 @@ const employeeAttendanceDeviceCommandSchema = new mongoose.Schema({
     serialNumber: { type: String, required: true, trim: true },
     commandId: { type: Number, required: true, min: 1 },
     commandType: { type: String, required: true, enum: ['USERINFO_UPDATE', 'USERINFO_DELETE'] },
+    manualTest: { type: Boolean, default: false, index: true },
     commandPayload: { type: String, required: true, maxlength: 2048 },
     employeeReference: { type: mongoose.Schema.Types.ObjectId, ref: 'staff', required: true },
     employeeCode: { type: String, trim: true, default: '' },

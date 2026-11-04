@@ -67,7 +67,8 @@
 	<%- include('employeesidenav', { currentPage, selectedEmployee }) %>
 	<main class="page-shell">
 		<header class="page-header"><div><p class="muted">People / Employee management</p><h1>Employee list</h1><p class="muted">Manage ADMS user sync and record manual fingerprint enrollment. Remote fingerprint enrollment is unverified for this MB2000 firmware.</p></div><a class="button" href="/employeedetail?new=1"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add employee</a></header>
-		<% if (!commandQueueEnabled) { %><p class="notice">Outbound ADMS commands are disabled by server configuration. Employee and attendance workflows continue normally. Keep this disabled until the command protocol has been tested on the target device.</p><% } %>
+		<% if (!commandQueueEnabled) { %><p class="notice">General ADMS synchronization remains disabled. <% if (manualSyncTestEnabled && manualSyncTestDeviceAvailable) { %>The separately gated manual test is available only for the configured MB2000 test terminal.<% } else { %>Employee and attendance workflows continue normally.<% } %></p><% } %>
+		<p id="manualSyncFeedback" class="dialog-status" role="status" aria-live="polite"></p>
 		<section class="panel"><div class="panel-heading"><h2><%= employees.length %> employees</h2><div class="controls"><input id="employeeSearch" type="search" placeholder="Search employees" aria-label="Search employees"><a class="button" href="/employeeattendance"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i> Attendance</a></div></div>
 			<% if (employees.length) { %>
 			<div class="table-wrap"><table id="employeeList"><thead><tr><th>S.N</th><th>Employee code</th><th>Device code / PIN</th><th>Name</th><th>Designation</th><th>Department</th><th>Branch</th><th>Contact</th><th>Office email</th><th>Status</th><th>Device sync status</th><th>Profile</th><th>Device actions</th><th>Fingerprint enrollment</th></tr></thead><tbody>
@@ -78,7 +79,8 @@
 					<td><a href="/employeedetail?employeeId=<%= employee._id %>">Open profile</a></td>
 					<td><div class="action-group">
 						<button class="action-button sync-button" type="button" data-employee-id="<%= employeeId %>" <%= commandQueueEnabled && employee.deviceCode ? '' : 'disabled' %>>Sync employee</button>
-						<% if (sync?.status === 'FAILED' && commandQueueEnabled) { %><button class="action-button retry-button" type="button" data-command-id="<%= sync._id %>">Retry failed</button><% } %>
+						<% if (sync?.status === 'FAILED' && commandQueueEnabled && !sync.manualTest) { %><button class="action-button retry-button" type="button" data-command-id="<%= sync._id %>">Retry failed</button><% } %>
+						<% if (manualSyncTestEnabled && manualSyncTestDeviceAvailable && manualSyncTestEligibleEmployeeIds.includes(employeeId)) { %><button class="action-button manual-test-sync-button" type="button" data-employee-id="<%= employeeId %>">Manual test sync</button><% } %>
 						<button class="action-button history-button" type="button" data-employee-id="<%= employeeId %>">Command history</button>
 					</div></td>
 					<td><button class="enrollment-button" type="button" <%= employee.deviceCode && devices.length ? '' : 'disabled' %> data-employee-id="<%= employeeId %>" data-device-code="<%= employee.deviceCode || '' %>" data-employee-name="<%= employee.staffName %>"><%= enrollment ? 'Record another enrollment' : 'Manual enrollment' %></button></td>
@@ -198,6 +200,24 @@
 					window.alert(error.message);
 					button.disabled = false;
 				}
+			});
+			const manualSyncFeedback = document.getElementById('manualSyncFeedback');
+			document.querySelectorAll('.manual-test-sync-button').forEach(button => {
+				button.addEventListener('click', async () => {
+					button.disabled = true;
+					manualSyncFeedback.textContent = 'Queueing the restricted MB2000 test command…';
+					try {
+						const response = await fetch(`/employeeattendance/staff/${encodeURIComponent(button.dataset.employeeId)}/manual-sync-test`, {
+							method: 'POST'
+						});
+						const result = await response.json();
+						if (!response.ok) throw new Error(result.message || 'Unable to queue manual test sync.');
+						manualSyncFeedback.textContent = `${result.message} Command ID: ${result.commandId}.`;
+					} catch (error) {
+						manualSyncFeedback.textContent = error.message;
+						button.disabled = false;
+					}
+				});
 			});
 		});
 		document.querySelectorAll('.retry-button').forEach(button => {
