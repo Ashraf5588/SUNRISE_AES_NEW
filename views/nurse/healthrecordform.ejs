@@ -113,7 +113,7 @@
         <label class="hm-field hm-inline-field">
           <span>Range</span>
           <select id="recordRange">
-            <option value="today" selected>Today</option>
+            <option value="today" selected><%= todayBs %> BS</option>
             <option value="all">All</option>
             <option value="last7">Last 7 Days</option>
             <option value="lastMonth">Last Month</option>
@@ -123,12 +123,12 @@
 
         <label class="hm-field hm-inline-field">
           <span>Specific Date (BS)</span>
-          <input type="text" id="recordDateBs" class="nepali-datepicker" placeholder="YYYY-MM-DD" />
+          <input type="text" id="recordDateBs" class="nepali-datepicker" placeholder="YYYY-MM-DD" value="<%= todayBs %>" data-today-bs="<%= todayBs %>" />
         </label>
 
         <label class="hm-field hm-inline-field">
           <span>Specific Date (AD)</span>
-          <input type="date" id="recordDate" />
+          <input type="date" id="recordDate" value="<%= todayAd %>" data-today-ad="<%= todayAd %>" />
         </label>
 
         <button type="button" class="hm-button" id="recordFilterBtn">Find Records</button>

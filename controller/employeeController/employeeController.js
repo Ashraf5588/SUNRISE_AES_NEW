@@ -26,16 +26,18 @@ const {
     getAttendanceLogicalKey,
     getAttendanceRequestSource,
     getAttendanceSyncStatus,
+    getEmployeeAttendanceCodes,
     getDeviceOnlineTimeoutMs,
     isValidDeviceSerial,
     isAttendanceDeviceOnline,
+    normalizeAttendancePin,
     parseAttendanceRow
 } = require('../../utils/employeeAttendanceSync');
 const {
     EmployeeAttendanceDevice,
     EmployeeAttendanceSyncRun
 } = require('../../model/employeeSchema/employeeAttendanceDeviceSchema');
-const { getActiveEmployeeProfiles } = require('../../utils/employeeManagementDashboard');
+const { getActiveEmployeeProfiles, isActiveEmployeeProfile } = require('../../utils/employeeManagementDashboard');
 const Staff = mongoose.models.staff || mongoose.model('staff', staffSchema, 'staff');
 const LeaveApplication = mongoose.models.LeaveApplication || mongoose.model('LeaveApplication', leaveApplicationSchema, 'leaveApplications');
 const employeeSetupConfigs = {
@@ -762,11 +764,12 @@ exports.showEmployeeManagementDashboard = async (req, res) => {
         const attendanceLists = { present: [], onLeave: [], absent: [], late: [] };
 
         activeEmployees.forEach(employee => {
-            const employeeCode = String(employee.employeeCode || '').trim().toUpperCase();
+            const attendanceCodes = getEmployeeAttendanceCodes(employee);
             const employeeName = normalizeEmployeeName(employee.staffName);
-            const employeePunches = (employeeCode ? punchesByCode.get(employeeCode) : null)
-                || punchesByName.get(employeeName)
-                || [];
+            const employeePunches = [...new Map(attendanceCodes
+                .flatMap(code => punchesByCode.get(code) || [])
+                .map(punch => [String(punch._id || `${punch.pin}|${punch.punchTime}`), punch])).values()];
+            if (!employeePunches.length && employeeName) employeePunches.push(...(punchesByName.get(employeeName) || []));
             const leave = leavesByName.get(employeeName);
             const contact = employee.mobileNumber || employee.officeContact || '-';
             const employeeSummary = {
@@ -1203,11 +1206,23 @@ registerEmployeeSetupHandlers('sections', 'Section');
 registerEmployeeSetupHandlers('designations', 'Designation');
 registerEmployeeSetupHandlers('shifts', 'Shift');
 
+const getKathmanduCalendarDate = (date = new Date()) => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kathmandu',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).formatToParts(date);
+    const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
+    return `${values.year}-${values.month}-${values.day}`;
+};
+
 const getDefaultEmployeeWeekendDate = () => {
-    const date = new Date();
-    date.setHours(0, 0, 0, 0);
-    date.setDate(date.getDate() + ((6 - date.getDay() + 7) % 7));
-    return getNepaliDate(date).slice(0, 10);
+    const [year, month, day] = getKathmanduCalendarDate().split('-').map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    date.setUTCDate(date.getUTCDate() + ((6 - date.getUTCDay() + 7) % 7));
+    const saturdayAd = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+    return String(bs.ADToBS(saturdayAd) || '').slice(0, 10);
 };
 
 const renderEmployeeWeekendPage = async (req, res, options = {}) => {
@@ -1224,6 +1239,7 @@ const renderEmployeeWeekendPage = async (req, res, options = {}) => {
     return res.status(options.status || 200).render('employee/addweekend', {
         records,
         record,
+        todayBs: String(bs.ADToBS(getKathmanduCalendarDate()) || '').slice(0, 10),
         isEditing: Boolean(record._id),
         currentPage: 'weekend-setup',
         selectedEmployee: null,
@@ -1964,16 +1980,48 @@ async function processDeviceAttendanceRows(docs) {
     if (!uniqueDocs.length) return { savedRecords, duplicateRecords, failedRecords, errors };
 
     const pins = [...new Set(uniqueDocs.map(doc => doc.pin))];
+    const staffByPin = new Map();
+    const escapeRegExp = value => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    for (let offset = 0; offset < pins.length; offset += 100) {
+        const pinPatterns = pins.slice(offset, offset + 100)
+            .map(pin => new RegExp(`^${escapeRegExp(pin)}$`, 'i'));
+        const matchedStaff = await Staff.find({ deviceCode: { $in: pinPatterns } })
+            .select('deviceCode staffName employeeCode employmentStatus jobStatus isActive')
+            .lean();
+        matchedStaff.forEach(staff => {
+            const key = normalizeAttendancePin(staff.deviceCode);
+            if (!staffByPin.has(key)) staffByPin.set(key, []);
+            staffByPin.get(key).push(staff);
+        });
+    }
+
+    const mappedDocs = [];
+    uniqueDocs.forEach(doc => {
+        const matches = staffByPin.get(normalizeAttendancePin(doc.pin)) || [];
+        if (matches.length !== 1 || !isActiveEmployeeProfile(matches[0])) {
+            failedRecords += 1;
+            errors.push(`Line ${doc.sourceLine}: device PIN is not mapped to one active employee.`);
+            console.warn('Ignoring attendance punch for an unknown, inactive, or ambiguous device PIN:', {
+                serialNumber: doc.sn,
+                line: doc.sourceLine
+            });
+            return;
+        }
+        mappedDocs.push({ ...doc, name: doc.name || matches[0].staffName });
+    });
+
+    if (!mappedDocs.length) return { savedRecords, duplicateRecords, failedRecords, errors };
+
     const punchTimes = [...new Map(uniqueDocs.map(doc => [new Date(doc.punchTime).toISOString(), doc.punchTime])).values()];
     const legacyRecords = await employeeAttendance.find({
-        sn: uniqueDocs[0].sn,
+        sn: mappedDocs[0].sn,
         pin: { $in: pins },
         punchTime: { $in: punchTimes },
         source: { $ne: 'Manual' }
     }).select('sn pin punchTime status verifyMode').lean();
     const existingLogicalKeys = new Set(legacyRecords.map(getAttendanceLogicalKey));
 
-    const pendingDocs = uniqueDocs.filter(doc => {
+    const pendingDocs = mappedDocs.filter(doc => {
         const logicalKey = getAttendanceLogicalKey(doc);
         if (existingLogicalKeys.has(logicalKey)) {
             duplicateRecords += 1;
@@ -2452,8 +2500,16 @@ console.log('Mongo query through:', through.toISOString());
 
     const employeeByCode = new Map();
     employees.forEach(employee => {
-        const code = String(employee.employeeCode || '').trim().toUpperCase();
-        if (code) employeeByCode.set(code, employee);
+        const codes = getEmployeeAttendanceCodes(employee);
+        codes.forEach(code => {
+            if (!employeeByCode.has(code)) employeeByCode.set(code, employee);
+            else {
+                const existingEmployee = employeeByCode.get(code);
+                if (existingEmployee && String(existingEmployee._id) !== String(employee._id)) {
+                    employeeByCode.set(code, null);
+                }
+            }
+        });
     });
 
     const punchesByDateAndCode = new Map();
@@ -2473,16 +2529,22 @@ console.log('Mongo query through:', through.toISOString());
     const reportRows = [];
     dates.forEach(date => {
         const dateKey = formatDateKey(date);
-        const codesForDate = new Set(employeeByCode.keys());
+        const codesForDate = new Set(employees
+            .map(employee => getEmployeeAttendanceCodes(employee)[0])
+            .filter(Boolean));
         punches.forEach(punch => {
-            if (formatDateKey(new Date(punch.punchTime)) === dateKey) {
-                codesForDate.add(String(punch.pin || '').trim().toUpperCase());
+            const code = normalizeAttendancePin(punch.pin);
+            if (formatDateKey(new Date(punch.punchTime)) === dateKey && !employeeByCode.has(code)) {
+                codesForDate.add(code);
             }
         });
 
         Array.from(codesForDate).sort().forEach(code => {
             const employee = employeeByCode.get(code) || {};
-            const dayPunches = punchesByDateAndCode.get(`${dateKey}|${code}`) || [];
+            const attendanceCodes = employee._id ? getEmployeeAttendanceCodes(employee) : [code];
+            const dayPunches = attendanceCodes.flatMap(attendanceCode =>
+                punchesByDateAndCode.get(`${dateKey}|${attendanceCode}`) || []
+            );
             const employeeName = employee.staffName || dayPunches.find(punch => punch.name)?.name || 'Employee not mapped';
             const storedHolidayPunch = dayPunches.find(punch => punch.isHoliday && punch.holidayName);
             const holidayName = employeeHolidaysByDate.get(getNepaliDate(date).slice(0, 10)) || storedHolidayPunch?.holidayName || '';
@@ -2956,11 +3018,11 @@ exports.showMyAttendance = async (req, res) => {
 
         const through = new Date(endExclusive);
         through.setMilliseconds(through.getMilliseconds() - 1);
-        const employeeCode = String(employee.employeeCode || '').trim().toUpperCase();
+        const employeeCodes = getEmployeeAttendanceCodes(employee);
         const endDateBs = getNepaliDate(through).slice(0, 10);
         const [punches, approvedLeaves, employeeHolidays] = await Promise.all([
             employeeAttendance.find({
-                pin: employeeCode,
+                pin: { $in: employeeCodes },
                 punchTime: { $gte: start, $lt: endExclusive }
             }).sort({ punchTime: 1 }).lean(),
             LeaveApplication.find({

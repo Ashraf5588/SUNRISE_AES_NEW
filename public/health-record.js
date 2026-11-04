@@ -234,8 +234,8 @@ const initRecordDateSync = () => {
     return;
   }
 
-  const todayIso = formatIsoDate(new Date());
-  const todayBs = todayIso ? convertAdToBs(todayIso) : '';
+  const todayIso = recordDate.dataset.todayAd || formatIsoDate(new Date());
+  const todayBs = recordDateBs.dataset.todayBs || convertAdToBs(todayIso);
 
   if (!recordDate.value && todayIso) {
     recordDate.value = todayIso;
@@ -513,10 +513,10 @@ form.addEventListener('submit', async (event) => {
       field.value = '';
     });
     if (recordDate) {
-      recordDate.value = '';
+      recordDate.value = recordDate.dataset.todayAd || formatIsoDate(new Date());
     }
     if (recordDateBs) {
-      recordDateBs.value = '';
+      recordDateBs.value = recordDateBs.dataset.todayBs || convertAdToBs(recordDate.value);
     }
     if (recordRange) {
       recordRange.value = DEFAULT_RANGE;
@@ -538,6 +538,13 @@ if (recordRange) {
     recordRange.value = DEFAULT_RANGE;
   }
   recordRange.addEventListener('change', () => {
+    if (recordRange.value === 'today') {
+      recordDate.value = recordDate.dataset.todayAd || formatIsoDate(new Date());
+      recordDateBs.value = recordDateBs.dataset.todayBs || convertAdToBs(recordDate.value);
+    } else {
+      recordDate.value = '';
+      recordDateBs.value = '';
+    }
     loadRecords();
   });
 }

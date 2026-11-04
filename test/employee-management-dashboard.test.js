@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { getActiveEmployeeProfiles } = require('../utils/employeeManagementDashboard');
+const { getActiveEmployeeProfiles, isActiveEmployeeProfile } = require('../utils/employeeManagementDashboard');
 
 test('keeps employees with an active status when the legacy active flag is false', () => {
   const employees = [
@@ -16,4 +16,11 @@ test('keeps employees with an active status when the legacy active flag is false
     getActiveEmployeeProfiles(employees).map(employee => employee.staffName),
     ['Teacher', 'Staff on leave', 'Legacy profile', 'Legacy active staff']
   );
+});
+
+test('excludes employees with resigned, terminated, or inactive employment status from device punch mapping', () => {
+  assert.equal(isActiveEmployeeProfile({ staffName: 'Active employee', employmentStatus: 'Active' }), true);
+  assert.equal(isActiveEmployeeProfile({ staffName: 'Resigned employee', employmentStatus: 'Resigned' }), false);
+  assert.equal(isActiveEmployeeProfile({ staffName: 'Inactive employee', jobStatus: 'Inactive' }), false);
+  assert.equal(isActiveEmployeeProfile({ staffName: '', employmentStatus: 'Active' }), false);
 });

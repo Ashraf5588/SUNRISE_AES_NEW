@@ -55,7 +55,7 @@
 <body>
 	<%- include('employeesidenav', { currentPage, selectedEmployee }) %>
 	<main class="page-shell">
-		<header class="page-header"><div><p class="eyebrow">People / Basic setup</p><h1>Employee weekends and holidays</h1><p class="page-copy">Manage employee non-working dates separately from the student holiday calendar.</p></div></header>
+		<header class="page-header"><div><p class="eyebrow">People / Basic setup</p><h1>Employee weekends and holidays</h1><p class="page-copy">Today is <strong><%= todayBs %> BS</strong>. Manage employee non-working dates separately from the student holiday calendar.</p></div></header>
 		<% if (message) { %><div class="notice" role="status"><%= message %></div><% } %>
 		<% if (error) { %><div class="notice notice-error" role="alert"><%= error %></div><% } %>
 		<% if (importError) { %><div class="notice notice-error" role="alert"><%= importError %></div><% } %>

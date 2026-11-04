@@ -1,6 +1,11 @@
 const crypto = require('crypto');
 
 const isValidDeviceSerial = value => /^[A-Za-z0-9._-]{1,64}$/.test(String(value || '').trim());
+const normalizeAttendancePin = value => String(value || '').trim().toUpperCase();
+const getEmployeeAttendanceCodes = employee => [...new Set([
+    normalizeAttendancePin(employee?.deviceCode),
+    normalizeAttendancePin(employee?.employeeCode)
+].filter(Boolean))];
 
 function getAttendanceRequestSource(userAgent) {
     return /(?:curl|postman|insomnia|powershell|python-requests|node-fetch|axios)/i.test(String(userAgent || ''))
@@ -104,8 +109,10 @@ module.exports = {
     getAttendanceLogicalKey,
     getAttendanceRequestSource,
     getAttendanceSyncStatus,
+    getEmployeeAttendanceCodes,
     getDeviceOnlineTimeoutMs,
     isAttendanceDeviceOnline,
     isValidDeviceSerial,
+    normalizeAttendancePin,
     parseAttendanceRow
 };

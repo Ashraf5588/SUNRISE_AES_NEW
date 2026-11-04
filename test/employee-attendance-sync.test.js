@@ -5,9 +5,11 @@ const {
     getAttendanceLogicalKey,
     getAttendanceRequestSource,
     getAttendanceSyncStatus,
+    getEmployeeAttendanceCodes,
     getDeviceOnlineTimeoutMs,
     isValidDeviceSerial,
     isAttendanceDeviceOnline,
+    normalizeAttendancePin,
     parseAttendanceRow
 } = require('../utils/employeeAttendanceSync');
 
@@ -43,6 +45,12 @@ test('event keys are stable and distinguish separate punch events', () => {
     assert.equal(getAttendanceEventKey(event), getAttendanceEventKey(repeated));
     assert.equal(getAttendanceLogicalKey(event), getAttendanceLogicalKey(repeated));
     assert.notEqual(getAttendanceEventKey(event), getAttendanceEventKey({ ...event, status: 1 }));
+});
+
+test('matches attendance by device PIN and keeps employee-code fallback for existing punches', () => {
+    assert.deepEqual(getEmployeeAttendanceCodes({ deviceCode: ' pin-42 ', employeeCode: 'EMP-42' }), ['PIN-42', 'EMP-42']);
+    assert.deepEqual(getEmployeeAttendanceCodes({ deviceCode: 'emp-42', employeeCode: 'EMP-42' }), ['EMP-42']);
+    assert.equal(normalizeAttendancePin(' 0012 '), '0012');
 });
 
 test('reports observation progress without implying an unconfirmed replay completed', () => {

@@ -328,7 +328,16 @@ const groupStudentOptions = (students) => {
 
 exports.showHealthRecordForm = async (req, res) => {
     try {
-        res.render('nurse/healthrecordform');
+        const todayAd = new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Kathmandu',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }).format(new Date());
+        res.render('nurse/healthrecordform', {
+            todayAd,
+            todayBs: String(bs.ADToBS(todayAd) || '').trim()
+        });
     } catch (error) {
         console.error('Error rendering health record form:', error);
         res.status(500).send('Internal Server Error');
@@ -871,14 +880,17 @@ exports.getPadRecordsFiltered = async (req, res) => {
             startDate = dayRange.start;
             endDate = dayRange.end;
         } else if (range === 'last7') {
-            endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+            const todayKey = getKathmanduDateKey(now);
+            endDate = getDayRange(shiftCalendarDate(todayKey, 1)).start;
+            startDate = getDayRange(shiftCalendarDate(todayKey, -6)).start;
         } else if (range === 'lastMonth') {
-            startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            endDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            const monthRange = getKathmanduMonthRange(now, -1);
+            startDate = monthRange.start;
+            endDate = monthRange.end;
         } else if (range === 'thisYear') {
-            startDate = new Date(now.getFullYear(), 0, 1);
-            endDate = new Date(now.getFullYear() + 1, 0, 1);
+            const year = Number(getKathmanduDateKey(now).slice(0, 4));
+            startDate = getDayRange(`${year}-01-01`).start;
+            endDate = getDayRange(`${year + 1}-01-01`).start;
         } else {
             startDate = null;
             endDate = null;
@@ -914,15 +926,49 @@ exports.getHealthRecords = async (req, res) => {
     }
 };
 
-const getDayRange = (dateValue) => {
-    const date = dateValue ? new Date(dateValue) : new Date();
-    if (Number.isNaN(date.getTime())) {
-        return null;
+const getKathmanduDateKey = (value = new Date()) => {
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        const [year, month, day] = value.split('-').map(Number);
+        const date = new Date(Date.UTC(year, month - 1, day));
+        return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+            ? value
+            : '';
     }
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kathmandu',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).formatToParts(date);
+    const values = Object.fromEntries(parts.map(({ type, value: partValue }) => [type, partValue]));
+    return `${values.year}-${values.month}-${values.day}`;
+};
 
-    const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    const end = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
-    return { start, end };
+const shiftCalendarDate = (dateKey, offsetDays) => {
+    const [year, month, day] = dateKey.split('-').map(Number);
+    const date = new Date(Date.UTC(year, month - 1, day + offsetDays));
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+};
+
+const getDayRange = (dateValue = new Date()) => {
+    const dateKey = getKathmanduDateKey(dateValue);
+    if (!dateKey) return null;
+    const [year, month, day] = dateKey.split('-').map(Number);
+    const start = new Date(Date.UTC(year, month - 1, day) - 5 * 60 * 60 * 1000 - 45 * 60 * 1000);
+    return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
+};
+
+const getKathmanduMonthRange = (dateValue = new Date(), monthOffset = 0) => {
+    const dateKey = getKathmanduDateKey(dateValue);
+    if (!dateKey) return null;
+    const [year, month] = dateKey.split('-').map(Number);
+    const monthStart = new Date(Date.UTC(year, month - 1 + monthOffset, 1));
+    const nextMonthStart = new Date(Date.UTC(year, month + monthOffset, 1));
+    const startKey = `${monthStart.getUTCFullYear()}-${String(monthStart.getUTCMonth() + 1).padStart(2, '0')}-01`;
+    const endKey = `${nextMonthStart.getUTCFullYear()}-${String(nextMonthStart.getUTCMonth() + 1).padStart(2, '0')}-01`;
+    return { start: getDayRange(startKey).start, end: getDayRange(endKey).start };
 };
 
 const sanitizePhone = (value) => String(value || '').replace(/[^\d+]/g, '');
@@ -942,14 +988,17 @@ exports.getHealthRecordsFiltered = async (req, res) => {
             startDate = dayRange.start;
             endDate = dayRange.end;
         } else if (range === 'last7') {
-            endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+            const todayKey = getKathmanduDateKey(now);
+            endDate = getDayRange(shiftCalendarDate(todayKey, 1)).start;
+            startDate = getDayRange(shiftCalendarDate(todayKey, -6)).start;
         } else if (range === 'lastMonth') {
-            startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            endDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            const monthRange = getKathmanduMonthRange(now, -1);
+            startDate = monthRange.start;
+            endDate = monthRange.end;
         } else if (range === 'thisYear') {
-            startDate = new Date(now.getFullYear(), 0, 1);
-            endDate = new Date(now.getFullYear() + 1, 0, 1);
+            const year = Number(getKathmanduDateKey(now).slice(0, 4));
+            startDate = getDayRange(`${year}-01-01`).start;
+            endDate = getDayRange(`${year + 1}-01-01`).start;
         } else if (range === 'all') {
             startDate = null;
             endDate = null;
