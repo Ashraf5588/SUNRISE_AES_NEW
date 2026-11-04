@@ -1,8 +1,14 @@
 const mongoose = require('mongoose');
 
 const employeeAttendanceDeviceSchema = new mongoose.Schema({
+    organizationId: { type: String, trim: true, default: '' },
     serialNumber: { type: String, required: true, trim: true, unique: true },
     name: { type: String, required: true, trim: true },
+    model: { type: String, trim: true, default: '' },
+    firmwareVersion: { type: String, trim: true, default: '' },
+    supportsUserSyncCommands: { type: Boolean, default: false },
+    supportsUserDeletion: { type: Boolean, default: false },
+    supportsManagerPrivilege: { type: Boolean, default: false },
     lastActivity: { type: Date },
     lastAttendanceReceived: { type: Date },
     totalReceivedRecords: { type: Number, default: 0, min: 0 },
@@ -16,6 +22,7 @@ const employeeAttendanceDeviceSchema = new mongoose.Schema({
     lastSuccessfulBatchAt: { type: Date },
     latestSyncRunId: { type: mongoose.Schema.Types.ObjectId, ref: 'EmployeeAttendanceSyncRun' }
 }, { timestamps: true });
+employeeAttendanceDeviceSchema.index({ organizationId: 1, serialNumber: 1 });
 
 const employeeAttendanceSyncRunSchema = new mongoose.Schema({
     serialNumber: { type: String, required: true, trim: true, index: true },

@@ -52,9 +52,22 @@ employee.get('/iclock/cdata', employeeController.getEmployeeAttendanceDeviceOpti
 employee.all('/iclock/cdata', (req, res) => {
 	res.set('Allow', 'POST').sendStatus(405);
 });
+employee.get('/iclock/getrequest', employeeController.getAdmsDeviceCommand);
+employee.all('/iclock/getrequest', (req, res) => {
+	res.set('Allow', 'GET').sendStatus(405);
+});
+employee.post('/iclock/devicecmd', employeeController.receiveAdmsDeviceCommandResult);
+employee.all('/iclock/devicecmd', (req, res) => {
+	res.set('Allow', 'POST').sendStatus(405);
+});
 employee.get('/employeeattendance/device-status/:serialNumber', verifytoken, isAdmin, employeeController.checkEmployeeAttendanceDeviceConnection);
 employee.post('/employeeattendance/device-sync', verifytoken, isAdmin, employeeController.startEmployeeAttendanceDeviceSync);
 employee.get('/employeeattendance/device-sync/:runId', verifytoken, isAdmin, employeeController.getEmployeeAttendanceDeviceSync);
+employee.post('/employeeattendance/staff/:employeeId/sync', verifytoken, isAdmin, employeeController.syncEmployeeToAttendanceDevices);
+employee.get('/employeeattendance/staff/:employeeId/commands', verifytoken, isAdmin, employeeController.getEmployeeAttendanceDeviceCommandHistory);
+employee.post('/employeeattendance/device-command/:commandId/retry', verifytoken, isAdmin, employeeController.retryEmployeeAttendanceDeviceCommand);
+employee.post('/employeeattendance/staff/:employeeId/manual-fingerprint-enrollment', verifytoken, isAdmin, employeeController.confirmManualEmployeeFingerprintEnrollment);
+employee.post('/employeeattendance/device/:serialNumber/capabilities', verifytoken, isAdmin, employeeController.configureEmployeeAttendanceDeviceCapabilities);
 employee.get('/employeeattendance/export', employeeController.exportEmployeeAttendance);
 employee.get('/employeeattendance/template', verifytoken, isAdmin, employeeController.downloadEmployeeAttendanceCsvTemplate);
 employee.post('/employeeattendance/import', verifytoken, isAdmin, employeeController.uploadEmployeeAttendanceCsv, employeeController.importEmployeeAttendanceCsv);

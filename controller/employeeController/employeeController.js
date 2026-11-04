@@ -37,9 +37,170 @@ const {
     EmployeeAttendanceDevice,
     EmployeeAttendanceSyncRun
 } = require('../../model/employeeSchema/employeeAttendanceDeviceSchema');
+const {
+    EmployeeAttendanceDeviceCommand,
+    EmployeeAttendanceDeviceCommandCounter,
+    EmployeeAttendanceManualEnrollment
+} = require('../../model/employeeSchema/employeeAttendanceDeviceCommandSchema');
 const { getActiveEmployeeProfiles, isActiveEmployeeProfile } = require('../../utils/employeeManagementDashboard');
+const {
+    COMMAND_TYPES,
+    buildUserInfoDeleteCommand,
+    buildUserInfoUpdateCommand,
+    formatAdmsCommandResponse,
+    isValidAdmsPin,
+    normalizeAdmsPin,
+    parseDeviceCommandResult
+} = require('../../utils/employeeAdmsCommands');
 const Staff = mongoose.models.staff || mongoose.model('staff', staffSchema, 'staff');
 const LeaveApplication = mongoose.models.LeaveApplication || mongoose.model('LeaveApplication', leaveApplicationSchema, 'leaveApplications');
+const getOrganizationId = () => String(mongoose.connection.name || '').trim();
+const isAdmsCommandQueueEnabled = () => process.env.EMPLOYEE_ADMS_COMMANDS_ENABLED === 'true';
+const getDeviceEmployeeActiveState = employee => employee?.isActive !== false && isActiveEmployeeProfile(employee);
+
+async function allocateAdmsCommandId(organizationId, serialNumber) {
+    try {
+        const counter = await EmployeeAttendanceDeviceCommandCounter.findOneAndUpdate(
+            { organizationId, serialNumber },
+            { $inc: { sequence: 1 }, $setOnInsert: { organizationId, serialNumber } },
+            { new: true, upsert: true, setDefaultsOnInsert: false }
+        );
+        return counter.sequence;
+    } catch (error) {
+        if (error.code !== 11000) throw error;
+        const counter = await EmployeeAttendanceDeviceCommandCounter.findOneAndUpdate(
+            { organizationId, serialNumber },
+            { $inc: { sequence: 1 } },
+            { new: true }
+        );
+        if (!counter) throw new Error('Unable to allocate an ADMS command ID.');
+        return counter.sequence;
+    }
+}
+
+async function queueAdmsEmployeeCommand(device, employee, command, requestedBy = '') {
+    const organizationId = getOrganizationId();
+    const serialNumber = String(device.serialNumber || '').trim();
+    if (!organizationId || device.organizationId !== organizationId) {
+        throw new Error('Device organization does not match the current database.');
+    }
+    if (command.commandType === COMMAND_TYPES.UPDATE_USER && !device.supportsUserSyncCommands) return null;
+    if (command.commandType === COMMAND_TYPES.DELETE_USER && !device.supportsUserDeletion) return null;
+
+    const existing = await EmployeeAttendanceDeviceCommand.findOne({
+        organizationId,
+        serialNumber,
+        employeeReference: employee._id,
+        commandType: command.commandType,
+        commandPayload: command.commandPayload,
+        status: { $in: ['PENDING', 'SENT'] }
+    }).sort({ createdAt: -1 }).lean();
+    if (existing) return existing;
+
+    await EmployeeAttendanceDeviceCommand.updateMany({
+        organizationId,
+        serialNumber,
+        employeeReference: employee._id,
+        commandType: command.commandType,
+        status: 'PENDING'
+    }, {
+        $set: { status: 'FAILED', lastError: 'Superseded by newer employee data.' }
+    });
+
+    const commandId = await allocateAdmsCommandId(organizationId, serialNumber);
+    const created = await EmployeeAttendanceDeviceCommand.create({
+        organizationId,
+        serialNumber,
+        commandId,
+        commandType: command.commandType,
+        commandPayload: command.commandPayload,
+        employeeReference: employee._id,
+        employeeCode: String(employee.employeeCode || ''),
+        deviceCode: command.deviceCode || String(employee.deviceCode || ''),
+        requestedBy: String(requestedBy || '').slice(0, 120),
+        privilege: command.privilege,
+        status: 'PENDING'
+    });
+    console.info('ADMS employee command queued:', {
+        organizationId,
+        serialNumber,
+        commandId,
+        commandType: command.commandType,
+        employeeReference: String(employee._id)
+    });
+    return created.toObject();
+}
+
+async function queueEmployeeForConfiguredDevices(employee, requestedBy = '') {
+    if (!isAdmsCommandQueueEnabled()) {
+        return { queued: 0, reason: 'ADMS command queue is disabled by configuration.' };
+    }
+    const organizationId = getOrganizationId();
+    const deviceCode = String(employee.deviceCode || '').trim();
+    if (!organizationId || !deviceCode || !isValidAdmsPin(deviceCode)) {
+        return { queued: 0, reason: 'A valid device PIN and organization database are required.' };
+    }
+
+    const devices = await EmployeeAttendanceDevice.find({
+        organizationId,
+        $or: [{ supportsUserSyncCommands: true }, { supportsUserDeletion: true }]
+    }).lean();
+    if (!devices.length) return { queued: 0, reason: 'No device is configured for verified user commands.' };
+
+    const commands = [];
+    if (getDeviceEmployeeActiveState(employee)) {
+        const updateCommand = buildUserInfoUpdateCommand(employee);
+        for (const device of devices) {
+            if (!device.supportsUserSyncCommands) continue;
+            if (employee.isManager && !device.supportsManagerPrivilege) {
+                console.warn('Skipping manager sync because administrator privilege is not verified for device:', {
+                    organizationId,
+                    serialNumber: device.serialNumber,
+                    employeeReference: String(employee._id)
+                });
+                continue;
+            }
+            const queued = await queueAdmsEmployeeCommand(device, employee, {
+                ...updateCommand,
+                deviceCode
+            }, requestedBy);
+            if (queued) commands.push(queued);
+        }
+    } else {
+        const deletableDevices = devices.filter(device => device.supportsUserDeletion);
+        for (const device of deletableDevices) {
+            const queued = await queueAdmsEmployeeCommand(device, employee, {
+                ...buildUserInfoDeleteCommand(deviceCode),
+                deviceCode
+            }, requestedBy);
+            if (queued) commands.push(queued);
+        }
+    }
+    return {
+        queued: commands.filter(command => command.status === 'PENDING').length,
+        commands,
+        reason: commands.length ? '' : 'No configured device capability can perform this operation.'
+    };
+}
+
+async function safelyQueueEmployeeSync(employee, requestedBy, reason) {
+    if (!employee?.deviceCode) return;
+    try {
+        const outcome = await queueEmployeeForConfiguredDevices(employee, requestedBy);
+        console.info('Employee device synchronization evaluated:', {
+            employeeReference: String(employee._id),
+            reason,
+            queuedCount: outcome.queued,
+            outcome: outcome.reason || 'queued'
+        });
+    } catch (error) {
+        console.error('Unable to queue employee device synchronization; employee record remains saved:', {
+            employeeReference: String(employee._id),
+            reason,
+            message: error.message
+        });
+    }
+}
 const employeeSetupConfigs = {
     branches: {
         title: 'Branch setup', singular: 'Branch', path: '/branchsetup', view: 'employee/branchsetup', Model: Branch,
@@ -967,16 +1128,51 @@ exports.reviewManualPunchRequest = async (req, res) => {
 
 exports.showEmployeeData = async (req, res) => {
     try {
-        const [employees, devices] = await Promise.all([
+        const organizationId = getOrganizationId();
+        const [employees, devices, commands, enrollments] = await Promise.all([
             getEmployeeProfiles(),
             EmployeeAttendanceDevice.find({})
-                .select('serialNumber name lastActivity')
+                .select('serialNumber name model firmwareVersion supportsUserSyncCommands supportsUserDeletion supportsManagerPrivilege lastActivity')
                 .sort({ lastActivity: -1, name: 1 })
+                .lean(),
+            EmployeeAttendanceDeviceCommand.find({ organizationId })
+                .sort({ createdAt: -1 })
+                .limit(500)
+                .select('employeeReference status createdAt')
+                .lean(),
+            EmployeeAttendanceManualEnrollment.find({ organizationId })
+                .sort({ confirmedAt: -1 })
+                .select('employeeReference serialNumber confirmedAt')
                 .lean()
         ]);
+        const syncStatusByEmployee = new Map();
+        for (const command of commands) {
+            const employeeId = String(command.employeeReference);
+            if (syncStatusByEmployee.has(employeeId)) continue;
+            syncStatusByEmployee.set(employeeId, {
+                status: command.status,
+                createdAt: command.createdAt
+            });
+        }
+        const manualEnrollmentByEmployee = new Map();
+        for (const enrollment of enrollments) {
+            const employeeId = String(enrollment.employeeReference);
+            if (!manualEnrollmentByEmployee.has(employeeId)) {
+                manualEnrollmentByEmployee.set(employeeId, enrollment);
+            }
+        }
+        const now = new Date();
+        const onlineTimeout = getDeviceOnlineTimeoutMs();
+        const deviceStatuses = devices.map(device => ({
+            ...device,
+            isOnline: isAttendanceDeviceOnline(device.lastActivity, now, onlineTimeout)
+        }));
         return res.render('employee/employeedata', {
             employees,
-            devices,
+            devices: deviceStatuses,
+            syncStatusByEmployee: Object.fromEntries(syncStatusByEmployee),
+            manualEnrollmentByEmployee: Object.fromEntries(manualEnrollmentByEmployee),
+            commandQueueEnabled: isAdmsCommandQueueEnabled(),
             currentPage: 'employee-list',
             selectedEmployee: null
         });
@@ -1728,7 +1924,8 @@ exports.createEmployeeDetails = async (req, res) => {
             employeeData.previousCompanyTds.fileSizeBytes = uploadedTdsDocument.fileSizeBytes;
             employeeData.previousCompanyTds.originalSizeBytes = uploadedTdsDocument.originalSizeBytes;
         }
-        await Staff.create({ ...employeeData, documents: uploadedDocuments, employeePhoto: uploadedPhoto || {} });
+        const savedEmployee = await Staff.create({ ...employeeData, documents: uploadedDocuments, employeePhoto: uploadedPhoto || {} });
+        await safelyQueueEmployeeSync(savedEmployee.toObject(), req.user?.username || req.user?.teacherName, 'created');
         return res.redirect('/employeedetail?saved=1');
     } catch (error) {
         await deleteUploadedDocuments([...uploadedDocuments, ...uploadedOfficeProofs, ...(uploadedPhoto ? [uploadedPhoto] : []), ...(uploadedTdsDocument ? [uploadedTdsDocument] : [])]);
@@ -1820,6 +2017,41 @@ exports.updateEmployeeDetails = async (req, res) => {
             });
         }
         await Staff.updateOne({ _id: employeeId }, { $set: employeeData }, { runValidators: true });
+        const relevantFields = ['deviceCode', 'staffName', 'isManager', 'isActive', 'employmentStatus', 'jobStatus'];
+        const syncFieldsChanged = relevantFields.some(field => {
+            const previousValue = field === 'deviceCode'
+                ? String(existingEmployee[field] || '').trim()
+                : existingEmployee[field];
+            const nextValue = field === 'deviceCode'
+                ? String(employeeData[field] || '').trim()
+                : employeeData[field];
+            return previousValue !== nextValue;
+        });
+        if (syncFieldsChanged) {
+            const deviceCodeChanged = String(existingEmployee.deviceCode || '').trim()
+                !== String(employeeData.deviceCode || '').trim();
+            if (deviceCodeChanged && existingEmployee.deviceCode && isAdmsCommandQueueEnabled()) {
+                try {
+                    const organizationId = getOrganizationId();
+                    const devices = await EmployeeAttendanceDevice.find({
+                        organizationId,
+                        supportsUserDeletion: true
+                    }).lean();
+                    for (const device of devices) {
+                        await queueAdmsEmployeeCommand(device, existingEmployee, {
+                            ...buildUserInfoDeleteCommand(existingEmployee.deviceCode),
+                            deviceCode: existingEmployee.deviceCode
+                        }, req.user?.username || req.user?.teacherName);
+                    }
+                } catch (error) {
+                    console.error('Unable to queue removal of the previous employee PIN; employee record remains saved:', {
+                        employeeReference: employeeId,
+                        message: error.message
+                    });
+                }
+            }
+            await safelyQueueEmployeeSync({ ...employeeData, _id: existingEmployee._id }, req.user?.username || req.user?.teacherName, 'updated');
+        }
         await deleteUploadedDocuments(officeProofs.removed);
         if (uploadedPhoto && existingEmployee.employeePhoto?.blobName) {
             await deleteUploadedDocuments([{ blobName: existingEmployee.employeePhoto.blobName }]);
@@ -1866,6 +2098,8 @@ function ensureAttendanceEventKeyIndex() {
 
 async function updateAttendanceDeviceRequest(serialNumber, requestDetails, setFields, increments = {}) {
     try {
+        const organizationId = getOrganizationId();
+        if (!organizationId) throw new Error('Current MongoDB database name is unavailable.');
         const update = {
             $set: setFields,
             $setOnInsert: {
@@ -1873,6 +2107,7 @@ async function updateAttendanceDeviceRequest(serialNumber, requestDetails, setFi
                 name: `ZKTeco device ${serialNumber}`
             }
         };
+        update.$set.organizationId = organizationId;
         if (Object.keys(increments).length) update.$inc = increments;
 
         await EmployeeAttendanceDevice.updateOne(
@@ -2302,6 +2537,350 @@ exports.getEmployeeAttendanceDeviceSync = async (req, res) => {
     } catch (error) {
         console.error('Unable to read device attendance monitoring status:', error);
         return res.status(500).json({ message: 'Unable to read device attendance status.' });
+    }
+};
+
+exports.syncEmployeeToAttendanceDevices = async (req, res) => {
+    try {
+        if (!mongoose.isValidObjectId(req.params.employeeId)) {
+            return res.status(400).json({ message: 'Invalid employee reference.' });
+        }
+        if (!isAdmsCommandQueueEnabled()) {
+            return res.status(503).json({ message: 'ADMS user commands are disabled until device protocol testing is complete.' });
+        }
+        const employee = await Staff.findById(req.params.employeeId).lean();
+        if (!employee) return res.status(404).json({ message: 'Employee profile not found in this organization database.' });
+        if (!isValidAdmsPin(employee.deviceCode)) {
+            return res.status(400).json({ message: 'Set a valid unique Device Code / PIN in the employee profile first.' });
+        }
+        const outcome = await queueEmployeeForConfiguredDevices(employee, req.user?.username || req.user?.teacherName);
+        if (!outcome.queued) {
+            return res.status(409).json({
+                message: outcome.reason || 'No command was queued. Verify that this device supports the requested operation.'
+            });
+        }
+        return res.status(202).json({ message: 'Employee command queued; synchronization is pending device acknowledgement.', queued: outcome.queued });
+    } catch (error) {
+        console.error('Unable to queue manual employee synchronization:', error);
+        return res.status(500).json({ message: 'Unable to queue employee synchronization.' });
+    }
+};
+
+exports.retryEmployeeAttendanceDeviceCommand = async (req, res) => {
+    try {
+        if (!mongoose.isValidObjectId(req.params.commandId)) {
+            return res.status(400).json({ message: 'Invalid command reference.' });
+        }
+        if (!isAdmsCommandQueueEnabled()) {
+            return res.status(503).json({ message: 'ADMS user commands are disabled until device protocol testing is complete.' });
+        }
+        const organizationId = getOrganizationId();
+        const failedCommand = await EmployeeAttendanceDeviceCommand.findOne({
+            _id: req.params.commandId,
+            organizationId,
+            status: 'FAILED'
+        }).lean();
+        if (!failedCommand) return res.status(404).json({ message: 'Failed device command not found in this organization.' });
+        const [employee, device] = await Promise.all([
+            Staff.findById(failedCommand.employeeReference).lean(),
+            EmployeeAttendanceDevice.findOne({
+                organizationId,
+                serialNumber: failedCommand.serialNumber
+            }).lean()
+        ]);
+        if (!employee || !device) return res.status(404).json({ message: 'Employee or device is no longer available.' });
+        const employeeIsActive = getDeviceEmployeeActiveState(employee);
+        const shouldDeletePreviousPin = failedCommand.commandType === COMMAND_TYPES.DELETE_USER
+            && failedCommand.deviceCode !== String(employee.deviceCode || '').trim();
+        const commandDeviceCode = !employeeIsActive || shouldDeletePreviousPin
+            ? failedCommand.deviceCode
+            : String(employee.deviceCode || '').trim();
+        const command = !employeeIsActive || shouldDeletePreviousPin
+            ? buildUserInfoDeleteCommand(commandDeviceCode)
+            : buildUserInfoUpdateCommand(employee);
+        if (!isValidAdmsPin(commandDeviceCode)) {
+            return res.status(400).json({ message: 'The current employee Device Code / PIN is invalid.' });
+        }
+        const retry = await queueAdmsEmployeeCommand(device, employee, {
+            ...command,
+            deviceCode: commandDeviceCode
+        }, req.user?.username || req.user?.teacherName);
+        if (!retry) return res.status(409).json({ message: 'This device is not configured for the failed command type.' });
+        return res.status(202).json({ message: 'Retry command queued and awaiting device acknowledgement.', commandId: retry.commandId });
+    } catch (error) {
+        console.error('Unable to retry ADMS employee command:', error);
+        return res.status(500).json({ message: 'Unable to retry the employee device command.' });
+    }
+};
+
+exports.getEmployeeAttendanceDeviceCommandHistory = async (req, res) => {
+    try {
+        if (!mongoose.isValidObjectId(req.params.employeeId)) {
+            return res.status(400).json({ message: 'Invalid employee reference.' });
+        }
+        const commands = await EmployeeAttendanceDeviceCommand.find({
+            organizationId: getOrganizationId(),
+            employeeReference: req.params.employeeId
+        }).sort({ createdAt: -1 }).limit(50).select(
+            'serialNumber commandId commandType status createdAt sentAt acknowledgedAt attempts lastError responsePayload privilege deviceCode'
+        ).lean();
+        const enrollments = await EmployeeAttendanceManualEnrollment.find({
+            organizationId: getOrganizationId(),
+            employeeReference: req.params.employeeId
+        }).sort({ confirmedAt: -1 }).limit(20).select(
+            'serialNumber deviceCode confirmedBy confirmedAt employeeName'
+        ).lean();
+        return res.json({
+            commands,
+            manualEnrollments: enrollments,
+            remoteFingerprintEnrollment: 'UNVERIFIED'
+        });
+    } catch (error) {
+        console.error('Unable to load employee device command history:', error);
+        return res.status(500).json({ message: 'Unable to load device command history.' });
+    }
+};
+
+exports.confirmManualEmployeeFingerprintEnrollment = async (req, res) => {
+    try {
+        if (!mongoose.isValidObjectId(req.params.employeeId)) {
+            return res.status(400).json({ message: 'Invalid employee reference.' });
+        }
+        const organizationId = getOrganizationId();
+        const serialNumber = String(req.body?.serialNumber || '').trim();
+        if (!isValidDeviceSerial(serialNumber)) return res.status(400).json({ message: 'Select a valid registered device.' });
+        if (String(req.body?.confirmed || '') !== 'true') {
+            return res.status(400).json({ message: 'Confirm that the fingerprint was enrolled directly on the selected terminal.' });
+        }
+        const [employee, device] = await Promise.all([
+            Staff.findById(req.params.employeeId).lean(),
+            EmployeeAttendanceDevice.findOne({ serialNumber })
+        ]);
+        if (!employee || !device || (device.organizationId && device.organizationId !== organizationId)) {
+            return res.status(404).json({ message: 'Employee or device not found in this organization.' });
+        }
+        if (!isValidAdmsPin(employee.deviceCode)) return res.status(400).json({ message: 'Configure a valid Device Code / PIN before enrollment.' });
+        if (!getDeviceEmployeeActiveState(employee)) return res.status(409).json({ message: 'Inactive employees cannot be enrolled.' });
+
+        device.organizationId = organizationId;
+        await device.save();
+        const enrollment = await EmployeeAttendanceManualEnrollment.create({
+            organizationId,
+            serialNumber,
+            employeeReference: employee._id,
+            employeeName: employee.staffName,
+            deviceCode: employee.deviceCode,
+            confirmedBy: String(req.user?.username || req.user?.teacherName || 'Administrator').slice(0, 120)
+        });
+        console.info('Manual fingerprint enrollment recorded by administrator:', {
+            organizationId,
+            serialNumber,
+            employeeReference: String(employee._id),
+            enrollmentId: String(enrollment._id)
+        });
+        return res.status(201).json({ message: 'Manual fingerprint enrollment recorded. It was not remotely verified.', status: 'MANUALLY_ENROLLED' });
+    } catch (error) {
+        console.error('Unable to record manual fingerprint enrollment:', error);
+        return res.status(500).json({ message: 'Unable to record manual enrollment confirmation.' });
+    }
+};
+
+exports.configureEmployeeAttendanceDeviceCapabilities = async (req, res) => {
+    try {
+        const organizationId = getOrganizationId();
+        const serialNumber = String(req.params.serialNumber || '').trim();
+        if (!isValidDeviceSerial(serialNumber)) return res.status(400).json({ message: 'Invalid device serial number.' });
+        const device = await EmployeeAttendanceDevice.findOne({ serialNumber });
+        if (!device || (device.organizationId && device.organizationId !== organizationId)) {
+            return res.status(404).send('Device not found in this organization database.');
+        }
+
+        device.organizationId = organizationId;
+        device.model = String(req.body?.model || '').trim().slice(0, 80);
+        device.firmwareVersion = String(req.body?.firmwareVersion || '').trim().slice(0, 80);
+        const isEnabled = value => value === true || value === 'true';
+        device.supportsUserSyncCommands = isEnabled(req.body?.supportsUserSyncCommands);
+        device.supportsUserDeletion = isEnabled(req.body?.supportsUserDeletion);
+        device.supportsManagerPrivilege = isEnabled(req.body?.supportsManagerPrivilege);
+        await device.save();
+        console.info('ADMS device capabilities updated:', {
+            organizationId,
+            serialNumber,
+            model: device.model,
+            firmwareVersion: device.firmwareVersion,
+            supportsUserSyncCommands: device.supportsUserSyncCommands,
+            supportsUserDeletion: device.supportsUserDeletion,
+            supportsManagerPrivilege: device.supportsManagerPrivilege,
+            commandQueueEnabled: isAdmsCommandQueueEnabled()
+        });
+        return res.redirect('/employeedata?deviceConfigured=1');
+    } catch (error) {
+        console.error('Unable to configure ADMS device capabilities:', error);
+        return res.status(500).send('Unable to save device capability settings.');
+    }
+};
+
+exports.getAdmsDeviceCommand = async (req, res) => {
+    const serialNumber = String(req.query.SN || '').trim();
+    const receivedAt = new Date();
+    if (!isValidDeviceSerial(serialNumber)) return res.status(400).type('text/plain').send('Invalid or missing device serial number');
+    try {
+        const organizationId = getOrganizationId();
+        const device = await EmployeeAttendanceDevice.findOne({ serialNumber }).lean();
+        if (!device || (device.organizationId && device.organizationId !== organizationId)) {
+            return res.status(404).type('text/plain').send('Unknown device');
+        }
+        const request = await startAttendanceDeviceRequest(serialNumber, req, 'GET_COMMAND_REQUEST', receivedAt, false);
+        const deviceCanReceiveCommands = device.supportsUserSyncCommands || device.supportsUserDeletion;
+        if (!request.activityUpdateSucceeded || !isAdmsCommandQueueEnabled() || !deviceCanReceiveCommands) {
+            await finishAttendanceDeviceRequest(serialNumber, request.requestDetails, 'no-command');
+            return res.type('text/plain').send('OK');
+        }
+
+        const eligibleCommandTypes = [];
+        if (device.supportsUserSyncCommands) eligibleCommandTypes.push(COMMAND_TYPES.UPDATE_USER);
+        if (device.supportsUserDeletion) eligibleCommandTypes.push(COMMAND_TYPES.DELETE_USER);
+        const eligibleCommandFilter = { commandType: { $in: eligibleCommandTypes } };
+        const oldestSent = await EmployeeAttendanceDeviceCommand.findOne({
+            organizationId,
+            serialNumber,
+            status: 'SENT',
+            ...eligibleCommandFilter
+        }).sort({ createdAt: 1 }).lean();
+        let command = oldestSent;
+        if (oldestSent) {
+            const retryDelayMs = 2 * 60_000;
+            const maxAttempts = 3;
+            const sentAt = oldestSent.sentAt ? new Date(oldestSent.sentAt).getTime() : 0;
+            if (receivedAt.getTime() - sentAt >= retryDelayMs) {
+                if (oldestSent.attempts >= maxAttempts) {
+                    await EmployeeAttendanceDeviceCommand.updateOne(
+                        { _id: oldestSent._id, status: 'SENT', attempts: { $gte: maxAttempts } },
+                        { $set: { status: 'FAILED', lastError: 'No device acknowledgement after bounded delivery retries.' } }
+                    );
+                    command = null;
+                } else {
+                    command = await EmployeeAttendanceDeviceCommand.findOneAndUpdate(
+                        { _id: oldestSent._id, status: 'SENT', sentAt: oldestSent.sentAt },
+                        { $set: { sentAt: receivedAt }, $inc: { attempts: 1 } },
+                        { new: true }
+                    ).lean();
+                    if (!command) {
+                        command = await EmployeeAttendanceDeviceCommand.findOne({
+                            _id: oldestSent._id,
+                            status: 'SENT'
+                        }).lean();
+                    }
+                }
+            }
+        }
+        if (!command && oldestSent && receivedAt.getTime() - new Date(oldestSent.sentAt || 0).getTime() < 2 * 60_000) {
+            command = await EmployeeAttendanceDeviceCommand.findOne({
+                _id: oldestSent._id,
+                status: 'SENT'
+            }).lean();
+        }
+
+        if (!command) {
+            command = await EmployeeAttendanceDeviceCommand.findOneAndUpdate(
+                {
+                    organizationId,
+                    serialNumber,
+                    status: 'PENDING',
+                    ...eligibleCommandFilter
+                },
+                { $set: { status: 'SENT', sentAt: receivedAt, lastError: '' }, $inc: { attempts: 1 } },
+                { sort: { createdAt: 1 }, new: true }
+            ).lean();
+        }
+        if (!command) {
+            await finishAttendanceDeviceRequest(serialNumber, request.requestDetails, 'no-command');
+            return res.type('text/plain').send('OK');
+        }
+        const response = formatAdmsCommandResponse(command);
+        console.info('ADMS employee command delivered to device poll:', {
+            organizationId,
+            serialNumber,
+            commandId: command.commandId,
+            commandType: command.commandType,
+            attempt: command.attempts
+        });
+        await finishAttendanceDeviceRequest(serialNumber, request.requestDetails, 'command-sent');
+        return res.type('text/plain').send(response);
+    } catch (error) {
+        console.error('Unable to service ADMS command poll:', {
+            serialNumber,
+            message: error.message
+        });
+        return res.status(500).type('text/plain').send('Unable to process device command request');
+    }
+};
+
+exports.receiveAdmsDeviceCommandResult = async (req, res) => {
+    const serialNumber = String(req.query.SN || '').trim();
+    const receivedAt = new Date();
+    if (!isValidDeviceSerial(serialNumber)) return res.status(400).type('text/plain').send('Invalid or missing device serial number');
+    const result = parseDeviceCommandResult(req.body);
+    if (!result) return res.status(400).type('text/plain').send('Invalid device command result');
+    try {
+        const organizationId = getOrganizationId();
+        const device = await EmployeeAttendanceDevice.findOne({ serialNumber }).lean();
+        if (!device || (device.organizationId && device.organizationId !== organizationId)) {
+            return res.status(404).type('text/plain').send('Unknown device');
+        }
+        const request = await startAttendanceDeviceRequest(serialNumber, req, 'POST_DEVICE_COMMAND_RESULT', receivedAt, false);
+        if (!request.activityUpdateSucceeded) return res.status(500).type('text/plain').send('Unable to record device communication');
+
+        const success = result.returnCode === 0;
+        const updated = await EmployeeAttendanceDeviceCommand.updateOne(
+            {
+                organizationId,
+                serialNumber,
+                commandId: result.commandId,
+                $or: [{ status: 'SENT' }, { status: 'FAILED', acknowledgedAt: { $exists: false } }]
+            },
+            {
+                $set: {
+                    status: success ? 'SUCCESS' : 'FAILED',
+                    acknowledgedAt: receivedAt,
+                    lastError: success ? '' : `Device returned code ${result.returnCode}.`,
+                    responsePayload: result.responsePayload
+                }
+            }
+        );
+        if (!updated.matchedCount) {
+            const alreadyAcknowledged = await EmployeeAttendanceDeviceCommand.exists({
+                organizationId,
+                serialNumber,
+                commandId: result.commandId,
+                acknowledgedAt: { $exists: true }
+            });
+            if (!alreadyAcknowledged) {
+                console.warn('ADMS returned a result for an unknown or unclaimed command:', {
+                    organizationId,
+                    serialNumber,
+                    commandId: result.commandId,
+                    returnCode: result.returnCode
+                });
+            }
+        } else {
+            console.info('ADMS employee command result received:', {
+                organizationId,
+                serialNumber,
+                commandId: result.commandId,
+                returnCode: result.returnCode,
+                status: success ? 'SUCCESS' : 'FAILED'
+            });
+        }
+        await finishAttendanceDeviceRequest(serialNumber, request.requestDetails, 'command-result');
+        return res.status(200).type('text/plain').send('OK');
+    } catch (error) {
+        console.error('Unable to process ADMS device command result:', {
+            serialNumber,
+            commandId: result.commandId,
+            message: error.message
+        });
+        return res.status(500).type('text/plain').send('Unable to process device command result');
     }
 };
 
@@ -2853,6 +3432,7 @@ exports.importEmployeeProfileCsv = async (req, res) => {
                 const employee = new Staff(employeeData);
                 await employee.validate();
                 await employee.save();
+                await safelyQueueEmployeeSync(employee.toObject(), req.user?.username || req.user?.teacherName, 'csv-created');
                 importResult.importedCount += 1;
             } catch (error) {
                 const validationMessages = error.errors

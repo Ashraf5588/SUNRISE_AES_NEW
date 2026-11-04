@@ -32,6 +32,20 @@
 		.status { color:#285c47; font-weight:700; }
 		.empty { padding:28px; color:var(--muted); text-align:center; }
 		.enrollment-button { min-height:32px; padding:0 10px; border:1px solid var(--blue); border-radius:4px; background:#fff; color:var(--blue); font:inherit; font-weight:700; cursor:pointer; }
+		.action-group { display:flex; flex-wrap:wrap; gap:5px; }
+		.action-button { min-height:30px; padding:0 8px; border:1px solid var(--blue); border-radius:4px; background:#fff; color:var(--blue); font:inherit; font-size:.78rem; font-weight:700; cursor:pointer; }
+		.action-button:disabled,.enrollment-button:disabled { opacity:.5; cursor:not-allowed; }
+		.notice { margin:16px 18px; padding:12px; border:1px solid #e8d59b; border-radius:4px; background:#fff9e8; line-height:1.5; }
+		.device-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; padding:16px 18px; }
+		.device-card { padding:14px; border:1px solid var(--line); border-radius:5px; }
+		.device-card h3 { margin:0 0 6px; }
+		.device-card p { margin:6px 0; color:var(--muted); font-size:.88rem; }
+		.capability-form { display:grid; gap:8px; margin-top:12px; }
+		.capability-form label { display:flex; align-items:center; gap:7px; color:var(--ink); font-size:.86rem; }
+		.capability-form input[type="text"] { width:100%; min-height:34px; }
+		.capability-form .button { justify-content:center; }
+		.history-content { max-height:60vh; overflow:auto; white-space:pre-wrap; overflow-wrap:anywhere; font-size:.83rem; }
+		.inline-form-button { display:inline; }
 		dialog { width:min(520px,calc(100% - 28px)); padding:0; border:1px solid var(--line); border-radius:8px; color:var(--ink); box-shadow:0 18px 60px #10233b40; }
 		dialog::backdrop { background:#10233b80; }
 		.dialog-content { padding:22px; }
@@ -52,15 +66,44 @@
 <body>
 	<%- include('employeesidenav', { currentPage, selectedEmployee }) %>
 	<main class="page-shell">
-		<header class="page-header"><div><p class="muted">People / Employee management</p><h1>Employee list</h1><p class="muted">This terminal connection receives attendance punches only. Add users and enroll fingerprints directly on the device using the configured Device Code.</p></div><a class="button" href="/employeedetail?new=1"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add employee</a></header>
+		<header class="page-header"><div><p class="muted">People / Employee management</p><h1>Employee list</h1><p class="muted">Manage ADMS user sync and record manual fingerprint enrollment. Remote fingerprint enrollment is unverified for this MB2000 firmware.</p></div><a class="button" href="/employeedetail?new=1"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add employee</a></header>
+		<% if (!commandQueueEnabled) { %><p class="notice">Outbound ADMS commands are disabled by server configuration. Employee and attendance workflows continue normally. Keep this disabled until the command protocol has been tested on the target device.</p><% } %>
 		<section class="panel"><div class="panel-heading"><h2><%= employees.length %> employees</h2><div class="controls"><input id="employeeSearch" type="search" placeholder="Search employees" aria-label="Search employees"><a class="button" href="/employeeattendance"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i> Attendance</a></div></div>
-			<% if (employees.length) { %><div class="table-wrap"><table id="employeeList"><thead><tr><th>S.N</th><th>Employee code</th><th>Device code / PIN</th><th>Name</th><th>Designation</th><th>Department</th><th>Branch</th><th>Contact</th><th>Office email</th><th>Status</th><th>Device sync status</th><th>Profile</th><th>Fingerprint enrollment</th></tr></thead><tbody><% employees.forEach((employee,index) => { %><tr><td><%= index+1 %></td><td class="employee-code"><%= employee.employeeCode || '-' %></td><td class="employee-code"><%= employee.deviceCode || 'Not set' %></td><td><%= employee.staffName %></td><td><%= employee.designation || '-' %></td><td><%= employee.department || '-' %></td><td><%= employee.branchName || '-' %></td><td><%= employee.mobileNumber || '-' %></td><td><%= employee.officeEmail || employee.email || '-' %></td><td class="status"><%= employee.jobStatus || employee.employmentStatus || 'Active' %></td><td>Not synced (ADMS receives punches only)</td><td><a href="/employeedetail?employeeId=<%= employee._id %>">Open profile</a></td><td><button class="enrollment-button" type="button" <%= employee.deviceCode ? '' : 'disabled' %> data-device-code="<%= employee.deviceCode || '' %>" data-employee-name="<%= employee.staffName %>">Prepare manual enrollment</button></td></tr><% }) %></tbody></table></div><% } else { %><div class="empty">No employee profiles have been added yet.</div><% } %>
+			<% if (employees.length) { %>
+			<div class="table-wrap"><table id="employeeList"><thead><tr><th>S.N</th><th>Employee code</th><th>Device code / PIN</th><th>Name</th><th>Designation</th><th>Department</th><th>Branch</th><th>Contact</th><th>Office email</th><th>Status</th><th>Device sync status</th><th>Profile</th><th>Device actions</th><th>Fingerprint enrollment</th></tr></thead><tbody>
+			<% employees.forEach((employee,index) => { const employeeId = String(employee._id); const sync = syncStatusByEmployee[employeeId]; const enrollment = manualEnrollmentByEmployee[employeeId]; %>
+				<tr>
+					<td><%= index+1 %></td><td class="employee-code"><%= employee.employeeCode || '-' %></td><td class="employee-code"><%= employee.deviceCode || 'Not set' %></td><td><%= employee.staffName %></td><td><%= employee.designation || '-' %></td><td><%= employee.department || '-' %></td><td><%= employee.branchName || '-' %></td><td><%= employee.mobileNumber || '-' %></td><td><%= employee.officeEmail || employee.email || '-' %></td><td class="status"><%= employee.jobStatus || employee.employmentStatus || 'Active' %></td>
+					<td><%= sync ? (sync.status === 'SUCCESS' ? 'Synced' : sync.status === 'PENDING' || sync.status === 'SENT' ? 'Pending' : sync.status === 'FAILED' ? 'Failed' : sync.status) : 'Not Synced' %><% if (enrollment) { %><br>Manually Enrolled<% } %></td>
+					<td><a href="/employeedetail?employeeId=<%= employee._id %>">Open profile</a></td>
+					<td><div class="action-group">
+						<button class="action-button sync-button" type="button" data-employee-id="<%= employeeId %>" <%= commandQueueEnabled && employee.deviceCode ? '' : 'disabled' %>>Sync employee</button>
+						<% if (sync?.status === 'FAILED' && commandQueueEnabled) { %><button class="action-button retry-button" type="button" data-command-id="<%= sync._id %>">Retry failed</button><% } %>
+						<button class="action-button history-button" type="button" data-employee-id="<%= employeeId %>">Command history</button>
+					</div></td>
+					<td><button class="enrollment-button" type="button" <%= employee.deviceCode && devices.length ? '' : 'disabled' %> data-employee-id="<%= employeeId %>" data-device-code="<%= employee.deviceCode || '' %>" data-employee-name="<%= employee.staffName %>"><%= enrollment ? 'Record another enrollment' : 'Manual enrollment' %></button></td>
+				</tr>
+			<% }) %></tbody></table></div><% } else { %><div class="empty">No employee profiles have been added yet.</div><% } %>
+		</section>
+		<section class="panel" style="margin-top:18px"><div class="panel-heading"><h2>Attendance devices</h2><span class="muted"><%= devices.length %> registered</span></div>
+			<% if (devices.length) { %><div class="device-grid"><% devices.forEach(device => { %><article class="device-card">
+				<h3><%= device.name %></h3><p>Serial: <strong><%= device.serialNumber %></strong></p><p>Model / firmware: <%= device.model || 'Not verified' %> / <%= device.firmwareVersion || 'Not recorded' %></p><p>Communication: <strong><%= device.isOnline ? 'Online recently' : 'Offline / no recent contact' %></strong></p>
+				<p>Command capabilities are per-device and default off. Verify the exact firmware and test device before enabling.</p>
+				<form class="capability-form" method="post" action="/employeeattendance/device/<%= encodeURIComponent(device.serialNumber) %>/capabilities">
+					<label>Model <input type="text" name="model" value="<%= device.model || '' %>" maxlength="80"></label>
+					<label>Firmware <input type="text" name="firmwareVersion" value="<%= device.firmwareVersion || '' %>" maxlength="80"></label>
+					<label><input type="checkbox" name="supportsUserSyncCommands" value="true" <%= device.supportsUserSyncCommands ? 'checked' : '' %>> User sync commands verified</label>
+					<label><input type="checkbox" name="supportsUserDeletion" value="true" <%= device.supportsUserDeletion ? 'checked' : '' %>> User deletion verified</label>
+					<label><input type="checkbox" name="supportsManagerPrivilege" value="true" <%= device.supportsManagerPrivilege ? 'checked' : '' %>> Manager privilege 14 verified</label>
+					<button class="button" type="submit">Save device settings</button>
+				</form>
+			</article><% }) %></div><% } else { %><div class="empty">No ZKTeco terminal has connected to this organization database yet.</div><% } %>
 		</section>
 	</main>
 	<dialog id="enrollmentDialog" aria-labelledby="enrollmentTitle">
 		<div class="dialog-content">
 			<div class="dialog-heading"><div><h2 id="enrollmentTitle">Manual device enrollment</h2><p class="muted">Use these details to add the employee on the terminal.</p></div><button class="dialog-close" type="button" aria-label="Close dialog">&times;</button></div>
-			<p class="enrollment-notice">The current ADMS push-only connection cannot send employee or fingerprint commands. On the terminal, add this employee with the Device Code / PIN below and enroll their fingerprint directly on the machine. Enrollment is not confirmed by this app.</p>
+			<p class="enrollment-notice">Remote fingerprint enrollment is not verified for this model and firmware. Add the employee with this Device Code / PIN and enroll their fingerprint directly on the terminal. Only record confirmation after completing that step on the machine.</p>
 			<label class="device-picker" for="enrollmentDevice">Terminal
 				<select id="enrollmentDevice" <%= devices.length ? '' : 'disabled' %>>
 					<% devices.forEach(device => { %><option value="<%= device.serialNumber %>"><%= device.name %> — <%= device.serialNumber %></option><% }) %>
@@ -71,9 +114,12 @@
 				<dt>Device Code / PIN</dt><dd id="enrollmentCode"></dd><dt></dt><dd><button class="copy-button" type="button" data-copy="code">Copy PIN</button></dd>
 				<dt>Employee name</dt><dd id="enrollmentName"></dd><dt></dt><dd><button class="copy-button" type="button" data-copy="name">Copy name</button></dd>
 			</dl>
+			<label><input id="confirmManualEnrollment" type="checkbox"> I enrolled this employee on the selected terminal using this PIN.</label>
+			<p><button id="saveManualEnrollment" class="button" type="button" disabled>Record manual confirmation</button></p>
 			<p id="enrollmentStatus" class="dialog-status" role="status" aria-live="polite"></p>
 		</div>
 	</dialog>
+	<dialog id="historyDialog" aria-labelledby="historyTitle"><div class="dialog-content"><div class="dialog-heading"><div><h2 id="historyTitle">Device command history</h2></div><button class="dialog-close" type="button" aria-label="Close dialog">&times;</button></div><pre id="historyContent" class="history-content">Loading…</pre></div></dialog>
 	<script>
 		const employeeSearch = document.getElementById('employeeSearch');
 		employeeSearch.addEventListener('input', event => {
@@ -85,13 +131,44 @@
 
 		const enrollmentDialog = document.getElementById('enrollmentDialog');
 		const enrollmentStatus = document.getElementById('enrollmentStatus');
+		const enrollmentConfirmation = document.getElementById('confirmManualEnrollment');
+		const saveEnrollmentButton = document.getElementById('saveManualEnrollment');
+		let selectedEnrollmentEmployeeId = '';
 		document.querySelectorAll('.enrollment-button').forEach(button => {
 			button.addEventListener('click', () => {
+				selectedEnrollmentEmployeeId = button.dataset.employeeId || '';
 				document.getElementById('enrollmentCode').textContent = button.dataset.deviceCode || '(no device code configured)';
 				document.getElementById('enrollmentName').textContent = button.dataset.employeeName || '(no employee name)';
 				enrollmentStatus.textContent = '';
+				enrollmentConfirmation.checked = false;
+				saveEnrollmentButton.disabled = true;
 				enrollmentDialog.showModal();
 			});
+		});
+		enrollmentConfirmation.addEventListener('change', () => {
+			saveEnrollmentButton.disabled = !enrollmentConfirmation.checked;
+		});
+		saveEnrollmentButton.addEventListener('click', async () => {
+			if (!selectedEnrollmentEmployeeId || !enrollmentConfirmation.checked) return;
+			saveEnrollmentButton.disabled = true;
+			enrollmentStatus.textContent = 'Saving manual confirmation…';
+			try {
+				const response = await fetch(`/employeeattendance/staff/${encodeURIComponent(selectedEnrollmentEmployeeId)}/manual-fingerprint-enrollment`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						serialNumber: document.getElementById('enrollmentDevice').value,
+						confirmed: true
+					})
+				});
+				const result = await response.json();
+				if (!response.ok) throw new Error(result.message || 'Unable to save enrollment confirmation.');
+				enrollmentStatus.textContent = result.message;
+				setTimeout(() => window.location.reload(), 900);
+			} catch (error) {
+				enrollmentStatus.textContent = error.message;
+				saveEnrollmentButton.disabled = !enrollmentConfirmation.checked;
+			}
 		});
 		enrollmentDialog.querySelector('.dialog-close').addEventListener('click', () => enrollmentDialog.close());
 		enrollmentDialog.addEventListener('click', event => {
@@ -109,6 +186,65 @@
 				}
 			});
 		});
+		document.querySelectorAll('.sync-button').forEach(button => {
+			button.addEventListener('click', async () => {
+				button.disabled = true;
+				try {
+					const response = await fetch(`/employeeattendance/staff/${encodeURIComponent(button.dataset.employeeId)}/sync`, { method: 'POST' });
+					const result = await response.json();
+					if (!response.ok) throw new Error(result.message || 'Unable to queue employee synchronization.');
+					window.location.reload();
+				} catch (error) {
+					window.alert(error.message);
+					button.disabled = false;
+				}
+			});
+		});
+		document.querySelectorAll('.retry-button').forEach(button => {
+			button.addEventListener('click', async () => {
+				button.disabled = true;
+				try {
+					const response = await fetch(`/employeeattendance/device-command/${encodeURIComponent(button.dataset.commandId)}/retry`, { method: 'POST' });
+					const result = await response.json();
+					if (!response.ok) throw new Error(result.message || 'Unable to retry the command.');
+					window.location.reload();
+				} catch (error) {
+					window.alert(error.message);
+					button.disabled = false;
+				}
+			});
+		});
+
+		const historyDialog = document.getElementById('historyDialog');
+		document.querySelectorAll('.history-button').forEach(button => {
+			button.addEventListener('click', async () => {
+				const historyContent = document.getElementById('historyContent');
+				historyContent.textContent = 'Loading…';
+				historyDialog.showModal();
+				try {
+					const response = await fetch(`/employeeattendance/staff/${encodeURIComponent(button.dataset.employeeId)}/commands`);
+					const result = await response.json();
+					if (!response.ok) throw new Error(result.message || 'Unable to load command history.');
+					const commandRows = result.commands.map(command =>
+						`${command.createdAt} | ${command.serialNumber} | ${command.commandType} | ${command.status} | attempts ${command.attempts}${command.lastError ? ` | ${command.lastError}` : ''}`
+					);
+					const enrollmentRows = result.manualEnrollments.map(enrollment =>
+						`${enrollment.confirmedAt} | ${enrollment.serialNumber} | Manually confirmed by ${enrollment.confirmedBy}`
+					);
+					historyContent.textContent = [
+						'Device commands:',
+						...(commandRows.length ? commandRows : ['No commands recorded.']),
+						'',
+						'Fingerprint enrollment:',
+						...(enrollmentRows.length ? enrollmentRows : ['No manual enrollment confirmation recorded.']),
+						'Remote fingerprint enrollment: unverified'
+					].join('\n');
+				} catch (error) {
+					historyContent.textContent = error.message;
+				}
+			});
+		});
+		historyDialog.querySelector('.dialog-close').addEventListener('click', () => historyDialog.close());
 	</script>
 </body>
 </html>
