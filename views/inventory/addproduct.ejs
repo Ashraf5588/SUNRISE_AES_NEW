@@ -4,9 +4,10 @@
 <body><div class="inventory-shell">
 	<%- include('inventorynav', { currentPath }) %>
 	<main class="inventory-main">
-		<header class="page-header"><div><p class="eyebrow">Catalog / Stock</p><h1>Products</h1><p class="page-subtitle">Add items and keep opening quantities up to date.</p></div></header>
+		<header class="page-header"><div><p class="eyebrow">Catalog / Stock</p><h1>Products</h1><p class="page-subtitle">Manage product units and receive stock in purchase units.</p></div></header>
 		<% if (message) { %><div class="notice"><%= message %></div><% } %>
-		<section class="panel product-sheet-panel">
+		<div class="notice">Set a product's conversion once from <a class="panel-link" href="/inventory/unit-conversions">Unit conversions</a>. The equation below each product shows the saved setting (for example, <strong>1 Packet = 12 Pieces</strong>). For a new product, you can also set the purchase unit and factor in its entry row before saving.</div>
+		<section class="panel product-sheet-panel" id="unit-conversions">
 			<div class="panel-heading"><div><h2>Product inventory</h2><p>Edit stock directly in the table or enter a new product in the last row.</p></div><span class="cell-secondary">Showing <%= totalProducts ? (page - 1) * 25 + 1 : 0 %>-<%= Math.min(page * 25, totalProducts) %> of <%= totalProducts %></span></div>
 			<div class="product-tools">
 				<a class="button secondary" href="/inventory/products/template.csv?v=2" download>Download CSV template</a>
@@ -40,15 +41,17 @@
 						</div>
 						<button class="button" type="submit" <%= !quantityTypes.length ? 'disabled' : '' %>>Save table</button>
 					</div>
-					<div class="product-entry-table-wrap"><table class="product-entry-table"><thead><tr><th>Entry date (BS)</th><th>Product name</th><th>Buy quantity</th><th>Available quantity</th><th>Unit</th><th>Price</th><th>Buy from</th><th>Color</th><th>Size</th><th>SKU / code</th><th>Description</th><th>Barcode</th><th>Category <span>(optional)</span></th><th>Low-stock alert</th></tr></thead>
+					<div class="product-entry-table-wrap"><table class="product-entry-table"><thead><tr><th>Entry date (BS)</th><th>Product name</th><th>Opening purchase quantity</th><th>Available stock (base unit)</th><th>Base unit</th><th>Purchase unit</th><th>Units per purchase unit</th><th>Price</th><th>Buy from</th><th>Color</th><th>Size</th><th>SKU / code</th><th>Description</th><th>Barcode</th><th>Category <span>(optional)</span></th><th>Low-stock alert (base units)</th></tr></thead>
 						<tbody>
 						<% const newRowIndex = products.length; %>
 						<tr class="product-sheet-row new-product-row" data-existing="false">
 							<td><input type="hidden" name="products[<%= newRowIndex %>][touched]" value="0"><input class="sheet-input nepali-datepicker" name="products[<%= newRowIndex %>][entryDateNepali]" type="text" value="<%= todayNepaliDate %>" placeholder="YYYY-MM-DD" aria-label="New product entry date in Nepali calendar"></td>
 							<td><div class="product-name-autocomplete"><input class="sheet-input new-product-name-input" name="products[<%= newRowIndex %>][name]" maxlength="120" placeholder="New product name" aria-label="New product name" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="productNameSuggestions"><div class="search-results product-name-suggestions" id="productNameSuggestions" role="listbox" hidden></div></div></td>
-							<td><input class="sheet-input new-buy-quantity" name="products[<%= newRowIndex %>][buyQuantity]" type="number" min="0" step="1" value="0" aria-label="New product buy quantity"></td>
-							<td><input class="sheet-input new-available-quantity" name="products[<%= newRowIndex %>][quantity]" type="number" min="0" step="1" value="0" aria-label="New product available quantity"></td>
-							<td><select class="sheet-input" name="products[<%= newRowIndex %>][quantityType]" aria-label="New product quantity unit"><% quantityTypes.forEach(unit => { %><option value="<%= unit._id %>" <%= String(unit._id) === defaultQuantityTypeId ? 'selected' : '' %>><%= unit.name %><%= unit.abbreviation ? ` (${unit.abbreviation})` : '' %></option><% }) %></select></td>
+							<td><input class="sheet-input new-buy-quantity" name="products[<%= newRowIndex %>][buyQuantity]" type="number" min="0" step="0.000001" value="0" aria-label="New product opening purchase quantity"></td>
+							<td><input class="sheet-input new-available-quantity" name="products[<%= newRowIndex %>][quantity]" type="number" min="0" step="0.000001" value="0" readonly aria-label="New product opening stock in base units"></td>
+							<td><select class="sheet-input new-base-unit" name="products[<%= newRowIndex %>][quantityType]" aria-label="New product base unit"><% quantityTypes.forEach(unit => { %><option value="<%= unit._id %>" data-name="<%= unit.name %>" <%= String(unit._id) === defaultQuantityTypeId ? 'selected' : '' %>><%= unit.name %><%= unit.abbreviation ? ` (${unit.abbreviation})` : '' %></option><% }) %></select></td>
+							<td><select class="sheet-input new-purchase-unit" name="products[<%= newRowIndex %>][purchaseUnit]" aria-label="New product purchase unit"><% purchaseUnits.forEach(unit => { %><option value="<%= unit %>" <%= unit.toLowerCase() === defaultBaseUnitName.toLowerCase() ? 'selected' : '' %>><%= unit %></option><% }) %></select></td>
+							<td><input class="sheet-input new-conversion-factor" name="products[<%= newRowIndex %>][conversionFactor]" type="number" min="0.000001" step="0.000001" value="1" aria-label="Base units per purchase unit"><small class="new-conversion-help">1 <%= defaultBaseUnitName %> = 1 <%= defaultBaseUnitName %> (change if a pack contains more)</small></td>
 							<td><input class="sheet-input" name="products[<%= newRowIndex %>][price]" type="number" min="0" step="0.01" value="0" aria-label="New product price"></td>
 							<td><input class="sheet-input" name="products[<%= newRowIndex %>][supplierName]" maxlength="120" list="inventorySupplierOptions" aria-label="New product supplier or store"></td>
 							<td><input class="sheet-input" name="products[<%= newRowIndex %>][color]" maxlength="40" aria-label="New product color"></td>
@@ -57,15 +60,17 @@
 							<td><input class="sheet-input" name="products[<%= newRowIndex %>][description]" maxlength="400" aria-label="New product description"></td>
 							<td><input class="sheet-input" name="products[<%= newRowIndex %>][barcode]" maxlength="100" aria-label="New product barcode"></td>
 							<td><select class="sheet-input" name="products[<%= newRowIndex %>][category]" aria-label="New product category"><option value="">No category</option><% categories.forEach(category => { %><option value="<%= category._id %>"><%= category.name %></option><% }) %></select></td>
-							<td><input class="sheet-input" name="products[<%= newRowIndex %>][lowStockThreshold]" type="number" min="0" step="1" value="5" aria-label="New product low-stock alert"></td>
+							<td><input class="sheet-input" name="products[<%= newRowIndex %>][lowStockThreshold]" type="number" min="0" step="0.000001" value="5" aria-label="New product low-stock alert"></td>
 						</tr>
 						<% products.forEach((product, index) => { %>
 						<tr class="product-sheet-row" data-existing="true">
 							<td><input type="hidden" name="products[<%= index %>][productId]" value="<%= product._id %>"><input type="hidden" name="products[<%= index %>][touched]" value="1"><input class="sheet-input nepali-datepicker" name="products[<%= index %>][entryDateNepali]" type="text" value="<%= product.entryDateNepali || todayNepaliDate %>" placeholder="YYYY-MM-DD" required aria-label="Entry date in Nepali calendar"></td>
 							<td><input class="sheet-input" name="products[<%= index %>][name]" value="<%= product.name %>" required maxlength="120" aria-label="Product name"></td>
-							<td><input class="sheet-input" name="products[<%= index %>][buyQuantity]" type="number" min="0" step="1" value="<%= product.buyQuantity ?? product.quantity %>" required aria-label="Buy quantity"></td>
-							<td><input class="sheet-input" name="products[<%= index %>][quantity]" type="number" min="0" step="1" value="<%= product.quantity %>" required aria-label="Available quantity"></td>
-							<td><select class="sheet-input" name="products[<%= index %>][quantityType]" required aria-label="Quantity unit"><% quantityTypes.forEach(unit => { %><option value="<%= unit._id %>" <%= String(product.quantityType || '') === String(unit._id) ? 'selected' : '' %>><%= unit.name %><%= unit.abbreviation ? ` (${unit.abbreviation})` : '' %></option><% }) %></select></td>
+							<td><input class="sheet-input" name="products[<%= index %>][buyQuantity]" type="number" min="0" step="0.000001" value="<%= product.buyQuantity ?? product.quantity %>" readonly required aria-label="Recorded opening purchase quantity"></td>
+							<td><input class="sheet-input existing-product-stock" name="products[<%= index %>][quantity]" type="number" min="0" step="0.000001" value="<%= product.quantity %>" readonly aria-label="Available stock in base units; updated through purchase receipts and issues"><small><%= product.stockEquivalent %></small></td>
+							<td><select class="sheet-input" name="products[<%= index %>][quantityType]" required aria-label="Base unit"><% quantityTypes.forEach(unit => { %><option value="<%= unit._id %>" data-name="<%= unit.name %>" <%= String(product.quantityType || '') === String(unit._id) ? 'selected' : '' %>><%= unit.name %><%= unit.abbreviation ? ` (${unit.abbreviation})` : '' %></option><% }) %></select></td>
+							<td><select class="sheet-input" name="products[<%= index %>][purchaseUnit]" required aria-label="Purchase unit"><% purchaseUnits.forEach(unit => { %><option value="<%= unit %>" <%= String(product.purchaseUnit) === unit ? 'selected' : String(product.purchaseUnit || product.baseUnit).toLowerCase() === unit.toLowerCase() ? 'selected' : '' %>><%= unit %></option><% }) %></select></td>
+							<td><input class="sheet-input" name="products[<%= index %>][conversionFactor]" type="number" min="0.000001" step="0.000001" value="<%= product.conversionFactor || 1 %>" required aria-label="Base units per purchase unit"><small>Saved: 1 <%= product.purchaseUnit || product.baseUnit %> = <%= product.conversionFactor || 1 %> <%= product.baseUnit %></small></td>
 							<td><input class="sheet-input" name="products[<%= index %>][price]" type="number" min="0" step="0.01" value="<%= product.price ?? 0 %>" required aria-label="Price"></td>
 							<td><input class="sheet-input" name="products[<%= index %>][supplierName]" value="<%= product.supplierName || '' %>" maxlength="120" list="inventorySupplierOptions" aria-label="Supplier or store bought from"></td>
 							<td><input class="sheet-input" name="products[<%= index %>][color]" value="<%= product.color || '' %>" maxlength="40" aria-label="Color"></td>
@@ -74,13 +79,31 @@
 							<td><input class="sheet-input" name="products[<%= index %>][description]" value="<%= product.description || '' %>" maxlength="400" aria-label="Description"></td>
 							<td><input class="sheet-input" name="products[<%= index %>][barcode]" value="<%= product.barcode || '' %>" maxlength="100" aria-label="Barcode"></td>
 							<td><select class="sheet-input" name="products[<%= index %>][category]" aria-label="Optional category"><option value="">No category</option><% categories.forEach(category => { %><option value="<%= category._id %>" <%= String(product.category || '') === String(category._id) ? 'selected' : '' %>><%= category.name %></option><% }) %></select></td>
-							<td><input class="sheet-input" name="products[<%= index %>][lowStockThreshold]" type="number" min="0" step="1" value="<%= product.lowStockThreshold %>" required aria-label="Low-stock alert"></td>
+							<td><input class="sheet-input" name="products[<%= index %>][lowStockThreshold]" type="number" min="0" step="0.000001" value="<%= product.lowStockThreshold %>" required aria-label="Low-stock alert in base units"></td>
 						</tr>
 						<% }) %>
 						</tbody></table></div>
 					<datalist id="inventorySupplierOptions"><% suppliers.forEach(supplier => { %><option value="<%= supplier.name %>"></option><% }) %></datalist>
 				</form>
 				<% if (totalPages > 1) { %><nav class="pagination" aria-label="Product pages"><span>Page <%= page %> of <%= totalPages %></span><div><% if (page > 1) { %><a class="button secondary small" href="/inventory/products?page=<%= page - 1 %>&amp;search=<%= encodeURIComponent(search) %>">Previous</a><% } %><% if (page < totalPages) { %><a class="button secondary small" href="/inventory/products?page=<%= page + 1 %>&amp;search=<%= encodeURIComponent(search) %>">Next</a><% } %></div></nav><% } %>
+		</section>
+		<section class="panel" style="margin-top:17px">
+			<div class="panel-heading"><div><h2>Receive a purchase</h2><p>Enter the received quantity in the product's purchase unit. Stock is added in base units.</p></div></div>
+			<form method="post" action="/inventory/products/receive" class="form-grid" id="receivePurchaseForm">
+		<input type="hidden" name="submissionKey" value="<%= purchaseSubmissionKey %>">
+		<div class="field"><label for="receiveProduct">Product</label><select id="receiveProduct" name="productId" required><option value="">Select product</option><% purchaseProducts.forEach(product => { %><option value="<%= product._id %>" data-stock="<%= product.quantity %>" data-base-unit="<%= product.baseUnit %>" data-purchase-unit="<%= product.purchaseUnit %>" data-factor="<%= product.conversionFactor %>" data-price="<%= product.price %>"><%= product.name %> (<%= product.stockEquivalent %>)</option><% }) %></select></div>
+		<div class="field"><label for="receiveQuantity">Purchase quantity</label><input id="receiveQuantity" name="quantity" type="number" min="0.000001" step="0.000001" required><span id="purchaseUnitHelp" class="cell-secondary">Select a product</span></div>
+		<div class="field"><label for="receiveUnitCost">Cost per purchase unit (Rs.)</label><input id="receiveUnitCost" name="unitCost" type="number" min="0" step="0.01" value="0" required></div>
+		<div class="field"><label for="receiveSupplier">Supplier</label><input id="receiveSupplier" name="supplierName" maxlength="120" list="inventorySupplierOptions"></div>
+		<div class="field"><label for="receiveReference">Invoice / reference</label><input id="receiveReference" name="referenceNo" maxlength="100"></div>
+		<div class="field"><label for="receiveDate">Purchase date (BS)</label><input id="receiveDate" name="purchaseNepaliDate" class="nepali-datepicker" type="text" value="<%= todayNepaliDate %>" required></div>
+		<div class="field full"><span class="cell-secondary" id="purchaseCalculation">Total stock added: select a product and enter quantity.</span></div>
+		<div class="field full"><button class="button" type="submit">Receive stock</button></div>
+			</form>
+		</section>
+		<section class="panel" style="margin-top:17px">
+			<div class="panel-heading"><div><h2>Recent purchases</h2><p>Purchase unit, conversion factor, and base quantity are saved as historical snapshots.</p></div></div>
+			<% if (recentPurchases.length) { %><div class="table-wrap"><table><thead><tr><th>Purchase no.</th><th>Date (BS)</th><th>Product</th><th>Purchased</th><th>Stock added</th><th>Unit cost</th><th>Total</th><th>Supplier</th></tr></thead><tbody><% recentPurchases.forEach(purchase => { %><tr><td><%= purchase.purchaseNo %></td><td><%= purchase.purchaseNepaliDate %></td><td><%= purchase.productName %></td><td><%= purchase.enteredQuantity %> <%= purchase.purchaseUnit %> (1 = <%= purchase.conversionFactor %> <%= purchase.baseUnit %>)</td><td><%= purchase.baseQuantity %> <%= purchase.baseUnit %></td><td>Rs. <%= purchase.unitCost.toFixed(2) %></td><td>Rs. <%= purchase.totalCost.toFixed(2) %></td><td><%= purchase.supplierName || '-' %></td></tr><% }) %></tbody></table></div><% } else { %><div class="empty-state">No purchases recorded yet.</div><% } %>
 		</section>
 	</main>
 </div>
@@ -98,6 +121,15 @@
 	const productNameSuggestions = document.getElementById('productNameSuggestions');
 	const newBuyQuantityInput = newProductRow?.querySelector('.new-buy-quantity');
 	const newAvailableQuantityInput = newProductRow?.querySelector('.new-available-quantity');
+	const newBaseUnitInput = newProductRow?.querySelector('.new-base-unit');
+	const newPurchaseUnitInput = newProductRow?.querySelector('.new-purchase-unit');
+	const newConversionFactorInput = newProductRow?.querySelector('.new-conversion-factor');
+	const newConversionHelp = newProductRow?.querySelector('.new-conversion-help');
+	const receiveProductInput = document.getElementById('receiveProduct');
+	const receiveQuantityInput = document.getElementById('receiveQuantity');
+	const receiveUnitCostInput = document.getElementById('receiveUnitCost');
+	const purchaseUnitHelp = document.getElementById('purchaseUnitHelp');
+	const purchaseCalculation = document.getElementById('purchaseCalculation');
 	const productTableWrap = document.querySelector('.product-entry-table-wrap');
 	const scrollIndicator = document.querySelector('.product-table-scroll-indicator');
 	const scrollIndicatorTrack = document.querySelector('.scroll-indicator-track');
@@ -144,6 +176,8 @@
 						newProductNameInput.value = product.name;
 						newProductNameInput.dispatchEvent(new Event('change', { bubbles: true }));
 						setNewProductField('quantityType', product.quantityTypeId);
+						setNewProductField('purchaseUnit', product.purchaseUnit);
+						setNewProductField('conversionFactor', product.conversionFactor);
 						setNewProductField('category', product.categoryId);
 						setNewProductField('color', product.color);
 						setNewProductField('size', product.size);
@@ -152,6 +186,8 @@
 						setNewProductField('price', product.price);
 						setNewProductField('lowStockThreshold', product.lowStockThreshold);
 						setNewProductField('description', product.description);
+						newAvailableQuantityEdited = false;
+						refreshNewProductConversion();
 						closeProductNameSuggestions();
 						newBuyQuantityInput?.focus();
 					});
@@ -197,13 +233,62 @@
 	};
 	let newAvailableQuantityEdited = false;
 	newAvailableQuantityInput?.addEventListener('input', () => { newAvailableQuantityEdited = true; });
-	newBuyQuantityInput?.addEventListener('input', () => {
-		if (newAvailableQuantityInput && !newAvailableQuantityEdited) newAvailableQuantityInput.value = newBuyQuantityInput.value;
+	const refreshNewProductConversion = () => {
+		const factor = Number(newConversionFactorInput?.value || 1);
+		const baseUnit = newBaseUnitInput?.selectedOptions[0]?.dataset.name || 'unit';
+		const purchaseUnit = newPurchaseUnitInput?.value || baseUnit;
+		if (newConversionHelp) newConversionHelp.textContent = `1 ${purchaseUnit} = ${factor} ${baseUnit}${factor === 1 ? ' (change if a pack contains more)' : ''}`;
+		if (newAvailableQuantityInput && !newAvailableQuantityEdited) {
+			newAvailableQuantityInput.value = (Number(newBuyQuantityInput?.value || 0) * (Number.isFinite(factor) ? factor : 0)).toFixed(6).replace(/\.?0+$/, '');
+		}
+	};
+	[newBuyQuantityInput, newBaseUnitInput, newPurchaseUnitInput, newConversionFactorInput].forEach((input) => {
+		input?.addEventListener('input', refreshNewProductConversion);
+		input?.addEventListener('change', refreshNewProductConversion);
 	});
+	refreshNewProductConversion();
 	newProductRow?.querySelectorAll('.sheet-input').forEach((input) => {
 		input.addEventListener('input', markNewRowTouched);
 		input.addEventListener('change', markNewRowTouched);
 	});
+	document.querySelectorAll('.existing-product-stock').forEach((input) => {
+		const row = input.closest('tr');
+		const equivalentHelp = input.parentElement.querySelector('small');
+		const updateEquivalent = () => {
+			const stock = Number(input.value || 0);
+			const baseUnit = row.querySelector('[name$="[quantityType]"]').selectedOptions[0]?.dataset.name || 'unit';
+			const purchaseUnit = row.querySelector('[name$="[purchaseUnit]"]').value || baseUnit;
+			const factor = Number(row.querySelector('[name$="[conversionFactor]"]').value || 1);
+			if (!Number.isFinite(factor) || factor <= 1 || purchaseUnit.toLowerCase() === baseUnit.toLowerCase()) {
+				equivalentHelp.textContent = `${stock} ${baseUnit}`;
+				return;
+			}
+			const purchaseCount = Math.floor((stock + 1e-9) / factor);
+			const remainder = Number((stock - purchaseCount * factor).toFixed(6));
+			equivalentHelp.textContent = remainder > 0 ? `${purchaseCount} ${purchaseUnit} + ${remainder} ${baseUnit}` : `${purchaseCount} ${purchaseUnit}`;
+		};
+		row.querySelector('[name$="[quantityType]"]').addEventListener('change', updateEquivalent);
+		row.querySelector('[name$="[purchaseUnit]"]').addEventListener('change', updateEquivalent);
+		row.querySelector('[name$="[conversionFactor]"]').addEventListener('input', updateEquivalent);
+	});
+	const refreshPurchaseCalculation = () => {
+		const option = receiveProductInput?.selectedOptions[0];
+		if (!option?.value) {
+			purchaseUnitHelp.textContent = 'Select a product';
+			purchaseCalculation.textContent = 'Total stock added: select a product and enter quantity.';
+			return;
+		}
+		const factor = Number(option.dataset.factor);
+		const purchaseUnit = option.dataset.purchaseUnit;
+		const baseUnit = option.dataset.baseUnit;
+		const quantity = Number(receiveQuantityInput.value || 0);
+		const baseQuantity = quantity * factor;
+		purchaseUnitHelp.textContent = `1 ${purchaseUnit} = ${factor} ${baseUnit}`;
+		purchaseCalculation.textContent = `Stock after receipt: ${Number(option.dataset.stock) + baseQuantity} ${baseUnit} · Purchase total: Rs. ${(quantity * Number(receiveUnitCostInput.value || 0)).toFixed(2)}`;
+	};
+	[receiveProductInput, receiveQuantityInput, receiveUnitCostInput].forEach((input) => input?.addEventListener('input', refreshPurchaseCalculation));
+	[receiveProductInput, receiveQuantityInput, receiveUnitCostInput].forEach((input) => input?.addEventListener('change', refreshPurchaseCalculation));
+	refreshPurchaseCalculation();
 	csvUploadForm.addEventListener('submit', (event) => {
 		event.preventDefault();
 		const fileInput = document.getElementById('productCsv');

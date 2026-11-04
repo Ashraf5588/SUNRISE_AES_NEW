@@ -16,21 +16,21 @@
 			<a class="button" href="/inventory/sales">Sales Entry</a>
 		</header>
 		<section class="dashboard-stats" aria-label="Inventory totals">
-			<article class="stat-card"><div class="stat-label">Units available</div><div class="stat-value"><%= Number(totalStock || 0).toLocaleString() %></div><p class="stat-note">Across active products</p></article>
+			<article class="stat-card"><div class="stat-label">Products with stock</div><div class="stat-value"><%= Number(productsWithStock || 0).toLocaleString() %></div><p class="stat-note">Each product is tracked in its base unit</p></article>
 			<article class="stat-card"><div class="stat-label">Active products</div><div class="stat-value"><%= totalProducts || 0 %></div><p class="stat-note">In <%= categoryCount || 0 %> categories</p></article>
 			<article class="stat-card"><div class="stat-label">Low stock items</div><div class="stat-value"><%= lowStockItems.length %></div><p class="stat-note">At or below reorder threshold</p></article>
 			<article class="stat-card stat-card-pending" data-target="pendingRequestsTable"><div class="stat-label">Pending product requests</div><div class="stat-value"><%= totalProductRequests || 0 %></div><p class="stat-note">Needs approval or review</p></article>
 		</section>
 		<section class="dashboard-grid">
 			<article class="panel">
-				<div class="panel-heading"><div><h2>Items issued</h2><p>Monthly quantity issued over the last six months</p></div><a class="panel-link" href="/inventory/analytics">All analytics</a></div>
+				<div class="panel-heading"><div><h2>Items issued</h2><p>Monthly issued item lines over the last six months</p></div><a class="panel-link" href="/inventory/analytics">All analytics</a></div>
 				<div class="chart-wrap"><canvas id="issueChart" data-labels="<%= JSON.stringify(chartLabels) %>" data-values="<%= JSON.stringify(chartValues) %>" aria-label="Monthly item issue chart"></canvas></div>
 			</article>
 			<article class="panel">
 				<div class="panel-heading"><div><h2>Low stock</h2><p>Items that need attention</p></div><a class="panel-link" href="/inventory/products">Products</a></div>
 				<% if (lowStockItems.length) { %>
 					<div class="table-wrap"><table><thead><tr><th>Product</th><th>Available</th></tr></thead><tbody>
-						<% lowStockItems.forEach(item => { %><tr><td><span class="cell-primary"><%= item.name %></span><span class="cell-secondary"><%= item.categoryName %></span></td><td><span class="pill"><%= item.quantity %> <%= item.quantityTypeName %></span><span class="cell-secondary">Threshold: <%= item.lowStockThreshold %></span></td></tr><% }) %>
+						<% lowStockItems.forEach(item => { %><tr><td><span class="cell-primary"><%= item.name %></span><span class="cell-secondary"><%= item.categoryName %></span></td><td><span class="pill"><%= item.quantity %> <%= item.baseUnit %></span><span class="cell-secondary"><%= item.stockEquivalent %> · Threshold: <%= item.lowStockThreshold %> <%= item.baseUnit %></span></td></tr><% }) %>
 					</tbody></table></div>
 				<% } else { %><div class="empty-state">All stock levels are healthy.</div><% } %>
 			</article>
@@ -54,7 +54,7 @@
 					<td><span class="cell-primary"><%= request.productName %></span><span class="cell-secondary"><%= request.product ? `${request.availableQuantityAtRequest} ${request.quantityTypeName} available when requested` : 'Not listed in inventory' %><%= request.color || request.size ? ` / ${[request.color, request.size].filter(Boolean).join(' / ')}` : '' %></span></td>
 					<td>
 						<% if (isInventoryManager) { %>
-						<input class="review-quantity" form="requestReview-<%= request._id %>" type="number" name="quantity" min="1" step="1" value="<%= request.quantity %>" required aria-label="Approved quantity for <%= request.productName %>">
+						<input class="review-quantity" form="requestReview-<%= request._id %>" type="number" name="quantity" min="0.000001" step="0.000001" value="<%= request.quantity %>" required aria-label="Approved quantity for <%= request.productName %>">
 						<span class="cell-secondary"><%= request.quantityTypeName %></span>
 						<% } else { %><%= request.quantity %> <%= request.quantityTypeName %><% } %>
 					</td>

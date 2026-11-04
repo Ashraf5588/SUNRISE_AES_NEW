@@ -9,8 +9,16 @@ const {
   inventoryProductSchema,
   inventoryTransactionSchema,
   inventoryReturnSchema,
+  inventoryPurchaseSchema,
   inventoryProductRequestSchema
 } = require('../../model/inventoryschema/inventorySchema');
+const {
+  roundQuantity,
+  getProductUnits,
+  convertToBaseQuantity,
+  describeEquivalentStock,
+  hasSufficientStock
+} = require('../../utils/inventoryUnitConversion');
 const { inventorySupplierSchema } = require('../../model/inventoryschema/supplierSchema');
 const { teacherSchema } = require('../../model/admin');
 const { studentrecordschema } = require('../../model/adminschema');
@@ -20,6 +28,7 @@ const InventoryQuantityType = mongoose.models.inventoryQuantityType || mongoose.
 const InventoryProduct = mongoose.models.inventoryProduct || mongoose.model('inventoryProduct', inventoryProductSchema, 'inventoryProducts');
 const InventoryTransaction = mongoose.models.inventoryTransaction || mongoose.model('inventoryTransaction', inventoryTransactionSchema, 'inventoryTransactions');
 const InventoryReturn = mongoose.models.inventoryReturn || mongoose.model('inventoryReturn', inventoryReturnSchema, 'inventoryReturns');
+const InventoryPurchase = mongoose.models.inventoryPurchase || mongoose.model('inventoryPurchase', inventoryPurchaseSchema, 'inventoryPurchases');
 const InventoryProductRequest = mongoose.models.inventoryProductRequest || mongoose.model('inventoryProductRequest', inventoryProductRequestSchema, 'inventoryProductRequests');
 const InventorySupplier = mongoose.models.inventorySupplier || mongoose.model('inventorySupplier', inventorySupplierSchema, 'inventorySuppliers');
 const User = mongoose.models.inventoryUser || mongoose.model('inventoryUser', teacherSchema, 'users');
@@ -27,23 +36,47 @@ const StudentRecord = mongoose.models.inventoryStudentRecord || mongoose.model('
 const inventoryCsvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
 const transactionCsvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024 } });
 const PAGE_SIZE = 25;
+const COMMON_PURCHASE_UNITS = ['Piece', 'Packet', 'Box', 'Carton', 'Dozen', 'Kg', 'Gram', 'Litre', 'Ml', 'Metre'];
 const parsePage = (value) => Math.max(1, Number.parseInt(value, 10) || 1);
+const startInventoryTransaction = async () => {
+  const topologyType = mongoose.connection.client?.topology?.description?.type;
+  if (!['ReplicaSetWithPrimary', 'Sharded', 'LoadBalanced'].includes(topologyType)) return null;
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  return session;
+};
+const normalizeProductStockDisplay = (product) => {
+  const units = getProductUnits(product);
+  return { ...product, ...units, stockEquivalent: describeEquivalentStock(product.quantity, product) };
+};
+const parsePositiveFactor = (value) => {
+  const factor = Number(value);
+  const roundedFactor = roundQuantity(factor);
+  return Number.isFinite(factor) && factor > 0 && roundedFactor > 0 ? roundedFactor : null;
+};
 const standardizeProductName = (value) => String(value ?? '').trim().replace(/\s+/g, ' ').replace(/^./, (character) => character.toUpperCase());
+const productNameKey = (value) => standardizeProductName(value).replace(/\s+/g, '').toLowerCase();
+const productNamePattern = (value) => {
+  const normalizedName = productNameKey(value);
+  if (!normalizedName) return null;
+  const escapeRegExp = (character) => character.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`^${[...normalizedName].map(escapeRegExp).join('\\s*')}$`, 'i');
+};
 const normalizeProductIdentityValue = (value) => String(value ?? '').trim().toLowerCase();
 const productIdentityKey = (product) => JSON.stringify([
-  standardizeProductName(product.name).replace(/\s+/g, '').toLowerCase(),
+  productNameKey(product.name),
   normalizeProductIdentityValue(product.categoryName),
-  normalizeProductIdentityValue(product.quantityTypeName),
+  normalizeProductIdentityValue(getProductUnits(product).baseUnit),
+  normalizeProductIdentityValue(getProductUnits(product).purchaseUnit),
+  getProductUnits(product).conversionFactor,
   normalizeProductIdentityValue(product.color),
   normalizeProductIdentityValue(product.size),
   normalizeProductIdentityValue(product.sku),
   normalizeProductIdentityValue(product.barcode)
 ]);
 const findMatchingProductRecords = async (product, excludeId) => {
-  const normalizedName = standardizeProductName(product.name).replace(/\s+/g, '').toLowerCase();
-  if (!normalizedName || !product.quantityType) return [];
-  const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const namePattern = new RegExp(`^${[...normalizedName].map(escapeRegExp).join('\\s*')}$`, 'i');
+  const namePattern = productNamePattern(product.name);
+  if (!namePattern || !product.quantityType) return [];
   const filter = { active: true, quantityType: product.quantityType, name: namePattern };
   if (excludeId) filter._id = { $ne: excludeId };
   const candidates = await InventoryProduct.find(filter).lean();
@@ -93,7 +126,7 @@ const groupInventoryProducts = (products) => {
   }
   return [...groups.values()];
 };
-const decrementGroupedProductStock = async (products, requestedQuantities, decremented) => {
+const decrementGroupedProductStock = async (products, requestedQuantities, decremented, session = null) => {
   const groups = groupInventoryProducts(products);
   const groupByKey = new Map(groups.map((group) => [productIdentityKey(group), group]));
   const productById = new Map(products.map((product) => [String(product._id), product]));
@@ -108,6 +141,7 @@ const decrementGroupedProductStock = async (products, requestedQuantities, decre
 
   for (const [key, totalQuantity] of requestedByGroup) {
     const group = groupByKey.get(key);
+    if (!hasSufficientStock(group.quantity, totalQuantity)) throw new Error('INSUFFICIENT_STOCK');
     let remaining = totalQuantity;
     const stockRecords = [...group.stockRecords].sort((left, right) => {
       const leftDate = new Date(left.createdAt || 0).getTime() || 0;
@@ -122,12 +156,15 @@ const decrementGroupedProductStock = async (products, requestedQuantities, decre
       const updated = await InventoryProduct.findOneAndUpdate(
         { _id: stockRecord._id, active: true, quantity: { $gte: deduction } },
         { $inc: { quantity: -deduction } },
-        { new: true }
+        { new: true, ...(session ? { session } : {}) }
       );
       if (!updated) continue;
       decremented.push({ productId: String(stockRecord._id), quantity: deduction });
       remaining -= deduction;
-      if (remaining === 0) break;
+      if (remaining <= 1e-8) {
+        remaining = 0;
+        break;
+      }
     }
 
     if (remaining > 0) throw new Error('INSUFFICIENT_STOCK');
@@ -194,6 +231,7 @@ exports.productRequestsPage = async (req, res) => {
         ]
       };
       const assignmentCount = await InventoryTransaction.aggregate([
+        { $match: { status: { $ne: 'pending' } } },
         { $match: assignmentFilter },
         { $unwind: '$items' },
         { $count: 'total' }
@@ -203,6 +241,7 @@ exports.productRequestsPage = async (req, res) => {
       const totalPages = Math.max(1, Math.ceil(totalRequests / PAGE_SIZE));
       const page = Math.min(requestedPage, totalPages);
       const assignments = await InventoryTransaction.aggregate([
+        { $match: { status: { $ne: 'pending' } } },
         { $match: assignmentFilter },
         { $unwind: '$items' },
         { $sort: { assignedAt: -1, _id: -1 } },
@@ -281,7 +320,9 @@ exports.searchRequestProducts = async (req, res) => {
           _id: {
             name: '$name',
             categoryName: '$categoryName',
-            quantityTypeName: '$quantityTypeName',
+            baseUnit: { $ifNull: ['$baseUnit', '$quantityTypeName'] },
+            purchaseUnit: { $ifNull: ['$purchaseUnit', { $ifNull: ['$baseUnit', '$quantityTypeName'] }] },
+            conversionFactor: { $ifNull: ['$conversionFactor', 1] },
             color: '$color',
             size: '$size',
             sku: '$sku',
@@ -294,7 +335,10 @@ exports.searchRequestProducts = async (req, res) => {
           quantity: { $sum: { $ifNull: ['$quantity', 0] } },
           categoryId: { $first: '$category' },
           quantityTypeId: { $first: '$quantityType' },
-          unit: { $first: '$quantityTypeName' },
+          unit: { $first: { $ifNull: ['$baseUnit', '$quantityTypeName'] } },
+          baseUnit: { $first: { $ifNull: ['$baseUnit', '$quantityTypeName'] } },
+          purchaseUnit: { $first: { $ifNull: ['$purchaseUnit', { $ifNull: ['$baseUnit', '$quantityTypeName'] }] } },
+          conversionFactor: { $first: { $ifNull: ['$conversionFactor', 1] } },
           sku: { $first: '$sku' },
           barcode: { $first: '$barcode' },
           supplierName: { $first: '$supplierName' },
@@ -315,6 +359,9 @@ exports.searchRequestProducts = async (req, res) => {
       categoryId: product.categoryId ? String(product.categoryId) : '',
       quantityTypeId: product.quantityTypeId ? String(product.quantityTypeId) : '',
       unit: product.unit,
+      baseUnit: product.baseUnit,
+      purchaseUnit: product.purchaseUnit,
+      conversionFactor: product.conversionFactor,
       sku: product.sku || '',
       barcode: product.barcode || '',
       supplierName: product.supplierName || '',
@@ -365,8 +412,8 @@ exports.createProductRequest = async (req, res) => {
     const quantityTypeNameInput = String(req.body.quantityTypeName || 'pcs').trim();
     const color = String(req.body.color || '').trim();
     const size = String(req.body.size || '').trim();
-    if (!productNameInput || productNameInput.length > 120 || !Number.isInteger(quantity) || quantity < 1 || !reason || reason.length > 500 || !requestedByName || requestedByName.length > 120 || !recommendedBy || recommendedBy.length > 120 || quantityTypeNameInput.length > 40 || color.length > 40 || size.length > 40) {
-      return res.status(400).send('Select a teacher, enter the recommended person, product, whole-number quantity, and reason for the request.');
+    if (!productNameInput || productNameInput.length > 120 || !Number.isFinite(quantity) || quantity <= 0 || !reason || reason.length > 500 || !requestedByName || requestedByName.length > 120 || !recommendedBy || recommendedBy.length > 120 || quantityTypeNameInput.length > 40 || color.length > 40 || size.length > 40) {
+      return res.status(400).send('Select a teacher, enter the recommended person, product, positive quantity, and reason for the request.');
     }
     const isNepaliDate = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value);
     if (!isNepaliDate(requestedAtNepali) || !isNepaliDate(requiredByNepali) || requiredByNepali < requestedAtNepali) {
@@ -386,7 +433,7 @@ exports.createProductRequest = async (req, res) => {
       product = await InventoryProduct.findOne({ _id: productId, active: true }).lean();
       if (!product) return res.status(404).send('That inventory product is no longer available. Search again.');
     }
-    const quantityTypeName = product?.quantityTypeName || quantityTypeNameInput || 'pcs';
+    const quantityTypeName = product ? getProductUnits(product).baseUnit : quantityTypeNameInput || 'pcs';
     await InventoryProductRequest.create({
       requesterId: req.user._id,
       requesterUsername: String(req.user.username || '').trim(),
@@ -417,7 +464,7 @@ exports.reviewProductRequest = async (req, res) => {
   const status = String(req.body.status || '').trim().toLowerCase();
   const managerReason = String(req.body.managerReason || '').trim();
   const quantity = Number(req.body.quantity);
-  if (!mongoose.isValidObjectId(req.params.id) || !allowedStatuses.includes(status) || managerReason.length > 500 || !Number.isInteger(quantity) || quantity < 1) {
+  if (!mongoose.isValidObjectId(req.params.id) || !allowedStatuses.includes(status) || managerReason.length > 500 || !Number.isFinite(quantity) || quantity <= 0) {
     return res.status(400).send('Choose a valid request status and review reason.');
   }
   if (status === 'rejected' && !managerReason) return res.status(400).send('Add a reason when rejecting a request.');
@@ -485,7 +532,12 @@ exports.reviewProductRequest = async (req, res) => {
             productName: selectedProduct.name,
             sku: selectedProduct.sku || '',
             quantity,
-            quantityTypeName: selectedProduct.quantityTypeName
+            enteredQuantity: quantity,
+            unitName: getProductUnits(selectedProduct).baseUnit,
+            conversionFactor: 1,
+            baseQuantity: quantity,
+            baseUnitName: getProductUnits(selectedProduct).baseUnit,
+            quantityTypeName: getProductUnits(selectedProduct).baseUnit
           }]
         }
       : null;
@@ -533,15 +585,36 @@ exports.dashboard = async (req, res) => {
       InventoryProduct.countDocuments({ active: true }),
       InventoryProduct.aggregate([
         { $match: { active: true } },
-        { $group: { _id: null, totalStock: { $sum: { $ifNull: ['$quantity', 0] } } } }
+        {
+          $group: {
+            _id: null,
+            productsWithStock: { $sum: { $cond: [{ $gt: ['$quantity', 0] }, 1, 0] } }
+          }
+        }
       ]),
-      InventoryProduct.find({ active: true, $expr: { $lte: ['$quantity', '$lowStockThreshold'] } }).sort({ quantity: 1 }).limit(8).lean(),
-      InventoryTransaction.find().sort({ assignedAt: -1 }).limit(8).lean(),
+      InventoryProduct.aggregate([
+        { $match: { active: true, $expr: { $lte: ['$quantity', '$lowStockThreshold'] } } },
+        {
+          $addFields: {
+            stockRatio: {
+              $cond: [
+                { $gt: ['$lowStockThreshold', 0] },
+                { $divide: ['$quantity', '$lowStockThreshold'] },
+                0
+              ]
+            }
+          }
+        },
+        { $sort: { stockRatio: 1, name: 1 } },
+        { $limit: 8 },
+        { $project: { stockRatio: 0 } }
+      ]),
+      InventoryTransaction.find({ status: { $ne: 'pending' } }).sort({ assignedAt: -1 }).limit(8).lean(),
       InventoryCategory.countDocuments({ active: true }),
       InventoryTransaction.aggregate([
-        { $match: { assignedAt: { $gte: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000) } } },
+        { $match: { status: { $ne: 'pending' }, assignedAt: { $gte: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000) } } },
         { $unwind: '$items' },
-        { $group: { _id: { $dateToString: { format: '%Y-%m', date: '$assignedAt' } }, quantity: { $sum: '$items.quantity' } } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m', date: '$assignedAt' } }, quantity: { $sum: 1 } } },
         { $sort: { _id: 1 } }
       ])
     ]);
@@ -558,9 +631,9 @@ exports.dashboard = async (req, res) => {
     const linkedProductNames = Object.fromEntries(linkedProducts.map((product) => [String(product._id), product.name]));
     renderPage(res, 'inventorydashboard', {
       totalProducts,
-      totalStock: stockSummary[0]?.totalStock || 0,
+      productsWithStock: stockSummary[0]?.productsWithStock || 0,
       categoryCount,
-      lowStockItems,
+      lowStockItems: lowStockItems.map(normalizeProductStockDisplay),
       recentTransactions,
       productRequests,
       linkedProductNames,
@@ -592,11 +665,13 @@ exports.productsPage = async (req, res) => {
     const totalProducts = await InventoryProduct.countDocuments(productFilter);
     const totalPages = Math.max(1, Math.ceil(totalProducts / PAGE_SIZE));
     const page = Math.min(requestedPage, totalPages);
-    const [products, categories, quantityTypes, suppliers] = await Promise.all([
+    const [products, categories, quantityTypes, suppliers, recentPurchases, purchaseProducts] = await Promise.all([
       InventoryProduct.find(productFilter).sort({ entryDateNepali: -1, createdAt: -1, _id: -1 }).skip((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).lean(),
       InventoryCategory.find({ active: true }).sort({ name: 1 }).lean(),
       InventoryQuantityType.find({ active: true }).sort({ name: 1 }).lean(),
-      InventorySupplier.find({ active: true }).sort({ name: 1 }).lean()
+      InventorySupplier.find({ active: true }).sort({ name: 1 }).lean(),
+      InventoryPurchase.find({ status: 'posted' }).sort({ purchasedAt: -1 }).limit(10).lean(),
+      InventoryProduct.find({ active: true }).sort({ name: 1 }).lean()
     ]);
     let defaultQuantityType = quantityTypes.find((unit) => /^(pcs?|pieces?)$/i.test(unit.name) || /^(pcs?|pieces?)$/i.test(unit.abbreviation || ''));
     if (!defaultQuantityType) {
@@ -604,7 +679,8 @@ exports.productsPage = async (req, res) => {
       quantityTypes.push(defaultQuantityType.toObject());
     }
     renderPage(res, 'addproduct', {
-      products,
+      products: products.map(normalizeProductStockDisplay),
+      purchaseProducts: purchaseProducts.map(normalizeProductStockDisplay),
       totalProducts,
       page,
       totalPages,
@@ -612,13 +688,134 @@ exports.productsPage = async (req, res) => {
       categories,
       suppliers,
       quantityTypes,
+      purchaseUnits: [...new Set([
+        ...COMMON_PURCHASE_UNITS,
+        ...quantityTypes.map((unit) => unit.name),
+        ...purchaseProducts.map((product) => getProductUnits(product).purchaseUnit)
+      ])].sort((a, b) => a.localeCompare(b)),
+      recentPurchases,
+      purchaseSubmissionKey: new mongoose.Types.ObjectId().toString(),
       defaultQuantityTypeId: String(defaultQuantityType._id),
+      defaultBaseUnitName: defaultQuantityType.name,
       todayNepaliDate: String(bs.ADToBS(new Date()) || '').trim(),
-      message: req.query.merged ? 'Stock added to the existing matching product.' : req.query.saved ? 'Product table saved.' : ''
+      message: req.query.purchaseDuplicate
+        ? 'This purchase was already recorded; stock was not added a second time.'
+        : req.query.purchaseSaved
+          ? 'Purchase recorded and stock updated.'
+          : req.query.merged ? 'Stock added to the existing matching product.' : req.query.saved ? 'Product table saved.' : ''
     });
   } catch (error) {
     console.error('Unable to load inventory products:', error);
     res.status(500).send('Unable to load inventory products');
+  }
+};
+
+exports.unitConversionsPage = async (req, res) => {
+  try {
+    const [products, quantityTypes] = await Promise.all([
+      InventoryProduct.find({ active: true }).sort({ name: 1, _id: 1 }).lean(),
+      InventoryQuantityType.find({ active: true }).sort({ name: 1 }).lean()
+    ]);
+    const conversionGroups = new Map();
+    for (const product of products) {
+      const key = productNameKey(product.name);
+      if (!conversionGroups.has(key)) conversionGroups.set(key, []);
+      conversionGroups.get(key).push(product);
+    }
+    const groupedProducts = [...conversionGroups.values()].map((records) => {
+      const representative = normalizeProductStockDisplay(records[0]);
+      const units = records.map((record) => getProductUnits(record));
+      const stockByBaseUnit = new Map();
+      records.forEach((record, index) => {
+        const baseUnit = units[index].baseUnit;
+        const stockEntry = stockByBaseUnit.get(baseUnit) || 0;
+        stockByBaseUnit.set(baseUnit, stockEntry + (Number(record.quantity) || 0));
+      });
+      const settingsDiffer = units.some((unit) =>
+        unit.baseUnit.toLowerCase() !== units[0].baseUnit.toLowerCase() ||
+        unit.purchaseUnit.toLowerCase() !== units[0].purchaseUnit.toLowerCase() ||
+        unit.conversionFactor !== units[0].conversionFactor
+      );
+      return {
+        ...representative,
+        duplicateCount: records.length,
+        settingsDiffer,
+        stockSummary: [...stockByBaseUnit.entries()]
+          .map(([unit, quantity]) => `${roundQuantity(quantity)} ${unit}`)
+          .join('; '),
+        stockEquivalent: records.length === 1
+          ? representative.stockEquivalent
+          : settingsDiffer
+            ? 'Conversion settings differ across these records'
+            : describeEquivalentStock([...stockByBaseUnit.values()][0], representative)
+      };
+    });
+    renderPage(res, 'unitconversions', {
+      products: groupedProducts,
+      quantityTypes,
+      purchaseUnits: [...new Set([
+        ...COMMON_PURCHASE_UNITS,
+        ...quantityTypes.map((unit) => unit.name),
+        ...products.map((product) => getProductUnits(product).purchaseUnit)
+      ])].sort((a, b) => a.localeCompare(b)),
+      message: req.query.saved
+        ? 'Unit conversion saved for this product name across all matching active records. Existing stock quantities were not changed.'
+        : req.query.error === 'base-unit'
+          ? 'A product with existing stock cannot change its base unit.'
+          : ''
+    });
+  } catch (error) {
+    console.error('Unable to load inventory unit conversions:', error);
+    res.status(500).send('Unable to load unit conversions');
+  }
+};
+
+exports.saveUnitConversion = async (req, res) => {
+  try {
+    const productId = String(req.params.productId || '').trim();
+    const purchaseUnit = String(req.body.purchaseUnit || '').trim();
+    const conversionFactor = parsePositiveFactor(req.body.conversionFactor);
+    const quantityTypeId = String(req.body.quantityType || '').trim();
+    if (!mongoose.isValidObjectId(productId) || !purchaseUnit || purchaseUnit.length > 40 ||
+        !conversionFactor || !mongoose.isValidObjectId(quantityTypeId)) {
+      return res.status(400).send('This product needs a valid base unit, purchase unit, and conversion factor greater than zero.');
+    }
+
+    const [product, quantityType] = await Promise.all([
+      InventoryProduct.findOne({ _id: productId, active: true }).select('name quantity quantityTypeName baseUnit').lean(),
+      InventoryQuantityType.findOne({ _id: quantityTypeId, active: true }).select('name').lean()
+    ]);
+    if (!product || !quantityType) return res.status(404).send('The product or selected base unit could not be found. Refresh and try again.');
+    const namePattern = productNamePattern(product.name);
+    const matchingProducts = await InventoryProduct.find({ active: true, name: namePattern })
+      .select('quantity quantityTypeName baseUnit')
+      .lean();
+    if (!matchingProducts.length) return res.status(404).send('No active inventory records were found for this product.');
+    const hasStockWithDifferentBaseUnit = matchingProducts.some((matchingProduct) =>
+      (Number(matchingProduct.quantity) || 0) > 0 &&
+      getProductUnits(matchingProduct).baseUnit.toLowerCase() !== quantityType.name.toLowerCase()
+    );
+    if (hasStockWithDifferentBaseUnit) {
+      return res.redirect('/inventory/unit-conversions?error=base-unit');
+    }
+
+    const result = await InventoryProduct.updateMany(
+      { active: true, name: namePattern },
+      {
+        $set: {
+          quantityType: quantityTypeId,
+          quantityTypeName: quantityType.name,
+          baseUnit: quantityType.name,
+          purchaseUnit,
+          conversionFactor
+        }
+      }
+    );
+    if (!result.matchedCount) return res.status(404).send('The product could not be found. Refresh and try again.');
+    return res.redirect('/inventory/unit-conversions?saved=1#conversion-' + productId);
+  } catch (error) {
+    console.error('Unable to save inventory unit conversions:', error);
+    return res.status(500).send("Unable to save this product's unit conversion. Please try again.");
   }
 };
 
@@ -635,7 +832,9 @@ exports.createProduct = async (req, res) => {
     const price = Number(req.body.price || 0);
     const lowStockThreshold = Number(req.body.lowStockThreshold);
     const supplierName = String(req.body.supplierName || '').trim();
-    if (!Number.isInteger(quantity) || quantity < 0 || !Number.isInteger(buyQuantity) || buyQuantity < 0 || !Number.isFinite(price) || price < 0 || !Number.isFinite(lowStockThreshold) || lowStockThreshold < 0) {
+    const conversionFactor = parsePositiveFactor(req.body.conversionFactor || 1);
+    const purchaseUnit = String(req.body.purchaseUnit || quantityType.name).trim();
+    if (!Number.isFinite(quantity) || quantity < 0 || !Number.isFinite(buyQuantity) || buyQuantity < 0 || !Number.isFinite(price) || price < 0 || !Number.isFinite(lowStockThreshold) || lowStockThreshold < 0 || !conversionFactor || !purchaseUnit || purchaseUnit.length > 40) {
       return res.status(400).send('Stock, price, and low-stock threshold must be valid and zero or greater.');
     }
     if (supplierName.length > 120) return res.status(400).send('Supplier name must be 120 characters or fewer.');
@@ -648,6 +847,9 @@ exports.createProduct = async (req, res) => {
       supplierName,
       quantityType: quantityType._id,
       quantityTypeName: quantityType.name,
+      baseUnit: quantityType.name,
+      purchaseUnit,
+      conversionFactor,
       buyQuantity,
       quantity,
       price,
@@ -700,10 +902,12 @@ exports.saveProducts = async (req, res) => {
       const buyQuantity = buyQuantityInput ? Number(buyQuantityInput) : quantity;
       const price = Number(row.price || 0);
       const lowStockThreshold = Number(row.lowStockThreshold);
+      const conversionFactor = parsePositiveFactor(row.conversionFactor || 1);
+      const purchaseUnit = String(row.purchaseUnit || '').trim();
       const supplierName = String(row.supplierName || '').trim();
       const barcode = String(row.barcode || '').trim();
-      if (!name || name.length > 120 || supplierName.length > 120 || sku.length > 60 || barcode.length > 100 || !Number.isInteger(quantity) || quantity < 0 || !Number.isInteger(buyQuantity) || buyQuantity < 0 || !Number.isFinite(price) || price < 0 || !Number.isInteger(lowStockThreshold) || lowStockThreshold < 0) {
-        return res.status(400).send('Each changed row needs a product name, valid whole-number stock values, and a nonnegative price.');
+      if (!name || name.length > 120 || supplierName.length > 120 || sku.length > 60 || barcode.length > 100 || !Number.isFinite(quantity) || quantity < 0 || !Number.isFinite(buyQuantity) || buyQuantity < 0 || !Number.isFinite(price) || price < 0 || !Number.isFinite(lowStockThreshold) || lowStockThreshold < 0 || !conversionFactor || !purchaseUnit || purchaseUnit.length > 40) {
+        return res.status(400).send('Each changed row needs a product name, nonnegative stock values, a valid purchase unit and conversion factor greater than zero.');
       }
       if (sku && submittedSkus.has(sku.toLowerCase())) return res.status(409).send(`SKU ${sku} is repeated in the table.`);
       if (sku) submittedSkus.add(sku.toLowerCase());
@@ -723,8 +927,10 @@ exports.saveProducts = async (req, res) => {
         supplierName,
         quantityType: quantityType._id,
         quantityTypeName: quantityType.name,
+        baseUnit: quantityType.name,
+        purchaseUnit,
+        conversionFactor,
         buyQuantity,
-        quantity,
         price,
         lowStockThreshold,
         entryDateNepali: String(row.entryDateNepali || bs.ADToBS(new Date()) || '').trim(),
@@ -732,11 +938,21 @@ exports.saveProducts = async (req, res) => {
         size: String(row.size || '').trim(),
         description: String(row.description || '').trim()
       };
+      if (!row.productId) {
+        values.quantity = roundQuantity(buyQuantity * conversionFactor);
+        if (!Number.isFinite(values.quantity)) return res.status(400).send('Opening stock quantity is outside the supported range.');
+      }
       if (values.color.length > 40 || values.size.length > 40 || values.description.length > 400 || values.entryDateNepali.length > 20) {
         return res.status(400).send('Color, size, description, or Nepali date is too long.');
       }
 
       if (row.productId) {
+        const existingProduct = await InventoryProduct.findOne({ _id: row.productId, active: true }).select('quantity quantityTypeName baseUnit').lean();
+        if (!existingProduct) return res.status(404).send('One or more products could not be found. Refresh and try again.');
+        const existingBaseUnit = getProductUnits(existingProduct).baseUnit;
+        if ((Number(existingProduct.quantity) || 0) > 0 && existingBaseUnit.toLowerCase() !== values.baseUnit.toLowerCase()) {
+          return res.status(409).send(`Cannot change the base unit for ${name} while stock exists. Set its stock to zero or correct the base unit first.`);
+        }
         const update = { $set: values };
         if (sku) values.sku = sku;
         else update.$unset = { sku: 1 };
@@ -774,13 +990,102 @@ exports.saveProducts = async (req, res) => {
 };
 
 exports.downloadProductTemplate = (req, res) => {
-  const headers = ['entryDateNepali', 'name', 'buyQuantity', 'quantity', 'unit', 'supplierName', 'price', 'color', 'size', 'sku', 'description', 'barcode', 'category', 'lowStockThreshold'];
+  const headers = ['entryDateNepali', 'name', 'buyQuantity', 'quantity', 'unit', 'purchaseUnit', 'conversionFactor', 'supplierName', 'price', 'color', 'size', 'sku', 'description', 'barcode', 'category', 'lowStockThreshold'];
   res.type('text/csv');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
   res.setHeader('Content-Disposition', 'attachment; filename="inventory-products-template.csv"');
-  res.send(`${headers.join(',')}\r\n${String(bs.ADToBS(new Date()) || '').trim()},Sample product,10,10,pcs,,0,Blue,Medium,SKU-001,Product description,123456789012,,5\r\n`);
+  res.send(`${headers.join(',')}\r\n${String(bs.ADToBS(new Date()) || '').trim()},Sample product,10,10,pcs,Packet,1,,0,Blue,Medium,SKU-001,Product description,123456789012,,5\r\n`);
+};
+
+exports.receiveProductStock = async (req, res) => {
+  const submissionKey = String(req.body.submissionKey || '').trim();
+  const productId = String(req.body.productId || '').trim();
+  const enteredQuantity = Number(req.body.quantity);
+  const unitCost = Number(req.body.unitCost);
+  const purchaseNepaliDate = String(req.body.purchaseNepaliDate || '').trim();
+  const supplierName = String(req.body.supplierName || '').trim().replace(/\s+/g, ' ');
+  const referenceNo = String(req.body.referenceNo || '').trim();
+  if (!mongoose.isValidObjectId(submissionKey) || !mongoose.isValidObjectId(productId)
+    || !Number.isFinite(enteredQuantity) || enteredQuantity <= 0
+    || !Number.isFinite(unitCost) || unitCost < 0
+    || !/^\d{4}-\d{2}-\d{2}$/.test(purchaseNepaliDate)
+    || supplierName.length > 120 || referenceNo.length > 100) {
+    return res.status(400).send('Choose a product and enter a valid purchase quantity, unit cost, supplier, and date.');
+  }
+
+  let purchase;
+  let stockAdded = false;
+  let session = null;
+  try {
+    const product = await InventoryProduct.findOne({ _id: productId, active: true }).lean();
+    if (!product) return res.status(404).send('The selected product is no longer available.');
+    const units = getProductUnits(product);
+    const baseQuantity = roundQuantity(enteredQuantity * units.conversionFactor);
+    const totalCost = roundQuantity(enteredQuantity * unitCost);
+    if (!Number.isFinite(baseQuantity) || baseQuantity <= 0 || !Number.isFinite(totalCost)) {
+      return res.status(400).send('Purchase quantity and total cost are outside the supported range.');
+    }
+    if (supplierName) await saveSupplierName(supplierName);
+    session = await startInventoryTransaction();
+    const purchaseValues = {
+      purchaseNo: `PUR-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`,
+      submissionKey,
+      purchasedAt: new Date(),
+      purchaseNepaliDate,
+      product: product._id,
+      productName: product.name,
+      sku: product.sku || '',
+      enteredQuantity: roundQuantity(enteredQuantity),
+      purchaseUnit: units.purchaseUnit,
+      conversionFactor: units.conversionFactor,
+      baseQuantity,
+      baseUnit: units.baseUnit,
+      unitCost: roundQuantity(unitCost),
+      totalCost,
+      supplierName,
+      referenceNo,
+      purchasedBy: String(req.user?.teacherName || req.user?.username || 'Inventory').trim(),
+      status: 'pending'
+    };
+    [purchase] = await InventoryPurchase.create([purchaseValues], session ? { session } : {});
+    const stockUpdate = await InventoryProduct.updateOne(
+      { _id: product._id, active: true },
+      { $inc: { quantity: baseQuantity } },
+      session ? { session } : {}
+    );
+    if (!stockUpdate.modifiedCount) throw new Error('PURCHASE_PRODUCT_CHANGED');
+    stockAdded = true;
+    const posted = await InventoryPurchase.updateOne(
+      { _id: purchase._id, status: 'pending' },
+      { $set: { status: 'posted' } },
+      session ? { session } : {}
+    );
+    if (!posted.modifiedCount) throw new Error('PURCHASE_STATUS_CHANGED');
+    if (session) await session.commitTransaction();
+    return res.redirect('/inventory/products?purchaseSaved=1');
+  } catch (error) {
+    if (session?.inTransaction()) await session.abortTransaction();
+    if (error.code === 11000) {
+      const existing = await InventoryPurchase.findOne({ submissionKey }).select('status').lean();
+      if (existing?.status === 'posted') return res.redirect('/inventory/products?purchaseDuplicate=1');
+      return res.status(409).send('This purchase is already being processed. Refresh the products page before retrying.');
+    }
+    if (!session && stockAdded && purchase) {
+      await InventoryProduct.updateOne(
+        { _id: productId, quantity: { $gte: roundQuantity(enteredQuantity * Number(purchase.conversionFactor)) } },
+        { $inc: { quantity: -roundQuantity(enteredQuantity * Number(purchase.conversionFactor)) } }
+      );
+    }
+    if (!session && purchase) await InventoryPurchase.deleteOne({ _id: purchase._id, status: 'pending' });
+    console.error('Unable to receive inventory stock:', error);
+    if (error.message === 'PURCHASE_PRODUCT_CHANGED') return res.status(409).send('The product changed while saving. Refresh and try again.');
+    if (error.message === 'PURCHASE_STATUS_CHANGED') return res.status(409).send('The purchase status changed while saving. Check purchase history before retrying.');
+    return res.status(400).send('Unable to record this purchase. Stock was not changed.');
+  } finally {
+    if (session) await session.endSession();
+  }
 };
 
 exports.importProductsCsv = [inventoryCsvUpload.single('productCsv'), async (req, res) => {
@@ -811,6 +1116,8 @@ exports.importProductsCsv = [inventoryCsvUpload.single('productCsv'), async (req
       const category = categoryName ? categoryMap.get(categoryName.toLowerCase()) : null;
       const quantity = Number(row.quantity);
       const buyQuantity = row.buyQuantity === undefined || String(row.buyQuantity).trim() === '' ? quantity : Number(row.buyQuantity);
+      const conversionFactor = String(row.conversionFactor || '').trim() ? parsePositiveFactor(row.conversionFactor) : 1;
+      const purchaseUnit = String(row.purchaseUnit || '').trim() || unit?.name;
       const price = Number(row.price || 0);
       const lowStockThreshold = Number(row.lowStockThreshold || 5);
       const sku = String(row.sku || '').trim();
@@ -820,10 +1127,11 @@ exports.importProductsCsv = [inventoryCsvUpload.single('productCsv'), async (req
       if (supplierName.length > 120) invalidFields.push('supplier name');
       if (!unit) invalidFields.push('unit');
       if (categoryName && !category) invalidFields.push('category');
-      if (!Number.isInteger(quantity) || quantity < 0) invalidFields.push('quantity');
-      if (!Number.isInteger(buyQuantity) || buyQuantity < 0) invalidFields.push('buy quantity');
+      if (!Number.isFinite(quantity) || quantity < 0) invalidFields.push('quantity (base units)');
+      if (!Number.isFinite(buyQuantity) || buyQuantity < 0) invalidFields.push('buy quantity');
+      if (!conversionFactor || !purchaseUnit || purchaseUnit.length > 40) invalidFields.push('purchase unit or conversion factor');
       if (!Number.isFinite(price) || price < 0) invalidFields.push('price');
-      if (!Number.isInteger(lowStockThreshold) || lowStockThreshold < 0) invalidFields.push('low-stock alert');
+      if (!Number.isFinite(lowStockThreshold) || lowStockThreshold < 0) invalidFields.push('low-stock alert');
       if (invalidFields.length) {
         return res.status(400).json({ message: `CSV row ${rowNumber} has invalid or unrecognized values for: ${invalidFields.join(', ')}.` });
       }
@@ -845,6 +1153,9 @@ exports.importProductsCsv = [inventoryCsvUpload.single('productCsv'), async (req
         supplierName,
         quantityType: unit._id,
         quantityTypeName: unit.name,
+        baseUnit: unit.name,
+        purchaseUnit,
+        conversionFactor,
         buyQuantity,
         quantity,
         price,
@@ -951,9 +1262,23 @@ exports.editQuantityType = async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Quantity type not found.');
   if (!name || name.length > 40 || abbreviation.length > 12) return res.status(400).send('Enter a unit name up to 40 characters and abbreviation up to 12 characters.');
   try {
-    const quantityType = await InventoryQuantityType.findByIdAndUpdate(req.params.id, { name, abbreviation }, { new: true, runValidators: true });
+    const quantityType = await InventoryQuantityType.findById(req.params.id);
     if (!quantityType) return res.status(404).send('Quantity type not found.');
-    await InventoryProduct.updateMany({ quantityType: quantityType._id }, { $set: { quantityTypeName: quantityType.name } });
+    const previousName = quantityType.name;
+    quantityType.name = name;
+    quantityType.abbreviation = abbreviation;
+    await quantityType.save();
+    await InventoryProduct.updateMany(
+      { quantityType: quantityType._id },
+      { $set: { quantityTypeName: quantityType.name, baseUnit: quantityType.name } }
+    );
+    await InventoryProduct.updateMany(
+      {
+        quantityType: quantityType._id,
+        $or: [{ purchaseUnit: previousName }, { purchaseUnit: '' }, { purchaseUnit: { $exists: false } }]
+      },
+      { $set: { purchaseUnit: quantityType.name } }
+    );
     return res.redirect('/inventory/quantity-types?saved=edited');
   } catch (error) {
     console.error('Unable to update inventory quantity type:', error);
@@ -979,26 +1304,28 @@ exports.salesPage = async (req, res) => {
     const requestedPage = parsePage(req.query.page);
     const [products, issueCount] = await Promise.all([
       InventoryProduct.find({ active: true }).sort({ name: 1 }).lean(),
-      InventoryTransaction.aggregate([{ $unwind: '$items' }, { $count: 'total' }])
+      InventoryTransaction.aggregate([{ $match: { status: { $ne: 'pending' } } }, { $unwind: '$items' }, { $count: 'total' }])
     ]);
     const totalIssueItems = issueCount[0]?.total || 0;
     const totalIssuePages = Math.max(1, Math.ceil(totalIssueItems / PAGE_SIZE));
     const issuePage = Math.min(requestedPage, totalIssuePages);
     const issueItems = await InventoryTransaction.aggregate([
+      { $match: { status: { $ne: 'pending' } } },
       { $unwind: '$items' },
       { $sort: { assignedAt: -1, _id: -1 } },
       { $skip: (issuePage - 1) * PAGE_SIZE },
       { $limit: PAGE_SIZE }
     ]);
     renderPage(res, 'salesproduct', {
-      products: groupInventoryProducts(products).filter((product) => product.quantity > 0),
+      products: groupInventoryProducts(products).filter((product) => product.quantity > 0).map(normalizeProductStockDisplay),
       issueItems,
       totalIssueItems,
       issuePage,
       totalIssuePages,
       todayNepaliDate: String(bs.ADToBS(new Date()) || '').trim(),
       assignedBy: String(req.user?.teacherName || req.user?.username || '').trim(),
-      message: req.query.saved ? 'Transaction recorded and stock updated.' : ''
+      transactionSubmissionKey: new mongoose.Types.ObjectId().toString(),
+      message: req.query.duplicate ? 'This assignment was already recorded; stock was not deducted again.' : req.query.saved ? 'Transaction recorded and stock updated.' : ''
     });
   } catch (error) {
     console.error('Unable to load inventory transactions:', error);
@@ -1023,6 +1350,7 @@ exports.salesReturnsPage = async (req, res) => {
     const [history, sourceItems] = await Promise.all([
       returnPageData('sales', parsePage(req.query.page)),
       InventoryTransaction.aggregate([
+        { $match: { status: { $ne: 'pending' } } },
         { $unwind: '$items' },
         { $match: { $expr: { $lt: [{ $ifNull: ['$items.returnedQuantity', 0] }, '$items.quantity'] } } },
         { $sort: { assignedAt: -1, _id: -1 } },
@@ -1049,7 +1377,7 @@ exports.createSalesReturn = async (req, res) => {
   const quantity = Number(req.body.quantity);
   const reason = String(req.body.reason || '').trim();
   if (!mongoose.isValidObjectId(sourceTransactionId) || !mongoose.isValidObjectId(sourceItemId)
-    || !/^\d{4}-\d{2}-\d{2}$/.test(returnNepaliDate) || !Number.isInteger(quantity) || quantity < 1
+    || !/^\d{4}-\d{2}-\d{2}$/.test(returnNepaliDate) || !Number.isFinite(quantity) || quantity <= 0
     || !reason || reason.length > 500) {
     return res.status(400).send('Choose an issued item, valid return date, whole-number quantity, and reason.');
   }
@@ -1098,6 +1426,9 @@ exports.createSalesReturn = async (req, res) => {
       sku: sourceItem.sku || '',
       quantityTypeName: sourceItem.quantityTypeName,
       quantity,
+      conversionFactor: 1,
+      baseQuantity: quantity,
+      baseUnitName: sourceItem.baseUnitName || sourceItem.quantityTypeName,
       sourceQuantity: sourceQuantity,
       previouslyReturned: previousReturned,
       sourceTransaction: sourceTransaction._id,
@@ -1132,7 +1463,7 @@ exports.purchaseReturnsPage = async (req, res) => {
     ]);
     renderPage(res, 'purchasereturn', {
       ...history,
-      products: groupInventoryProducts(stockRecords).filter((product) => product.quantity > 0),
+      products: groupInventoryProducts(stockRecords).filter((product) => product.quantity > 0).map(normalizeProductStockDisplay),
       suppliers: suppliers.map((supplier) => supplier.name),
       todayNepaliDate: String(bs.ADToBS(new Date()) || '').trim(),
       returnedBy: String(req.user?.teacherName || req.user?.username || '').trim(),
@@ -1152,7 +1483,7 @@ exports.createPurchaseReturn = async (req, res) => {
   const referenceNo = String(req.body.referenceNo || '').trim();
   const reason = String(req.body.reason || '').trim();
   if (!mongoose.isValidObjectId(productId) || !/^\d{4}-\d{2}-\d{2}$/.test(returnNepaliDate)
-    || !Number.isInteger(quantity) || quantity < 1 || !supplierName || supplierName.length > 120
+    || !Number.isFinite(quantity) || quantity <= 0 || !supplierName || supplierName.length > 120
     || referenceNo.length > 100 || !reason || reason.length > 500) {
     return res.status(400).send('Choose an item, valid return date, whole-number quantity, supplier, and reason.');
   }
@@ -1174,6 +1505,9 @@ exports.createPurchaseReturn = async (req, res) => {
       sku: product.sku || '',
       quantityTypeName: product.quantityTypeName,
       quantity,
+      conversionFactor: 1,
+      baseQuantity: quantity,
+      baseUnitName: getProductUnits(product).baseUnit,
       sourceQuantity: Number(product.quantity) || 0,
       previouslyReturned: 0,
       counterpartyName: supplierName,
@@ -1259,7 +1593,7 @@ exports.importTransactionsCsv = [transactionCsvUpload.single('transactionCsv'), 
       if (!assignedNepaliDate) invalidFields.push('assignedNepaliDate');
       if (!assignedBy) invalidFields.push('assignedBy');
       if (!reason) invalidFields.push('reason');
-      if (!Number.isInteger(quantity) || quantity < 1) invalidFields.push('quantity');
+      if (!Number.isFinite(quantity) || quantity <= 0) invalidFields.push('quantity');
       if (!productSku && !productName) invalidFields.push('productSku or productName');
       if (invalidFields.length) {
         return res.status(400).json({ message: `CSV row ${rowNumber} is missing or has invalid fields: ${invalidFields.join(', ')}.` });
@@ -1335,7 +1669,12 @@ exports.importTransactionsCsv = [transactionCsvUpload.single('transactionCsv'), 
           productName: product.name,
           sku: product.sku || '',
           quantity,
-          quantityTypeName: product.quantityTypeName
+          enteredQuantity: quantity,
+          unitName: getProductUnits(product).baseUnit,
+          conversionFactor: 1,
+          baseQuantity: quantity,
+          baseUnitName: getProductUnits(product).baseUnit,
+          quantityTypeName: getProductUnits(product).baseUnit
         })))
       }));
       await InventoryTransaction.insertMany(transactions, { ordered: true });
@@ -1357,28 +1696,52 @@ exports.importTransactionsCsv = [transactionCsvUpload.single('transactionCsv'), 
 
 exports.createTransaction = async (req, res) => {
   const items = Array.isArray(req.body.items) ? req.body.items : [];
+  const submissionKey = String(req.body.submissionKey || '').trim();
   if (!['staff', 'student'].includes(req.body.recipientType) || !req.body.recipientName || !req.body.assignedNepaliDate || !req.body.reason || !req.body.assignedBy || !items.length) {
     return res.status(400).send('Complete the assignment details and add at least one item.');
   }
-  const normalizedItems = items.map((item) => ({ productId: String(item.productId || ''), quantity: Number(item.quantity) }));
-  if (normalizedItems.some((item) => !mongoose.isValidObjectId(item.productId) || !Number.isInteger(item.quantity) || item.quantity < 1)) {
-    return res.status(400).send('Every item must have a valid product and whole-number quantity.');
+  if (!mongoose.isValidObjectId(submissionKey)) return res.status(400).send('Refresh the assignment form before submitting.');
+  const normalizedItems = items.map((item) => ({
+    productId: String(item.productId || ''),
+    quantity: Number(item.quantity),
+    unit: String(item.unit || 'base')
+  }));
+  if (normalizedItems.some((item) => !mongoose.isValidObjectId(item.productId) || !Number.isFinite(item.quantity) || item.quantity <= 0)) {
+    return res.status(400).send('Every item must have a valid product and a quantity greater than zero.');
   }
-  const quantities = new Map();
-  normalizedItems.forEach((item) => quantities.set(item.productId, (quantities.get(item.productId) || 0) + item.quantity));
   const decremented = [];
+  let reservedTransaction;
+  let session = null;
   try {
     const products = await InventoryProduct.find({ active: true }).lean();
     const productMap = new Map(products.map((product) => [String(product._id), product]));
-    await decrementGroupedProductStock(products, quantities, decremented);
-    const transactionItems = normalizedItems.map((item) => {
+    const quantities = new Map();
+    const convertedItems = normalizedItems.map((item) => {
       const product = productMap.get(item.productId);
       if (!product) throw new Error('PRODUCT_MISSING');
-      return { product: product._id, productName: product.name, sku: product.sku, quantity: item.quantity, quantityTypeName: product.quantityTypeName };
+      const conversion = convertToBaseQuantity(item.quantity, item.unit, product);
+      if (!conversion) throw new Error('INVALID_SALE_UNIT');
+      quantities.set(item.productId, roundQuantity((quantities.get(item.productId) || 0) + conversion.baseQuantity));
+      return { product, ...conversion };
     });
+    const transactionItems = convertedItems.map(({ product, ...conversion }) => ({
+      product: product._id,
+      productName: product.name,
+      sku: product.sku || '',
+      quantity: conversion.baseQuantity,
+      enteredQuantity: conversion.enteredQuantity,
+      unitName: conversion.unitName,
+      conversionFactor: conversion.conversionFactor,
+      baseQuantity: conversion.baseQuantity,
+      baseUnitName: conversion.baseUnit,
+      quantityTypeName: conversion.baseUnit
+    }));
     const transactionNo = `INV-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`;
-    await InventoryTransaction.create({
+    session = await startInventoryTransaction();
+    [reservedTransaction] = await InventoryTransaction.create([{
       transactionNo,
+      submissionKey,
+      status: 'pending',
       assignedAt: new Date(),
       assignedNepaliDate: String(req.body.assignedNepaliDate || bs.ADToBS(new Date()) || '').trim(),
       recipientType: req.body.recipientType,
@@ -1388,13 +1751,34 @@ exports.createTransaction = async (req, res) => {
       reason: req.body.reason.trim(),
       assignedBy: req.body.assignedBy.trim(),
       items: transactionItems
-    });
+    }], session ? { session } : {});
+    await decrementGroupedProductStock(products, quantities, decremented, session);
+    const posted = await InventoryTransaction.updateOne(
+      { _id: reservedTransaction._id, status: 'pending' },
+      { $set: { status: 'posted' } },
+      session ? { session } : {}
+    );
+    if (!posted.modifiedCount) throw new Error('TRANSACTION_STATUS_CHANGED');
+    if (session) await session.commitTransaction();
     return res.redirect('/inventory/sales?saved=1');
   } catch (error) {
-    await Promise.all(decremented.map(({ productId, quantity }) => InventoryProduct.updateOne({ _id: productId }, { $inc: { quantity } })));
+    if (session?.inTransaction()) await session.abortTransaction();
+    if (!session) {
+      await Promise.all(decremented.map(({ productId, quantity }) => InventoryProduct.updateOne({ _id: productId }, { $inc: { quantity } })));
+      if (reservedTransaction) await InventoryTransaction.deleteOne({ _id: reservedTransaction._id, status: 'pending' });
+    }
+    if (error.code === 11000) {
+      const existing = await InventoryTransaction.findOne({ submissionKey }).select('status').lean();
+      if (existing?.status === 'posted') return res.redirect('/inventory/sales?duplicate=1');
+      return res.status(409).send('This assignment is already being processed. Check the issue history before retrying.');
+    }
     if (error.message === 'INSUFFICIENT_STOCK') return res.status(409).send('Stock changed while saving. Review the available quantities and try again.');
+    if (error.message === 'INVALID_SALE_UNIT') return res.status(400).send('Choose a valid selling unit for every product.');
+    if (error.message === 'TRANSACTION_STATUS_CHANGED') return res.status(409).send('The assignment status changed while saving. Check issue history before retrying.');
     console.error('Unable to record inventory transaction:', error);
     return res.status(400).send('Unable to record transaction. Stock was restored.');
+  } finally {
+    if (session) await session.endSession();
   }
 };
 
@@ -1403,14 +1787,24 @@ exports.analyticsPage = async (req, res) => {
     const [stockRecords, monthly, categoryStock] = await Promise.all([
       InventoryProduct.find({ active: true }).lean(),
       InventoryTransaction.aggregate([
-        { $match: { assignedAt: { $gte: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000) } } },
+        { $match: { status: { $ne: 'pending' }, assignedAt: { $gte: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000) } } },
         { $unwind: '$items' },
-        { $group: { _id: { $dateToString: { format: '%Y-%m', date: '$assignedAt' } }, quantity: { $sum: '$items.quantity' } } },
+        { $group: { _id: { $dateToString: { format: '%Y-%m', date: '$assignedAt' } }, quantity: { $sum: 1 } } },
         { $sort: { _id: 1 } }
       ]),
-      InventoryProduct.aggregate([{ $match: { active: true } }, { $group: { _id: '$categoryName', quantity: { $sum: '$quantity' } } }, { $sort: { quantity: -1 } }])
+      InventoryProduct.aggregate([
+        { $match: { active: true, quantity: { $gt: 0 } } },
+        { $group: { _id: '$categoryName', quantity: { $sum: 1 } } },
+        { $sort: { quantity: -1 } }
+      ])
     ]);
-    const products = groupInventoryProducts(stockRecords).sort((left, right) => left.quantity - right.quantity || left.name.localeCompare(right.name));
+    const products = groupInventoryProducts(stockRecords)
+      .map(normalizeProductStockDisplay)
+      .sort((left, right) => {
+        const leftRatio = left.lowStockThreshold > 0 ? left.quantity / left.lowStockThreshold : left.quantity === 0 ? 0 : Infinity;
+        const rightRatio = right.lowStockThreshold > 0 ? right.quantity / right.lowStockThreshold : right.quantity === 0 ? 0 : Infinity;
+        return leftRatio - rightRatio || left.name.localeCompare(right.name);
+      });
     renderPage(res, 'analytics', {
       products,
       monthlyLabels: monthly.map((row) => row._id),
@@ -1427,7 +1821,7 @@ exports.analyticsPage = async (req, res) => {
 exports.printTransaction = async (req, res) => {
   try {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Transaction not found');
-    const transaction = await InventoryTransaction.findById(req.params.id).lean();
+    const transaction = await InventoryTransaction.findOne({ _id: req.params.id, status: { $ne: 'pending' } }).lean();
     if (!transaction) return res.status(404).send('Transaction not found');
     renderPage(res, 'transactionprint', { transaction });
   } catch (error) {

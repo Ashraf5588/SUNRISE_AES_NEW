@@ -25,6 +25,7 @@
 		<section class="panel" style="margin-bottom:17px">
 			<div class="panel-heading"><div><h2>New assignment</h2><p>Select a recipient and add one or more products.</p></div></div>
 			<form method="post" action="/inventory/sales" id="issueForm" data-products-exist="<%= products.length ? 'true' : 'false' %>">
+				<input type="hidden" name="submissionKey" value="<%= transactionSubmissionKey %>">
 				<div class="form-grid">
 					<div class="field"><label for="recipientType">Assign to</label><select id="recipientType" name="recipientType" required><option value="staff">Staff</option><option value="student">Student</option></select></div>
 					<div class="field search-field"><label for="recipientSearch">Search staff or student name</label><input id="recipientSearch" type="search" placeholder="Type at least 2 characters" autocomplete="off" required><div id="recipientResults" class="search-results" hidden></div><input id="recipientName" name="recipientName" type="hidden" required><input id="recipientId" name="recipientId" type="hidden"><input id="recipientClass" name="recipientClass" type="hidden"></div>
@@ -33,7 +34,7 @@
 					<div class="field full"><label for="reason">Reason</label><input id="reason" name="reason" maxlength="240" required placeholder="For example: classroom supplies"></div>
 				</div>
 				<div style="margin-top:23px">
-					<div class="panel-heading"><div><h2>Items</h2><p>Available stock is shown beside each product.</p></div></div>
+					<div class="panel-heading"><div><h2>Items</h2><p>Choose either the base unit or purchase unit; stock is always deducted in base units.</p></div></div>
 					<div id="itemsContainer"></div>
 					<div class="item-actions"><button class="button secondary small" type="button" id="addItem">Add another item</button><span class="cell-secondary" id="itemCount">1 item</span></div>
 				</div>
@@ -43,7 +44,7 @@
 		<section class="panel">
 			<div class="panel-heading"><div><h2>Issued items</h2><p>Assignments are saved as permanent issue records.</p></div><span class="cell-secondary">Showing <%= totalIssueItems ? (issuePage - 1) * 25 + 1 : 0 %>-<%= Math.min(issuePage * 25, totalIssueItems) %> of <%= totalIssueItems %></span></div>
 			<% if (issueItems.length) { %><div class="table-wrap"><table><thead><tr><th>Date</th><th>Product</th><th>Quantity</th><th>Assigned to</th><th>Reason</th><th>Bill no.</th><th>Assigned by</th><th></th></tr></thead><tbody>
-				<% issueItems.forEach(issue => { %><tr><td><%= issue.assignedNepaliDate || new Date(issue.assignedAt).toLocaleDateString() %></td><td><span class="cell-primary"><%= issue.items.productName %></span><% if (issue.items.sku) { %><span class="cell-secondary"><%= issue.items.sku %></span><% } %></td><td><%= issue.items.quantity %> <%= issue.items.quantityTypeName %></td><td><span class="cell-primary"><%= issue.recipientName %></span><span class="cell-secondary"><%= issue.recipientType %><%= issue.recipientClass ? ` / ${issue.recipientClass}` : '' %></span></td><td><%= issue.reason %></td><td><%= issue.transactionNo %></td><td><%= issue.assignedBy %></td><td><a class="button secondary small" href="/inventory/transactions/<%= issue._id %>/print">Print bill</a></td></tr><% }) %>
+				<% issueItems.forEach(issue => { %><tr><td><%= issue.assignedNepaliDate || new Date(issue.assignedAt).toLocaleDateString() %></td><td><span class="cell-primary"><%= issue.items.productName %></span><% if (issue.items.sku) { %><span class="cell-secondary"><%= issue.items.sku %></span><% } %></td><td><span class="cell-primary"><%= issue.items.enteredQuantity ?? issue.items.quantity %> <%= issue.items.unitName || issue.items.quantityTypeName %></span><span class="cell-secondary">Stock deducted: <%= issue.items.baseQuantity ?? issue.items.quantity %> <%= issue.items.baseUnitName || issue.items.quantityTypeName %></span></td><td><span class="cell-primary"><%= issue.recipientName %></span><span class="cell-secondary"><%= issue.recipientType %><%= issue.recipientClass ? ` / ${issue.recipientClass}` : '' %></span></td><td><%= issue.reason %></td><td><%= issue.transactionNo %></td><td><%= issue.assignedBy %></td><td><a class="button secondary small" href="/inventory/transactions/<%= issue._id %>/print">Print bill</a></td></tr><% }) %>
 			</tbody></table></div><% } else { %><div class="empty-state">No issue items recorded yet.</div><% } %>
 			<% if (totalIssuePages > 1) { %><nav class="pagination" aria-label="Issue item pages"><span>Page <%= issuePage %> of <%= totalIssuePages %></span><div><% if (issuePage > 1) { %><a class="button secondary small" href="/inventory/sales?page=<%= issuePage - 1 %>">Previous</a><% } %><% if (issuePage < totalIssuePages) { %><a class="button secondary small" href="/inventory/sales?page=<%= issuePage + 1 %>">Next</a><% } %></div></nav><% } %>
 		</section>
@@ -52,11 +53,12 @@
 <template id="itemRowTemplate">
 	<div class="item-row">
 		<div class="field search-field product-search-field"><label>Product</label><input class="product-search" type="search" placeholder="Search product name" autocomplete="off" role="combobox" aria-expanded="false" required><input class="product-id" type="hidden"><div class="search-results product-results" role="listbox" hidden></div><span class="item-stock">Choose a product</span></div>
-		<div class="field"><label>Quantity</label><input class="quantity-input" type="number" min="1" step="1" value="1" required><span class="item-stock quantity-stock">Available: select a product</span></div>
+		<div class="field"><label>Selling unit</label><select class="unit-input" aria-label="Selling unit"><option value="base">Base unit</option><option value="purchase">Purchase unit</option></select></div>
+		<div class="field"><label>Quantity</label><input class="quantity-input" type="number" min="0.000001" step="0.000001" value="1" required><span class="item-stock quantity-stock">Available: select a product</span></div>
 		<button class="remove-item" type="button" aria-label="Remove item" title="Remove item">&times;</button>
 	</div>
 </template>
-<template id="productOptions"><% products.forEach(product => { %><button type="button" class="search-result product-option" role="option" data-id="<%= product._id %>" data-stock="<%= product.quantity %>" data-unit="<%= product.quantityTypeName %>" data-sku="<%= product.sku || '' %>"><strong><%= product.name %></strong><small><%= product.quantity %> <%= product.quantityTypeName %> available<%= product.sku ? ` · ${product.sku}` : '' %></small></button><% }) %></template>
+<template id="productOptions"><% products.forEach(product => { %><button type="button" class="search-result product-option" role="option" data-id="<%= product._id %>" data-stock="<%= product.quantity %>" data-unit="<%= product.baseUnit %>" data-base-unit="<%= product.baseUnit %>" data-purchase-unit="<%= product.purchaseUnit %>" data-factor="<%= product.conversionFactor %>" data-sku="<%= product.sku || '' %>"><strong><%= product.name %></strong><small><%= product.quantity %> <%= product.baseUnit %> available (<%= product.stockEquivalent %>)<%= product.sku ? ` · ${product.sku}` : '' %></small></button><% }) %></template>
 <script>
 	const transactionCsvUploadForm = document.getElementById('transactionCsvUploadForm');
 	const issueCsvUploadProgress = document.getElementById('issueCsvUploadProgress');
@@ -131,6 +133,7 @@
 		rows.forEach((row, index) => {
 			row.querySelector('.product-id').name = `items[${index}][productId]`;
 			row.querySelector('.quantity-input').name = `items[${index}][quantity]`;
+			row.querySelector('.unit-input').name = `items[${index}][unit]`;
 		});
 		itemCount.textContent = `${rows.length} ${rows.length === 1 ? 'item' : 'items'}`;
 		addItemButton.disabled = !productsExist;
@@ -142,6 +145,7 @@
 		const productId = row.querySelector('.product-id');
 		const productResults = row.querySelector('.product-results');
 		const quantityInput = row.querySelector('.quantity-input');
+		const unitInput = row.querySelector('.unit-input');
 		function renderProductResults(query = '') {
 			document.querySelectorAll('.product-results').forEach((results) => {
 				if (results !== productResults) {
@@ -158,7 +162,11 @@
 					productSearch.value = option.querySelector('strong').textContent;
 					productSearch.dataset.selectedName = productSearch.value;
 					productId.value = option.dataset.id;
-					row.querySelector('.item-stock').textContent = `${option.dataset.stock} ${option.dataset.unit} available`;
+					row.querySelector('.item-stock').textContent = `${option.dataset.stock} ${option.dataset.baseUnit} available (${option.querySelector('small').textContent.match(/\(([^)]+)\)/)?.[1] || ''})`;
+					unitInput.options[0].textContent = option.dataset.baseUnit;
+					unitInput.options[1].textContent = option.dataset.purchaseUnit;
+					unitInput.options[1].disabled = option.dataset.purchaseUnit.toLowerCase() === option.dataset.baseUnit.toLowerCase() || Number(option.dataset.factor) === 1;
+					unitInput.value = 'base';
 					productResults.hidden = true;
 					productSearch.setAttribute('aria-expanded', 'false');
 					productSearch.setCustomValidity('');
@@ -188,6 +196,7 @@
 			if (productId.value) productSearch.dataset.selectedName = productSearch.value;
 		});
 		quantityInput.addEventListener('input', refreshStockWarnings);
+		unitInput.addEventListener('change', refreshStockWarnings);
 		row.querySelector('.remove-item').addEventListener('click', () => {
 			if (rowsContainer.children.length > 1) row.remove();
 			refreshItemNames();
@@ -202,7 +211,11 @@
 		const totals = new Map();
 		rows.forEach((row) => {
 			const id = row.querySelector('.product-id').value;
-			if (id) totals.set(id, (totals.get(id) || 0) + Number(row.querySelector('.quantity-input').value || 0));
+			if (id) {
+				const option = productOptions.find((candidate) => candidate.dataset.id === id);
+				const factor = row.querySelector('.unit-input').value === 'purchase' ? Number(option?.dataset.factor || 1) : 1;
+				totals.set(id, (totals.get(id) || 0) + Number(row.querySelector('.quantity-input').value || 0) * factor);
+			}
 		});
 		rows.forEach((row) => {
 			const id = row.querySelector('.product-id').value;
@@ -215,7 +228,7 @@
 			quantityInput.classList.toggle('stock-over', overStock);
 			quantityInput.setAttribute('aria-invalid', overStock ? 'true' : 'false');
 			quantityInput.setCustomValidity(overStock ? 'Combined quantity exceeds available stock.' : '');
-			stockMessage.textContent = !id ? 'Available: select a product' : overStock ? `Available: ${stock} ${option.dataset.unit} · requested: ${requested}` : `Available: ${stock} ${option.dataset.unit}`;
+			stockMessage.textContent = !id ? 'Available: select a product' : overStock ? `Available: ${stock} ${option.dataset.baseUnit} · requested: ${requested} ${option.dataset.baseUnit}` : `Available: ${stock} ${option.dataset.baseUnit} (${option.querySelector('small').textContent.match(/\(([^)]+)\)/)?.[1] || ''})`;
 			stockMessage.classList.toggle('stock-warning', overStock);
 		});
 	}

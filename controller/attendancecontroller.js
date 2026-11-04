@@ -204,17 +204,7 @@ const getCurrentAttendanceBsDate = (now = new Date()) => {
   }).formatToParts(now);
   const dateValues = Object.fromEntries(dateParts.map(({ type, value }) => [type, value]));
   const adDate = `${dateValues.year}-${dateValues.month}-${dateValues.day}`;
-  const convertedDate = String(bs.ADToBS(adDate) || '');
-  const [bsYear, bsMonth] = convertedDate.split('-').map(Number);
-
-  // The converter's 2083 Kartik-through-Chaitra dates are one day ahead.
-  if (bsYear === 2083 && bsMonth >= 7 && bsMonth <= 12) {
-    const previousAdDate = new Date(`${adDate}T00:00:00Z`);
-    previousAdDate.setUTCDate(previousAdDate.getUTCDate() - 1);
-    return String(bs.ADToBS(previousAdDate.toISOString().slice(0, 10)) || '');
-  }
-
-  return convertedDate;
+  return String(bs.ADToBS(adDate) || '');
 };
 
 const getPreferredContact = (student) => {

@@ -11,7 +11,8 @@
 	<div class="nav-caption">WORKSPACE</div>
 	<nav class="inventory-links" id="inventoryLinks" aria-label="Inventory navigation">
 		<a class="<%= currentPath === '/inventory' || currentPath === '/inventory/' ? 'active' : '' %>" href="/inventory/"><i class="fa-solid fa-house-chimney" style="color: rgb(255, 255, 255);"></i>&ensp;Overview</a>
-		<a class="<%= currentPath.startsWith('/inventory/products') ? 'active' : '' %>" href="/inventory/products"><i class="fa-solid fa-bag-shopping" style="color: rgb(255, 255, 255);"></i>&ensp;Purchase Entry</a>
+		<a data-product-entry-link class="<%= currentPath.startsWith('/inventory/products') ? 'active' : '' %>" href="/inventory/products"><i class="fa-solid fa-bag-shopping" style="color: rgb(255, 255, 255);"></i>&ensp;Purchase Entry</a>
+		<a data-unit-conversion-link class="<%= currentPath.startsWith('/inventory/unit-conversions') ? 'active' : '' %>" href="/inventory/unit-conversions"><i class="fa-solid fa-right-left" style="color: rgb(255, 255, 255);"></i>&ensp;Unit conversions</a>
 		<a class="<%= currentPath.startsWith('/inventory/productrequests') ? 'active' : '' %>" href="/inventory/productrequests"><i class="fa-solid fa-question" style="color: rgb(255, 255, 255);"></i>&ensp;Product requests</a>
 		<a class="<%= currentPath === '/inventory/sales' ? 'active' : '' %>" href="/inventory/sales"><i class="fa-solid fa-hand-holding-dollar" style="color: rgb(255, 255, 255);"></i>&ensp;Sales Entry</a>
 		<a class="<%= currentPath.startsWith('/inventory/salesreturns') ? 'active' : '' %>" href="/inventory/salesreturns"><i class="fa-solid fa-arrow-rotate-left" style="color: rgb(255, 255, 255);"></i>&ensp;Sales returns</a>
@@ -28,6 +29,16 @@
 <button class="nav-reopen-button" type="button" data-nav-toggle aria-label="Show inventory navigation" aria-expanded="false" aria-controls="inventoryLinks"><span class="nav-hamburger"><i></i><i></i><i></i></span></button>
 <script>
 	(() => {
+		const productEntryLink = document.querySelector('[data-product-entry-link]');
+		const unitConversionLink = document.querySelector('[data-unit-conversion-link]');
+		const updateProductNavigation = () => {
+			const showingConversions = window.location.pathname.startsWith('/inventory/unit-conversions');
+			unitConversionLink?.classList.toggle('active', showingConversions);
+			if (showingConversions) productEntryLink?.classList.remove('active');
+		};
+		updateProductNavigation();
+		window.addEventListener('hashchange', updateProductNavigation);
+
 		const shell = document.querySelector('.inventory-shell');
 		const toggleButtons = document.querySelectorAll('[data-nav-toggle]');
 		if (!shell || !toggleButtons.length) return;

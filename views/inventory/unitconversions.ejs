@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Inventory unit conversions</title><link rel="stylesheet" href="/inventory.css"></head>
+<body><div class="inventory-shell">
+	<%- include('inventorynav', { currentPath }) %>
+	<main class="inventory-main">
+		<header class="page-header">
+			<div><p class="eyebrow">Stock setup / Product units</p><h1>Unit conversions</h1><p class="page-subtitle">Set the base unit, purchase unit, and quantity per purchase unit for each product.</p></div>
+			<a class="button secondary" href="/inventory/products">Add products / receive stock</a>
+		</header>
+		<% if (message) { %><div class="notice"><%= message %></div><% } %>
+		<section class="panel">
+			<div class="panel-heading"><div><h2>Product conversion settings</h2><p>For example, set base unit to Piece, purchase unit to Packet, and factor to 12. The helper below each row previews “1 Packet = 12 Pieces.” Names are listed once; saving applies the conversion to every active inventory record with that name, without changing its stock.</p></div><span class="cell-secondary"><%= products.length %> unique product names</span></div>
+			<% if (products.length) { %>
+				<div class="product-table-toolbar"><a class="button secondary" href="/inventory/products">Back to product entry</a></div>
+				<div class="unit-conversion-search">
+					<label for="unitConversionSearch">Search products</label>
+					<input id="unitConversionSearch" class="product-search-input" type="search" placeholder="Product name or SKU / code" autocomplete="off">
+					<span id="unitConversionCount" class="cell-secondary" aria-live="polite">Showing <%= products.length %> of <%= products.length %></span>
+				</div>
+				<div class="product-entry-table-wrap unit-conversion-table-wrap">
+					<table class="product-entry-table unit-conversion-table">
+						<thead><tr><th scope="col">Product</th><th scope="col">Current stock</th><th scope="col">Base unit</th><th scope="col">Purchase unit</th><th scope="col">Base units per purchase unit</th><th scope="col">Action</th></tr></thead>
+						<tbody>
+						<% products.forEach((product) => { const formId = `conversion-${product._id}`; %>
+						<tr class="unit-conversion-row" id="<%= formId %>" data-search="<%= `${product.name} ${product.sku || ''}`.toLowerCase() %>">
+							<td><form id="<%= formId %>-form" method="post" action="/inventory/unit-conversions/<%= product._id %>"></form><span class="cell-primary"><%= product.name %></span><% if (product.duplicateCount > 1) { %><span class="cell-secondary"><%= product.duplicateCount %> inventory records; saved settings apply to all</span><% } %><% if (product.sku) { %><span class="cell-secondary"><%= product.sku %></span><% } %></td>
+							<td><span class="cell-primary"><%= product.stockSummary %></span><span class="cell-secondary"><%= product.stockEquivalent %></span></td>
+							<td><select form="<%= formId %>-form" class="sheet-input conversion-base-unit" name="quantityType" required><% quantityTypes.forEach(unit => { %><option value="<%= unit._id %>" data-name="<%= unit.name %>" <%= String(product.quantityType || '') === String(unit._id) ? 'selected' : '' %>><%= unit.name %></option><% }) %></select></td>
+							<td><select form="<%= formId %>-form" class="sheet-input conversion-purchase-unit" name="purchaseUnit" required><% purchaseUnits.forEach(unit => { %><option value="<%= unit %>" <%= product.purchaseUnit.toLowerCase() === unit.toLowerCase() ? 'selected' : '' %>><%= unit %></option><% }) %></select></td>
+							<td><input form="<%= formId %>-form" class="sheet-input conversion-factor" name="conversionFactor" type="number" min="0.000001" step="0.000001" value="<%= product.conversionFactor %>" required><small class="conversion-preview">1 <%= product.purchaseUnit %> = <%= product.conversionFactor %> <%= product.baseUnit %></small><% if (product.settingsDiffer) { %><small class="cell-secondary">Current settings differ; saving applies this setting to all matching records.</small><% } %></td>
+							<td><button form="<%= formId %>-form" class="button" type="submit">Save</button></td>
+						</tr>
+						<% }) %>
+						</tbody>
+					</table>
+				</div>
+				<div id="unitConversionNoResults" class="empty-state" hidden>No products match your search.</div>
+			<% } else { %><div class="empty-state">Add a product first. Its unit conversion can then be configured here.</div><% } %>
+		</section>
+	</main>
+</div>
+<script>
+	document.querySelectorAll('.unit-conversion-row').forEach((row) => {
+		const baseUnit = row.querySelector('.conversion-base-unit');
+		const purchaseUnit = row.querySelector('.conversion-purchase-unit');
+		const factor = row.querySelector('.conversion-factor');
+		const preview = row.querySelector('.conversion-preview');
+		const updatePreview = () => {
+			const baseName = baseUnit.selectedOptions[0]?.dataset.name || 'unit';
+			const factorValue = Number(factor.value);
+			preview.textContent = `1 ${purchaseUnit.value} = ${Number.isFinite(factorValue) ? factorValue : 0} ${baseName}`;
+		};
+		[baseUnit, purchaseUnit, factor].forEach((input) => {
+			input.addEventListener('input', updatePreview);
+			input.addEventListener('change', updatePreview);
+		});
+	});
+
+	const conversionSearch = document.getElementById('unitConversionSearch');
+	if (conversionSearch) {
+		const rows = [...document.querySelectorAll('.unit-conversion-row')];
+		const count = document.getElementById('unitConversionCount');
+		const tableWrap = document.querySelector('.unit-conversion-table-wrap');
+		const noResults = document.getElementById('unitConversionNoResults');
+		conversionSearch.addEventListener('input', () => {
+			const query = conversionSearch.value.trim().toLowerCase();
+			let visibleRows = 0;
+			rows.forEach((row) => {
+				const matches = row.dataset.search.includes(query);
+				row.hidden = !matches;
+				if (matches) visibleRows += 1;
+			});
+			count.textContent = `Showing ${visibleRows} of ${rows.length}`;
+			tableWrap.hidden = visibleRows === 0;
+			noResults.hidden = visibleRows !== 0;
+		});
+	}
+</script>
+</body>
+</html>

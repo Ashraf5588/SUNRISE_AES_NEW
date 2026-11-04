@@ -54,9 +54,10 @@ function calculateAdminEmployeeAttendanceMetrics({ employees, teachingSections, 
   teachingEmployees.forEach(employee => {
     const employeeName = String(employee.staffName || '').trim().toLowerCase();
     const employeeCode = String(employee.employeeCode || '').trim().toUpperCase();
-    const punchesForEmployee = (employeeCode ? punchesByCode.get(employeeCode) : null)
-      || punchesByName.get(employeeName)
-      || [];
+    const punchesByEmployeeCode = employeeCode ? punchesByCode.get(employeeCode) : null;
+    const punchesForEmployee = punchesByEmployeeCode?.length
+      ? punchesByEmployeeCode
+      : punchesByName.get(employeeName) || [];
     const leave = leaves.find(item => String(item.employeeName || '').trim().toLowerCase() === employeeName);
     const isOnLeave = Boolean(leave);
     const sectionBreakdown = sectionBreakdownByName.get(String(employee.section || '').trim().toLowerCase());

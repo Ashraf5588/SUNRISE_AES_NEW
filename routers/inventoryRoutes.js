@@ -5,10 +5,13 @@ const { verifytoken,isFrontdesk,isAdmin } = require('../middleware/auth');
 
 inventory.get('/', verifytoken,isFrontdesk,inventoryController.dashboard);
 inventory.get('/products',verifytoken,isFrontdesk, inventoryController.productsPage);
+inventory.get('/unit-conversions', verifytoken, isFrontdesk, inventoryController.unitConversionsPage);
+inventory.post('/unit-conversions/:productId', verifytoken, isFrontdesk, inventoryController.saveUnitConversion);
 inventory.get('/products/template.csv',verifytoken,isFrontdesk,inventoryController.downloadProductTemplate);
 inventory.post('/products/import-csv',verifytoken,isFrontdesk,inventoryController.importProductsCsv);
 inventory.post('/products',verifytoken,isFrontdesk, inventoryController.createProduct);
 inventory.post('/products/save',verifytoken,isFrontdesk, inventoryController.saveProducts);
+inventory.post('/products/receive', verifytoken, isFrontdesk, inventoryController.receiveProductStock);
 inventory.get('/categories',verifytoken,isFrontdesk, inventoryController.categoriesPage);
 inventory.post('/categories',verifytoken,isFrontdesk, inventoryController.createCategory);
 inventory.post('/categories/:id/edit',verifytoken,isFrontdesk, inventoryController.editCategory);
