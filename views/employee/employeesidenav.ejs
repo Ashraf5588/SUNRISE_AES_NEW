@@ -34,23 +34,76 @@
 	body.employee-nav-visible .page-shell { width: calc(100% - var(--employee-nav-width) - 34px); margin-left: calc(var(--employee-nav-width) + 18px); }
 	body.employee-nav-visible .leave-shell { width: calc(100% - var(--employee-nav-width)); margin-left: var(--employee-nav-width); transition: margin-left .18s ease, width .18s ease; }
 	@media (max-width: 760px) {
-		:root { --employee-nav-width: 68px; }
-		body.employee-nav-visible .page-shell { width: calc(100% - 88px); margin-left: 76px; }
-		body.employee-nav-visible .leave-shell { width: calc(100% - 68px); margin-left: 68px; }
-		.employee-sidenav { padding-inline: 8px; }
-		.employee-sidenav-top { flex-direction: column; }
-		.employee-sidenav-brand { padding: 6px 0; }
-		.employee-sidenav-brand span, .employee-nav-label, .employee-nav-chevron { display: none; }
-		.employee-nav-link, .employee-nav-section { justify-content: center; padding: 0; }
-		.employee-nav-link i, .employee-nav-section i:first-child { flex-basis: auto; }
-		.employee-nav-submenu { display: none; }
-		body.employee-nav-collapsed .page-shell { width: calc(100% - 88px); margin-left: 76px; }
-		body.employee-nav-collapsed .leave-shell { width: calc(100% - 68px); margin-left: 68px; }
+		body.employee-nav-visible .page-shell,
+		body.employee-nav-visible.employee-nav-collapsed .page-shell,
+		body.employee-nav-visible .leave-shell,
+		body.employee-nav-visible.employee-nav-collapsed .leave-shell {
+			width: 100% !important;
+			margin: 0 !important;
+			padding: 72px 14px 28px !important;
+		}
+		.employee-sidenav {
+			z-index: 1202;
+			width: min(300px, calc(100vw - 48px));
+			max-width: none;
+			padding: 14px 10px;
+			transform: translateX(-105%);
+			box-shadow: 8px 0 28px rgba(15, 23, 42, .22);
+			transition: transform .2s ease;
+		}
+		body.employee-nav-open { overflow: hidden; }
+		body.employee-nav-open .employee-sidenav { transform: translateX(0); }
+		body.employee-nav-collapsed .employee-sidenav { padding-inline: 10px; }
+		body.employee-nav-collapsed .employee-sidenav-top { flex-direction: row; }
+		body.employee-nav-collapsed .employee-sidenav-brand { padding: 9px; }
+		body.employee-nav-collapsed .employee-sidenav-brand span,
+		body.employee-nav-collapsed .employee-nav-label,
+		body.employee-nav-collapsed .employee-nav-chevron { display: initial; }
+		body.employee-nav-collapsed .employee-nav-link,
+		body.employee-nav-collapsed .employee-nav-section { justify-content: flex-start; padding: 0 12px; }
+		body.employee-nav-collapsed .employee-nav-link i,
+		body.employee-nav-collapsed .employee-nav-section i:first-child { flex-basis: 18px; }
+		body.employee-nav-collapsed .employee-sidenav .employee-nav-submenu:not([hidden]) { display: grid; }
+		.employee-nav-submenu[hidden] { display: none !important; }
+		.employee-mobile-nav-toggle {
+			position: fixed;
+			top: 12px;
+			left: 12px;
+			z-index: 1204;
+			display: grid;
+			width: 44px;
+			height: 44px;
+			place-items: center;
+			border: 1px solid #d6dfeb;
+			border-radius: 7px;
+			background: #fff;
+			box-shadow: 0 3px 12px rgba(15, 23, 42, .14);
+			color: #24477b;
+			font-size: 18px;
+			cursor: pointer;
+		}
+		.employee-nav-backdrop {
+			position: fixed;
+			inset: 0;
+			z-index: 1201;
+			border: 0;
+			background: rgba(15, 23, 42, .48);
+		}
+		.employee-nav-backdrop[hidden] { display: none; }
+	}
+	@media (min-width: 761px) {
+		.employee-mobile-nav-toggle,
+		.employee-nav-backdrop { display: none !important; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.employee-sidenav { transition: none; }
 	}
 </style>
 <script src="https://kit.fontawesome.com/368eb67b69.js" crossorigin="anonymous"></script>
 <% const canManageEmployeeNavigation = typeof isAdmin === 'undefined' ? true : isAdmin; %>
-<aside class="employee-sidenav" aria-label="Employee navigation">
+<button class="employee-mobile-nav-toggle" id="employeeMobileNavToggle" type="button" aria-label="Open employee navigation" aria-controls="employeeSidenav" aria-expanded="false"><i class="fa-solid fa-bars" aria-hidden="true"></i></button>
+<button class="employee-nav-backdrop" id="employeeNavBackdrop" type="button" aria-label="Close employee navigation" hidden></button>
+<aside class="employee-sidenav" id="employeeSidenav" aria-label="Employee navigation">
 	<div class="employee-sidenav-top">
 		<a class="employee-sidenav-brand" href="/employeemanagementdashboard" title="Employee dashboard"><i class="fa-solid fa-building-user" aria-hidden="true"></i><span>Employee Management</span></a>
 		<button class="employee-sidenav-toggle" id="employeeSidenavToggle" type="button" aria-label="Collapse navigation" title="Collapse navigation"><i class="fa-solid fa-bars" aria-hidden="true"></i></button>
@@ -88,6 +141,9 @@
 	(() => {
 		const body = document.body;
 		const toggle = document.getElementById('employeeSidenavToggle');
+		const mobileToggle = document.getElementById('employeeMobileNavToggle');
+		const backdrop = document.getElementById('employeeNavBackdrop');
+		const sidebar = document.getElementById('employeeSidenav');
 		const managementToggle = document.getElementById('employeeManagementToggle');
 		const submenu = document.getElementById('employeeManagementSubmenu');
 		const basicSetupToggle = document.getElementById('basicSetupToggle');
@@ -96,12 +152,56 @@
 		const leaveSubmenu = document.getElementById('leaveSubmenu');
 		body.classList.add('employee-nav-visible');
 		try { if (localStorage.getItem('employee-nav-collapsed') === 'true') body.classList.add('employee-nav-collapsed'); } catch (error) {}
+		const isMobile = () => window.matchMedia('(max-width: 760px)').matches;
+		const closeMobileNavigation = (restoreFocus = false) => {
+			body.classList.remove('employee-nav-open');
+			backdrop.hidden = true;
+			mobileToggle.setAttribute('aria-expanded', 'false');
+			mobileToggle.setAttribute('aria-label', 'Open employee navigation');
+			sidebar.inert = isMobile();
+			if (restoreFocus) mobileToggle.focus();
+		};
+		const openMobileNavigation = () => {
+			body.classList.add('employee-nav-open');
+			backdrop.hidden = false;
+			mobileToggle.setAttribute('aria-expanded', 'true');
+			mobileToggle.setAttribute('aria-label', 'Close employee navigation');
+			sidebar.inert = false;
+			sidebar.querySelector('.employee-nav-link')?.focus();
+		};
+		sidebar.inert = isMobile();
 		toggle.addEventListener('click', () => {
+			if (isMobile()) {
+				if (body.classList.contains('employee-nav-open')) closeMobileNavigation(true);
+				else openMobileNavigation();
+				return;
+			}
 			body.classList.toggle('employee-nav-collapsed');
 			const collapsed = body.classList.contains('employee-nav-collapsed');
 			toggle.setAttribute('aria-label', collapsed ? 'Expand navigation' : 'Collapse navigation');
 			toggle.title = collapsed ? 'Expand navigation' : 'Collapse navigation';
 			try { localStorage.setItem('employee-nav-collapsed', String(collapsed)); } catch (error) {}
+		});
+		mobileToggle.addEventListener('click', () => {
+			if (body.classList.contains('employee-nav-open')) closeMobileNavigation(true);
+			else openMobileNavigation();
+		});
+		backdrop.addEventListener('click', () => closeMobileNavigation(true));
+		sidebar.querySelectorAll('a').forEach(link => {
+			link.addEventListener('click', () => {
+				if (isMobile()) closeMobileNavigation();
+			});
+		});
+		document.addEventListener('keydown', event => {
+			if (event.key === 'Escape' && body.classList.contains('employee-nav-open')) closeMobileNavigation(true);
+		});
+		window.addEventListener('resize', () => {
+			if (!isMobile()) {
+				closeMobileNavigation();
+				sidebar.inert = false;
+			} else if (!body.classList.contains('employee-nav-open')) {
+				sidebar.inert = true;
+			}
 		});
 		managementToggle?.addEventListener('click', () => {
 			const expanded = managementToggle.getAttribute('aria-expanded') === 'true';
