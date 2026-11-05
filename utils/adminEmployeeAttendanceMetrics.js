@@ -20,13 +20,13 @@ function calculateAdminEmployeeAttendanceMetrics({ employees, teachingSections, 
   });
 
   const activeEmployees = getActiveEmployeeProfiles(employees);
-  const teachingEmployees = activeEmployees.filter(employee => {
+  const isTeachingEmployee = employee => {
     const department = String(employee.department || '').trim().toLowerCase().replace(/^-+$/, '');
     const designation = String(employee.designation || '').trim().toLowerCase().replace(/^-+$/, '');
     return /\bteach(?:ing|er)\b/.test(department)
       || /\bteach(?:ing|er)\b/.test(designation)
       || (!department && !designation);
-  });
+  };
   const sectionOrder = new Map([['ecd-3', 0], ['4-7', 1], ['8-10', 2]]);
   const teachingSectionBreakdown = teachingSections
     .map(section => ({ name: section.name, onLeave: 0, absent: 0 }))
@@ -51,7 +51,7 @@ function calculateAdminEmployeeAttendanceMetrics({ employees, teachingSections, 
     }
   });
 
-  teachingEmployees.forEach(employee => {
+  activeEmployees.forEach(employee => {
     const employeeName = String(employee.staffName || '').trim().toLowerCase();
     const employeeCode = String(employee.employeeCode || '').trim().toUpperCase();
     const punchesByEmployeeCode = employeeCode ? punchesByCode.get(employeeCode) : null;
@@ -60,8 +60,12 @@ function calculateAdminEmployeeAttendanceMetrics({ employees, teachingSections, 
       : punchesByName.get(employeeName) || [];
     const leave = leaves.find(item => String(item.employeeName || '').trim().toLowerCase() === employeeName);
     const isOnLeave = Boolean(leave);
-    const sectionBreakdown = sectionBreakdownByName.get(String(employee.section || '').trim().toLowerCase());
+    const sectionBreakdown = isTeachingEmployee(employee)
+      ? sectionBreakdownByName.get(String(employee.section || '').trim().toLowerCase())
+      : null;
     const plannedInMinutes = getMinutes(employee.plannedIn, 9 * 60);
+    const midTimeMinutes = getMinutes(employee.midTime, 13 * 60);
+    const plannedOutMinutes = getMinutes(employee.plannedOut, 17 * 60);
     const employeeSummary = {
       name: employee.staffName || 'Staff member',
       designation: employee.designation || employee.department || '',
@@ -78,19 +82,18 @@ function calculateAdminEmployeeAttendanceMetrics({ employees, teachingSections, 
 
     if (isEmployeeHoliday || isOnLeave) return;
 
-    const midTime = getMinutes(employee.midTime, 13 * 60);
     const morningPunches = punchesForEmployee.filter(punch => {
       const time = new Date(punch.punchTime);
-      return time.getHours() * 60 + time.getMinutes() < midTime;
+      return time.getHours() * 60 + time.getMinutes() < midTimeMinutes;
     });
     const eveningPunches = punchesForEmployee.filter(punch => {
       const time = new Date(punch.punchTime);
-      return time.getHours() * 60 + time.getMinutes() >= midTime;
+      return time.getHours() * 60 + time.getMinutes() >= midTimeMinutes;
     });
     const missingPeriods = [];
 
-    if (!morningPunches.length && currentMinutes >= plannedInMinutes) missingPeriods.push('Missed morning check-in');
-    if (!eveningPunches.length) missingPeriods.push('Missed evening check-out');
+    if (!morningPunches.length && currentMinutes >= midTimeMinutes) missingPeriods.push('Missed morning check-in');
+    if (!eveningPunches.length && currentMinutes > plannedOutMinutes) missingPeriods.push('Missed evening check-out');
     if (missingPeriods.length) missedTeacherList.push({ ...employeeSummary, missing: missingPeriods.join(' and ') });
 
     const checkIn = morningPunches.find(punch => punch.manualPunchType === 'Check-in' || Number(punch.status) === 0)

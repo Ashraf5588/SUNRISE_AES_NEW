@@ -45,7 +45,7 @@ test('counts and lists missing morning and evening punches independently', () =>
   assert.equal(result.lateInList[0].lateMinutes, 20);
 });
 
-test('reports a missing evening punch consistently with daily attendance details', () => {
+test('does not report a missing evening punch before or at planned out time', () => {
   const result = calculateAdminEmployeeAttendanceMetrics({
     employees: [employee('MORNING', { department: 'Teaching' })],
     teachingSections: [],
@@ -53,6 +53,30 @@ test('reports a missing evening punch consistently with daily attendance details
     leaves: [],
     isEmployeeHoliday: false,
     now: new Date('2026-11-03T15:43:00')
+  });
+
+  assert.equal(result.missedAttendance, 0);
+  assert.deepEqual(result.missedTeacherList, []);
+
+  const resultAtPlannedOut = calculateAdminEmployeeAttendanceMetrics({
+    employees: [employee('MORNING', { department: 'Teaching' })],
+    teachingSections: [],
+    punches: [punch('MORNING', '09:00')],
+    leaves: [],
+    isEmployeeHoliday: false,
+    now: new Date('2026-11-03T17:00:00')
+  });
+  assert.equal(resultAtPlannedOut.missedAttendance, 0);
+});
+
+test('reports a missing evening punch after planned out time', () => {
+  const result = calculateAdminEmployeeAttendanceMetrics({
+    employees: [employee('MORNING', { department: 'Teaching' })],
+    teachingSections: [],
+    punches: [punch('MORNING', '09:00')],
+    leaves: [],
+    isEmployeeHoliday: false,
+    now: new Date('2026-11-03T17:01:00')
   });
 
   assert.equal(result.missedAttendance, 1);
@@ -76,7 +100,57 @@ test('does not count an employee absent before their planned check-in time', () 
 
   assert.equal(result.absentToday, 0);
   assert.equal(result.teachingSectionBreakdown[0].absent, 0);
+  assert.equal(result.missedAttendance, 0);
+});
+
+test('uses each staff member mid-time and planned out time for missing attendance', () => {
+  const resultBeforeMidTime = calculateAdminEmployeeAttendanceMetrics({
+    employees: [
+      employee('MID-ONE', { midTime: '13:00', plannedOut: '17:00' }),
+      employee('MID-TWO', { midTime: '12:00', plannedOut: '16:00' })
+    ],
+    teachingSections: [{ name: '4-7' }],
+    punches: [],
+    leaves: [],
+    isEmployeeHoliday: false,
+    now: new Date('2026-11-03T12:30:00')
+  });
+  assert.equal(resultBeforeMidTime.missedAttendance, 1);
+  assert.deepEqual(resultBeforeMidTime.missedTeacherList.map(item => item.name), ['Employee MID-TWO']);
+
+  const resultAfterPlannedOut = calculateAdminEmployeeAttendanceMetrics({
+    employees: [
+      employee('MID-ONE', { midTime: '13:00', plannedOut: '17:00' }),
+      employee('MID-TWO', { midTime: '12:00', plannedOut: '16:00' })
+    ],
+    teachingSections: [{ name: '4-7' }],
+    punches: [],
+    leaves: [],
+    isEmployeeHoliday: false,
+    now: new Date('2026-11-03T16:30:00')
+  });
+  assert.equal(resultAfterPlannedOut.missedAttendance, 2);
+  assert.deepEqual(resultAfterPlannedOut.missedTeacherList.map(item => item.missing), [
+    'Missed morning check-in',
+    'Missed morning check-in and Missed evening check-out'
+  ]);
+});
+
+test('includes active staff regardless of department in attendance lists', () => {
+  const result = calculateAdminEmployeeAttendanceMetrics({
+    employees: [employee('OFFICE', { department: 'Administration', designation: 'Accountant' })],
+    teachingSections: [{ name: '4-7' }],
+    punches: [],
+    leaves: [],
+    isEmployeeHoliday: false,
+    now: new Date('2026-11-03T18:00:00')
+  });
+
+  assert.equal(result.absentToday, 1);
   assert.equal(result.missedAttendance, 1);
+  assert.deepEqual(result.absentList.map(item => item.name), ['Employee OFFICE']);
+  assert.deepEqual(result.missedTeacherList.map(item => item.name), ['Employee OFFICE']);
+  assert.equal(result.teachingSectionBreakdown[0].absent, 0);
 });
 
 test('counts and lists named employees without a department, section, or employee code', () => {
@@ -98,10 +172,9 @@ test('counts and lists named employees without a department, section, or employe
 
   assert.equal(result.absentToday, 1);
   assert.deepEqual(result.absentList.map(item => item.name), ['No metadata teacher']);
-  assert.equal(result.missedAttendance, 2);
+  assert.equal(result.missedAttendance, 1);
   assert.deepEqual(result.missedTeacherList.map(item => [item.name, item.missing]), [
-    ['No metadata teacher', 'Missed morning check-in and Missed evening check-out'],
-    ['Teacher with name-matched punch', 'Missed evening check-out']
+    ['No metadata teacher', 'Missed morning check-in']
   ]);
   assert.equal(result.lateToday, 1);
 });
