@@ -78,7 +78,7 @@ function calculateAdminEmployeeAttendanceMetrics({ employees, teachingSections, 
     if (!punchesForEmployee.length && isOnLeave) {
       if (sectionBreakdown) sectionBreakdown.onLeave += 1;
       onLeaveList.push({ ...employeeSummary, leave: leave.leaveTypeName || 'Approved leave' });
-    } else if (!punchesForEmployee.length && !isEmployeeHoliday && currentMinutes >= plannedInMinutes) {
+    } else if (!punchesForEmployee.length) {
       absentList.push(employeeSummary);
       if (sectionBreakdown) sectionBreakdown.absent += 1;
     }

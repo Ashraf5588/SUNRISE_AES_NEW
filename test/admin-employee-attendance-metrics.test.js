@@ -88,7 +88,7 @@ test('reports a missing evening punch after planned out time', () => {
   }]);
 });
 
-test('does not count an employee absent before their planned check-in time', () => {
+test('matches employee dashboard absence status before planned check-in time', () => {
   const result = calculateAdminEmployeeAttendanceMetrics({
     employees: [employee('NO-PUNCH')],
     teachingSections: [{ name: '4-7' }],
@@ -98,8 +98,23 @@ test('does not count an employee absent before their planned check-in time', () 
     now: new Date('2026-11-03T08:30:00')
   });
 
-  assert.equal(result.absentToday, 0);
-  assert.equal(result.teachingSectionBreakdown[0].absent, 0);
+  assert.equal(result.absentToday, 1);
+  assert.equal(result.teachingSectionBreakdown[0].absent, 1);
+  assert.equal(result.missedAttendance, 0);
+});
+
+test('keeps employees with no punches in the absent list on a holiday, matching employee dashboard', () => {
+  const result = calculateAdminEmployeeAttendanceMetrics({
+    employees: [employee('NO-PUNCH')],
+    teachingSections: [{ name: '4-7' }],
+    punches: [],
+    leaves: [],
+    isEmployeeHoliday: true,
+    now: new Date('2026-11-03T18:00:00')
+  });
+
+  assert.equal(result.absentToday, 1);
+  assert.deepEqual(result.absentList.map(item => item.name), ['Employee NO-PUNCH']);
   assert.equal(result.missedAttendance, 0);
 });
 
