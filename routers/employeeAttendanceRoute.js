@@ -15,6 +15,7 @@ employee.get('/employeedetail/csv-template', verifytoken, isAdmin, employeeContr
 employee.get('/employeedetail/check-code', verifytoken, isAdmin, employeeController.checkEmployeeIdentifier);
 employee.get('/employeemanagementdashboard', verifytoken, isAdmin, employeeController.showEmployeeManagementDashboard);
 employee.get('/employeedata', verifytoken, isAdmin, employeeController.showEmployeeData);
+employee.post('/employeedata/:id/deactivate', verifytoken, isAdmin, employeeController.deactivateEmployee);
 employee.get('/staffcontacts', verifytoken, employeeController.showStaffContacts);
 employee.get('/employeeattendancesetup', verifytoken, isAdmin, employeeController.showEmployeeAttendanceSetup);
 employee.post('/employeeattendancesetup', verifytoken, isAdmin, employeeController.saveEmployeeAttendanceSetup);

@@ -1213,6 +1213,32 @@ exports.showEmployeeData = async (req, res) => {
     }
 };
 
+exports.deactivateEmployee = async (req, res) => {
+    const employeeId = String(req.params.id || '');
+    if (!mongoose.isValidObjectId(employeeId)) return res.status(404).send('Employee profile not found.');
+
+    try {
+        const employee = await Staff.findById(employeeId);
+        if (!employee) return res.status(404).send('Employee profile not found.');
+        const statuses = [employee.jobStatus, employee.employmentStatus]
+            .map(status => String(status || '').trim().toLowerCase());
+        if (employee.isActive === false || statuses.some(status =>
+            ['inactive', 'disabled', 'resigned', 'terminated'].includes(status)
+        )) {
+            return res.redirect('/employeedata');
+        }
+
+        employee.isActive = false;
+        employee.jobStatus = 'Inactive';
+        await employee.save();
+        await safelyQueueEmployeeSync(employee.toObject(), req.user?.username || req.user?.teacherName, 'deactivated');
+        return res.redirect('/employeedata?deactivated=1');
+    } catch (error) {
+        console.error('Unable to deactivate employee:', error);
+        return res.status(500).send('Unable to deactivate employee.');
+    }
+};
+
 exports.showStaffContacts = async (req, res) => {
     try {
         const employees = (await getEmployeeProfiles()).map(employee => ({
@@ -1916,6 +1942,7 @@ exports.createEmployeeDetails = async (req, res) => {
     if (validationError) {
         return renderEmployeeDetails(res, {
             status: 400,
+            newEmployee: true,
             error: validationError,
             formData
         });
@@ -1963,6 +1990,7 @@ exports.createEmployeeDetails = async (req, res) => {
         if (error.code === 11000) {
             return renderEmployeeDetails(res, {
                 status: 409,
+                newEmployee: true,
                 error: 'That employee code is already in use.',
                 formData
             });
@@ -1971,6 +1999,7 @@ exports.createEmployeeDetails = async (req, res) => {
         console.error('Unable to save employee details:', error);
         return renderEmployeeDetails(res, {
             status: 400,
+            newEmployee: true,
             error: error.statusCode === 400
                 ? error.message
                 : 'Employee details could not be saved. Check the entered values and try again.',

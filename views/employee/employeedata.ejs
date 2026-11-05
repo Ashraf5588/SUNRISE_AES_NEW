@@ -30,6 +30,7 @@
 		tbody tr:last-child td { border-bottom:0; }
 		.employee-code { color:var(--blue); font-weight:800; }
 		.status { color:#285c47; font-weight:700; }
+		.status-inactive { color:#7a4550; font-weight:800; }
 		.empty { padding:28px; color:var(--muted); text-align:center; }
 		.enrollment-button { min-height:32px; padding:0 10px; border:1px solid var(--blue); border-radius:4px; background:#fff; color:var(--blue); font:inherit; font-weight:700; cursor:pointer; }
 		.action-group { display:flex; flex-wrap:wrap; gap:5px; }
@@ -71,12 +72,19 @@
 		<p id="manualSyncFeedback" class="dialog-status" role="status" aria-live="polite"></p>
 		<section class="panel"><div class="panel-heading"><h2><%= employees.length %> employees</h2><div class="controls"><input id="employeeSearch" type="search" placeholder="Search employees" aria-label="Search employees"><a class="button" href="/employeeattendance"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i> Attendance</a></div></div>
 			<% if (employees.length) { %>
-			<div class="table-wrap"><table id="employeeList"><thead><tr><th>S.N</th><th>Employee code</th><th>Device code / PIN</th><th>Name</th><th>Designation</th><th>Department</th><th>Branch</th><th>Contact</th><th>Office email</th><th>Status</th><th>Device sync status</th><th>Profile</th><th>Device actions</th><th>Fingerprint enrollment</th></tr></thead><tbody>
-			<% employees.forEach((employee,index) => { const employeeId = String(employee._id); const sync = syncStatusByEmployee[employeeId]; const enrollment = manualEnrollmentByEmployee[employeeId]; %>
+			<div class="table-wrap"><table id="employeeList"><thead><tr><th>S.N</th><th>Employee code</th><th>Device code / PIN</th><th>Name</th><th>Designation</th><th>Department</th><th>Branch</th><th>Contact</th><th>Office email</th><th>Status</th><th>Device sync status</th><th>Profile actions</th><th>Device actions</th><th>Fingerprint enrollment</th></tr></thead><tbody>
+			<% employees.forEach((employee,index) => { const employeeId = String(employee._id); const sync = syncStatusByEmployee[employeeId]; const enrollment = manualEnrollmentByEmployee[employeeId]; const employeeStatuses = [employee.jobStatus, employee.employmentStatus].map(status => String(status || '').trim().toLowerCase()); const employeeInactive = employee.isActive === false || employeeStatuses.some(status => ['inactive', 'disabled', 'resigned', 'terminated'].includes(status)); %>
 				<tr>
-					<td><%= index+1 %></td><td class="employee-code"><%= employee.employeeCode || '-' %></td><td class="employee-code"><%= employee.deviceCode || 'Not set' %></td><td><%= employee.staffName %></td><td><%= employee.designation || '-' %></td><td><%= employee.department || '-' %></td><td><%= employee.branchName || '-' %></td><td><%= employee.mobileNumber || '-' %></td><td><%= employee.officeEmail || employee.email || '-' %></td><td class="status"><%= employee.jobStatus || employee.employmentStatus || 'Active' %></td>
+					<td><%= index+1 %></td><td class="employee-code"><%= employee.employeeCode || '-' %></td><td class="employee-code"><%= employee.deviceCode || 'Not set' %></td><td><%= employee.staffName %></td><td><%= employee.designation || '-' %></td><td><%= employee.department || '-' %></td><td><%= employee.branchName || '-' %></td><td><%= employee.mobileNumber || '-' %></td><td><%= employee.officeEmail || employee.email || '-' %></td><td class="<%= employeeInactive ? 'status-inactive' : 'status' %>"><%= employeeInactive ? 'Inactive' : employee.jobStatus || employee.employmentStatus || 'Active' %></td>
 					<td><%= sync ? (sync.status === 'SUCCESS' ? 'Synced' : sync.status === 'PENDING' || sync.status === 'SENT' ? 'Pending' : sync.status === 'FAILED' ? 'Failed' : sync.status) : 'Not Synced' %><% if (enrollment) { %><br>Manually Enrolled<% } %></td>
-					<td><a href="/employeedetail?employeeId=<%= employee._id %>">Open profile</a></td>
+					<td><div class="action-group">
+						<a class="action-button" href="/employeedetail?employeeId=<%= employee._id %>"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> Edit</a>
+						<% if (!employeeInactive) { %>
+						<form method="post" action="/employeedata/<%= employeeId %>/deactivate" onsubmit="return confirm('Deactivate this employee? Their employee profile and attendance history will be preserved.');">
+							<button class="action-button" type="submit"><i class="fa-solid fa-user-slash" aria-hidden="true"></i> Deactivate</button>
+						</form>
+						<% } else { %><span class="status-inactive">Inactive</span><% } %>
+					</div></td>
 					<td><div class="action-group">
 						<button class="action-button sync-button" type="button" data-employee-id="<%= employeeId %>" <%= commandQueueEnabled && employee.deviceCode ? '' : 'disabled' %>>Sync employee</button>
 						<% if (sync?.status === 'FAILED' && commandQueueEnabled && !sync.manualTest) { %><button class="action-button retry-button" type="button" data-command-id="<%= sync._id %>">Retry failed</button><% } %>
