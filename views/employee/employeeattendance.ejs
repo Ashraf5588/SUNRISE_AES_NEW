@@ -67,7 +67,51 @@
 		.device-check { display: grid; justify-items: start; gap: 7px; }
 		.sync-note { margin: 0 0 12px; padding: 10px 12px; border: 1px solid #ead8a8; border-radius: 5px; background: #fff9e8; color: #705814; font-size: .82rem; line-height: 1.5; }
 		@media (max-width: 1000px) { .device-card { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-		@media (max-width: 700px) { .page-shell { width: calc(100% - 24px); padding-top: 22px; } .page-header { align-items: flex-start; flex-direction: column; } .toolbar { align-items: stretch; } .filter { justify-content: space-between; width: 100%; } .filter input { flex: 1; } .table-heading { align-items: flex-start; flex-direction: column; } .pagination { align-items: flex-start; flex-direction: column; } }
+		@media (max-width: 700px) {
+			.page-shell { width: calc(100% - 24px); padding-top: 22px; }
+			.page-header { align-items: flex-start; flex-direction: column; }
+			.toolbar { align-items: stretch; gap: 12px; }
+			.filter { justify-content: space-between; width: 100%; min-width: 0; }
+			.filter input:not([type="file"]) { flex: 1; min-width: 0; }
+			.import-toolbar { display: grid; grid-template-columns: minmax(0, 1fr); }
+			.import-toolbar > * { min-width: 0; width: 100%; }
+			.import-toolbar .filter { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; justify-content: stretch; }
+			.import-toolbar input[type="file"] {
+				display: block;
+				width: 100%;
+				min-width: 0;
+				max-width: 100%;
+				overflow: hidden;
+				padding: 6px;
+				font-size: .75rem;
+			}
+			.import-toolbar input[type="file"]::file-selector-button {
+				max-width: 100%;
+				margin-right: 8px;
+				padding: 6px 8px;
+				border: 1px solid #cddad1;
+				border-radius: 4px;
+				background: #f4f7f4;
+				color: var(--ink);
+				font: inherit;
+			}
+			.device-card { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+			.device-check { min-width: 0; }
+			.device-check .button,
+			.device-card > .button { width: 100%; white-space: normal; text-align: center; }
+			.table-heading { align-items: flex-start; flex-direction: column; }
+			.pagination { align-items: flex-start; flex-direction: column; }
+			.page-controls { width: 100%; flex-wrap: wrap; }
+		}
+		@media (max-width: 420px) {
+			.page-shell { width: calc(100% - 16px); }
+			.sync-panel { padding: 12px; }
+			.toolbar { padding: 12px; }
+			.filter { align-items: flex-start; flex-direction: column; gap: 5px; }
+			.filter input:not([type="file"]) { width: 100%; }
+			.import-toolbar .filter { align-items: stretch; }
+			.page-controls button { padding: 0 9px; }
+		}
 	</style>
 </head>
 <body>
