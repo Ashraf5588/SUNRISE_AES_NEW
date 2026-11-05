@@ -1,4 +1,5 @@
 const { getActiveEmployeeProfiles } = require('./employeeManagementDashboard');
+const { getEmployeeAttendanceCodes } = require('./employeeAttendanceSync');
 
 function getMinutes(value, fallback) {
   const match = String(value || '').match(/^(\d{1,2}):(\d{2})$/);
@@ -53,11 +54,13 @@ function calculateAdminEmployeeAttendanceMetrics({ employees, teachingSections, 
 
   activeEmployees.forEach(employee => {
     const employeeName = String(employee.staffName || '').trim().toLowerCase();
-    const employeeCode = String(employee.employeeCode || '').trim().toUpperCase();
-    const punchesByEmployeeCode = employeeCode ? punchesByCode.get(employeeCode) : null;
-    const punchesForEmployee = punchesByEmployeeCode?.length
-      ? punchesByEmployeeCode
-      : punchesByName.get(employeeName) || [];
+    const employeeCodes = getEmployeeAttendanceCodes(employee);
+    const punchesForEmployee = [...new Map(employeeCodes
+      .flatMap(code => punchesByCode.get(code) || [])
+      .map(punch => [String(punch._id || `${punch.pin}|${punch.punchTime}`), punch])).values()];
+    if (!punchesForEmployee.length && employeeName) {
+      punchesForEmployee.push(...(punchesByName.get(employeeName) || []));
+    }
     const leave = leaves.find(item => String(item.employeeName || '').trim().toLowerCase() === employeeName);
     const isOnLeave = Boolean(leave);
     const sectionBreakdown = isTeachingEmployee(employee)

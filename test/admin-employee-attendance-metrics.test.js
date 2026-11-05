@@ -153,6 +153,21 @@ test('includes active staff regardless of department in attendance lists', () =>
   assert.equal(result.teachingSectionBreakdown[0].absent, 0);
 });
 
+test('matches punches using the employee device PIN as well as employee code', () => {
+  const result = calculateAdminEmployeeAttendanceMetrics({
+    employees: [employee('EMP-42', { deviceCode: 'PIN-42' })],
+    teachingSections: [{ name: '4-7' }],
+    punches: [punch('PIN-42', '09:00')],
+    leaves: [],
+    isEmployeeHoliday: false,
+    now: new Date('2026-11-03T18:00:00')
+  });
+
+  assert.equal(result.absentToday, 0);
+  assert.equal(result.missedAttendance, 1);
+  assert.deepEqual(result.missedTeacherList.map(item => item.missing), ['Missed evening check-out']);
+});
+
 test('counts and lists named employees without a department, section, or employee code', () => {
   const result = calculateAdminEmployeeAttendanceMetrics({
     employees: [
