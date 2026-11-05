@@ -201,7 +201,7 @@ const activeModuleName = activeModule || 'profile';
 <main class="page-shell">
 	<header class="page-header"><div><p class="eyebrow">People / Human resources</p><h1>Employee management</h1><p class="page-intro">Profile, compensation, office history, assets, and reporting.</p></div><a class="button button-secondary" href="/employeeattendance">Attendance</a></header>
 	<% if (error) { %><div class="notice notice-error" role="alert"><%= error %></div><% } %>
-	<% if (saved) { %><div class="notice notice-success" role="status">Employee record saved.</div><% } %>
+	<% if (saved && created) { %><div class="notice notice-success" role="status">Employee profile created. No device command was sent automatically. For fingerprint attendance, add this employee to the MB2000 with PIN <strong><%= selectedEmployee?.deviceCode || 'not configured' %></strong>, enroll the fingerprint physically on the terminal, then record the manual enrollment confirmation from the employee list. <% if (selectedEmployee?.deviceCode) { %><a href="/employeedata">Open employee list</a> to use Sync to Device only if that exact device and firmware are verified.<% } %></div><% } else if (saved) { %><div class="notice notice-success" role="status">Employee record saved. Device profile changes are never sent automatically. Use the employee list to sync this employee to one explicitly selected, verified device.</div><% } %>
 	<section class="csv-tools" aria-labelledby="employee-csv-title">
 		<div><h2 id="employee-csv-title">Bulk employee profiles</h2><p>Blank cells are saved as empty values; employee name is required. Collections use JSON arrays, for example [{"degree":"BA"}]. Nested objects use JSON objects. Upload binary employee documents from each profile after import.</p></div>
 		<div class="csv-actions">
@@ -214,6 +214,7 @@ const activeModuleName = activeModule || 'profile';
 		<section class="csv-result" aria-live="polite" aria-labelledby="employee-csv-result-title">
 			<h2 id="employee-csv-result-title">CSV import results</h2>
 			<p><strong><%= importResult.importedCount %></strong> of <%= importResult.totalRows %> employee profiles saved<%= importResult.errors.length ? `; ${importResult.errors.length} row${importResult.errors.length === 1 ? '' : 's'} need attention.` : '.' %></p>
+			<p>CSV import never synchronizes device users. Use Sync to Device separately for each employee after checking the PIN and the target device.</p>
 			<% if (importResult.errors.length) { %><ol class="csv-error-list"><% importResult.errors.forEach(item => { %><li><strong>Row <%= item.row %>:</strong> <%= item.message %></li><% }) %></ol><% } %>
 		</section>
 	<% } %>

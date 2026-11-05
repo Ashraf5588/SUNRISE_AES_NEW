@@ -58,6 +58,12 @@ test('parses device result bodies and rejects incomplete or invalid acknowledgem
         command: 'DATA UPDATE USERINFO',
         responsePayload: 'ID=17&Return=0&CMD=DATA%20UPDATE%20USERINFO'
     });
+    assert.deepEqual(parseDeviceCommandResult({ SN: 'DEVICE-1', ID: '18', Return: '0', CMD: 'DATA UPDATE USERINFO' }), {
+        commandId: 18,
+        returnCode: 0,
+        command: 'DATA UPDATE USERINFO',
+        responsePayload: JSON.stringify({ SN: 'DEVICE-1', ID: '18', Return: '0', CMD: 'DATA UPDATE USERINFO' })
+    });
     assert.equal(parseDeviceCommandResult('ID=17'), null);
     assert.equal(parseDeviceCommandResult('ID=nope&Return=0&CMD=USERINFO'), null);
     assert.equal(parseDeviceCommandResult({ id: 17, return: -1, cmd: 'USERINFO' }).returnCode, -1);

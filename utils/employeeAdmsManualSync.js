@@ -4,7 +4,6 @@ const {
     isValidAdmsPin
 } = require('./employeeAdmsCommands');
 
-const MANUAL_SYNC_TEST_SERIAL_NUMBER = 'MFP3241900092';
 const isManualAdmsSyncTestEnabled = (value = process.env.EMPLOYEE_ADMS_MANUAL_SYNC_TEST_ENABLED) => value === 'true';
 
 function buildManualTestUserUpdateCommand(employee) {
@@ -23,30 +22,31 @@ function buildManualTestUserUpdateCommand(employee) {
         isManager: false
     });
     if (command.commandType !== COMMAND_TYPES.UPDATE_USER || command.privilege !== 0) {
-        throw new Error('Manual test sync only supports normal-user updates.');
+        throw new Error('Manual sync only supports normal-user updates.');
     }
     return command;
 }
 
 function getManualTestPollFilter(serialNumber, organizationId) {
-    if (
-        String(serialNumber || '').trim() !== MANUAL_SYNC_TEST_SERIAL_NUMBER
-        || !String(organizationId || '').trim()
-    ) return null;
+    const normalizedSerialNumber = String(serialNumber || '').trim();
+    const normalizedOrganizationId = String(organizationId || '').trim();
+    if (!normalizedSerialNumber || !normalizedOrganizationId) return null;
     return {
-        organizationId: String(organizationId).trim(),
-        serialNumber: MANUAL_SYNC_TEST_SERIAL_NUMBER,
+        organizationId: normalizedOrganizationId,
+        serialNumber: normalizedSerialNumber,
         manualTest: true,
+        manualRequestVersion: 1,
         commandType: COMMAND_TYPES.UPDATE_USER
     };
 }
 
 function isManualTestCommandEligible(command, serialNumber, organizationId) {
-    return String(serialNumber || '').trim() === MANUAL_SYNC_TEST_SERIAL_NUMBER
+    return Boolean(String(serialNumber || '').trim())
         && Boolean(String(organizationId || '').trim())
         && command?.organizationId === String(organizationId).trim()
-        && command?.serialNumber === MANUAL_SYNC_TEST_SERIAL_NUMBER
+        && command?.serialNumber === String(serialNumber).trim()
         && command?.manualTest === true
+        && command?.manualRequestVersion === 1
         && command?.commandType === COMMAND_TYPES.UPDATE_USER;
 }
 
@@ -54,8 +54,9 @@ function getCommandAcknowledgementStatus(returnCode) {
     return Number(returnCode) === 0 ? 'SUCCESS' : 'FAILED';
 }
 
-async function queueManualEmployeeSyncTest({
+async function queueManualEmployeeSync({
     employeeId,
+    serialNumber,
     requestedBy = '',
     isEnabled,
     isValidEmployeeId,
@@ -65,14 +66,19 @@ async function queueManualEmployeeSyncTest({
     queueCommand
 }) {
     if (!isEnabled) {
-        return { queued: false, status: 403, message: 'Manual employee sync testing is disabled.' };
+        return { queued: false, status: 403, message: 'Manual employee synchronization is disabled.' };
     }
     if (!isValidEmployeeId(employeeId)) {
         return { queued: false, status: 400, message: 'Invalid employee reference.' };
     }
+    const selectedSerialNumber = String(serialNumber || '').trim();
+    if (!/^[A-Za-z0-9._-]{1,64}$/.test(selectedSerialNumber)) {
+        return { queued: false, status: 400, message: 'Select a valid attendance device.' };
+    }
     if (!organizationId) {
         return { queued: false, status: 500, message: 'Current organization database could not be identified.' };
     }
+
     const employee = await loadEmployee(employeeId);
     if (!employee) {
         return { queued: false, status: 404, message: 'Employee profile not found in this organization.' };
@@ -84,40 +90,42 @@ async function queueManualEmployeeSyncTest({
         return { queued: false, status: 400, message: error.message };
     }
 
-    const device = await loadDevice(organizationId, MANUAL_SYNC_TEST_SERIAL_NUMBER);
+    const device = await loadDevice(organizationId, selectedSerialNumber);
     if (
         !device
-        || device.serialNumber !== MANUAL_SYNC_TEST_SERIAL_NUMBER
+        || device.serialNumber !== selectedSerialNumber
         || device.organizationId !== organizationId
     ) {
-        return { queued: false, status: 404, message: 'The configured MB2000 test device is not registered in this organization.' };
+        return { queued: false, status: 404, message: 'The selected attendance device is not registered in this organization.' };
     }
+    if (device.supportsUserSyncCommands !== true) {
+        return {
+            queued: false,
+            status: 409,
+            message: 'User synchronization is blocked because this exact device and firmware have not been verified to support ADMS user commands.'
+        };
+    }
+
     const queuedCommand = await queueCommand(device, employee, {
         ...command,
         deviceCode: String(employee.deviceCode || '').trim()
     }, requestedBy, { manualTest: true });
-    console.info('Manual ADMS test command requested:', {
-        organizationId,
-        employeeReference: String(employee._id),
-        deviceCode: String(employee.deviceCode || '').trim(),
-        serialNumber: MANUAL_SYNC_TEST_SERIAL_NUMBER,
-        commandId: queuedCommand.commandId,
-        status: queuedCommand.status
-    });
+
     return {
         queued: true,
         status: 202,
+        duplicate: queuedCommand.duplicate === true,
         commandId: queuedCommand.commandId,
-        commandStatus: queuedCommand.status
+        commandStatus: queuedCommand.status,
+        serialNumber: selectedSerialNumber
     };
 }
 
 module.exports = {
-    MANUAL_SYNC_TEST_SERIAL_NUMBER,
     buildManualTestUserUpdateCommand,
     getCommandAcknowledgementStatus,
     isManualTestCommandEligible,
     getManualTestPollFilter,
     isManualAdmsSyncTestEnabled,
-    queueManualEmployeeSyncTest
+    queueManualEmployeeSync
 };

@@ -4,6 +4,22 @@ const employee = express.Router();
 const employeeController = require('../controller/employeeController/employeeController');
 const { verifytoken, verifytokenApi, isAdmin } = require('../middleware/auth');
 
+employee.use('/iclock', (req, res, next) => {
+	const requestTimestamp = new Date().toISOString();
+	const queryParameterNames = Object.keys(req.query || {});
+	const userAgent = String(req.get('user-agent') || '').slice(0, 200);
+	res.once('finish', () => {
+		console.info('ADMS HTTP request:', {
+			method: req.method,
+			url: `${req.baseUrl}${req.path}`,
+			queryParameterNames,
+			userAgent,
+			requestTimestamp,
+			responseStatus: res.statusCode
+		});
+	});
+	next();
+});
 
 employee.get('/employee-document/:employeeId', verifytokenApi, employeeController.showPrivateEmployeeDocument);
 employee.get('/employee-office-proof/:employeeId/:collection', verifytoken, isAdmin, employeeController.showPrivateEmployeeOfficeProof);
@@ -65,9 +81,9 @@ employee.get('/employeeattendance/device-status/:serialNumber', verifytoken, isA
 employee.post('/employeeattendance/device-sync', verifytoken, isAdmin, employeeController.startEmployeeAttendanceDeviceSync);
 employee.get('/employeeattendance/device-sync/:runId', verifytoken, isAdmin, employeeController.getEmployeeAttendanceDeviceSync);
 employee.post('/employeeattendance/staff/:employeeId/sync', verifytoken, isAdmin, employeeController.syncEmployeeToAttendanceDevices);
-employee.post('/employeeattendance/staff/:employeeId/manual-sync-test', verifytoken, isAdmin, employeeController.manualSyncEmployeeTest);
 employee.get('/employeeattendance/staff/:employeeId/commands', verifytoken, isAdmin, employeeController.getEmployeeAttendanceDeviceCommandHistory);
 employee.post('/employeeattendance/device-command/:commandId/retry', verifytoken, isAdmin, employeeController.retryEmployeeAttendanceDeviceCommand);
+employee.post('/employeeattendance/device/:serialNumber/command/:commandId/cancel', verifytoken, isAdmin, employeeController.cancelEmployeeAttendanceDeviceCommand);
 employee.post('/employeeattendance/staff/:employeeId/manual-fingerprint-enrollment', verifytoken, isAdmin, employeeController.confirmManualEmployeeFingerprintEnrollment);
 employee.post('/employeeattendance/device/:serialNumber/capabilities', verifytoken, isAdmin, employeeController.configureEmployeeAttendanceDeviceCapabilities);
 employee.get('/employeeattendance/export', employeeController.exportEmployeeAttendance);

@@ -67,16 +67,20 @@
 <body>
 	<%- include('employeesidenav', { currentPage, selectedEmployee }) %>
 	<main class="page-shell">
-		<header class="page-header"><div><p class="muted">People / Employee management</p><h1>Employee list</h1><p class="muted">Manage ADMS user sync and record manual fingerprint enrollment. Remote fingerprint enrollment is unverified for this MB2000 firmware.</p></div><a class="button" href="/employeedetail?new=1"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add employee</a></header>
-		<% if (!commandQueueEnabled) { %><p class="notice">General ADMS synchronization remains disabled. <% if (manualSyncTestEnabled && manualSyncTestDeviceAvailable) { %>The separately gated manual test is available only for the configured MB2000 test terminal.<% } else { %>Employee and attendance workflows continue normally.<% } %></p><% } %>
-		<p id="manualSyncFeedback" class="dialog-status" role="status" aria-live="polite"></p>
+		<header class="page-header"><div><p class="muted">People / Employee management</p><h1>Employee list</h1><p class="muted">Employee records are never sent automatically. Manual sync requires an administrator click and a device whose exact firmware command support is verified.</p></div><a class="button" href="/employeedetail?new=1"><i class="fa-solid fa-plus" aria-hidden="true"></i> Add employee</a></header>
+		<p class="notice">Global ADMS employee synchronization is disabled. Attendance uploads remain enabled. <% if (!userSyncProtocolVerified) { %>Manual user commands are also blocked until exact device/firmware support is verified.<% } %> This system cannot remotely inspect a terminal’s User List; confirm the selected PIN is new or belongs to this same employee before syncing.</p>
 		<section class="panel"><div class="panel-heading"><h2><%= employees.length %> employees</h2><div class="controls"><input id="employeeSearch" type="search" placeholder="Search employees" aria-label="Search employees"><a class="button" href="/employeeattendance"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i> Attendance</a></div></div>
 			<% if (employees.length) { %>
 			<div class="table-wrap"><table id="employeeList"><thead><tr><th>S.N</th><th>Employee code</th><th>Device code / PIN</th><th>Name</th><th>Designation</th><th>Department</th><th>Branch</th><th>Contact</th><th>Office email</th><th>Status</th><th>Device sync status</th><th>Profile actions</th><th>Device actions</th><th>Fingerprint enrollment</th></tr></thead><tbody>
 			<% employees.forEach((employee,index) => { const employeeId = String(employee._id); const sync = syncStatusByEmployee[employeeId]; const enrollment = manualEnrollmentByEmployee[employeeId]; const employeeStatuses = [employee.jobStatus, employee.employmentStatus].map(status => String(status || '').trim().toLowerCase()); const employeeInactive = employee.isActive === false || employeeStatuses.some(status => ['inactive', 'disabled', 'resigned', 'terminated'].includes(status)); %>
 				<tr>
 					<td><%= index+1 %></td><td class="employee-code"><%= employee.employeeCode || '-' %></td><td class="employee-code"><%= employee.deviceCode || 'Not set' %></td><td><%= employee.staffName %></td><td><%= employee.designation || '-' %></td><td><%= employee.department || '-' %></td><td><%= employee.branchName || '-' %></td><td><%= employee.mobileNumber || '-' %></td><td><%= employee.officeEmail || employee.email || '-' %></td><td class="<%= employeeInactive ? 'status-inactive' : 'status' %>"><%= employeeInactive ? 'Inactive' : employee.jobStatus || employee.employmentStatus || 'Active' %></td>
-					<td><%= sync ? (sync.status === 'SUCCESS' ? 'Synced' : sync.status === 'PENDING' || sync.status === 'SENT' ? 'Pending' : sync.status === 'FAILED' ? 'Failed' : sync.status) : 'Not Synced' %><% if (enrollment) { %><br>Manually Enrolled<% } %></td>
+					<td><%= sync ? (sync.status === 'SUCCESS' ? 'ADMS returned success' : sync.status === 'PENDING' ? 'Pending device poll' : sync.status === 'SENT' ? 'Sent in ADMS response; acknowledgement pending' : sync.status === 'FAILED' ? 'Failed' : sync.status) : 'Not synced' %>
+						<% if (sync?.status === 'SUCCESS') { %><br>Sender identity is unverified. If this is the terminal’s acknowledgement, enroll fingerprint with PIN <%= employee.deviceCode || '(not set)' %>.<% } %>
+						<% if (sync?.status === 'SENT') { %><br>Physical receipt is not confirmed<%= sync.deliverySource === 'likely_simulated' ? ' (request appeared simulated)' : '' %>.<% } %>
+						<% if (sync?.status === 'FAILED' && sync.lastError) { %><br><%= sync.lastError %><% } %>
+						<% if (enrollment) { %><br>Fingerprint manually confirmed on <%= enrollment.serialNumber %><% } %>
+					</td>
 					<td><div class="action-group">
 						<a class="action-button" href="/employeedetail?employeeId=<%= employee._id %>"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> Edit</a>
 						<% if (!employeeInactive) { %>
@@ -86,9 +90,8 @@
 						<% } else { %><span class="status-inactive">Inactive</span><% } %>
 					</div></td>
 					<td><div class="action-group">
-						<button class="action-button sync-button" type="button" data-employee-id="<%= employeeId %>" <%= commandQueueEnabled && employee.deviceCode ? '' : 'disabled' %>>Sync employee</button>
-						<% if (sync?.status === 'FAILED' && commandQueueEnabled && !sync.manualTest) { %><button class="action-button retry-button" type="button" data-command-id="<%= sync._id %>">Retry failed</button><% } %>
-						<% if (manualSyncTestEnabled && manualSyncTestDeviceAvailable && manualSyncTestEligibleEmployeeIds.includes(employeeId)) { %><button class="action-button manual-test-sync-button" type="button" data-employee-id="<%= employeeId %>">Manual test sync</button><% } %>
+						<button class="action-button sync-button" type="button" data-employee-id="<%= employeeId %>" data-employee-name="<%= employee.staffName %>" data-device-code="<%= employee.deviceCode || '' %>" <%= manualSyncTestEnabled && devices.length && manualSyncTestEligibleEmployeeIds.includes(employeeId) ? '' : 'disabled' %>>Sync to Device</button>
+						<% if (sync?.status === 'FAILED' && sync.manualTest && sync.manualRequestVersion === 1 && manualSyncTestEnabled && userSyncProtocolVerified) { %><button class="action-button retry-button" type="button" data-command-id="<%= sync._id %>">Retry failed</button><% } %>
 						<button class="action-button history-button" type="button" data-employee-id="<%= employeeId %>">Command history</button>
 					</div></td>
 					<td><button class="enrollment-button" type="button" <%= employee.deviceCode && devices.length ? '' : 'disabled' %> data-employee-id="<%= employeeId %>" data-device-code="<%= employee.deviceCode || '' %>" data-employee-name="<%= employee.staffName %>"><%= enrollment ? 'Record another enrollment' : 'Manual enrollment' %></button></td>
@@ -102,14 +105,29 @@
 				<form class="capability-form" method="post" action="/employeeattendance/device/<%= encodeURIComponent(device.serialNumber) %>/capabilities">
 					<label>Model <input type="text" name="model" value="<%= device.model || '' %>" maxlength="80"></label>
 					<label>Firmware <input type="text" name="firmwareVersion" value="<%= device.firmwareVersion || '' %>" maxlength="80"></label>
-					<label><input type="checkbox" name="supportsUserSyncCommands" value="true" <%= device.supportsUserSyncCommands ? 'checked' : '' %>> User sync commands verified</label>
-					<label><input type="checkbox" name="supportsUserDeletion" value="true" <%= device.supportsUserDeletion ? 'checked' : '' %>> User deletion verified</label>
-					<label><input type="checkbox" name="supportsManagerPrivilege" value="true" <%= device.supportsManagerPrivilege ? 'checked' : '' %>> Manager privilege 14 verified</label>
+					<label><input type="checkbox" name="supportsUserSyncCommands" value="true" <%= device.supportsUserSyncCommands ? 'checked' : '' %> <%= userSyncProtocolVerified ? '' : 'disabled' %>> Enable normal-user updates only after exact firmware verification</label>
+					<label><input type="checkbox" name="confirmUserSyncProtocol" value="true"> I verified USERINFO update support on this exact device/firmware; I will not enable deletion or manager privileges</label>
+					<p class="muted">User deletion and manager privileges are forced off. <% if (!userSyncProtocolVerified) { %>Set EMPLOYEE_ADMS_USERINFO_PROTOCOL_VERIFIED=true only after verifying the exact device and firmware; it is currently blocked.<% } %></p>
 					<button class="button" type="submit">Save device settings</button>
 				</form>
 			</article><% }) %></div><% } else { %><div class="empty">No ZKTeco terminal has connected to this organization database yet.</div><% } %>
 		</section>
 	</main>
+	<dialog id="syncDialog" aria-labelledby="syncTitle">
+		<div class="dialog-content">
+			<div class="dialog-heading"><div><h2 id="syncTitle">Sync employee to device</h2><p id="syncEmployeeSummary" class="muted"></p></div><button class="dialog-close" type="button" aria-label="Close dialog">&times;</button></div>
+			<p class="enrollment-notice">Check the selected terminal’s User List first. Continue only if this PIN is unassigned or already belongs to this employee; an update command may replace the name for that PIN. This workflow does not delete users or enroll fingerprints.</p>
+			<label class="device-picker" for="syncDevice">Target attendance device
+				<select id="syncDevice">
+				<% devices.forEach(device => { const syncAllowed = userSyncProtocolVerified && device.supportsUserSyncCommands; %><option value="<%= device.serialNumber %>" <%= syncAllowed ? '' : 'disabled' %>><%= device.name %> — <%= device.serialNumber %><%= syncAllowed ? '' : ' (sync support not verified)' %></option><% }) %>
+				</select>
+			</label>
+			<% if (!userSyncProtocolVerified || !devices.some(device => device.supportsUserSyncCommands)) { %><p class="status-inactive">No device is currently enabled for USERINFO update commands. Sync is blocked until the exact device and firmware are verified.</p><% } %>
+			<label><input id="confirmPinOwnership" type="checkbox"> I checked this device: the PIN is unassigned or belongs to this employee.</label>
+			<p><button id="confirmEmployeeSync" class="button" type="button" disabled>Confirm Sync</button></p>
+			<p id="syncStatus" class="dialog-status" role="status" aria-live="polite"></p>
+		</div>
+	</dialog>
 	<dialog id="enrollmentDialog" aria-labelledby="enrollmentTitle">
 		<div class="dialog-content">
 			<div class="dialog-heading"><div><h2 id="enrollmentTitle">Manual device enrollment</h2><p class="muted">Use these details to add the employee on the terminal.</p></div><button class="dialog-close" type="button" aria-label="Close dialog">&times;</button></div>
@@ -129,7 +147,7 @@
 			<p id="enrollmentStatus" class="dialog-status" role="status" aria-live="polite"></p>
 		</div>
 	</dialog>
-	<dialog id="historyDialog" aria-labelledby="historyTitle"><div class="dialog-content"><div class="dialog-heading"><div><h2 id="historyTitle">Device command history</h2></div><button class="dialog-close" type="button" aria-label="Close dialog">&times;</button></div><pre id="historyContent" class="history-content">Loading…</pre></div></dialog>
+	<dialog id="historyDialog" aria-labelledby="historyTitle"><div class="dialog-content"><div class="dialog-heading"><div><h2 id="historyTitle">Device command history</h2></div><button class="dialog-close" type="button" aria-label="Close dialog">&times;</button></div><pre id="historyContent" class="history-content">Loading…</pre><div id="historyActions" class="action-group"></div><p id="historyStatus" class="dialog-status" role="status" aria-live="polite"></p></div></dialog>
 	<script>
 		const employeeSearch = document.getElementById('employeeSearch');
 		employeeSearch.addEventListener('input', event => {
@@ -196,43 +214,70 @@
 				}
 			});
 		});
+		const syncDialog = document.getElementById('syncDialog');
+		const syncDevice = document.getElementById('syncDevice');
+		const confirmPinOwnership = document.getElementById('confirmPinOwnership');
+		const confirmEmployeeSync = document.getElementById('confirmEmployeeSync');
+		const syncStatus = document.getElementById('syncStatus');
+		let selectedSyncEmployeeId = '';
+		const updateSyncButtonState = () => {
+			const selectedOption = syncDevice.selectedOptions[0];
+			confirmEmployeeSync.disabled = !selectedSyncEmployeeId
+				|| !confirmPinOwnership.checked
+				|| !selectedOption
+				|| selectedOption.disabled;
+		};
 		document.querySelectorAll('.sync-button').forEach(button => {
-			button.addEventListener('click', async () => {
-				button.disabled = true;
-				try {
-					const response = await fetch(`/employeeattendance/staff/${encodeURIComponent(button.dataset.employeeId)}/sync`, { method: 'POST' });
-					const result = await response.json();
-					if (!response.ok) throw new Error(result.message || 'Unable to queue employee synchronization.');
-					window.location.reload();
-				} catch (error) {
-					window.alert(error.message);
-					button.disabled = false;
-				}
+			button.addEventListener('click', () => {
+				selectedSyncEmployeeId = button.dataset.employeeId || '';
+				document.getElementById('syncEmployeeSummary').textContent =
+					`${button.dataset.employeeName || 'Employee'} — PIN ${button.dataset.deviceCode || '(not set)'}`;
+				syncStatus.textContent = '';
+				confirmPinOwnership.checked = false;
+				const firstVerifiedDevice = [...syncDevice.options].find(option => !option.disabled);
+				if (firstVerifiedDevice) syncDevice.value = firstVerifiedDevice.value;
+				updateSyncButtonState();
+				syncDialog.showModal();
 			});
-			const manualSyncFeedback = document.getElementById('manualSyncFeedback');
-			document.querySelectorAll('.manual-test-sync-button').forEach(button => {
-				button.addEventListener('click', async () => {
-					button.disabled = true;
-					manualSyncFeedback.textContent = 'Queueing the restricted MB2000 test command…';
-					try {
-						const response = await fetch(`/employeeattendance/staff/${encodeURIComponent(button.dataset.employeeId)}/manual-sync-test`, {
-							method: 'POST'
-						});
-						const result = await response.json();
-						if (!response.ok) throw new Error(result.message || 'Unable to queue manual test sync.');
-						manualSyncFeedback.textContent = `${result.message} Command ID: ${result.commandId}.`;
-					} catch (error) {
-						manualSyncFeedback.textContent = error.message;
-						button.disabled = false;
-					}
+		});
+		confirmPinOwnership.addEventListener('change', updateSyncButtonState);
+		syncDevice.addEventListener('change', updateSyncButtonState);
+		confirmEmployeeSync.addEventListener('click', async () => {
+			if (confirmEmployeeSync.disabled || !selectedSyncEmployeeId) return;
+			confirmEmployeeSync.disabled = true;
+			syncStatus.textContent = 'Submitting one employee to the selected device…';
+			try {
+				const response = await fetch(`/employeeattendance/staff/${encodeURIComponent(selectedSyncEmployeeId)}/sync`, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						serialNumber: syncDevice.value,
+						confirmPinOwnership: true
+					})
 				});
-			});
+				const result = await response.json();
+				if (!response.ok) throw new Error(result.message || 'Unable to queue employee synchronization.');
+				syncStatus.textContent = `${result.message} Command ID: ${result.commandId}; status: ${result.status}.`;
+				setTimeout(() => window.location.reload(), 1600);
+			} catch (error) {
+				syncStatus.textContent = error.message;
+				updateSyncButtonState();
+			}
+		});
+		syncDialog.querySelector('.dialog-close').addEventListener('click', () => syncDialog.close());
+		syncDialog.addEventListener('click', event => {
+			if (event.target === syncDialog) syncDialog.close();
 		});
 		document.querySelectorAll('.retry-button').forEach(button => {
 			button.addEventListener('click', async () => {
+				if (!window.confirm('Confirm that the device PIN still belongs to this employee and that its command can be retried?')) return;
 				button.disabled = true;
 				try {
-					const response = await fetch(`/employeeattendance/device-command/${encodeURIComponent(button.dataset.commandId)}/retry`, { method: 'POST' });
+					const response = await fetch(`/employeeattendance/device-command/${encodeURIComponent(button.dataset.commandId)}/retry`, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ confirmPinOwnership: true })
+					});
 					const result = await response.json();
 					if (!response.ok) throw new Error(result.message || 'Unable to retry the command.');
 					window.location.reload();
@@ -247,14 +292,18 @@
 		document.querySelectorAll('.history-button').forEach(button => {
 			button.addEventListener('click', async () => {
 				const historyContent = document.getElementById('historyContent');
+				const historyActions = document.getElementById('historyActions');
+				const historyStatus = document.getElementById('historyStatus');
 				historyContent.textContent = 'Loading…';
+				historyActions.replaceChildren();
+				historyStatus.textContent = '';
 				historyDialog.showModal();
 				try {
 					const response = await fetch(`/employeeattendance/staff/${encodeURIComponent(button.dataset.employeeId)}/commands`);
 					const result = await response.json();
 					if (!response.ok) throw new Error(result.message || 'Unable to load command history.');
 					const commandRows = result.commands.map(command =>
-						`${command.createdAt} | ${command.serialNumber} | ${command.commandType} | ${command.status} | attempts ${command.attempts}${command.lastError ? ` | ${command.lastError}` : ''}`
+						`${command.createdAt} | ${command.serialNumber} | ID ${command.commandId} | ${command.commandType} | ${command.status} | attempts ${command.attempts}${command.deliverySource ? ` | delivery request source ${command.deliverySource}` : ''}${command.acknowledgementSource ? ` | acknowledgement source ${command.acknowledgementSource}` : ''}${command.lastError ? ` | ${command.lastError}` : ''}`
 					);
 					const enrollmentRows = result.manualEnrollments.map(enrollment =>
 						`${enrollment.confirmedAt} | ${enrollment.serialNumber} | Manually confirmed by ${enrollment.confirmedBy}`
@@ -267,6 +316,30 @@
 						...(enrollmentRows.length ? enrollmentRows : ['No manual enrollment confirmation recorded.']),
 						'Remote fingerprint enrollment: unverified'
 					].join('\n');
+					result.commands.filter(command => ['PENDING', 'SENT'].includes(command.status)).forEach(command => {
+						const cancelButton = document.createElement('button');
+						cancelButton.type = 'button';
+						cancelButton.className = 'action-button';
+						cancelButton.textContent = `Cancel ${command.status} command ${command.commandId} (${command.serialNumber})`;
+						cancelButton.addEventListener('click', async () => {
+							if (!window.confirm('Cancel this command at the server? If the terminal already received it, it cannot be recalled.')) return;
+							cancelButton.disabled = true;
+							try {
+								const cancelResponse = await fetch(`/employeeattendance/device/${encodeURIComponent(command.serialNumber)}/command/${encodeURIComponent(command.commandId)}/cancel`, {
+									method: 'POST'
+								});
+								const cancelResult = await cancelResponse.json();
+								if (!cancelResponse.ok) throw new Error(cancelResult.message || 'Unable to cancel command.');
+								historyStatus.textContent = cancelResult.message;
+								cancelButton.remove();
+								window.setTimeout(() => window.location.reload(), 1200);
+							} catch (error) {
+								historyStatus.textContent = error.message;
+								cancelButton.disabled = false;
+							}
+						});
+						historyActions.append(cancelButton);
+					});
 				} catch (error) {
 					historyContent.textContent = error.message;
 				}

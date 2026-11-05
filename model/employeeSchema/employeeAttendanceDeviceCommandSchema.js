@@ -10,9 +10,13 @@ const employeeAttendanceDeviceCommandSchema = new mongoose.Schema({
     employeeReference: { type: mongoose.Schema.Types.ObjectId, ref: 'staff', required: true },
     employeeCode: { type: String, trim: true, default: '' },
     deviceCode: { type: String, required: true, trim: true },
-    status: { type: String, enum: ['PENDING', 'SENT', 'SUCCESS', 'FAILED', 'UNSUPPORTED'], default: 'PENDING' },
+    status: { type: String, enum: ['PENDING', 'SENT', 'SUCCESS', 'FAILED', 'CANCELLED', 'UNSUPPORTED'], default: 'PENDING' },
     requestedBy: { type: String, trim: true, default: '' },
     privilege: { type: Number, min: 0, max: 14 },
+    manualRequestVersion: { type: Number, default: 0, min: 0 },
+    activeCommandKey: { type: String, trim: true, default: undefined },
+    deliverySource: { type: String, enum: ['unverified', 'likely_simulated'], default: 'unverified' },
+    acknowledgementSource: { type: String, enum: ['unverified', 'likely_simulated'], default: 'unverified' },
     createdAt: { type: Date, default: Date.now },
     sentAt: { type: Date },
     acknowledgedAt: { type: Date },
@@ -30,6 +34,10 @@ employeeAttendanceDeviceCommandSchema.index(
 );
 employeeAttendanceDeviceCommandSchema.index(
     { organizationId: 1, employeeReference: 1, createdAt: -1 }
+);
+employeeAttendanceDeviceCommandSchema.index(
+    { activeCommandKey: 1 },
+    { unique: true, sparse: true }
 );
 
 const employeeAttendanceDeviceCommandCounterSchema = new mongoose.Schema({
