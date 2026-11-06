@@ -2,6 +2,34 @@ const crypto = require('crypto');
 
 const isValidDeviceSerial = value => /^[A-Za-z0-9._-]{1,64}$/.test(String(value || '').trim());
 const normalizeAttendancePin = value => String(value || '').trim().toUpperCase();
+const ATTENDANCE_PAYLOAD_FIELDS = ['data', 'attlog', 'body'];
+const looksLikeAttendanceRows = value => /(?:\t|,).*\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}/s.test(String(value || ''));
+
+function extractAttendancePayload(body) {
+    if (Buffer.isBuffer(body)) return body.toString('utf8');
+    if (typeof body === 'string') {
+        const form = new URLSearchParams(body);
+        for (const field of ATTENDANCE_PAYLOAD_FIELDS) {
+            if (form.has(field)) return form.get(field) || '';
+        }
+        const [key, value] = [...form.entries()][0] || [];
+        return value === '' && looksLikeAttendanceRows(key) ? key : body;
+    }
+    if (!body || typeof body !== 'object') return '';
+
+    for (const field of ATTENDANCE_PAYLOAD_FIELDS) {
+        if (typeof body[field] === 'string' || Buffer.isBuffer(body[field])) {
+            return Buffer.isBuffer(body[field]) ? body[field].toString('utf8') : body[field];
+        }
+    }
+
+    const keys = Object.keys(body);
+    if (keys.length === 1 && body[keys[0]] === '' && looksLikeAttendanceRows(keys[0])) {
+        return keys[0];
+    }
+    return '';
+}
+
 const getEmployeeAttendanceCodes = employee => [...new Set([
     normalizeAttendancePin(employee?.deviceCode),
     normalizeAttendancePin(employee?.employeeCode)
@@ -110,6 +138,7 @@ module.exports = {
     getAttendanceRequestSource,
     getAttendanceSyncStatus,
     getEmployeeAttendanceCodes,
+    extractAttendancePayload,
     getDeviceOnlineTimeoutMs,
     isAttendanceDeviceOnline,
     isValidDeviceSerial,

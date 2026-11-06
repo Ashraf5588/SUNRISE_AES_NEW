@@ -255,12 +255,29 @@
 						confirmPinOwnership: true
 					})
 				});
-				const result = await response.json();
-				if (!response.ok) throw new Error(result.message || 'Unable to queue employee synchronization.');
-				syncStatus.textContent = `${result.message} Command ID: ${result.commandId}; status: ${result.status}.`;
+				let result;
+				try {
+					result = await response.json();
+				} catch (error) {
+					result = { message: 'The server returned an invalid response.' };
+				}
+				if (!response.ok) {
+					const prefix = result.code === 'PROTOCOL_VERIFICATION_REQUIRED'
+						? 'Protocol verification blocked'
+						: 'Sync request failed';
+					syncStatus.textContent = `${prefix}: ${result.message || 'Unable to queue employee synchronization.'}`;
+					updateSyncButtonState();
+					return;
+				}
+				const outcomeLabels = {
+					queued: 'New command queued',
+					existing_pending: 'Existing PENDING command',
+					existing_sent: 'Existing SENT command'
+				};
+				syncStatus.textContent = `${outcomeLabels[result.outcome] || 'Sync request completed'}: ${result.message} Command ID: ${result.commandId}; status: ${result.status}.`;
 				setTimeout(() => window.location.reload(), 1600);
 			} catch (error) {
-				syncStatus.textContent = error.message;
+				syncStatus.textContent = `Sync request failed: ${error.message}`;
 				updateSyncButtonState();
 			}
 		});

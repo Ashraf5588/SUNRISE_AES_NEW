@@ -27,6 +27,7 @@ const {
     getAttendanceRequestSource,
     getAttendanceSyncStatus,
     getEmployeeAttendanceCodes,
+    extractAttendancePayload,
     getDeviceOnlineTimeoutMs,
     isValidDeviceSerial,
     isAttendanceDeviceOnline,
@@ -52,11 +53,16 @@ const {
 } = require('../../utils/employeeAdmsCommands');
 const {
     getCommandAcknowledgementStatus,
+    getActiveManualSyncCommandFilter,
+    getExpiredManualSyncCommandFilter,
     isManualTestCommandEligible,
     getManualTestPollFilter,
+    getTerminalManualSyncCommandFilter,
+    isManualSyncCommandExpired,
     isManualAdmsSyncTestEnabled,
     queueManualEmployeeSync,
-    buildManualTestUserUpdateCommand
+    buildManualTestUserUpdateCommand,
+    MANUAL_SYNC_ACK_TIMEOUT_MS
 } = require('../../utils/employeeAdmsManualSync');
 const Staff = mongoose.models.staff || mongoose.model('staff', staffSchema, 'staff');
 const LeaveApplication = mongoose.models.LeaveApplication || mongoose.model('LeaveApplication', leaveApplicationSchema, 'leaveApplications');
@@ -112,33 +118,56 @@ async function queueAdmsEmployeeCommand(device, employee, command, requestedBy =
     const activeCommandKey = crypto.createHash('sha256')
         .update(`${organizationId}\n${serialNumber}\n${String(employee._id)}`)
         .digest('hex');
-    const existing = await EmployeeAttendanceDeviceCommand.findOne({ activeCommandKey }).lean();
+    const activeCommandFilter = getActiveManualSyncCommandFilter(activeCommandKey);
+    const terminalCommandFilter = getTerminalManualSyncCommandFilter(activeCommandKey);
+    const sentAtCutoff = new Date(Date.now() - MANUAL_SYNC_ACK_TIMEOUT_MS);
+    await EmployeeAttendanceDeviceCommand.updateMany(
+        getExpiredManualSyncCommandFilter(activeCommandKey, sentAtCutoff),
+        {
+            $set: {
+                status: 'FAILED',
+                lastError: 'No acknowledgement received within 24 hours; command expired without automatic retry.'
+            },
+            $unset: { activeCommandKey: '' }
+        }
+    );
+    await EmployeeAttendanceDeviceCommand.updateMany(terminalCommandFilter, {
+        $unset: { activeCommandKey: '' }
+    });
+    const existing = await EmployeeAttendanceDeviceCommand.findOne(activeCommandFilter).lean();
     if (existing) return { ...existing, duplicate: true };
 
     const commandId = await allocateAdmsCommandId(organizationId, serialNumber);
+    const commandDocument = {
+        organizationId,
+        serialNumber,
+        commandId,
+        commandType: command.commandType,
+        commandPayload: command.commandPayload,
+        manualTest: true,
+        manualRequestVersion: 1,
+        activeCommandKey,
+        employeeReference: employee._id,
+        employeeCode: String(employee.employeeCode || ''),
+        deviceCode: command.deviceCode || String(employee.deviceCode || ''),
+        requestedBy: String(requestedBy || '').slice(0, 120),
+        privilege: command.privilege,
+        status: 'PENDING'
+    };
     let created;
-    try {
-        created = await EmployeeAttendanceDeviceCommand.create({
-            organizationId,
-            serialNumber,
-            commandId,
-            commandType: command.commandType,
-            commandPayload: command.commandPayload,
-            manualTest: true,
-            manualRequestVersion: 1,
-            activeCommandKey,
-            employeeReference: employee._id,
-            employeeCode: String(employee.employeeCode || ''),
-            deviceCode: command.deviceCode || String(employee.deviceCode || ''),
-            requestedBy: String(requestedBy || '').slice(0, 120),
-            privilege: command.privilege,
-            status: 'PENDING'
-        });
-    } catch (error) {
-        if (error.code !== 11000) throw error;
-        const duplicate = await EmployeeAttendanceDeviceCommand.findOne({ activeCommandKey }).lean();
-        if (!duplicate) throw error;
-        return { ...duplicate, duplicate: true };
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+            created = await EmployeeAttendanceDeviceCommand.create(commandDocument);
+            break;
+        } catch (error) {
+            if (error.code !== 11000) throw error;
+            const duplicate = await EmployeeAttendanceDeviceCommand.findOne(activeCommandFilter).lean();
+            if (duplicate) return { ...duplicate, duplicate: true };
+            if (attempt > 0) throw error;
+            await EmployeeAttendanceDeviceCommand.updateMany(terminalCommandFilter, {
+                $unset: { activeCommandKey: '' }
+            });
+        }
     }
     console.info('ADMS employee command queued:', {
         organizationId,
@@ -2270,11 +2299,7 @@ exports.saveEmployeeAttendance = async (req, res) => {
         const fields = req.body && typeof req.body === 'object' ? req.body : {};
         serialNumber = String(req.query.SN || '').trim();
         const table = String(req.query.table || fields.table || '').trim().toUpperCase();
-        let payload = '';
-
-        if (typeof req.body === 'string') payload = req.body;
-        else if (Buffer.isBuffer(req.body)) payload = req.body.toString('utf8');
-        else payload = String(fields.data || fields.attlog || fields.body || '');
+        const payload = extractAttendancePayload(req.body);
 
         if (!isValidDeviceSerial(serialNumber)) {
             console.warn('ADMS attendance request missing a valid query-string serial number:', {
@@ -2502,7 +2527,10 @@ exports.syncEmployeeToAttendanceDevices = async (req, res) => {
             return res.status(503).json({ message: 'Manual employee synchronization is disabled by configuration.' });
         }
         if (!isEmployeeUserSyncProtocolVerified()) {
-            return res.status(503).json({ message: 'Employee commands are blocked until the exact device and firmware protocol is verified.' });
+            return res.status(503).json({
+                code: 'PROTOCOL_VERIFICATION_REQUIRED',
+                message: 'Employee commands are blocked until the exact device and firmware protocol is verified.'
+            });
         }
         const employeeId = req.params.employeeId;
         if (!mongoose.isValidObjectId(employeeId)) {
@@ -2538,9 +2566,12 @@ exports.syncEmployeeToAttendanceDevices = async (req, res) => {
             return res.status(outcome.status).json({ message: outcome.message });
         }
         return res.status(202).json({
-            message: outcome.duplicate
-                ? 'A command for this employee is already pending or awaiting acknowledgement on the selected device.'
-                : 'Employee command queued for the selected device; waiting for its ADMS poll and acknowledgement.',
+            outcome: outcome.outcome,
+            message: outcome.outcome === 'existing_pending'
+                ? 'An employee sync command is already pending for the selected device.'
+                : outcome.outcome === 'existing_sent'
+                    ? 'An employee sync command was already sent and is awaiting acknowledgement. It will not be automatically resent.'
+                    : 'Employee command queued for the selected device; waiting for its ADMS poll and acknowledgement.',
             commandId: outcome.commandId,
             status: outcome.commandStatus,
             serialNumber: outcome.serialNumber
@@ -2796,75 +2827,45 @@ exports.getAdmsDeviceCommand = async (req, res) => {
             status: 'SENT',
             ...manualTestPollFilter
         }).sort({ createdAt: 1 }).lean();
-        let command = oldestSent;
         if (oldestSent) {
-            const retryDelayMs = 2 * 60_000;
-            const maxAttempts = 3;
-            const sentAt = oldestSent.sentAt ? new Date(oldestSent.sentAt).getTime() : 0;
-            if (receivedAt.getTime() - sentAt >= retryDelayMs) {
-                if (oldestSent.attempts >= maxAttempts) {
-                    await EmployeeAttendanceDeviceCommand.updateOne(
-                        { _id: oldestSent._id, status: 'SENT', attempts: { $gte: maxAttempts } },
-                        {
-                            $set: { status: 'FAILED', lastError: 'No device acknowledgement after bounded delivery retries.' },
-                            $unset: { activeCommandKey: '' }
-                        }
-                    );
-                    command = null;
-                } else {
-                    command = await EmployeeAttendanceDeviceCommand.findOneAndUpdate(
-                        { _id: oldestSent._id, status: 'SENT', sentAt: oldestSent.sentAt },
-                        {
-                            $set: {
-                                sentAt: receivedAt,
-                                deliverySource: request.requestDetails.requestSource
-                            },
-                            $inc: { attempts: 1 }
+            if (isManualSyncCommandExpired(oldestSent.sentAt, receivedAt)) {
+                await EmployeeAttendanceDeviceCommand.updateOne(
+                    {
+                        _id: oldestSent._id,
+                        status: 'SENT',
+                        sentAt: oldestSent.sentAt
+                    },
+                    {
+                        $set: {
+                            status: 'FAILED',
+                            lastError: 'No acknowledgement received within 24 hours; command expired without automatic retry.'
                         },
-                        { new: true }
-                    ).lean();
-                    if (!command) {
-                        command = await EmployeeAttendanceDeviceCommand.findOne({
-                            _id: oldestSent._id,
-                            status: 'SENT',
-                            organizationId,
-                            serialNumber,
-                            ...manualTestPollFilter
-                        }).lean();
+                        $unset: { activeCommandKey: '' }
                     }
-                }
+                );
             }
-        }
-        if (!command && oldestSent && receivedAt.getTime() - new Date(oldestSent.sentAt || 0).getTime() < 2 * 60_000) {
-            command = await EmployeeAttendanceDeviceCommand.findOne({
-                _id: oldestSent._id,
-                status: 'SENT',
-                organizationId,
-                serialNumber,
-                ...manualTestPollFilter
-            }).lean();
+            await finishAttendanceDeviceRequest(serialNumber, request.requestDetails, 'no-command');
+            return res.type('text/plain').send('OK');
         }
 
-        if (!command) {
-            command = await EmployeeAttendanceDeviceCommand.findOneAndUpdate(
-                {
-                    organizationId,
-                    serialNumber,
-                    status: 'PENDING',
-                    ...manualTestPollFilter
+        const command = await EmployeeAttendanceDeviceCommand.findOneAndUpdate(
+            {
+                organizationId,
+                serialNumber,
+                status: 'PENDING',
+                ...manualTestPollFilter
+            },
+            {
+                $set: {
+                    status: 'SENT',
+                    sentAt: receivedAt,
+                    deliverySource: request.requestDetails.requestSource,
+                    lastError: ''
                 },
-                {
-                    $set: {
-                        status: 'SENT',
-                        sentAt: receivedAt,
-                        deliverySource: request.requestDetails.requestSource,
-                        lastError: ''
-                    },
-                    $inc: { attempts: 1 }
-                },
-                { sort: { createdAt: 1 }, new: true }
-            ).lean();
-        }
+                $inc: { attempts: 1 }
+            },
+            { sort: { createdAt: 1 }, new: true }
+        ).lean();
         if (!command) {
             await finishAttendanceDeviceRequest(serialNumber, request.requestDetails, 'no-command');
             return res.type('text/plain').send('OK');

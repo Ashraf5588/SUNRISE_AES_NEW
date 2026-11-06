@@ -8,12 +8,16 @@ employee.use('/iclock', (req, res, next) => {
 	const requestTimestamp = new Date().toISOString();
 	const queryParameterNames = Object.keys(req.query || {});
 	const userAgent = String(req.get('user-agent') || '').slice(0, 200);
+	const contentType = String(req.get('content-type') || '').slice(0, 100);
+	const contentLength = String(req.get('content-length') || '');
 	res.once('finish', () => {
 		console.info('ADMS HTTP request:', {
 			method: req.method,
 			url: `${req.baseUrl}${req.path}`,
 			queryParameterNames,
 			userAgent,
+			contentType,
+			contentLength,
 			requestTimestamp,
 			responseStatus: res.statusCode
 		});
@@ -62,7 +66,6 @@ employee.post('/employeedetail/import-csv', verifytoken, isAdmin, employeeContro
 employee.post('/employeedetail/:id', verifytoken, isAdmin, employeeController.uploadEmployeeDocuments, employeeController.updateEmployeeDetails);
 employee.post(
 	'/iclock/cdata',
-	express.text({ type: ['text/plain', 'application/octet-stream'] }),
 	employeeController.saveEmployeeAttendance
 );
 employee.get('/iclock/cdata', employeeController.getEmployeeAttendanceDeviceOptions);

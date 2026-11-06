@@ -5,6 +5,44 @@ const {
 } = require('./employeeAdmsCommands');
 
 const isManualAdmsSyncTestEnabled = (value = process.env.EMPLOYEE_ADMS_MANUAL_SYNC_TEST_ENABLED) => value === 'true';
+const ACTIVE_MANUAL_SYNC_STATUSES = Object.freeze(['PENDING', 'SENT']);
+const MANUAL_SYNC_ACK_TIMEOUT_MS = 24 * 60 * 60 * 1000;
+
+function getActiveManualSyncCommandFilter(activeCommandKey) {
+    return {
+        activeCommandKey,
+        status: { $in: ACTIVE_MANUAL_SYNC_STATUSES }
+    };
+}
+
+function getTerminalManualSyncCommandFilter(activeCommandKey) {
+    return {
+        activeCommandKey,
+        status: { $nin: ACTIVE_MANUAL_SYNC_STATUSES }
+    };
+}
+
+function getExpiredManualSyncCommandFilter(activeCommandKey, sentAtCutoff) {
+    return {
+        activeCommandKey,
+        status: 'SENT',
+        sentAt: { $lte: sentAtCutoff }
+    };
+}
+
+function isActiveManualSyncCommand(command) {
+    return ACTIVE_MANUAL_SYNC_STATUSES.includes(command?.status);
+}
+
+function isManualSyncCommandExpired(sentAt, now = Date.now()) {
+    if (sentAt == null) return false;
+    const sentAtMs = new Date(sentAt).getTime();
+    const nowMs = new Date(now).getTime();
+    return Number.isFinite(sentAtMs)
+        && Number.isFinite(nowMs)
+        && sentAtMs <= nowMs
+        && nowMs - sentAtMs >= MANUAL_SYNC_ACK_TIMEOUT_MS;
+}
 
 function buildManualTestUserUpdateCommand(employee) {
     const statuses = [employee?.employmentStatus, employee?.jobStatus]
@@ -117,13 +155,23 @@ async function queueManualEmployeeSync({
         duplicate: queuedCommand.duplicate === true,
         commandId: queuedCommand.commandId,
         commandStatus: queuedCommand.status,
+        outcome: queuedCommand.duplicate
+            ? queuedCommand.status === 'PENDING' ? 'existing_pending' : 'existing_sent'
+            : 'queued',
         serialNumber: selectedSerialNumber
     };
 }
 
 module.exports = {
+    ACTIVE_MANUAL_SYNC_STATUSES,
+    MANUAL_SYNC_ACK_TIMEOUT_MS,
     buildManualTestUserUpdateCommand,
+    getActiveManualSyncCommandFilter,
     getCommandAcknowledgementStatus,
+    getExpiredManualSyncCommandFilter,
+    getTerminalManualSyncCommandFilter,
+    isActiveManualSyncCommand,
+    isManualSyncCommandExpired,
     isManualTestCommandEligible,
     getManualTestPollFilter,
     isManualAdmsSyncTestEnabled,

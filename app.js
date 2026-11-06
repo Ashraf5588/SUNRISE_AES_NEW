@@ -116,6 +116,9 @@ app.engine('ejs', (filePath, options, callback) => {
   });
 });
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/iclock/cdata', express.text({
+  type: ['text/plain', 'application/octet-stream', 'application/x-www-form-urlencoded']
+}));
 app.use(express.json())
 app.use(cookieParser());
 app.use(express.urlencoded({

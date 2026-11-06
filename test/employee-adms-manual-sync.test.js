@@ -8,6 +8,12 @@ const {
     isManualTestCommandEligible,
     getManualTestPollFilter,
     isManualAdmsSyncTestEnabled,
+    getActiveManualSyncCommandFilter,
+    getExpiredManualSyncCommandFilter,
+    getTerminalManualSyncCommandFilter,
+    isActiveManualSyncCommand,
+    isManualSyncCommandExpired,
+    MANUAL_SYNC_ACK_TIMEOUT_MS,
     queueManualEmployeeSync
 } = require('../utils/employeeAdmsManualSync');
 const { COMMAND_TYPES } = require('../utils/employeeAdmsCommands');
@@ -95,6 +101,7 @@ test('manual sync is independent of the disabled global queue and only targets t
         assert.match(command.commandPayload, /PIN=202\tName=Subina Subedi\tPri=0/);
         assert.equal(requestedBy, 'test-admin');
         assert.deepEqual(options, { manualTest: true });
+        assert.equal(result.outcome, 'queued');
     } finally {
         if (previousGlobal === undefined) delete process.env.EMPLOYEE_ADMS_COMMANDS_ENABLED;
         else process.env.EMPLOYEE_ADMS_COMMANDS_ENABLED = previousGlobal;
@@ -190,6 +197,57 @@ test('device return code maps to acknowledged success or failure', () => {
     assert.equal(getCommandAcknowledgementStatus(1), 'FAILED');
 });
 
+test('only PENDING and SENT commands block duplicate manual synchronization', () => {
+    assert.deepEqual(getActiveManualSyncCommandFilter('dedupe-key'), {
+        activeCommandKey: 'dedupe-key',
+        status: { $in: ['PENDING', 'SENT'] }
+    });
+    assert.deepEqual(getTerminalManualSyncCommandFilter('dedupe-key'), {
+        activeCommandKey: 'dedupe-key',
+        status: { $nin: ['PENDING', 'SENT'] }
+    });
+    assert.deepEqual(getExpiredManualSyncCommandFilter('dedupe-key', new Date('2026-11-05T00:00:00Z')), {
+        activeCommandKey: 'dedupe-key',
+        status: 'SENT',
+        sentAt: { $lte: new Date('2026-11-05T00:00:00Z') }
+    });
+
+    for (const status of ['PENDING', 'SENT', 'FAILED', 'CANCELLED']) {
+        assert.equal(
+            isActiveManualSyncCommand({ activeCommandKey: 'dedupe-key', status }),
+            ['PENDING', 'SENT'].includes(status),
+            status
+        );
+    }
+});
+
+test('duplicate responses distinguish existing PENDING and SENT commands', async () => {
+    for (const [commandStatus, expectedOutcome] of [
+        ['PENDING', 'existing_pending'],
+        ['SENT', 'existing_sent']
+    ]) {
+        const { dependencies } = createQueueDependencies({
+            queueCommand: async () => ({
+                commandId: 31,
+                status: commandStatus,
+                duplicate: true
+            })
+        });
+        const result = await queueManualEmployeeSync(dependencies);
+        assert.equal(result.duplicate, true);
+        assert.equal(result.commandStatus, commandStatus);
+        assert.equal(result.outcome, expectedOutcome);
+    }
+});
+
+test('ambiguous SENT commands are never resent and expire only after the 24-hour acknowledgement timeout', () => {
+    const sentAt = new Date('2026-11-05T00:00:00.000Z');
+    assert.equal(isManualSyncCommandExpired(sentAt, new Date(sentAt.getTime() + MANUAL_SYNC_ACK_TIMEOUT_MS - 1)), false);
+    assert.equal(isManualSyncCommandExpired(sentAt, new Date(sentAt.getTime() + MANUAL_SYNC_ACK_TIMEOUT_MS)), true);
+    assert.equal(isManualSyncCommandExpired(undefined, new Date(sentAt.getTime() + 48 * 60 * 60 * 1000)), false);
+    assert.equal(isManualSyncCommandExpired(new Date(sentAt.getTime() + 1000), sentAt), false);
+});
+
 test('legacy commands default to non-deliverable marker and new commands can store active deduplication keys', () => {
     const base = {
         organizationId,
@@ -216,4 +274,8 @@ test('employee create, update, import, and deactivate contain no automatic devic
     assert.doesNotMatch(source, /safelyQueueEmployeeSync|queueEmployeeForConfiguredDevices/);
     assert.match(source, /serialNumber: req\.body\?\.serialNumber/);
     assert.match(source, /supportsUserSyncCommands !== true/);
+    assert.match(source, /getActiveManualSyncCommandFilter\(activeCommandKey\)/);
+    assert.match(source, /code: 'PROTOCOL_VERIFICATION_REQUIRED'/);
+    assert.match(source, /No acknowledgement received within 24 hours; command expired without automatic retry\./);
+    assert.doesNotMatch(source, /retryDelayMs|maxAttempts/);
 });
