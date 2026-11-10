@@ -4,9 +4,14 @@ const bs = require('../../utils/bikramSambat');
 const { leaveSchema, leaveApplicationSchema } = require('../../model/leaveschema/leavetypeschma');
 const { teacherSchema } = require('../../model/admin');
 const { staffSchema } = require('../../model/staffschema');
+const employeeAttendance = require('../../model/employeeSchema/employeeattendanceSchema');
 const { Branch } = require('../../model/employeeSchema/employeeSetupSchema');
 const EmployeeWeekend = require('../../model/employeeSchema/employeeWeekendSchema');
-const { buildLeaveAllocations } = require('../../utils/leaveCalculations');
+const {
+	allocateAbsentDaysToQuotas,
+	buildLeaveAllocations,
+	getAttendanceAbsenceDates
+} = require('../../utils/leaveCalculations');
 
 const LeaveType = mongoose.models.LeaveType || mongoose.model('LeaveType', leaveSchema, 'leaveTypes');
 const LeaveApplication = mongoose.models.LeaveApplication || mongoose.model('LeaveApplication', leaveApplicationSchema, 'leaveApplications');
@@ -50,6 +55,8 @@ const parseAdDate = value => {
 	return date.toISOString().slice(0, 10) === normalized ? date : null;
 };
 
+const getKathmanduDayStart = date => new Date(`${date.toISOString().slice(0, 10)}T00:00:00+05:45`);
+
 const getDateAllocations = async (startDate, endDate, { halfDay = false, sandwichLeave = true } = {}) => {
 	const excludedDates = new Set();
 	if (!sandwichLeave && !halfDay) {
@@ -87,6 +94,99 @@ const addStoredUsage = async (records, usedMonths, usedYears) => {
 		allocations.months.forEach((days, key) => usedMonths.set(key, (usedMonths.get(key) || 0) + days));
 		allocations.years.forEach((days, key) => usedYears.set(key, (usedYears.get(key) || 0) + days));
 	}
+};
+
+const getLeaveTypeUsage = async (types, records) => {
+	const usageByType = new Map();
+	for (const type of types) {
+		const typeRecords = records.filter(record =>
+			String(record.leaveType || '') === String(type._id)
+			|| normalizeName(record.leaveTypeName) === normalizeName(type.leavename)
+		);
+		const usedMonths = new Map();
+		const usedYears = new Map();
+		await addStoredUsage(typeRecords, usedMonths, usedYears);
+		usageByType.set(String(type._id), { usedMonths, usedYears });
+	}
+	return usageByType;
+};
+
+const getLeaveQuotaContext = async ({
+	applicant,
+	profile,
+	leaveTypes,
+	years,
+	excludeApplicationId,
+	additionalCoveredRanges = []
+}) => {
+	const selectedYears = [...new Set(years.map(year => String(year || '').trim()).filter(year => /^\d{4}$/.test(year)))];
+	if (!selectedYears.length) return { records: [], absenceDates: [], absenceUsage: new Map(), unallocatedAbsentDays: 0, usageByType: new Map() };
+
+	const startYear = selectedYears.reduce((first, year) => Number(year) < Number(first) ? year : first);
+	const endYear = selectedYears.reduce((last, year) => Number(year) > Number(last) ? year : last);
+	const fromNepali = `${startYear}-01-01`;
+	const throughNepali = `${Number(endYear) + 1}-01-01`;
+	const fromAd = parseNepaliDate(fromNepali);
+	const throughAd = parseNepaliDate(throughNepali);
+	if (!fromAd || !throughAd) throw new Error('Unable to determine the selected Bikram Sambat leave year.');
+
+	const employeeFilter = getEmployeeLeaveFilter(applicant, profile);
+	const leaveConditions = [
+		employeeFilter,
+		{ status: { $in: ['pending', 'approved'] } },
+		{ startDateNepali: { $lt: throughNepali }, endDateNepali: { $gte: fromNepali } }
+	];
+	if (mongoose.isValidObjectId(excludeApplicationId)) {
+		leaveConditions.push({ _id: { $ne: excludeApplicationId } });
+	}
+	const [records, attendanceRecords, holidays] = await Promise.all([
+		LeaveApplication.find({ $and: leaveConditions })
+			.select('leaveType leaveTypeName startDateNepali endDateNepali status leaveDay sandwichLeave monthlyAllocations yearlyAllocations')
+			.lean(),
+		employeeAttendance.find({
+			punchTime: {
+				$gte: getKathmanduDayStart(fromAd),
+				$lt: getKathmanduDayStart(throughAd)
+			}
+		}).select('pin punchTime source').lean(),
+		EmployeeWeekend.find({
+			dateBs: { $gte: fromNepali, $lt: throughNepali }
+		}).select('dateBs').lean()
+	]);
+
+	const pins = [...new Set([
+		profile?.deviceCode,
+		profile?.employeeCode,
+		applicant?.employeeCode
+	].map(value => String(value || '').trim()).filter(Boolean))];
+	const absenceDates = getAttendanceAbsenceDates({
+		startDate: fromAd,
+		endDate: throughAd,
+		employeePins: pins,
+		attendanceRecords,
+		holidayDates: holidays.map(holiday => holiday.dateBs),
+		leaveRecords: records,
+		additionalCoveredRanges
+	});
+	const usageByType = await getLeaveTypeUsage(leaveTypes, records);
+	const absenceAllocation = allocateAbsentDaysToQuotas(absenceDates, leaveTypes.map(type => {
+		const usage = usageByType.get(String(type._id));
+		return {
+			key: String(type._id),
+			name: type.leavename,
+			yearlyLimit: Number(type.maxDaysPerYear) || null,
+			monthlyLimit: Number(type.maxDaysPerMonth) || null,
+			usedYears: usage?.usedYears || new Map(),
+			usedMonths: usage?.usedMonths || new Map()
+		};
+	}));
+	return {
+		records,
+		absenceDates,
+		absenceUsage: absenceAllocation.allocations,
+		unallocatedAbsentDays: absenceAllocation.unallocatedDays,
+		usageByType
+	};
 };
 
 const findStaffProfile = (user, profiles) => {
@@ -257,7 +357,7 @@ exports.updateLeaveType = async (req, res) => {
 exports.leavePage = async (req, res) => {
 	try {
 		const admin = isAdmin(req.user);
-		const profiles = await Staff.find({}).select('employeeCode staffName companyName branchName designation department section employeePhoto').lean();
+		const profiles = await Staff.find({}).select('employeeCode deviceCode staffName companyName branchName designation department section employeePhoto').lean();
 		const approverUsers = await User.find({}).select('teacherName username role employeeCode department').sort({ teacherName: 1, username: 1 }).lean();
 		const currentUser = approverUsers.find(user => String(user._id) === String(req.user._id));
 		const eligibleApprovers = getAdminDepartmentStaff(approverUsers, profiles);
@@ -342,34 +442,57 @@ exports.leavePage = async (req, res) => {
 		});
 		const availableLeaveTypes = admin || currentApprover ? allLeaveTypes : allLeaveTypes.filter(type => appliesToUser(type, req.user));
 		let leaveBalances = [];
+		let absentDates = [];
+		let totalLeaveTakenWithAbsences = 0;
+		let unallocatedAbsentDays = 0;
 		if (!admin) {
-			const balanceRecords = await LeaveApplication.find({
-				$and: [userFilter, yearFilter, { status: { $in: ['pending', 'approved'] } }]
-			}).select('leaveType leaveTypeName startDateNepali endDateNepali leaveDay sandwichLeave monthlyAllocations yearlyAllocations').lean();
+			const quotaContext = await getLeaveQuotaContext({
+				applicant: leavePageUser,
+				profile: leavePageProfile,
+				leaveTypes: availableLeaveTypes,
+				years: [academicYear]
+			});
+			absentDates = quotaContext.absenceDates;
+			unallocatedAbsentDays = quotaContext.unallocatedAbsentDays;
 			const currentBsMonth = String(bs.ADToBS(new Date()) || '').slice(5, 7);
 			const selectedMonthPeriod = `${academicYear}-${currentBsMonth}`;
-			leaveBalances = await Promise.all(availableLeaveTypes.map(async type => {
-				const typeRecords = balanceRecords.filter(record =>
-					String(record.leaveType || '') === String(type._id)
-					|| normalizeName(record.leaveTypeName) === normalizeName(type.leavename)
-				);
-				const usedMonths = new Map();
-				const usedYears = new Map();
-				await addStoredUsage(typeRecords, usedMonths, usedYears);
+			leaveBalances = availableLeaveTypes.map(type => {
+				const usage = quotaContext.usageByType.get(String(type._id)) || {
+					usedMonths: new Map(),
+					usedYears: new Map()
+				};
+				const absentUsage = quotaContext.absenceUsage.get(String(type._id)) || {
+					months: new Map(),
+					years: new Map()
+				};
+				const usedMonthDays = (usage.usedMonths.get(selectedMonthPeriod) || 0)
+					+ (absentUsage.months.get(selectedMonthPeriod) || 0);
+				const usedYearDays = (usage.usedYears.get(academicYear) || 0)
+					+ (absentUsage.years.get(academicYear) || 0);
 				const yearlyLimit = Number(type.maxDaysPerYear) || null;
 				const monthlyLimit = Number(type.maxDaysPerMonth) || null;
-				const yearlyRemaining = yearlyLimit === null ? null : Math.max(0, yearlyLimit - (usedYears.get(academicYear) || 0));
-				const monthlyRemaining = monthlyLimit === null ? null : Math.max(0, monthlyLimit - (usedMonths.get(selectedMonthPeriod) || 0));
+				const yearlyRemaining = yearlyLimit === null ? null : Math.max(0, yearlyLimit - usedYearDays);
+				const monthlyRemaining = monthlyLimit === null ? null : Math.max(0, monthlyLimit - usedMonthDays);
 				return {
 					name: type.leavename,
 					yearlyLimit,
 					yearlyRemaining,
 					monthlyLimit,
 					monthlyRemaining,
+					usedDays: usedYearDays,
+					absentDays: absentUsage.days,
 					monthlyPeriod: selectedMonthPeriod,
-					remainingDays: yearlyRemaining ?? monthlyRemaining
+					remainingDays: yearlyRemaining === null
+						? monthlyRemaining
+						: monthlyRemaining === null
+							? yearlyRemaining
+							: Math.min(yearlyRemaining, monthlyRemaining)
 				};
-			}));
+			});
+			const filedLeaveDays = [...quotaContext.usageByType.values()]
+				.reduce((total, usage) => total + (usage.usedYears.get(academicYear) || 0), 0);
+			totalLeaveTakenWithAbsences = filedLeaveDays + absentDates.length;
+			unallocatedAbsentDays = Math.min(unallocatedAbsentDays, absentDates.length);
 		}
 		const remainingQuotaTypeCount = leaveBalances.filter(balance => balance.remainingDays !== null).length;
 		const totalRemainingLeave = leaveBalances.reduce((total, balance) => total + (balance.remainingDays || 0), 0);
@@ -387,6 +510,9 @@ exports.leavePage = async (req, res) => {
 			leaveBalances,
 			remainingQuotaTypeCount,
 			totalRemainingLeave,
+			totalLeaveTakenWithAbsences,
+			absentDates,
+			unallocatedAbsentDays,
 			applications,
 			applicationCount,
 			academicYear,
@@ -440,9 +566,8 @@ exports.leaveUsage = async (req, res) => {
 			? await LeaveType.findOne({ _id: leaveTypeId, isActive: true }).lean()
 			: null;
 		if (!leaveType || !appliesToUser(leaveType, applicant)) return res.status(400).json({ message: 'Choose a leave type available to this employee.' });
-		const profiles = await Staff.find({}).select('employeeCode staffName').lean();
+		const profiles = await Staff.find({}).select('employeeCode deviceCode staffName').lean();
 		const applicantProfile = findStaffProfile(applicant, profiles);
-		const applicantLeaveFilter = getEmployeeLeaveFilter(applicant, applicantProfile);
 
 		const startValue = String(req.query.startDateAd || req.query.startDateNepali || '').trim();
 		const endValue = String(req.query.endDateAd || req.query.endDateNepali || '').trim();
@@ -459,20 +584,34 @@ exports.leaveUsage = async (req, res) => {
 		const allocations = startDate && endDate
 			? await getDateAllocations(startDate, endDate, { halfDay, sandwichLeave: req.query.sandwichLeave !== 'false' })
 			: { months: new Map(), years: new Map() };
-		const activeStatuses = ['pending', 'approved'];
-		const quotaFilters = [
-			applicantLeaveFilter,
-			{ $or: [{ leaveType: leaveType._id }, { leaveTypeName: leaveType.leavename }] },
-			{ status: { $in: activeStatuses } }
-		];
-		if (admin && mongoose.isValidObjectId(req.query.excludeApplicationId)) {
-			quotaFilters.push({ _id: { $ne: req.query.excludeApplicationId } });
-		}
-		const quotaRecords = await LeaveApplication.find({ $and: quotaFilters })
-			.select('startDateNepali endDateNepali leaveDay sandwichLeave monthlyAllocations yearlyAllocations').lean();
-		const usedMonths = new Map();
-		const usedYears = new Map();
-		await addStoredUsage(quotaRecords, usedMonths, usedYears);
+		const applicableTypes = (await LeaveType.find({ isActive: true }).sort({ leavename: 1 }).lean())
+			.filter(type => appliesToUser(type, applicant));
+		const selectedYears = [...allocations.years.keys()];
+		if (!selectedYears.length) selectedYears.push(String(bs.ADToBS(new Date()) || '').slice(0, 4));
+		const additionalCoveredRanges = startDate && endDate ? [{
+			startDateNepali: String(bs.ADToBS(startDate) || '').slice(0, 10),
+			endDateNepali: String(bs.ADToBS(endDate) || '').slice(0, 10)
+		}] : [];
+		const quotaContext = await getLeaveQuotaContext({
+			applicant,
+			profile: applicantProfile,
+			leaveTypes: applicableTypes,
+			years: selectedYears,
+			excludeApplicationId: req.query.excludeApplicationId,
+			additionalCoveredRanges
+		});
+		const selectedUsage = quotaContext.usageByType.get(String(leaveType._id)) || {
+			usedMonths: new Map(),
+			usedYears: new Map()
+		};
+		const selectedAbsenceUsage = quotaContext.absenceUsage.get(String(leaveType._id)) || {
+			months: new Map(),
+			years: new Map()
+		};
+		const usedMonths = new Map(selectedUsage.usedMonths);
+		const usedYears = new Map(selectedUsage.usedYears);
+		selectedAbsenceUsage.months.forEach((days, period) => usedMonths.set(period, (usedMonths.get(period) || 0) + days));
+		selectedAbsenceUsage.years.forEach((days, period) => usedYears.set(period, (usedYears.get(period) || 0) + days));
 
 		const monthly = [...allocations.months].map(([period, requestedDays]) => {
 			const usedDays = usedMonths.get(period) || 0;
@@ -694,7 +833,7 @@ exports.submitLeaveApplication = [handleLeaveDocumentUpload, async (req, res) =>
 		const allocations = await getDateAllocations(startDate, endDate, { halfDay, sandwichLeave });
 		const requestedDays = totalAllocations(allocations.years);
 		if (!requestedDays) return res.status(400).send('The selected dates contain no chargeable leave days.');
-		const profiles = await Staff.find({}).select('employeeCode staffName companyName branchName designation department section employeePhoto').lean();
+		const profiles = await Staff.find({}).select('employeeCode deviceCode staffName companyName branchName designation department section employeePhoto').lean();
 		const profile = findStaffProfile(applicant, profiles);
 		const applicantLeaveFilter = getEmployeeLeaveFilter(applicant, profile);
 		const department = String(profile.department || applicant.department || '').trim();
@@ -719,18 +858,27 @@ exports.submitLeaveApplication = [handleLeaveDocumentUpload, async (req, res) =>
 		if (overlapping.length) return res.status(409).send('You already have a pending or approved leave request that overlaps these dates.');
 
 		if (!admin && (leaveType.maxDaysPerYear || leaveType.maxDaysPerMonth)) {
-			const quotaRecords = await LeaveApplication.find({
-				$and: [applicantLeaveFilter, {
-					$or: [{ leaveType: leaveType._id }, { leaveTypeName: leaveType.leavename }]
-				}, {
-					status: { $in: activeStatuses },
-					startDateNepali: { $lte: endDateNepali },
-					endDateNepali: { $gte: `${startDateNepali.slice(0, 4)}-01-01` }
-				}]
-			}).select('startDateNepali endDateNepali leaveDay sandwichLeave monthlyAllocations yearlyAllocations').lean();
-			const usedMonths = new Map();
-			const usedYears = new Map();
-			await addStoredUsage(quotaRecords, usedMonths, usedYears);
+			const applicableTypes = (await LeaveType.find({ isActive: true }).sort({ leavename: 1 }).lean())
+				.filter(type => appliesToUser(type, applicant));
+			const quotaContext = await getLeaveQuotaContext({
+				applicant,
+				profile,
+				leaveTypes: applicableTypes,
+				years: [...allocations.years.keys()],
+				additionalCoveredRanges: [{ startDateNepali, endDateNepali }]
+			});
+			const typeUsage = quotaContext.usageByType.get(String(leaveType._id)) || {
+				usedMonths: new Map(),
+				usedYears: new Map()
+			};
+			const absenceUsage = quotaContext.absenceUsage.get(String(leaveType._id)) || {
+				months: new Map(),
+				years: new Map()
+			};
+			const usedMonths = new Map(typeUsage.usedMonths);
+			const usedYears = new Map(typeUsage.usedYears);
+			absenceUsage.months.forEach((days, period) => usedMonths.set(period, (usedMonths.get(period) || 0) + days));
+			absenceUsage.years.forEach((days, period) => usedYears.set(period, (usedYears.get(period) || 0) + days));
 			for (const [year, days] of allocations.years) {
 				if (leaveType.maxDaysPerYear && (usedYears.get(year) || 0) + days > leaveType.maxDaysPerYear) {
 					return res.status(409).send(`This request exceeds the ${leaveType.maxDaysPerYear}-day yearly limit for ${year}.`);

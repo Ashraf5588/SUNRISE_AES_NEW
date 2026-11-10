@@ -145,23 +145,43 @@
 				<div class="leave-summary-item requests"><span>Total leave requests</span><strong><%= applicationCount %></strong></div>
 				<div class="leave-summary-item approved"><span>Total approved</span><strong><%= totalApproved %></strong></div>
 				<div class="leave-summary-item rejected"><span>Total rejected</span><strong><%= totalRejected %></strong></div>
-				<% if (!isUserAdmin) { %><div class="leave-summary-item remaining"><span>Remaining leave days</span><strong><%= Number(totalRemainingLeave.toFixed(1)) %></strong><small>Across <%= remainingQuotaTypeCount %> limited types</small></div><% } %>
+				<% if (!isUserAdmin) { %>
+				<div class="leave-summary-item absent"><span>Leave + absent days counted</span><strong><%= Number(totalLeaveTakenWithAbsences.toFixed(1)) %></strong><small>Includes attendance-based absences for academic year <%= academicYear %></small></div>
+				<div class="leave-summary-item remaining"><span>Remaining leave days</span><strong><%= Number(totalRemainingLeave.toFixed(1)) %></strong><small>Across <%= remainingQuotaTypeCount %> limited types</small></div>
+				<% } %>
 			</div>
 			<% if (!isUserAdmin) { %>
 			<div class="leave-remaining-section">
 				<div class="leave-section-heading"><div><h3>Remaining by leave type</h3><p>Balances for academic year <%= academicYear %>; monthly balances use the matching BS month.</p></div></div>
+				<% if (unallocatedAbsentDays > 0) { %><div class="leave-absence-warning"><%= Number(unallocatedAbsentDays.toFixed(1)) %> absent day(s) exceed all remaining limited quotas. Quotas are shown as fully used; the attendance absences are still listed below.</div><% } %>
 				<div class="leave-remaining-grid">
 					<% leaveBalances.forEach(balance => { %>
 					<div class="leave-remaining-item">
 						<strong><%= balance.name %></strong>
 						<div class="leave-remaining-values">
-							<% if (balance.yearlyLimit !== null) { %><span>Yearly <b><%= Number(balance.yearlyRemaining.toFixed(1)) %> / <%= balance.yearlyLimit %> days left</b></span><% } %>
+							<% if (balance.yearlyLimit !== null) { %><span>Yearly <b><%= Number(balance.yearlyRemaining.toFixed(1)) %> / <%= balance.yearlyLimit %> days left</b><small><%= Number(balance.usedDays.toFixed(1)) %> leave + absent days charged</small></span><% } %>
 							<% if (balance.monthlyLimit !== null) { %><span>Monthly <b><%= Number(balance.monthlyRemaining.toFixed(1)) %> / <%= balance.monthlyLimit %> days left</b><small><%= balance.monthlyPeriod %></small></span><% } %>
 							<% if (balance.yearlyLimit === null && balance.monthlyLimit === null) { %><span class="no-leave-limit">No fixed limit</span><% } %>
 						</div>
 					</div>
 					<% }) %>
 				</div>
+			</div>
+			<div class="leave-remaining-section leave-absence-section">
+				<div class="leave-section-heading"><div><h3>Attendance-based absences</h3><p>Full-day absences without a leave request; Saturdays, configured holidays, and days without device attendance activity are excluded. Submit a leave form later to record the reason.</p></div><span class="leave-status rejected"><%= absentDates.length %> absent</span></div>
+				<% if (absentDates.length) { %>
+				<div class="leave-table-wrap"><table class="leave-table leave-absence-table">
+					<thead><tr><th>Date (BS)</th><th>Remarks</th><th>Days counted</th><th>Leave form</th></tr></thead>
+					<tbody><% absentDates.slice().reverse().forEach(absence => { %>
+					<tr class="leave-absent-row">
+						<td data-label="Date (BS)"><strong><%= absence.nepaliDate %></strong></td>
+						<td data-label="Remarks"><span class="leave-status rejected">Absent</span></td>
+						<td data-label="Days counted">1 day</td>
+						<td data-label="Leave form">Not filed</td>
+					</tr>
+					<% }) %></tbody>
+				</table></div>
+				<% } else { %><div class="leave-empty">No confirmed attendance-based absences found for this academic year.</div><% } %>
 			</div>
 			<% } %>
 			<% if (applications.length) { %>

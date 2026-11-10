@@ -26,4 +26,5 @@ const EmployeeAttendanceSchema = new mongoose.Schema({
 });   
 EmployeeAttendanceSchema.index({ eventKey: 1 }, { unique: true, sparse: true });
 EmployeeAttendanceSchema.index({ sn: 1, source: 1 });
+EmployeeAttendanceSchema.index({ punchTime: 1 });
 module.exports = mongoose.models.EmployeeAttendance || mongoose.model('EmployeeAttendance', EmployeeAttendanceSchema);
