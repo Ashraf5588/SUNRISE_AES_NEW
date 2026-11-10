@@ -130,7 +130,7 @@ const getLeaveQuotaContext = async ({
 	const throughAd = parseNepaliDate(throughNepali);
 	if (!fromAd || !throughAd) throw new Error('Unable to determine the selected Bikram Sambat leave year.');
 
-	const employeeFilter = getEmployeeLeaveFilter(applicant, profile);
+	const employeeFilter = getEmployeeLeaveFilter(applicant, profile, { includeName: true });
 	const leaveConditions = [
 		employeeFilter,
 		{ status: { $in: ['pending', 'approved'] } },
@@ -701,10 +701,22 @@ exports.leaveReport = async (req, res) => {
 				const profile = profiles.find(candidate => String(candidate._id) === selectedEmployee.profileId)
 					|| findStaffProfile(user, profiles);
 				const employeeFilter = getEmployeeLeaveFilter(user, profile, { includeName: true });
-				const records = await LeaveApplication.find({ ...employeeFilter, status: 'approved' })
+				const applicableTypes = leaveTypes.filter(type => appliesToUser(type, user));
+				const [records, quotaContext] = await Promise.all([
+					LeaveApplication.find({
+						...employeeFilter,
+						status: { $in: ['pending', 'approved'] }
+					})
 					.sort({ startDateNepali: 1, createdAt: 1 })
 					.select('employeeName employeeCode department designation branchName leaveType leaveTypeName isPaid startDateNepali endDateNepali leaveDay sandwichLeave requestedDays yearlyAllocations reason status reviewedBy assignedApproverName approverName')
-					.lean();
+					.lean(),
+					getLeaveQuotaContext({
+						applicant: user,
+						profile,
+						leaveTypes: applicableTypes,
+						years: [selectedYear]
+					})
+				]);
 				const leaveTypeById = new Map(leaveTypes.map(type => [String(type._id), type]));
 				const leaveTypeByName = new Map(leaveTypes.map(type => [normalizeName(type.leavename), type]));
 				const takenByLeaveType = new Map();
@@ -735,7 +747,6 @@ exports.leaveReport = async (req, res) => {
 						|| leaveTypeByName.get(normalizeName(record.leaveTypeName));
 					const leaveTypeName = String(record.leaveTypeName || leaveType?.leavename || 'Other leave');
 					const balanceKey = leaveType ? String(leaveType._id) : normalizeName(leaveTypeName);
-					if (record.status !== 'approved') continue;
 					takenByLeaveType.set(balanceKey, (takenByLeaveType.get(balanceKey) || 0) + daysInYear);
 					totalTakenDays += daysInYear;
 					applications.push({
@@ -756,14 +767,37 @@ exports.leaveReport = async (req, res) => {
 					});
 				}
 
-				const applicableTypes = leaveTypes.filter(type => appliesToUser(type, user));
+				const absenceUsage = quotaContext.absenceUsage;
+				absenceUsage.forEach((usage, balanceKey) => {
+					const absentDays = usage.years.get(selectedYear) || 0;
+					if (absentDays) {
+						takenByLeaveType.set(balanceKey, (takenByLeaveType.get(balanceKey) || 0) + absentDays);
+						totalTakenDays += absentDays;
+					}
+				});
+				totalTakenDays += quotaContext.unallocatedAbsentDays;
+				const absenceApplications = quotaContext.absenceDates.map(absence => ({
+					leaveTypeName: 'Absent',
+					startDateNepali: absence.nepaliDate,
+					endDateNepali: absence.nepaliDate,
+					daysInYear: 1,
+					reason: 'Absent (attendance-based; no leave form filed)',
+					approvedBy: '',
+					statusLabel: 'Attendance-based',
+					isAttendanceAbsence: true
+				}));
+				applications.push(...absenceApplications);
+				applications.sort((first, second) =>
+					String(first.startDateNepali || '').localeCompare(String(second.startDateNepali || ''))
+				);
+
 				const balanceTypes = new Map(applicableTypes.map(type => [String(type._id), {
 					name: type.leavename,
 					allocatedDays: Number(type.maxDaysPerYear) || null,
 					takenDays: takenByLeaveType.get(String(type._id)) || 0
 				}]));
 				applications.forEach(application => {
-					if (!balanceTypes.has(application.balanceKey)) {
+					if (!application.isAttendanceAbsence && !balanceTypes.has(application.balanceKey)) {
 						balanceTypes.set(application.balanceKey, {
 							name: application.leaveTypeName,
 							allocatedDays: null,
@@ -779,7 +813,14 @@ exports.leaveReport = async (req, res) => {
 							: Math.max(0, balance.allocatedDays - balance.takenDays)
 					}))
 					.sort((first, second) => first.name.localeCompare(second.name));
-				return { employee: selectedEmployee, applications, leaveBalances, totalTakenDays };
+				return {
+					employee: selectedEmployee,
+					applications,
+					leaveBalances,
+					totalTakenDays,
+					absentDays: quotaContext.absenceDates.length,
+					unallocatedAbsentDays: quotaContext.unallocatedAbsentDays
+				};
 			}));
 		}
 
