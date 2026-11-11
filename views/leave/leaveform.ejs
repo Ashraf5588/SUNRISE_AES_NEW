@@ -168,7 +168,7 @@
 				</div>
 			</div>
 			<div class="leave-remaining-section leave-absence-section">
-				<div class="leave-section-heading"><div><h3>Attendance-based absences</h3><p>Full-day absences without a leave request; Saturdays, configured holidays, and days without device attendance activity are excluded. Submit a leave form later to record the reason.</p></div><span class="leave-status rejected"><%= absentDates.length %> absent</span></div>
+				<div class="leave-section-heading"><div><h3>Attendance-based absences</h3><p>Past full days with no morning or evening punch and no leave request; Saturdays and configured holidays are excluded. Submit a leave form later to record the reason.</p></div><span class="leave-status rejected"><%= absentDates.length %> absent</span></div>
 				<% if (absentDates.length) { %>
 				<div class="leave-table-wrap"><table class="leave-table leave-absence-table">
 					<thead><tr><th>Date (BS)</th><th>Remarks</th><th>Days counted</th><th>Leave form</th></tr></thead>

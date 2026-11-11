@@ -55,12 +55,10 @@ const getAttendanceAbsenceDates = ({
 
     const targetPins = new Set(employeePins.map(normalizePin).filter(Boolean));
     if (!targetPins.size) return [];
-    const deviceActivityDates = new Set();
     const employeePunchDates = new Set();
     attendanceRecords.forEach(record => {
         const adDate = getKathmanduDateKey(record.punchTime);
         if (!adDate) return;
-        if (record.source !== 'Manual') deviceActivityDates.add(adDate);
         if (targetPins.has(normalizePin(record.pin))) employeePunchDates.add(adDate);
     });
 
@@ -84,7 +82,7 @@ const getAttendanceAbsenceDates = ({
         const date = new Date(timestamp);
         const adDate = date.toISOString().slice(0, 10);
         if (adDate >= todayAd || date.getUTCDay() === 6) continue;
-        if (!deviceActivityDates.has(adDate) || employeePunchDates.has(adDate)) continue;
+        if (employeePunchDates.has(adDate)) continue;
 
         const nepaliDate = String(bs.ADToBS(date) || '').slice(0, 10);
         if (!nepaliDate || holidays.has(nepaliDate)) continue;

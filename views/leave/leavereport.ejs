@@ -102,7 +102,7 @@
 			<section class="report-sheet">
 				<h2 class="report-title">Employee Leave Report — BS <%= selectedYear %></h2>
 				<% reportData.forEach(({ employee, absentDays, unallocatedAbsentDays }) => { %>
-				<div class="absence-summary"><strong><%= employee.name %>: <%= absentDays %> attendance-based absent day(s) counted as leave.</strong><% if (unallocatedAbsentDays > 0) { %><%= Number(unallocatedAbsentDays.toFixed(1)) %> absent day(s) exceeded all remaining limited quotas; they are included in the total but not charged to a quota type.<% } else { %>Dates covered by pending or approved leave, Saturdays, configured holidays, and days without device attendance are excluded.<% } %></div>
+				<div class="absence-summary"><strong><%= employee.name %>: <%= absentDays %> attendance-based absent day(s) counted as leave.</strong><% if (unallocatedAbsentDays > 0) { %><%= Number(unallocatedAbsentDays.toFixed(1)) %> absent day(s) exceeded all remaining limited quotas; they are included in the total but not charged to a quota type.<% } else { %>Dates covered by pending or approved leave, Saturdays, and configured holidays are excluded.<% } %></div>
 				<% }) %>
 				<div class="report-table-wrap"><table class="report-table">
 					<thead>
@@ -135,7 +135,7 @@
 					</tr><% }) %>
 					<% }) %></tbody>
 				</table></div>
-				<p class="report-footnote">Pending and approved leave requests and attendance-based absences are included in totals and quota balances. Absences are shown in red; only past dates with device attendance activity are counted. Saturdays, configured holidays, dates covered by pending or approved leave, and dates without device activity are excluded.</p>
+				<p class="report-footnote">Pending and approved leave requests and attendance-based absences are included in totals and quota balances. Absences are shown in red; past weekdays with no morning or evening punch are counted unless covered by pending or approved leave or a configured holiday.</p>
 			</section>
 			<p class="report-footnote screen-only">Generated on <%= new Date().toLocaleString('en-GB', { timeZone: 'Asia/Kathmandu' }) %> (Nepal Time)</p>
 			<% } else if (!errorMessage) { %>

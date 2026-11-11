@@ -29,7 +29,7 @@ test('excludes configured weekend and holiday dates when sandwich leave is off',
     assert.equal([...allocations.years.values()][0], 2);
 });
 
-test('identifies only full-day absences on active device-attendance dates', () => {
+test('identifies full-day absences while excluding leave, holidays, Saturdays, and employee punches', () => {
     const adDate = value => new Date(`${value}T12:00:00.000Z`);
     const attendanceRecords = [];
     for (let day = 5; day <= 11; day += 1) {
@@ -65,7 +65,7 @@ test('identifies only full-day absences on active device-attendance dates', () =
     assert.deepEqual(absences.map(absence => absence.adDate), ['2026-10-05', '2026-10-09', '2026-10-11']);
 });
 
-test('requires device activity and excludes today and future dates', () => {
+test('identifies an absent day even when no device punches were uploaded that day', () => {
     const dateRecords = ['2026-10-12', '2026-10-13', '2026-10-14'].map(adDate => ({
         pin: 'OTHER-EMPLOYEE',
         punchTime: new Date(`${adDate}T12:00:00.000Z`),
@@ -86,10 +86,27 @@ test('requires device activity and excludes today and future dates', () => {
     assert.deepEqual(
         getAttendanceAbsenceDates({
             ...options,
-            attendanceRecords: dateRecords.map(record => ({ ...record, source: 'Manual' }))
+            attendanceRecords: []
         }),
-        []
+        [{
+            adDate: '2026-10-12',
+            nepaliDate: String(bs.ADToBS(date('2026-10-12'))).slice(0, 10),
+            year: String(bs.ADToBS(date('2026-10-12'))).slice(0, 4),
+            month: String(bs.ADToBS(date('2026-10-12'))).slice(0, 7)
+        }]
     );
+});
+
+test('counts Ashraf example date BS 2083-05-15 as absent without a submitted leave form', () => {
+    const absences = getAttendanceAbsenceDates({
+        startDate: date('2026-08-31'),
+        endDate: date('2026-09-01'),
+        employeePins: ['134'],
+        attendanceRecords: [],
+        now: date('2026-11-10')
+    });
+
+    assert.deepEqual(absences.map(absence => absence.nepaliDate), ['2083-05-15']);
 });
 
 test('allocates absent days across available quotas without exceeding limits', () => {
