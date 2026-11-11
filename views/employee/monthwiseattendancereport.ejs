@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Month-wise staff attendance report</title>
+	<link rel="stylesheet" href="/leave-management.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+	<style>
+		.month-report-main { max-width:1600px; }
+		.report-filters { display:grid; grid-template-columns:repeat(2,minmax(180px,1fr)); gap:14px; align-items:start; }
+		.report-field { min-width:0; }
+		.report-field > label,.filter-label { display:block; margin-bottom:6px; color:#3e4b46; font-size:13px; font-weight:700; }
+		.report-field select,.report-field input[type="search"],.report-field input[type="number"] { width:100%; min-height:42px; padding:9px 11px; border:1px solid #d7e1da; border-radius:4px; background:#fff; color:var(--leave-ink); }
+		.month-picker,.employee-picker { grid-column:1 / -1; display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px; max-height:250px; overflow:auto; padding:10px; border:1px solid var(--leave-line); border-radius:5px; background:#fbfdfb; }
+		.month-choice,.employee-choice { display:flex; align-items:center; gap:9px; min-width:0; padding:9px; border:1px solid var(--leave-line); border-radius:4px; background:#fff; cursor:pointer; }
+		.month-choice[hidden],.employee-choice[hidden] { display:none; }
+		.month-choice input,.employee-choice input,.picker-toolbar input { width:18px; min-height:18px; flex:0 0 auto; margin:0; accent-color:var(--leave-deep); }
+		.month-choice span,.employee-choice span { overflow-wrap:anywhere; font-size:12px; }
+		.employee-choice small { color:var(--leave-muted); }
+		.picker-toolbar { display:flex; grid-column:1 / -1; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+		.picker-toolbar label { display:inline-flex; align-items:center; gap:8px; font-size:12px; font-weight:700; }
+		.selection-count { color:var(--leave-muted); font-size:12px; }
+		.picker-actions { display:flex; align-items:center; gap:7px; }
+		.report-actions { display:flex; grid-column:1 / -1; flex-wrap:wrap; gap:8px; }
+		.report-button { display:inline-flex; min-height:40px; align-items:center; justify-content:center; padding:0 15px; border:1px solid var(--leave-deep); border-radius:4px; background:var(--leave-deep); color:#fff; cursor:pointer; font-weight:700; }
+		.report-button.secondary { border-color:var(--leave-line); background:#fff; color:var(--leave-ink); }
+		.report-button.small { min-height:32px; padding:0 10px; font-size:12px; }
+		.report-error { margin:0; color:var(--leave-red); font-weight:700; }
+		.report-legend { display:flex; flex-wrap:wrap; gap:8px 18px; margin:14px 0; color:#374151; font-size:12px; }
+		.report-legend strong { color:var(--leave-ink); }
+		.month-report-sheet { padding:18px; border:1px solid var(--leave-line); border-radius:7px; background:#fff; box-shadow:0 7px 20px rgba(24,54,43,.045); }
+		.month-report-title { margin:0 0 12px; font:800 20px Manrope,sans-serif; text-align:center; }
+		.month-report-subtitle { margin:0 0 14px; color:var(--leave-muted); font-size:12px; text-align:center; }
+		.month-report-table-wrap { width:100%; overflow:auto; }
+		.month-report-table { width:max-content; min-width:100%; border-collapse:collapse; font-size:12px; }
+		.month-report-table th,.month-report-table td { min-width:62px; padding:7px 8px; border:1px solid #8794a2; text-align:center; white-space:nowrap; }
+		.month-report-table thead th { background:#e9f2f8; color:#111827; font-weight:800; }
+		.month-report-table thead .month-heading { min-width:390px; background:#c5dced; font-size:14px; }
+		.month-report-table thead .identity-heading { background:#f2f6f3; }
+		.month-report-table .employee-name { min-width:180px; text-align:left; font-weight:700; }
+		.month-report-table .employee-code { min-width:72px; }
+		.month-report-table .number-cell { font-variant-numeric:tabular-nums; }
+		.month-report-table tbody tr:nth-child(even) { background:#f8fafc; }
+		.month-report-table tfoot td { background:#eef4f7; font-weight:800; }
+		.month-report-empty { padding:24px; border:1px dashed var(--leave-line); color:var(--leave-muted); text-align:center; }
+		@media(max-width:700px) {
+			.report-filters { grid-template-columns:1fr; }
+			.report-actions .report-button { flex:1; }
+			.month-report-sheet { padding:12px 8px; }
+			.month-report-table { font-size:11px; }
+		}
+		@media print {
+			@page { size:A3 landscape; margin:8mm; }
+			body { min-width:0; background:#fff !important; color:#111; font-size:8pt; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+			body.employee-nav-visible .leave-shell,body.employee-nav-visible.employee-nav-collapsed .leave-shell,body.employee-nav-collapsed .leave-shell { width:100% !important; margin:0 !important; }
+			.employee-sidenav,.leave-topbar,.leave-page-heading,.report-filter-panel,.screen-only { display:none !important; }
+			.leave-main { width:100%; max-width:none; padding:0; }
+			.month-report-sheet { padding:0; border:0; border-radius:0; box-shadow:none; }
+			.month-report-title { margin-bottom:4px; font-size:14pt; }
+			.month-report-subtitle { margin-bottom:6px; }
+			.report-legend { margin:5px 0; font-size:7pt; }
+			.month-report-table-wrap { overflow:visible; }
+			.month-report-table { width:100%; min-width:0; table-layout:auto; font-size:6.5pt; }
+			.month-report-table th,.month-report-table td { min-width:0; padding:3px 4px; }
+			.month-report-table thead { display:table-header-group; }
+			.month-report-table thead .month-heading { min-width:0; font-size:7.5pt; }
+			.month-report-table .employee-name { min-width:0; }
+			.month-report-table tr { break-inside:avoid; }
+		}
+	</style>
+</head>
+<body>
+	<%- include('employeesidenav', { currentPage: 'attendance-monthly-report', selectedEmployee: null, isAdmin: true }) %>
+	<div class="leave-shell">
+		<header class="leave-topbar">
+			<a class="leave-brand" href="/employeemanagementdashboard">Employee attendance</a>
+			<nav aria-label="Attendance navigation"><a href="/employeeattendance">Daily attendance</a><a class="active" href="/employeeattendance/monthly-report">Monthly report</a></nav>
+		</header>
+		<main class="leave-main month-report-main">
+			<header class="leave-page-heading"><div><p class="leave-eyebrow">Administration / Attendance</p><h1>Month-wise staff attendance</h1><p>Review approved leave, attendance, absences, missed punches, late arrivals, early exits, and holidays by Bikram Sambat month.</p></div></header>
+			<section class="leave-panel report-filter-panel">
+				<div class="leave-section-heading"><div><h2>Choose report criteria</h2><p>Months through the current BS month are selected by default.</p></div></div>
+				<form method="get" action="/employeeattendance/monthly-report" class="report-filters" id="attendanceReportForm">
+					<div class="report-field"><label for="year">Nepali year (BS)</label><select id="year" name="year"><% yearOptions.forEach(option => { %><option value="<%= option %>" <%= year === option ? 'selected' : '' %>><%= option %></option><% }) %></select></div>
+					<div class="report-field"><span class="filter-label">Months (BS)</span><div class="picker-actions"><button type="button" class="report-button secondary small" id="selectAllMonths">Select all available</button><span class="selection-count" id="monthSelectionCount"></span></div></div>
+					<div class="month-picker" role="group" aria-label="Select Bikram Sambat months">
+						<% monthOptions.forEach(month => { %><label class="month-choice"><input type="checkbox" name="month" value="<%= month.number %>" <%= selectedMonths.includes(month.number) ? 'checked' : '' %>><span><%= month.name %></span></label><% }) %>
+					</div>
+					<div class="report-field employee-search"><label for="employeeSearch">Search staff by name or employee code</label><input id="employeeSearch" type="search" placeholder="Type a staff name or code"><button type="button" class="report-button secondary small" id="searchEmployees">Search staff</button></div>
+					<div class="employee-picker" role="group" aria-label="Select staff members">
+						<div class="picker-toolbar"><label><input type="checkbox" id="selectAllEmployees"><span>Select all shown staff</span></label><span class="selection-count" id="selectionCount" aria-live="polite"></span></div>
+						<% employeeOptions.forEach(employee => { %><label class="employee-choice" data-search="<%= `${employee.name} ${employee.code} ${employee.department}`.toLowerCase() %>"><input type="checkbox" name="employeeId" value="<%= employee.id %>" <%= selectedEmployeeIds.includes(employee.id) ? 'checked' : '' %>><span><strong><%= employee.name %></strong><br><small><%= [employee.code, employee.department].filter(Boolean).join(' / ') %></small></span></label><% }) %>
+					</div>
+					<div class="report-actions"><button class="report-button" type="submit" name="generate" value="1">Generate report</button><% if (report) { %><button class="report-button secondary" type="button" onclick="window.print()">Print report</button><% } %></div>
+				</form>
+				<% if (errorMessage) { %><p class="report-error" role="alert"><%= errorMessage %></p><% } %>
+			</section>
+
+			<% if (report) { %>
+			<section class="month-report-sheet">
+				<h2 class="month-report-title">Month Wise Report</h2>
+				<p class="month-report-subtitle">Bikram Sambat year <%= report.year %> · <%= report.employees.length %> staff · Holidays counted from Employee Weekends setup</p>
+				<div class="report-legend">
+					<span><strong>Present:</strong> at least one attendance punch</span>
+					<span><strong>Absent:</strong> neither morning nor evening punch, excluding approved leave and holidays</span>
+					<span><strong>Leave:</strong> approved leave application only</span>
+					<span><strong>Missed:</strong> one of morning/evening punches missing</span>
+				</div>
+				<div class="month-report-table-wrap"><table class="month-report-table">
+					<thead>
+						<tr><th rowspan="2" class="identity-heading">SN</th><th rowspan="2" class="identity-heading">Code</th><th rowspan="2" class="identity-heading">Employee</th><% report.months.forEach(month => { %><th class="month-heading" colspan="6"><%= month.name %> (holiday: <%= month.holidayCount %>)</th><% }) %></tr>
+						<tr><% report.months.forEach(() => { %><th>Present</th><th>Absent</th><th>Leave</th><th>Late in</th><th>Early out</th><th>Missed</th><% }) %></tr>
+					</thead>
+					<tbody><% report.employees.forEach((employee, employeeIndex) => { %><tr>
+						<td><%= employeeIndex + 1 %></td><td class="employee-code"><%= employee.code || '—' %></td><td class="employee-name"><%= employee.name %></td>
+						<% employee.monthly.forEach(month => { %>
+						<td class="number-cell"><%= month.counts.present %></td>
+						<td class="number-cell"><%= month.counts.absent %></td>
+						<td class="number-cell"><%= month.counts.leave %></td>
+						<td class="number-cell"><%= month.counts.lateIn %></td>
+						<td class="number-cell"><%= month.counts.earlyOut %></td>
+						<td class="number-cell"><%= month.counts.missed %></td>
+						<% }) %>
+					</tr><% }) %></tbody>
+					<tfoot><tr><td colspan="3">Total</td><% report.totals.forEach(total => { %><td><%= total.present %></td><td><%= total.absent %></td><td><%= total.leave %></td><td><%= total.lateIn %></td><td><%= total.earlyOut %></td><td><%= total.missed %></td><% }) %></tr></tfoot>
+				</table></div>
+			</section>
+			<% } %>
+		</main>
+	</div>
+	<script>
+		const employeeChoices = [...document.querySelectorAll('.employee-choice')];
+		const employeeCheckboxes = employeeChoices.map(choice => choice.querySelector('input'));
+		const employeeSearch = document.getElementById('employeeSearch');
+		const selectAllEmployees = document.getElementById('selectAllEmployees');
+		const selectionCount = document.getElementById('selectionCount');
+		const selectAllMonths = document.getElementById('selectAllMonths');
+		const monthCheckboxes = [...document.querySelectorAll('input[name="month"]')];
+		const monthSelectionCount = document.getElementById('monthSelectionCount');
+
+		function filterEmployees() {
+			const query = employeeSearch.value.trim().toLowerCase();
+			employeeChoices.forEach(choice => { choice.hidden = !choice.dataset.search.includes(query); });
+			updateEmployeeSelection();
+		}
+		function updateEmployeeSelection() {
+			const checked = employeeCheckboxes.filter(checkbox => checkbox.checked).length;
+			const visible = employeeChoices.filter(choice => !choice.hidden).map(choice => choice.querySelector('input'));
+			const visibleChecked = visible.filter(checkbox => checkbox.checked).length;
+			selectAllEmployees.checked = visible.length > 0 && visibleChecked === visible.length;
+			selectAllEmployees.indeterminate = visibleChecked > 0 && visibleChecked < visible.length;
+			selectionCount.textContent = `${checked} selected`;
+		}
+		function updateMonthSelection() {
+			const selected = monthCheckboxes.filter(checkbox => checkbox.checked).length;
+			monthSelectionCount.textContent = `${selected} selected`;
+		}
+		document.getElementById('searchEmployees').addEventListener('click', filterEmployees);
+		employeeSearch.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); filterEmployees(); } });
+		selectAllEmployees.addEventListener('change', () => {
+			employeeChoices.filter(choice => !choice.hidden).forEach(choice => { choice.querySelector('input').checked = selectAllEmployees.checked; });
+			updateEmployeeSelection();
+		});
+		employeeCheckboxes.forEach(checkbox => checkbox.addEventListener('change', updateEmployeeSelection));
+		selectAllMonths.addEventListener('click', () => {
+			const allSelected = monthCheckboxes.length > 0 && monthCheckboxes.every(checkbox => checkbox.checked);
+			monthCheckboxes.forEach(checkbox => { checkbox.checked = !allSelected; });
+			updateMonthSelection();
+		});
+		monthCheckboxes.forEach(checkbox => checkbox.addEventListener('change', updateMonthSelection));
+		document.getElementById('year').addEventListener('change', () => {
+			const form = document.getElementById('attendanceReportForm');
+			form.querySelectorAll('input[name="month"]').forEach(input => input.remove());
+			form.querySelectorAll('input[name="employeeId"]').forEach(input => input.remove());
+			form.querySelector('input[name="generate"]')?.remove();
+			form.requestSubmit();
+		});
+		updateEmployeeSelection();
+		updateMonthSelection();
+	</script>
+</body>
+</html>

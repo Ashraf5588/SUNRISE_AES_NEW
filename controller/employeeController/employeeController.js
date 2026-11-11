@@ -45,6 +45,11 @@ const {
 } = require('../../model/employeeSchema/employeeAttendanceDeviceCommandSchema');
 const { getActiveEmployeeProfiles, isActiveEmployeeProfile } = require('../../utils/employeeManagementDashboard');
 const {
+    buildMonthWiseAttendanceReport,
+    getMonthDateRange,
+    getMonthWiseReportMonthOptions
+} = require('../../utils/monthWiseAttendanceReport');
+const {
     COMMAND_TYPES,
     formatAdmsCommandResponse,
     isValidAdmsPin,
@@ -3339,6 +3344,124 @@ async function registerDevicesFromLegacyAttendance() {
         }
     }
 }
+
+exports.showMonthWiseAttendanceReport = async (req, res) => {
+    try {
+        const now = new Date();
+        const currentBs = String(bs.ADToBS(now) || '');
+        const currentBsYear = Number(currentBs.slice(0, 4));
+        const currentBsMonth = Number(currentBs.slice(5, 7));
+        const minimumYear = currentBsYear - 4;
+        const employees = await getEmployeeProfiles();
+        const employeeOptions = employees.map(employee => ({
+            id: String(employee._id),
+            name: String(employee.staffName || '').trim(),
+            code: String(employee.employeeCode || '').trim(),
+            department: String(employee.department || '').trim()
+        }));
+        const requestedYear = String(req.query.year || currentBsYear).trim();
+        const validYear = /^\d{4}$/.test(requestedYear)
+            && Number(requestedYear) >= minimumYear
+            && Number(requestedYear) <= currentBsYear;
+        const year = validYear ? requestedYear : String(currentBsYear);
+        const monthOptions = getMonthWiseReportMonthOptions(year, now);
+        const requestedMonths = req.query.month === undefined
+            ? monthOptions.map(month => month.number)
+            : (Array.isArray(req.query.month) ? req.query.month : [req.query.month])
+                .map(value => Number(value))
+                .filter(value => monthOptions.some(month => month.number === value));
+        const selectedMonths = [...new Set(requestedMonths)].sort((first, second) => first - second);
+        const requestedEmployeeIds = (Array.isArray(req.query.employeeId) ? req.query.employeeId : [req.query.employeeId])
+            .map(value => String(value || '').trim())
+            .filter(Boolean);
+        const selectedEmployeeIds = [...new Set(requestedEmployeeIds)];
+        const isGenerating = req.query.generate === '1';
+        let report = null;
+        let errorMessage = validYear ? '' : 'Choose a Bikram Sambat year from the available list.';
+
+        if (!validYear) {
+            errorMessage = 'Choose a Bikram Sambat year from the available list.';
+        } else if (isGenerating && !selectedMonths.length) {
+            errorMessage = 'Select at least one month.';
+        } else if (isGenerating && !selectedEmployeeIds.length) {
+            errorMessage = 'Select at least one staff member.';
+        } else if (selectedEmployeeIds.some(id => !employees.some(employee => String(employee._id) === id))) {
+            errorMessage = 'One or more selected staff members are invalid.';
+        } else if (isGenerating) {
+            const selectedEmployees = employees.filter(employee => selectedEmployeeIds.includes(String(employee._id)));
+            const attendanceCodes = [...new Set(selectedEmployees.flatMap(getEmployeeAttendanceCodes))];
+            const escapeRegExp = value => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const firstMonth = selectedMonths[0];
+            const lastMonth = selectedMonths[selectedMonths.length - 1];
+            const firstRange = getMonthDateRange(year, firstMonth);
+            const lastRange = getMonthDateRange(year, lastMonth);
+            const bsStart = `${year}-${String(firstMonth).padStart(2, '0')}-01`;
+            const nextMonthNumber = lastMonth === 12 ? 1 : lastMonth + 1;
+            const nextMonthYear = lastMonth === 12 ? Number(year) + 1 : Number(year);
+            const bsEndExclusive = `${nextMonthYear}-${String(nextMonthNumber).padStart(2, '0')}-01`;
+            const startTime = new Date(`${firstRange.startAd}T00:00:00+05:45`);
+            const endTime = new Date(`${lastRange.endExclusiveAd}T00:00:00+05:45`);
+            const attendancePinPatterns = attendanceCodes.map(code => new RegExp(`^${escapeRegExp(code)}$`, 'i'));
+            const employeeNames = [...new Set(selectedEmployees.map(employee => String(employee.staffName || '').trim()).filter(Boolean))];
+            const leaveIdentityConditions = [];
+            if (attendanceCodes.length) {
+                leaveIdentityConditions.push({
+                    employeeCode: { $in: attendanceCodes.map(code => new RegExp(`^${escapeRegExp(code)}$`, 'i')) }
+                });
+            }
+            if (employeeNames.length) {
+                leaveIdentityConditions.push({
+                    employeeName: { $in: employeeNames.map(name => new RegExp(`^${escapeRegExp(name)}$`, 'i')) }
+                });
+            }
+            const [punches, approvedLeaves, holidays] = await Promise.all([
+                attendancePinPatterns.length
+                    ? employeeAttendance.find({
+                        pin: { $in: attendancePinPatterns },
+                        punchTime: { $gte: startTime, $lt: endTime }
+                    }).select('pin punchTime isLate lateMinutes isEarly earlyMinutes manualPunchType status').lean()
+                    : [],
+                leaveIdentityConditions.length
+                    ? LeaveApplication.find({
+                        status: 'approved',
+                        startDateNepali: { $lt: bsEndExclusive },
+                        endDateNepali: { $gte: bsStart },
+                        $or: leaveIdentityConditions
+                    }).select('employeeCode employeeName startDateNepali endDateNepali').lean()
+                    : [],
+                EmployeeWeekend.find({
+                    dateBs: { $gte: bsStart, $lt: bsEndExclusive }
+                }).select('dateBs name').lean()
+            ]);
+            report = buildMonthWiseAttendanceReport({
+                employees: selectedEmployees,
+                punches,
+                approvedLeaves,
+                holidays,
+                year,
+                monthNumbers: selectedMonths,
+                now
+            });
+        }
+
+        const yearOptions = Array.from({ length: 5 }, (_, index) => String(currentBsYear - index));
+        return res.render('employee/monthwiseattendancereport', {
+            employeeOptions,
+            selectedEmployeeIds,
+            monthOptions,
+            selectedMonths,
+            year,
+            yearOptions,
+            report,
+            errorMessage,
+            currentBsYear,
+            currentBsMonth
+        });
+    } catch (error) {
+        console.error('Unable to generate month-wise employee attendance report:', error);
+        return res.status(500).send('Unable to generate the month-wise attendance report.');
+    }
+};
 
 exports.getEmployeeAttendance = async (req, res) => {
     try {
