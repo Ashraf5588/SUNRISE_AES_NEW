@@ -2224,21 +2224,36 @@ async function processDeviceAttendanceRows(docs) {
         });
     }
 
-    const mappedDocs = [];
+        const mappedDocs = [];
     uniqueDocs.forEach(doc => {
         const matches = staffByPin.get(normalizeAttendancePin(doc.pin)) || [];
+
         if (matches.length !== 1 || !isActiveEmployeeProfile(matches[0])) {
             failedRecords += 1;
             errors.push(`Line ${doc.sourceLine}: device PIN is not mapped to one active employee.`);
-            console.warn('Ignoring attendance punch for an unknown, inactive, or ambiguous device PIN:', {
+
+            console.warn('Rejected device attendance PIN - diagnostic:', {
                 serialNumber: doc.sn,
-                line: doc.sourceLine
+                line: doc.sourceLine,
+                rejectedPIN: doc.pin,
+                normalizedPIN: normalizeAttendancePin(doc.pin),
+                matchCount: matches.length,
+                matchingStaff: matches.map(staff => ({
+                    id: String(staff._id),
+                    name: staff.staffName,
+                    deviceCode: staff.deviceCode,
+                    employeeCode: staff.employeeCode,
+                    isActive: staff.isActive,
+                    employmentStatus: staff.employmentStatus,
+                    jobStatus: staff.jobStatus
+                }))
             });
+
             return;
         }
+
         mappedDocs.push({ ...doc, name: doc.name || matches[0].staffName });
     });
-
     if (!mappedDocs.length) return { savedRecords, duplicateRecords, failedRecords, errors };
 
     const punchTimes = [...new Map(uniqueDocs.map(doc => [new Date(doc.punchTime).toISOString(), doc.punchTime])).values()];
