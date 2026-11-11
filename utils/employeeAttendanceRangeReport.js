@@ -131,11 +131,19 @@ const getDateRange = ({ mode, startDateBs, endDateBs, year, monthNumbers }) => {
         const date = new Date(timestamp);
         const adDate = toDateKey(date);
         const nepaliDate = getBsDateKey(date);
+        const [bsYear, bsMonth, bsDay] = nepaliDate.split('-').map(Number);
         const weekday = new Intl.DateTimeFormat('en', {
             timeZone: 'Asia/Kathmandu',
             weekday: 'long'
         }).format(new Date(`${adDate}T12:00:00Z`));
-        days.push({ adDate, nepaliDate, weekday });
+        days.push({
+            adDate,
+            nepaliDate,
+            weekday,
+            bsYear,
+            bsMonth,
+            bsDay
+        });
     });
     return { startDateBs: days[0].nepaliDate, endDateBs: days[days.length - 1].nepaliDate, days };
 };
@@ -210,6 +218,7 @@ const buildEmployeeAttendanceRangeReport = ({
                     earlyOut: '',
                     remarks: holidayName,
                     status: 'holiday',
+                    cellValue: holidayName,
                     holidayName
                 };
             }
@@ -227,6 +236,7 @@ const buildEmployeeAttendanceRangeReport = ({
                     earlyOut: '',
                     remarks: leave.name,
                     status: 'leave',
+                    cellValue: 'L',
                     holidayName: ''
                 };
             }
@@ -270,6 +280,7 @@ const buildEmployeeAttendanceRangeReport = ({
                     earlyOut: '',
                     remarks: 'Upcoming',
                     status: 'upcoming',
+                    cellValue: '-',
                     holidayName: ''
                 };
             }
@@ -284,21 +295,46 @@ const buildEmployeeAttendanceRangeReport = ({
                 earlyOut: evening && earlyMinutes > 0 ? `${earlyMinutes} min` : '',
                 remarks: absent ? 'Absent' : missing.length ? missing.join('; ') : status === 'present' ? 'Present' : 'In progress',
                 status,
+                cellValue: absent ? 'Ab' : status === 'missed' ? 'p' : status === 'present' ? 'P' : '-',
                 holidayName: ''
             };
         });
+
+        const counts = days.reduce((total, day) => {
+            if (day.status === 'present') total.present += 1;
+            if (day.status === 'absent') total.absent += 1;
+            if (day.status === 'missed') total.missed += 1;
+            return total;
+        }, { present: 0, absent: 0, missed: 0 });
 
         return {
             id: String(employee._id),
             name: employeeName,
             code: employeeCode,
             department: String(employee.department || ''),
+            counts,
             days
         };
     });
 
+    const dateGroups = dateRange.days.reduce((groups, day) => {
+        const key = `${day.bsYear}-${String(day.bsMonth).padStart(2, '0')}`;
+        let group = groups[groups.length - 1];
+        if (!group || group.key !== key) {
+            group = {
+                key,
+                label: `${MONTHS[day.bsMonth - 1]} ${day.bsYear}`,
+                days: []
+            };
+            groups.push(group);
+        }
+        group.days.push(day);
+        return groups;
+    }, []);
+
     return {
         ...dateRange,
+        dateGroups,
         employees: employeeReports,
         monthLabel: mode === 'months'
             ? [...new Set((monthNumbers || []).map(Number))]

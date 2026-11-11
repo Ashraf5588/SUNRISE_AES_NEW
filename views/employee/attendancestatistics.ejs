@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Employee attendance statistics</title>
+	<link rel="stylesheet" href="/leave-management.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+	<style>
+		.statistics-main { max-width:1600px; }
+		.statistics-filters { display:grid; grid-template-columns:repeat(2,minmax(180px,1fr)); gap:14px; align-items:start; }
+		.statistics-field { min-width:0; }
+		.statistics-field > label,.statistics-label { display:block; margin-bottom:6px; color:#3e4b46; font-size:13px; font-weight:700; }
+		.statistics-field input,.statistics-field select { width:100%; min-height:42px; padding:9px 11px; border:1px solid #d7e1da; border-radius:4px; background:#fff; color:var(--leave-ink); }
+		.statistics-range,.statistics-months,.statistics-employees { grid-column:1 / -1; }
+		.statistics-range { display:grid; grid-template-columns:repeat(2,minmax(180px,1fr)); gap:12px; }
+		.statistics-range[hidden],.statistics-months[hidden] { display:none; }
+		.statistics-months { padding:12px; border:1px solid var(--leave-line); border-radius:5px; background:#fbfdfb; }
+		.statistics-mode-options { display:flex; flex-wrap:wrap; gap:10px; }
+		.statistics-mode-options label { display:flex; align-items:center; gap:8px; padding:9px 12px; border:1px solid var(--leave-line); border-radius:5px; background:#fff; cursor:pointer; font-size:13px; font-weight:700; }
+		.statistics-mode-options input,.statistics-choice input,.statistics-toolbar input { width:18px; min-height:18px; flex:0 0 auto; margin:0; accent-color:var(--leave-deep); }
+		.statistics-picker { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:8px; max-height:250px; overflow:auto; padding:10px; border:1px solid var(--leave-line); border-radius:5px; background:#fff; }
+		.statistics-choice { display:flex; align-items:center; gap:9px; min-width:0; padding:9px; border:1px solid var(--leave-line); border-radius:4px; background:#fff; cursor:pointer; }
+		.statistics-choice[hidden] { display:none; }
+		.statistics-choice span { overflow-wrap:anywhere; font-size:12px; }
+		.statistics-choice small { color:var(--leave-muted); }
+		.statistics-toolbar,.statistics-month-toolbar { display:flex; grid-column:1 / -1; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+		.statistics-toolbar label { display:inline-flex; align-items:center; gap:8px; font-size:12px; font-weight:700; }
+		.statistics-count { color:var(--leave-muted); font-size:12px; }
+		.statistics-month-toolbar { margin:8px 0; }
+		.statistics-search-row,.statistics-actions { display:flex; grid-column:1 / -1; gap:8px; flex-wrap:wrap; }
+		.statistics-search-row input { flex:1; min-width:0; }
+		.statistics-search-row input { min-height:42px; padding:9px 11px; border:1px solid #d7e1da; border-radius:4px; }
+		.statistics-button { display:inline-flex; min-height:40px; align-items:center; justify-content:center; padding:0 15px; border:1px solid var(--leave-deep); border-radius:4px; background:var(--leave-deep); color:#fff; cursor:pointer; font-weight:700; }
+		.statistics-button.secondary { border-color:var(--leave-line); background:#fff; color:var(--leave-ink); }
+		.statistics-button.small { min-height:34px; padding:0 10px; font-size:12px; }
+		.statistics-error { margin:0; color:var(--leave-red); font-weight:700; }
+		.statistics-sheet { padding:18px; border:1px solid var(--leave-line); border-radius:7px; background:#fff; box-shadow:0 7px 20px rgba(24,54,43,.045); }
+		.statistics-heading { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; margin-bottom:10px; color:#111827; font-size:14px; font-weight:800; }
+		.statistics-heading strong { text-align:center; font-size:18px; }
+		.statistics-heading .statistics-range-label { text-align:right; }
+		.statistics-legend { display:flex; flex-wrap:wrap; gap:8px 18px; margin:0 0 12px; color:#374151; font-size:12px; }
+		.statistics-table-wrap { width:100%; overflow:auto; border:1px solid #8794a2; }
+		.statistics-table { width:max-content; min-width:100%; border-collapse:collapse; font-size:12px; }
+		.statistics-table th,.statistics-table td { min-width:42px; padding:5px 6px; border:1px solid #9aa5b1; text-align:center; vertical-align:middle; }
+		.statistics-table thead th { position:sticky; z-index:2; background:#e9edf2; color:#111827; font-weight:800; }
+		.statistics-table .month-group { background:#d7dce3; color:#1763d1; font-size:13px; }
+		.statistics-table .date-heading { min-width:48px; color:#1763d1; }
+		.statistics-table .weekday-heading { min-width:48px; background:#f2f4f7; font-size:11px; }
+		.statistics-table .serial-column { min-width:48px; }
+		.statistics-table .name-column { min-width:190px; text-align:left; }
+		.statistics-table .count-column { min-width:62px; }
+		.statistics-table .employee-name { text-align:left; font-weight:700; white-space:nowrap; }
+		.statistics-table .present-count { color:#16803c; font-weight:800; }
+		.statistics-table .absent-count { color:#dc2626; font-weight:800; }
+		.statistics-table .status-P { color:#16803c; font-weight:800; }
+		.statistics-table .status-Ab { background:#fee2e2; color:#b91c1c; font-weight:800; }
+		.statistics-table .status-p { background:#fff7d6; color:#a16207; font-weight:800; }
+		.statistics-table .status-L { background:#dcfce7; color:#166534; font-weight:800; }
+		.statistics-table .status-holiday { min-width:90px; background:#e3e8ef; color:#334155; font-size:11px; }
+		.statistics-table .status-empty { color:#94a3b8; }
+		.statistics-table tbody tr:nth-child(even) { background:#fafbfc; }
+		.statistics-empty { padding:24px; border:1px dashed var(--leave-line); color:var(--leave-muted); text-align:center; }
+		@media(max-width:700px) {
+			.statistics-filters,.statistics-range { grid-template-columns:1fr; }
+			.statistics-search-row { flex-direction:column; }
+			.statistics-search-row .statistics-button { width:100%; }
+			.statistics-sheet { padding:12px 8px; }
+			.statistics-heading { grid-template-columns:1fr; text-align:center; }
+			.statistics-heading .statistics-range-label { text-align:center; }
+			.statistics-actions .statistics-button { flex:1; }
+		}
+		@media print {
+			@page { size:A3 landscape; margin:8mm; }
+			body { min-width:0; background:#fff !important; color:#111; font-size:8pt; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+			body.employee-nav-visible .leave-shell,body.employee-nav-visible.employee-nav-collapsed .leave-shell,body.employee-nav-collapsed .leave-shell { width:100% !important; margin:0 !important; }
+			.employee-sidenav,.leave-topbar,.leave-page-heading,.statistics-filter-panel,.screen-only { display:none !important; }
+			.leave-main { width:100%; max-width:none; padding:0; }
+			.statistics-sheet { padding:0; border:0; border-radius:0; box-shadow:none; }
+			.statistics-table-wrap { overflow:visible; border:0; }
+			.statistics-table { width:100%; min-width:0; table-layout:fixed; font-size:6.5pt; }
+			.statistics-table th,.statistics-table td { min-width:0; padding:3px 2px; overflow-wrap:anywhere; }
+			.statistics-table .serial-column,.statistics-table .name-column,.statistics-table .count-column,
+			.statistics-table .date-heading,.statistics-table .weekday-heading { min-width:0; }
+			.statistics-table .name-column { width:36mm; }
+			.statistics-table .count-column { width:12mm; }
+			.statistics-table .status-holiday { min-width:0; font-size:5.5pt; }
+			.statistics-table thead { display:table-header-group; }
+			.statistics-table tr { break-inside:avoid; }
+		}
+	</style>
+</head>
+<body>
+	<%- include('employeesidenav', { currentPage: 'attendance-statistics', selectedEmployee: null, isAdmin: true }) %>
+	<div class="leave-shell">
+		<header class="leave-topbar">
+			<a class="leave-brand" href="/employeemanagementdashboard">Employee attendance</a>
+			<nav aria-label="Attendance navigation"><a href="/employeeattendance">Attendance</a><a href="/employeeattendance/report">Daily detail report</a><a class="active" href="/employeeattendance/statistics">Attendance statistics</a></nav>
+		</header>
+		<main class="leave-main statistics-main">
+			<header class="leave-page-heading"><div><p class="leave-eyebrow">Administration / Attendance</p><h1>Employee attendance statistics</h1><p>Compare selected staff in a daily matrix for a BS date range or selected months.</p></div></header>
+			<section class="leave-panel statistics-filter-panel">
+				<div class="leave-section-heading"><div><h2>Choose report criteria</h2><p>Select a Bikram Sambat date range or one or more months, then select staff.</p></div></div>
+				<form method="get" action="/employeeattendance/statistics" class="statistics-filters" id="statisticsForm">
+					<div class="statistics-field"><span class="statistics-label">Report range</span><div class="statistics-mode-options">
+						<label><input type="radio" name="mode" value="range" <%= mode === 'range' ? 'checked' : '' %>><span>From / To BS date</span></label>
+						<label><input type="radio" name="mode" value="months" <%= mode === 'months' ? 'checked' : '' %>><span>Select BS months</span></label>
+					</div></div>
+					<div class="statistics-range" id="statisticsDateRange" <%= mode === 'months' ? 'hidden' : '' %>>
+						<div class="statistics-field"><label for="startDateBs">From date (BS)</label><input id="startDateBs" name="startDateBs" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" placeholder="YYYY-MM-DD" value="<%= startDateBs %>"></div>
+						<div class="statistics-field"><label for="endDateBs">To date (BS)</label><input id="endDateBs" name="endDateBs" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" placeholder="YYYY-MM-DD" value="<%= endDateBs %>"></div>
+					</div>
+					<div class="statistics-months" id="statisticsMonthRange" <%= mode !== 'months' ? 'hidden' : '' %>>
+						<div class="statistics-field"><label for="statisticsYear">Nepali year (BS)</label><select id="statisticsYear" name="year"><% yearOptions.forEach(option => { %><option value="<%= option %>" <%= year === option ? 'selected' : '' %>><%= option %></option><% }) %></select></div>
+						<div class="statistics-month-toolbar"><span class="statistics-label">Months</span><button type="button" class="statistics-button secondary small" id="selectAllStatisticsMonths">Select all available</button><span class="statistics-count" id="statisticsMonthCount"></span></div>
+						<div class="statistics-picker" role="group" aria-label="Select Bikram Sambat months">
+							<% monthOptions.forEach(month => { %><label class="statistics-choice"><input type="checkbox" name="month" value="<%= month.number %>" <%= selectedMonths.includes(month.number) ? 'checked' : '' %>><span><%= month.name %></span></label><% }) %>
+						</div>
+					</div>
+					<div class="statistics-field statistics-employees"><label for="statisticsEmployeeSearch">Search staff by name or employee code</label><div class="statistics-search-row"><input id="statisticsEmployeeSearch" type="search" placeholder="Type a staff name or code"><button type="button" class="statistics-button secondary small" id="searchStatisticsEmployees">Search staff</button></div></div>
+					<div class="statistics-picker statistics-employees" role="group" aria-label="Select staff members">
+						<div class="statistics-toolbar"><label><input type="checkbox" id="selectAllStatisticsEmployees"><span>Select all shown staff</span></label><span class="statistics-count" id="statisticsEmployeeCount" aria-live="polite"></span></div>
+						<% employeeOptions.forEach(employee => { %><label class="statistics-choice" data-search="<%= `${employee.name} ${employee.code} ${employee.department}`.toLowerCase() %>"><input type="checkbox" name="employeeId" value="<%= employee.id %>" <%= selectedEmployeeIds.includes(employee.id) ? 'checked' : '' %>><span><strong><%= employee.name %></strong><br><small><%= [employee.code, employee.department].filter(Boolean).join(' / ') %></small></span></label><% }) %>
+					</div>
+					<div class="statistics-actions"><button class="statistics-button" type="submit" name="generate" value="1">Generate statistics</button><% if (report) { %><button class="statistics-button secondary" type="button" onclick="window.print()">Print statistics</button><% } %></div>
+				</form>
+				<% if (errorMessage) { %><p class="statistics-error" role="alert"><%= errorMessage %></p><% } %>
+			</section>
+
+			<% if (report) { %>
+			<section class="statistics-sheet">
+				<div class="statistics-heading"><span>Monthly attendance statistic</span><strong><%= report.employees.length %> employee(s)</strong><span class="statistics-range-label"><%= mode === 'months' ? `${year} BS: ${report.monthLabel}` : `${report.startDateBs} - ${report.endDateBs}` %></span></div>
+				<div class="statistics-legend" aria-label="Attendance status legend"><span><strong>P</strong> Present</span><span><strong>Ab</strong> Absent</span><span><strong>p</strong> One punch missed</span><span><strong>L</strong> Approved leave</span><span>Holiday cells show the holiday name</span></div>
+				<% if (report.employees.length) { %>
+				<div class="statistics-table-wrap">
+					<table class="statistics-table">
+						<thead>
+							<tr><th class="serial-column" rowspan="3">S.N.</th><th class="name-column" rowspan="3">Employee Name</th><th class="count-column" rowspan="3">Present</th><th class="count-column" rowspan="3">Absent</th><% report.dateGroups.forEach(group => { %><th class="month-group" colspan="<%= group.days.length %>"><%= group.label %></th><% }) %></tr>
+							<tr><% report.days.forEach(day => { %><th class="date-heading"><%= day.bsMonth %>-<%= day.bsDay %></th><% }) %></tr>
+							<tr><% report.days.forEach(day => { %><th class="weekday-heading"><%= day.weekday.slice(0, 3) %></th><% }) %></tr>
+						</thead>
+						<tbody><% report.employees.forEach((employee, employeeIndex) => { %><tr>
+							<td><%= employeeIndex + 1 %></td><td class="employee-name" title="<%= employee.code %>"><%= employee.name %></td>
+							<td class="present-count"><%= employee.counts.present %></td><td class="absent-count"><%= employee.counts.absent %></td>
+							<% employee.days.forEach(day => { %><td class="<%= day.status === 'holiday' ? 'status-holiday' : day.status === 'upcoming' || day.status === 'in-progress' ? 'status-empty' : `status-${day.cellValue}` %>" title="<%= day.remarks %>"><%= day.cellValue %></td><% }) %>
+						</tr><% }) %></tbody>
+					</table>
+				</div>
+				<% } else { %><div class="statistics-empty">No employees were selected for this report.</div><% } %>
+			</section>
+			<% } %>
+		</main>
+	</div>
+	<script>
+		const statisticsForm = document.getElementById('statisticsForm');
+		const statisticsDateRange = document.getElementById('statisticsDateRange');
+		const statisticsMonthRange = document.getElementById('statisticsMonthRange');
+		const statisticsMonthChecks = [...document.querySelectorAll('input[name="month"]')];
+		const statisticsEmployeeChoices = [...document.querySelectorAll('.statistics-choice[data-search]')];
+		const statisticsEmployeeChecks = statisticsEmployeeChoices.map(choice => choice.querySelector('input'));
+		const statisticsEmployeeSearch = document.getElementById('statisticsEmployeeSearch');
+		const selectAllStatisticsEmployees = document.getElementById('selectAllStatisticsEmployees');
+		const statisticsEmployeeCount = document.getElementById('statisticsEmployeeCount');
+		const statisticsMonthCount = document.getElementById('statisticsMonthCount');
+
+		function setStatisticsMode() {
+			const mode = statisticsForm.querySelector('input[name="mode"]:checked').value;
+			statisticsDateRange.hidden = mode !== 'range';
+			statisticsMonthRange.hidden = mode !== 'months';
+			statisticsDateRange.querySelectorAll('input').forEach(input => { input.disabled = mode !== 'range'; });
+			statisticsMonthChecks.forEach(input => { input.disabled = mode !== 'months'; });
+			document.getElementById('statisticsYear').disabled = mode !== 'months';
+		}
+		function filterStatisticsEmployees() {
+			const query = statisticsEmployeeSearch.value.trim().toLowerCase();
+			statisticsEmployeeChoices.forEach(choice => { choice.hidden = !choice.dataset.search.includes(query); });
+			updateStatisticsEmployeeSelection();
+		}
+		function updateStatisticsEmployeeSelection() {
+			const visible = statisticsEmployeeChoices.filter(choice => !choice.hidden).map(choice => choice.querySelector('input'));
+			const visibleChecked = visible.filter(input => input.checked).length;
+			selectAllStatisticsEmployees.checked = visible.length > 0 && visibleChecked === visible.length;
+			selectAllStatisticsEmployees.indeterminate = visibleChecked > 0 && visibleChecked < visible.length;
+			statisticsEmployeeCount.textContent = `${statisticsEmployeeChecks.filter(input => input.checked).length} selected`;
+		}
+		function updateStatisticsMonthCount() {
+			statisticsMonthCount.textContent = `${statisticsMonthChecks.filter(input => input.checked).length} selected`;
+		}
+		statisticsForm.querySelectorAll('input[name="mode"]').forEach(input => input.addEventListener('change', setStatisticsMode));
+		document.getElementById('searchStatisticsEmployees').addEventListener('click', filterStatisticsEmployees);
+		statisticsEmployeeSearch.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); filterStatisticsEmployees(); } });
+		selectAllStatisticsEmployees.addEventListener('change', () => {
+			statisticsEmployeeChoices.filter(choice => !choice.hidden).forEach(choice => { choice.querySelector('input').checked = selectAllStatisticsEmployees.checked; });
+			updateStatisticsEmployeeSelection();
+		});
+		statisticsEmployeeChecks.forEach(input => input.addEventListener('change', updateStatisticsEmployeeSelection));
+		document.getElementById('selectAllStatisticsMonths').addEventListener('click', () => {
+			const allSelected = statisticsMonthChecks.length > 0 && statisticsMonthChecks.every(input => input.checked);
+			statisticsMonthChecks.forEach(input => { input.checked = !allSelected; });
+			updateStatisticsMonthCount();
+		});
+		statisticsMonthChecks.forEach(input => input.addEventListener('change', updateStatisticsMonthCount));
+		document.getElementById('statisticsYear').addEventListener('change', () => {
+			const url = new URL(window.location.href);
+			url.search = '';
+			url.searchParams.set('mode', 'months');
+			url.searchParams.set('year', document.getElementById('statisticsYear').value);
+			statisticsEmployeeChecks.filter(input => input.checked).forEach(input => url.searchParams.append('employeeId', input.value));
+			window.location.assign(url);
+		});
+		setStatisticsMode();
+		updateStatisticsEmployeeSelection();
+		updateStatisticsMonthCount();
+	</script>
+</body>
+</html>

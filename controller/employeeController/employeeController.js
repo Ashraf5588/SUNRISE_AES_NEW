@@ -3364,7 +3364,7 @@ async function registerDevicesFromLegacyAttendance() {
     }
 }
 
-exports.showEmployeeAttendanceRangeReport = async (req, res) => {
+const renderEmployeeAttendanceRangeReport = async (req, res, viewName) => {
     try {
         const now = new Date();
         const todayBs = String(bs.ADToBS(now) || '').slice(0, 10);
@@ -3478,7 +3478,7 @@ exports.showEmployeeAttendanceRangeReport = async (req, res) => {
             }
         }
 
-        return res.render('employee/attendancereport', {
+        return res.render(viewName, {
             employeeOptions,
             selectedEmployeeIds,
             year,
@@ -3497,6 +3497,12 @@ exports.showEmployeeAttendanceRangeReport = async (req, res) => {
         return res.status(500).send('Unable to generate the employee attendance report.');
     }
 };
+
+exports.showEmployeeAttendanceRangeReport = (req, res) =>
+    renderEmployeeAttendanceRangeReport(req, res, 'employee/attendancereport');
+
+exports.showEmployeeAttendanceStatistics = (req, res) =>
+    renderEmployeeAttendanceRangeReport(req, res, 'employee/attendancestatistics');
 
 exports.showMonthWiseAttendanceReport = async (req, res) => {
     try {

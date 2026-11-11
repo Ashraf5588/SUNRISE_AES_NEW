@@ -39,6 +39,7 @@ test('returns only selected noncontiguous Bikram Sambat months', () => {
     assert.deepEqual([...months], ['01', '03']);
     assert.equal(report.days[0].nepaliDate, '2083-01-01');
     assert.equal(report.days[report.days.length - 1].nepaliDate.slice(0, 7), '2083-03');
+    assert.deepEqual(report.dateGroups.map(group => group.label), ['Baisakh 2083', 'Ashar 2083']);
 });
 
 test('classifies attendance, partial misses, holidays, approved leave, and full absences', () => {
@@ -71,6 +72,8 @@ test('classifies attendance, partial misses, holidays, approved leave, and full 
     });
     const days = report.employees[0].days;
     assert.deepEqual(days.map(day => day.status), ['present', 'missed', 'holiday', 'leave', 'absent']);
+    assert.deepEqual(days.map(day => day.cellValue), ['P', 'p', 'School holiday', 'L', 'Ab']);
+    assert.deepEqual(report.employees[0].counts, { present: 1, absent: 1, missed: 1 });
     assert.equal(days[0].inTime, '09:15');
     assert.equal(days[0].outTime, '16:30');
     assert.equal(days[0].lateTime, '15 min');

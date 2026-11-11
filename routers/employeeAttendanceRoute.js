@@ -90,6 +90,7 @@ employee.post('/employeeattendance/device/:serialNumber/command/:commandId/cance
 employee.post('/employeeattendance/staff/:employeeId/manual-fingerprint-enrollment', verifytoken, isAdmin, employeeController.confirmManualEmployeeFingerprintEnrollment);
 employee.post('/employeeattendance/device/:serialNumber/capabilities', verifytoken, isAdmin, employeeController.configureEmployeeAttendanceDeviceCapabilities);
 employee.get('/employeeattendance/report', verifytoken, isAdmin, employeeController.showEmployeeAttendanceRangeReport);
+employee.get('/employeeattendance/statistics', verifytoken, isAdmin, employeeController.showEmployeeAttendanceStatistics);
 employee.get('/employeeattendance/monthly-report', verifytoken, isAdmin, employeeController.showMonthWiseAttendanceReport);
 employee.get('/employeeattendance/export', employeeController.exportEmployeeAttendance);
 employee.get('/employeeattendance/template', verifytoken, isAdmin, employeeController.downloadEmployeeAttendanceCsvTemplate);
