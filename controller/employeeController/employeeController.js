@@ -3426,8 +3426,8 @@ exports.showEmployeeAttendanceRangeReport = async (req, res) => {
                 const lastAd = String(bs.BSToAD(reportDates.endDateBs));
                 const [firstYear, firstMonth, firstDay] = firstAd.split('-').map(Number);
                 const [lastYear, lastMonth, lastDay] = lastAd.split('-').map(Number);
-                const startTime = new Date(Date.UTC(firstYear, firstMonth - 1, firstDay) - 5 * 60 * 60 * 1000 - 45 * 60 * 1000);
-                const endTime = new Date(Date.UTC(lastYear, lastMonth - 1, lastDay + 1) - 5 * 60 * 60 * 1000 - 45 * 60 * 1000);
+                const startTime = new Date(firstYear, firstMonth - 1, firstDay);
+                const endTime = new Date(lastYear, lastMonth - 1, lastDay + 1);
                 const attendanceCodes = [...new Set(selectedEmployees.flatMap(getEmployeeAttendanceCodes))];
                 const escapeRegExp = value => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 const pinPatterns = attendanceCodes.map(code => new RegExp(`^${escapeRegExp(code)}$`, 'i'));

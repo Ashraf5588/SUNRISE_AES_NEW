@@ -9,6 +9,7 @@ const kathmanduDateTime = (dateBs, time) => {
     const [hour, minute] = time.split(':').map(Number);
     return new Date(Date.UTC(year, month - 1, day, hour - 5, minute - 45));
 };
+const localPunchDateTime = (dateBs, time) => new Date(`${adDate(dateBs)}T${time}:00`);
 const makeReport = (overrides = {}) => buildEmployeeAttendanceRangeReport({
     employees: [],
     punches: [],
@@ -55,9 +56,9 @@ test('classifies attendance, partial misses, holidays, approved leave, and full 
         employees: [employee],
         endDateBs: '2083-01-05',
         punches: [
-            { _id: 'p1', pin: '14', punchTime: kathmanduDateTime('2083-01-01', '09:15') },
-            { _id: 'p2', pin: 'device-14', punchTime: kathmanduDateTime('2083-01-01', '16:30') },
-            { _id: 'p3', pin: '14', punchTime: kathmanduDateTime('2083-01-02', '09:00') }
+            { _id: 'p1', pin: '14', punchTime: localPunchDateTime('2083-01-01', '09:15') },
+            { _id: 'p2', pin: 'device-14', punchTime: localPunchDateTime('2083-01-01', '16:30') },
+            { _id: 'p3', pin: '14', punchTime: localPunchDateTime('2083-01-02', '09:00') }
         ],
         holidays: [{ dateBs: '2083-01-03', name: 'School holiday' }],
         approvedLeaves: [{
@@ -80,11 +81,13 @@ test('classifies attendance, partial misses, holidays, approved leave, and full 
     assert.equal(days[4].remarks, 'Absent');
 });
 
-test('assigns a punch at Kathmandu midnight to the correct BS report date', () => {
-    const previousAdDay = new Date(`${adDate('2083-01-01')}T00:00:00.000Z`);
-    previousAdDay.setUTCDate(previousAdDay.getUTCDate() - 1);
+test('assigns a punch at local midnight to the correct BS report date', () => {
+    const previousAdDay = new Date(`${adDate('2083-01-01')}T00:00:00`);
+    previousAdDay.setDate(previousAdDay.getDate() - 1);
     const midnightPunch = new Date(previousAdDay);
-    midnightPunch.setUTCHours(18, 15, 0, 0);
+    midnightPunch.setHours(23, 59, 0, 0);
+    midnightPunch.setDate(midnightPunch.getDate() + 1);
+    midnightPunch.setHours(0, 0, 0, 0);
     const report = makeReport({
         employees: [{
             _id: 'staff-2',
@@ -96,6 +99,31 @@ test('assigns a punch at Kathmandu midnight to the correct BS report date', () =
     });
     assert.equal(report.employees[0].days[0].inTime, '00:00');
     assert.equal(report.employees[0].days[0].status, 'missed');
+});
+
+test('preserves stored attendance clock times without adding a timezone offset', () => {
+    const employee = {
+        _id: 'staff-4',
+        employeeCode: '134',
+        staffName: 'Ashrf Ali Miya',
+        midTime: '13:00',
+        plannedIn: '11:40',
+        plannedOut: '17:00'
+    };
+    const report = makeReport({
+        employees: [employee],
+        startDateBs: '2083-01-02',
+        endDateBs: '2083-01-02',
+        punches: [
+            { pin: '134', punchTime: localPunchDateTime('2083-01-02', '11:56') },
+            { pin: '134', punchTime: localPunchDateTime('2083-01-02', '16:41') }
+        ]
+    });
+    const [day] = report.employees[0].days;
+    assert.equal(day.inTime, '11:56');
+    assert.equal(day.outTime, '16:41');
+    assert.equal(day.lateTime, '16 min');
+    assert.equal(day.earlyOut, '19 min');
 });
 
 test('does not mark future attendance or not-yet-due punches as missed', () => {

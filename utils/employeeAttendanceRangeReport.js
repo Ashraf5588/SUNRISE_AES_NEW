@@ -32,9 +32,23 @@ const getKathmanduDateKey = value => {
     return `${values.year}-${values.month}-${values.day}`;
 };
 
-const getKathmanduTime = value => {
+const getPunchDateKey = value => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
+const getPunchTime = value => {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return null;
+    const hour = String(date.getHours()).padStart(2, '0');
+    const minute = String(date.getMinutes()).padStart(2, '0');
+    return { value: `${hour}:${minute}`, minutes: Number(hour) * 60 + Number(minute) };
+};
+
+const getKathmanduTimeMinutes = value => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 0;
     const parts = new Intl.DateTimeFormat('en-GB', {
         timeZone: 'Asia/Kathmandu',
         hour: '2-digit',
@@ -42,10 +56,8 @@ const getKathmanduTime = value => {
         hourCycle: 'h23'
     }).formatToParts(date);
     const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
-    return { value: `${values.hour}:${values.minute}`, minutes: Number(values.hour) * 60 + Number(values.minute) };
+    return Number(values.hour) * 60 + Number(values.minute);
 };
-
-const getKathmanduTimeMinutes = value => getKathmanduTime(value)?.minutes ?? 0;
 
 const parseTimeMinutes = value => {
     const match = String(value || '').match(/^(\d{1,2}):([0-5]\d)$/);
@@ -145,7 +157,7 @@ const buildEmployeeAttendanceRangeReport = ({
     const currentTimeMinutes = getKathmanduTimeMinutes(now);
     const punchMap = new Map();
     punches.forEach(punch => {
-        const adDate = getKathmanduDateKey(punch.punchTime);
+        const adDate = getPunchDateKey(punch.punchTime);
         const pin = normalizeAttendancePin(punch.pin);
         if (!adDate || !pin) return;
         const key = `${adDate}|${pin}`;
@@ -225,7 +237,7 @@ const buildEmployeeAttendanceRangeReport = ({
                     String(punch._id || `${punch.pin}|${punch.punchTime}|${punch.status}|${punch.manualPunchType}`),
                     punch
                 ])).values()]
-                .map(punch => ({ punch, time: getKathmanduTime(punch.punchTime) }))
+                .map(punch => ({ punch, time: getPunchTime(punch.punchTime) }))
                 .filter(item => item.time)
                 .sort((first, second) => first.time.minutes - second.time.minutes);
             const morning = punchesForDay.find(({ punch, time }) =>
