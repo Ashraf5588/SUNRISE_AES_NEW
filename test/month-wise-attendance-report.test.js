@@ -70,6 +70,8 @@ test('counts monthly attendance, partial misses, full absences, approved leave, 
     assert.equal(report.employees[0].monthly[0].counts.lateIn, 1);
     assert.equal(report.employees[0].monthly[0].counts.earlyOut, 1);
     assert.deepEqual(report.totals[0], report.employees[0].monthly[0].counts);
+    assert.deepEqual(report.employees[0].totalCounts, report.employees[0].monthly[0].counts);
+    assert.deepEqual(report.totalCounts, report.totals[0]);
 });
 
 test('rejects future months and invalid report parameters', () => {

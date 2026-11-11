@@ -226,12 +226,20 @@ const buildMonthWiseAttendanceReport = ({
             return { ...month, counts };
         });
 
+        const totalCounts = monthly.reduce((total, month) => {
+            Object.keys(total).forEach(key => {
+                total[key] += month.counts[key];
+            });
+            return total;
+        }, { present: 0, absent: 0, leave: 0, lateIn: 0, earlyOut: 0, missed: 0 });
+
         return {
             id: String(employee._id),
             code: primaryCode,
             name: employeeName,
             department: String(employee.department || ''),
-            monthly
+            monthly,
+            totalCounts
         };
     });
 
@@ -241,12 +249,19 @@ const buildMonthWiseAttendanceReport = ({
         });
         return total;
     }, { present: 0, absent: 0, leave: 0, lateIn: 0, earlyOut: 0, missed: 0 }));
+    const totalCounts = totals.reduce((total, month) => {
+        Object.keys(total).forEach(key => {
+            total[key] += month[key];
+        });
+        return total;
+    }, { present: 0, absent: 0, leave: 0, lateIn: 0, earlyOut: 0, missed: 0 });
 
     return {
         year: String(year),
         months: monthReports.map(({ key, name, monthNumber, holidayCount }) => ({ key, name, monthNumber, holidayCount })),
         employees: employeeRows,
-        totals
+        totals,
+        totalCounts
     };
 };
 

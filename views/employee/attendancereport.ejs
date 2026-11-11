@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Employee attendance range report</title>
+	<link rel="stylesheet" href="/leave-management.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+	<style>
+		.attendance-report-main { max-width:1500px; }
+		.report-filters { display:grid; grid-template-columns:repeat(2,minmax(180px,1fr)); gap:14px; align-items:start; }
+		.report-field { min-width:0; }
+		.report-field > label,.filter-label { display:block; margin-bottom:6px; color:#3e4b46; font-size:13px; font-weight:700; }
+		.report-field input,.report-field select { width:100%; min-height:42px; padding:9px 11px; border:1px solid #d7e1da; border-radius:4px; background:#fff; color:var(--leave-ink); }
+		.range-fields,.month-fields,.employee-picker { grid-column:1 / -1; }
+		.range-fields { display:grid; grid-template-columns:repeat(2,minmax(180px,1fr)); gap:12px; }
+		.month-fields { padding:12px; border:1px solid var(--leave-line); border-radius:5px; background:#fbfdfb; }
+		.month-fields[hidden],.range-fields[hidden] { display:none; }
+		.month-picker,.employee-picker { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:8px; max-height:250px; overflow:auto; padding:10px; border:1px solid var(--leave-line); border-radius:5px; background:#fff; }
+		.month-choice,.employee-choice { display:flex; align-items:center; gap:9px; min-width:0; padding:9px; border:1px solid var(--leave-line); border-radius:4px; background:#fff; cursor:pointer; }
+		.employee-choice[hidden] { display:none; }
+		.month-choice input,.employee-choice input,.picker-toolbar input { width:18px; min-height:18px; flex:0 0 auto; margin:0; accent-color:var(--leave-deep); }
+		.month-choice span,.employee-choice span { overflow-wrap:anywhere; font-size:12px; }
+		.employee-choice small { color:var(--leave-muted); }
+		.picker-toolbar { display:flex; grid-column:1 / -1; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+		.picker-toolbar label { display:inline-flex; align-items:center; gap:8px; font-size:12px; font-weight:700; }
+		.selection-count { color:var(--leave-muted); font-size:12px; }
+		.picker-actions { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+		.employee-search { grid-column:1 / -1; }
+		.search-row { display:flex; gap:8px; }
+		.search-row input { flex:1; min-width:0; }
+		.report-actions { display:flex; grid-column:1 / -1; flex-wrap:wrap; gap:8px; }
+		.report-button { display:inline-flex; min-height:40px; align-items:center; justify-content:center; padding:0 15px; border:1px solid var(--leave-deep); border-radius:4px; background:var(--leave-deep); color:#fff; cursor:pointer; font-weight:700; }
+		.report-button.secondary { border-color:var(--leave-line); background:#fff; color:var(--leave-ink); }
+		.report-button.small { min-height:34px; padding:0 10px; font-size:12px; }
+		.report-error { margin:0; color:var(--leave-red); font-weight:700; }
+		.mode-options { display:flex; flex-wrap:wrap; gap:10px; }
+		.mode-option { display:flex; align-items:center; gap:8px; padding:9px 12px; border:1px solid var(--leave-line); border-radius:5px; background:#fff; cursor:pointer; font-size:13px; font-weight:700; }
+		.mode-option input { width:17px; min-height:17px; margin:0; accent-color:var(--leave-deep); }
+		.attendance-report-sheet { padding:18px; border:1px solid var(--leave-line); border-radius:7px; background:#fff; box-shadow:0 7px 20px rgba(24,54,43,.045); }
+		.report-heading { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; margin-bottom:16px; color:#111827; font-size:14px; font-weight:800; }
+		.report-heading strong { text-align:center; font-size:18px; }
+		.report-heading .date-range { text-align:right; }
+		.employee-report-block { margin:0 0 24px; break-inside:auto; }
+		.employee-report-heading { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:0 0 5px; padding:4px 5px; color:#0877c9; font-size:15px; font-weight:800; }
+		.attendance-detail-wrap { overflow-x:auto; }
+		.attendance-detail-table { width:100%; min-width:760px; border-collapse:collapse; font-size:12px; }
+		.attendance-detail-table th,.attendance-detail-table td { min-width:76px; padding:5px 7px; border:1px solid #111; text-align:left; vertical-align:middle; }
+		.attendance-detail-table th { background:#f4f6f8; color:#111; font-weight:800; }
+		.attendance-detail-table td:nth-child(1),.attendance-detail-table td:nth-child(3),.attendance-detail-table td:nth-child(4),.attendance-detail-table td:nth-child(5),.attendance-detail-table td:nth-child(6) { white-space:nowrap; }
+		.attendance-detail-table .day-name { min-width:110px; }
+		.attendance-detail-table .remarks-cell { min-width:145px; }
+		.attendance-detail-table tr.holiday-row td { background:#e57373; color:#111; text-align:center; font-weight:800; }
+		.attendance-detail-table tr.leave-row td { background:#c7e4ba; color:#111; text-align:center; font-weight:800; }
+		.attendance-detail-table tr.absent-row td { background:#ff1010; color:#111; text-align:center; font-weight:800; }
+		.attendance-detail-table tr.missed-row td:last-child { color:#e11d48; font-weight:800; }
+		.attendance-detail-table tr.present-row td:last-child { color:#17633b; font-weight:800; }
+		.report-empty { padding:24px; border:1px dashed var(--leave-line); color:var(--leave-muted); text-align:center; }
+		@media(max-width:700px) {
+			.report-filters,.range-fields { grid-template-columns:1fr; }
+			.search-row { flex-direction:column; }
+			.search-row button { width:100%; }
+			.attendance-report-sheet { padding:12px 8px; }
+			.report-heading { grid-template-columns:1fr; text-align:center; }
+			.report-heading .date-range { text-align:center; }
+			.employee-report-heading { grid-template-columns:1fr; gap:3px; }
+			.report-actions .report-button { flex:1; }
+		}
+		@media print {
+			@page { size:A4 portrait; margin:10mm; }
+			body { min-width:0; background:#fff !important; color:#111; font-size:9pt; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+			body.employee-nav-visible .leave-shell,body.employee-nav-visible.employee-nav-collapsed .leave-shell,body.employee-nav-collapsed .leave-shell { width:100% !important; margin:0 !important; }
+			.employee-sidenav,.leave-topbar,.leave-page-heading,.report-filter-panel,.screen-only { display:none !important; }
+			.leave-main { width:100%; max-width:none; padding:0; }
+			.attendance-report-sheet { padding:0; border:0; border-radius:0; box-shadow:none; }
+			.attendance-detail-wrap { overflow:visible; }
+			.attendance-detail-table { width:100%; min-width:0; table-layout:fixed; font-size:8pt; }
+			.attendance-detail-table th,.attendance-detail-table td { min-width:0; padding:4px; overflow-wrap:anywhere; }
+			.employee-report-block { break-inside:avoid-page; }
+			.attendance-detail-table tr { break-inside:avoid; }
+		}
+	</style>
+</head>
+<body>
+	<%- include('employeesidenav', { currentPage: 'attendance-report', selectedEmployee: null, isAdmin: true }) %>
+	<div class="leave-shell">
+		<header class="leave-topbar">
+			<a class="leave-brand" href="/employeemanagementdashboard">Employee attendance</a>
+			<nav aria-label="Attendance navigation"><a href="/employeeattendance">Attendance</a><a class="active" href="/employeeattendance/report">Employee report</a><a href="/employeeattendance/monthly-report">Month-wise report</a></nav>
+		</header>
+		<main class="leave-main attendance-report-main">
+			<header class="leave-page-heading"><div><p class="leave-eyebrow">Administration / Attendance</p><h1>Employee-wise attendance report</h1><p>Generate printable daily in/out, lateness, leave, holiday, and attendance-status details for selected staff.</p></div></header>
+			<section class="leave-panel report-filter-panel">
+				<div class="leave-section-heading"><div><h2>Choose report criteria</h2><p>Select a Bikram Sambat date range or one or more BS months, then select staff.</p></div></div>
+				<form method="get" action="/employeeattendance/report" class="report-filters" id="attendanceReportForm">
+					<div class="report-field"><span class="filter-label">Report range</span><div class="mode-options">
+						<label class="mode-option"><input type="radio" name="mode" value="range" <%= mode === 'range' ? 'checked' : '' %>><span>From / To BS date</span></label>
+						<label class="mode-option"><input type="radio" name="mode" value="months" <%= mode === 'months' ? 'checked' : '' %>><span>Select BS months</span></label>
+					</div></div>
+					<div class="range-fields" id="dateRangeFields" <%= mode === 'months' ? 'hidden' : '' %>>
+						<div class="report-field"><label for="startDateBs">From date (BS)</label><input id="startDateBs" name="startDateBs" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" placeholder="YYYY-MM-DD" value="<%= startDateBs %>"></div>
+						<div class="report-field"><label for="endDateBs">To date (BS)</label><input id="endDateBs" name="endDateBs" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" placeholder="YYYY-MM-DD" value="<%= endDateBs %>"></div>
+					</div>
+					<div class="month-fields" id="monthRangeFields" <%= mode !== 'months' ? 'hidden' : '' %>>
+						<div class="report-field"><label for="year">Nepali year (BS)</label><select id="year" name="year"><% yearOptions.forEach(option => { %><option value="<%= option %>" <%= year === option ? 'selected' : '' %>><%= option %></option><% }) %></select></div>
+						<div class="picker-actions"><span class="filter-label">Months</span><button type="button" class="report-button secondary small" id="selectAllMonths">Select all available</button><span class="selection-count" id="monthSelectionCount"></span></div>
+						<div class="month-picker" role="group" aria-label="Select Bikram Sambat months">
+							<% monthOptions.forEach(month => { %><label class="month-choice"><input type="checkbox" name="month" value="<%= month.number %>" <%= selectedMonths.includes(month.number) ? 'checked' : '' %>><span><%= month.name %></span></label><% }) %>
+						</div>
+					</div>
+					<div class="report-field employee-search"><label for="employeeSearch">Search staff by name or employee code</label><div class="search-row"><input id="employeeSearch" type="search" placeholder="Type a staff name or code"><button type="button" class="report-button secondary small" id="searchEmployees">Search staff</button></div></div>
+					<div class="employee-picker" role="group" aria-label="Select staff members">
+						<div class="picker-toolbar"><label><input type="checkbox" id="selectAllEmployees"><span>Select all shown staff</span></label><span class="selection-count" id="selectionCount" aria-live="polite"></span></div>
+						<% employeeOptions.forEach(employee => { %><label class="employee-choice" data-search="<%= `${employee.name} ${employee.code} ${employee.department}`.toLowerCase() %>"><input type="checkbox" name="employeeId" value="<%= employee.id %>" <%= selectedEmployeeIds.includes(employee.id) ? 'checked' : '' %>><span><strong><%= employee.name %></strong><br><small><%= [employee.code, employee.department].filter(Boolean).join(' / ') %></small></span></label><% }) %>
+					</div>
+					<div class="report-actions"><button class="report-button" type="submit" name="generate" value="1">Generate report</button><% if (report) { %><button class="report-button secondary" type="button" onclick="window.print()">Print report</button><% } %></div>
+				</form>
+				<% if (errorMessage) { %><p class="report-error" role="alert"><%= errorMessage %></p><% } %>
+			</section>
+
+			<% if (report) { %>
+			<section class="attendance-report-sheet">
+				<div class="report-heading"><span>Employee attendance report</span><strong><%= report.employees.length %> employee(s)</strong><span class="date-range"><%= mode === 'months' ? `${year} BS: ${report.monthLabel}` : `From ${report.startDateBs} to ${report.endDateBs}` %></span></div>
+				<% if (report.employees.length) { %>
+					<% report.employees.forEach((employee, employeeIndex) => { %>
+					<section class="employee-report-block">
+						<h2 class="employee-report-heading"><span><%= employeeIndex + 1 %>. Name: <%= employee.name %> (<%= employee.code || '—' %>)</span><span>Department: <%= employee.department || '—' %></span></h2>
+						<div class="attendance-detail-wrap"><table class="attendance-detail-table">
+							<thead><tr><th>Date</th><th class="day-name">Day</th><th>In</th><th>Out</th><th>Late Time</th><th>Early out</th><th class="remarks-cell">Remarks</th></tr></thead>
+							<tbody><% employee.days.forEach(day => { %>
+								<% if (day.status === 'holiday') { %><tr class="holiday-row"><td><%= day.nepaliDate %></td><td><%= day.weekday %></td><td colspan="5"><%= day.holidayName %></td></tr>
+								<% } else if (day.status === 'leave') { %><tr class="leave-row"><td><%= day.nepaliDate %></td><td><%= day.weekday %></td><td colspan="5"><%= day.remarks %></td></tr>
+								<% } else if (day.status === 'absent') { %><tr class="absent-row"><td><%= day.nepaliDate %></td><td><%= day.weekday %></td><td colspan="5">Absent</td></tr>
+								<% } else { %><tr class="<%= day.status %>-row"><td><%= day.nepaliDate %></td><td><%= day.weekday %></td><td><%= day.inTime || (day.status === 'upcoming' ? '—' : 'Missed') %></td><td><%= day.outTime || (day.status === 'upcoming' ? '—' : 'Missed') %></td><td><%= day.lateTime || '—' %></td><td><%= day.earlyOut || '—' %></td><td><%= day.remarks %></td></tr><% } %>
+							<% }) %></tbody>
+						</table></div>
+					</section>
+					<% }) %>
+				<% } else { %><div class="report-empty">No employees were selected for this report.</div><% } %>
+			</section>
+			<% } %>
+		</main>
+	</div>
+	<script>
+		const form = document.getElementById('attendanceReportForm');
+		const rangeFields = document.getElementById('dateRangeFields');
+		const monthFields = document.getElementById('monthRangeFields');
+		const employeeChoices = [...document.querySelectorAll('.employee-choice')];
+		const employeeCheckboxes = employeeChoices.map(choice => choice.querySelector('input'));
+		const employeeSearch = document.getElementById('employeeSearch');
+		const selectAllEmployees = document.getElementById('selectAllEmployees');
+		const selectionCount = document.getElementById('selectionCount');
+		const monthCheckboxes = [...document.querySelectorAll('input[name="month"]')];
+		const monthSelectionCount = document.getElementById('monthSelectionCount');
+
+		function setReportMode() {
+			const mode = form.querySelector('input[name="mode"]:checked').value;
+			rangeFields.hidden = mode !== 'range';
+			monthFields.hidden = mode !== 'months';
+			rangeFields.querySelectorAll('input').forEach(input => { input.disabled = mode !== 'range'; });
+			monthCheckboxes.forEach(input => { input.disabled = mode !== 'months'; });
+			document.getElementById('year').disabled = mode !== 'months';
+		}
+		function filterEmployees() {
+			const query = employeeSearch.value.trim().toLowerCase();
+			employeeChoices.forEach(choice => { choice.hidden = !choice.dataset.search.includes(query); });
+			updateEmployeeSelection();
+		}
+		function updateEmployeeSelection() {
+			const checked = employeeCheckboxes.filter(input => input.checked).length;
+			const visible = employeeChoices.filter(choice => !choice.hidden).map(choice => choice.querySelector('input'));
+			const visibleChecked = visible.filter(input => input.checked).length;
+			selectAllEmployees.checked = visible.length > 0 && visibleChecked === visible.length;
+			selectAllEmployees.indeterminate = visibleChecked > 0 && visibleChecked < visible.length;
+			selectionCount.textContent = `${checked} selected`;
+		}
+		function updateMonthSelection() {
+			monthSelectionCount.textContent = `${monthCheckboxes.filter(input => input.checked).length} selected`;
+		}
+		form.querySelectorAll('input[name="mode"]').forEach(input => input.addEventListener('change', setReportMode));
+		document.getElementById('searchEmployees').addEventListener('click', filterEmployees);
+		employeeSearch.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); filterEmployees(); } });
+		selectAllEmployees.addEventListener('change', () => {
+			employeeChoices.filter(choice => !choice.hidden).forEach(choice => { choice.querySelector('input').checked = selectAllEmployees.checked; });
+			updateEmployeeSelection();
+		});
+		employeeCheckboxes.forEach(input => input.addEventListener('change', updateEmployeeSelection));
+		document.getElementById('selectAllMonths').addEventListener('click', () => {
+			const allSelected = monthCheckboxes.length > 0 && monthCheckboxes.every(input => input.checked);
+			monthCheckboxes.forEach(input => { input.checked = !allSelected; });
+			updateMonthSelection();
+		});
+		monthCheckboxes.forEach(input => input.addEventListener('change', updateMonthSelection));
+		document.getElementById('year').addEventListener('change', () => {
+			const selectedEmployees = employeeCheckboxes.filter(input => input.checked).map(input => input.value);
+			const url = new URL(window.location.href);
+			url.search = '';
+			url.searchParams.set('mode', 'months');
+			url.searchParams.set('year', document.getElementById('year').value);
+			selectedEmployees.forEach(id => url.searchParams.append('employeeId', id));
+			window.location.assign(url);
+		});
+		setReportMode();
+		updateEmployeeSelection();
+		updateMonthSelection();
+	</script>
+</body>
+</html>
