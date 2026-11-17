@@ -405,7 +405,6 @@ app.use('/homework', homework);
 app.use(totalAttendance);
 app.use('/setup', router);
 app.use('/parents', parentsPortal);
-app.use('/', router);
 app.use(billing)
 app.use(library)
 
