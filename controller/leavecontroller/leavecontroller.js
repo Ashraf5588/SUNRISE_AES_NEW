@@ -494,8 +494,14 @@ exports.leavePage = async (req, res) => {
 			totalLeaveTakenWithAbsences = filedLeaveDays + absentDates.length;
 			unallocatedAbsentDays = Math.min(unallocatedAbsentDays, absentDates.length);
 		}
-		const remainingQuotaTypeCount = leaveBalances.filter(balance => balance.remainingDays !== null).length;
-		const totalRemainingLeave = leaveBalances.reduce((total, balance) => total + (balance.remainingDays || 0), 0);
+		const limitedLeaveBalances = leaveBalances.filter(balance =>
+			balance.yearlyLimit !== null || balance.monthlyLimit !== null
+		);
+		const remainingQuotaTypeCount = limitedLeaveBalances.length;
+		const totalRemainingLeave = limitedLeaveBalances.reduce((total, balance) => {
+			const remaining = balance.yearlyLimit !== null ? balance.yearlyRemaining : balance.monthlyRemaining;
+			return total + (remaining || 0);
+		}, 0);
 		const departmentAdmins = getAdminDepartmentStaff(approverUsers, profiles);
 		const editingApplication = currentApprover && mongoose.isValidObjectId(req.query.edit)
 			? applications.find(application => String(application._id) === String(req.query.edit) && application.status === 'pending' && application.canManage) || null

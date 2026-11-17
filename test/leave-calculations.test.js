@@ -140,3 +140,38 @@ test('allocates absent days across available quotas without exceeding limits', (
     assert.equal(result.allocations.get('annual').days + result.allocations.get('sick').days, 3);
     assert.equal(result.unallocatedDays, 1);
 });
+
+test('charges absences against yearly quotas even when monthly limits are used', () => {
+    const absences = Array.from({ length: 20 }, (_, index) => ({
+        adDate: `2026-10-${String(index + 1).padStart(2, '0')}`,
+        nepaliDate: `2083-06-${String(index + 1).padStart(2, '0')}`,
+        year: '2083',
+        month: '2083-06'
+    }));
+    const result = allocateAbsentDaysToQuotas(absences, [
+        {
+            key: 'casual',
+            name: 'Casual and festival',
+            yearlyLimit: 12,
+            monthlyLimit: 1,
+            usedYears: new Map([['2083', 2]]),
+            usedMonths: new Map([['2083-06', 2]])
+        },
+        {
+            key: 'unpaid',
+            name: 'Leave without pay',
+            yearlyLimit: 12,
+            monthlyLimit: 1,
+            usedYears: new Map(),
+            usedMonths: new Map()
+        }
+    ]);
+
+    const casualAbsentDays = result.allocations.get('casual').years.get('2083');
+    const unpaidAbsentDays = result.allocations.get('unpaid').years.get('2083');
+    const totalRemainingDays = (12 - 2 - casualAbsentDays) + (12 - unpaidAbsentDays);
+
+    assert.equal(casualAbsentDays + unpaidAbsentDays, 20);
+    assert.equal(totalRemainingDays, 2);
+    assert.equal(result.unallocatedDays, 0);
+});

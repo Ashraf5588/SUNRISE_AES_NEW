@@ -118,7 +118,8 @@ const allocateAbsentDaysToQuotas = (absenceDates, quotaTypes) => {
                 const monthlyUsed = (type.usedMonths?.get(absence.month) || 0) + (allocated.months.get(absence.month) || 0);
                 const yearlyRemaining = yearlyLimit > 0 ? Math.max(0, yearlyLimit - yearlyUsed) : Infinity;
                 const monthlyRemaining = monthlyLimit > 0 ? Math.max(0, monthlyLimit - monthlyUsed) : Infinity;
-                const capacity = Math.min(yearlyRemaining, monthlyRemaining);
+                // Absences consume annual quota even when they exceed the monthly request cap.
+                const capacity = yearlyLimit > 0 ? yearlyRemaining : monthlyRemaining;
                 return capacity > 0
                     ? { type, allocated, capacity }
                     : null;
