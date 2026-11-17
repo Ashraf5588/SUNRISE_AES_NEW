@@ -1,0 +1,136 @@
+<%- include('../partials/head', { title: 'Print Invoices', setupStylesheet: true }) %>
+<%- include('../partials/navbar') %>
+<%
+  const money = value => Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+%>
+<div class="fee-page-shell setup-page"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container invoice-print-workspace">
+  <header class="invoice-print-toolbar no-print">
+    <div>
+      <p class="setup-eyebrow">Billing · Print center</p>
+      <h1>Print pre-bills</h1>
+      <p><%= invoices.length %> invoice<%= invoices.length === 1 ? '' : 's' %> selected. Use your browser’s print dialog to print or save as PDF.</p>
+    </div>
+    <div class="invoice-print-actions">
+      <a class="btn btn-outline-primary" href="/billing/print-invoices">Back to print center</a>
+      <button class="btn btn-primary" type="button" onclick="window.print()">Print <%= invoices.length %> invoices</button>
+    </div>
+  </header>
+  <div class="invoice-print-list">
+    <% invoices.forEach((invoice, invoiceIndex) => {
+      const student = invoice.student || {};
+      const schoolName = school?.name || 'School';
+      const className = student.class?.studentClass || student.class?.name || '';
+      const section = student.section || '';
+      const items = Array.isArray(invoice.currentItems) ? invoice.currentItems : [];
+      const currentTotal = Number(invoice.currentTotal ?? items.reduce((sum, item) => sum + Number(item.amount || 0), 0));
+      const previousDue = Number(invoice.previousDue || 0);
+      const total = Number(invoice.grandTotal ?? invoice.totalAmount ?? previousDue + currentTotal);
+      const paid = Number(invoice.paidAmount || 0);
+      const balance = Number(invoice.balanceDue ?? Math.max(0, total - paid));
+    %>
+      <article class="invoice-print-paper">
+        <header class="print-paper-heading">
+          <div class="print-school-details">
+            <% if (school?.logoUrl) { %><img src="<%= school.logoUrl %>" alt="" class="print-school-logo"><% } %>
+            <div>
+              <h2><%= schoolName %></h2>
+              <% if (school?.address) { %><p><%= school.address %></p><% } %>
+              <p><% if (school?.phone) { %>Phone: <%= school.phone %><% } %><% if (school?.panNumber) { %><%= school?.phone ? ' · ' : '' %>PAN: <%= school.panNumber %><% } %></p>
+            </div>
+          </div>
+          <div class="print-invoice-heading">
+            <h1>Fee invoice</h1>
+            <strong><%= invoice.invoiceNumber || '-' %></strong>
+          </div>
+        </header>
+        <% if (invoice.isCancelled) { %><p class="print-cancelled">CANCELLED INVOICE</p><% } %>
+        <section class="print-invoice-meta">
+          <div>
+            <span class="print-label">Student</span>
+            <strong><%= student.name || 'Student' %></strong>
+            <small><%= student.studentCode || '' %><%= className ? ` · ${className}` : '' %><%= section ? ` · ${section}` : '' %></small>
+          </div>
+          <div><span class="print-label">Billing month</span><strong><%= invoice.billMonthBS || '-' %></strong></div>
+          <div><span class="print-label">Session</span><strong><%= invoice.academicSession?.titleBS || invoice.academicSession?.yearBS || '-' %></strong></div>
+          <div><span class="print-label">Invoice date</span><strong><%= invoice.billDateBS || '-' %> BS</strong></div>
+        </section>
+        <table class="print-fee-table">
+          <thead><tr><th>#</th><th>Fee description</th><th>Amount (Rs.)</th></tr></thead>
+          <tbody>
+            <% if (!items.length) { %><tr><td colspan="3" class="print-empty">No itemized fee details available.</td></tr><% } %>
+            <% items.forEach((item, index) => { %>
+              <tr><td class="print-item-number"><%= index + 1 %></td><td><%= item.feeHeadName || item.label || 'Fee' %></td><td class="print-money"><%= money(item.amount) %></td></tr>
+            <% }) %>
+          </tbody>
+        </table>
+        <section class="print-totals">
+          <% if (previousDue > 0) { %><div><span>Previous balance</span><strong>Rs. <%= money(previousDue) %></strong></div><% } %>
+          <div><span>Current charges</span><strong>Rs. <%= money(currentTotal) %></strong></div>
+          <div class="print-grand-total"><span>Total billed</span><strong>Rs. <%= money(total) %></strong></div>
+          <div><span>Paid so far</span><strong>Rs. <%= money(paid) %></strong></div>
+          <div class="print-balance"><span>Balance due</span><strong>Rs. <%= money(balance) %></strong></div>
+        </section>
+        <footer class="print-signatures"><span>Authorized by</span><span>Parent / guardian</span></footer>
+        <div class="print-page-count"><%= invoiceIndex + 1 %> / <%= invoices.length %></div>
+      </article>
+    <% }) %>
+  </div>
+</div></main></div>
+<style>
+  .fee-page-shell.setup-page .fee-page-main { padding-top:18px; }
+  .invoice-print-workspace { max-width:1100px; }
+  .invoice-print-toolbar { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:18px; }
+  .invoice-print-toolbar h1 { margin:0; color:#172b49; font-size:24px; font-weight:800; }
+  .invoice-print-toolbar p:last-child { margin:4px 0 0; color:#718198; font-size:11px; }
+  .invoice-print-actions { display:flex; flex-wrap:wrap; gap:8px; }
+  .invoice-print-list { display:grid; gap:20px; }
+  .invoice-print-paper { position:relative; max-width:850px; width:100%; margin:0 auto; padding:32px 38px; border:1px solid #dfe6ef; border-radius:10px; background:#fff; box-shadow:0 6px 22px rgba(27,48,77,.07); }
+  .print-paper-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; padding-bottom:16px; border-bottom:2px solid #173b6d; }
+  .print-school-details { display:flex; align-items:flex-start; gap:12px; }
+  .print-school-logo { max-width:58px; max-height:50px; object-fit:contain; }
+  .print-school-details h2 { margin:0; color:#102a52; font-size:18px; font-weight:850; }
+  .print-school-details p { margin:4px 0 0; color:#66758b; font-size:9px; }
+  .print-invoice-heading { min-width:150px; text-align:right; }
+  .print-invoice-heading h1 { margin:0 0 5px; color:#102a52; font-size:16px; font-weight:850; text-transform:uppercase; }
+  .print-invoice-heading strong { color:#263b57; font-size:11px; overflow-wrap:anywhere; }
+  .print-cancelled { margin:12px 0 0; padding:7px; background:#fff1f1; color:#a93640; font-size:10px; font-weight:800; text-align:center; }
+  .print-invoice-meta { display:grid; grid-template-columns:1.5fr 1fr 1fr 1fr; gap:12px; margin:16px 0; padding:12px; border:1px solid #e5ebf3; border-radius:7px; background:#fafbfd; }
+  .print-invoice-meta > div { display:grid; align-content:start; gap:4px; min-width:0; }
+  .print-label { color:#758399; font-size:8px; font-weight:800; letter-spacing:.45px; text-transform:uppercase; }
+  .print-invoice-meta strong { color:#263b57; font-size:10px; overflow-wrap:anywhere; }
+  .print-invoice-meta small { color:#718198; font-size:8px; }
+  .print-fee-table { width:100%; border-collapse:collapse; }
+  .print-fee-table th,.print-fee-table td { padding:8px 10px; border-bottom:1px solid #e8edf4; color:#344a66; font-size:9px; text-align:left; }
+  .print-fee-table th { background:#f4f7fb; color:#62738b; font-size:8px; letter-spacing:.4px; text-transform:uppercase; }
+  .print-fee-table th:first-child,.print-item-number { width:38px; color:#8190a3 !important; }
+  .print-fee-table th:last-child,.print-money { width:135px; text-align:right !important; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .print-empty { color:#77869b !important; text-align:center !important; }
+  .print-totals { width:min(100%,310px); margin:14px 0 0 auto; }
+  .print-totals > div { display:flex; justify-content:space-between; gap:12px; padding:6px 9px; border-bottom:1px solid #edf1f6; color:#63738a; font-size:9px; }
+  .print-totals strong { color:#263b57; white-space:nowrap; }
+  .print-totals .print-grand-total { background:#f2f6fc; color:#102a52; font-weight:800; }
+  .print-totals .print-grand-total strong { color:#102a52; }
+  .print-totals .print-balance { margin-top:4px; border:1px solid #cfe7df; border-radius:5px; background:#f1faf6; color:#147253; font-weight:800; }
+  .print-totals .print-balance strong { color:#147253; }
+  .print-signatures { display:grid; grid-template-columns:1fr 1fr; gap:60px; margin-top:35px; }
+  .print-signatures span { padding-top:6px; border-top:1px solid #aeb9c8; color:#68778c; font-size:8px; }
+  .print-page-count { margin-top:14px; color:#97a2b1; font-size:8px; text-align:right; }
+  @media(max-width:650px) {
+    .invoice-print-toolbar { align-items:flex-start; flex-direction:column; }
+    .invoice-print-paper { padding:22px 16px; }
+    .print-invoice-meta { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  }
+  @media print {
+    @page { size:A4 portrait; margin:12mm; }
+    html,body { background:#fff !important; }
+    body * { visibility:hidden !important; }
+    .invoice-print-list,.invoice-print-list * { visibility:visible !important; }
+    .fee-sidebar,.fee-sidebar-scrim,.fee-nav-trigger,.no-print { display:none !important; }
+    .fee-page-shell,.fee-page-main,.invoice-print-workspace,.invoice-print-list { display:block !important; width:100% !important; max-width:none !important; margin:0 !important; padding:0 !important; border:0 !important; box-shadow:none !important; }
+    .invoice-print-paper { width:100%; max-width:none; min-height:0; margin:0; padding:0 0 10mm; border:0; border-radius:0; box-shadow:none; break-after:page; page-break-after:always; }
+    .invoice-print-paper:last-child { break-after:auto; page-break-after:auto; }
+    .print-paper-heading,.print-invoice-meta,.print-fee-table th,.print-grand-total,.print-balance { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .print-fee-table tr,.print-totals,.print-invoice-meta { break-inside:avoid; page-break-inside:avoid; }
+  }
+</style>
+<%- include('../partials/footer') %>

@@ -11,11 +11,11 @@ const counterSchema = new mongoose.Schema({
 
 const Counter = mongoose.model('Counter', counterSchema);
 
-async function getNextSequence(name) {
+async function getNextSequence(name, session) {
   const counter = await Counter.findByIdAndUpdate(
     name,
     { $inc: { seq: 1 } },
-    { new: true, upsert: true }
+    { new: true, upsert: true, ...(session ? { session } : {}) }
   );
   return counter.seq;
 }

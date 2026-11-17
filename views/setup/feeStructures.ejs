@@ -1,41 +1,45 @@
-<%- include('../partials/head', { title: 'Fee Structures' }) %>
+<%- include('../partials/head', { title: 'Fee Structures', setupStylesheet: true }) %>
 <%- include('../partials/navbar') %>
-<div class="fee-page-shell"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container mt-4">
-  <h3>Fee Structures</h3>
+<div class="fee-page-shell setup-page"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container">
+  <header class="setup-heading"><div class="setup-heading-copy"><p class="setup-eyebrow">Fee configuration</p><h1>Fee structures</h1><p>Assign a fee category and amount to a class for a selected academic session.</p></div></header>
   <div class="row">
     <div class="col-md-5">
-      <form method="POST" action="/setup/fee-structures" class="bg-white p-3 rounded shadow-sm">
-        <div class="mb-2">
+      <section class="setup-card"><div class="setup-card-heading"><div><h2>Add fee structure</h2><p>Set the charge amount for a session and class.</p></div></div><div class="setup-card-body">
+        <form method="POST" action="/setup/fee-structures">
+        <div class="mb-3">
           <label class="form-label">Academic Session</label>
           <select class="form-select" name="academicSession" required>
             <% sessions.forEach(s => { %><option value="<%= s._id %>"><%= s.titleBS %></option><% }) %>
           </select>
         </div>
-        <div class="mb-2">
+        <div class="mb-3">
           <label class="form-label">Class</label>
           <select class="form-select" name="class" required>
             <% classes.forEach(c => { %><option value="<%= c._id %>"><%= c.name %></option><% }) %>
           </select>
         </div>
-        <div class="mb-2">
+        <div class="mb-3">
           <label class="form-label">Fee Category</label>
           <select class="form-select" name="feeCategory" required>
             <% feeCategories.forEach(f => { %><option value="<%= f._id %>"><%= f.name %> (<%= f.frequency %>)</option><% }) %>
           </select>
         </div>
-        <div class="mb-2"><label class="form-label">Amount (Rs)</label><input type="number" step="0.01" class="form-control" name="amount" required></div>
+        <div class="mb-3"><label class="form-label">Amount (Rs)</label><input type="number" step="0.01" class="form-control" name="amount" required></div>
         <button class="btn btn-primary">Add Fee Structure</button>
-      </form>
+        </form>
+      </div></section>
     </div>
     <div class="col-md-7">
-      <table class="table table-bordered bg-white">
-        <thead><tr><th>Session</th><th>Class</th><th>Category</th><th>Amount</th></tr></thead>
-        <tbody>
-          <% feeStructures.forEach(fs => { %>
-          <tr><td><%= fs.academicSession.titleBS %></td><td><%= fs.class.name %></td><td><%= fs.feeCategory.name %></td><td><%= fs.amount.toFixed(2) %></td></tr>
-          <% }) %>
-        </tbody>
-      </table>
+      <section class="setup-card"><div class="setup-card-heading"><div><h2>Configured fees</h2><p>Amounts by session, class, and fee category.</p></div><span class="setup-count"><%= feeStructures.length %> total</span></div>
+        <div class="setup-table-wrap"><table class="table setup-table">
+          <thead><tr><th>Session</th><th>Class</th><th>Category</th><th>Amount</th></tr></thead>
+          <tbody>
+            <% if (feeStructures.length) { feeStructures.forEach(fs => { %>
+            <tr><td><%= fs.academicSession.titleBS %></td><td><%= fs.class.name %></td><td><%= fs.feeCategory.name %></td><td>Rs. <%= fs.amount.toFixed(2) %></td></tr>
+            <% }) } else { %><tr><td colspan="4" class="setup-empty">No fee structures have been configured yet.</td></tr><% } %>
+          </tbody>
+        </table></div>
+      </section>
     </div>
   </div>
 </div>

@@ -1,113 +1,400 @@
-<%- include('../partials/head', { title: student ? 'Edit Student' : 'New Student' }) %>
+<%- include('../partials/head', { title: student ? 'Edit Student' : 'New Student', setupStylesheet: true, nepaliDatePicker: true }) %>
 <%- include('../partials/navbar') %>
-<div class="fee-page-shell"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container mt-4">
-  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-    <h3 class="mb-0"><%= student ? 'Edit Student' : 'New Student' %></h3>
-    <% if (!student) { %>
-    <div class="d-flex gap-2">
-      <a class="btn btn-outline-primary" href="/students/import-template.csv">Download CSV Template</a>
-      <button class="btn btn-outline-success" type="button" data-bs-toggle="collapse" data-bs-target="#csvImportPanel">Upload CSV</button>
-    </div>
-    <% } %>
-  </div>
-  <% if (importResult) { %>
-  <div class="alert alert-<%= importResult.errors.length ? 'warning' : 'success' %>">
-    Imported <strong><%= importResult.inserted %></strong> student(s); skipped <strong><%= importResult.skipped %></strong>.
-    <% if (importResult.errors.length) { %><ul class="mb-0 mt-2"><% importResult.errors.slice(0, 10).forEach(error => { %><li><%= error %></li><% }) %></ul><% } %>
-  </div>
-  <% } %>
-  <% if (!student) { %>
-  <div id="csvImportPanel" class="collapse mb-3">
-    <form method="POST" action="/students/import-csv" enctype="multipart/form-data" class="bg-white p-3 rounded shadow-sm">
-      <label for="studentCsv" class="form-label">Student CSV file</label>
-      <input id="studentCsv" name="studentCsv" type="file" accept=".csv,text/csv" class="form-control" required>
-      <div class="form-text">Required columns: studentCode, name, class, admissionDateAD, academicSession. Class and academic session must match existing records.</div>
-      <button type="submit" class="btn btn-success mt-3">Import Students</button>
-    </form>
-  </div>
-  <% } %>
-  <form method="POST" action="<%= student ? '/students/' + student._id : '/students' %>" class="bg-white p-4 rounded shadow-sm">
-    <div class="row g-3">
-      <div class="col-md-4">
-        <label class="form-label">Student Code (old roll no.)</label>
-        <input type="text" name="studentCode" class="form-control" value="<%= student ? student.studentCode : '' %>" required>
-      </div>
-      <div class="col-md-8">
-        <label class="form-label">Full Name</label>
-        <input type="text" name="name" class="form-control" value="<%= student ? student.name : '' %>" required>
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">Class</label>
-        <select name="class" class="form-select" required>
-          <% classes.forEach(c => { %>
-          <option value="<%= c._id %>" <%= student && student.class && String(student.class._id) === String(c._id) ? 'selected' : '' %>><%= c.studentClass %>-<%= c.section %></option>
-          <% }) %>
-        </select>
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">Section</label>
-        <input type="text" name="section" class="form-control" value="<%= student ? student.section : '' %>">
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">Academic Session</label>
-        <select name="academicSession" class="form-select" required>
-          <% sessions.forEach(s => { %>
-          <option value="<%= s._id %>" <%= student && student.academicSession && String(student.academicSession._id) === String(s._id) ? 'selected' : '' %>><%= s.titleBS %></option>
-          <% }) %>
-        </select>
-      </div>
-      <div class="col-md-6">
-        <label class="form-label">Guardian Name</label>
-        <input type="text" name="guardianName" class="form-control" value="<%= student ? student.guardianName : '' %>">
-      </div>
-      <div class="col-md-6">
-        <label class="form-label">Guardian Phone</label>
-        <input type="text" name="guardianPhone" class="form-control" value="<%= student ? student.guardianPhone : '' %>">
-      </div>
-      <div class="col-md-6">
-        <label class="form-label">Admission Date</label>
-        <input type="date" name="admissionDateAD" class="form-control"
-          value="<%= student ? student.admissionDateAD.toISOString().slice(0,10) : '' %>" required>
-        <div class="form-text">If the student joins partway through the session, bills for earlier months are skipped automatically.</div>
-      </div>
-      <% if (student) { %>
-      <div class="col-md-6">
-        <label class="form-label">Status</label>
-        <select name="status" class="form-select">
-          <option value="ACTIVE" <%= student.status === 'ACTIVE' ? 'selected' : '' %>>Active</option>
-          <option value="INACTIVE" <%= student.status === 'INACTIVE' ? 'selected' : '' %>>Inactive</option>
-          <option value="TRANSFERRED" <%= student.status === 'TRANSFERRED' ? 'selected' : '' %>>Transferred</option>
-        </select>
-      </div>
+<%
+  const values = (typeof formValues !== 'undefined' && formValues) || {};
+  const errors = (typeof fieldErrors !== 'undefined' && fieldErrors) || {};
+  const valueFor = (field, fallback) => values[field] !== undefined ? values[field] : (fallback || '');
+  const studentClassId = String(valueFor('class', student && student.class ? student.class._id : ''));
+  const sessionId = String(valueFor('academicSession', student && student.academicSession ? student.academicSession._id : ''));
+  const selectedRouteId = String(valueFor('transportRoute', student && student.transportRoute ? student.transportRoute._id : ''));
+  const usesBus = values.usesSchoolBus !== undefined
+    ? values.usesSchoolBus === 'on'
+    : student
+      ? Boolean(student.usesSchoolBus && student.transportRoute)
+      : true;
+  const dateValue = valueFor(
+    'admissionDateBS',
+    student && student.admissionDateAD ? toBSDate(student.admissionDateAD) : todayBS
+  );
+%>
+<div class="fee-page-shell setup-page student-admission-page">
+  <%- include('../billingfirst/feesidenav') %>
+  <main class="fee-page-main">
+    <div class="container student-admission-workspace">
+      <header class="setup-heading admission-heading">
+        <div class="setup-heading-copy">
+          <p class="setup-eyebrow">Student records / Admission</p>
+          <h1><%= student ? 'Update student details' : 'New student admission' %></h1>
+          <p>Complete the student profile, select a class and session, and set up transport before saving.</p>
+        </div>
+        <div class="admission-heading-actions">
+          <% if (!student) { %>
+            <a class="btn btn-outline-primary" href="/students/import-template.csv">Download CSV template</a>
+            <button class="btn btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#csvImportPanel">Import students</button>
+          <% } %>
+          <a class="btn btn-light" href="/students">Back to students</a>
+        </div>
+      </header>
+
+      <% if (Object.keys(errors).length) { %>
+        <div class="alert alert-danger admission-server-error" role="alert">
+          <strong>Please review the highlighted information.</strong>
+          <ul class="mb-0 mt-1"><% Object.values(errors).forEach(message => { %><li><%= message %></li><% }) %></ul>
+        </div>
       <% } %>
-    </div>
 
-    <% if (!student) { %>
-    <hr>
-    <h5>Migrating from old software?</h5>
-    <div class="form-check mb-2">
-      <input class="form-check-input" type="checkbox" name="migratedFromOldSystem" id="migrated"
-        onclick="document.getElementById('openingDueFields').classList.toggle('d-none')">
-      <label class="form-check-label" for="migrated">This student has an existing due from the old system</label>
-    </div>
-    <div id="openingDueFields" class="row g-3 d-none">
-      <div class="col-md-4">
-        <label class="form-label">Opening Due Amount (Rs)</label>
-        <input type="number" step="0.01" name="openingDueAmount" class="form-control">
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">As Of Date</label>
-        <input type="date" name="openingDueAsOfDate" class="form-control">
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">Note</label>
-        <input type="text" name="openingDueNote" class="form-control" placeholder="Migrated from XYZ software">
-      </div>
-    </div>
-    <% } %>
+      <% if (importResult) { %>
+        <div class="alert alert-<%= importResult.errors.length ? 'warning' : 'success' %>">
+          Imported <strong><%= importResult.inserted %></strong> student(s); skipped <strong><%= importResult.skipped %></strong>.
+          <% if (importResult.errors.length) { %><ul class="mb-0 mt-2"><% importResult.errors.slice(0, 10).forEach(error => { %><li><%= error %></li><% }) %></ul><% } %>
+        </div>
+      <% } %>
 
-    <button type="submit" class="btn btn-primary mt-4">Save Student</button>
-  </form>
+      <% if (!student) { %>
+        <div id="csvImportPanel" class="collapse admission-import-panel">
+          <form method="POST" action="/students/import-csv" enctype="multipart/form-data">
+            <label for="studentCsv" class="form-label">Student CSV file</label>
+            <input id="studentCsv" name="studentCsv" type="file" accept=".csv,text/csv" class="form-control" required>
+            <div class="form-text">Required columns: studentCode, name, class, admissionDateAD, academicSession.</div>
+            <button type="submit" class="btn btn-success mt-3">Import students</button>
+          </form>
+        </div>
+      <% } %>
+
+      <form method="POST" action="<%= student ? '/students/' + student._id : '/students' %>" class="admission-form" id="studentAdmissionForm" novalidate>
+        <div class="admission-layout">
+          <div class="admission-main-column">
+            <section class="setup-card admission-card" aria-labelledby="studentDetailsHeading">
+              <div class="admission-section-heading">
+                <span class="admission-step">01</span>
+                <div><h2 id="studentDetailsHeading">Student details</h2><p>Start with the student's identity and school placement.</p></div>
+              </div>
+              <div class="admission-fields-grid">
+                <div class="admission-field">
+                  <label for="studentCode">Student code <span class="required-mark">*</span></label>
+                  <input id="studentCode" name="studentCode" class="form-control <%= errors.studentCode ? 'is-invalid' : '' %>" value="<%= valueFor('studentCode', student && student.studentCode) %>" placeholder="e.g. STU-2083-001" autocomplete="off" required>
+                  <% if (errors.studentCode) { %><small class="admission-field-error"><%= errors.studentCode %></small><% } %>
+                </div>
+                <div class="admission-field">
+                  <label for="name">Full name <span class="required-mark">*</span></label>
+                  <input id="name" name="name" class="form-control <%= errors.name ? 'is-invalid' : '' %>" value="<%= valueFor('name', student && student.name) %>" placeholder="Enter student's full name" autocomplete="name" required>
+                  <% if (errors.name) { %><small class="admission-field-error"><%= errors.name %></small><% } %>
+                </div>
+                <div class="admission-field">
+                  <label for="class">Class <span class="required-mark">*</span></label>
+                  <select id="class" name="class" class="form-select <%= errors.class ? 'is-invalid' : '' %>" required>
+                    <option value="">Select class</option>
+                    <% classes.forEach(c => { %>
+                      <option value="<%= c._id %>" <%= studentClassId === String(c._id) ? 'selected' : '' %>><%= c.studentClass %><%= c.section ? ' · ' + c.section : '' %></option>
+                    <% }) %>
+                  </select>
+                  <% if (errors.class) { %><small class="admission-field-error"><%= errors.class %></small><% } %>
+                </div>
+                <div class="admission-field">
+                  <label for="section">Section</label>
+                  <input id="section" name="section" class="form-control" value="<%= valueFor('section', student && student.section) %>" placeholder="e.g. A">
+                </div>
+                <div class="admission-field">
+                  <label for="academicSession">Academic session <span class="required-mark">*</span></label>
+                  <select id="academicSession" name="academicSession" class="form-select <%= errors.academicSession ? 'is-invalid' : '' %>" required>
+                    <option value="">Select session</option>
+                    <% sessions.forEach(s => { %>
+                      <option value="<%= s._id %>" <%= sessionId === String(s._id) ? 'selected' : '' %>><%= s.titleBS %><%= s.isActive ? ' · Current session' : '' %></option>
+                    <% }) %>
+                  </select>
+                  <% if (errors.academicSession) { %><small class="admission-field-error"><%= errors.academicSession %></small><% } %>
+                </div>
+                <div class="admission-field">
+                  <label for="admissionDateBS">Admission date (BS) <span class="required-mark">*</span></label>
+                  <input id="admissionDateBS" name="admissionDateBS" type="text" class="form-control nepali-datepicker <%= errors.admissionDateBS ? 'is-invalid' : '' %>" value="<%= dateValue %>" placeholder="YYYY-MM-DD" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" autocomplete="off" required>
+                  <small class="admission-field-hint">Choose a Nepali date using the calendar. Invoices dated before this date are skipped.</small>
+                  <% if (errors.admissionDateBS) { %><small class="admission-field-error"><%= errors.admissionDateBS %></small><% } %>
+                </div>
+              </div>
+            </section>
+
+            <section class="setup-card admission-card" aria-labelledby="guardianHeading">
+              <div class="admission-section-heading">
+                <span class="admission-step">02</span>
+                <div><h2 id="guardianHeading">Parent or guardian</h2><p>Contact details help the school reach the right person.</p></div>
+              </div>
+              <div class="admission-fields-grid">
+                <div class="admission-field">
+                  <label for="guardianName">Guardian name</label>
+                  <input id="guardianName" name="guardianName" class="form-control" value="<%= valueFor('guardianName', student && student.guardianName) %>" placeholder="Parent or guardian's name" autocomplete="name">
+                </div>
+                <div class="admission-field">
+                  <label for="guardianPhone">Phone number</label>
+                  <input id="guardianPhone" name="guardianPhone" type="tel" class="form-control" value="<%= valueFor('guardianPhone', student && student.guardianPhone) %>" placeholder="e.g. 98XXXXXXXX" autocomplete="tel">
+                </div>
+              </div>
+            </section>
+
+            <section class="setup-card admission-card admission-transport-card" aria-labelledby="transportHeading">
+              <div class="admission-section-heading">
+                <span class="admission-step">03</span>
+                <div><h2 id="transportHeading">School transport</h2><p>Choose the student's route. Its saved fare will be included in billing.</p></div>
+              </div>
+              <label class="admission-bus-toggle" for="usesSchoolBus">
+                <span class="admission-bus-icon" aria-hidden="true">B</span>
+                <span class="admission-bus-copy"><strong>This student uses the school bus</strong><small>Transport is selected by default for new admissions.</small></span>
+                <input id="usesSchoolBus" name="usesSchoolBus" type="checkbox" <%= usesBus ? 'checked' : '' %>>
+              </label>
+              <div class="admission-route-row">
+                <div class="admission-field admission-route-field">
+                  <label for="transportRoute">Transport route <span class="required-mark" id="routeRequiredMark">*</span></label>
+                  <select id="transportRoute" name="transportRoute" class="form-select <%= errors.transportRoute ? 'is-invalid' : '' %>">
+                    <option value="">Select a route</option>
+                    <% transportRoutes.forEach(route => { %>
+                      <option value="<%= route._id %>" data-session="<%= route.academicSession ? route.academicSession._id : '' %>" data-fee="<%= route.transportFee %>" <%= selectedRouteId === String(route._id) ? 'selected' : '' %>><%= route.routeName %> · Rs. <%= Number(route.transportFee).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %><%= route.academicSession ? ' · ' + route.academicSession.titleBS : '' %></option>
+                    <% }) %>
+                  </select>
+                  <% if (errors.transportRoute) { %><small class="admission-field-error"><%= errors.transportRoute %></small><% } %>
+                  <small class="admission-field-hint" id="routeHelp">Choose a route for the selected academic session.</small>
+                </div>
+                <div class="admission-route-fare" aria-live="polite">
+                  <span>Monthly route fare</span>
+                  <strong id="routeFare">Select a route</strong>
+                </div>
+              </div>
+              <% if (!transportRoutes.length) { %>
+                <div class="admission-no-routes">No transport routes are configured yet. Add one in <a href="/setup/transportfee">Transport fee setup</a>.</div>
+              <% } %>
+            </section>
+
+            <% if (student) { %>
+              <section class="setup-card admission-card" aria-labelledby="statusHeading">
+                <div class="admission-section-heading">
+                  <span class="admission-step">04</span>
+                  <div><h2 id="statusHeading">Enrollment status</h2><p>Update the student's current school status.</p></div>
+                </div>
+                <div class="admission-field admission-status-field">
+                  <label for="status">Status</label>
+                  <select id="status" name="status" class="form-select">
+                    <option value="ACTIVE" <%= valueFor('status', student.status) === 'ACTIVE' ? 'selected' : '' %>>Active</option>
+                    <option value="INACTIVE" <%= valueFor('status', student.status) === 'INACTIVE' ? 'selected' : '' %>>Inactive</option>
+                    <option value="TRANSFERRED" <%= valueFor('status', student.status) === 'TRANSFERRED' ? 'selected' : '' %>>Transferred</option>
+                  </select>
+                </div>
+              </section>
+            <% } else { %>
+              <details class="admission-migration">
+                <summary>Importing a student with an existing balance?</summary>
+                <div class="admission-migration-content">
+                  <label class="form-check">
+                    <input class="form-check-input" type="checkbox" name="migratedFromOldSystem" id="migrated" <%= values.migratedFromOldSystem === 'on' ? 'checked' : '' %>>
+                    <span class="form-check-label">This student has a due from the previous system</span>
+                  </label>
+                  <div class="admission-fields-grid d-none" id="openingDueFields">
+                    <div class="admission-field"><label for="openingDueAmount">Opening due (Rs.)</label><input id="openingDueAmount" type="number" step="0.01" min="0" name="openingDueAmount" class="form-control" value="<%= valueFor('openingDueAmount') %>"></div>
+                    <div class="admission-field"><label for="openingDueAsOfDate">As-of date</label><input id="openingDueAsOfDate" type="date" name="openingDueAsOfDate" class="form-control" value="<%= valueFor('openingDueAsOfDate') %>"></div>
+                    <div class="admission-field"><label for="openingDueNote">Note</label><input id="openingDueNote" name="openingDueNote" class="form-control" value="<%= valueFor('openingDueNote') %>" placeholder="Migrated from previous system"></div>
+                  </div>
+                </div>
+              </details>
+            <% } %>
+
+            <div class="admission-form-actions">
+              <a class="btn btn-light" href="/students">Cancel</a>
+              <button type="submit" class="btn btn-primary"><%= student ? 'Save changes' : 'Save student admission' %></button>
+            </div>
+          </div>
+
+          <aside class="admission-aside">
+            <section class="admission-aside-card">
+              <span class="admission-aside-icon" aria-hidden="true">✓</span>
+              <h2>Admission checklist</h2>
+              <p>Fields marked <span class="required-mark">*</span> are required to create a student record.</p>
+              <ul>
+                <li>Student code and full name</li>
+                <li>Class and academic session</li>
+                <li>Admission date</li>
+                <li>Transport route when school bus is selected</li>
+              </ul>
+              <div class="admission-aside-note"><strong>Billing made easier</strong><span>When a bus route is saved, its transport fee is automatically checked and priced in the student's invoice.</span></div>
+            </section>
+          </aside>
+        </div>
+      </form>
+    </div>
+  </main>
 </div>
- </main></div>
+
+<div class="admission-validation-modal" id="admissionValidationModal" hidden>
+  <div class="admission-modal-backdrop" data-close-admission-modal></div>
+  <section class="admission-modal-panel" role="dialog" aria-modal="true" aria-labelledby="admissionModalTitle" aria-describedby="admissionModalDescription">
+    <button class="admission-modal-close" type="button" aria-label="Close" data-close-admission-modal>&times;</button>
+    <span class="admission-modal-alert" aria-hidden="true">!</span>
+    <h2 id="admissionModalTitle">A few details are missing</h2>
+    <p id="admissionModalDescription">Complete the required fields below. Missing information is highlighted in red.</p>
+    <ul id="admissionValidationList"></ul>
+    <button class="btn btn-primary" type="button" data-close-admission-modal>Review fields</button>
+  </section>
+</div>
+
+<style>
+  .student-admission-page { --admission-navy: #102a52; --admission-blue: #3979d6; --admission-muted: #73829a; }
+  .student-admission-workspace { max-width: 1330px; }
+  .admission-heading { align-items: center; }
+  .admission-heading-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+  .admission-heading-actions .btn { font-size: 12px; font-weight: 700; }
+  .admission-import-panel { margin: 0 0 18px; padding: 18px; border: 1px solid #dfe8f3; border-radius: 12px; background: #fff; }
+  .admission-import-panel form { max-width: 520px; }
+  .admission-form { border: 0 !important; padding: 0 !important; background: transparent !important; box-shadow: none !important; }
+  .admission-layout { display: grid; grid-template-columns: minmax(0, 1fr) 275px; gap: 20px; align-items: start; }
+  .admission-main-column { display: grid; gap: 16px; min-width: 0; }
+  .admission-card { padding: 0 !important; }
+  .admission-section-heading { display: flex; align-items: flex-start; gap: 12px; padding: 20px 22px 15px; border-bottom: 1px solid #edf1f6; }
+  .admission-step { display: grid; width: 31px; height: 31px; flex: 0 0 31px; place-items: center; border-radius: 10px; background: #edf4ff; color: #356bc0; font-size: 11px; font-weight: 850; }
+  .admission-section-heading h2 { margin: 0; color: var(--admission-navy); font-size: 15px; font-weight: 800; }
+  .admission-section-heading p { margin: 4px 0 0; color: var(--admission-muted); font-size: 11px; }
+  .admission-fields-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding: 18px 22px 22px; }
+  .admission-field { display: flex; min-width: 0; flex-direction: column; gap: 6px; }
+  .admission-field > label { margin: 0; color: #465a75; font-size: 11px; font-weight: 750; }
+  .admission-field .form-control, .admission-field .form-select { width: 100%; min-height: 43px; padding: 9px 12px; border: 1px solid #dbe5f1; border-radius: 9px; background-color: #fbfdff; color: #1d2b42; font-size: 12px; }
+  .admission-field .form-control:focus, .admission-field .form-select:focus { border-color: #78a5e3; box-shadow: 0 0 0 3px rgba(57,121,214,.12); }
+  .admission-field .is-invalid, .admission-field .form-control.is-invalid, .admission-field .form-select.is-invalid { border-color: #dc3545; background-color: #fff8f8; }
+  .required-mark { color: #d33b4c; font-weight: 800; }
+  .admission-field-hint { color: #8491a4; font-size: 10px; line-height: 1.45; }
+  .admission-field-error { color: #c62838; font-size: 10px; }
+  .admission-transport-card { padding-bottom: 20px !important; }
+  .admission-bus-toggle { display: flex; align-items: center; gap: 12px; margin: 18px 22px; padding: 14px; border: 1px solid #dce8f7; border-radius: 11px; background: #f6f9ff; cursor: pointer; }
+  .admission-bus-icon { display: grid; width: 37px; height: 37px; flex: 0 0 37px; place-items: center; border-radius: 11px; background: #e4efff; color: #2f67b8; font-size: 16px; font-weight: 900; }
+  .admission-bus-copy { display: grid; flex: 1; gap: 3px; }
+  .admission-bus-copy strong { color: #263d5c; font-size: 12px; }
+  .admission-bus-copy small { color: var(--admission-muted); font-size: 10px; }
+  .admission-bus-toggle input { width: 19px; height: 19px; accent-color: #3979d6; }
+  .admission-route-row { display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 14px; align-items: end; padding: 0 22px; }
+  .admission-route-fare { display: grid; min-height: 67px; align-content: center; gap: 5px; padding: 10px 14px; border: 1px solid #e4ebf4; border-radius: 9px; background: #fbfdff; }
+  .admission-route-fare span { color: var(--admission-muted); font-size: 10px; }
+  .admission-route-fare strong { color: var(--admission-navy); font-size: 16px; }
+  .admission-no-routes { margin: 12px 22px 0; color: #8c5c00; font-size: 11px; }
+  .admission-no-routes a { color: #2d66b8; font-weight: 700; }
+  .admission-status-field { max-width: 390px; padding: 18px 22px 22px; }
+  .admission-migration { padding: 15px 18px; border: 1px solid #e1e9f3; border-radius: 12px; background: #fff; }
+  .admission-migration summary { color: #334b6a; font-size: 12px; font-weight: 750; cursor: pointer; }
+  .admission-migration-content { padding-top: 15px; }
+  .admission-migration-content .admission-fields-grid { padding: 13px 0 0; }
+  .admission-form-actions { display: flex; justify-content: flex-end; gap: 9px; padding: 4px 0 12px; }
+  .admission-form-actions .btn { min-height: 42px; padding: 10px 18px; font-size: 12px; font-weight: 750; }
+  .admission-aside { position: sticky; top: 18px; }
+  .admission-aside-card { padding: 20px; border: 1px solid #e0e9f5; border-radius: 13px; background: linear-gradient(155deg, #fff 0%, #f5f9ff 100%); box-shadow: 0 9px 24px rgba(24,52,91,.05); }
+  .admission-aside-icon { display: grid; width: 34px; height: 34px; margin-bottom: 12px; place-items: center; border-radius: 10px; background: #e7f2eb; color: #318254; font-weight: 900; }
+  .admission-aside-card h2 { margin: 0; color: var(--admission-navy); font-size: 14px; font-weight: 800; }
+  .admission-aside-card > p { margin: 7px 0 13px; color: var(--admission-muted); font-size: 10px; line-height: 1.55; }
+  .admission-aside-card ul { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .admission-aside-card li { position: relative; padding-left: 19px; color: #465a75; font-size: 10px; line-height: 1.45; }
+  .admission-aside-card li::before { position: absolute; left: 0; color: #3979d6; content: "✓"; font-weight: 900; }
+  .admission-aside-note { display: grid; gap: 5px; margin-top: 18px; padding: 12px; border-radius: 9px; background: #edf4ff; }
+  .admission-aside-note strong { color: #295a9e; font-size: 10px; }
+  .admission-aside-note span { color: #5d7190; font-size: 10px; line-height: 1.5; }
+  .admission-server-error { border-radius: 11px; font-size: 12px; }
+  .admission-validation-modal[hidden] { display: none; }
+  .admission-validation-modal { position: fixed; z-index: 2000; inset: 0; display: grid; place-items: center; padding: 20px; }
+  .admission-modal-backdrop { position: absolute; inset: 0; background: rgba(15,31,53,.54); }
+  .admission-modal-panel { position: relative; width: min(100%, 430px); padding: 27px; border: 1px solid #e5eaf2; border-radius: 16px; background: #fff; box-shadow: 0 24px 70px rgba(15,31,53,.24); }
+  .admission-modal-close { position: absolute; top: 12px; right: 15px; border: 0; background: transparent; color: #77869a; font-size: 24px; }
+  .admission-modal-alert { display: grid; width: 36px; height: 36px; margin-bottom: 13px; place-items: center; border-radius: 11px; background: #fff0ef; color: #c33b3b; font-size: 19px; font-weight: 900; }
+  .admission-modal-panel h2 { margin: 0; color: var(--admission-navy); font-size: 19px; font-weight: 800; }
+  .admission-modal-panel p { margin: 8px 0 11px; color: #6d7b90; font-size: 12px; line-height: 1.55; }
+  .admission-modal-panel ul { display: grid; gap: 6px; margin: 0 0 18px; padding-left: 20px; color: #b33340; font-size: 11px; }
+  .admission-modal-panel .btn { font-size: 12px; font-weight: 750; }
+  @media (max-width: 980px) { .admission-layout { grid-template-columns: minmax(0, 1fr); } .admission-aside { position: static; grid-row: 1; } .admission-aside-card { padding: 16px; } .admission-aside-card ul { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+  @media (max-width: 640px) { .student-admission-page .fee-page-main { padding: 22px 14px 36px; } .admission-heading { align-items: flex-start; flex-direction: column; } .admission-heading-actions { justify-content: flex-start; } .admission-fields-grid { grid-template-columns: minmax(0, 1fr); padding: 16px; } .admission-section-heading { padding: 16px; } .admission-bus-toggle { margin: 14px 16px; } .admission-route-row { grid-template-columns: minmax(0,1fr); padding: 0 16px; } .admission-aside-card ul { grid-template-columns: minmax(0,1fr); } .admission-status-field { padding: 16px; } .admission-form-actions { flex-direction: column-reverse; } .admission-form-actions .btn { width: 100%; } }
+</style>
+
+<script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js"></script>
+<script>
+  (() => {
+    const form = document.getElementById('studentAdmissionForm');
+    const admissionDate = document.getElementById('admissionDateBS');
+    const busCheckbox = document.getElementById('usesSchoolBus');
+    const routeSelect = document.getElementById('transportRoute');
+    const sessionSelect = document.getElementById('academicSession');
+    const routeFare = document.getElementById('routeFare');
+    const routeHelp = document.getElementById('routeHelp');
+    const routeRequiredMark = document.getElementById('routeRequiredMark');
+    const modal = document.getElementById('admissionValidationModal');
+    const validationList = document.getElementById('admissionValidationList');
+    const migrationCheckbox = document.getElementById('migrated');
+    const openingDueFields = document.getElementById('openingDueFields');
+
+    const updateRouteState = (filterRoutes = false) => {
+      if (!busCheckbox || !routeSelect) return;
+      const selectedSession = sessionSelect.value;
+      if (filterRoutes) {
+        [...routeSelect.options].forEach(option => {
+          if (!option.value) return;
+          option.hidden = !selectedSession || option.dataset.session !== selectedSession;
+        });
+        if (!selectedSession || routeSelect.selectedOptions[0]?.dataset.session !== selectedSession) routeSelect.value = '';
+      }
+      routeSelect.disabled = !busCheckbox.checked || !selectedSession;
+      routeSelect.required = busCheckbox.checked;
+      routeRequiredMark.hidden = !busCheckbox.checked;
+      routeHelp.textContent = busCheckbox.checked
+        ? selectedSession ? 'Choose a route for the selected academic session.' : 'Select an academic session to see its routes.'
+        : 'No transport route will be billed while school bus is switched off.';
+      if (!busCheckbox.checked) routeSelect.classList.remove('is-invalid');
+      const option = routeSelect.selectedOptions[0];
+      routeFare.textContent = busCheckbox.checked && option && option.value
+        ? `Rs. ${Number(option.dataset.fee).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+        : busCheckbox.checked ? 'Select a route' : 'Not applicable';
+    };
+
+    const closeModal = () => {
+      modal.hidden = true;
+    };
+    const showModal = invalidFields => {
+      validationList.replaceChildren();
+      invalidFields.forEach(field => {
+        const item = document.createElement('li');
+        item.textContent = field.dataset.label || field.labels?.[0]?.textContent.replace('*', '').trim() || 'Required information';
+        validationList.appendChild(item);
+      });
+      modal.hidden = false;
+      modal.querySelector('[data-close-admission-modal]').focus();
+    };
+
+    form.addEventListener('submit', event => {
+      const fields = [...form.querySelectorAll('[required]')].filter(field => !field.disabled);
+      fields.forEach(field => {
+        const isInvalid = !field.checkValidity();
+        field.classList.toggle('is-invalid', isInvalid);
+      });
+      const invalidFields = fields.filter(field => !field.checkValidity());
+      if (invalidFields.length) {
+        event.preventDefault();
+        showModal(invalidFields);
+        invalidFields[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        invalidFields[0].focus({ preventScroll: true });
+      }
+    });
+
+    form.addEventListener('input', event => {
+      if (event.target.matches('[required]') && event.target.checkValidity()) event.target.classList.remove('is-invalid');
+    });
+    form.addEventListener('change', event => {
+      if (event.target.matches('[required]') && event.target.checkValidity()) event.target.classList.remove('is-invalid');
+    });
+    modal.addEventListener('click', event => {
+      if (event.target.matches('[data-close-admission-modal]')) closeModal();
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !modal.hidden) closeModal();
+    });
+    busCheckbox.addEventListener('change', () => updateRouteState());
+    sessionSelect.addEventListener('change', () => updateRouteState(true));
+    routeSelect.addEventListener('change', () => updateRouteState());
+    if (migrationCheckbox && openingDueFields) {
+      const updateOpeningDue = () => openingDueFields.classList.toggle('d-none', !migrationCheckbox.checked);
+      migrationCheckbox.addEventListener('change', updateOpeningDue);
+      updateOpeningDue();
+    }
+    if (typeof admissionDate.nepaliDatePicker === 'function') {
+      admissionDate.nepaliDatePicker({ dateFormat: 'YYYY-MM-DD', language: 'en' });
+    }
+    updateRouteState(true);
+  })();
+</script>
 <%- include('../partials/footer') %>

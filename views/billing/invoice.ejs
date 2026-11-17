@@ -1,51 +1,221 @@
-<%- include('../partials/head', { title: 'Invoice ' + (invoice.invoiceNo || invoice.invoiceNumber || 'Bill') }) %>
-<div class="fee-page-shell"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container mt-4">
-  <div class="d-flex justify-content-end no-print mb-3">
-    <button class="btn btn-primary" onclick="window.print()">Print</button>
-  </div>
-  <div class="card p-4">
-    <div class="text-center mb-3">
-      <h3><%= school && school.name ? school.name : 'School' %></h3>
-      <p class="mb-0"><%= school && school.address ? school.address : '' %></p>
-      <p class="mb-0">PAN: <%= school && school.panNumber ? school.panNumber : '' %><% if (school && school.phone) { %> | Phone: <%= school.phone %><% } %></p>
-      <hr>
-      <h5>Fee Invoice</h5>
+<%- include('../partials/head', { title: 'Invoice ' + (invoice.invoiceNo || invoice.invoiceNumber || 'Bill'), setupStylesheet: true }) %>
+<%- include('../partials/navbar') %>
+<%
+  const invoiceNumber = invoice.invoiceNo || invoice.invoiceNumber || '-';
+  const student = invoice.student || {};
+  const studentName = invoice.studentName || student.name || 'Student';
+  const studentCode = invoice.studentCode || student.studentCode || '';
+  const studentClass = invoice.studentClass || student.class?.studentClass || student.class?.name || '';
+  const section = invoice.section || student.section || '';
+  const itemList = Array.isArray(invoice.items) ? invoice.items : (invoice.currentItems || []);
+  const currentCharges = Number(invoice.currentTotal ?? itemList.reduce((sum, item) => sum + Number(item.amount || 0), 0));
+  const previousDue = Number(invoice.previousDue || 0);
+  const totalAmount = Number(invoice.grandTotal ?? invoice.totalAmount ?? (previousDue + currentCharges));
+  const paidAmount = Number(invoice.paidAmount || 0);
+  const balanceAmount = Number(invoice.balanceDue ?? Math.max(0, totalAmount - paidAmount));
+  const status = invoice.isCancelled ? 'CANCELLED' : (invoice.status || 'UNPAID');
+  const statusClass = status === 'PAID' ? 'is-paid' : status === 'PARTIAL' ? 'is-partial' : status === 'CANCELLED' ? 'is-cancelled' : 'is-unpaid';
+  const money = value => Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const invoiceDate = invoice.billDateAD ? new Date(invoice.billDateAD).toLocaleDateString('en-GB') : '';
+%>
+<style>
+  .invoice-workspace { max-width: 1080px; }
+  .invoice-toolbar {
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+    margin-bottom: 20px;
+  }
+  .invoice-toolbar h1 { margin: 0; color: #102a52; font-size: 27px; font-weight: 850; }
+  .invoice-toolbar p { margin: 6px 0 0; color: #73829a; font-size: 12px; }
+  .invoice-toolbar-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+  .invoice-paper {
+    max-width: 900px; margin: 0 auto; padding: 38px 42px;
+    border: 1px solid #e2eaf4; border-radius: 14px; background: #fff;
+    box-shadow: 0 12px 32px rgba(24, 52, 91, .08);
+  }
+  .invoice-school-header {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 18px;
+    padding-bottom: 22px; border-bottom: 2px solid #173b6d;
+  }
+  .invoice-school-logo { display: block; max-width: 78px; max-height: 64px; object-fit: contain; }
+  .invoice-school-name { margin: 0; color: #102a52; font-size: 23px; font-weight: 850; line-height: 1.2; }
+  .invoice-school-meta { margin: 6px 0 0; color: #718099; font-size: 11px; line-height: 1.55; }
+  .invoice-heading-side { min-width: 150px; text-align: right; }
+  .invoice-title { margin: 0; color: #102a52; font-size: 19px; font-weight: 850; letter-spacing: .3px; text-transform: uppercase; }
+  .invoice-number { margin: 6px 0 0; color: #66758b; font-size: 10px; }
+  .invoice-number strong { display: block; margin-top: 3px; color: #1d2b42; font-size: 12px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .invoice-cancelled-notice {
+    margin: 16px 0 0; padding: 10px 12px; border: 1px solid #f0c5c9; border-radius: 8px;
+    background: #fff3f3; color: #a93640; font-size: 11px; font-weight: 800;
+  }
+  .invoice-parties {
+    display: grid; grid-template-columns: 1.3fr 1fr; gap: 20px; margin: 23px 0;
+  }
+  .invoice-info-card { min-width: 0; padding: 14px 16px; border: 1px solid #e7edf5; border-radius: 10px; background: #fbfcfe; }
+  .invoice-info-label { margin: 0 0 8px; color: #78869a; font-size: 9px; font-weight: 850; letter-spacing: .65px; text-transform: uppercase; }
+  .invoice-student-name { margin: 0; color: #203653; font-size: 15px; font-weight: 800; overflow-wrap: anywhere; }
+  .invoice-info-lines { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 7px; color: #68778c; font-size: 10px; }
+  .invoice-meta-list { display: grid; grid-template-columns: auto 1fr; gap: 7px 10px; margin: 0; font-size: 10px; }
+  .invoice-meta-list dt { color: #78869a; font-weight: 650; }
+  .invoice-meta-list dd { margin: 0; color: #263b57; font-weight: 750; text-align: right; overflow-wrap: anywhere; }
+  .invoice-status {
+    display: inline-flex; align-items: center; padding: 5px 9px; border: 1px solid transparent;
+    border-radius: 20px; font-size: 8px; font-weight: 850; letter-spacing: .4px; text-transform: uppercase;
+  }
+  .invoice-status.is-paid { border-color: #bde8d9; background: #effaf5; color: #147253; }
+  .invoice-status.is-partial { border-color: #f0dfb1; background: #fff9e9; color: #8a6413; }
+  .invoice-status.is-unpaid { border-color: #f2c8cc; background: #fff3f3; color: #a93640; }
+  .invoice-status.is-cancelled { border-color: #d3d9e2; background: #f2f4f7; color: #657185; }
+  .invoice-lines-heading { margin: 0 0 10px; color: #263b57; font-size: 13px; font-weight: 850; }
+  .invoice-line-table { width: 100%; border-collapse: collapse; }
+  .invoice-line-table th, .invoice-line-table td { padding: 11px 12px; border-bottom: 1px solid #e8edf4; text-align: left; font-size: 10px; }
+  .invoice-line-table th { background: #f5f8fc; color: #68778c; font-size: 8px; font-weight: 850; letter-spacing: .55px; text-transform: uppercase; }
+  .invoice-line-table .invoice-number-cell { width: 44px; color: #8793a4; }
+  .invoice-line-table .invoice-amount-cell { width: 170px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .invoice-line-title { display: block; color: #263b57; font-weight: 750; }
+  .invoice-line-frequency { display: block; margin-top: 3px; color: #8793a4; font-size: 8px; }
+  .invoice-empty-lines { padding: 18px 12px !important; color: #7c899b; text-align: center !important; }
+  .invoice-summary-wrap { display: flex; justify-content: flex-end; margin-top: 17px; }
+  .invoice-summary { width: min(100%, 370px); }
+  .invoice-summary-row {
+    display: flex; justify-content: space-between; gap: 14px; padding: 8px 11px;
+    border-bottom: 1px solid #edf1f6; color: #68778c; font-size: 10px;
+  }
+  .invoice-summary-row strong { color: #263b57; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .invoice-summary-row.is-grand { border-radius: 7px 7px 0 0; background: #f3f7fd; color: #102a52; font-weight: 800; }
+  .invoice-summary-row.is-grand strong { color: #102a52; }
+  .invoice-summary-row.is-balance { margin-top: 4px; border: 1px solid #cfe7df; border-radius: 7px; background: #f1faf6; color: #147253; font-weight: 800; }
+  .invoice-summary-row.is-balance strong { color: #147253; }
+  .invoice-footnote { margin: 22px 0 0; padding-top: 12px; border-top: 1px dashed #dfe6ef; color: #7b889a; font-size: 9px; line-height: 1.5; }
+  .invoice-signoff { display: grid; grid-template-columns: 1fr 1fr; gap: 45px; margin-top: 36px; }
+  .invoice-signoff span { padding-top: 7px; border-top: 1px solid #aeb9c8; color: #6f7d91; font-size: 9px; }
+  @media(max-width: 700px) {
+    .invoice-toolbar { align-items: stretch; flex-direction: column; }
+    .invoice-toolbar-actions .btn { flex: 1 1 auto; }
+    .invoice-paper { padding: 24px 18px; }
+    .invoice-school-name { font-size: 19px; }
+    .invoice-title { font-size: 15px; }
+    .invoice-parties { grid-template-columns: 1fr; gap: 10px; margin: 16px 0; }
+    .invoice-line-table { min-width: 0; }
+    .invoice-line-table th, .invoice-line-table td { padding: 9px 7px; }
+    .invoice-line-table .invoice-amount-cell { width: 112px; }
+  }
+  @media print {
+    @page { size: A4 portrait; margin: 14mm; }
+    html, body { background: #fff !important; }
+    body * { visibility: hidden !important; }
+    .invoice-print-root, .invoice-print-root * { visibility: visible !important; }
+    .fee-sidebar, .fee-sidebar-scrim, .fee-nav-trigger, .invoice-toolbar, .no-print { display: none !important; }
+    .fee-page-shell, .fee-page-main, .invoice-workspace, .invoice-print-root {
+      display: block !important; width: 100% !important; max-width: none !important; margin: 0 !important;
+      padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: #fff !important;
+      box-shadow: none !important;
+    }
+    .invoice-paper { max-width: none; padding: 0; }
+    .invoice-school-header, .invoice-info-card, .invoice-line-table th, .invoice-summary-row.is-grand, .invoice-summary-row.is-balance {
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    .invoice-line-table tr, .invoice-info-card, .invoice-summary { break-inside: avoid; page-break-inside: avoid; }
+  }
+</style>
+
+<div class="fee-page-shell setup-page invoice-page-shell">
+  <%- include('../billingfirst/feesidenav') %>
+  <main class="fee-page-main">
+    <div class="container invoice-workspace">
+      <header class="invoice-toolbar no-print">
+        <div>
+          <p class="setup-eyebrow">Billing · Invoice</p>
+          <h1>Invoice details</h1>
+          <p>Review the issued invoice and print a copy for your records.</p>
+        </div>
+        <div class="invoice-toolbar-actions">
+          <a class="btn btn-outline-primary" href="/billing">Back to invoice register</a>
+          <button class="btn btn-primary" type="button" onclick="window.print()">Print invoice</button>
+        </div>
+      </header>
+
+      <article class="invoice-paper invoice-print-root">
+        <header class="invoice-school-header">
+          <div>
+            <% if (school?.logoUrl) { %><img class="invoice-school-logo" src="<%= school.logoUrl %>" alt="<%= school.name || 'School' %> logo"><% } %>
+            <h2 class="invoice-school-name"><%= school?.name || 'School' %></h2>
+            <% if (school?.address || school?.phone || school?.email || school?.panNumber) { %>
+              <p class="invoice-school-meta">
+                <%= school?.address || '' %>
+                <% if (school?.phone) { %><%= school?.address ? ' · ' : '' %>Phone: <%= school.phone %><% } %>
+                <% if (school?.email) { %><%= school?.address || school?.phone ? ' · ' : '' %><%= school.email %><% } %>
+                <% if (school?.panNumber) { %><%= school?.address || school?.phone || school?.email ? ' · ' : '' %>PAN: <%= school.panNumber %><% } %>
+              </p>
+            <% } %>
+          </div>
+          <div class="invoice-heading-side">
+            <h1 class="invoice-title">Fee invoice</h1>
+            <p class="invoice-number">Invoice number<strong><%= invoiceNumber %></strong></p>
+          </div>
+        </header>
+
+        <% if (invoice.isCancelled) { %><div class="invoice-cancelled-notice">This invoice has been cancelled<%= invoice.cancelReason ? `: ${invoice.cancelReason}` : '.' %></div><% } %>
+
+        <section class="invoice-parties">
+          <div class="invoice-info-card">
+            <p class="invoice-info-label">Billed to</p>
+            <h2 class="invoice-student-name"><%= studentName %></h2>
+            <div class="invoice-info-lines">
+              <% if (studentCode) { %><span>Student ID: <strong><%= studentCode %></strong></span><% } %>
+              <% if (studentClass) { %><span>Class: <strong><%= studentClass %></strong></span><% } %>
+              <% if (section) { %><span>Section: <strong><%= section %></strong></span><% } %>
+            </div>
+          </div>
+          <div class="invoice-info-card">
+            <p class="invoice-info-label">Invoice information</p>
+            <dl class="invoice-meta-list">
+              <dt>Billing month</dt><dd><%= invoice.nepaliMonth || invoice.billMonthBS || '-' %></dd>
+              <dt>Invoice date</dt><dd><%= invoice.billDateBS ? `${invoice.billDateBS} BS` : invoiceDate ? `${invoiceDate} AD` : '-' %><%= invoice.billDateBS && invoiceDate ? ` · ${invoiceDate} AD` : '' %></dd>
+              <dt>Academic session</dt><dd><%= invoice.academicYear || invoice.academicSession?.titleBS || invoice.academicSession?.yearBS || '-' %></dd>
+              <dt>Status</dt><dd><span class="invoice-status <%= statusClass %>"><%= status %></span></dd>
+            </dl>
+          </div>
+        </section>
+
+        <section aria-labelledby="invoiceLinesHeading">
+          <h2 class="invoice-lines-heading" id="invoiceLinesHeading">Fee details</h2>
+          <table class="invoice-line-table">
+            <thead><tr><th class="invoice-number-cell">#</th><th>Description</th><th class="invoice-amount-cell">Amount (Rs.)</th></tr></thead>
+            <tbody>
+              <% if (!itemList.length) { %>
+                <tr><td class="invoice-empty-lines" colspan="3">No itemized fee details are available for this invoice.</td></tr>
+              <% } %>
+              <% itemList.forEach((item, index) => { %>
+                <tr>
+                  <td class="invoice-number-cell"><%= String(index + 1).padStart(2, '0') %></td>
+                  <td>
+                    <span class="invoice-line-title"><%= item.feeHeadName || item.feehead || item.label || 'Fee' %></span>
+                    <% if (item.frequency) { %><span class="invoice-line-frequency"><%= item.frequency %></span><% } %>
+                  </td>
+                  <td class="invoice-amount-cell"><%= money(item.amount) %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </section>
+
+        <section class="invoice-summary-wrap" aria-label="Invoice totals">
+          <div class="invoice-summary">
+            <% if (previousDue > 0) { %><div class="invoice-summary-row"><span>Previous balance</span><strong>Rs. <%= money(previousDue) %></strong></div><% } %>
+            <div class="invoice-summary-row"><span>Current charges</span><strong>Rs. <%= money(currentCharges) %></strong></div>
+            <div class="invoice-summary-row is-grand"><span>Total billed</span><strong>Rs. <%= money(totalAmount) %></strong></div>
+            <div class="invoice-summary-row"><span>Paid so far</span><strong>Rs. <%= money(paidAmount) %></strong></div>
+            <div class="invoice-summary-row is-balance"><span>Balance due</span><strong>Rs. <%= money(balanceAmount) %></strong></div>
+          </div>
+        </section>
+
+        <p class="invoice-footnote">Please retain this invoice for your records. For payment or billing questions, contact the school office.</p>
+        <footer class="invoice-signoff">
+          <span>Authorized by</span>
+          <span>Parent / guardian</span>
+        </footer>
+      </article>
     </div>
-
-    <div class="row mb-3">
-      <div class="col-md-6">
-        <p class="mb-1"><strong>Invoice No:</strong> <%= invoice.invoiceNo || invoice.invoiceNumber || '-' %></p>
-        <p class="mb-1"><strong>Bill Month:</strong> <%= invoice.nepaliMonth || invoice.billMonthBS || '-' %></p>
-        <p class="mb-1"><strong>Academic Year:</strong> <%= invoice.academicYear || '-' %></p>
-      </div>
-      <div class="col-md-6 text-md-end">
-        <p class="mb-1"><strong>Student:</strong> <%= invoice.studentName || (invoice.student && invoice.student.name) || '-' %></p>
-        <p class="mb-1"><strong>Class:</strong> <%= invoice.studentClass || (invoice.student && invoice.student.class && (invoice.student.class.studentClass || invoice.student.class.name)) || '' %></p>
-        <p class="mb-1"><strong>Section:</strong> <%= invoice.section || (invoice.student && invoice.student.section) || '' %></p>
-      </div>
-    </div>
-
-    <table class="table table-bordered">
-      <thead><tr><th>Description</th><th class="text-end">Amount (Rs)</th></tr></thead>
-      <tbody>
-        <% const itemList = Array.isArray(invoice.items) ? invoice.items : (invoice.currentItems || []); %>
-        <% itemList.forEach(item => { %>
-        <tr><td><%= item.feehead || item.label %></td><td class="text-end"><%= Number(item.amount || 0).toFixed(2) %></td></tr>
-        <% }) %>
-        <% const totalAmount = Number(invoice.totalAmount ?? invoice.grandTotal ?? 0); %>
-        <% const paidAmount = Number(invoice.paidAmount ?? 0); %>
-        <% const balanceAmount = Math.max(0, totalAmount - paidAmount); %>
-        <% const status = invoice.status || 'UNPAID'; %>
-        <tr class="table-secondary"><td><strong>Grand Total</strong></td><td class="text-end"><strong><%= totalAmount.toFixed(2) %></strong></td></tr>
-        <tr><td>Paid So Far</td><td class="text-end"><%= paidAmount.toFixed(2) %></td></tr>
-        <tr class="<%= balanceAmount > 0 ? 'table-danger' : 'table-success' %>">
-          <td><strong>Balance Due</strong></td><td class="text-end"><strong><%= balanceAmount.toFixed(2) %></strong></td>
-        </tr>
-      </tbody>
-    </table>
-
-    <p class="text-muted mt-3 mb-0">Status: <strong><%= status %></strong></p>
-  </div>
+  </main>
 </div>
- </main></div>
 <%- include('../partials/footer') %>

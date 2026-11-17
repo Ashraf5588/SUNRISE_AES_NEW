@@ -1,12 +1,13 @@
-<%- include('../partials/head', { title: 'Discount Setup' }) %>
+<%- include('../partials/head', { title: 'Discount Setup', setupStylesheet: true }) %>
 <%- include('../partials/navbar') %>
 
-<div class="fee-page-shell"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container mt-4">
-  <h3>Discount Setup</h3>
+<div class="fee-page-shell setup-page"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container">
+  <header class="setup-heading"><div class="setup-heading-copy"><p class="setup-eyebrow">Fee configuration</p><h1>Student discounts</h1><p>Record student-specific discounts by fee category, including validity dates and supporting reasons.</p></div></header>
 
   <div class="row">
     <div class="col-md-6">
-      <form method="POST" action="/setup/discount" class="bg-white p-3 rounded shadow-sm">
+      <section class="setup-card"><div class="setup-card-heading"><div><h2>Add discount</h2><p>Select the student and define one or more discount entries.</p></div></div><div class="setup-card-body">
+      <form method="POST" action="/setup/discount">
         <div class="mb-3">
           <label class="form-label">Search Student Name</label>
           <input
@@ -80,10 +81,12 @@
 
         <button type="submit" class="btn btn-primary">Save Discount</button>
       </form>
+      </div></section>
     </div>
 
     <div class="col-md-6">
-      <table class="table table-bordered bg-white">
+      <section class="setup-card"><div class="setup-card-heading"><div><h2>Saved discounts</h2><p>Existing student discount records.</p></div><span class="setup-count"><%= discounts ? discounts.length : 0 %> students</span></div>
+      <div class="setup-table-wrap"><table class="table setup-table">
         <thead>
           <tr>
             <th>Student</th>
@@ -124,7 +127,7 @@
             </tr>
           <% } %>
         </tbody>
-      </table>
+      </table></div></section>
     </div>
   </div>
 </div>

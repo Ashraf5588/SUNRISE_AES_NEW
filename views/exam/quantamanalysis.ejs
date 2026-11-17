@@ -187,6 +187,19 @@
             padding: 1rem;
             background: #fafbfc;
         }
+        .section-report {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+        .section-report-title {
+            margin-bottom: 1rem;
+            color: #153b71;
+            font-size: 1rem;
+            font-weight: 700;
+        }
         .table-group-title {
             font-size: 0.95rem;
             font-weight: 600;
@@ -328,6 +341,10 @@
             <h1>📊 Quantum Analysis - Marks Distribution</h1>
             <div class="header-controls">
                 <form method="GET" action="/quantamanalysis" style="display: contents;">
+                    <select name="viewMode" aria-label="Analysis view">
+                        <option value="classwise" <%= viewMode !== 'sectionwise' ? 'selected' : '' %>>Class-wise</option>
+                        <option value="sectionwise" <%= viewMode === 'sectionwise' ? 'selected' : '' %>>Section-wise</option>
+                    </select>
                     <select name="terminal">
                         <option value="">All Terminals</option>
                         <% if (terminals && terminals.length > 0) { %>
@@ -387,39 +404,48 @@
                 });
                 sortedClasses.forEach(cls => {
                     const classData = analysisData[cls];
-                    const groupedSubjects = classData.groupedSubjects || {};
                     const totalStudents = classData.totalStudents || 0;
                     const displayName = classData.displayName || displayClassName(cls);
-                    
-                    // Get all full marks groups and sort them
-                    const fullMarksGroups = Object.keys(groupedSubjects).sort((a, b) => parseInt(a) - parseInt(b));
-                    
-                    // Skip if no data
-                    if (fullMarksGroups.length === 0) return;
+                    const sectionReports = viewMode === 'sectionwise'
+                        ? (classData.sections || [])
+                        : [{ groupedSubjects: classData.groupedSubjects || {}, totalStudents }];
             %>
                 <div id="class-<%= cls %>" class="class-section class-content <%= !filterClass ? 'active' : '' %>">
                     <div class="class-title">
                         <span>Class <%= displayName %></span>
-                        <span class="student-count">Total Students: <%= totalStudents %></span>
+                        <% if (viewMode === 'sectionwise') { %>
+                            <span class="student-count">Sections shown separately</span>
+                        <% } else { %>
+                            <span class="student-count">Total Students: <%= totalStudents %></span>
+                        <% } %>
                     </div>
 
-                    <!-- Separate tables for each full marks group -->
-                    <% fullMarksGroups.forEach(groupKey => { 
-                        const group = groupedSubjects[groupKey];
-                        const fullMarks = group.fullMarks;
-                        const subjects = group.subjects || [];
-                        const distributions = group.distributions || {};
-                        
-                        // Skip if no subjects in this group
-                        if (subjects.length === 0) return;
+                    <% sectionReports.forEach(sectionReport => {
+                        const groupedSubjects = sectionReport.groupedSubjects || {};
+                        const fullMarksGroups = Object.keys(groupedSubjects).sort((a, b) => parseInt(a) - parseInt(b));
+                        if (fullMarksGroups.length === 0) return;
                     %>
-                        <div class="table-group">
-                            <div class="table-group-title">
-                                📊 <%= fullMarks %> Marks Subjects
-                            </div>
+                        <div class="<%= viewMode === 'sectionwise' ? 'section-report' : '' %>">
+                            <% if (viewMode === 'sectionwise') { %>
+                                <div class="section-report-title">
+                                    Section <%= sectionReport.sectionName %>
+                                    <span class="student-count">(<%= sectionReport.totalStudents %> students)</span>
+                                </div>
+                            <% } %>
+                            <% fullMarksGroups.forEach(groupKey => {
+                                const group = groupedSubjects[groupKey];
+                                const fullMarks = group.fullMarks;
+                                const subjects = group.subjects || [];
+                                const distributions = group.distributions || {};
+                                if (subjects.length === 0) return;
+                            %>
+                                <div class="table-group">
+                                    <div class="table-group-title">
+                                        📊 <%= fullMarks %> Marks Subjects
+                                    </div>
                             
-                            <div class="table-wrapper">
-                                <table>
+                                    <div class="table-wrapper">
+                                        <table>
                                     <thead>
                                         <tr>
                                             <th>Marks Range</th>
@@ -470,7 +496,7 @@
                                             %>
                                                 <td><%= data ? data.total : 0 %></td>
                                             <% }) %>
-                                            <td><%= totalStudents %></td>
+                                            <td><%= sectionReport.totalStudents %></td>
                                         </tr>
 
                                         <!-- Pass Count row -->
@@ -517,9 +543,11 @@
                                             <td>-</td>
                                         </tr>
                                     </tfoot>
-                                </table>
+                                        </table>
+                                    </div>
+                                </div>
+                            <% }); %>
                             </div>
-                        </div>
                     <% }) %>
                 </div>
             <% }) %>

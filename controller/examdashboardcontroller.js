@@ -3672,6 +3672,10 @@ exports.schoolanalysis = async (req, res, next) => {
     try {
         const mongoose = require('mongoose');
         const ExamMark = await getSlipModel(); // Your exam marks model
+        const normalizeAnalysisSubject = value => {
+            const name = normalizeSubjectName(value);
+            return { 'o.math': 'opt.math', 'e.science': 'env.science' }[name] || name;
+        };
 
         // Helper function to sort by roll number (handles string values)
         function sortByRoll(students) {
@@ -3928,11 +3932,16 @@ exports.schoolanalysis = async (req, res, next) => {
         }
 
         // Check if student is absent (all subjects have 0 marks or no valid subjects)
-        function isStudentAbsent(student, includePractical = true) {
+        function isStudentAbsent(student, practicalSubjects, optionalSubjects, selectedOptionalSubjects) {
             let totalMarks = 0;
             let hasValidSubject = false;
             
             student.subjects.forEach(subject => {
+                const subjectName = normalizeAnalysisSubject(subject.subject);
+                if (optionalSubjects.has(subjectName) && !selectedOptionalSubjects.has(subjectName)) {
+                    return;
+                }
+
                 // Check if subject has valid data (not blank)
                 const hasTheory = subject.theoryMarks !== undefined && subject.theoryMarks !== null && !isNaN(subject.theoryMarks);
                 const hasPractical = subject.practicalMarks !== undefined && subject.practicalMarks !== null && !isNaN(subject.practicalMarks);
@@ -3941,7 +3950,7 @@ exports.schoolanalysis = async (req, res, next) => {
                     totalMarks += subject.theoryMarks || 0;
                     hasValidSubject = true;
                 }
-                if (includePractical && hasPractical) {
+                if (practicalSubjects.has(subjectName) && hasPractical) {
                     totalMarks += subject.practicalMarks || 0;
                     hasValidSubject = true;
                 }
@@ -3954,7 +3963,7 @@ exports.schoolanalysis = async (req, res, next) => {
         }
 
         // Calculate student result with optional subject handling
-        function calculateStudentResult(student, includePractical = true) {
+        function calculateStudentResult(student, practicalSubjects, optionalSubjects, selectedOptionalSubjects) {
             const subjectResults = [];
             let passedSubjects = 0;
             let failedSubjects = 0;
@@ -3964,143 +3973,49 @@ exports.schoolanalysis = async (req, res, next) => {
             // Get all subjects for this student
             const allSubjects = student.subjects;
             
-            // Check for optional subjects in class 9 and 10
-            const studentClass = student.class || '';
-            const isOptionalClass = studentClass === '9' || studentClass === '10' || 
-                                   studentClass === 'Nine' || studentClass === 'Ten';
-            
-            // For optional classes, determine which optional subject the student actually took
-            let selectedOptionalSubject = null;
-            
-            if (isOptionalClass) {
-                // Find OPT.MATH and ENV.SCIENCE subjects
-                const optMath = allSubjects.find(s => s.subject === 'OPT.MATH' || s.subject === 'O.MATH');
-                const envScience = allSubjects.find(s => s.subject === 'ENV.SCIENCE' || s.subject === 'E.SCIENCE');
-                
-                // Check which one has marks (theory or practical)
-                const hasOptMathMarks = optMath && (
-                    (optMath.theoryMarks && optMath.theoryMarks > 0) || 
-                    (optMath.practicalMarks && optMath.practicalMarks > 0)
-                );
-                
-                const hasEnvScienceMarks = envScience && (
-                    (envScience.theoryMarks && envScience.theoryMarks > 0) || 
-                    (envScience.practicalMarks && envScience.practicalMarks > 0)
-                );
-                
-                // Select the one with marks
-                if (hasOptMathMarks && hasEnvScienceMarks) {
-                    // Both have marks - this shouldn't happen, but if it does, keep both
-                    selectedOptionalSubject = 'both';
-                } else if (hasOptMathMarks) {
-                    selectedOptionalSubject = 'OPT.MATH' || 'O.MATH';
-                } else if (hasEnvScienceMarks) {
-                    selectedOptionalSubject = 'ENV.SCIENCE' || 'E.SCIENCE';
-                }
-                // If neither has marks, the student has no optional subject
-            }
-            
             // Filter subjects for evaluation
-            let subjectsToEvaluate = [];
-            
-            if (isOptionalClass) {
-                // For class 9 & 10: Include all subjects but handle optional subjects
-                subjectsToEvaluate = allSubjects.map(subject => {
-                    const isOptional = subject.subject === 'OPT.MATH' || subject.subject === 'ENV.SCIENCE' || subject.subject === 'O.MATH' || subject.subject === 'E.SCIENCE';
-                    
-                    // Check if subject has valid marks
-                    const hasTheoryMarks = subject.theoryMarks !== undefined && subject.theoryMarks !== null && !isNaN(subject.theoryMarks);
-                    const hasPracticalMarks = subject.practicalMarks !== undefined && subject.practicalMarks !== null && !isNaN(subject.practicalMarks);
-                    const hasMarks = hasTheoryMarks || (includePractical && hasPracticalMarks);
-                    
-                    // If this is an optional subject
-                    if (isOptional) {
-                        // Check if this is the selected optional subject
-                        const isSelected = selectedOptionalSubject === 'both' || selectedOptionalSubject === subject.subject;
-                        
-                        if (isSelected && hasMarks) {
-                            // This is the student's actual optional subject with marks
-                            return {
-                                ...subject,
-                                isOptional: true,
-                                hasData: true,
-                                isCounted: true,
-                                theoryMarks: subject.theoryMarks || 0,
-                                practicalMarks: subject.practicalMarks || 0
-                            };
-                        } else if (isSelected && !hasMarks) {
-                            // This is the student's optional subject but no marks (shouldn't happen)
-                            return {
-                                ...subject,
-                                isOptional: true,
-                                hasData: false,
-                                isCounted: false,
-                                theoryMarks: 0,
-                                practicalMarks: 0
-                            };
-                        } else {
-                            // This is NOT the student's selected optional subject - ignore it
-                            return {
-                                ...subject,
-                                isOptional: true,
-                                hasData: false,
-                                isCounted: false,
-                                theoryMarks: 0,
-                                practicalMarks: 0,
-                                isIgnored: true
-                            };
-                        }
-                    }
-                    
-                    // Regular subject (not optional)
-                    if (!hasMarks) {
-                        return {
-                            ...subject,
-                            isOptional: false,
-                            hasData: false,
-                            isCounted: false,
-                            theoryMarks: 0,
-                            practicalMarks: 0
-                        };
-                    }
-                    
+            const subjectsToEvaluate = allSubjects.map(subject => {
+                const subjectName = normalizeAnalysisSubject(subject.subject);
+                const isOptional = optionalSubjects.has(subjectName);
+                const isSelectedOptional = selectedOptionalSubjects.has(subjectName);
+                const includeSubjectPractical = practicalSubjects.has(subjectName);
+                const hasTheoryMarks = subject.theoryMarks !== undefined && subject.theoryMarks !== null && !isNaN(subject.theoryMarks);
+                const hasPracticalMarks = subject.practicalMarks !== undefined && subject.practicalMarks !== null && !isNaN(subject.practicalMarks);
+                const hasMarks = hasTheoryMarks || (includeSubjectPractical && hasPracticalMarks);
+
+                if (isOptional && !isSelectedOptional) {
                     return {
                         ...subject,
-                        isOptional: false,
-                        hasData: true,
-                        isCounted: true,
-                        theoryMarks: subject.theoryMarks || 0,
-                        practicalMarks: subject.practicalMarks || 0
+                        isOptional: true,
+                        hasData: false,
+                        isCounted: false,
+                        theoryMarks: 0,
+                        practicalMarks: 0,
+                        isIgnored: true
                     };
-                });
-            } else {
-                // For classes 1-8: Include ALL subjects
-                subjectsToEvaluate = allSubjects.map(subject => {
-                    const hasTheoryMarks = subject.theoryMarks !== undefined && subject.theoryMarks !== null && !isNaN(subject.theoryMarks);
-                    const hasPracticalMarks = subject.practicalMarks !== undefined && subject.practicalMarks !== null && !isNaN(subject.practicalMarks);
-                    const hasMarks = hasTheoryMarks || (includePractical && hasPracticalMarks);
-                    
-                    if (!hasMarks) {
-                        return {
-                            ...subject,
-                            isOptional: false,
-                            hasData: false,
-                            isCounted: false,
-                            theoryMarks: 0,
-                            practicalMarks: 0
-                        };
-                    }
-                    
+                }
+
+                if (!hasMarks) {
                     return {
                         ...subject,
-                        isOptional: false,
-                        hasData: true,
-                        isCounted: true,
-                        theoryMarks: subject.theoryMarks || 0,
-                        practicalMarks: subject.practicalMarks || 0
+                        isOptional,
+                        hasData: false,
+                        isCounted: false,
+                        theoryMarks: 0,
+                        practicalMarks: 0
                     };
-                });
-            }
+                }
+
+                return {
+                    ...subject,
+                    isOptional,
+                    hasData: true,
+                    isCounted: true,
+                    theoryMarks: subject.theoryMarks || 0,
+                    practicalMarks: subject.practicalMarks || 0,
+                    includePractical: includeSubjectPractical
+                };
+            });
             
             // Evaluate subjects
             subjectsToEvaluate.forEach(subject => {
@@ -4145,7 +4060,7 @@ exports.schoolanalysis = async (req, res, next) => {
                     subject.passMarks || 0,
                     subject.theoryFullMarks || 25,
                     subject.practicalFullMarks || 25,
-                    includePractical
+                    subject.includePractical
                 );
                 
                 // Check if subject has valid pass marks
@@ -4227,6 +4142,10 @@ exports.schoolanalysis = async (req, res, next) => {
 
         // Get query parameters with defaults
         const { terminal, academicYear, analysisType = 'both' } = req.query;
+        const practicalSelectionSubmitted = req.query.practicalSelectionSubmitted === '1';
+        const submittedPracticalSubjects = Array.isArray(req.query.practicalSubjects)
+            ? req.query.practicalSubjects
+            : req.query.practicalSubjects ? [req.query.practicalSubjects] : [];
         
         // If no parameters provided, render empty state or show filters
         if (!terminal || !academicYear) {
@@ -4235,6 +4154,7 @@ exports.schoolanalysis = async (req, res, next) => {
                 groupAnalytics: [],
                 classAnalytics: [],
                 analysisType: 'both',
+                classSubjects: [],
                 terminal: terminal || '',
                 academicYear: academicYear || '',
                 hasData: false,
@@ -4246,6 +4166,88 @@ exports.schoolanalysis = async (req, res, next) => {
         
         // Get all classes from 1 to 10
         const classes = Array.from({ length: 10 }, (_, i) => (i + 1).toString());
+        const classAliases = {
+            '1': ['1', 'One'], '2': ['2', 'Two'], '3': ['3', 'Three'],
+            '4': ['4', 'Four'], '5': ['5', 'Five'], '6': ['6', 'Six'],
+            '7': ['7', 'Seven'], '8': ['8', 'Eight'], '9': ['9', 'Nine'],
+            '10': ['10', 'Ten']
+        };
+        const subjectConfigs = await newsubject.find({})
+            .select('newsubject forClass subjectType practical practicalCreditHour displayorder')
+            .lean();
+        const classSubjects = classes.map(classNum => {
+            const configuredSubjects = subjectConfigs
+                .filter(config => normalizeClassName(config.forClass) === normalizeClassName(classNum))
+                .filter(config => String(config.newsubject || '').trim())
+                .sort((a, b) => Number(a.displayorder ?? Number.MAX_SAFE_INTEGER) - Number(b.displayorder ?? Number.MAX_SAFE_INTEGER)
+                    || String(a.newsubject).localeCompare(String(b.newsubject)));
+            return {
+                class: classNum,
+                subjects: configuredSubjects.map(config => {
+                    const subject = String(config.newsubject).trim();
+                    const hasPractical = Number(config.practical) > 0 || Number(config.practicalCreditHour) > 0;
+                    return {
+                        subject,
+                        subjectType: config.subjectType,
+                        hasPractical,
+                        value: JSON.stringify([classNum, subject])
+                    };
+                })
+            };
+        }).filter(item => item.subjects.length);
+        const subjectConfigByClass = new Map(classSubjects.map(item => [
+            item.class,
+            new Map(item.subjects.map(subject => [normalizeAnalysisSubject(subject.subject), subject]))
+        ]));
+        const practicalSubjectsByValue = new Map();
+        classSubjects.forEach(classData => {
+            classData.subjects.forEach(subject => {
+                practicalSubjectsByValue.set(subject.value, {
+                    classNum: classData.class,
+                    subjectName: normalizeAnalysisSubject(subject.subject)
+                });
+            });
+        });
+        const selectedPracticalByClass = new Map(classes.map(classNum => {
+            const configs = subjectConfigByClass.get(classNum) || new Map();
+            const selected = new Set();
+            if (includePractical) {
+                if (practicalSelectionSubmitted) {
+                    submittedPracticalSubjects.forEach(value => {
+                        const configuredSubject = practicalSubjectsByValue.get(String(value));
+                        if (configuredSubject
+                            && configuredSubject.classNum === classNum
+                            && configs.has(configuredSubject.subjectName)) {
+                            selected.add(configuredSubject.subjectName);
+                        }
+                    });
+                } else {
+                    configs.forEach((config, subjectName) => {
+                        if (config.hasPractical) selected.add(subjectName);
+                    });
+                }
+            }
+            return [classNum, selected];
+        }));
+        classSubjects.forEach(classData => {
+            const selected = selectedPracticalByClass.get(classData.class) || new Set();
+            classData.subjects.forEach(subject => {
+                subject.selectedForAnalysis = selected.has(normalizeAnalysisSubject(subject.subject));
+            });
+        });
+        const optionalAssignments = await OptionalSubStudent.find({
+            studentClass: { $in: [...new Set(Object.values(classAliases).flat())] },
+            academicYear: String(academicYear)
+        }).select('reg studentClass section optionalSubjects').lean();
+        const assignmentsByClassAndStudent = new Map();
+        optionalAssignments.forEach(assignment => {
+            const classNum = classes.find(value =>
+                classAliases[value].some(alias => normalizeClassName(alias) === normalizeClassName(assignment.studentClass))
+            );
+            if (!classNum) return;
+            const key = `${classNum}|${normalizeSubjectName(assignment.section)}|${String(assignment.reg || '').trim()}`;
+            assignmentsByClassAndStudent.set(key, new Set((assignment.optionalSubjects || []).map(normalizeAnalysisSubject)));
+        });
         
         // Process each class
         const classAnalytics = [];
@@ -4270,10 +4272,23 @@ exports.schoolanalysis = async (req, res, next) => {
                 ...student,
                 class: classNum
             }));
+            const configuredSubjects = subjectConfigByClass.get(classNum) || new Map();
+            const optionalSubjects = new Set([...configuredSubjects.entries()]
+                .filter(([, config]) => String(config.subjectType || '').toLowerCase() === 'optional')
+                .map(([subjectName]) => normalizeAnalysisSubject(subjectName)));
+            if (classNum === '9' || classNum === '10') {
+                ['OPT.MATH', 'O.MATH', 'ENV.SCIENCE', 'E.SCIENCE'].forEach(subject => {
+                    optionalSubjects.add(normalizeAnalysisSubject(subject));
+                });
+            }
+            const selectedOptionalForStudent = student => assignmentsByClassAndStudent.get(
+                `${classNum}|${normalizeSubjectName(student.section)}|${String(student.reg || '').trim()}`
+            ) || new Set();
+            const practicalSubjects = selectedPracticalByClass.get(classNum) || new Set();
             
             // Filter out absent students (all subjects have 0 marks or no valid subjects)
             const activeStudents = studentsWithClass.filter(student => {
-                return !isStudentAbsent(student, includePractical);
+                return !isStudentAbsent(student, practicalSubjects, optionalSubjects, selectedOptionalForStudent(student));
             });
             
             const absentStudents = studentsWithClass.length - activeStudents.length;
@@ -4307,7 +4322,12 @@ exports.schoolanalysis = async (req, res, next) => {
             
             // Calculate results for each student (only active students)
             const studentResults = activeStudents.map(student => {
-                const result = calculateStudentResult(student, includePractical);
+                const result = calculateStudentResult(
+                    student,
+                    practicalSubjects,
+                    optionalSubjects,
+                    selectedOptionalForStudent(student)
+                );
                 result.isAbsent = false;
                 return result;
             });
@@ -4385,6 +4405,7 @@ exports.schoolanalysis = async (req, res, next) => {
             groupAnalytics,
             classAnalytics,
             analysisType,
+            classSubjects,
             terminal,
             academicYear,
             hasData: true,
@@ -4398,6 +4419,7 @@ exports.schoolanalysis = async (req, res, next) => {
             overallData: { totalStudents: 0, passedAll: 0, failedAny: 0, absent: 0, passPercentage: 0, failPercentage: 0 },
             groupAnalytics: [],
             classAnalytics: [],
+            classSubjects: [],
             analysisType: req.query.analysisType || 'both',
             terminal: req.query.terminal || '',
             academicYear: req.query.academicYear || '',
@@ -4690,6 +4712,7 @@ function processQuantumAnalysis(examMarks, subjectFullMarksMap) {
 exports.quantamanalysis = async (req, res) => {
     try {
         const { terminal, academicYear, filterClass } = req.query;
+        const viewMode = req.query.viewMode === 'sectionwise' ? 'sectionwise' : 'classwise';
 
         // Build filter
         let filter = {};
@@ -4752,14 +4775,54 @@ exports.quantamanalysis = async (req, res) => {
         const years = await Exammodel.distinct('academicYear', filter);
 
         // Process data
-        const analysisData = processQuantumAnalysis(examMarks, subjectFullMarksMap);
+        const classwiseData = processQuantumAnalysis(examMarks, subjectFullMarksMap);
+        let analysisData = classwiseData;
+        if (viewMode === 'sectionwise') {
+            const recordsByClassAndSection = new Map();
+            examMarks.forEach(record => {
+                const className = normalizeClassName(String(record.studentClass || '').trim());
+                if (!className) return;
+                const sectionName = String(record.section || '').trim() || 'No Section';
+                if (!recordsByClassAndSection.has(className)) {
+                    recordsByClassAndSection.set(className, new Map());
+                }
+                const sections = recordsByClassAndSection.get(className);
+                if (!sections.has(sectionName)) sections.set(sectionName, []);
+                sections.get(sectionName).push(record);
+            });
+
+            analysisData = {};
+            recordsByClassAndSection.forEach((sections, className) => {
+                const sectionResults = [];
+                [...sections.entries()]
+                    .sort(([sectionA], [sectionB]) => sectionA.localeCompare(sectionB, undefined, { numeric: true, sensitivity: 'base' }))
+                    .forEach(([sectionName, sectionMarks]) => {
+                        const sectionAnalysis = processQuantumAnalysis(sectionMarks, subjectFullMarksMap)[className];
+                        if (sectionAnalysis) {
+                            sectionResults.push({ sectionName, ...sectionAnalysis });
+                        }
+                    });
+                const classAnalysis = classwiseData[className];
+                analysisData[className] = {
+                    displayName: classAnalysis?.displayName || displayClassName(className),
+                    totalStudents: sectionResults.reduce((total, section) => total + section.totalStudents, 0),
+                    sections: sectionResults
+                };
+            });
+        }
         console.log('Analysis Data Classes:', Object.keys(analysisData));
 
         // Log first class structure for debugging
         if (Object.keys(analysisData).length > 0) {
             const firstClass = Object.keys(analysisData)[0];
             console.log('First class:', firstClass);
-            console.log('First class groupedSubjects keys:', Object.keys(analysisData[firstClass].groupedSubjects || {}));
+            const firstClassData = analysisData[firstClass];
+            console.log(
+                viewMode === 'sectionwise' ? 'First class sections:' : 'First class groupedSubjects keys:',
+                viewMode === 'sectionwise'
+                    ? firstClassData.sections.map(section => section.sectionName)
+                    : Object.keys(firstClassData.groupedSubjects || {})
+            );
         }
 
         res.render('./exam/quantamanalysis', {
@@ -4770,7 +4833,8 @@ exports.quantamanalysis = async (req, res) => {
             years: years.sort(),
             selectedTerminal: terminal || '',
             selectedYear: academicYear || '',
-            filterClass: filterClass || ''
+            filterClass: filterClass || '',
+            viewMode
         });
 
     } catch (error) {
@@ -6247,17 +6311,35 @@ exports.subjectWiseFailStudents = async (req, res) => {
         console.log('=== Starting Subject Wise Fail Students ===');
         
         // Get all data in parallel
-        const [subjects, terminals, classSectionList, examMarks] = await Promise.all([
+        const [subjects, terminals, classSectionList, examMarks, marksheetSetupDoc] = await Promise.all([
             newsubject.find({}),
             terminalModel.find({}).lean(),
             studentClass.find({}, { studentClass: 1, section: 1 }).lean(),
-            getSlipModel().find(buildQuery(classFilter, sectionFilter, terminalFilter))
+            getSlipModel().find(buildQuery(classFilter, sectionFilter, terminalFilter)),
+            marksheetSetup.findOne({}).select('terminals').lean()
         ]);
+        const selectedTerminalSetup = terminalFilter && terminalFilter !== 'all'
+            ? (marksheetSetupDoc?.terminals || []).find(item =>
+                normalizeTerminalKey(item.name) === normalizeTerminalKey(terminalFilter)
+            )
+            : null;
+        const attendanceWorkingDays = Number(selectedTerminalSetup?.workingDays) || null;
         
         console.log(`Found ${examMarks.length} exam marks`);
         
         if (examMarks.length === 0) {
-            return renderEmptyResponse(res, classFilter, sectionFilter, subjectFilter, terminalFilter, calculationType, subjects, terminals, classSectionList);
+            return renderEmptyResponse(
+                res,
+                classFilter,
+                sectionFilter,
+                subjectFilter,
+                terminalFilter,
+                calculationType,
+                subjects,
+                terminals,
+                classSectionList,
+                attendanceWorkingDays
+            );
         }
 
         // Build maps for quick lookup
@@ -6286,7 +6368,8 @@ exports.subjectWiseFailStudents = async (req, res) => {
                 failStudentsData.push({
                     subject: subjectName,
                     classes: classMap,
-                    totalFail: totalFail
+                    totalFail,
+                    terminal: terminalFilter !== 'all' ? getTerminalDisplayName(terminalFilter) : ''
                 });
             }
         }
@@ -6312,7 +6395,8 @@ exports.subjectWiseFailStudents = async (req, res) => {
             availableTerminals,
             classSectionMap,
             getClassDisplayName,
-             getClassOrder: getClassOrder
+            getClassOrder: getClassOrder,
+            attendanceWorkingDays
         });
         
     } catch (error) {
@@ -6399,7 +6483,7 @@ function groupMarksByClass(subjectMarks, subjectClassMap, subjectName, calculati
         const practicalMarks = student.practicalmarks || 0;
         const classConfig = subjectClassMap[subjectName]?.[className];
         const passingMarks = classConfig?.passingMarks || 18;
-        const theoryFull = classConfig?.theory || 50;
+        const theoryFull = Number(classConfig?.theory) || Number(student.theoryfullmarks) || 50;
         const practicalFull = classConfig?.practical || 50;
         const theoryCredit = classConfig?.theoryCreditHour || 2.5;
         const practicalCredit = classConfig?.practicalCreditHour || 2.5;
@@ -6491,7 +6575,27 @@ function getAvailableTerminals(terminals) {
     return [...terminalSet].sort();
 }
 
-function renderEmptyResponse(res, classFilter, sectionFilter, subjectFilter, terminalFilter, calculationType, subjects, terminals, classSectionList) {
+function normalizeTerminalKey(value) {
+    const key = String(value || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (key.includes('first') || key === '1' || key === '1st') return 'first';
+    if (key.includes('second') || key === '2' || key === '2nd') return 'second';
+    if (key.includes('third') || key === '3' || key === '3rd') return 'third';
+    if (key.includes('final')) return 'final';
+    return key;
+}
+
+function getTerminalDisplayName(value) {
+    const terminalNames = {
+        first: 'First Terminal',
+        second: 'Second Terminal',
+        third: 'Third Terminal',
+        final: 'Final Terminal'
+    };
+    const key = normalizeTerminalKey(value);
+    return terminalNames[key] || String(value || '').trim();
+}
+
+function renderEmptyResponse(res, classFilter, sectionFilter, subjectFilter, terminalFilter, calculationType, subjects, terminals, classSectionList, attendanceWorkingDays) {
     const availableSubjects = [...new Set(subjects.map(s => s.newsubject).filter(Boolean))].sort();
     const availableClasses = getAvailableClasses(classSectionList);
     const availableTerminals = getAvailableTerminals(terminals);
@@ -6508,7 +6612,8 @@ function renderEmptyResponse(res, classFilter, sectionFilter, subjectFilter, ter
         availableClasses,
         availableTerminals,
         classSectionMap,
-        getClassDisplayName
+        getClassDisplayName,
+        attendanceWorkingDays
     });
 }
 

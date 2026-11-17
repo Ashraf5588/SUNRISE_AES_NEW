@@ -20,8 +20,8 @@
       .fee-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px 22px; }
       .fee-field { display:grid; gap:7px; }
       .fee-field label, .frequency-label { color:var(--muted); font-size:12px; font-weight:750; }
-      .fee-field input[type="text"] { width:100%; padding:11px 13px; border:1px solid var(--line); border-radius:8px; color:var(--ink); font:inherit; outline:none; }
-      .fee-field input[type="text"]:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(59,130,246,.12); }
+      .fee-field input[type="text"], .fee-field select { width:100%; padding:11px 13px; border:1px solid var(--line); border-radius:8px; color:var(--ink); font:inherit; outline:none; background:#fff; }
+      .fee-field input[type="text"]:focus, .fee-field select:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(59,130,246,.12); }
       .frequency-field { grid-column:1 / -1; }
       .frequency-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
       .select-all { border:0; background:transparent; color:var(--blue); cursor:pointer; padding:4px 0; font:700 12px inherit; }
@@ -75,6 +75,7 @@
               
             </div>
             <div class="fee-field"><label for="group">Group</label><input type="text" id="group" name="group" value="<%= editFeeHead ? editFeeHead.group || '' : '' %>" placeholder="e.g. Academic" required></div>
+            <div class="fee-field"><label for="incomeLedger">Fee income ledger (optional)</label><select id="incomeLedger" name="incomeLedger"><option value="">Use the default fee income ledger</option><% incomeLedgers.forEach(ledger => { %><option value="<%= ledger._id %>" <%= editFeeHead && String(editFeeHead.incomeLedger || '') === String(ledger._id) ? 'selected' : '' %>><%= ledger.code %> · <%= ledger.name %></option><% }); %></select></div>
             <div class="frequency-field">
               <div class="frequency-heading"><span class="frequency-label">Applied Month</span><button type="button" class="select-all" id="select-all">Select all</button></div>
               <div class="month-grid">
@@ -88,8 +89,8 @@
       </section>
       <section class="fee-panel table-panel">
         <div class="table-heading"><h2>Fee heads</h2><span><%= feeheads.length %> saved</span></div>
-        <% if (feeheads.length) { %><div class="table-scroll"><table class="fee-table"><thead><tr><th>SN</th><th>Fee head</th><th>Frequency</th><th>Report name</th><% months.forEach(([label]) => { %><th><%= label %></th><% }); %><th>Actions</th></tr></thead><tbody>
-          <% feeheads.forEach((item, index) => { %><tr><td><%= index + 1 %></td><td><strong><%= item.feehead %></strong></td><td><%= item.frequency || '-' %></td><td><%= item.reportname || '-' %></td><% months.forEach(([, value]) => { const applied = (item.appliedmonth || []).includes(value); %><td class="month-cell <%= applied ? '' : 'not-applied' %>"><%= applied ? '✓' : '-' %></td><% }); %><td><div class="fee-actions"><a class="fee-action" href="/feehead/<%= item._id %>/edit" title="Edit fee head" aria-label="Edit fee head" style="background-color: #007bff;color:white">✎</a><form action="/feehead/<%= item._id %>/delete" method="POST" onsubmit="return confirm('Delete this fee head?');"><button type="submit" class="fee-action delete" style="background-color: #ff001e;color:white" title="Delete fee head" aria-label="Delete fee head">⌫</button></form></div></td></tr><% }); %>
+        <% if (feeheads.length) { %><div class="table-scroll"><table class="fee-table"><thead><tr><th>SN</th><th>Fee head</th><th>Frequency</th><th>Report name</th><th>Income ledger</th><% months.forEach(([label]) => { %><th><%= label %></th><% }); %><th>Actions</th></tr></thead><tbody>
+          <% feeheads.forEach((item, index) => { %><tr><td><%= index + 1 %></td><td><strong><%= item.feehead %></strong></td><td><%= item.frequency || '-' %></td><td><%= item.reportname || '-' %></td><td><%= item.incomeLedger ? `${item.incomeLedger.code} · ${item.incomeLedger.name}` : 'School default' %></td><% months.forEach(([, value]) => { const applied = (item.appliedmonth || []).includes(value); %><td class="month-cell <%= applied ? '' : 'not-applied' %>"><%= applied ? '✓' : '-' %></td><% }); %><td><div class="fee-actions"><a class="fee-action" href="/feehead/<%= item._id %>/edit" title="Edit fee head" aria-label="Edit fee head" style="background-color: #007bff;color:white">✎</a><form action="/feehead/<%= item._id %>/delete" method="POST" onsubmit="return confirm('Delete this fee head?');"><button type="submit" class="fee-action delete" style="background-color: #ff001e;color:white" title="Delete fee head" aria-label="Delete fee head">⌫</button></form></div></td></tr><% }); %>
         </tbody></table></div><% } else { %><div class="empty-state">No fee heads have been added yet.</div><% } %>
       </section>
     </div>

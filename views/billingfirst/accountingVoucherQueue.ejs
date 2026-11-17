@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><%= title %></title>
+<link rel="stylesheet" href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css">
+<style>
+  *{box-sizing:border-box}body{margin:0;background:#f5f8fc;color:#1d2b42;font:13px "Segoe UI",Arial,sans-serif}main{max-width:1450px;margin:0 auto;padding:28px 22px}
+  h1{margin:0;color:#102a52;font-size:27px}.sub{color:#73829a;margin:7px 0 18px}.panel{margin:14px 0;padding:17px;border:1px solid #e2eaf4;border-radius:13px;background:#fff;box-shadow:0 8px 24px rgba(24,52,91,.04)}
+  .table-wrap{overflow:auto}table{width:100%;min-width:900px;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid #edf1f6;vertical-align:top}th{font-size:10px;text-transform:uppercase;color:#73829a}td{font-size:12px}
+  .status{display:inline-block;padding:5px 8px;border-radius:15px;background:#edf4fd;color:#41658f;font-size:10px;font-weight:700}.entries{min-width:220px;color:#53647d;line-height:1.6}
+  .actions{display:grid;gap:7px;min-width:140px}.actions form{display:grid;gap:5px}.actions input{min-height:32px;border:1px solid #dfe7f1;border-radius:6px;padding:5px 7px;font:inherit}.actions button{min-height:31px;border:0;border-radius:6px;background:#102a52;color:#fff;font-weight:700;cursor:pointer}.actions button.danger{background:#9e343c}.empty{padding:30px;color:#73829a;text-align:center}
+  @media(max-width:600px){main{padding:19px 12px}}
+</style></head>
+<body><%- include('feesidenav') %><main>
+  <h1>Accounting vouchers &amp; approvals</h1><p class="sub">Draft and approval statuses are excluded from account balances. Posted vouchers are corrected by reversal, not edited.</p>
+  <% if(statusMessage){ %><div class="panel"><%= statusMessage %></div><% } %>
+  <section class="panel"><div class="table-wrap">
+    <% if(vouchers.length){ %><table><thead><tr><th>Voucher</th><th>Date BS</th><th>Type / narration</th><th>Entries</th><th>Status</th><th>Submitted by</th><th>Actions</th></tr></thead><tbody>
+      <% vouchers.forEach(voucher=>{ %><tr>
+        <td><strong><%= voucher.voucherNumber %></strong></td><td><%= voucher.dateBS %></td><td><strong><%= formatVoucherType(voucher.voucherType) %></strong><br><%= voucher.narration %><% if(voucher.reversedBy){ %><br><small>Reversed by <%= voucher.reversedBy %></small><% } %></td>
+        <td class="entries"><% (voucher.entries||[]).forEach(entry=>{ %><div><%= entry.ledger?.code||'—' %> · <%= entry.ledger?.name||'Ledger' %> — DR <%= Number(entry.debit||0).toFixed(2) %> / CR <%= Number(entry.credit||0).toFixed(2) %></div><% }) %></td>
+        <td><span class="status"><%= voucher.displayStatus.replace(/_/g,' ') %></span></td><td><%= voucher.submittedBy?.teacherName||voucher.submittedBy?.username||voucher.createdBy||'—' %></td><td>
+          <div class="actions">
+            <% if(currentRole==='ACCOUNTANT'&&voucher.status==='PENDING_ACCOUNTANT_REVIEW'){ %><form method="post" action="/accounting/vouchers/<%= voucher._id %>/review"><button type="submit">Review &amp; forward</button></form><% } %>
+            <% if(currentRole==='ADMIN'&&voucher.status==='PENDING_ADMIN_APPROVAL'){ %><form method="post" action="/accounting/vouchers/<%= voucher._id %>/approve" onsubmit="return confirm('Approve and post this voucher?')"><button type="submit">Approve &amp; post</button></form><% } %>
+            <% if((currentRole==='ACCOUNTANT'&&voucher.status==='PENDING_ACCOUNTANT_REVIEW')||(currentRole==='ADMIN'&&voucher.status==='PENDING_ADMIN_APPROVAL')){ %><form method="post" action="/accounting/vouchers/<%= voucher._id %>/reject" onsubmit="return Boolean(this.reason.value.trim())&&confirm('Reject this voucher?')"><input name="reason" placeholder="Required rejection reason" required maxlength="500"><button class="danger" type="submit">Reject</button></form><% } %>
+            <% if(currentRole==='ADMIN'&&voucher.status==='POSTED'&&!voucher.reversedBy){ %><form method="post" action="/accounting/vouchers/<%= voucher._id %>/reverse" onsubmit="return Boolean(this.reason.value.trim())&&confirm('Create a reversing voucher? The original will remain in the audit trail.')"><input class="nepali-datepicker" name="dateBS" value="<%= todayBS %>" required><input name="reason" placeholder="Required reversal reason" required maxlength="500"><button class="danger" type="submit">Reverse</button></form><% } %>
+            <% if(!['PENDING_ACCOUNTANT_REVIEW','PENDING_ADMIN_APPROVAL'].includes(voucher.status)&&!(currentRole==='ADMIN'&&voucher.status==='POSTED'&&!voucher.reversedBy)){ %><span>—</span><% } %>
+          </div>
+        </td>
+      </tr><% }) %>
+    </tbody></table><% }else{ %><div class="empty">No accounting vouchers are available for this account.</div><% } %>
+  </div></section>
+</main>
+<script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js"></script>
+<script>document.querySelectorAll('.nepali-datepicker').forEach(input=>{if(typeof input.nepaliDatePicker==='function')input.nepaliDatePicker({dateFormat:'YYYY-MM-DD',language:'en'})});</script>
+</body></html>

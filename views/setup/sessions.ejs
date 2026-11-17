@@ -1,31 +1,98 @@
-<%- include('../partials/head', { title: 'Academic Sessions' }) %>
+<%- include('../partials/head', { title: 'Academic Sessions', setupStylesheet: true, nepaliDatePicker: true }) %>
 <%- include('../partials/navbar') %>
-<div class="fee-page-shell"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container mt-4">
-  <h3>Academic Sessions</h3>
-  <div class="row">
-    <div class="col-md-5">
-      <form method="POST" action="/setup/sessions" class="bg-white p-3 rounded shadow-sm">
-        <div class="mb-2"><label class="form-label">Title (BS)</label><input class="form-control" name="titleBS" required placeholder="2082"></div>
-        <div class="mb-2"><label class="form-label">Start Date (AD)</label><input type="date" class="form-control" name="startDateAD" required></div>
-        <div class="mb-2"><label class="form-label">End Date (AD)</label><input type="date" class="form-control" name="endDateAD" required></div>
-        <input type="radio" name="isActive" value="true" id="currentSession"><label for="currentSession">Set as Current Session</label>
-
-        <button class="btn btn-primary">Add Session</button>
-      </form>
+<div class="fee-page-shell setup-page"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container">
+  <header class="setup-heading">
+    <div class="setup-heading-copy">
+      <p class="setup-eyebrow">Academic setup</p>
+      <h1>Academic sessions</h1>
+      <p>Manage academic year dates and identify the session currently in use.</p>
     </div>
-    <div class="col-md-7">
-      <table class="table table-bordered bg-white">
-        <thead><tr><th>BS Year</th><th>Start</th><th>End</th><th>Current</th></tr></thead>
-        <tbody>
-          <% sessions.forEach(s => { %>
-          <tr><td><%= s.titleBS %></td><td><%= s.startDateAD.toDateString() %></td><td><%= s.endDateAD.toDateString() %></td>
-            <td><%= s.isActive ? 'Yes' : 'No' %></td>
-          </tr>
-          <% }) %>
-        </tbody>
-      </table>
+  </header>
+  <% if (error) { %><div class="alert alert-danger setup-session-alert" role="alert"><%= error %></div><% } %>
+  <% if (success) { %><div class="alert alert-success setup-session-alert" role="status"><%= success %></div><% } %>
+  <div class="row g-4 setup-session-layout">
+    <div class="col-lg-4">
+      <section class="setup-card setup-session-form-card">
+        <div class="setup-card-heading">
+          <div>
+            <h2><%= editSession ? 'Edit academic session' : 'Add academic session' %></h2>
+            <p><%= editSession ? 'Update the year, date range, or current-session status.' : 'Enter the BS year and its corresponding AD date range.' %></p>
+          </div>
+        </div>
+        <div class="setup-card-body">
+          <% const values = Object.keys(formValues || {}).length ? formValues : editSession || {}; %>
+          <form method="POST" action="<%= editSession ? `/setup/sessions/${editSession._id}/edit` : '/setup/sessions' %>">
+            <div class="mb-3">
+              <label class="form-label" for="titleBS">Academic year (BS)</label>
+              <input id="titleBS" class="form-control" name="titleBS" value="<%= values.titleBS || '' %>" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="2083">
+              <div class="form-text">Use the four-digit Bikram Sambat year.</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="startDateBS">Start date (BS) / सुरु मिति</label>
+              <input id="startDateBS" type="text" class="form-control nepali-datepicker" name="startDateBS" value="<%= values.startDateBS || (values.startDateAD ? toBSDate(values.startDateAD) : '') %>" placeholder="YYYY-MM-DD" autocomplete="off" required>
+              <div class="form-text">Choose a Nepali calendar date or enter it in YYYY-MM-DD format.</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="endDateBS">End date (BS) / अन्तिम मिति</label>
+              <input id="endDateBS" type="text" class="form-control nepali-datepicker" name="endDateBS" value="<%= values.endDateBS || (values.endDateAD ? toBSDate(values.endDateAD) : '') %>" placeholder="YYYY-MM-DD" autocomplete="off" required>
+              <div class="form-text">Dates are converted and stored as AD internally.</div>
+            </div>
+            <div class="mb-4">
+              <label class="form-label" for="currentSession">Session status</label>
+              <select class="form-select" name="isActive" id="currentSession" required>
+                <option value="true" <%= String(values.isActive) === 'true' ? 'selected' : '' %>>Current session</option>
+                <option value="false" <%= String(values.isActive) !== 'true' ? 'selected' : '' %>>Inactive</option>
+              </select>
+              <div class="form-text">Setting this session as current will deactivate other sessions.</div>
+            </div>
+            <div class="setup-session-form-actions">
+              <button class="btn btn-primary" type="submit"><%= editSession ? 'Save changes' : 'Add session' %></button>
+              <% if (editSession) { %><a class="btn btn-light" href="/setup/sessions">Cancel</a><% } %>
+            </div>
+          </form>
+        </div>
+      </section>
+    </div>
+    <div class="col-lg-8">
+      <section class="setup-card">
+        <div class="setup-card-heading">
+          <div><h2>Configured sessions</h2><p>Review dates and update session details.</p></div>
+          <span class="setup-count"><%= sessions.length %> total</span>
+        </div>
+        <div class="setup-table-wrap">
+          <table class="table setup-table setup-session-table">
+          <thead><tr><th>Academic year</th><th>Start date</th><th>End date</th><th>Status</th><th class="setup-session-actions-heading">Action</th></tr></thead>
+          <tbody>
+            <% if (sessions.length) { sessions.forEach(s => { %>
+            <tr>
+              <td><span class="setup-session-year"><%= s.titleBS %></span></td>
+              <td><span class="setup-session-date"><%= toBSDate(s.startDateAD) %> BS</span><small><%= new Date(s.startDateAD).toISOString().slice(0, 10) %> AD</small></td>
+              <td><span class="setup-session-date"><%= toBSDate(s.endDateAD) %> BS</span><small><%= new Date(s.endDateAD).toISOString().slice(0, 10) %> AD</small></td>
+              <td><span class="setup-session-status <%= s.isActive ? 'is-current' : '' %>"><span aria-hidden="true"></span><%= s.isActive ? 'Current' : 'Inactive' %></span></td>
+              <td>
+                <div class="setup-session-row-actions">
+                  <a class="btn btn-sm btn-outline-primary setup-session-edit" href="/setup/sessions/<%= s._id %>/edit" aria-label="Edit academic session <%= s.titleBS %>">Edit</a>
+                  <form method="POST" action="/setup/sessions/<%= s._id %>/delete" onsubmit="return confirm('Delete academic session <%= s.titleBS %>? Sessions linked to students, invoices, fee structures, or transport fees cannot be deleted.')">
+                    <button class="btn btn-sm btn-outline-danger setup-session-delete" type="submit" aria-label="Delete academic session <%= s.titleBS %>">Delete</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            <% }) } else { %><tr><td colspan="5" class="setup-empty">No academic sessions have been added yet.</td></tr><% } %>
+          </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   </div>
 </div>
  </main></div>
+<script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js"></script>
+<script>
+  document.querySelectorAll('.nepali-datepicker').forEach(input => {
+    if (typeof input.nepaliDatePicker === 'function') {
+      input.nepaliDatePicker({ dateFormat: 'YYYY-MM-DD', language: 'en' });
+    }
+  });
+</script>
 <%- include('../partials/footer') %>

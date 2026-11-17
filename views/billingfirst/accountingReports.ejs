@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %></title>
+  <style>
+    :root{--ink:#1d2b42;--navy:#102a52;--blue:#3979d6;--muted:#73829a;--line:#e2eaf4;--page:#f5f8fc;--green:#16846a;--red:#b6404a;--amber:#946000}
+    *{box-sizing:border-box}body{margin:0;background:var(--page);color:var(--ink);font:13px "Segoe UI",Arial,sans-serif}
+    .report-main{min-height:100vh;margin-left:268px;padding:31px 36px 48px}.report-content{max-width:1500px;margin:0 auto}
+    .heading{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:20px}.eyebrow{margin:0 0 7px;color:var(--blue);font-size:10px;font-weight:850;letter-spacing:1.2px;text-transform:uppercase}
+    h1{margin:0;color:var(--navy);font-size:29px;letter-spacing:-.7px}.subtitle{margin:7px 0 0;color:var(--muted);font-size:13px;line-height:1.5}
+    .school-meta{display:flex;align-items:center;gap:10px;color:#51627a;font-size:11px;font-weight:700}.school-meta img{max-width:44px;max-height:44px;object-fit:contain}
+    .report-tabs{display:flex;gap:6px;overflow-x:auto;margin:0 0 17px;padding:4px 1px 9px}.report-tab{display:inline-flex;align-items:center;min-height:35px;padding:0 11px;border:1px solid #dfe7f1;border-radius:8px;background:#fff;color:#5a6b82;font-size:11px;font-weight:750;text-decoration:none;white-space:nowrap}
+    .report-tab:hover{border-color:#b6cceb;background:#f8fbff;color:#244f91}.report-tab.active{border-color:#cdddf4;background:#eaf2ff;color:#214d93}
+    .filter-card,.report-card,.home-card{border:1px solid var(--line);border-radius:13px;background:#fff;box-shadow:0 9px 24px rgba(24,52,91,.045)}
+    .filter-card{margin-bottom:17px;padding:16px}.filter-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;align-items:end}
+    .field{display:grid;gap:6px;min-width:0;color:#586980;font-size:10px;font-weight:750}.field select,.field input{width:100%;min-width:0;height:37px;padding:7px 9px;border:1px solid #dbe4ef;border-radius:8px;background:#fff;color:var(--ink);font:inherit;font-size:11px}
+    .field select:focus,.field input:focus{outline:2px solid rgba(57,121,214,.14);border-color:#81a9df}
+    .filter-actions{display:flex;gap:7px;align-items:center}.button{display:inline-flex;align-items:center;justify-content:center;min-height:37px;padding:0 12px;border:1px solid #d7e2ef;border-radius:8px;background:#fff;color:#31577f;font-size:11px;font-weight:750;text-decoration:none;cursor:pointer;white-space:nowrap}
+    .button:hover{border-color:#a9c8ee;background:#f3f8ff}.button.primary{border-color:var(--navy);background:var(--navy);color:#fff}.button.primary:hover{background:#214d86}.button:disabled{opacity:.65;cursor:wait}
+    .export-actions{display:flex;gap:7px;justify-content:flex-end;margin:-5px 0 12px}.report-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:2px 0 12px;color:var(--muted);font-size:10px}
+    .summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin:0 0 16px}.summary-card{min-height:91px;padding:14px;border:1px solid var(--line);border-radius:11px;background:#fff}
+    .summary-card span{color:var(--muted);font-size:10px;font-weight:700}.summary-card strong{display:block;margin-top:8px;color:var(--navy);font-size:19px;font-variant-numeric:tabular-nums}.summary-card .positive{color:var(--green)}.summary-card .negative{color:var(--red)}
+    .report-card{overflow:hidden;margin-bottom:15px}.card-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid #edf1f6}
+    .card-heading h2{margin:0;color:var(--navy);font-size:14px}.card-heading p{margin:4px 0 0;color:var(--muted);font-size:10px}
+    .table-scroll{overflow:auto}table{width:100%;border-collapse:collapse;text-align:left}th{position:sticky;top:0;padding:10px 11px;background:#172944;color:#dceaff;font-size:9px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;white-space:nowrap}
+    td{padding:10px 11px;border-bottom:1px solid #edf1f6;color:#526178;font-size:11px;vertical-align:middle}tbody tr:nth-child(even){background:#fafbfd}tbody tr:hover{background:#f4f8ff}
+    tfoot td{background:#f2f6fb;color:var(--navy);font-weight:850}.numeric{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.code{color:#60738d;font-family:Consolas,monospace;font-size:10px;white-space:nowrap}
+    .account-name{color:#2c405d;font-weight:750}.muted{color:var(--muted)}.indent{padding-left:25px}.group-row td{background:#f6f8fb;color:#344b6b;font-weight:800}.section-row td{background:#eaf1fa;color:#1f3a61;font-size:10px;font-weight:850;letter-spacing:.65px}
+    .total-row td{background:#eef3f9;color:#203b62;font-weight:850}.balance-positive{color:var(--green);font-weight:800}.balance-negative{color:var(--red);font-weight:800}
+    .badge{display:inline-flex;padding:4px 7px;border-radius:20px;background:#edf2f8;color:#52657e;font-size:9px;font-weight:800;white-space:nowrap}
+    .badge.posted{background:#e7f7f0;color:#147554}.badge.reversed,.badge.rejected,.badge.cancelled{background:#fff0f0;color:#a33c46}.badge.pending_admin_approval,.badge.pending_accountant_review{background:#fff6e6;color:#8a5a00}.badge.draft{background:#f0f2f5;color:#68768a}
+    .detail-link{color:#2c64b5;font-weight:750;text-decoration:none}.detail-link:hover{text-decoration:underline}
+    .line-details{min-width:520px;padding:10px 0}.line-details table{min-width:480px}.line-details th{position:static;background:#f1f5fa;color:#62738b}.line-details td{font-size:10px}
+    .notice{margin:0 0 14px;padding:12px 14px;border:1px solid #d8e5f4;border-radius:9px;background:#f2f7fd;color:#526981;font-size:11px;line-height:1.55}
+    .notice.warning{border-color:#efdcae;background:#fff9e9;color:#775700}.notice.error{border-color:#f0c7ca;background:#fff5f5;color:#a33c46}.notice.success{border-color:#c5e7d8;background:#effaf5;color:#176c57}
+    .empty-state{padding:33px 15px;color:var(--muted);text-align:center;line-height:1.6}.search-box{max-width:250px;height:34px;padding:6px 9px;border:1px solid #dbe4ef;border-radius:7px;font:inherit;font-size:10px}
+    .pagination{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 15px;color:var(--muted);font-size:10px}.pagination-actions{display:flex;gap:6px}.pagination .button{min-height:30px}
+    .home-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.home-card{display:block;padding:18px;color:inherit;text-decoration:none;transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+    .home-card:hover{transform:translateY(-2px);border-color:#c8d9f0;box-shadow:0 14px 28px rgba(24,52,91,.08)}.home-icon{display:grid;place-items:center;width:34px;height:34px;margin-bottom:13px;border-radius:10px;background:#edf4ff;color:#315fae;font-size:16px;font-weight:850}
+    .home-card h2{margin:0;color:var(--navy);font-size:14px}.home-card p{margin:6px 0 0;color:var(--muted);font-size:11px;line-height:1.5}.home-card span:last-child{display:inline-block;margin-top:14px;color:#315fae;font-size:10px;font-weight:800}
+    .print-school{display:none}
+    @media(max-width:1100px){.report-main{padding:26px 22px 40px}.filter-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.home-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:760px){.report-main{margin-left:0;padding:22px 14px 36px}.heading{align-items:flex-start;flex-direction:column}.school-meta{display:none}.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.export-actions{justify-content:flex-start}.filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:480px){h1{font-size:24px}.filter-card{padding:12px}.filter-grid{grid-template-columns:1fr 1fr}.summary-card{min-height:78px;padding:11px}.summary-card strong{font-size:16px}.home-grid{grid-template-columns:1fr}.report-meta{align-items:flex-start;flex-direction:column}.filter-actions{grid-column:1/-1}.filter-actions .button{flex:1}}
+    @media print{
+      body{background:#fff}.report-main{margin:0;padding:0}.fee-sidebar,.fee-sidebar-scrim,.fee-nav-trigger,.filter-card,.report-tabs,.export-actions,.pagination,.screen-only{display:none!important}
+      .report-content{max-width:none}.report-card,.summary-card{border:1px solid #cbd2dc;box-shadow:none;break-inside:avoid}th{position:static;background:#edf1f6!important;color:#172944!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      .table-scroll{overflow:visible}table{width:100%;min-width:0}td,th{padding:6px 5px;font-size:8px}.print-school{display:block;margin-bottom:12px}.heading{margin-bottom:10px}.summary-grid{grid-template-columns:repeat(4,1fr)}
+    }
+  </style>
+</head>
+<body>
+  <%- include('feesidenav') %>
+  <main class="report-main">
+    <div class="report-content">
+      <header class="heading">
+        <div>
+          <p class="eyebrow">लेखा व्यवस्थापन · Accounting reports</p>
+          <h1><%= reportHome ? 'Accounting Reports' : (report ? report.title : 'Accounting Report') %></h1>
+          <p class="subtitle"><%= reportHome ? 'Choose a financial report built from posted General Ledger entries.' : (report ? report.description : 'Review financial information from the General Ledger.') %></p>
+        </div>
+        <% if (school) { %><div class="school-meta"><% if (school.logoUrl) { %><img src="<%= school.logoUrl %>" alt=""><% } %><span><%= school.name %></span></div><% } %>
+      </header>
+
+      <% if (reportHome) { %>
+        <div class="notice">All financial statements use posted journal lines. Draft, pending, and rejected vouchers are excluded; reversed transactions are reflected by their posted reversal entries.</div>
+        <section class="home-grid" aria-label="Accounting reports">
+          <% reports.forEach((item, index) => { %>
+            <a class="home-card" href="/accounting/reports/<%= item.key %>">
+              <span class="home-icon" aria-hidden="true"><%= ['TB','GL','VR','BS','P&L','CF'][index] %></span>
+              <h2><%= item.title %></h2><p><%= item.description %></p><span>Open report →</span>
+            </a>
+          <% }); %>
+        </section>
+      <% } else { %>
+        <nav class="report-tabs" aria-label="Accounting reports">
+          <% (reports || []).forEach(item => { %><a class="report-tab <%= item.key === reportType ? 'active' : '' %>" href="/accounting/reports/<%= item.key %>"><%= item.title %></a><% }); %>
+        </nav>
+
+        <% if (error) { %><div class="notice error" role="alert"><%= error %></div><% } %>
+        <% if (!error && period && filters) { %>
+          <form class="filter-card" id="reportFilters" method="get" action="/accounting/reports/<%= reportType %>">
+            <div class="filter-grid">
+              <label class="field">Fiscal year
+                <select name="fiscalYear" id="fiscalYear">
+                  <option value="ALL" <%= filters.fiscalYear === 'ALL' ? 'selected' : '' %>>All fiscal years</option>
+                  <% (filters.fiscalYears || []).forEach(year => { %><option value="<%= year %>" <%= filters.fiscalYear === year ? 'selected' : '' %>><%= year %> BS</option><% }); %>
+                </select>
+              </label>
+              <% if (reportType === 'balance-sheet') { %>
+                <label class="field">As of date (AD)<input type="date" name="asOf" value="<%= period.asOfText %>" required></label>
+              <% } else { %>
+                <label class="field">From date (AD)<input type="date" name="from" value="<%= period.fromText %>"></label>
+                <label class="field">To date (AD)<input type="date" name="to" value="<%= period.toText %>"></label>
+              <% } %>
+
+              <% if (reportType === 'trial-balance') { %>
+                <label class="field">Account group<select name="group"><option value="">All account groups</option><% (filters.groups || []).forEach(group => { %><option value="<%= group._id %>" <%= filters.group === String(group._id) ? 'selected' : '' %>><%= group.code %> · <%= group.name %></option><% }); %></select></label>
+                <label class="field">Zero-balance accounts<select name="includeZero"><option value="0" <%= filters.includeZero ? '' : 'selected' %>>Exclude zero balances</option><option value="1" <%= filters.includeZero ? 'selected' : '' %>>Include zero balances</option></select></label>
+              <% } %>
+
+              <% if (reportType === 'general-ledger') { %>
+                <label class="field">Ledger account<select name="account" required><option value="">Choose account</option><% (filters.ledgers || []).forEach(ledger => { %><option value="<%= ledger._id %>" <%= filters.account === String(ledger._id) ? 'selected' : '' %>><%= ledger.code %> · <%= ledger.name %></option><% }); %></select></label>
+              <% } %>
+
+              <% if (reportType === 'voucher-register') { %>
+                <label class="field">Voucher type<select name="type"><option value="">All types</option><% ['JOURNAL','RECEIPT','PAYMENT','CONTRA','FEE_INVOICE','FEE_RECEIPT','REVERSAL','OPENING_BALANCE','CLOSING'].forEach(type => { %><option value="<%= type %>" <%= filters.type === type ? 'selected' : '' %>><%= formatVoucherType(type) %></option><% }); %></select></label>
+                <label class="field">Posting status<select name="status"><option value="">All statuses</option><% ['DRAFT','PENDING_ACCOUNTANT_REVIEW','PENDING_ADMIN_APPROVAL','POSTED','REVERSED','REJECTED','CANCELLED'].forEach(status => { %><option value="<%= status %>" <%= filters.status === status ? 'selected' : '' %>><%= status.replace(/_/g,' ') %></option><% }); %></select></label>
+                <label class="field">Account / ledger<select name="account"><option value="">All accounts</option><% (filters.ledgers || []).forEach(ledger => { %><option value="<%= ledger._id %>" <%= filters.account === String(ledger._id) ? 'selected' : '' %>><%= ledger.code %> · <%= ledger.name %></option><% }); %></select></label>
+                <label class="field">Search voucher<input type="search" name="q" value="<%= filters.q %>" maxlength="100" placeholder="Number, narration, creator"></label>
+                <label class="field">Created by<input type="search" name="createdBy" value="<%= filters.createdBy %>" maxlength="100" placeholder="Creator name"></label>
+              <% } %>
+              <div class="filter-actions"><button class="button primary" type="submit">Generate report</button><button class="button" type="button" onclick="window.print()">Print</button></div>
+            </div>
+          </form>
+
+          <div class="report-meta"><span><strong><%= period.label %></strong></span><span>Generated <%= generatedAt.toLocaleString('en-GB',{timeZone:'Asia/Kathmandu',dateStyle:'medium',timeStyle:'short'}) %> · Amounts in NPR</span></div>
+          <div class="export-actions screen-only">
+            <% if (reportType !== 'general-ledger' || selectedLedger) { %>
+            <a class="button" href="/accounting/reports/<%= reportType %>/export/pdf?<%= exportQuery %>">Download PDF</a>
+            <a class="button" href="/accounting/reports/<%= reportType %>/export/xls?<%= exportQuery %>">Export to Excel</a>
+            <% } %>
+            <button type="button" class="button" onclick="window.print()">Print report</button>
+          </div>
+
+          <% if (reportType === 'trial-balance') { %>
+            <section class="summary-grid">
+              <article class="summary-card"><span>Opening debit / credit</span><strong><%= formatMoney(data.totals.openingDebit) %> / <%= formatMoney(data.totals.openingCredit) %></strong></article>
+              <article class="summary-card"><span>Period debit / credit</span><strong><%= formatMoney(data.totals.periodDebit) %> / <%= formatMoney(data.totals.periodCredit) %></strong></article>
+              <article class="summary-card"><span>Closing debit / credit</span><strong><%= formatMoney(data.totals.closingDebit) %> / <%= formatMoney(data.totals.closingCredit) %></strong></article>
+              <article class="summary-card"><span>Closing difference</span><strong class="<%= Math.abs(data.totals.closingDifference) < 0.01 ? 'positive' : 'negative' %>"><%= formatMoney(data.totals.closingDifference) %></strong></article>
+            </section>
+            <% if (Math.abs(data.totals.closingDifference) >= 0.01) { %><div class="notice warning">The selected trial-balance view is out of balance by <strong><%= formatMoney(data.totals.closingDifference) %></strong>. Group filtering can show only part of the ledger; no value has been adjusted.</div><% } %>
+            <section class="report-card"><div class="card-heading"><div><h2>Trial Balance</h2><p><%= data.rows.length %> account<%= data.rows.length === 1 ? '' : 's' %></p></div><input class="search-box screen-only" type="search" id="accountSearch" placeholder="Search code or account"></div>
+              <div class="table-scroll"><table id="reportTable"><thead><tr><th>Code</th><th>Account name</th><th>Account group</th><th class="numeric">Opening Dr</th><th class="numeric">Opening Cr</th><th class="numeric">Period Dr</th><th class="numeric">Period Cr</th><th class="numeric">Closing Dr</th><th class="numeric">Closing Cr</th></tr></thead><tbody>
+              <% if (data.rows.length) { data.rows.forEach(row => { %><tr data-search="<%= `${row.ledger.code} ${row.ledger.name} ${row.ledger.group?.name || ''}`.toLowerCase() %>"><td class="code"><%= row.ledger.code %></td><td><a class="detail-link" href="/accounting/reports/general-ledger?fiscalYear=<%= encodeURIComponent(filters.fiscalYear) %>&from=<%= period.fromText %>&to=<%= period.toText %>&account=<%= row.ledger._id %>"><%= row.ledger.name %></a></td><td><%= row.ledger.group?.name || '—' %></td><td class="numeric"><%= formatMoney(row.openingDebit) %></td><td class="numeric"><%= formatMoney(row.openingCredit) %></td><td class="numeric"><%= formatMoney(row.periodDebit) %></td><td class="numeric"><%= formatMoney(row.periodCredit) %></td><td class="numeric"><%= formatMoney(row.closingDebit) %></td><td class="numeric"><%= formatMoney(row.closingCredit) %></td></tr><% }); %>
+              <tr class="total-row"><td colspan="3">TOTAL</td><td class="numeric"><%= formatMoney(data.totals.openingDebit) %></td><td class="numeric"><%= formatMoney(data.totals.openingCredit) %></td><td class="numeric"><%= formatMoney(data.totals.periodDebit) %></td><td class="numeric"><%= formatMoney(data.totals.periodCredit) %></td><td class="numeric"><%= formatMoney(data.totals.closingDebit) %></td><td class="numeric"><%= formatMoney(data.totals.closingCredit) %></td></tr>
+              <% } else { %><tr><td class="empty-state" colspan="9">No ledger activity was found for this selection. Choose “Include zero balances” to show all accounts.</td></tr><% } %>
+              </tbody></table></div></section>
+
+          <% } else if (reportType === 'general-ledger') { %>
+            <section class="summary-grid"><article class="summary-card"><span>Ledger account</span><strong style="font-size:14px"><%= selectedLedger ? `${selectedLedger.code} · ${selectedLedger.name}` : 'Select an account' %></strong></article><article class="summary-card"><span>Opening balance</span><strong><%= formatMoney(data.openingBalance) %> <small><%= data.openingBalance < 0 ? 'CR' : 'DR' %></small></strong></article><article class="summary-card"><span>Period debit / credit</span><strong><%= formatMoney(data.periodDebit) %> / <%= formatMoney(data.periodCredit) %></strong></article><article class="summary-card"><span>Closing balance</span><strong class="<%= data.closingBalance < 0 ? 'negative' : 'positive' %>"><%= formatMoney(Math.abs(data.closingBalance)) %> <%= data.closingBalance < 0 ? 'CR' : 'DR' %></strong></article></section>
+            <% if (selectedLedger) { %><section class="report-card"><div class="card-heading"><div><h2><%= selectedLedger.name %> · General Ledger</h2><p><%= data.count %> posted journal line<%= data.count === 1 ? '' : 's' %> · <%= selectedLedger.group?.name || '' %></p></div></div><div class="table-scroll"><table><thead><tr><th>Date BS</th><th>Date AD</th><th>Voucher</th><th>Type</th><th>Description / Narration</th><th>Reference</th><th class="numeric">Debit</th><th class="numeric">Credit</th><th class="numeric">Running balance</th><th>Status</th></tr></thead><tbody>
+              <% if (data.rows.length) { data.rows.forEach(row => { %><tr><td><%= row.dateBS %></td><td><%= new Date(row.dateAD).toISOString().slice(0,10) %></td><td><a class="detail-link" href="/accounting/reports/voucher/<%= row.voucherId %>"><%= row.voucherNumber %></a></td><td><%= formatVoucherType(row.voucherType) %></td><td><%= row.narration %></td><td><%= row.referenceNumber || '—' %></td><td class="numeric"><%= formatMoney(row.debit) %></td><td class="numeric"><%= formatMoney(row.credit) %></td><td class="numeric"><strong class="<%= row.runningBalance < 0 ? 'balance-negative' : 'balance-positive' %>"><%= formatMoney(Math.abs(row.runningBalance)) %> <%= row.balanceSide %></strong></td><td><span class="badge <%= row.displayStatus.toLowerCase() %>"><%= row.displayStatus.replace(/_/g,' ') %></span></td></tr><% }); %>
+              <% } else { %><tr><td class="empty-state" colspan="10">No posted journal entries for this ledger and period.</td></tr><% } %>
+              </tbody></table></div><div class="pagination"><span>Page <%= data.page %> of <%= data.totalPages %> · Showing <%= data.rows.length %> of <%= data.count %> lines</span><div class="pagination-actions">
+              <% if (data.page > 1) { %><a class="button" href="?fiscalYear=<%= encodeURIComponent(filters.fiscalYear) %>&from=<%= period.fromText %>&to=<%= period.toText %>&account=<%= selectedLedger._id %>&page=<%= data.page-1 %>">Previous</a><% } %>
+              <% if (data.page < data.totalPages) { %><a class="button" href="?fiscalYear=<%= encodeURIComponent(filters.fiscalYear) %>&from=<%= period.fromText %>&to=<%= period.toText %>&account=<%= selectedLedger._id %>&page=<%= data.page+1 %>">Next</a><% } %>
+              </div></div></section><% } else { %><div class="notice">Select an account above to generate its General Ledger.</div><% } %>
+
+          <% } else if (reportType === 'voucher-register') { %>
+            <section class="report-card"><div class="card-heading"><div><h2>Voucher Register</h2><p><%= data.count %> matching voucher<%= data.count === 1 ? '' : 's' %> · Journal lines are expandable</p></div></div><div class="table-scroll"><table><thead><tr><th>Date BS</th><th>Date AD</th><th>Voucher</th><th>Type</th><th>Narration</th><th class="numeric">Debit</th><th class="numeric">Credit</th><th>Created by</th><th>Approved by</th><th>Status / details</th></tr></thead><tbody>
+              <% if (data.vouchers.length) { data.vouchers.forEach(voucher => { const createdBy = voucher.createdBy || voucher.submittedBy?.teacherName || voucher.submittedBy?.username || '—'; const approvedBy = voucher.approvedBy?.teacherName || voucher.approvedBy?.username || '—'; %>
+                <tr><td><%= voucher.dateBS %></td><td><%= new Date(voucher.dateAD).toISOString().slice(0,10) %></td><td><a class="detail-link" href="/accounting/reports/voucher/<%= voucher._id %>"><%= voucher.voucherNumber %></a></td><td><%= formatVoucherType(voucher.voucherType) %></td><td><%= voucher.narration %></td><td class="numeric"><%= formatMoney(voucher.totalDebit) %></td><td class="numeric"><%= formatMoney(voucher.totalCredit) %></td><td><%= createdBy %></td><td><%= approvedBy %></td><td><span class="badge <%= voucher.displayStatus.toLowerCase() %>"><%= voucher.displayStatus.replace(/_/g,' ') %></span><details class="line-details"><summary>View <%= voucher.entries.length %> lines</summary><table><thead><tr><th>Account</th><th class="numeric">Debit</th><th class="numeric">Credit</th></tr></thead><tbody><% voucher.entries.forEach(line => { %><tr><td><%= line.ledger?.code || '' %> · <%= line.ledger?.name || 'Unknown ledger' %></td><td class="numeric"><%= formatMoney(line.debit) %></td><td class="numeric"><%= formatMoney(line.credit) %></td></tr><% }); %></tbody></table><a class="detail-link" href="/accounting/reports/voucher/<%= voucher._id %>">Voucher history and details →</a></details></td></tr>
+              <% }); %><% } else { %><tr><td class="empty-state" colspan="10">No vouchers match the selected filters.</td></tr><% } %>
+              </tbody></table></div><div class="pagination"><span>Page <%= data.page %> of <%= data.totalPages %> · Showing <%= data.vouchers.length %> of <%= data.count %> vouchers</span><div class="pagination-actions">
+              <% if (data.page > 1) { %><a class="button" href="?fiscalYear=<%= encodeURIComponent(filters.fiscalYear) %>&from=<%= period.fromText %>&to=<%= period.toText %>&type=<%= encodeURIComponent(filters.type) %>&status=<%= encodeURIComponent(filters.status) %>&account=<%= filters.account %>&q=<%= encodeURIComponent(filters.q) %>&createdBy=<%= encodeURIComponent(filters.createdBy) %>&page=<%= data.page-1 %>">Previous</a><% } %>
+              <% if (data.page < data.totalPages) { %><a class="button" href="?fiscalYear=<%= encodeURIComponent(filters.fiscalYear) %>&from=<%= period.fromText %>&to=<%= period.toText %>&type=<%= encodeURIComponent(filters.type) %>&status=<%= encodeURIComponent(filters.status) %>&account=<%= filters.account %>&q=<%= encodeURIComponent(filters.q) %>&createdBy=<%= encodeURIComponent(filters.createdBy) %>&page=<%= data.page+1 %>">Next</a><% } %>
+              </div></div></section>
+
+          <% } else if (reportType === 'balance-sheet') { %>
+            <section class="summary-grid"><article class="summary-card"><span>Total assets</span><strong><%= formatMoney(data.assets) %></strong></article><article class="summary-card"><span>Total liabilities</span><strong><%= formatMoney(data.liabilities) %></strong></article><article class="summary-card"><span>Total equity</span><strong><%= formatMoney(data.equity) %></strong></article><article class="summary-card"><span>Unbalanced amount</span><strong class="<%= data.isBalanced ? 'positive' : 'negative' %>"><%= formatMoney(data.difference) %></strong></article></section>
+            <% if (!data.isBalanced) { %><div class="notice warning">Assets do not equal liabilities plus equity. The difference is <strong><%= formatMoney(data.difference) %></strong>. This report shows posted journal balances without forced adjustments.</div><% } else { %><div class="notice success">The Balance Sheet equation is satisfied: Assets = Liabilities + Equity.</div><% } %>
+            <section class="report-card"><div class="card-heading"><div><h2>Balance Sheet</h2><p>Balances are cumulative through the selected date. Current-period result is included in equity.</p></div></div><div class="table-scroll"><table><thead><tr><th>Account group / ledger</th><th>Account code</th><th class="numeric">Balance</th><th>Normal side</th></tr></thead><tbody>
+              <% data.sections.forEach(section => { %><tr class="section-row"><td colspan="4"><%= section.nature %></td></tr><% section.groups.forEach(group => { %><tr class="group-row"><td><%= group.name %></td><td><%= group.code || '—' %></td><td class="numeric"><%= formatMoney(group.total) %></td><td>Group total</td></tr><% group.ledgers.forEach(item => { %><tr><td class="indent"><span class="account-name"><%= item.ledger.name %></span></td><td class="code"><%= item.ledger.code %></td><td class="numeric"><%= formatMoney(item.amount) %></td><td><%= item.amount < 0 ? 'Opposite balance' : section.nature === 'ASSET' ? 'Debit' : 'Credit' %></td></tr><% }); %><% }); %><% if (section.nature === 'EQUITY') { %><tr><td class="indent">Current-period profit / (loss)</td><td>—</td><td class="numeric"><%= formatMoney(section.currentProfit) %></td><td>Calculated</td></tr><% } %><tr class="total-row"><td colspan="2">Total <%= section.nature.toLowerCase() %></td><td class="numeric"><%= formatMoney(section.total) %></td><td></td></tr><% }); %>
+              </tbody><tfoot><tr class="total-row"><td colspan="2">Liabilities + Equity</td><td class="numeric"><%= formatMoney(data.liabilities + data.equity) %></td><td></td></tr><tr class="total-row"><td colspan="2">Assets less Liabilities + Equity</td><td class="numeric"><%= formatMoney(data.difference) %></td><td></td></tr></tfoot></table></div></section>
+
+          <% } else if (reportType === 'profit-loss') { %>
+            <section class="summary-grid"><article class="summary-card"><span>Total income</span><strong><%= formatMoney(data.totalIncome) %></strong></article><article class="summary-card"><span>Total expenses</span><strong><%= formatMoney(data.totalExpense) %></strong></article><article class="summary-card"><span>Net profit / (loss)</span><strong class="<%= data.netProfit < 0 ? 'negative' : 'positive' %>"><%= formatMoney(data.netProfit) %></strong></article><article class="summary-card"><span>Prior-period net</span><strong><%= formatMoney(data.comparison.netProfit) %></strong></article></section>
+            <div class="notice">Comparison period: <%= data.comparisonLabel %>. Closing vouchers are excluded from both periods so year-end closing entries do not hide the underlying income and expense activity.</div>
+            <section class="report-card"><div class="card-heading"><div><h2>Income and Expenses</h2><p>Accounts are classified by Chart of Accounts nature and grouped by their configured account group.</p></div></div><div class="table-scroll"><table><thead><tr><th>Nature</th><th>Account group</th><th>Account</th><th class="numeric">Current period</th><th class="numeric">Previous period</th><th class="numeric">Change</th></tr></thead><tbody>
+              <% for (const nature of ['INCOME','EXPENSE']) { const grouped = new Map(); for (const row of data.rows.filter(item => item.ledger.nature === nature)) { const key = String(row.ledger.group?._id || ''); if (!grouped.has(key)) grouped.set(key,{name:row.ledger.group?.name || 'Unassigned group',rows:[],total:0,previous:0}); const group=grouped.get(key); group.rows.push(row); group.total+=row.amount; group.previous+=row.previousAmount || 0; } %>
+                <tr class="section-row"><td colspan="6"><%= nature %></td></tr>
+                <% for (const group of grouped.values()) { %><tr class="group-row"><td></td><td><%= group.name %></td><td>Group subtotal</td><td class="numeric"><%= formatMoney(group.total) %></td><td class="numeric"><%= formatMoney(group.previous) %></td><td class="numeric"><%= formatMoney(group.total-group.previous) %></td></tr><% for(const row of group.rows) { %><tr><td></td><td></td><td><span class="account-name"><%= row.ledger.code %> · <%= row.ledger.name %></span></td><td class="numeric"><%= formatMoney(row.amount) %></td><td class="numeric"><%= formatMoney(row.previousAmount || 0) %></td><td class="numeric"><%= formatMoney(row.amount-(row.previousAmount || 0)) %></td></tr><% } %><% } %>
+                <tr class="total-row"><td colspan="3">Total <%= nature.toLowerCase() %></td><td class="numeric"><%= formatMoney(nature === 'INCOME' ? data.totalIncome : data.totalExpense) %></td><td class="numeric"><%= formatMoney(nature === 'INCOME' ? data.comparison.totalIncome : data.comparison.totalExpense) %></td><td class="numeric"><%= formatMoney((nature === 'INCOME' ? data.totalIncome-data.comparison.totalIncome : data.totalExpense-data.comparison.totalExpense)) %></td></tr>
+              <% } %>
+              <tr class="total-row"><td colspan="3">Net profit / (loss)</td><td class="numeric"><%= formatMoney(data.netProfit) %></td><td class="numeric"><%= formatMoney(data.comparison.netProfit) %></td><td class="numeric"><%= formatMoney(data.netProfit-data.comparison.netProfit) %></td></tr>
+              <% if (!data.rows.length) { %><tr><td colspan="6" class="empty-state">No income or expense postings were found for this period.</td></tr><% } %>
+              </tbody></table></div></section>
+
+          <% } else if (reportType === 'cash-flow') { %>
+            <section class="summary-grid"><article class="summary-card"><span>Opening cash &amp; bank</span><strong><%= formatMoney(data.openingCash) %></strong></article><article class="summary-card"><span>Net increase / decrease</span><strong class="<%= data.netIncrease < 0 ? 'negative' : 'positive' %>"><%= formatMoney(data.netIncrease) %></strong></article><article class="summary-card"><span>Closing cash &amp; bank</span><strong><%= formatMoney(data.closingCash) %></strong></article><article class="summary-card"><span>Reconciliation difference</span><strong class="<%= Math.abs(data.reconciliationDifference) < .01 ? 'positive' : 'negative' %>"><%= formatMoney(data.reconciliationDifference) %></strong></article></section>
+            <div class="notice">Cash flow is derived from posted lines on active Cash and Bank ledgers. Opening balance vouchers<% if (data.openingBalanceVouchersExcluded) { %> (<%= data.openingBalanceVouchersExcluded %>)<% } %> are treated as the brought-forward balance as of <strong><%= data.openingBalanceDate %> BS</strong>, not current-period activity. Contra vouchers are excluded to avoid counting internal transfers. Investing is assigned only to fixed-asset ledgers; equity/capital is financing; income, expense, receivable, and payable lines are operating. Other counterpart classifications are shown as unclassified instead of inferred.</div>
+            <% if (data.hasUnclassifiedMovements) { %><div class="notice warning">Some posted cash movements could not be classified reliably: <strong><%= formatMoney(data.unclassified) %></strong>. Review the underlying vouchers and account classifications; this amount remains visible and is included in the cash reconciliation.</div><% } %>
+            <% if (Math.abs(data.reconciliationDifference) >= .01) { %><div class="notice error">Cash Flow does not reconcile to the selected Cash &amp; Bank ledger balances by <strong><%= formatMoney(data.reconciliationDifference) %></strong>. No balancing entry has been created.</div><% } else { %><div class="notice success">Opening balance plus posted cash movements reconciles to the closing Cash &amp; Bank balance.</div><% } %>
+            <section class="report-card"><div class="card-heading"><div><h2>Cash Flow Statement</h2><p><%= data.contraVouchersExcluded %> contra transfer<%= data.contraVouchersExcluded === 1 ? '' : 's' %> excluded</p></div></div><div class="table-scroll"><table><thead><tr><th>Activity</th><th>Classification</th><th class="numeric">Net movement</th></tr></thead><tbody>
+              <tr class="section-row"><td colspan="3">CASH FLOWS FROM OPERATING ACTIVITIES</td></tr><tr><td>Operating cash movements</td><td>Posted journal lines</td><td class="numeric"><%= formatMoney(data.operating) %></td></tr>
+              <tr class="section-row"><td colspan="3">CASH FLOWS FROM INVESTING ACTIVITIES</td></tr><tr><td>Fixed-asset cash movements</td><td>FIXED_ASSET ledgers only</td><td class="numeric"><%= formatMoney(data.investing) %></td></tr>
+              <tr class="section-row"><td colspan="3">CASH FLOWS FROM FINANCING ACTIVITIES</td></tr><tr><td>Equity / capital cash movements</td><td>EQUITY or CAPITAL classification</td><td class="numeric"><%= formatMoney(data.financing) %></td></tr>
+              <tr><td>Unclassified cash movements</td><td>Review account classification</td><td class="numeric"><%= formatMoney(data.unclassified) %></td></tr>
+              <tr class="total-row"><td colspan="2">Net increase / (decrease) in cash and cash equivalents</td><td class="numeric"><%= formatMoney(data.netIncrease) %></td></tr>
+              <tr><td colspan="2">Opening cash and bank balance</td><td class="numeric"><%= formatMoney(data.openingCash) %></td></tr>
+              <tr class="total-row"><td colspan="2">Closing cash and bank balance</td><td class="numeric"><%= formatMoney(data.closingCash) %></td></tr>
+              </tbody></table></div></section>
+          <% } %>
+        <% } %>
+      <% } %>
+    </div>
+  </main>
+  <script>
+    (() => {
+      const search = document.getElementById('accountSearch');
+      const table = document.getElementById('reportTable');
+      if (search && table) search.addEventListener('input', () => {
+        const needle = search.value.trim().toLowerCase();
+        table.querySelectorAll('tbody tr[data-search]').forEach(row => {
+          row.hidden = !row.dataset.search.includes(needle);
+        });
+      });
+      const form = document.getElementById('reportFilters');
+      if (form) form.addEventListener('submit', () => {
+        const button = form.querySelector('button[type="submit"]');
+        if (button) { button.disabled = true; button.textContent = 'Generating…'; }
+        form.setAttribute('aria-busy', 'true');
+      });
+      const year = document.getElementById('fiscalYear');
+      if (year) {
+        year.addEventListener('change', () => {
+          const all = year.value === 'ALL';
+          const asOf = document.querySelector('[name="asOf"]');
+          if (asOf) { asOf.value = ''; return; }
+          ['from','to'].forEach(name => {
+            const input = document.querySelector(`[name="${name}"]`);
+            if (input) { input.value = ''; input.required = all; }
+          });
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

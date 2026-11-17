@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <style>
+    :root { --navy:#102a52; --blue:#3979d6; --blue-soft:#edf5ff; --ink:#1d2b42; --muted:#73829a; --line:#e2eaf4; --page:#f5f8fc; --green:#16846a; --red:#b6404a; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--page); color:var(--ink); font-family:"Segoe UI",Arial,sans-serif; }
+    .cash-main { min-height:100vh; margin-left:268px; padding:32px 38px 48px; }
+    .cash-content { max-width:1500px; margin:0 auto; }
+    .page-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-bottom:22px; }
+    .eyebrow { margin:0 0 7px; color:var(--blue); font-size:11px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; }
+    h1 { margin:0; color:var(--navy); font-size:30px; letter-spacing:-.7px; }
+    .subtitle { margin:8px 0 0; color:var(--muted); font-size:14px; line-height:1.5; }
+    .header-actions { display:flex; align-items:center; gap:12px; }
+    .updated-at { color:var(--muted); font-size:10px; white-space:nowrap; }
+    .refresh-button,.link-button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:39px; padding:0 13px; border:1px solid #d7e2ef; border-radius:9px; background:#fff; color:#31577f; cursor:pointer; font:700 12px "Segoe UI",Arial,sans-serif; text-decoration:none; transition:.15s ease; white-space:nowrap; }
+    .refresh-button:hover,.link-button:hover { border-color:#a9c8ee; background:#f3f8ff; }
+    .summary-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:15px; margin-bottom:20px; }
+    .summary-card,.ledger-panel { border:1px solid var(--line); border-radius:15px; background:#fff; box-shadow:0 9px 26px rgba(24,52,91,.055); }
+    .summary-card { min-height:150px; padding:20px 21px; }
+    .summary-top { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    .summary-label { color:#5f7088; font-size:12px; font-weight:750; }
+    .summary-icon { display:grid; place-items:center; width:42px; height:42px; border-radius:13px; background:#e9f8f2; color:#16846a; font-size:18px; font-weight:800; }
+    .summary-card.bank .summary-icon { background:#eaf2ff; color:#3474d1; }
+    .summary-card.total .summary-icon { background:#f1edff; color:#7951c6; }
+    .summary-value { margin-top:12px; color:var(--navy); font-size:27px; font-weight:800; letter-spacing:-.5px; font-variant-numeric:tabular-nums; }
+    .summary-value.credit { color:var(--red); }
+    .summary-foot { margin-top:6px; color:var(--muted); font-size:11px; }
+    .ledger-panel { margin-top:18px; padding:20px 21px 22px; }
+    .ledger-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:16px; }
+    .ledger-heading h2 { margin:0; color:var(--navy); font-size:17px; }
+    .ledger-heading p { margin:5px 0 0; color:var(--muted); font-size:11px; }
+    .section-total { color:var(--green); font-size:18px; font-weight:800; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .section-total.credit { color:var(--red); }
+    .table-tools { display:flex; justify-content:flex-end; margin-bottom:10px; }
+    .search-input { width:min(320px,100%); min-height:37px; padding:8px 11px; border:1px solid var(--line); border-radius:8px; background:#fbfdff; color:var(--ink); font:inherit; font-size:12px; outline:none; }
+    .search-input:focus { border-color:#82ade7; box-shadow:0 0 0 3px rgba(57,121,214,.1); background:#fff; }
+    .table-scroll { overflow-x:auto; border:1px solid var(--line); border-radius:11px; }
+    table { width:100%; min-width:690px; border-collapse:collapse; text-align:left; }
+    th { padding:12px 14px; background:#172944; color:#dceaff; font-size:10px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; white-space:nowrap; }
+    td { padding:13px 14px; border-top:1px solid #edf1f6; color:#526178; font-size:12px; }
+    tbody tr:nth-child(even) { background:#f8fafd; }
+    tbody tr:hover { background:#f2f7ff; }
+    .ledger-code { color:#657690; font-family:Consolas,monospace; font-size:11px; }
+    .ledger-name { color:var(--navy); font-weight:750; }
+    .group-name { color:#62718a; }
+    .balance-cell { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .balance-value { color:var(--green); font-weight:800; }
+    .balance-value.credit { color:var(--red); }
+    .balance-side { margin-left:5px; color:#8491a4; font-size:9px; font-weight:800; }
+    .empty-state { padding:35px 20px; color:var(--muted); font-size:12px; line-height:1.6; text-align:center; }
+    .empty-state a { color:var(--blue); font-weight:750; }
+    .no-search-results { padding:22px; color:var(--muted); font-size:12px; text-align:center; }
+    .accounting-note { display:flex; gap:9px; margin-top:16px; padding:12px 14px; border:1px solid #dce8f6; border-radius:10px; background:#f5f9ff; color:#60748e; font-size:10px; line-height:1.55; }
+    .note-mark { display:grid; flex:none; place-items:center; width:21px; height:21px; border-radius:50%; background:#e2efff; color:var(--blue); font-weight:800; }
+    .cash-actions { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 17px; }
+    .cash-actions a { display:inline-flex; align-items:center; min-height:36px; padding:0 11px; border:1px solid #d7e2ef; border-radius:8px; background:#fff; color:#31577f; font-size:11px; font-weight:750; text-decoration:none; }
+    .cash-actions a:hover { background:#f3f8ff; border-color:#a9c8ee; }
+    .operation-panel { margin-top:18px; padding:20px; border:1px solid var(--line); border-radius:15px; background:#fff; box-shadow:0 9px 26px rgba(24,52,91,.055); }
+    .operation-panel h2 { margin:0; color:var(--navy); font-size:17px; }
+    .operation-panel>p { margin:6px 0 15px; color:var(--muted); font-size:11px; line-height:1.5; }
+    .operation-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+    .operation-field { display:grid; gap:6px; min-width:0; color:#53647d; font-size:11px; font-weight:750; }
+    .operation-field input,.operation-field select { width:100%; min-height:39px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); font:inherit; }
+    .operation-field.wide { grid-column:1/-1; }
+    .operation-submit { min-height:39px; margin-top:14px; padding:0 15px; border:0; border-radius:8px; background:var(--navy); color:#fff; font-weight:750; cursor:pointer; }
+    .filter-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:9px; align-items:end; }
+    .filter-grid label { display:grid; gap:5px; color:#657690; font-size:10px; font-weight:700; }
+    .filter-grid input,.filter-grid select { min-width:0; min-height:35px; padding:6px 8px; border:1px solid var(--line); border-radius:7px; background:#fff; color:var(--ink); font:inherit; font-size:11px; }
+    .filter-grid button { min-height:35px; border:0; border-radius:7px; background:#102a52; color:#fff; font-weight:700; cursor:pointer; }
+    .transaction-table { min-width:900px; }
+    .pill { display:inline-block; padding:4px 7px; border-radius:20px; background:#eef4fc; color:#41658f; font-size:9px; font-weight:800; }
+    .table-link { color:var(--blue); font-weight:750; text-decoration:none; }
+    @media (max-width:1000px) { .cash-main { padding:27px 22px 40px; } .summary-grid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; } .summary-card { padding:17px 15px; } .filter-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+    @media (max-width:760px) { .cash-main { margin-left:0; padding:22px 14px 34px; } .page-heading { align-items:flex-start; flex-direction:column; } .header-actions { width:100%; justify-content:space-between; } .summary-grid { grid-template-columns:1fr 1fr; } .summary-card.total { grid-column:1/-1; } .ledger-panel { padding:16px 13px 17px; } .operation-grid { grid-template-columns:1fr 1fr; } .filter-grid { grid-template-columns:1fr 1fr; } }
+    @media (max-width:480px) { h1 { font-size:26px; } .summary-card { min-height:132px; padding:14px 12px; } .summary-value { font-size:21px; } .summary-label { font-size:10px; } .summary-icon { width:35px; height:35px; } .ledger-heading { align-items:flex-start; } .section-total { font-size:14px; } .search-input { width:100%; } .updated-at { max-width:180px; white-space:normal; text-align:right; } .operation-grid,.filter-grid { grid-template-columns:1fr; } .operation-field.wide { grid-column:auto; } .operation-submit { width:100%; } }
+    @media print { body { background:#fff; } .fee-sidebar,.header-actions,.table-tools { display:none!important; } .cash-main { margin:0; padding:0; } .summary-card,.ledger-panel { box-shadow:none; break-inside:avoid; } }
+  </style>
+</head>
+<body>
+  <%- include('feesidenav') %>
+  <% const formatAmount = amount => `Rs. ${Math.abs(Number(amount || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; %>
+  <% const sideLabel = amount => amount < 0 ? 'CR' : 'DR'; %>
+  <% const sideClass = amount => amount < 0 ? 'credit' : ''; %>
+  <main class="cash-main">
+    <div class="cash-content">
+      <header class="page-heading">
+        <div><p class="eyebrow">Accounting / लेखा व्यवस्थापन</p><h1>Cash &amp; Bank</h1><p class="subtitle">Review cash and bank ledger balances calculated from posted double-entry vouchers.</p></div>
+        <div class="header-actions"><span class="updated-at">Balances as of <%= updatedAt.toLocaleString('en-NP', { timeZone: 'Asia/Kathmandu', dateStyle: 'medium', timeStyle: 'short' }) %></span><a class="refresh-button" href="/cashbank" aria-label="Refresh cash and bank ledger balances"><span aria-hidden="true">↻</span> Refresh ledger</a></div>
+      </header>
+      <nav class="cash-actions" aria-label="Accounting actions">
+        <a href="/cashbank/book/cash">Cash Book</a><a href="/cashbank/book/bank">Bank Book</a>
+        <a href="/accounting/vouchers">Voucher approvals<% if(pendingCount){ %> · <%= pendingCount %><% } %></a>
+        <% if(currentRole==='ADMIN'||currentRole==='ACCOUNTANT'){ %><a href="/accounting/reconciliation">Bank reconciliation</a><% } %>
+        <% if(currentRole==='ADMIN'){ %><a href="/accounting/settings">Accounting settings</a><a href="/accounting/historical-reconciliation">Historical review</a><% } %>
+      </nav>
+
+      <section class="summary-grid" aria-label="Cash and bank account balances">
+        <article class="summary-card">
+          <div class="summary-top"><span class="summary-label">कुल नगद / Total cash</span><span class="summary-icon" aria-hidden="true">▣</span></div>
+          <div class="summary-value <%= sideClass(totalCash) %>"><%= formatAmount(totalCash) %> <small style="font-size:11px;color:#8592a4"><%= sideLabel(totalCash) %></small></div>
+          <div class="summary-foot"><%= cash.length %> cash <%= cash.length === 1 ? 'ledger' : 'ledgers' %></div>
+        </article>
+        <article class="summary-card bank">
+          <div class="summary-top"><span class="summary-label">कुल बैंक / Total bank</span><span class="summary-icon" aria-hidden="true">▥</span></div>
+          <div class="summary-value <%= sideClass(totalBank) %>"><%= formatAmount(totalBank) %> <small style="font-size:11px;color:#8592a4"><%= sideLabel(totalBank) %></small></div>
+          <div class="summary-foot"><%= bank.length %> bank <%= bank.length === 1 ? 'ledger' : 'ledgers' %></div>
+        </article>
+        <article class="summary-card total">
+          <div class="summary-top"><span class="summary-label">कुल नगद तथा बैंक / Total cash &amp; bank</span><span class="summary-icon" aria-hidden="true">▤</span></div>
+          <div class="summary-value <%= sideClass(totalCashBank) %>"><%= formatAmount(totalCashBank) %> <small style="font-size:11px;color:#8592a4"><%= sideLabel(totalCashBank) %></small></div>
+          <div class="summary-foot">Net balance across cash and bank ledgers</div>
+        </article>
+        <article class="summary-card"><div class="summary-top"><span class="summary-label">Active cash accounts</span><span class="summary-icon" aria-hidden="true">C</span></div><div class="summary-value"><%= activeCashCount %></div><div class="summary-foot">Available for new postings</div></article>
+        <article class="summary-card bank"><div class="summary-top"><span class="summary-label">Active bank accounts</span><span class="summary-icon" aria-hidden="true">B</span></div><div class="summary-value"><%= activeBankCount %></div><div class="summary-foot">Available for new postings</div></article>
+      </section>
+
+      <section class="operation-panel">
+        <h2>Record cash or bank transaction</h2>
+        <p>Receipts debit cash/bank and credit the selected ledger. Payments debit the selected ledger and credit cash/bank. Transfers are contra entries and never create income or expense. Draft approvals are excluded from balances.</p>
+        <form method="post" action="/cashbank/operations" id="cash-operation-form">
+          <input type="hidden" name="idempotencyKey" value="<%= idempotencyKey %>">
+          <div class="operation-grid">
+            <label class="operation-field">Transaction type<select name="kind" id="operation-kind" required><option value="RECEIPT">Receive money</option><option value="PAYMENT">Pay money</option><option value="CONTRA">Fund transfer</option></select></label>
+            <label class="operation-field">Date (BS)<input class="nepali-datepicker" type="text" name="dateBS" value="<%= todayBS %>" placeholder="YYYY-MM-DD" autocomplete="off" required></label>
+            <label class="operation-field">Amount (Rs.)<input type="number" name="amount" min="0.01" step="0.01" required></label>
+            <label class="operation-field method-field">Payment method<select name="paymentMethod" id="operation-method"><option value="CASH">Cash</option><option value="BANK">Bank</option></select></label>
+            <label class="operation-field cash-bank-field">Cash / bank account<select name="cashBankLedgerId" id="cash-bank-ledger"><option value="">Select account</option><% transactionAccounts.forEach(account=>{ %><option value="<%= account._id %>" data-kind="<%= account.ledgerType==='BANK'?'BANK':account.ledgerType==='CASH'?'CASH':/bank/i.test(account.group?.name||'')?'BANK':'CASH' %>"><%= account.code %> · <%= account.name %></option><% }) %></select></label>
+            <label class="operation-field offset-field">Other ledger<select name="offsetLedgerId"><option value="">Select account</option><% operationLedgers.forEach(account=>{ %><option value="<%= account._id %>"><%= account.code %> · <%= account.name %></option><% }) %></select></label>
+            <label class="operation-field transfer-field" hidden>From account<select name="fromLedgerId"><option value="">Select source</option><% transactionAccounts.forEach(account=>{ %><option value="<%= account._id %>" data-kind="<%= account.ledgerType==='BANK'?'BANK':account.ledgerType==='CASH'?'CASH':/bank/i.test(account.group?.name||'')?'BANK':'CASH' %>"><%= account.code %> · <%= account.name %></option><% }) %></select></label>
+            <label class="operation-field transfer-field" hidden>To account<select name="toLedgerId"><option value="">Select destination</option><% transactionAccounts.forEach(account=>{ %><option value="<%= account._id %>" data-kind="<%= account.ledgerType==='BANK'?'BANK':account.ledgerType==='CASH'?'CASH':/bank/i.test(account.group?.name||'')?'BANK':'CASH' %>"><%= account.code %> · <%= account.name %></option><% }) %></select></label>
+            <label class="operation-field party-field">Received from / Paid to<input type="text" name="partyName" maxlength="150"></label>
+            <label class="operation-field">Reference / cheque no.<input type="text" name="referenceNumber" maxlength="100"></label>
+            <label class="operation-field wide">Narration<input type="text" name="narration" maxlength="500" required></label>
+          </div>
+          <button type="submit" class="operation-submit">Submit transaction</button>
+        </form>
+      </section>
+
+      <section class="ledger-panel" aria-label="Transaction filters">
+        <div class="ledger-heading"><div><h2>Recent cash and bank transactions</h2><p>Filter the posted transaction register. Account balances above reflect all posted vouchers.</p></div></div>
+        <form class="filter-grid" method="get" action="/cashbank">
+          <label>Date range<select name="range" id="cash-filter-range"><option value="today" <%= filter.range==='today'?'selected':'' %>>Today</option><option value="week" <%= filter.range==='week'?'selected':'' %>>This week</option><option value="month" <%= filter.range==='month'?'selected':'' %>>This month</option><option value="fiscal-year" <%= filter.range==='fiscal-year'?'selected':'' %>>Current fiscal year</option><option value="custom" <%= filter.range==='custom'?'selected':'' %>>Custom range</option></select></label>
+          <label class="custom-filter">From (AD)<input type="date" name="from" value="<%= filter.range==='custom'?filter.fromText:'' %>"></label>
+          <label class="custom-filter">To (AD)<input type="date" name="to" value="<%= filter.range==='custom'?filter.toText:'' %>"></label>
+          <label>Account kind<select name="kind"><option value="">Cash &amp; Bank</option><option value="cash" <%= filter.kind==='cash'?'selected':'' %>>Cash</option><option value="bank" <%= filter.kind==='bank'?'selected':'' %>>Bank</option></select></label>
+          <label>Transaction type<select name="type"><option value="">All types</option><% transactionTypes.forEach(type=>{ %><option value="<%= type %>" <%= filter.type===type?'selected':'' %>><%= formatVoucherType(type) %></option><% }) %></select></label>
+          <label>Account<select name="account"><option value="">All accounts</option><% transactionAccounts.forEach(account=>{ %><option value="<%= account._id %>" <%= filter.account===String(account._id)?'selected':'' %>><%= account.code %> · <%= account.name %></option><% }) %></select></label>
+          <button type="submit">Apply filters</button>
+        </form>
+        <div class="table-scroll" style="margin-top:14px"><table class="transaction-table"><thead><tr><th>Voucher number</th><th>Date BS</th><th>Type</th><th>Description</th><th>Account</th><th style="text-align:right">Debit</th><th style="text-align:right">Credit</th><th>Status</th></tr></thead><tbody>
+          <% if(recentTransactions.length){ recentTransactions.forEach(row=>{ %><tr><td><a class="table-link" href="/accounting/vouchers"><%= row.voucherNumber %></a></td><td><%= row.dateBS %></td><td><%= row.voucherTypeLabel %></td><td><%= row.narration %></td><td><%= row.ledger?.name||'—' %></td><td style="text-align:right"><%= Number(row.debit).toLocaleString('en-IN',{minimumFractionDigits:2}) %></td><td style="text-align:right"><%= Number(row.credit).toLocaleString('en-IN',{minimumFractionDigits:2}) %></td><td><span class="pill"><%= row.status %></span></td></tr><% }) } else { %><tr><td colspan="8" class="empty-state">No posted transactions match the selected filters.</td></tr><% } %>
+        </tbody></table></div>
+      </section>
+
+      <% [['Cash', 'नगद खाताहरू', cash, totalCash], ['Bank', 'बैंक खाताहरू', bank, totalBank]].forEach(([kind, nepaliTitle, ledgers, total]) => { const tableId = `${kind.toLowerCase()}-ledger-table`; %>
+        <section class="ledger-panel" aria-labelledby="<%= kind.toLowerCase() %>-heading">
+          <div class="ledger-heading">
+            <div><h2 id="<%= kind.toLowerCase() %>-heading"><%= kind %> Ledgers / <%= nepaliTitle %></h2><p><%= kind %> type ledgers from your Chart of Accounts, with balances from posted journal vouchers.</p></div>
+            <div class="section-total <%= sideClass(total) %>"><%= formatAmount(total) %> <small style="font-size:10px"><%= sideLabel(total) %></small></div>
+          </div>
+          <% if (ledgers.length) { %>
+            <div class="table-tools"><input class="search-input ledger-search" data-table="<%= tableId %>" type="search" placeholder="Search <%= kind.toLowerCase() %> ledgers…" aria-label="Search <%= kind.toLowerCase() %> ledgers"></div>
+            <div class="table-scroll">
+              <table id="<%= tableId %>"><thead><tr><th>Ledger code</th><th>Ledger name</th><th>Under group</th><th>Last transaction</th><th style="text-align:right">Balance</th><th>Action</th></tr></thead><tbody>
+                <% ledgers.forEach(ledger => { %><tr><td class="ledger-code"><%= ledger.code %></td><td class="ledger-name"><%= ledger.name %></td><td class="group-name"><%= ledger.group ? ledger.group.name : 'Group unavailable' %></td><td><%= ledger.lastTransaction ? `${new Date(ledger.lastTransaction.dateAD).toISOString().slice(0,10)} · ${ledger.lastTransaction.voucherNumber}` : '—' %></td><td class="balance-cell"><span class="balance-value <%= sideClass(ledger.balance) %>"><%= formatAmount(ledger.balance) %></span><span class="balance-side"><%= sideLabel(ledger.balance) %></span></td><td><a class="table-link" href="/cashbank/ledger/<%= ledger._id %>">View ledger</a></td></tr><% }); %>
+              </tbody></table>
+            </div>
+            <div class="no-search-results" hidden>No ledger accounts match your search.</div>
+          <% } else { %>
+            <div class="empty-state">No <%= kind.toLowerCase() %> ledgers found. Create an account with ledger type <strong><%= kind.toUpperCase() %></strong> or place it under a matching <%= kind.toLowerCase() %> group in the <a href="/chartsofAccount">Chart of Accounts</a>.</div>
+          <% } %>
+        </section>
+      <% }); %>
+
+      <div class="accounting-note"><span class="note-mark">i</span><span>Balances are calculated as <strong>posted debits minus posted credits</strong>. A cash or bank asset ledger normally has a debit balance (DR). A credit balance (CR) may indicate an overdraft or an entry that needs review. Draft or unposted entries are not included.</span></div>
+    </div>
+  </main>
+  <script>
+    document.querySelectorAll('.ledger-search').forEach(input => {
+      input.addEventListener('input', () => {
+        const table = document.getElementById(input.dataset.table);
+        const query = input.value.trim().toLowerCase();
+        let visible = 0;
+        table.querySelectorAll('tbody tr').forEach(row => {
+          const matches = row.textContent.toLowerCase().includes(query);
+          row.hidden = !matches;
+          if (matches) visible += 1;
+        });
+        const noResults = table.closest('.ledger-panel').querySelector('.no-search-results');
+        noResults.hidden = visible > 0;
+      });
+    });
+
+    const operationKind = document.getElementById('operation-kind');
+    const operationMethod = document.getElementById('operation-method');
+    const cashBankSelect = document.getElementById('cash-bank-ledger');
+    function updateOperationFields() {
+      const isTransfer = operationKind.value === 'CONTRA';
+      document.querySelectorAll('.method-field,.cash-bank-field,.offset-field,.party-field').forEach(field => { field.hidden = isTransfer; });
+      document.querySelectorAll('.transfer-field').forEach(field => { field.hidden = !isTransfer; });
+      Array.from(cashBankSelect.options).forEach(option => {
+        option.hidden = Boolean(option.value) && option.dataset.kind !== operationMethod.value;
+      });
+      if (cashBankSelect.selectedOptions[0]?.dataset.kind !== operationMethod.value) cashBankSelect.value = '';
+    }
+    operationKind.addEventListener('change', updateOperationFields);
+    operationMethod.addEventListener('change', updateOperationFields);
+    updateOperationFields();
+
+    const rangeSelect = document.getElementById('cash-filter-range');
+    const customFilters = document.querySelectorAll('.custom-filter');
+    function updateCustomFilter() { customFilters.forEach(field => { field.hidden = rangeSelect.value !== 'custom'; }); }
+    rangeSelect.addEventListener('change', updateCustomFilter);
+    updateCustomFilter();
+
+    document.querySelectorAll('.nepali-datepicker').forEach(input => {
+      if (typeof input.nepaliDatePicker === 'function') {
+        input.nepaliDatePicker({ dateFormat: 'YYYY-MM-DD', language: 'en' });
+      }
+    });
+  </script>
+  <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js"></script>
+  <script>document.querySelectorAll('.nepali-datepicker').forEach(input=>{if(typeof input.nepaliDatePicker==='function')input.nepaliDatePicker({dateFormat:'YYYY-MM-DD',language:'en'})});</script>
+</body>
+</html>

@@ -8,11 +8,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1954a6">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>eAnalyst</title>
     <link rel="stylesheet" href="/style.css">
     <link rel="stylesheet" href="/nav.css">
     <link rel="stylesheet" href="/home-dashboard.css">
     <link rel="stylesheet" href="/subject-selector.css">
+    <link rel="stylesheet" href="/app-install.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Agbalumo&family=Alexandria:wght@100..900&family=Lexend:wght@100..900&family=Manrope:wght@200..800&display=swap" rel="stylesheet">
@@ -115,6 +119,46 @@
             font-size: 1.2rem;
             display: block;
             margin-top: 0.5rem;
+        }
+        .home-install-app-button {
+            display: inline-flex;
+            min-height: 40px;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 0 13px;
+            border: 1px solid rgba(255,255,255,.55);
+            border-radius: 6px;
+            background: #fff;
+            color: #173765;
+            font: 700 12px 'Lexend', sans-serif;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .home-install-app-button:hover { background: #edf4fc; }
+        .home-install-app-button:focus-visible { outline: 3px solid #f6bd55; outline-offset: 2px; }
+        .app-install-dialog {
+            width: min(calc(100% - 32px), 440px);
+            padding: 22px;
+            border: 1px solid #d5e0eb;
+            border-radius: 14px;
+            color: #1e293b;
+            box-shadow: 0 20px 60px rgba(15,30,50,.25);
+        }
+        .app-install-dialog::backdrop { background: rgba(15, 23, 42, .55); }
+        .app-install-dialog h2 { margin: 0 0 10px; font: 800 20px 'Manrope', sans-serif; }
+        .app-install-dialog p,.app-install-dialog li { font-size: 14px; line-height: 1.6; }
+        .app-install-dialog ol { padding-left: 22px; }
+        .app-install-dialog-close { display: flex; justify-content: flex-end; margin-top: 16px; }
+        .app-install-dialog-close button { min-height: 40px; padding: 0 16px; border: 0; border-radius: 6px; background: #1954a6; color: #fff; font-weight: 700; cursor: pointer; }
+        @media (max-width: 768px) {
+            .admin-home .home-header-tools { flex-wrap: wrap; }
+            .admin-home .home-module-search { flex: 1 1 100%; }
+            .admin-home .home-header-tools .home-install-app-button { flex: 1 1 auto; }
+        }
+        @media (max-width: 390px) {
+            .admin-home .home-install-app-button { min-height: 38px; padding-inline: 9px; font-size: 11px; }
         }
         .action-section {
             background: var(--surface);
@@ -928,6 +972,7 @@
                     <input id="homeModuleSearchInput" type="search" placeholder="Find a module" aria-label="Find a module" aria-expanded="false" aria-controls="homeModuleSearchResults">
                     <div class="home-module-search-results" id="homeModuleSearchResults" role="listbox" hidden></div>
                 </form>
+                <button class="home-install-app-button" type="button" data-install-app aria-haspopup="dialog"><i class="fa-solid fa-download" aria-hidden="true"></i><span>Install App</span></button>
                 <% if (userrole === 'ADMIN') { %><a class="home-mobile-logout" href="/admin/login" aria-label="Sign out"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i></a><% } %>
                 <span class="home-header-role"><%= userrole === 'ADMIN' ? 'Administrator' : 'Teacher workspace' %></span>
             </div>
@@ -1048,6 +1093,7 @@
                 <h1><strong><%= mobileTeacherName %></strong></h1>
                 <span class="mobile-role"><%= userrole === 'ADMIN' ? 'Administrator' : 'Teacher' %></span>
             </div>
+            <button class="home-install-app-button" type="button" data-install-app aria-haspopup="dialog" aria-label="Install AES app"><i class="fa-solid fa-download" aria-hidden="true"></i></button>
             <a class="mobile-logout-button" href="/admin/login" aria-label="Log out" title="Log out"><i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i></a>
         </header>
 
@@ -1669,6 +1715,7 @@
     <% } %>
 
 
+<script src="/app-install.js" defer></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js"></script>
 <script src="/js/fcm-client.js"></script>

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><%= title %></title>
+<style>
+  *{box-sizing:border-box}body{margin:0;background:#f5f8fc;color:#1d2b42;font:13px "Segoe UI",Arial,sans-serif}main{max-width:1300px;margin:0 auto;padding:28px 22px}
+  h1,h2{color:#102a52}h1{margin:0;font-size:27px}.sub{color:#73829a}.panel{margin:15px 0;padding:18px;border:1px solid #e2eaf4;border-radius:13px;background:#fff}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.stat{padding:12px;border-radius:9px;background:#f5f8fc}.stat span{font-size:10px;color:#73829a}.stat strong{display:block;margin-top:5px;color:#102a52;font-size:18px}
+  .table-wrap{overflow:auto}table{width:100%;min-width:750px;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid #edf1f6}th{font-size:10px;color:#73829a;text-transform:uppercase}td{font-size:12px}.matched{color:#157a61;font-weight:700}.unmatched{color:#a63d46;font-weight:700}.note{padding:11px;border-radius:8px;background:#fff8e9;color:#755719;line-height:1.5}
+  @media(max-width:700px){main{padding:18px 12px}.stats{grid-template-columns:1fr 1fr}.panel{padding:13px}}
+  @media print{.fee-sidebar,.no-print{display:none!important}main{max-width:none;padding:0}.panel{border:0}}
+</style></head>
+<body><%- include('feesidenav') %><main>
+  <h1>Bank reconciliation result</h1><p class="sub"><%= reconciliation.bankLedger.code %> · <%= reconciliation.bankLedger.name %> · <%= new Date(reconciliation.statementFromAD).toISOString().slice(0,10) %> to <%= new Date(reconciliation.statementToAD).toISOString().slice(0,10) %></p>
+  <section class="panel stats">
+    <div class="stat"><span>Statement closing balance</span><strong>Rs. <%= Number(reconciliation.statementBalance).toLocaleString('en-IN',{minimumFractionDigits:2}) %></strong></div>
+    <div class="stat"><span>Book closing balance</span><strong>Rs. <%= Number(reconciliation.bookClosingBalance).toLocaleString('en-IN',{minimumFractionDigits:2}) %></strong></div>
+    <div class="stat"><span>Unreconciled difference</span><strong>Rs. <%= Number(reconciliation.unreconciledDifference).toLocaleString('en-IN',{minimumFractionDigits:2}) %></strong></div>
+    <div class="stat"><span>Unmatched items</span><strong><%= reconciliation.unmatchedStatementCount + reconciliation.unmatchedBookCount %></strong></div>
+  </section>
+  <section class="panel"><div class="note">This report records matches and differences only. Bank charges or other missing items must be entered as a separate approved accounting voucher; this reconciliation does not silently alter books.</div></section>
+  <section class="panel"><h2>Statement transactions</h2><div class="table-wrap"><table><thead><tr><th>Date</th><th>Description</th><th>Reference</th><th>Debit</th><th>Credit</th><th>Match</th></tr></thead><tbody><% reconciliation.transactions.forEach(item=>{ %><tr><td><%= new Date(item.dateAD).toISOString().slice(0,10) %></td><td><%= item.description||'—' %></td><td><%= item.reference||'—' %></td><td><%= Number(item.debit).toFixed(2) %></td><td><%= Number(item.credit).toFixed(2) %></td><td><% if(item.matchedVoucher){ %><span class="matched"><%= item.matchedVoucher.voucherNumber %> · <%= item.matchedVoucher.dateBS %></span><% }else{ %><span class="unmatched">Unmatched</span><% } %></td></tr><% }) %></tbody></table></div></section>
+  <section class="panel"><h2>Unmatched book transactions</h2><div class="table-wrap"><table><thead><tr><th>Date BS</th><th>Voucher</th><th>Description</th><th>Reference</th><th>Debit</th><th>Credit</th></tr></thead><tbody><% if(reconciliation.unmatchedBookTransactions.length){ reconciliation.unmatchedBookTransactions.forEach(item=>{ %><tr><td><%= item.dateBS %></td><td><%= item.voucherNumber %></td><td><%= item.description||'—' %></td><td><%= item.reference||'—' %></td><td><%= Number(item.debit).toFixed(2) %></td><td><%= Number(item.credit).toFixed(2) %></td></tr><% }) }else{ %><tr><td colspan="6">No unmatched book transactions.</td></tr><% } %></tbody></table></div></section>
+  <button class="no-print" onclick="window.print()">Print</button>
+</main></body></html>

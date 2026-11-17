@@ -1,16 +1,59 @@
-<%- include('../partials/head', { title: 'Billing Result' }) %>
+<%- include('../partials/head', { title: 'Billing Run Results', setupStylesheet: true }) %>
 <%- include('../partials/navbar') %>
-<div class="fee-page-shell"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container mt-4">
-  <h3>Billing Run Result</h3>
-  <table class="table table-bordered bg-white">
-    <thead><tr><th>Student</th><th>Result</th></tr></thead>
-    <tbody>
-      <% results.forEach(r => { %>
-      <tr><td><%= r.student %></td><td><%= r.status %></td></tr>
-      <% }) %>
-    </tbody>
-  </table>
-  <a href="/billing" class="btn btn-secondary">View All Invoices</a>
+<div class="fee-page-shell setup-page"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container billing-workspace">
+  <% const generatedCount = results.filter(r => r.status.startsWith('generated')).length; %>
+  <% const errorCount = results.filter(r => r.status.startsWith('error')).length; %>
+  <% const skippedCount = results.filter(r => r.status.startsWith('skipped')).length; %>
+  <% const generatedInvoiceIds = (printInvoiceIds || []).filter(Boolean); %>
+  <header class="setup-heading">
+    <div class="setup-heading-copy">
+      <p class="setup-eyebrow">Billing summary</p>
+      <h1>Billing run complete</h1>
+      <p>Already invoiced students were skipped. Generated invoices are available in the invoice register.</p>
+    </div>
+    <div class="billing-heading-actions">
+      <% if (generatedInvoiceIds.length) { %>
+        <form method="POST" action="/billing/print-invoices/batch" target="_blank" rel="noopener">
+          <input type="hidden" name="invoiceIds" value="<%= generatedInvoiceIds.join(',') %>">
+          <button type="submit" class="btn btn-success">Print generated invoices (<%= generatedInvoiceIds.length %>)</button>
+        </form>
+      <% } %>
+      <a href="/generate" class="btn btn-outline-primary">Generate another</a>
+      <a href="/billing" class="btn btn-primary">View all invoices</a>
+      <a href="/billing/print-invoices" class="btn btn-outline-primary">Print pre-bills</a>
+    </div>
+  </header>
+
+  <section class="billing-run-summary" aria-label="Billing run summary">
+    <div class="billing-run-stat"><span>Students processed</span><strong><%= results.length %></strong></div>
+    <div class="billing-run-stat is-success"><span>Invoices generated</span><strong><%= generatedCount %></strong></div>
+    <div class="billing-run-stat"><span>Skipped (already invoiced or not eligible)</span><strong><%= skippedCount %></strong></div>
+    <div class="billing-run-stat <%= errorCount ? 'is-error' : '' %>"><span>Needs attention</span><strong><%= errorCount %></strong></div>
+  </section>
+
+  <section class="setup-card billing-results-card">
+    <div class="setup-card-heading">
+      <div><h2>Student results</h2><p>Each row shows the outcome of this billing run.</p></div>
+      <span class="setup-count"><%= results.length %> processed</span>
+    </div>
+    <div class="setup-table-wrap">
+      <table class="table setup-table billing-results-table">
+        <thead><tr><th>Student</th><th>Result</th></tr></thead>
+        <tbody>
+          <% if (!results.length) { %>
+            <tr><td colspan="2" class="setup-empty">No students were processed in this billing run.</td></tr>
+          <% } %>
+          <% results.forEach(r => { %>
+            <% const resultClass = r.status.startsWith('generated') ? 'is-success' : r.status.startsWith('error') ? 'is-error' : 'is-neutral'; %>
+            <tr>
+              <td><strong><%= r.student %></strong></td>
+              <td><span class="billing-result-status <%= resultClass %>"><%= r.status %></span></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </section>
 </div>
  </main></div>
 <%- include('../partials/footer') %>

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><%= title %></title>
+<style>
+  *{box-sizing:border-box}body{margin:0;background:#f5f8fc;color:#1d2b42;font:13px "Segoe UI",Arial,sans-serif}main{max-width:1400px;margin:0 auto;padding:28px 22px}
+  h1{margin:0;color:#102a52;font-size:27px}.sub{color:#73829a;margin:7px 0 18px}.panel{padding:18px;border:1px solid #e2eaf4;border-radius:13px;background:#fff;margin:14px 0}
+  form{display:flex;align-items:end;flex-wrap:wrap;gap:10px}label{display:grid;gap:5px;color:#53647d;font-size:11px;font-weight:700}input,select{min-height:36px;border:1px solid #dfe7f1;border-radius:7px;padding:7px;font:inherit}button,.button{min-height:36px;display:inline-flex;align-items:center;padding:0 12px;border:0;border-radius:7px;background:#102a52;color:white;text-decoration:none;font-weight:700;cursor:pointer}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{padding:12px;border-radius:9px;background:#f5f8fc}.stat span{color:#73829a;font-size:11px}.stat strong{display:block;color:#102a52;font-size:19px;margin-top:5px}
+  .table-wrap{overflow:auto}table{width:100%;min-width:900px;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid #edf1f6;white-space:nowrap}th{background:#f8fafd;color:#73829a;font-size:10px;text-transform:uppercase}td{font-size:12px}.numeric{text-align:right;font-variant-numeric:tabular-nums}.empty{text-align:center;padding:28px;color:#73829a}
+  @media(max-width:650px){main{padding:18px 12px}.stats{grid-template-columns:1fr}.panel{padding:13px}form{align-items:stretch;flex-direction:column}label,input,select{width:100%}}
+  @media print{.fee-sidebar,form,.no-print{display:none!important}main{padding:0;margin:0;max-width:none}.panel{border:0}}
+</style></head>
+<body><%- include('feesidenav') %><main>
+  <h1><%= title %></h1><p class="sub">Opening balance is calculated from all posted entries before the selected period. Closing balance is the opening plus period movements.</p>
+  <section class="panel"><form method="get" action="/cashbank/book/<%= kind %>">
+    <% if(ledgers.length>1||!selectedLedger){ %><label>Account<select name="account"><option value="">All <%= kind %> accounts</option><% ledgers.forEach(ledger=>{ %><option value="<%= ledger._id %>" <%= String(selectedLedger||'')===String(ledger._id)?'selected':'' %>><%= ledger.code %> · <%= ledger.name %></option><% }) %></select></label><% } %>
+    <label>From (AD)<input type="date" name="from" value="<%= filters.fromText %>" required></label><label>To (AD)<input type="date" name="to" value="<%= filters.toText %>" required></label>
+    <button type="submit">Apply filters</button><a class="button no-print" href="/cashbank/book/<%= kind %>/export?from=<%= filters.fromText %>&to=<%= filters.toText %>&account=<%= selectedLedger||'' %>">Export CSV</a><button type="button" class="no-print" onclick="window.print()">Print</button>
+  </form></section>
+  <section class="panel stats"><div class="stat"><span>Opening balance</span><strong>Rs. <%= Number(opening||0).toLocaleString('en-IN',{minimumFractionDigits:2}) %></strong></div><div class="stat"><span>Period movement</span><strong>Rs. <%= Number((closing-opening)||0).toLocaleString('en-IN',{minimumFractionDigits:2}) %></strong></div><div class="stat"><span>Closing balance</span><strong>Rs. <%= Number(closing||0).toLocaleString('en-IN',{minimumFractionDigits:2}) %></strong></div></section>
+  <section class="panel"><div class="table-wrap"><table><thead><tr><th>BS date</th><th>AD date</th><th>Voucher</th><th>Account</th><th>Description</th><th class="numeric">Debit / received</th><th class="numeric">Credit / paid</th><th class="numeric">Running balance</th></tr></thead><tbody>
+    <% if(rows.length){ rows.forEach(row=>{ %><tr><td><%= row.dateBS %></td><td><%= new Date(row.dateAD).toISOString().slice(0,10) %></td><td><%= row.voucherNumber %></td><td><%= row.ledger?.name||'—' %></td><td><%= row.narration %></td><td class="numeric"><%= Number(row.debit).toLocaleString('en-IN',{minimumFractionDigits:2}) %></td><td class="numeric"><%= Number(row.credit).toLocaleString('en-IN',{minimumFractionDigits:2}) %></td><td class="numeric"><%= Number(row.runningBalance).toLocaleString('en-IN',{minimumFractionDigits:2}) %></td></tr><% }) }else{ %><tr><td colspan="8" class="empty">No posted transactions in this date range.</td></tr><% } %>
+  </tbody></table></div></section>
+</main></body></html>

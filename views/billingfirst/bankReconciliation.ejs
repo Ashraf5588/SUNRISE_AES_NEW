@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><%= title %></title>
+<style>
+  *{box-sizing:border-box}body{margin:0;background:#f5f8fc;color:#1d2b42;font:13px "Segoe UI",Arial,sans-serif}main{max-width:1250px;margin:0 auto;padding:28px 22px}
+  h1{margin:0;color:#102a52;font-size:27px}.sub{color:#73829a;line-height:1.55}.panel{margin:16px 0;padding:20px;border:1px solid #e2eaf4;border-radius:13px;background:#fff;box-shadow:0 8px 24px rgba(24,52,91,.04)}
+  .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.field{display:grid;gap:6px;color:#53647d;font-size:11px;font-weight:750}.field input,.field select,.field textarea{width:100%;border:1px solid #dfe7f1;border-radius:8px;padding:9px 10px;font:inherit;color:#1d2b42}.field input,.field select{min-height:39px}.field textarea{min-height:180px;resize:vertical;font-family:Consolas,monospace}.full{grid-column:1/-1}
+  .hint{color:#73829a;font-weight:400;font-size:11px;line-height:1.5}.submit{min-height:40px;margin-top:14px;padding:0 14px;border:0;border-radius:8px;background:#102a52;color:#fff;font-weight:700;cursor:pointer}
+  .error{padding:11px;border-radius:8px;background:#fff1f1;color:#a6343d}.table-wrap{overflow:auto}table{width:100%;min-width:650px;border-collapse:collapse}th,td{text-align:left;padding:10px;border-bottom:1px solid #edf1f6}th{font-size:10px;color:#73829a;text-transform:uppercase}td{font-size:12px}
+  .empty{color:#73829a;text-align:center;padding:20px}
+  @media(max-width:620px){main{padding:18px 12px}.panel{padding:14px}.grid{grid-template-columns:1fr}.full{grid-column:auto}}
+</style></head>
+<body><%- include('feesidenav') %><main>
+  <h1>Bank reconciliation</h1><p class="sub">Import a generic CSV bank statement and compare it with posted entries for the selected bank ledger. Reconciliation never edits or posts journal entries.</p>
+  <% if(error){ %><div class="panel error"><%= error %></div><% } %>
+  <section class="panel">
+    <h2 style="margin:0 0 14px;color:#102a52;font-size:17px">Import and reconcile statement</h2>
+    <form method="post" action="/accounting/reconciliation">
+      <div class="grid">
+        <label class="field">Bank ledger<select name="bankLedger" required><option value="">Select bank account</option><% bankLedgers.forEach(ledger=>{ %><option value="<%= ledger._id %>"><%= ledger.code %> · <%= ledger.name %></option><% }) %></select></label>
+        <label class="field">Opening statement balance (Rs.)<input type="number" step="0.01" name="openingBalance" required></label>
+        <label class="field">Statement from (AD)<input type="date" name="fromAD" required></label>
+        <label class="field">Statement to (AD)<input type="date" name="toAD" required></label>
+        <label class="field full">Statement CSV<textarea name="csvText" required placeholder="Date,Description,Reference,Debit,Credit&#10;2025-01-03,Electricity bill,CHQ-12,8000.00,0&#10;2025-01-04,Fee deposit,,0,15000"></textarea><span class="hint">Use ISO AD dates (YYYY-MM-DD) and exactly one positive Debit or Credit amount per row. CSV can also use Date,Description,Reference,Amount,Type where Type is Debit or Credit. Use debit for withdrawals and credit for deposits.</span></label>
+      </div>
+      <button class="submit" type="submit">Reconcile statement</button>
+    </form>
+  </section>
+  <section class="panel"><h2 style="margin:0 0 13px;color:#102a52;font-size:17px">Reconciliation history</h2>
+    <% if(history.length){ %><div class="table-wrap"><table><thead><tr><th>Statement period</th><th>Bank account</th><th>Statement balance</th><th>Book balance</th><th>Difference</th><th>Unmatched</th><th>Review</th></tr></thead><tbody><% history.forEach(item=>{ %><tr><td><%= new Date(item.statementFromAD).toISOString().slice(0,10) %> – <%= new Date(item.statementToAD).toISOString().slice(0,10) %></td><td><%= item.bankLedger?.name || 'Bank' %></td><td>Rs. <%= Number(item.statementBalance).toLocaleString('en-IN',{minimumFractionDigits:2}) %></td><td>Rs. <%= Number(item.bookClosingBalance).toLocaleString('en-IN',{minimumFractionDigits:2}) %></td><td>Rs. <%= Number(item.unreconciledDifference).toLocaleString('en-IN',{minimumFractionDigits:2}) %></td><td><%= item.unmatchedStatementCount %> statement / <%= item.unmatchedBookCount %> book</td><td><a href="/accounting/reconciliation/<%= item._id %>">View report</a></td></tr><% }) %></tbody></table></div><% }else{ %><div class="empty">No reconciliation history.</div><% } %>
+  </section>
+</main></body></html>

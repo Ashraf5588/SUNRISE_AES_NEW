@@ -551,6 +551,9 @@ const token = generateToken(user);
   else if (user.role === "STUDENT") {
   return res.redirect('/parents');
   }
+  else if (user.role === "ACCOUNTANT" || user.role === "CASHIER") {
+  return res.redirect('/cashbank');
+  }
  else {
   return res.redirect('/');
 }

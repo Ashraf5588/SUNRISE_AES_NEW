@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %></title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#f5f8fc;color:#1d2b42;font:13px "Segoe UI",Arial,sans-serif}
+    .voucher-main{min-height:100vh;margin-left:268px;padding:31px 36px 48px}.voucher-content{max-width:1100px;margin:0 auto}
+    .heading{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:20px}.eyebrow{margin:0 0 7px;color:#3979d6;font-size:10px;font-weight:850;letter-spacing:1.2px;text-transform:uppercase}
+    h1{margin:0;color:#102a52;font-size:28px;letter-spacing:-.6px}.subtitle{margin:7px 0 0;color:#73829a;font-size:12px}
+    .button{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:0 12px;border:1px solid #d7e2ef;border-radius:8px;background:#fff;color:#31577f;font-size:11px;font-weight:750;text-decoration:none}
+    .panel{margin-bottom:15px;overflow:hidden;border:1px solid #e2eaf4;border-radius:12px;background:#fff;box-shadow:0 9px 24px rgba(24,52,91,.045)}
+    .panel-heading{padding:15px 17px;border-bottom:1px solid #edf1f6;color:#102a52;font-weight:800}.panel-body{padding:17px}
+    .meta-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px}.meta-item span{display:block;color:#73829a;font-size:10px;font-weight:700}.meta-item strong{display:block;margin-top:5px;color:#263b5b;font-size:12px;overflow-wrap:anywhere}
+    .badge{display:inline-flex;padding:5px 8px;border-radius:18px;background:#edf2f8;color:#52657e;font-size:9px;font-weight:800}.badge.posted{background:#e7f7f0;color:#147554}.badge.reversed,.badge.rejected{background:#fff0f0;color:#a33c46}.badge.pending_admin_approval,.badge.pending_accountant_review{background:#fff6e6;color:#8a5a00}
+    .table-scroll{overflow:auto}table{width:100%;border-collapse:collapse;text-align:left}th{padding:11px;background:#172944;color:#dceaff;font-size:9px;text-transform:uppercase;white-space:nowrap}td{padding:11px;border-bottom:1px solid #edf1f6;color:#526178;font-size:11px}
+    .numeric{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.total td{background:#f2f6fb;color:#102a52;font-weight:850}.empty{text-align:center;padding:24px;color:#73829a}
+    .audit-list{display:grid;gap:0}.audit-row{display:grid;grid-template-columns:150px 1fr auto;gap:12px;padding:11px 0;border-bottom:1px solid #edf1f6}.audit-row:last-child{border-bottom:0}.audit-action{color:#294668;font-size:11px;font-weight:800}.audit-notes,.audit-actor,.audit-time{color:#73829a;font-size:10px;line-height:1.5}
+    .notice{margin:0 0 14px;padding:11px 13px;border:1px solid #d8e5f4;border-radius:9px;background:#f2f7fd;color:#526981;font-size:11px;line-height:1.5}
+    @media(max-width:760px){.voucher-main{margin-left:0;padding:22px 14px 36px}.heading{align-items:flex-start;flex-direction:column}.meta-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.audit-row{grid-template-columns:1fr;gap:4px}}
+    @media print{.fee-sidebar,.fee-sidebar-scrim,.fee-nav-trigger,.screen-only{display:none!important}.voucher-main{margin:0;padding:0}.panel{box-shadow:none}}
+  </style>
+</head>
+<body>
+  <%- include('feesidenav') %>
+  <main class="voucher-main">
+    <div class="voucher-content">
+      <header class="heading">
+        <div><p class="eyebrow">Accounting reports · Voucher detail</p><h1><%= voucher.voucherNumber %></h1><p class="subtitle"><%= school?.name || 'School' %> · <%= formatVoucherType(voucher.voucherType) %></p></div>
+        <div class="screen-only"><a class="button" href="/accounting/reports/voucher-register">Back to voucher register</a> <button class="button" type="button" onclick="window.print()">Print</button></div>
+      </header>
+      <% if (voucher.reversalOf) { %><div class="notice">This voucher reverses <strong><%= voucher.reversalOf.voucherNumber %></strong>. It remains posted as a separate correcting journal entry.</div><% } %>
+      <% if (voucher.reversedBy) { %><div class="notice">This voucher was reversed by <strong><%= voucher.reversedBy.voucherNumber %></strong>. Reports include both posted entries so their balances net correctly.</div><% } %>
+      <section class="panel">
+        <div class="panel-heading">Voucher summary</div>
+        <div class="panel-body"><div class="meta-grid">
+          <div class="meta-item"><span>Status</span><strong><span class="badge <%= voucher.displayStatus.toLowerCase() %>"><%= voucher.displayStatus.replace(/_/g,' ') %></span></strong></div>
+          <div class="meta-item"><span>Date (BS / AD)</span><strong><%= voucher.dateBS %> / <%= new Date(voucher.dateAD).toISOString().slice(0,10) %></strong></div>
+          <div class="meta-item"><span>Voucher type</span><strong><%= formatVoucherType(voucher.voucherType) %></strong></div>
+          <div class="meta-item"><span>Reference</span><strong><%= voucher.transactionDetails?.referenceNumber || '—' %></strong></div>
+          <div class="meta-item"><span>Narration</span><strong><%= voucher.narration %></strong></div>
+          <div class="meta-item"><span>Created / submitted by</span><strong><%= voucher.createdBy || voucher.submittedBy?.teacherName || voucher.submittedBy?.username || '—' %></strong></div>
+          <div class="meta-item"><span>Reviewed by</span><strong><%= voucher.reviewedBy?.teacherName || voucher.reviewedBy?.username || '—' %></strong></div>
+          <div class="meta-item"><span>Approved / posted by</span><strong><%= voucher.approvedBy?.teacherName || voucher.approvedBy?.username || voucher.postedBy?.teacherName || voucher.postedBy?.username || '—' %></strong></div>
+          <% if (voucher.rejectionReason) { %><div class="meta-item"><span>Rejection reason</span><strong><%= voucher.rejectionReason %></strong></div><% } %>
+          <% if (voucher.reversalReason) { %><div class="meta-item"><span>Reversal reason</span><strong><%= voucher.reversalReason %></strong></div><% } %>
+        </div></div>
+      </section>
+      <section class="panel">
+        <div class="panel-heading">Journal lines</div>
+        <div class="table-scroll"><table><thead><tr><th>Account code</th><th>Ledger account</th><th>Group</th><th class="numeric">Debit</th><th class="numeric">Credit</th></tr></thead><tbody>
+          <% (voucher.entries || []).forEach(line => { %><tr><td><%= line.ledger?.code || '—' %></td><td><%= line.ledger?.name || 'Unknown ledger' %></td><td><%= line.ledger?.group?.name || '—' %></td><td class="numeric"><%= formatMoney(line.debit) %></td><td class="numeric"><%= formatMoney(line.credit) %></td></tr><% }); %>
+          <% if (!(voucher.entries || []).length) { %><tr><td colspan="5" class="empty">No journal lines are available.</td></tr><% } %>
+        </tbody><tfoot><tr class="total"><td colspan="3">Total</td><td class="numeric"><%= formatMoney(voucher.totalDebit) %></td><td class="numeric"><%= formatMoney(voucher.totalCredit) %></td></tr></tfoot></table></div>
+      </section>
+      <section class="panel"><div class="panel-heading">Approval and audit history</div><div class="panel-body">
+        <% if ((voucher.auditEvents || []).length) { %><div class="audit-list"><% voucher.auditEvents.forEach(event => { %><div class="audit-row"><span class="audit-action"><%= event.action.replace(/_/g,' ') %></span><span><span class="audit-actor"><%= event.actor?.teacherName || event.actor?.username || 'User' %></span><% if (event.notes) { %><br><span class="audit-notes"><%= event.notes %></span><% } %></span><time class="audit-time"><%= new Date(event.at).toLocaleString('en-GB',{timeZone:'Asia/Kathmandu',dateStyle:'medium',timeStyle:'short'}) %></time></div><% }); %></div><% } else { %><div class="empty">No audit events are recorded on this voucher.</div><% } %>
+        <% if (voucher.displayStatus === 'PENDING_ACCOUNTANT_REVIEW' || voucher.displayStatus === 'PENDING_ADMIN_APPROVAL') { %><p class="screen-only"><a class="button" href="/accounting/vouchers">Open approval queue</a></p><% } %>
+      </div></section>
+    </div>
+  </main>
+</body>
+</html>

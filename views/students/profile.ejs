@@ -7,6 +7,7 @@
       <p class="mb-0">Class: <%= student.class ? (student.class.studentClass || student.class.name || '-') : '-' %><% if (student.section) { %> - <%= student.section %><% } %></p>
       <p class="mb-0">Guardian: <%= student.guardianName %> (<%= student.guardianPhone %>)</p>
       <p class="mb-0">Admission Date: <%= student.admissionDateAD.toDateString() %></p>
+      <p class="mb-0">Transport: <%= student.usesSchoolBus && student.transportRoute ? student.transportRoute.routeName + ' · Rs. ' + Number(student.transportRoute.transportFee).toFixed(2) : 'Not using school bus' %></p>
     </div>
     <div class="text-end">
       <h4 class="<%= balance > 0 ? 'text-danger' : 'text-success' %>">Rs <%= balance.toFixed(2) %></h4>

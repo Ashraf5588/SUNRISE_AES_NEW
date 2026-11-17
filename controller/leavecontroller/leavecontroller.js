@@ -588,17 +588,12 @@ exports.leaveUsage = async (req, res) => {
 			.filter(type => appliesToUser(type, applicant));
 		const selectedYears = [...allocations.years.keys()];
 		if (!selectedYears.length) selectedYears.push(String(bs.ADToBS(new Date()) || '').slice(0, 4));
-		const additionalCoveredRanges = startDate && endDate ? [{
-			startDateNepali: String(bs.ADToBS(startDate) || '').slice(0, 10),
-			endDateNepali: String(bs.ADToBS(endDate) || '').slice(0, 10)
-		}] : [];
 		const quotaContext = await getLeaveQuotaContext({
 			applicant,
 			profile: applicantProfile,
 			leaveTypes: applicableTypes,
 			years: selectedYears,
-			excludeApplicationId: req.query.excludeApplicationId,
-			additionalCoveredRanges
+			excludeApplicationId: req.query.excludeApplicationId
 		});
 		const selectedUsage = quotaContext.usageByType.get(String(leaveType._id)) || {
 			usedMonths: new Map(),

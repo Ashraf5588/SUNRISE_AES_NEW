@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><%= title %></title>
+  <style>
+    :root{--navy:#102a52;--blue:#3979d6;--ink:#1d2b42;--muted:#73829a;--line:#e2eaf4;--page:#f5f8fc}
+    *{box-sizing:border-box}body{margin:0;background:var(--page);color:var(--ink);font:14px "Segoe UI",Arial,sans-serif}
+    main{max-width:1100px;margin:0 auto;padding:30px 24px}h1{margin:0;color:var(--navy);font-size:28px}.sub{color:var(--muted);margin:7px 0 0}
+    .panel{border:1px solid var(--line);border-radius:14px;background:#fff;padding:22px;box-shadow:0 8px 24px rgba(24,52,91,.05);margin-top:18px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.field{display:grid;gap:7px;color:#53647d;font-size:12px;font-weight:700}
+    input,select{min-height:42px;width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 11px;background:#fff;color:var(--ink);font:inherit}
+    .hint{color:var(--muted);font-size:11px;font-weight:400}.full{grid-column:1/-1}.submit{min-height:42px;padding:0 16px;margin-top:18px;border:0;border-radius:8px;background:var(--navy);color:#fff;font-weight:700}
+    .alert{margin:14px 0;padding:12px;border-radius:8px;background:#fff4f4;color:#9e343c}.alert.ok{background:#effaf6;color:#176c57}.periods{color:var(--muted);font-size:12px}.periods span{display:inline-block;margin:4px;padding:6px 9px;border-radius:20px;background:#eef3f8;color:#53647d}
+    @media(max-width:650px){main{padding:18px 12px}.grid{grid-template-columns:1fr}.full{grid-column:auto}.panel{padding:16px}}
+  </style>
+</head>
+<body><%- include('feesidenav') %><main>
+  <h1>Accounting settings</h1><p class="sub">Configure the General Ledger mappings used by new invoices, student receipts and approval limits.</p>
+  <% if (error) { %><div class="alert" role="alert"><%= error %></div><% } %>
+  <% if (typeof status !== 'undefined' && status === 'saved') { %><div class="alert ok">Accounting settings saved.</div><% } %>
+  <form class="panel" method="post" action="/accounting/settings">
+    <div class="grid">
+      <label class="field">Current fiscal year (BS)<input name="currentFiscalYearBS" value="<%= school.currentFiscalYearBS || '' %>" pattern="\d{4}/\d{3}" placeholder="2082/083" required><span class="hint">Format YYYY/YYY; posting dates are checked against closed years.</span></label>
+      <label class="field">Accountant approval threshold (Rs.)<input type="number" min="0" step="0.01" name="accountantApprovalThreshold" value="<%= Number(school.accountantApprovalThreshold || 0).toFixed(2) %>"><span class="hint">Zero means accountant-submitted vouchers post immediately. At or above the limit, an administrator must approve.</span></label>
+      <label class="field">Accounts Receivable ledger<select name="accountsReceivableLedger" required><option value="">Select an active asset ledger</option><% ledgers.filter(ledger=>ledger.nature==='ASSET').forEach(ledger=>{ %><option value="<%= ledger._id %>" <%= String(school.accountsReceivableLedger?._id || school.accountsReceivableLedger || '')===String(ledger._id)?'selected':'' %>><%= ledger.code %> · <%= ledger.name %></option><% }) %></select></label>
+      <label class="field">Default Fee Income ledger<select name="defaultFeeIncomeLedger" required><option value="">Select an active income ledger</option><% ledgers.filter(ledger=>ledger.nature==='INCOME').forEach(ledger=>{ %><option value="<%= ledger._id %>" <%= String(school.defaultFeeIncomeLedger?._id || school.defaultFeeIncomeLedger || '')===String(ledger._id)?'selected':'' %>><%= ledger.code %> · <%= ledger.name %></option><% }) %></select><span class="hint">A fee-head mapping overrides this default when configured.</span></label>
+      <label class="field full">Student Advances liability ledger<select name="studentAdvanceLedger" required><option value="">Select an active liability ledger</option><% ledgers.filter(ledger=>ledger.nature==='LIABILITY').forEach(ledger=>{ %><option value="<%= ledger._id %>" <%= String(school.studentAdvanceLedger?._id || school.studentAdvanceLedger || '')===String(ledger._id)?'selected':'' %>><%= ledger.code %> · <%= ledger.name %></option><% }) %></select><span class="hint">Used for receipts exceeding outstanding student invoices.</span></label>
+      <label class="field full">Retained Earnings ledger<select name="retainedEarningsLedger" required><option value="">Select an active equity ledger</option><% ledgers.filter(ledger=>ledger.nature==='EQUITY').forEach(ledger=>{ %><option value="<%= ledger._id %>" <%= String(school.retainedEarningsLedger?._id || school.retainedEarningsLedger || '')===String(ledger._id)?'selected':'' %>><%= ledger.code %> · <%= ledger.name %></option><% }) %></select><span class="hint">Used as the offset when income and expense accounts are closed.</span></label>
+    </div>
+    <button class="submit" type="submit">Save accounting settings</button>
+  </form>
+  <section class="panel"><h2 style="margin:0 0 8px;color:#102a52;font-size:16px">Closed fiscal years</h2><p class="sub">Posting to a closed year is blocked. Existing posted entries remain unchanged.</p><div class="periods"><% if ((school.closedFiscalYearsBS||[]).length) { school.closedFiscalYearsBS.forEach(year=>{ %><span><%= year %></span><% }) } else { %>No fiscal years are closed.<% } %></div></section>
+  <% if(status==='closed'){ %><div class="alert ok">Fiscal year <%= typeof year!=='undefined'?year:'' %> closed successfully. The next fiscal year is now active.</div><% } %>
+  <section class="panel">
+    <h2 style="margin:0 0 8px;color:#102a52;font-size:16px">Close current fiscal year</h2>
+    <p class="sub">Creates a balanced closing voucher for posted income and expense balances, moves net profit or loss to Retained Earnings, records the balance-sheet opening snapshot, locks the fiscal year, and advances the current year. No duplicate opening journal is posted; future opening balances derive from prior posted ledger movements.</p>
+    <form method="post" action="/accounting/close-year" onsubmit="return confirm('Close fiscal year <%= school.currentFiscalYearBS %>? This action locks new postings to that fiscal year.')">
+      <input type="hidden" name="fiscalYearBS" value="<%= school.currentFiscalYearBS %>">
+      <button class="submit" type="submit">Close <%= school.currentFiscalYearBS %></button>
+    </form>
+  </section>
+</main></body>
+</html>

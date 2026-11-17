@@ -17,6 +17,12 @@ const schoolSchema = new mongoose.Schema(
     invoicePrefix: { type: String, default: 'INV' }, // e.g. INV-2082083-000045
     receiptPrefix: { type: String, default: 'RCT' },
     currentFiscalYearBS: { type: String, required: true }, // e.g. "2082/083"
+    accountsReceivableLedger: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountLedger' },
+    defaultFeeIncomeLedger: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountLedger' },
+    studentAdvanceLedger: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountLedger' },
+    retainedEarningsLedger: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountLedger' },
+    accountantApprovalThreshold: { type: Number, min: 0, default: 0 },
+    closedFiscalYearsBS: { type: [String], default: [] },
   },
   { timestamps: true }
 );

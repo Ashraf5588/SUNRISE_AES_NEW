@@ -1,7 +1,7 @@
 require('dotenv').config({ path: ['.env.local', '.env'] });
 
 const mongoose = require('mongoose');
-const url = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/aes';
+const url = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/aes?replicaSet=rs0';
 
 const connectDB = async () => {
   try {

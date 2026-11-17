@@ -1,49 +1,323 @@
+<%
+  const financeRole = typeof currentRole === 'undefined' ? '' : currentRole;
+  const financePath = typeof currentPath === 'undefined' ? '' : currentPath;
+  const financeIsAdmin = financeRole === 'ADMIN';
+  const financeIsAccountant = financeRole === 'ACCOUNTANT';
+  const financeIsCashier = financeRole === 'CASHIER';
+  const financeIsActive = (path) => financePath === path || financePath.startsWith(`${path}/`);
+%>
 <style>
-  :root { --navy: #07152f; --navy2: #0d2854; --blue: #3b82f6; }
-  .fee-sidebar { position: fixed; inset: 0 auto 0 0; width: 268px; padding: 24px 16px 18px; background: linear-gradient(180deg, var(--navy), var(--navy2)); color: #d9e6fb; box-shadow: 12px 0 32px rgba(7, 21, 47, .12); z-index: 5; }
-  .fee-brand { display: flex; align-items: center; gap: 11px; padding: 4px 10px 24px; border-bottom: 1px solid rgba(255, 255, 255, .1); }
-  .fee-brand-mark { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; background: #fff; color: var(--navy2); font-weight: 800; font-size: 18px; }
-  .fee-brand strong { display: block; color: #fff; font-size: 16px; }
-  .fee-brand small { display: block; margin-top: 3px; color: #8fa8ca; font-size: 11px; }
-  .fee-nav-label { margin: 25px 11px 9px; color: #7893ba; font-size: 10px; font-weight: 800; letter-spacing: 1.3px; text-transform: uppercase; }
-  .fee-nav { display: grid; gap: 4px; }
-  .fee-nav-link { display: flex; align-items: center; gap: 11px; min-height: 42px; padding: 10px 12px; border: 1px solid transparent; border-radius: 10px; color: #b7c9e4; font-size: 13px; text-decoration: none; transition: .2s ease; }
-  .fee-nav-link span { display: grid; place-items: center; width: 20px; color: #82b2f5; font-size: 16px; }
-  .fee-nav-link:hover, .fee-nav-link.is-active { background: rgba(75, 137, 230, .16); border-color: rgba(113, 166, 247, .18); color: #fff; }
-  .fee-nav-link.is-active { box-shadow: inset 3px 0 #67a2ff; }
-  .fee-sidebar-footer { position: absolute; right: 16px; bottom: 18px; left: 16px; display: flex; align-items: center; gap: 8px; padding: 12px; border: 1px solid rgba(255, 255, 255, .09); border-radius: 10px; color: #8fa8ca; font-size: 11px; }
-  .fee-sidebar-footer i { width: 7px; height: 7px; border-radius: 50%; background: #37c892; box-shadow: 0 0 0 4px rgba(55, 200, 146, .12); }
-  @media (max-width: 760px) {
-    .fee-sidebar { position: static; width: 100%; min-height: auto; }
-    .fee-sidebar-footer { position: static; margin-top: 20px; }
-    .fee-nav { grid-template-columns: repeat(2, 1fr); }
+  :root {
+    --fee-nav-ink: #263650;
+    --fee-nav-muted: #78869b;
+    --fee-nav-blue: #244f9e;
+    --fee-nav-blue-soft: #edf4ff;
+    --fee-nav-line: #e7edf5;
   }
-  @media (max-width: 480px) { .fee-nav { grid-template-columns: 1fr; } }
+  .fee-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 40;
+    display: flex;
+    flex-direction: column;
+    width: 268px;
+    padding: 18px 14px 14px;
+    border-right: 1px solid var(--fee-nav-line);
+    background: #fff;
+    box-shadow: 8px 0 28px rgba(27, 49, 82, .045);
+    color: var(--fee-nav-ink);
+    font-family: "Segoe UI", Arial, sans-serif;
+  }
+  .fee-brand {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-height: 58px;
+    padding: 0 10px 15px;
+    border-bottom: 1px solid var(--fee-nav-line);
+  }
+  .fee-brand-mark {
+    display: grid;
+    flex: 0 0 42px;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border-radius: 13px;
+    background: linear-gradient(145deg, #263d6a, #526d9c);
+    box-shadow: 0 7px 16px rgba(37, 64, 111, .17);
+    color: #fff;
+  }
+  .fee-brand-mark svg { width: 22px; height: 22px; }
+  .fee-brand strong { display: block; color: #1d2d49; font-size: 15px; font-weight: 800; letter-spacing: -.2px; }
+  .fee-brand small { display: block; margin-top: 3px; color: var(--fee-nav-muted); font-size: 10px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; }
+  .fee-workspace {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 58px;
+    margin: 15px 3px 4px;
+    padding: 10px;
+    border: 1px solid #e6ecf4;
+    border-radius: 12px;
+    background: linear-gradient(110deg, #f8faff, #f2f6fc);
+  }
+  .fee-workspace-mark {
+    display: grid;
+    flex: 0 0 36px;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+    background: #e5edfb;
+    color: var(--fee-nav-blue);
+    font-size: 12px;
+    font-weight: 850;
+  }
+  .fee-workspace-copy { min-width: 0; }
+  .fee-workspace-copy strong { display: block; overflow: hidden; color: #2b3c58; font-size: 11px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+  .fee-workspace-copy small { display: block; margin-top: 3px; color: var(--fee-nav-muted); font-size: 10px; }
+  .fee-role-badge { margin-left: auto; padding: 5px 7px; border: 1px solid #dfe8f6; border-radius: 20px; background: #fff; color: #64758e; font-size: 8px; font-weight: 800; letter-spacing: .45px; text-transform: uppercase; white-space: nowrap; }
+  .fee-nav-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 7px 1px 14px; scrollbar-color: #d7e0ed transparent; scrollbar-width: thin; }
+  .fee-nav-group + .fee-nav-group { margin-top: 18px; }
+  .fee-nav-label { margin: 0 10px 7px; color: #8794a8; font-size: 9px; font-weight: 850; letter-spacing: 1.15px; text-transform: uppercase; }
+  .fee-nav-subheading { margin: 12px 10px 5px; color: #9aa5b5; font-size: 8px; font-weight: 850; letter-spacing: .9px; text-transform: uppercase; }
+  .fee-nav { display: grid; gap: 3px; }
+  .fee-nav-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-height: 40px;
+    padding: 8px 10px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    background: transparent;
+    color: #58677d;
+    font-size: 12px;
+    font-weight: 650;
+    line-height: 1.25;
+    text-decoration: none;
+    transition: background .16s ease, border-color .16s ease, color .16s ease, transform .16s ease;
+  }
+  .fee-nav-link svg { flex: 0 0 18px; width: 18px; height: 18px; color: #728198; stroke: currentColor; }
+  .fee-nav-link:hover { transform: translateX(2px); border-color: #e8eef8; background: #f7f9fd; color: #263e66; }
+  .fee-nav-link:hover svg { color: var(--fee-nav-blue); }
+  .fee-nav-link.is-active {
+    border-color: #dce8fc;
+    background: var(--fee-nav-blue-soft);
+    box-shadow: inset 3px 0 #315fae;
+    color: #214d9c;
+    font-weight: 800;
+  }
+  .fee-nav-link.is-active svg { color: #315fae; }
+  .fee-nav-sub-link { min-height: 34px; margin-left: 13px; padding-left: 16px; color: #728096; font-size: 11px; }
+  .fee-nav-sub-link::before { position: absolute; left: 7px; width: 3px; height: 3px; border-radius: 50%; background: #a4b0c1; content: ""; }
+  .fee-nav-sub-link.is-active::before { width: 4px; height: 4px; background: #315fae; }
+  .fee-sidebar-footer {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 47px;
+    padding: 10px 9px 2px;
+    border-top: 1px solid var(--fee-nav-line);
+    color: #64738a;
+    font-size: 10px;
+    font-weight: 650;
+  }
+  .fee-sidebar-footer i { width: 8px; height: 8px; border-radius: 50%; background: #39a77c; box-shadow: 0 0 0 4px #e8f6f0; }
+  .fee-nav-trigger, .fee-sidebar-scrim { display: none; }
+  .fee-sidebar ~ main:not([class]) { margin-left: 268px; }
   .fee-page-shell { min-height: 100vh; padding-left: 268px; background: #f4f7fb; }
   .fee-page-main { max-width: 1500px; margin: 0 auto; padding: 34px 40px 46px; }
   .fee-page-main > .container { max-width: none; margin: 0; padding: 0; }
   @media (max-width: 760px) {
+    .fee-sidebar {
+      z-index: 102;
+      width: min(292px, calc(100vw - 54px));
+      padding-top: max(16px, env(safe-area-inset-top));
+      transform: translateX(-105%);
+      transition: transform .22s ease;
+    }
+    .fee-sidebar.is-open { transform: translateX(0); }
+    .fee-sidebar-scrim {
+      position: fixed;
+      inset: 0;
+      z-index: 101;
+      display: block;
+      border: 0;
+      background: rgba(15, 29, 52, .38);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease;
+    }
+    .fee-sidebar-scrim.is-visible { opacity: 1; pointer-events: auto; }
+    .fee-nav-trigger {
+      position: fixed;
+      right: max(16px, env(safe-area-inset-right));
+      bottom: max(16px, env(safe-area-inset-bottom));
+      z-index: 100;
+      display: grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      border: 1px solid #d9e4f4;
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 8px 24px rgba(24, 48, 86, .18);
+      color: #274f91;
+      cursor: pointer;
+    }
+    .fee-nav-trigger svg { width: 21px; height: 21px; }
+    .fee-sidebar ~ main:not([class]) { margin-left: 0; }
     .fee-page-shell { padding-left: 0; }
     .fee-page-main { padding: 25px 16px 35px; }
   }
+  @media (prefers-reduced-motion: reduce) {
+    .fee-sidebar, .fee-sidebar-scrim, .fee-nav-link { transition: none; }
+  }
+  @media print {
+    .fee-sidebar, .fee-sidebar-scrim, .fee-nav-trigger { display: none !important; }
+    .fee-sidebar ~ main:not([class]) { margin: 0; }
+  }
 </style>
 
-<aside class="fee-sidebar" aria-label="Fee management navigation">
-  <div class="fee-brand"><span class="fee-brand-mark">F</span><span><strong>FeeDesk</strong><small>School finance</small></span></div>
-  <div class="fee-nav-label">Fee management</div>
-  <nav class="fee-nav">
-    <a href="/billingdashboard" class="fee-nav-link"><span>⌂</span>Overview</a>
-    <a href="/feehead" class="fee-nav-link"><span>▦</span>Fee Head Setup</a>
-    <a href="/feestructure" class="fee-nav-link"><span>◫</span>Fee Structure Setup</a>
-    <a href="/fee-invoices" class="fee-nav-link"><span>▣</span>Demand Bills</a>
-    <a href="/fee-payments" class="fee-nav-link"><span>▤</span>Fee Receipt</a>
-    <a href="/students" class="fee-nav-link"><span>♙</span>Students</a>
-    <a href="/payments" class="fee-nav-link"><span>↗</span>Payments</a>
-    <a href="/discount" class="fee-nav-link"><span>▣</span>Discount Setup</a>
-    <a href="/setup/classes" class="fee-nav-link"><span>◇</span>Class Setup</a>
-    <a href="/setup/sessions" class="fee-nav-link"><span>◷</span>Academic Sessions</a>
-    <a href="/setup/opening-balances" class="fee-nav-link"><span>↗</span>Opening Balances</a>
-    <a href="/setup/school" class="fee-nav-link"><span>⚙</span>School Settings</a>
-  </nav>
-  <div class="fee-sidebar-footer"><i></i>Finance workspace</div>
+<svg xmlns="http://www.w3.org/2000/svg" class="fee-icon-sprite" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="fee-icon-overview" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="fee-icon-bank" viewBox="0 0 24 24"><path d="m3 9 9-5 9 5M5 10h14M6 10v8m4-8v8m4-8v8m4-8v8M4 20h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="fee-icon-students" viewBox="0 0 24 24"><path d="m3 9 9-5 9 5-9 5-9-5Zm4 3v4c2.8 2.4 7.2 2.4 10 0v-4M21 9v6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="fee-icon-receipt" viewBox="0 0 24 24"><path d="M6 3.5h12v17l-3-1.8-3 1.8-3-1.8-3 1.8v-17Zm3 5h6m-6 4h6m-6 4h3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="fee-icon-payment" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h18m-14 6h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="fee-icon-bill" viewBox="0 0 24 24"><path d="M6 3.5h8l4 4v13H6v-17Zm8 0v5h4m-9 4h6m-6 4h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="fee-icon-chart" viewBox="0 0 24 24"><path d="M4 19V5m0 14h17M8 16v-4m4 4V8m4 8v-6m4 6V5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="fee-icon-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 1 4 17.5v-12ZM4 17.5A2.5 2.5 0 0 1 6.5 15H20M8 7h8m-8 4h8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="fee-icon-journal" viewBox="0 0 24 24"><path d="M5 4.5h14v16H5v-16Zm4 4h6m-6 4h6m-6 4h4M8 2.5v4m8-4v4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="fee-icon-check" viewBox="0 0 24 24"><path d="M4 4.5h16v15H4v-15Zm4 4 1.5 1.5L12 7.5m2 1h3m-9 5 1.5 1.5L12 12.5m2 1h3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="fee-icon-transfer" viewBox="0 0 24 24"><path d="M4 8h15m-4-4 4 4-4 4M20 16H5m4-4-4 4 4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="fee-icon-history" viewBox="0 0 24 24"><path d="M4 8V3m0 5h5M4.7 8A8 8 0 1 1 4 14m8-6v5l3 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="fee-icon-settings" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16M9 4v4m6 2v4m-3 2v4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="fee-icon-tag" viewBox="0 0 24 24"><path d="M4 12V5h7l9 9-7 7-9-9Zm4-4h.01" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="fee-icon-school" viewBox="0 0 24 24"><path d="m3 9 9-5 9 5M5 10h14v9H5v-9Zm-2 12h18M9 13v3m6-3v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="fee-icon-calendar" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 3v4m8-4v4M4 10h16m-11 4h.01m4 0h.01m-4 3h.01" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  <symbol id="fee-icon-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+</svg>
+
+<button type="button" class="fee-nav-trigger" id="feeNavTrigger" aria-label="Open finance navigation" aria-controls="feeSidebar" aria-expanded="false">
+  <svg aria-hidden="true"><use href="#fee-icon-menu"></use></svg>
+</button>
+<button type="button" class="fee-sidebar-scrim" id="feeSidebarScrim" aria-label="Close navigation"></button>
+
+<aside class="fee-sidebar" id="feeSidebar" aria-label="Finance navigation">
+  <div class="fee-brand">
+    <span class="fee-brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#fee-icon-bank"></use></svg></span>
+    <span><strong>School Finance</strong><small>Accounting workspace</small></span>
+  </div>
+  <div class="fee-workspace">
+    <span class="fee-workspace-mark">SF</span>
+    <span class="fee-workspace-copy"><strong>Finance operations</strong><small>School management</small></span>
+    <% if (financeRole) { %><span class="fee-role-badge"><%= financeRole === 'ADMIN' ? 'Admin' : financeRole === 'ACCOUNTANT' ? 'Accountant' : financeRole === 'CASHIER' ? 'Cashier' : financeRole %></span><% } %>
+  </div>
+
+  <div class="fee-nav-scroll">
+    <% if (financeIsAdmin) { %>
+    <section class="fee-nav-group">
+      <h2 class="fee-nav-label">Dashboard</h2>
+      <nav class="fee-nav" aria-label="Dashboard">
+        <a href="/billingdashboard" class="fee-nav-link <%= financeIsActive('/billingdashboard') ? 'is-active' : '' %>" <%= financeIsActive('/billingdashboard') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-overview"></use></svg>Finance dashboard</a>
+      </nav>
+    </section>
+    <% } %>
+
+    <section class="fee-nav-group">
+      <h2 class="fee-nav-label">Accounts</h2>
+      <nav class="fee-nav" aria-label="Accounts">
+        <a href="/cashbank" class="fee-nav-link <%= financePath === '/cashbank' || financePath.startsWith('/cashbank/ledger/') ? 'is-active' : '' %>" <%= financePath === '/cashbank' || financePath.startsWith('/cashbank/ledger/') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-bank"></use></svg>Cash &amp; Bank</a>
+        <a href="/cashbank/book/cash" class="fee-nav-link <%= financePath.startsWith('/cashbank/book/cash') ? 'is-active' : '' %>" <%= financePath.startsWith('/cashbank/book/cash') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-book"></use></svg>Cash book</a>
+        <a href="/cashbank/book/bank" class="fee-nav-link <%= financePath.startsWith('/cashbank/book/bank') ? 'is-active' : '' %>" <%= financePath.startsWith('/cashbank/book/bank') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-book"></use></svg>Bank book</a>
+        <a href="/accounting/vouchers" class="fee-nav-link <%= financeIsActive('/accounting/vouchers') ? 'is-active' : '' %>" <%= financeIsActive('/accounting/vouchers') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-check"></use></svg>Voucher approvals</a>
+        <% if (financeIsAdmin || financeIsAccountant) { %>
+          <a href="/journal-voucher" class="fee-nav-link <%= financeIsActive('/journal-voucher') ? 'is-active' : '' %>" <%= financeIsActive('/journal-voucher') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-journal"></use></svg>Journal vouchers</a>
+          <a href="/accounting/reconciliation" class="fee-nav-link <%= financeIsActive('/accounting/reconciliation') ? 'is-active' : '' %>" <%= financeIsActive('/accounting/reconciliation') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-transfer"></use></svg>Bank reconciliation</a>
+          <a href="/accounting/reports" class="fee-nav-link <%= financePath.startsWith('/accounting/reports') ? 'is-active' : '' %>" <%= financePath.startsWith('/accounting/reports') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-chart"></use></svg>Accounting reports</a>
+          <a href="/accounting/reports/trial-balance" class="fee-nav-link fee-nav-sub-link <%= financeIsActive('/accounting/reports/trial-balance') ? 'is-active' : '' %>" <%= financeIsActive('/accounting/reports/trial-balance') ? 'aria-current="page"' : '' %>>Trial Balance</a>
+          <a href="/accounting/reports/general-ledger" class="fee-nav-link fee-nav-sub-link <%= financeIsActive('/accounting/reports/general-ledger') ? 'is-active' : '' %>" <%= financeIsActive('/accounting/reports/general-ledger') ? 'aria-current="page"' : '' %>>General Ledger</a>
+          <a href="/accounting/reports/voucher-register" class="fee-nav-link fee-nav-sub-link <%= financeIsActive('/accounting/reports/voucher-register') ? 'is-active' : '' %>" <%= financeIsActive('/accounting/reports/voucher-register') ? 'aria-current="page"' : '' %>>Voucher Register</a>
+          <a href="/accounting/reports/balance-sheet" class="fee-nav-link fee-nav-sub-link <%= financeIsActive('/accounting/reports/balance-sheet') ? 'is-active' : '' %>" <%= financeIsActive('/accounting/reports/balance-sheet') ? 'aria-current="page"' : '' %>>Balance Sheet</a>
+          <a href="/accounting/reports/profit-loss" class="fee-nav-link fee-nav-sub-link <%= financeIsActive('/accounting/reports/profit-loss') ? 'is-active' : '' %>" <%= financeIsActive('/accounting/reports/profit-loss') ? 'aria-current="page"' : '' %>>Profit &amp; Loss</a>
+          <a href="/accounting/reports/cash-flow" class="fee-nav-link fee-nav-sub-link <%= financeIsActive('/accounting/reports/cash-flow') ? 'is-active' : '' %>" <%= financeIsActive('/accounting/reports/cash-flow') ? 'aria-current="page"' : '' %>>Cash Flow</a>
+        <% } %>
+        <% if (financeIsAdmin) { %>
+          <a href="/chartsofAccount" class="fee-nav-link <%= financeIsActive('/chartsofAccount') ? 'is-active' : '' %>" <%= financeIsActive('/chartsofAccount') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-book"></use></svg>Chart of accounts</a>
+          <a href="/accounting/settings" class="fee-nav-link <%= financeIsActive('/accounting/settings') ? 'is-active' : '' %>" <%= financeIsActive('/accounting/settings') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-settings"></use></svg>Accounting settings</a>
+          <a href="/accounting/historical-reconciliation" class="fee-nav-link <%= financeIsActive('/accounting/historical-reconciliation') ? 'is-active' : '' %>" <%= financeIsActive('/accounting/historical-reconciliation') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-history"></use></svg>Historical accounting review</a>
+          <a href="/setup/opening-balances" class="fee-nav-link <%= financeIsActive('/setup/opening-balances') ? 'is-active' : '' %>" <%= financeIsActive('/setup/opening-balances') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-payment"></use></svg>Opening balances</a>
+        <% } %>
+      </nav>
+    </section>
+
+    <section class="fee-nav-group">
+      <h2 class="fee-nav-label">Fee management</h2>
+      <nav class="fee-nav" aria-label="Fee management">
+        <% if (financeIsAdmin || financeIsAccountant) { %>
+          <a href="/generate" class="fee-nav-link <%= financeIsActive('/generate') ? 'is-active' : '' %>" <%= financeIsActive('/generate') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-bill"></use></svg>Generate invoices</a>
+          <a href="/billing" class="fee-nav-link <%= financePath === '/billing' || financePath === '/bill' || financePath === '/invoicelist' || financePath.startsWith('/invoice/') ? 'is-active' : '' %>" <%= financePath === '/billing' || financePath === '/bill' || financePath === '/invoicelist' || financePath.startsWith('/invoice/') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-receipt"></use></svg>Invoice register</a>
+        <% } %>
+        <% if (!financeIsCashier) { %>
+          <a href="/students" class="fee-nav-link <%= financeIsActive('/students') ? 'is-active' : '' %>" <%= financeIsActive('/students') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-students"></use></svg>Student accounts</a>
+        <% } %>
+        <a href="/fee-payments" class="fee-nav-link <%= financeIsActive('/fee-payments') || financeIsActive('/fee-receipts') ? 'is-active' : '' %>" <%= financeIsActive('/fee-payments') || financeIsActive('/fee-receipts') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-receipt"></use></svg>Fee receipts</a>
+        <a href="/payments" class="fee-nav-link <%= financeIsActive('/payments') ? 'is-active' : '' %>" <%= financeIsActive('/payments') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-payment"></use></svg>Payment register</a>
+
+        <% if (financeIsAdmin) { %>
+          <h3 class="fee-nav-subheading">Fee setup</h3>
+          <a href="/feehead" class="fee-nav-link <%= financeIsActive('/feehead') ? 'is-active' : '' %>" <%= financeIsActive('/feehead') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-tag"></use></svg>Fee heads &amp; ledgers</a>
+          <a href="/feestructure" class="fee-nav-link <%= financeIsActive('/feestructure') ? 'is-active' : '' %>" <%= financeIsActive('/feestructure') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-bill"></use></svg>Fee structures</a>
+          <a href="/setup/fee-categories" class="fee-nav-link <%= financeIsActive('/setup/fee-categories') ? 'is-active' : '' %>" <%= financeIsActive('/setup/fee-categories') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-tag"></use></svg>Fee categories</a>
+          <a href="/setup/fee-structures" class="fee-nav-link <%= financeIsActive('/setup/fee-structures') ? 'is-active' : '' %>" <%= financeIsActive('/setup/fee-structures') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-bill"></use></svg>Class fee setup</a>
+          <a href="/setup/transportfee" class="fee-nav-link <%= financeIsActive('/setup/transportfee') ? 'is-active' : '' %>" <%= financeIsActive('/setup/transportfee') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-transfer"></use></svg>Transport fees</a>
+          <a href="/setup/discount" class="fee-nav-link <%= financeIsActive('/setup/discount') ? 'is-active' : '' %>" <%= financeIsActive('/setup/discount') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-tag"></use></svg>Discounts &amp; scholarships</a>
+          <a href="/setup/classes" class="fee-nav-link <%= financeIsActive('/setup/classes') ? 'is-active' : '' %>" <%= financeIsActive('/setup/classes') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-school"></use></svg>Classes</a>
+          <a href="/setup/sessions" class="fee-nav-link <%= financeIsActive('/setup/sessions') ? 'is-active' : '' %>" <%= financeIsActive('/setup/sessions') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-calendar"></use></svg>Academic sessions</a>
+          <a href="/setup/school" class="fee-nav-link <%= financeIsActive('/setup/school') ? 'is-active' : '' %>" <%= financeIsActive('/setup/school') ? 'aria-current="page"' : '' %>><svg aria-hidden="true"><use href="#fee-icon-school"></use></svg>School settings</a>
+        <% } %>
+      </nav>
+    </section>
+  </div>
+
+  <footer class="fee-sidebar-footer"><i aria-hidden="true"></i><span>Finance workspace</span></footer>
 </aside>
+
+<script>
+  (() => {
+    const sidebar = document.getElementById('feeSidebar');
+    const trigger = document.getElementById('feeNavTrigger');
+    const scrim = document.getElementById('feeSidebarScrim');
+    if (!sidebar || !trigger || !scrim) return;
+
+    const closeNavigation = () => {
+      sidebar.classList.remove('is-open');
+      scrim.classList.remove('is-visible');
+      trigger.setAttribute('aria-expanded', 'false');
+      trigger.setAttribute('aria-label', 'Open finance navigation');
+      document.body.style.overflow = '';
+    };
+    const openNavigation = () => {
+      sidebar.classList.add('is-open');
+      scrim.classList.add('is-visible');
+      trigger.setAttribute('aria-expanded', 'true');
+      trigger.setAttribute('aria-label', 'Close finance navigation');
+      document.body.style.overflow = 'hidden';
+    };
+
+    trigger.addEventListener('click', () => (
+      sidebar.classList.contains('is-open') ? closeNavigation() : openNavigation()
+    ));
+    scrim.addEventListener('click', closeNavigation);
+    sidebar.querySelectorAll('a').forEach(link => link.addEventListener('click', closeNavigation));
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') closeNavigation();
+    });
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 760) closeNavigation();
+    });
+  })();
+</script>

@@ -82,6 +82,11 @@ const verifytokenApi = async (req, res, next) => {
 const authorized = (req, res, next) => {
   const token = req.cookies.token || (req.headers.authorization ? req.headers.authorization.split(" ")[1] : undefined);
   const user = req.user;
+  if (user) {
+    res.locals.currentRole = user.role;
+    res.locals.currentUserId = String(user._id || '');
+  }
+  res.locals.currentPath = String(req.originalUrl || req.path).split('?')[0];
   
   console.log("Middleware Debug - URL:", req.originalUrl);
   console.log("Middleware Debug - Params:", req.params);
@@ -132,6 +137,35 @@ const isAdmin = async (req, res, next) => {
     return res.render("block",{teacherName: user.teacherName, username: user.username, role: user.role, allowedSubjects: user.allowedSubjects || []}); // Render a block page or redirect
   }
   next();
+};
+
+const blockUnauthorizedRole = (req, res, roles) => {
+  const user = req.user;
+  if (roles.includes(user?.role)) return false;
+  return res.status(403).render("block", {
+    teacherName: user?.teacherName || user?.username || '',
+    username: user?.username || '',
+    role: user?.role || '',
+    allowedSubjects: user?.allowedSubjects || []
+  });
+};
+
+const isFinanceStaff = (req, res, next) => {
+  const response = blockUnauthorizedRole(req, res, ["ADMIN", "ACCOUNTANT", "CASHIER"]);
+  if (response) return response;
+  return next();
+};
+
+const isAccountant = (req, res, next) => {
+  const response = blockUnauthorizedRole(req, res, ["ACCOUNTANT"]);
+  if (response) return response;
+  return next();
+};
+
+const isAccountantOrAdmin = (req, res, next) => {
+  const response = blockUnauthorizedRole(req, res, ["ADMIN", "ACCOUNTANT"]);
+  if (response) return response;
+  return next();
 };
 
 const isLibrarian = async (req, res, next) => {
@@ -186,4 +220,18 @@ const isAllowedHome = (req, res, next) => {
 };
 
 
-module.exports = { generateToken, verifytoken, verifytokenApi, authorized, isAdmin, isnewsAdmin, isLibrarian, isFrontdesk,isNurse, isAllowedHome };
+module.exports = {
+  generateToken,
+  verifytoken,
+  verifytokenApi,
+  authorized,
+  isAdmin,
+  isFinanceStaff,
+  isAccountant,
+  isAccountantOrAdmin,
+  isnewsAdmin,
+  isLibrarian,
+  isFrontdesk,
+  isNurse,
+  isAllowedHome
+};

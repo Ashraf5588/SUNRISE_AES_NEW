@@ -7,7 +7,8 @@ const feeheadschema = new mongoose.Schema({
   reportname: { type: String, required: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
-    isTaxable: { type: Boolean, default: false }
+  isTaxable: { type: Boolean, default: false },
+  incomeLedger: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountLedger', default: null }
 });
 const feeheadModel = mongoose.model('feehead', feeheadschema,'feehead');
 module.exports = { feeheadschema, feeheadModel };

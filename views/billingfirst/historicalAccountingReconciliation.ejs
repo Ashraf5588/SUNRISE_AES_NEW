@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><%= title %></title>
+<style>
+  *{box-sizing:border-box}body{margin:0;background:#f5f8fc;color:#1d2b42;font:14px "Segoe UI",Arial,sans-serif}main{max-width:1000px;margin:0 auto;padding:30px 24px}
+  h1{margin:0;color:#102a52;font-size:28px}.sub{color:#73829a;line-height:1.55}.warning{margin:18px 0;padding:15px;border:1px solid #f0d7a7;border-radius:10px;background:#fff9eb;color:#775719;line-height:1.6}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.card{padding:20px;border:1px solid #e2eaf4;border-radius:13px;background:#fff}.label{color:#73829a;font-size:12px}.value{margin-top:8px;color:#102a52;font-size:24px;font-weight:800}.foot{margin-top:6px;color:#73829a;font-size:12px}
+  @media(max-width:600px){main{padding:20px 13px}.grid{grid-template-columns:1fr}}
+</style></head>
+<body><%- include('feesidenav') %><main>
+  <h1>Historical accounting review</h1><p class="sub">Read-only reconciliation of existing student invoices and receipts against General Ledger voucher links.</p>
+  <div class="warning"><strong>Read-only report.</strong> Existing financial records have not been backfilled, edited or migrated. Review these totals before separately approving any historical migration. New invoice and receipt posting applies only to new transactions.</div>
+  <section class="grid">
+    <article class="card"><div class="label">Invoices without linked GL voucher</div><div class="value"><%= report.invoices.count %></div><div class="foot">Current charges total: Rs. <%= Number(report.invoices.amount||0).toLocaleString('en-IN',{minimumFractionDigits:2}) %></div></article>
+    <article class="card"><div class="label">Payments without linked GL voucher</div><div class="value"><%= report.payments.count %></div><div class="foot">Receipt total: Rs. <%= Number(report.payments.amount||0).toLocaleString('en-IN',{minimumFractionDigits:2}) %></div></article>
+  </section>
+  <p class="sub">Generated <%= report.generatedAt.toLocaleString('en-NP',{timeZone:'Asia/Kathmandu'}) %></p>
+</main></body></html>

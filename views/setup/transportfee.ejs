@@ -1,34 +1,204 @@
-<%- include('../partials/head', { title: 'Academic Sessions' }) %>
+<%- include('../partials/head', { title: 'Transport Fee Setup', setupStylesheet: true }) %>
 <%- include('../partials/navbar') %>
-<div class="fee-page-shell"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container mt-4">
-  <h3>Academic Sessions</h3>
-  <div class="row">
-    <div class="col-md-5">
-      <form method="POST" action="/setup/transportfee" class="bg-white p-3 rounded shadow-sm">
-        <div class="mb-2"><label class="form-label">Route Name</label><input class="form-control" name="routeName" required placeholder="Example Route"></div>
-        <div class="mb-2"><label class="form-label">Transport Fee</label><input class="form-control" name="transportFee" type="number" step="0.01" required></div>
-       <select name="academicSession" class="form-control" required>
-        <% academicSessions.forEach(session => { %>
-          <option value="<%= session._id %>"><%= session.titleBS %> (<%= session.startDateAD.toDateString() %> - <%= session.endDateAD.toDateString() %>)</option>
-        <% }) %>
-       </select>
+<div class="fee-page-shell setup-page transport-setup-page">
+  <%- include('../billingfirst/feesidenav') %>
+  <main class="fee-page-main">
+    <div class="container transport-setup-workspace">
+      <header class="transport-page-header">
+        <h1>Transport Fee Setup</h1>
+        <div class="transport-header-date">
+          <svg aria-hidden="true" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2"></rect><path d="M7.5 3v4M16.5 3v4M3.5 9.5h17"></path></svg>
+          <time><%= new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></time>
+        </div>
+      </header>
 
-        <button class="btn btn-primary">Add Transport Fee</button>
-      </form>
+      <div class="transport-setup-grid">
+        <section class="transport-card transport-form-card" aria-labelledby="addTransportRouteTitle">
+          <div class="transport-card-heading">
+            <h2 id="addTransportRouteTitle"><%= editRoute ? 'Edit Transport Route' : 'Add New Route' %></h2>
+              <p><%= editRoute ? 'Update the route details and monthly student fare.' : 'Create a route and set its monthly student fare.' %></p>
+          </div>
+            <% if (error) { %><div class="alert alert-danger transport-form-alert" role="alert"><%= error %></div><% } %>
+            <% if (success) { %><div class="alert alert-success transport-form-alert" role="status"><%= success %></div><% } %>
+            <form method="POST" action="<%= editRoute ? `/setup/transportfee/${editRoute._id}/edit` : '/setup/transportfee' %>" class="transport-route-form">
+              <div class="transport-form-field">
+                <label for="routeName">Route Name</label>
+                <input id="routeName" class="form-control" name="routeName" value="<%= editRoute?.routeName || '' %>" required maxlength="100" placeholder="e.g. Kalanki - Balkhu - School">
+              </div>
+            <div class="transport-form-field">
+              <label for="transportFee">Monthly Fee (NPR)</label>
+              <div class="transport-amount-input">
+                <span aria-hidden="true">Rs.</span>
+                <input id="transportFee" class="form-control" name="transportFee" value="<%= editRoute?.transportFee ?? '' %>" type="number" min="0" step="0.01" required placeholder="Enter amount">
+              </div>
+            </div>
+            <div class="transport-form-field">
+              <label for="academicSession">Academic Session</label>
+              <select id="academicSession" name="academicSession" class="form-select" required>
+                <option value="" <%= editRoute ? '' : 'selected' %> disabled>Select academic session</option>
+                <% academicSessions.forEach(session => { %>
+                  <option value="<%= session._id %>" <%= String(editRoute?.academicSession) === String(session._id) ? 'selected' : '' %>><%= session.titleBS %><%= session.isActive ? ' · Current' : '' %></option>
+                <% }) %>
+              </select>
+              <% if (!academicSessions.length) { %>
+                <small class="transport-field-note">Add an academic session before creating transport routes.</small>
+              <% } %>
+            </div>
+            <button class="btn btn-primary transport-save-button" type="submit" <%= academicSessions.length ? '' : 'disabled' %>>
+              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M5 3.75h12l3.25 3.3v13.2H3.75V5A1.25 1.25 0 0 1 5 3.75Z"></path><path d="M7 3.75v5h9v-5M7.5 20.25v-7h9v7"></path></svg>
+              <%= editRoute ? 'Save Route Changes' : 'Save Transport Route' %>
+            </button>
+            <% if (editRoute) { %><a class="transport-cancel-edit" href="/setup/transportfee">Cancel editing</a><% } %>
+          </form>
+        </section>
+
+        <section class="transport-card transport-routes-card" aria-labelledby="transportRoutesTitle">
+          <div class="transport-card-heading transport-routes-heading">
+            <div>
+              <h2 id="transportRoutesTitle">Transport Routes &amp; Fees</h2>
+              <p>Monthly fares configured for each academic session.</p>
+            </div>
+            <span class="transport-route-count"><%= transportFees.length %> route<%= transportFees.length === 1 ? '' : 's' %></span>
+          </div>
+          <div class="transport-table-wrap">
+            <table class="transport-routes-table">
+              <thead>
+                <tr><th>Route Name</th><th>Monthly Fee</th><th>Academic Session</th><th>Status</th><th>Action</th></tr>
+              </thead>
+              <tbody>
+                <% if (transportFees.length) { %>
+                  <% transportFees.forEach(route => { %>
+                    <tr>
+                      <td><strong class="transport-route-name"><%= route.routeName %></strong></td>
+                      <td class="transport-fee-value">Rs. <%= Number(route.transportFee || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) %></td>
+                      <td><span class="transport-session-name"><%= route.academicSession?.titleBS || 'Session unavailable' %></span></td>
+                      <td>
+                        <% if (route.academicSession?.isActive) { %>
+                          <span class="transport-status is-current">Current</span>
+                        <% } else { %>
+                          <span class="transport-status">Previous</span>
+                        <% } %>
+                      </td>
+                      <td>
+                        <div class="transport-route-actions">
+                          <a class="transport-action-button" href="/setup/transportfee/<%= route._id %>/edit" aria-label="Edit <%= route.routeName %>" title="Edit route">
+                            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-6"></path><path d="m10 14 9.5-9.5a2.12 2.12 0 0 1 3 3L13 17l-4 1 1-4Z"></path></svg>
+                          </a>
+                          <form method="POST" action="/setup/transportfee/<%= route._id %>/delete" onsubmit="return confirm('Delete this transport route? Routes assigned to students cannot be deleted.')">
+                            <button class="transport-action-button is-delete" type="submit" aria-label="Delete <%= route.routeName %>" title="Delete route">
+                              <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-9 0 1 13h10l1-13M10 11v5m4-5v5"></path></svg>
+                            </button>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                  <% }) %>
+                <% } else { %>
+                  <tr><td colspan="5" class="transport-empty-state">
+                    <span class="transport-empty-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d="M4 16.5V6.8A2.8 2.8 0 0 1 6.8 4h10.4A2.8 2.8 0 0 1 20 6.8v9.7"></path><path d="M3 16.5h18v2a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5v-2ZM7 9h10M7 12.5h4"></path><circle cx="7" cy="17" r="1"></circle><circle cx="17" cy="17" r="1"></circle></svg>
+                    </span>
+                    <strong>No transport routes yet</strong>
+                    <span>Add the first route using the form.</span>
+                  </td></tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
     </div>
-    <div class="col-md-7">
-      <table class="table table-bordered bg-white">
-        <thead><tr><th>Route Name</th><th>Transport Fee</th><th>Academic Session</th><th>Current</th></tr></thead>
-        <tbody>
-          <% transportFees.forEach(s => { %>
-          <tr><td><%= s.routeName %></td><td><%= s.transportFee %></td><td><%= s.academicSession.titleBS %></td>
-            <td><%= s.academicSession.isActive ? 'Yes' : 'No' %></td>
-          </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    </div>
-  </div>
+  </main>
 </div>
- </main></div>
+<style>
+  .fee-page-shell.setup-page .fee-page-main { padding:0 38px 48px; }
+  .transport-setup-page { background:#f6f8fb; }
+  .transport-setup-workspace { width:100%; max-width:none; padding:0; }
+  .transport-page-header {
+    display:flex; min-height:78px; align-items:center; justify-content:space-between; gap:20px;
+    margin:0 -38px 40px; padding:0 38px; border-bottom:1px solid #e1e7ef; background:#fff;
+  }
+  .transport-page-header h1 { margin:0; color:#172b49; font-size:24px; font-weight:750; letter-spacing:-.3px; }
+  .transport-header-date { display:flex; align-items:center; gap:11px; color:#61738e; font-size:14px; white-space:nowrap; }
+  .transport-header-date svg { width:19px; height:19px; fill:none; stroke:#6e829f; stroke-linecap:round; stroke-linejoin:round; stroke-width:1.7; }
+  .transport-setup-grid { display:grid; grid-template-columns:minmax(320px,.82fr) minmax(0,1.75fr); align-items:start; gap:30px; }
+  .transport-card { min-width:0; overflow:hidden; border:1px solid #dfe6ef; border-radius:15px; background:#fff; box-shadow:0 3px 9px rgba(27,48,77,.045); }
+  .transport-form-card { padding:30px; }
+  .transport-card-heading { padding:0 0 15px; border-bottom:1px solid #edf1f6; }
+  .transport-card-heading h2 { margin:0; color:#172b49; font-size:19px; font-weight:700; letter-spacing:-.15px; }
+  .transport-card-heading p { margin:5px 0 0; color:#76869c; font-size:11px; line-height:1.45; }
+  .transport-route-form { display:grid; gap:19px; padding-top:20px; }
+  .transport-form-field { display:grid; gap:7px; }
+  .transport-form-field > label { margin:0; color:#526884; font-size:12px; font-weight:600; }
+  .transport-form-field .form-control,.transport-form-field .form-select {
+    min-height:47px; padding:10px 13px; border:1px solid #cad6e5; border-radius:9px;
+    background-color:#fff; color:#1e3049; font-size:14px; box-shadow:none;
+  }
+  .transport-form-field .form-control::placeholder { color:#91a0b4; opacity:1; }
+  .transport-form-field .form-control:focus,.transport-form-field .form-select:focus {
+    border-color:#6c96f5; box-shadow:0 0 0 3px rgba(40,99,235,.11);
+  }
+  .transport-amount-input { position:relative; }
+  .transport-amount-input > span { position:absolute; z-index:1; top:50%; left:13px; color:#718198; font-size:13px; transform:translateY(-50%); }
+  .transport-amount-input .form-control { padding-left:42px; }
+  .transport-field-note { color:#77879b; font-size:10px; }
+  .transport-save-button { display:flex; min-height:50px; align-items:center; justify-content:center; gap:9px; margin-top:1px; border:0; border-radius:9px; background:#2863eb; font-size:14px; font-weight:700; }
+  .transport-save-button:hover:not(:disabled) { background:#1f55d1; }
+  .transport-save-button:disabled { cursor:not-allowed; opacity:.6; }
+  .transport-save-button svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-linecap:round; stroke-linejoin:round; stroke-width:1.8; }
+  .transport-routes-card { margin-top:0; }
+  .transport-routes-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:22px 26px 17px; }
+  .transport-routes-heading h2 { font-size:18px; }
+  .transport-route-count { flex:0 0 auto; padding:6px 10px; border:1px solid #e3eaf3; border-radius:20px; background:#f7f9fc; color:#60728a; font-size:10px; font-weight:700; }
+  .transport-table-wrap { overflow-x:auto; }
+  .transport-routes-table { width:100%; border-collapse:collapse; }
+  .transport-routes-table th { padding:13px 20px; background:#f7f9fc; color:#6c7f99; font-size:10px; font-weight:700; letter-spacing:.45px; text-align:left; text-transform:uppercase; white-space:nowrap; }
+  .transport-routes-table td { padding:17px 20px; border-bottom:1px solid #e6ebf2; color:#63758f; font-size:13px; white-space:nowrap; }
+  .transport-routes-table tbody tr:last-child td { border-bottom:0; }
+  .transport-routes-table tbody tr:hover { background:#fbfcfe; }
+  .transport-route-name { color:#253b59; font-size:14px; font-weight:650; }
+  .transport-fee-value { color:#172b49 !important; font-size:14px !important; font-weight:700; font-variant-numeric:tabular-nums; }
+  .transport-session-name { color:#65778f; }
+  .transport-status { display:inline-flex; padding:5px 9px; border-radius:20px; background:#f1f4f8; color:#718096; font-size:9px; font-weight:700; }
+  .transport-status.is-current { background:#e9f7ef; color:#19804a; }
+  .transport-route-actions { display:flex; align-items:center; gap:5px; }
+  .transport-route-actions form { margin:0; }
+  .transport-action-button { display:grid; width:30px; height:30px; place-items:center; padding:0; border:0; border-radius:6px; background:transparent; color:#7e91aa; }
+  .transport-action-button:hover { background:#eef4fc; color:#2863cf; }
+  .transport-action-button.is-delete:hover { background:#fff0f0; color:#c83c48; }
+  .transport-action-button svg { width:17px; height:17px; fill:none; stroke:currentColor; stroke-linecap:round; stroke-linejoin:round; stroke-width:1.8; }
+  .transport-form-alert { margin:16px 0 0; font-size:11px; }
+  .transport-cancel-edit { justify-self:center; color:#64758c; font-size:11px; text-decoration:none; }
+  .transport-cancel-edit:hover { color:#2863cf; text-decoration:underline; }
+  .transport-empty-state { padding:54px 20px !important; text-align:center; white-space:normal !important; }
+  .transport-empty-state > * { display:block; }
+  .transport-empty-state strong { margin-top:12px; color:#314762; font-size:13px; }
+  .transport-empty-state > span:last-child { margin-top:4px; color:#8794a5; font-size:11px; }
+  .transport-empty-icon { display:grid; width:42px; height:42px; place-items:center; margin:0 auto; border-radius:12px; background:#f0f5fc; }
+  .transport-empty-icon svg { width:22px; height:22px; fill:none; stroke:#7790b1; stroke-linecap:round; stroke-linejoin:round; stroke-width:1.5; }
+  @media(max-width:1100px) {
+    .transport-setup-grid { grid-template-columns:minmax(280px,.8fr) minmax(0,1.4fr); gap:18px; }
+    .transport-form-card { padding:23px; }
+    .transport-routes-table th,.transport-routes-table td { padding-right:14px; padding-left:14px; }
+  }
+  @media(max-width:800px) {
+    .fee-page-shell.setup-page .fee-page-main { padding-right:22px; padding-left:22px; }
+    .transport-page-header { margin-right:-22px; margin-left:-22px; padding-right:22px; padding-left:22px; }
+    .transport-setup-grid { grid-template-columns:1fr; gap:16px; }
+    .transport-form-card { padding:22px; }
+    .transport-page-header { margin-bottom:22px; }
+  }
+  @media(max-width:520px) {
+    .fee-page-shell.setup-page .fee-page-main { padding-right:14px; padding-left:14px; }
+    .transport-page-header { min-height:66px; margin-right:-14px; margin-left:-14px; padding-right:14px; padding-left:14px; }
+    .transport-page-header h1 { font-size:19px; }
+    .transport-header-date { gap:7px; font-size:11px; }
+    .transport-header-date svg { width:16px; height:16px; }
+    .transport-form-card { padding:19px; }
+    .transport-routes-heading { align-items:flex-start; padding:18px 17px 14px; }
+    .transport-routes-heading h2 { font-size:16px; }
+    .transport-routes-table { min-width:620px; }
+    .transport-routes-table th,.transport-routes-table td { padding:13px 14px; }
+  }
+</style>
 <%- include('../partials/footer') %>

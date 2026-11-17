@@ -4,12 +4,14 @@ const Student = require('../../model/billingschema/Student');
 
 const AcademicSession = require('../../model/billingschema/AcademicSession');
 const FeeStructure = require('../../model/billingschema/feestructureschema');
+const Invoice = require('../../model/billingschema/Invoice');
 const School = require('../../model/billingschema/School');
 const Transport = require('../../model/billingschema/transport');
 const Discount = require('../../model/billingschema/Discount');
 const OpeningBalance = require('../../model/billingschema/OpeningBalance');
 const feeheadModel = require('../../model/billingschema/feeheadschema').feeheadModel;
 const { importOpeningBalance } = require('../../services/billingService');
+const bs = require('../../utils/bikramSambat');
 
 const loadOpeningBalanceData = async () => {
   const [students, openingBalances] = await Promise.all([
@@ -127,25 +129,245 @@ exports.createFeeCategory = async (req, res) => {
 // ---- Academic sessions ----
 exports.listSessions = async (req, res) => {
   const sessions = await AcademicSession.find().sort({ startDateAD: -1 });
-  res.render('setup/sessions', { sessions });
+  res.render('setup/sessions', {
+    sessions,
+    editSession: null,
+    error: '',
+    success: req.query.updated === '1'
+      ? 'Academic session updated successfully.'
+      : req.query.deleted === '1' ? 'Academic session deleted successfully.' : '',
+    formValues: {},
+    toBSDate: value => bs.ADToBS(value),
+  });
+};
+
+exports.editSessionForm = async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Academic session not found.');
+  const [sessions, editSession] = await Promise.all([
+    AcademicSession.find().sort({ startDateAD: -1 }),
+    AcademicSession.findById(req.params.id),
+  ]);
+  if (!editSession) return res.status(404).send('Academic session not found.');
+  return res.render('setup/sessions', {
+    sessions,
+    editSession,
+    error: '',
+    success: '',
+    formValues: {},
+    toBSDate: value => bs.ADToBS(value),
+  });
+};
+
+const getValidatedSessionInput = body => {
+  const titleBS = String(body.titleBS || '').trim();
+  const startDateBS = String(body.startDateBS || '').trim();
+  const endDateBS = String(body.endDateBS || '').trim();
+
+  if (!/^\d{4}$/.test(titleBS)) throw new Error('Enter the academic year as a four-digit BS year.');
+  const startDateADText = bs.BSToAD(startDateBS);
+  const endDateADText = bs.BSToAD(endDateBS);
+  if (!startDateADText || !endDateADText) throw new Error('Enter valid BS start and end dates.');
+  const startDateAD = new Date(`${startDateADText}T00:00:00.000Z`);
+  const endDateAD = new Date(`${endDateADText}T00:00:00.000Z`);
+  if (startDateAD > endDateAD) throw new Error('The end date must be on or after the start date.');
+
+  return {
+    titleBS,
+    startDateAD,
+    endDateAD,
+    isActive: String(body.isActive || '') === 'true',
+  };
 };
 
 exports.createSession = async (req, res) => {
-  const { titleBS, startDateAD, endDateAD,isActive } = req.body;
-  await AcademicSession.create({ titleBS, startDateAD, endDateAD, isActive });
-  res.redirect('/setup/sessions');
+  try {
+    const input = getValidatedSessionInput(req.body);
+    const mongoSession = await mongoose.startSession();
+    try {
+      await mongoSession.withTransaction(async () => {
+        if (input.isActive) {
+          await AcademicSession.updateMany({}, { $set: { isActive: false } }, { session: mongoSession });
+        }
+        await AcademicSession.create([input], { session: mongoSession });
+      });
+    } finally {
+      await mongoSession.endSession();
+    }
+    return res.redirect('/setup/sessions');
+  } catch (error) {
+    const sessions = await AcademicSession.find().sort({ startDateAD: -1 });
+    return res.status(400).render('setup/sessions', {
+      sessions,
+      editSession: null,
+      error: error.message,
+      success: '',
+      formValues: req.body,
+      toBSDate: value => bs.ADToBS(value),
+    });
+  }
+};
+
+exports.updateSession = async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Academic session not found.');
+  try {
+    const input = getValidatedSessionInput(req.body);
+    const mongoSession = await mongoose.startSession();
+    try {
+      await mongoSession.withTransaction(async () => {
+        const session = await AcademicSession.findById(req.params.id).session(mongoSession);
+        if (!session) throw new Error('Academic session not found.');
+        if (input.isActive) {
+          await AcademicSession.updateMany(
+            { _id: { $ne: session._id } },
+            { $set: { isActive: false } },
+            { session: mongoSession }
+          );
+        }
+        Object.assign(session, input);
+        await session.save({ session: mongoSession });
+      });
+    } finally {
+      await mongoSession.endSession();
+    }
+    return res.redirect('/setup/sessions?updated=1');
+  } catch (error) {
+    const [sessions, editSession] = await Promise.all([
+      AcademicSession.find().sort({ startDateAD: -1 }),
+      AcademicSession.findById(req.params.id),
+    ]);
+    return res.status(400).render('setup/sessions', {
+      sessions,
+      editSession,
+      error: error.message,
+      success: '',
+      formValues: req.body,
+      toBSDate: value => bs.ADToBS(value),
+    });
+  }
+};
+
+exports.deleteSession = async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Academic session not found.');
+  try {
+    const session = await AcademicSession.findById(req.params.id).lean();
+    if (!session) return res.status(404).send('Academic session not found.');
+
+    const [students, invoices, feeStructures, transportFees] = await Promise.all([
+      Student.countDocuments({ academicSession: session._id }),
+      Invoice.countDocuments({ academicSession: session._id }),
+      FeeStructure.countDocuments({ academicSession: session._id }),
+      Transport.countDocuments({ academicSession: session._id }),
+    ]);
+    const dependencies = [
+      students && `${students} student(s)`,
+      invoices && `${invoices} invoice(s)`,
+      feeStructures && `${feeStructures} fee structure(s)`,
+      transportFees && `${transportFees} transport fee(s)`,
+    ].filter(Boolean);
+
+    if (dependencies.length) {
+      const error = `This session cannot be deleted because it is referenced by ${dependencies.join(', ')}.`;
+      const sessions = await AcademicSession.find().sort({ startDateAD: -1 });
+      return res.status(409).render('setup/sessions', {
+        sessions,
+        editSession: null,
+        error,
+        success: '',
+        formValues: {},
+        toBSDate: value => bs.ADToBS(value),
+      });
+    }
+
+    await AcademicSession.deleteOne({ _id: session._id });
+    return res.redirect('/setup/sessions?deleted=1');
+  } catch (error) {
+    console.error('Unable to delete academic session:', error);
+    return res.status(500).send('Unable to delete academic session.');
+  }
 };
 
 exports.listTransportFees = async (req, res) => {
-  const transportFees = await Transport.find().populate('academicSession').sort({ createdAt: -1 });
-  const academicSessions = await AcademicSession.find().sort({ startDateAD: -1 });
-  res.render('setup/transportfee', { transportFees, academicSessions });
+  try {
+    const [transportFees, academicSessions, editRoute] = await Promise.all([
+      Transport.find().populate('academicSession').sort({ createdAt: -1 }),
+      AcademicSession.find().sort({ startDateAD: -1 }),
+      req.params.id && mongoose.isValidObjectId(req.params.id)
+        ? Transport.findById(req.params.id)
+        : Promise.resolve(null),
+    ]);
+    if (req.params.id && !editRoute) return res.status(404).send('Transport route not found.');
+    return res.render('setup/transportfee', {
+      transportFees,
+      academicSessions,
+      editRoute,
+      error: req.query.error || '',
+      success: req.query.saved === '1' ? 'Transport route updated successfully.' : '',
+    });
+  } catch (error) {
+    console.error('Unable to load transport fee setup:', error);
+    return res.status(500).send('Unable to load transport fee setup.');
+  }
 };
 
 exports.createTransportFee = async (req, res) => {
   const { routeName, transportFee, academicSession } = req.body;
-  await Transport.create({ routeName, transportFee: Number(transportFee), academicSession });
-  res.redirect('/setup/transportfee');
+  const amount = Number(transportFee);
+  if (!String(routeName || '').trim() || String(transportFee ?? '').trim() === '' || !Number.isFinite(amount) || amount < 0
+    || !mongoose.isValidObjectId(academicSession)) {
+    return res.status(400).send('Enter a route name, valid non-negative monthly fare, and academic session.');
+  }
+  try {
+    if (!await AcademicSession.exists({ _id: academicSession })) {
+      return res.status(400).send('The selected academic session does not exist.');
+    }
+    await Transport.create({ routeName: String(routeName).trim(), transportFee: amount, academicSession });
+    return res.redirect('/setup/transportfee');
+  } catch (error) {
+    console.error('Unable to create transport route:', error);
+    return res.status(500).send('Unable to save transport route.');
+  }
+};
+
+exports.updateTransportFee = async (req, res) => {
+  const { routeName, transportFee, academicSession } = req.body;
+  const amount = Number(transportFee);
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Transport route not found.');
+  if (!String(routeName || '').trim() || String(transportFee ?? '').trim() === '' || !Number.isFinite(amount) || amount < 0
+    || !mongoose.isValidObjectId(academicSession)) {
+    return res.status(400).send('Enter a route name, valid non-negative monthly fare, and academic session.');
+  }
+  try {
+    if (!await AcademicSession.exists({ _id: academicSession })) {
+      return res.status(400).send('The selected academic session does not exist.');
+    }
+    const route = await Transport.findByIdAndUpdate(
+      req.params.id,
+      { routeName: String(routeName).trim(), transportFee: amount, academicSession },
+      { runValidators: true, new: true }
+    );
+    if (!route) return res.status(404).send('Transport route not found.');
+    return res.redirect('/setup/transportfee?saved=1');
+  } catch (error) {
+    console.error('Unable to update transport route:', error);
+    return res.status(500).send('Unable to update transport route.');
+  }
+};
+
+exports.deleteTransportFee = async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).send('Transport route not found.');
+  try {
+    const route = await Transport.findById(req.params.id).lean();
+    if (!route) return res.status(404).send('Transport route not found.');
+    const assignedStudent = await Student.exists({ transportRoute: route._id });
+    if (assignedStudent) {
+      return res.redirect(`/setup/transportfee?error=${encodeURIComponent('This route is assigned to one or more students. Reassign them before deleting it.')}`);
+    }
+    await Transport.deleteOne({ _id: route._id });
+    return res.redirect('/setup/transportfee');
+  } catch (error) {
+    console.error('Unable to delete transport route:', error);
+    return res.status(500).send('Unable to delete transport route.');
+  }
 };
 
 // discount setup
@@ -198,14 +420,6 @@ exports.createDiscountFee = async (req, res) => {
   res.redirect('/setup/discount');
 };
 
-
-
-
-exports.createSession = async (req, res) => {
-  const { titleBS, startDateAD, endDateAD,isActive } = req.body;
-  await AcademicSession.create({ titleBS, startDateAD, endDateAD, isActive });
-  res.redirect('/setup/sessions');
-};
 
 // ---- Fee structures (amount per session + class + category) ----
 exports.listFeeStructures = async (req, res) => {

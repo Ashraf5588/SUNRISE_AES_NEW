@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'Payroll reports' %></title>
+  <style>
+    :root { --navy:#0b1c3b; --blue:#3978db; --ink:#19243a; --muted:#738098; --line:#e4eaf2; --page:#f4f7fb; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--page); color:var(--ink); font-family:"Segoe UI",Arial,sans-serif; }
+    main { max-width:1500px; margin:auto; padding:28px 30px 48px; }
+    header { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; margin-bottom:20px; }
+    h1 { margin:0; color:var(--navy); font-size:30px; }
+    .eyebrow { margin:0 0 6px; color:var(--blue); font-size:11px; font-weight:800; letter-spacing:1px; text-transform:uppercase; }
+    .muted { color:var(--muted); }
+    .card { padding:18px; border:1px solid var(--line); border-radius:12px; background:#fff; box-shadow:0 10px 24px rgba(13,35,71,.05); margin-bottom:16px; }
+    .filters { display:grid; grid-template-columns:repeat(4,minmax(150px,1fr)); gap:12px; align-items:end; }
+    label { display:block; margin-bottom:5px; color:var(--muted); font-size:11px; font-weight:700; }
+    input,select,button { width:100%; min-height:38px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:white; color:var(--ink); font:inherit; }
+    button,.button { display:inline-flex; justify-content:center; align-items:center; gap:6px; border:0; padding:9px 13px; border-radius:8px; background:var(--navy); color:#fff; font-weight:700; text-decoration:none; cursor:pointer; }
+    .button.light { background:#eaf1fb; color:var(--navy); }
+    .toolbar { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+    .summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+    .metric { padding:12px; border-radius:9px; background:#f6f8fc; }
+    .metric span { display:block; color:var(--muted); font-size:11px; text-transform:capitalize; }
+    .metric strong { display:block; margin-top:5px; color:var(--navy); font-size:17px; }
+    .table-wrap { overflow:auto; }
+    table { width:100%; border-collapse:collapse; white-space:nowrap; font-size:12px; }
+    th,td { padding:10px; border-bottom:1px solid var(--line); text-align:left; }
+    th { color:var(--muted); background:#f8fafd; font-size:10px; text-transform:uppercase; letter-spacing:.5px; }
+    .alert { padding:12px 14px; color:#8a3036; border:1px solid #f3c6cb; background:#fff5f5; border-radius:9px; margin-bottom:16px; }
+    .pagination { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:14px; }
+    @media(max-width:850px) { main { padding:18px 12px 32px; } .filters { grid-template-columns:repeat(2,minmax(0,1fr)); } header { flex-direction:column; } }
+    @media(max-width:520px) { .filters { grid-template-columns:1fr; } }
+    @media print {
+      body { background:#fff; }
+      main { max-width:none; padding:0; }
+      .no-print, header .button { display:none !important; }
+      .card { box-shadow:none; border:0; padding:8px 0; }
+      th { background:#eee !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+      table { font-size:9px; white-space:normal; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <p class="eyebrow">Payroll and finance</p>
+        <h1><%= report?.title || 'Payroll reports' %></h1>
+        <p class="muted"><%= periodLabel || 'Filter and review persisted payroll records.' %></p>
+      </div>
+      <a class="button light no-print" href="/payroll">Payroll dashboard</a>
+    </header>
+
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert"><strong>Report unavailable:</strong> <%= error %></div>
+    <% } %>
+
+    <% if (!printMode) { %>
+      <section class="card no-print">
+        <form method="GET" action="/payroll/reports/<%= report?.key || 'monthly-register' %>">
+          <div class="filters">
+            <div>
+              <label for="report">Report</label>
+              <select id="report" onchange="window.location.href='/payroll/reports/'+this.value">
+                <% (reportKeys || []).forEach(option => { %>
+                  <option value="<%= option.key %>" <%= option.key === report?.key ? 'selected' : '' %>><%= option.title %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div><label for="fiscalYear">Fiscal year</label><input id="fiscalYear" name="fiscalYear" value="<%= filters?.fiscalYear || '' %>" placeholder="e.g. 2082/83"></div>
+            <div><label for="payrollMonth">Payroll month</label><input id="payrollMonth" name="payrollMonth" value="<%= filters?.payrollMonth || '' %>" inputmode="numeric" placeholder="1-12"></div>
+            <div><label for="fromDate">Created / effective from</label><input id="fromDate" name="fromDate" type="date" value="<%= filters?.fromDate || '' %>"></div>
+            <div><label for="toDate">Created / effective to</label><input id="toDate" name="toDate" type="date" value="<%= filters?.toDate || '' %>"></div>
+            <div><label for="employeeSearch">Employee search</label><input id="employeeSearch" name="employeeSearch" value="<%= filters?.employeeSearch || '' %>" placeholder="Name or employee code"></div>
+            <div><label for="department">Department</label><input id="department" name="department" value="<%= filters?.department || '' %>"></div>
+            <div><label for="branch">Branch</label><input id="branch" name="branch" value="<%= filters?.branch || '' %>"></div>
+          </div>
+          <div class="toolbar">
+            <button type="submit">Apply filters</button>
+            <a class="button light" href="/payroll/reports/<%= report?.key || 'monthly-register' %>">Clear</a>
+            <a class="button light" href="/payroll/reports/<%= report?.key || 'monthly-register' %>/export/xls<%= filters ? '?' + new URLSearchParams({fiscalYear: filters.fiscalYear || '', payrollMonth: filters.payrollMonth || '', fromDate: filters.fromDate || '', toDate: filters.toDate || '', employeeSearch: filters.employeeSearch || '', department: filters.department || '', branch: filters.branch || ''}).toString() : '' %>">Excel</a>
+            <a class="button light" href="/payroll/reports/<%= report?.key || 'monthly-register' %>/export/pdf<%= filters ? '?' + new URLSearchParams({fiscalYear: filters.fiscalYear || '', payrollMonth: filters.payrollMonth || '', fromDate: filters.fromDate || '', toDate: filters.toDate || '', employeeSearch: filters.employeeSearch || '', department: filters.department || '', branch: filters.branch || ''}).toString() : '' %>">PDF</a>
+            <a class="button light" target="_blank" href="/payroll/reports/<%= report?.key || 'monthly-register' %>/print<%= filters ? '?' + new URLSearchParams({fiscalYear: filters.fiscalYear || '', payrollMonth: filters.payrollMonth || '', fromDate: filters.fromDate || '', toDate: filters.toDate || '', employeeSearch: filters.employeeSearch || '', department: filters.department || '', branch: filters.branch || ''}).toString() : '' %>">Print</a>
+          </div>
+        </form>
+      </section>
+    <% } %>
+
+    <% if (report?.key === 'statutory-contributions') { %>
+      <div class="card muted">The current payroll item schema stores employee deductions and employer contributions as aggregate totals; it does not persist separate SSF, PF, and CIT amounts. This report therefore shows only recorded aggregates and does not infer statutory breakdowns.</div>
+    <% } %>
+    <% if (report?.key === 'accounting-reconciliation') { %>
+      <div class="card muted">Only posted journal vouchers whose source is a payroll run are included. Runs without a matching posted voucher are reported as unreconciled; no ledger totals are synthesized.</div>
+    <% } %>
+
+    <section class="card">
+      <h2 style="margin:0 0 12px;font-size:15px;">Report totals</h2>
+      <div class="summary">
+        <% Object.entries(summary || {}).forEach(([key, value]) => { %>
+          <div class="metric"><span><%= key.replace(/([A-Z])/g, ' $1') %></span><strong><%= typeof value === 'number' && !['rowCount','runCount','reconciledCount','unreconciledCount'].includes(key) ? 'NPR ' + value.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) : value %></strong></div>
+        <% }) %>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><% (columns || []).forEach(column => { %><th><%= column[1] %></th><% }) %></tr></thead>
+          <tbody>
+            <% if (!rows || !rows.length) { %>
+              <tr><td colspan="<%= Math.max((columns || []).length, 1) %>" class="muted">No matching records.</td></tr>
+            <% } else { %>
+              <% rows.forEach(row => { %>
+                <tr><% columns.forEach(column => { const value = row[column[0]]; %><td><%= typeof value === 'number' ? value.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}) : (value === true ? 'Yes' : value === false ? 'No' : (value ?? '')) %></td><% }) %></tr>
+              <% }) %>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+      <% if (!printMode) { %>
+        <div class="pagination no-print">
+          <span class="muted"><%= pagination?.totalRows || 0 %> rows · Page <%= pagination?.page || 1 %> of <%= pagination?.pageCount || 1 %></span>
+          <div style="display:flex;gap:8px;">
+            <% if ((pagination?.page || 1) > 1) { %>
+              <a class="button light" href="?<%= new URLSearchParams({...filters,page:pagination.page - 1}).toString() %>">Previous</a>
+            <% } %>
+            <% if ((pagination?.page || 1) < (pagination?.pageCount || 1)) { %>
+              <a class="button light" href="?<%= new URLSearchParams({...filters,page:pagination.page + 1}).toString() %>">Next</a>
+            <% } %>
+          </div>
+        </div>
+      <% } %>
+    </section>
+  </main>
+  <% if (printMode) { %><script>window.addEventListener('load', () => window.print());</script><% } %>
+</body>
+</html>

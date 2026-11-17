@@ -16,6 +16,8 @@ const studentSchema = new mongoose.Schema(
       ref: 'AcademicSession',
       required: true,
     },
+    usesSchoolBus: { type: Boolean, default: true },
+    transportRoute: { type: mongoose.Schema.Types.ObjectId, ref: 'Transport', default: null },
     status: {
       type: String,
       enum: ['ACTIVE', 'INACTIVE', 'TRANSFERRED'],

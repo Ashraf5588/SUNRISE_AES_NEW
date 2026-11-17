@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %></title>
+  <link rel="stylesheet" href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css">
+  <style>
+    :root{--navy:#102a52;--blue:#3979d6;--ink:#1d2b42;--muted:#73829a;--line:#e2eaf4;--page:#f5f8fc}
+    *{box-sizing:border-box}body{margin:0;background:var(--page);color:var(--ink);font:14px "Segoe UI",Arial,sans-serif}
+    main{max-width:1450px;margin:0 auto;padding:30px 24px}h1{margin:0;color:var(--navy);font-size:28px}.sub{color:var(--muted);margin:7px 0 0}
+    .panel{border:1px solid var(--line);border-radius:14px;background:#fff;box-shadow:0 8px 24px rgba(24,52,91,.05);padding:21px;margin:18px 0}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.field{display:grid;gap:6px;color:#53647d;font-size:12px;font-weight:700}.field input,.field select{min-height:41px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;color:var(--ink);background:#fff}
+    .full{grid-column:1/-1}.hint{font-weight:400;color:var(--muted);font-size:11px}.submit{min-height:41px;border:0;border-radius:8px;background:var(--navy);color:#fff;font-weight:700;padding:0 16px;margin-top:16px;cursor:pointer}
+    .table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:800px}th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line);white-space:nowrap}th{font-size:10px;color:var(--muted);text-transform:uppercase}td{font-size:12px}
+    .empty{text-align:center;color:var(--muted);padding:25px}.notice{padding:12px;border-radius:9px;background:#fff7e7;color:#755415;font-size:12px;margin:14px 0}
+    @media(max-width:850px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:580px){main{padding:17px 12px}.grid{grid-template-columns:1fr}.full{grid-column:auto}.panel{padding:15px}}
+  </style>
+</head>
+<body>
+  <%- include('feesidenav') %>
+  <main>
+    <h1>Fee receipts</h1><p class="sub">Record student payments through the configured cash or bank ledger. Cashier receipts require accountant review and administrator approval.</p>
+    <section class="panel">
+      <h2 style="margin:0 0 15px;color:#102a52;font-size:17px">Receive payment</h2>
+      <form method="post" action="/fee-payments">
+        <input type="hidden" name="idempotencyKey" value="<%= idempotencyKey %>">
+        <div class="grid">
+          <label class="field">Student invoice<select name="invoiceId" required><option value="">Select an outstanding invoice</option><% invoices.forEach(invoice => { %><option value="<%= invoice._id %>" data-student="<%= invoice.student?._id || '' %>"><%= invoice.student?.name || 'Student' %> · <%= invoice.invoiceNumber %> · due Rs. <%= Number(invoice.balanceDue || 0).toLocaleString('en-IN',{minimumFractionDigits:2}) %></option><% }) %></select></label>
+          <label class="field">Amount (Rs.)<input type="number" name="amount" min="0.01" step="0.01" required></label>
+          <label class="field">Payment method<select name="paymentMethod" id="payment-method" required><option value="CASH">Cash</option><option value="BANK">Bank</option></select></label>
+          <label class="field">Deposit account<select name="depositLedgerId" id="deposit-account" required><option value="">Select account</option><% cashBankAccounts.forEach(account => { const kind = account.ledgerType === 'BANK' ? 'BANK' : account.ledgerType === 'CASH' ? 'CASH' : /bank/i.test(account.group?.name || '') ? 'BANK' : 'CASH'; %><option value="<%= account._id %>" data-kind="<%= kind %>"><%= account.code %> · <%= account.name %></option><% }) %></select></label>
+          <label class="field">Receipt date (BS)<input class="nepali-datepicker" type="text" name="paymentDateBS" value="<%= todayBS %>" placeholder="YYYY-MM-DD" autocomplete="off" required><span class="hint">AD date is derived on the server.</span></label>
+          <label class="field">Reference / cheque no.<input type="text" name="referenceNumber" maxlength="100"></label>
+          <label class="field full">Narration<input type="text" name="remarks" maxlength="500" placeholder="Optional receipt details"></label>
+        </div>
+        <p class="notice">Payment allocation is FIFO across outstanding invoices. Amounts allocated to legacy invoices without a linked GL voucher, and any excess over posted receivables, are credited to the configured Student Advances liability ledger. No historical invoice or receipt is backfilled.</p>
+        <button class="submit" type="submit">Submit receipt</button>
+      </form>
+    </section>
+    <section class="panel">
+      <h2 style="margin:0 0 14px;color:#102a52;font-size:17px">Recent receipts</h2>
+      <% if (payments.length) { %><div class="table-wrap"><table><thead><tr><th>Receipt</th><th>Student</th><th>Date BS</th><th>Method</th><th>Amount</th><th>Status</th></tr></thead><tbody><% payments.forEach(payment => { %><tr><td><a href="/fee-receipts/<%= payment._id %>"><%= payment.receiptNumber %></a></td><td><%= payment.student?.name || 'Student' %></td><td><%= payment.paymentDateBS || '-' %></td><td><%= payment.mode %></td><td>Rs. <%= Number(payment.amount || 0).toLocaleString('en-IN',{minimumFractionDigits:2}) %></td><td><%= payment.isReversed ? 'Reversed' : 'Posted' %></td></tr><% }) %></tbody></table></div><% } else { %><div class="empty">No receipts have been recorded.</div><% } %>
+    </section>
+  </main>
+  <script>
+    const method=document.getElementById('payment-method'),deposit=document.getElementById('deposit-account');
+    function filterAccounts(){Array.from(deposit.options).forEach(option=>{option.hidden=Boolean(option.value)&&option.dataset.kind!==method.value});if(deposit.selectedOptions[0]?.dataset.kind!==method.value)deposit.value=''}
+    method.addEventListener('change',filterAccounts);filterAccounts();
+  </script>
+  <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js"></script>
+  <script>document.querySelectorAll('.nepali-datepicker').forEach(input=>{if(typeof input.nepaliDatePicker==='function')input.nepaliDatePicker({dateFormat:'YYYY-MM-DD',language:'en'})});</script>
+</body>
+</html>

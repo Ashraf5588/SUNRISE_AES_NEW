@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title || 'Payroll structures' %></title>
+  <style>
+    body { margin:0; font-family:Segoe UI, Arial, sans-serif; background:#f4f7fb; color:#17233b; }
+    .container { max-width:1200px; margin:0 auto; padding:32px 20px 40px; }
+    .card { background:#fff; border:1px solid #e5ebf4; border-radius:12px; box-shadow:0 12px 24px rgba(15,31,62,.05); }
+    .header { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:20px; }
+    h1 { margin:0; font-size:32px; }
+    h2 { margin:0; font-size:20px; }
+    .panel { padding:20px; }
+    .settings { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:14px; align-items:end; margin:18px 0; }
+    label { display:block; font-size:12px; color:#66768f; margin-bottom:6px; font-weight:600; }
+    input, select, button { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid #dfe7f2; border-radius:8px; font:inherit; }
+    button { background:#0d2854; color:#fff; border:none; cursor:pointer; font-weight:700; }
+    button.secondary { background:#eef4ff; color:#0d2854; }
+    .salary-control { display:flex; gap:8px; }
+    .salary-control input { min-width:0; }
+    .salary-control button { width:auto; white-space:nowrap; }
+    .table-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; }
+    table { min-width:860px; }
+    th, td { padding:12px 10px; border-top:1px solid #edf1f6; text-align:left; }
+    th { font-size:11px; letter-spacing:.7px; text-transform:uppercase; color:#71809b; }
+    td { vertical-align:middle; }
+    td.salary-cell { min-width:190px; }
+    td.salary-cell input { max-width:220px; }
+    th.component-heading { min-width:145px; }
+    th.component-earning { color:#16734f; background:#eaf7f0; }
+    th.component-deduction { color:#a54249; background:#fff0f0; }
+    .component-heading small { display:block; margin-top:5px; font-size:9px; letter-spacing:.3px; }
+    .component-earning .component-kind { color:#398363; }
+    .component-deduction .component-kind { color:#bd656a; }
+    td.component-cell { min-width:150px; }
+    td.component-earning input { border-color:#c9e6d5; background:#fbfffc; }
+    td.component-deduction input { border-color:#f0d0d1; background:#fffafa; }
+    .component-input { display:flex; align-items:center; gap:6px; }
+    .component-input input { min-width:85px; max-width:125px; }
+    .component-unit { color:#71809b; font-size:11px; white-space:nowrap; }
+    .component-kind { display:block; margin-top:5px; font-size:9px; letter-spacing:.3px; color:#8290a5; }
+    .muted { color:#71809b; font-size:13px; }
+    .alert { margin-bottom:18px; border-radius:10px; padding:12px 14px; background:#fff5f5; border:1px solid #f7cdd2; color:#8a3036; }
+    .alert.success { background:#effaf3; border-color:#c8ecd3; color:#21633b; }
+    .actions { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-top:18px; }
+    .actions button { width:auto; min-width:190px; }
+    @media (max-width:760px) {
+      .container { padding:20px 12px 32px; }
+      .header { align-items:flex-start; flex-direction:column; }
+      h1 { font-size:26px; }
+      .settings { grid-template-columns:1fr 1fr; }
+      .panel { padding:16px 12px; }
+    }
+    @media (max-width:460px) {
+      .settings { grid-template-columns:1fr; }
+      .salary-control { flex-direction:column; }
+      .salary-control button { width:100%; }
+      .actions { align-items:stretch; flex-direction:column; }
+      .actions button { width:100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <p style="margin:0 0 8px; color:#3b82f6; font-size:11px; letter-spacing:1.2px; text-transform:uppercase; font-weight:700;">Finance and HR</p>
+        <h1>Salary structure management</h1>
+      </div>
+      <a href="/payroll" style="display:inline-flex; align-items:center; padding:10px 16px; background:#eef4ff; color:#0d2854; border-radius:8px; text-decoration:none; font-weight:700;">Back to payroll</a>
+    </div>
+
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert"><strong>Alert:</strong> <%= error %></div>
+    <% } %>
+    <% if (typeof saved !== 'undefined' && saved) { %>
+      <div class="alert success">Salary structures saved for fiscal year <%= fiscalYear %>.</div>
+    <% } %>
+
+    <div class="card panel">
+      <h2>Employee basic salaries</h2>
+      <p class="muted">Set the fiscal year and effective date once. Earnings and deduction titles are columns below, prefilled from payroll setup; adjust any employee’s values before saving.</p>
+      <form id="salaryStructuresForm" method="POST" action="/payroll/structures">
+        <div class="settings">
+          <div>
+            <label for="fiscalYear">Fiscal year</label>
+            <select id="fiscalYear" name="fiscalYear" required>
+              <% (fiscalYears || []).forEach(year => { %>
+                <option value="<%= year %>" <%= String(year) === String(fiscalYear) ? 'selected' : '' %>><%= year %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div>
+            <label for="effectiveFrom">Effective from</label>
+            <input id="effectiveFrom" name="effectiveFrom" type="date" value="<%= effectiveFrom || '' %>" required />
+          </div>
+          <div>
+            <label for="payrollCycle">Payroll cycle</label>
+            <select id="payrollCycle" name="payrollCycle">
+              <option value="MONTHLY" <%= payrollCycle === 'MONTHLY' ? 'selected' : '' %>>Monthly</option>
+              <option value="BIWEEKLY" <%= payrollCycle === 'BIWEEKLY' ? 'selected' : '' %>>Biweekly</option>
+              <option value="WEEKLY" <%= payrollCycle === 'WEEKLY' ? 'selected' : '' %>>Weekly</option>
+            </select>
+          </div>
+          <div>
+            <label for="defaultBasicSalary">Default basic salary (NPR)</label>
+            <div class="salary-control">
+              <input id="defaultBasicSalary" name="defaultBasicSalary" type="number" step="0.01" min="0" placeholder="Optional" />
+              <button class="secondary" id="applyDefault" type="button">Apply to all</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Employee ID</th>
+                <th>Department</th>
+                <th>Basic salary (NPR)</th>
+                <% (components || []).forEach(component => { %>
+                  <th class="component-heading <%= ['DEDUCTION','TAX'].includes(component.category) ? 'component-deduction' : 'component-earning' %>">
+                    <%= component.name || component.code %>
+                    <small class="component-kind"><%= ['DEDUCTION','TAX'].includes(component.category) ? 'DEDUCTION' : 'EARNING' %> · <%= component.type === 'PERCENT' ? 'RATE (%)' : 'NPR' %></small>
+                  </th>
+                <% }) %>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (!employees || !employees.length) { %>
+                <tr><td colspan="<%= 5 + (components || []).length %>">No employees found.</td></tr>
+              <% } else { %>
+                <% employees.forEach((employee, index) => { %>
+                  <tr>
+                    <td><%= employee.staffName || 'Employee' %></td>
+                    <td>
+                      <%= employee.employeeCode || '—' %>
+                      <input type="hidden" name="employees[<%= index %>][employeeId]" value="<%= employee._id %>" />
+                      <input type="hidden" name="employees[<%= index %>][componentValuesJson]" value="{}" data-component-values-for="<%= index %>" />
+                    </td>
+                    <td><%= employee.department || '—' %></td>
+                    <td class="salary-cell">
+                      <input
+                        type="number"
+                        name="employees[<%= index %>][basicSalary]"
+                        value="<%= employee.basicSalary === '' ? '' : employee.basicSalary %>"
+                        min="0"
+                        step="0.01"
+                        aria-label="Basic salary for <%= employee.staffName %>"
+                        placeholder="Use default salary"
+                      />
+                    </td>
+                    <% (components || []).forEach(component => { %>
+                      <% const componentValue = employee.componentValues ? employee.componentValues[String(component._id)] : undefined; %>
+                      <td class="component-cell <%= ['DEDUCTION','TAX'].includes(component.category) ? 'component-deduction' : 'component-earning' %>">
+                        <div class="component-input">
+                          <input
+                            type="number"
+                            value="<%= componentValue ?? (component.type === 'PERCENT' ? component.rate : component.amount) ?? 0 %>"
+                            min="0"
+                            step="0.01"
+                            data-component-value
+                            data-employee-index="<%= index %>"
+                            data-component-id="<%= component._id %>"
+                            aria-label="<%= component.name %> for <%= employee.staffName %>"
+                          />
+                          <span class="component-unit"><%= component.type === 'PERCENT' ? '%' : 'NPR' %></span>
+                        </div>
+                      </td>
+                    <% }) %>
+                    <td><%= employee.structureStatus || 'Not set' %></td>
+                  </tr>
+                <% }) %>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+        <div class="actions">
+          <span class="muted"><%= (employees || []).length %> employee(s) listed. Per-employee values override the default.</span>
+          <button type="submit">Save salaries for all employees</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <script>
+    function applyDefaultSalary() {
+      const defaultSalary = document.getElementById('defaultBasicSalary').value;
+      if (defaultSalary === '') return;
+      document.querySelectorAll('input[name$="[basicSalary]"]').forEach(function (input) {
+        input.value = defaultSalary;
+      });
+    }
+    document.getElementById('applyDefault').addEventListener('click', applyDefaultSalary);
+    document.getElementById('defaultBasicSalary').addEventListener('input', applyDefaultSalary);
+    document.getElementById('salaryStructuresForm').addEventListener('submit', function () {
+      document.querySelectorAll('[data-component-values-for]').forEach(function (target) {
+        const values = {};
+        document.querySelectorAll('[data-component-value][data-employee-index="' + target.dataset.componentValuesFor + '"]')
+          .forEach(function (input) {
+            values[input.dataset.componentId] = input.value;
+          });
+        target.value = JSON.stringify(values);
+      });
+    });
+  </script>
+</body>
+</html>

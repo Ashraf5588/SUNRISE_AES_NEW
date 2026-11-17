@@ -1,33 +1,246 @@
-<%- include('../partials/head', { title: 'Receipt ' + payment.receiptNumber }) %>
-<div class="fee-page-shell"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container mt-4">
-  <div class="d-flex justify-content-end no-print mb-3">
-    <button class="btn btn-primary" onclick="window.print()">Print</button>
-  </div>
-  <div class="card p-4">
-    <div class="text-center mb-3">
-      <h5>Payment Receipt</h5>
-    </div>
-    <p class="mb-1"><strong>Receipt No:</strong> <%= payment.receiptNumber %></p>
-    <p class="mb-1"><strong>Date:</strong> <%= payment.paymentDateBS %> BS (<%= payment.paymentDateAD.toDateString() %>)</p>
-    <p class="mb-1"><strong>Received From:</strong> <%= payment.student.name %> (<%= payment.student.studentCode %>)</p>
-    <p class="mb-1"><strong>Mode:</strong> <%= payment.mode %></p>
-    <p class="mb-3"><strong>Amount:</strong> Rs <%= payment.amount.toFixed(2) %></p>
+<%- include('../partials/head', { title: 'Receipt ' + payment.receiptNumber, setupStylesheet: true }) %>
+<%- include('../partials/navbar') %>
+<style>
+  .receipt-workspace { max-width: 1050px; }
+  .receipt-toolbar {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 20px;
+  }
+  .receipt-toolbar h1 { margin: 0; color: #102a52; font-size: 27px; font-weight: 800; }
+  .receipt-toolbar p { margin: 6px 0 0; color: #73829a; font-size: 12px; }
+  .receipt-toolbar-actions { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+  .receipt-print-choice { display: grid; gap: 5px; color: #53647d; font-size: 10px; font-weight: 750; }
+  .receipt-print-choice select {
+    min-width: 220px; min-height: 38px; padding: 7px 10px;
+    border: 1px solid #dfe7f1; border-radius: 8px; background: #fff; color: #1d2b42;
+    font: inherit; font-size: 11px;
+  }
+  .receipt-screen-card {
+    max-width: 850px; margin: 0 auto; padding: 25px;
+    border: 1px solid #e2eaf4; border-radius: 14px; background: #fff;
+    box-shadow: 0 12px 32px rgba(24, 52, 91, .08);
+  }
+  .receipt-copy { position: relative; display: flex; flex-direction: column; min-width: 0; }
+  .receipt-paper-heading {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 14px;
+    padding-bottom: 16px; border-bottom: 2px solid #173b6d;
+  }
+  .receipt-school-name { margin: 0; color: #102a52; font-size: 19px; font-weight: 850; line-height: 1.2; }
+  .receipt-school-meta { margin: 4px 0 0; color: #6b7890; font-size: 10px; line-height: 1.5; }
+  .receipt-brand-mark {
+    display: grid; flex: 0 0 38px; width: 38px; height: 38px; place-items: center;
+    border-radius: 11px; background: #edf4ff; color: #315fae; font-size: 13px; font-weight: 900;
+  }
+  .receipt-document-title {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin: 17px 0 13px;
+  }
+  .receipt-document-title h2 { margin: 0; color: #102a52; font-size: 16px; font-weight: 850; }
+  .receipt-copy-label {
+    padding: 5px 8px; border: 1px solid #dfe9f8; border-radius: 20px;
+    background: #f3f7fd; color: #315fae; font-size: 8px; font-weight: 850;
+    letter-spacing: .55px; text-transform: uppercase; white-space: nowrap;
+  }
+  .receipt-number-line { margin: 0; color: #60718a; font-size: 10px; }
+  .receipt-number-line strong { color: #1d2b42; font-variant-numeric: tabular-nums; }
+  .receipt-details-grid {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px;
+    margin: 14px 0;
+  }
+  .receipt-detail {
+    min-width: 0; padding: 9px 11px; border: 1px solid #e8edf4; border-radius: 8px; background: #fbfcfe;
+  }
+  .receipt-detail span { display: block; margin-bottom: 4px; color: #77869b; font-size: 8px; font-weight: 750; letter-spacing: .4px; text-transform: uppercase; }
+  .receipt-detail strong { display: block; overflow-wrap: anywhere; color: #263b57; font-size: 11px; font-weight: 750; }
+  .receipt-amount-detail { border-color: #cfe7df; background: #f1faf6; }
+  .receipt-amount-detail strong { color: #147253; font-size: 16px; font-variant-numeric: tabular-nums; }
+  .receipt-reversed {
+    margin: 12px 0; padding: 8px 10px; border: 1px solid #f0c5c9; border-radius: 7px;
+    background: #fff3f3; color: #a93640; font-size: 10px; font-weight: 800;
+  }
+  .receipt-allocation-heading { margin: 12px 0 7px; color: #263b57; font-size: 10px; font-weight: 850; }
+  .receipt-allocation-table { width: 100%; border-collapse: collapse; }
+  .receipt-allocation-table th,
+  .receipt-allocation-table td { padding: 7px 8px; border-bottom: 1px solid #e8edf4; text-align: left; font-size: 9px; }
+  .receipt-allocation-table th { background: #f5f8fc; color: #65748b; font-size: 8px; letter-spacing: .4px; text-transform: uppercase; }
+  .receipt-allocation-table .receipt-money { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .receipt-no-allocation { padding: 10px 0; color: #77869b; font-size: 9px; }
+  .receipt-notes { margin: 11px 0 0; color: #64748b; font-size: 9px; line-height: 1.5; overflow-wrap: anywhere; }
+  .receipt-signatures {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 35px; margin-top: auto; padding-top: 24px;
+  }
+  .receipt-signature { padding-top: 6px; border-top: 1px solid #aeb9c8; color: #68778c; font-size: 8px; }
+  .receipt-footer { display: flex; justify-content: space-between; gap: 12px; margin-top: 12px; color: #8a96a8; font-size: 8px; }
+  .receipt-duplicate-copy { display: none; }
+  @media(max-width: 700px) {
+    .receipt-toolbar { align-items: stretch; flex-direction: column; }
+    .receipt-toolbar-actions { align-items: stretch; flex-direction: column; }
+    .receipt-toolbar-actions .btn, .receipt-print-choice select { width: 100%; }
+    .receipt-screen-card { padding: 18px; }
+  }
+  @page { size: A4 portrait; margin: 8mm; }
+  @media print {
+    html, body { width: 100%; height: auto; margin: 0 !important; background: #fff !important; }
+    body * { visibility: hidden !important; }
+    .receipt-print-root, .receipt-print-root * { visibility: visible !important; }
+    .fee-sidebar, .fee-sidebar-scrim, .fee-nav-trigger, .receipt-toolbar, .no-print { display: none !important; }
+    .fee-page-shell, .fee-page-main, .receipt-workspace, .receipt-screen-card, .receipt-print-root {
+      display: block !important; width: 100% !important; max-width: none !important; margin: 0 !important;
+      padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: #fff !important;
+      box-shadow: none !important;
+    }
+    .receipt-screen-card { height: auto !important; }
+    .receipt-copy {
+      box-sizing: border-box; height: 140mm; max-height: 140mm; overflow: hidden;
+      padding: 7mm 8mm; border: 1px solid #aeb9c8; border-radius: 2mm; break-inside: avoid;
+      page-break-inside: avoid; color: #111;
+    }
+    .receipt-copy + .receipt-copy { margin-top: 0; }
+    .receipt-paper-heading { padding-bottom: 3mm; }
+    .receipt-school-name { font-size: 15pt; }
+    .receipt-school-meta { font-size: 7.5pt; }
+    .receipt-brand-mark { width: 9mm; height: 9mm; flex-basis: 9mm; border-radius: 2mm; }
+    .receipt-document-title { margin: 3mm 0 2mm; }
+    .receipt-document-title h2 { font-size: 12pt; }
+    .receipt-copy-label { font-size: 6.5pt; }
+    .receipt-number-line { font-size: 7.5pt; }
+    .receipt-details-grid { gap: 2mm; margin: 2.5mm 0; }
+    .receipt-detail { padding: 2mm 2.5mm; border-radius: 1.5mm; }
+    .receipt-detail span { margin-bottom: 1mm; font-size: 6.5pt; }
+    .receipt-detail strong { font-size: 8pt; }
+    .receipt-amount-detail strong { font-size: 11pt; }
+    .receipt-reversed { margin: 2mm 0; padding: 1.5mm 2mm; }
+    .receipt-allocation-heading { margin: 2mm 0 1mm; font-size: 8pt; }
+    .receipt-allocation-table th, .receipt-allocation-table td { padding: 1.5mm 2mm; font-size: 7pt; }
+    .receipt-allocation-table th { font-size: 6pt; }
+    .receipt-no-allocation, .receipt-notes { font-size: 7pt; }
+    .receipt-signatures { gap: 15mm; padding-top: 6mm; }
+    .receipt-signature, .receipt-footer { font-size: 6.5pt; }
+    .receipt-footer { margin-top: 2mm; }
+    body[data-receipt-copies="2"] .receipt-copy { height: 139mm; max-height: 139mm; }
+    body[data-receipt-copies="2"] .receipt-duplicate-copy {
+      display: flex !important; margin-top: 1mm; border-top-style: dashed;
+    }
+  }
+</style>
 
-    <h6>Applied To</h6>
-    <table class="table table-sm table-bordered">
-      <thead><tr><th>Invoice #</th><th class="text-end">Amount Applied</th></tr></thead>
-      <tbody>
-        <% payment.allocations.forEach(a => { %>
-        <tr>
-          <td><%= a.invoice ? a.invoice.invoiceNumber : '-' %></td>
-          <td class="text-end"><%= a.amountApplied.toFixed(2) %></td>
-        </tr>
+<div class="fee-page-shell setup-page receipt-page-shell">
+  <%- include('../billingfirst/feesidenav') %>
+  <main class="fee-page-main">
+    <div class="container receipt-workspace">
+      <header class="receipt-toolbar no-print">
+        <div>
+          <p class="setup-eyebrow">Billing · Payment</p>
+          <h1>Payment receipt</h1>
+          <p>Review the receipt details or print one half-page copy or two copies on one A4 sheet.</p>
+        </div>
+        <div class="receipt-toolbar-actions">
+          <label class="receipt-print-choice" for="receiptCopies">
+            Print layout
+            <select id="receiptCopies">
+              <option value="1">One receipt · half A4</option>
+              <option value="2">Two copies · one A4 sheet</option>
+            </select>
+          </label>
+          <a class="btn btn-outline-primary" href="/fee-payments">Back to receipts</a>
+          <button class="btn btn-primary" type="button" id="printReceipt">Print receipt</button>
+        </div>
+      </header>
+
+      <section class="receipt-screen-card receipt-print-root" aria-label="Payment receipt preview">
+        <% [0, 1].forEach(copyIndex => { %>
+          <article class="receipt-copy <%= copyIndex === 1 ? 'receipt-duplicate-copy' : '' %>">
+            <header class="receipt-paper-heading">
+              <div>
+                <h2 class="receipt-school-name"><%= school?.name || 'School' %></h2>
+                <% if (school?.address || school?.phone || school?.panNumber) { %>
+                  <p class="receipt-school-meta">
+                    <%= school?.address || '' %>
+                    <% if (school?.phone) { %><%= school?.address ? ' · ' : '' %>Phone: <%= school.phone %><% } %>
+                    <% if (school?.panNumber) { %><%= school?.address || school?.phone ? ' · ' : '' %>PAN: <%= school.panNumber %><% } %>
+                  </p>
+                <% } %>
+              </div>
+              <div class="receipt-brand-mark" aria-hidden="true">R</div>
+            </header>
+
+            <div class="receipt-document-title">
+              <h2>Official payment receipt</h2>
+              <span class="receipt-copy-label"><%= payment.isReversed ? 'Reversed receipt' : copyIndex === 1 ? 'Office copy' : 'Parent copy' %></span>
+            </div>
+            <p class="receipt-number-line">Receipt no. <strong><%= payment.receiptNumber %></strong></p>
+
+            <% if (payment.isReversed) { %>
+              <div class="receipt-reversed">This receipt has been reversed<%= payment.reversalReason ? `: ${payment.reversalReason}` : '.' %></div>
+            <% } %>
+
+            <section class="receipt-details-grid" aria-label="Receipt details">
+              <div class="receipt-detail">
+                <span>Received from</span>
+                <strong><%= payment.student?.name || 'Student' %><%= payment.student?.studentCode ? ` · ${payment.student.studentCode}` : '' %></strong>
+              </div>
+              <div class="receipt-detail receipt-amount-detail">
+                <span>Amount received</span>
+                <strong>Rs. <%= Number(payment.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></strong>
+              </div>
+              <div class="receipt-detail">
+                <span>Payment date</span>
+                <strong><%= payment.paymentDateBS || '-' %> BS<%= payment.paymentDateAD ? ` · ${new Date(payment.paymentDateAD).toLocaleDateString('en-GB')}` : '' %></strong>
+              </div>
+              <div class="receipt-detail">
+                <span>Payment method</span>
+                <strong><%= payment.mode || '-' %><%= payment.depositLedger?.name ? ` · ${payment.depositLedger.name}` : '' %></strong>
+              </div>
+            </section>
+
+            <h3 class="receipt-allocation-heading">Invoice allocation</h3>
+            <% if (payment.allocations?.length) { %>
+              <table class="receipt-allocation-table">
+                <thead><tr><th>Invoice</th><th class="receipt-money">Amount applied (Rs.)</th></tr></thead>
+                <tbody>
+                  <% payment.allocations.forEach(allocation => { %>
+                    <tr>
+                      <td><%= allocation.invoice?.invoiceNumber || 'Invoice reference unavailable' %></td>
+                      <td class="receipt-money"><%= Number(allocation.amountApplied || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            <% } else { %>
+              <p class="receipt-no-allocation">This receipt is recorded as an advance and is not allocated to an invoice yet.</p>
+            <% } %>
+
+            <% if (payment.referenceNumber) { %><p class="receipt-notes"><strong>Reference:</strong> <%= payment.referenceNumber %></p><% } %>
+            <% if (payment.remarks) { %><p class="receipt-notes"><strong>Remarks:</strong> <%= payment.remarks %></p><% } %>
+
+            <div class="receipt-signatures">
+              <div class="receipt-signature">Received by<%= payment.collectedBy ? ` · ${payment.collectedBy}` : '' %></div>
+              <div class="receipt-signature">Payer signature</div>
+            </div>
+            <footer class="receipt-footer">
+              <span>Thank you for your payment.</span>
+              <span><%= copyIndex === 1 ? 'Office copy' : 'Parent copy' %></span>
+            </footer>
+          </article>
         <% }) %>
-      </tbody>
-    </table>
-    <% if (payment.remarks) { %><p class="text-muted mb-1">Remarks: <%= payment.remarks %></p><% } %>
-    <p class="text-muted">Collected by: <%= payment.collectedBy %></p>
-  </div>
+      </section>
+    </div>
+  </main>
 </div>
- </main></div>
+<script>
+  (() => {
+    const copies = document.getElementById('receiptCopies');
+    const printButton = document.getElementById('printReceipt');
+    printButton.addEventListener('click', () => {
+      document.body.dataset.receiptCopies = copies.value;
+      window.print();
+    });
+    window.addEventListener('afterprint', () => {
+      delete document.body.dataset.receiptCopies;
+    });
+  })();
+</script>
 <%- include('../partials/footer') %>

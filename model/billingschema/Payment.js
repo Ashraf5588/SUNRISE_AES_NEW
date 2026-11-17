@@ -24,8 +24,17 @@ const paymentSchema = new mongoose.Schema(
       enum: ['CASH', 'BANK', 'ESEWA', 'KHALTI', 'CHEQUE'],
       required: true,
     },
+    depositLedger: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountLedger', default: null },
+    journalVoucher: { type: mongoose.Schema.Types.ObjectId, ref: 'JournalVoucher', default: null },
+    idempotencyKey: { type: String, trim: true, sparse: true, unique: true },
+    referenceNumber: { type: String, trim: true, default: '' },
+    advanceAmount: { type: Number, min: 0, default: 0 },
+    advanceApplied: { type: Number, min: 0, default: 0 },
+    // Amount allocated to legacy invoices that have no General Ledger posting.
+    unmappedReceivableAmount: { type: Number, min: 0, default: 0 },
     allocations: [allocationSchema],
     collectedBy: String,
+    collectedByUser: { type: mongoose.Schema.Types.ObjectId, ref: 'users', default: null },
     remarks: String,
     // Same rule as Invoice: never delete a receipt. Reverse it with a
     // reason, and the ledger gets a correcting entry.

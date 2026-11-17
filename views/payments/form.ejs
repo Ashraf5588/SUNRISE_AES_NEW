@@ -1,59 +1,63 @@
-<%- include('../partials/head', { title: 'Record Payment' }) %>
-<%- include('../partials/navbar') %>
-<div class="fee-page-shell"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container mt-4">
-  <h3>Record Payment - <%= student.name %> (<%= student.studentCode %>)</h3>
-
-  <div class="card p-3 mb-3">
-    <h6>Outstanding Invoices (oldest is settled first, automatically)</h6>
-    <table class="table table-sm mb-0">
-      <thead><tr><th>Invoice #</th><th>Month</th><th>Balance</th></tr></thead>
-      <tbody>
-        <% outstandingInvoices.forEach(inv => { %>
-        <tr><td><%= inv.invoiceNumber %></td><td><%= inv.billMonthBS %></td><td><%= inv.balanceDue.toFixed(2) %></td></tr>
-        <% }) %>
-        <% if (outstandingInvoices.length === 0) { %>
-        <tr><td colspan="3" class="text-muted">No outstanding invoices - this student is fully paid up.</td></tr>
-        <% } %>
-      </tbody>
-    </table>
-  </div>
-
-  <form method="POST" action="/payments" class="bg-white p-4 rounded shadow-sm">
-    <input type="hidden" name="studentId" value="<%= student._id %>">
-    <div class="row g-3">
-      <div class="col-md-4">
-        <label class="form-label">Amount Received (Rs)</label>
-        <input type="number" step="0.01" class="form-control" name="amount" required>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Receive student payment</title>
+  <link rel="stylesheet" href="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/css/nepali.datepicker.v5.0.6.min.css">
+  <style>
+    :root{--navy:#102a52;--blue:#3979d6;--ink:#1d2b42;--muted:#73829a;--line:#e2eaf4;--page:#f5f8fc}
+    *{box-sizing:border-box}body{margin:0;background:var(--page);color:var(--ink);font:14px "Segoe UI",Arial,sans-serif}
+    main{max-width:1180px;margin:0 auto;padding:30px 24px}.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 8px 24px rgba(24,52,91,.05);margin-bottom:18px}
+    h1{margin:0;color:var(--navy);font-size:27px}.sub{color:var(--muted);margin:7px 0 0}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+    label{display:grid;gap:7px;color:#53647d;font-size:12px;font-weight:700}.grid input,.grid select{min-height:42px;width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 11px;font:inherit;color:var(--ink)}
+    .full{grid-column:1/-1}.hint{font-size:11px;color:var(--muted);font-weight:400}.submit{margin-top:18px;min-height:42px;padding:0 17px;border:0;border-radius:8px;background:var(--navy);color:#fff;font-weight:700;cursor:pointer}
+    .table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:500px}th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line)}th{font-size:10px;text-transform:uppercase;color:var(--muted)}td{font-size:12px}
+    @media(max-width:650px){main{padding:18px 12px}.grid{grid-template-columns:1fr}.full{grid-column:auto}.card{padding:16px}}
+  </style>
+</head>
+<body>
+  <div class="fee-page-shell"><%- include('../billingfirst/feesidenav') %><main>
+    <header class="card"><h1>Receive student payment</h1><p class="sub"><%= student.name %> · <%= student.studentCode %>. Payments are posted to the General Ledger only after required approvals.</p></header>
+    <section class="card">
+      <h2 style="margin:0 0 12px;color:#102a52;font-size:16px">Outstanding invoices</h2>
+      <div class="table-wrap"><table><thead><tr><th>Invoice</th><th>BS month</th><th>Due</th></tr></thead><tbody>
+        <% outstandingInvoices.forEach(invoice => { %><tr><td><%= invoice.invoiceNumber %></td><td><%= invoice.billMonthBS %></td><td>Rs. <%= Number(invoice.balanceDue || 0).toLocaleString('en-IN',{minimumFractionDigits:2}) %></td></tr><% }) %>
+        <% if (!outstandingInvoices.length) { %><tr><td colspan="3">No outstanding invoice. Any amount received will be recorded as a student advance.</td></tr><% } %>
+      </tbody></table></div>
+    </section>
+    <form class="card" method="post" action="/payments">
+      <input type="hidden" name="studentId" value="<%= student._id %>">
+      <input type="hidden" name="idempotencyKey" value="<%= idempotencyKey %>">
+      <div class="grid">
+        <label>Amount received (Rs.)<input type="number" name="amount" min="0.01" step="0.01" required></label>
+        <label>Payment method<select name="mode" id="payment-method" required><option value="CASH">Cash</option><option value="BANK">Bank</option></select></label>
+        <label>Deposit account<select name="depositLedgerId" id="deposit-account" required><option value="">Select cash/bank account</option><% cashBankAccounts.forEach(account => { %><option value="<%= account._id %>" data-kind="<%= account.ledgerType === 'BANK' ? 'BANK' : account.ledgerType === 'CASH' ? 'CASH' : /bank/i.test(account.group?.name || '') ? 'BANK' : 'CASH' %>"><%= account.code %> · <%= account.name %></option><% }) %></select></label>
+        <label>Receipt date (BS)<input class="nepali-datepicker" type="text" name="paymentDateBS" value="<%= todayBS %>" placeholder="YYYY-MM-DD" autocomplete="off" required><span class="hint">The BS date is authoritative; AD is derived by the server.</span></label>
+        <label>Reference / cheque no. (optional)<input type="text" name="referenceNumber" maxlength="100"></label>
+        <label class="full">Narration / remarks<input type="text" name="remarks" maxlength="500" placeholder="Payment description"></label>
       </div>
-      <div class="col-md-4">
-        <label class="form-label">Payment Date (AD)</label>
-        <input type="date" class="form-control" name="paymentDateAD" required>
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">Payment Date (BS)</label>
-        <input class="form-control" name="paymentDateBS" placeholder="2082-01-15">
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">Mode</label>
-        <select class="form-select" name="mode" required>
-          <option value="CASH">Cash</option>
-          <option value="BANK">Bank</option>
-          <option value="ESEWA">eSewa</option>
-          <option value="KHALTI">Khalti</option>
-          <option value="CHEQUE">Cheque</option>
-        </select>
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">Collected By</label>
-        <input class="form-control" name="collectedBy">
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">Remarks</label>
-        <input class="form-control" name="remarks">
-      </div>
-    </div>
-    <button class="btn btn-success mt-4">Record Payment</button>
-  </form>
-</div>
- </main></div>
-<%- include('../partials/footer') %>
+      <p class="hint" style="margin-top:14px">Amounts allocated to legacy invoices without a linked GL voucher, and any excess over posted receivables, are credited to Student Advances. This preserves current General Ledger balances without backfilling history.</p>
+      <button class="submit" type="submit">Submit receipt</button>
+    </form>
+  </main></div>
+  <script>
+    const method = document.getElementById('payment-method');
+    const deposit = document.getElementById('deposit-account');
+    function filterAccounts() {
+      Array.from(deposit.options).forEach(option => {
+        option.hidden = Boolean(option.value) && option.dataset.kind !== method.value;
+      });
+      if (deposit.selectedOptions[0]?.dataset.kind !== method.value) deposit.value = '';
+    }
+    method.addEventListener('change', filterAccounts);
+    filterAccounts();
+    document.querySelectorAll('.nepali-datepicker').forEach(input => {
+      if (typeof input.nepaliDatePicker === 'function') {
+        input.nepaliDatePicker({dateFormat:'YYYY-MM-DD',language:'en'});
+      }
+    });
+  </script>
+  <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js"></script>
+</body>
+</html>

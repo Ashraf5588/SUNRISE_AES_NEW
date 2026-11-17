@@ -1,12 +1,13 @@
-<%- include('../partials/head', { title: 'Fee Categories' }) %>
+<%- include('../partials/head', { title: 'Fee Categories', setupStylesheet: true }) %>
 <%- include('../partials/navbar') %>
-<div class="fee-page-shell"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container mt-4">
-  <h3>Fee Categories</h3>
+<div class="fee-page-shell setup-page"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container">
+  <header class="setup-heading"><div class="setup-heading-copy"><p class="setup-eyebrow">Fee configuration</p><h1>Fee categories</h1><p>Define charge types and their billing frequency before creating fee structures.</p></div></header>
   <div class="row">
     <div class="col-md-5">
-      <form method="POST" action="/setup/fee-categories" class="bg-white p-3 rounded shadow-sm">
-        <div class="mb-2"><label class="form-label">Name</label><input class="form-control" name="name" required placeholder="Tuition Fee"></div>
-        <div class="mb-2">
+      <section class="setup-card"><div class="setup-card-heading"><div><h2>Add category</h2><p>Choose a clear name and billing schedule.</p></div></div><div class="setup-card-body">
+        <form method="POST" action="/setup/fee-categories">
+        <div class="mb-3"><label class="form-label">Name</label><input class="form-control" name="name" required placeholder="Tuition Fee"></div>
+        <div class="mb-3">
           <label class="form-label">Frequency</label>
           <select class="form-select" name="frequency" required>
             <option value="MONTHLY">Monthly</option>
@@ -15,22 +16,25 @@
             <option value="QUARTERLY">Quarterly</option>
           </select>
         </div>
-        <div class="form-check mb-2">
+        <div class="form-check mb-3">
           <input class="form-check-input" type="checkbox" name="isTaxable" id="isTaxable">
           <label class="form-check-label" for="isTaxable">Taxable</label>
         </div>
         <button class="btn btn-primary">Add Category</button>
-      </form>
+        </form>
+      </div></section>
     </div>
     <div class="col-md-7">
-      <table class="table table-bordered bg-white">
-        <thead><tr><th>Name</th><th>Frequency</th></tr></thead>
-        <tbody>
-          <% feeCategories.forEach(f => { %>
-          <tr><td><%= f.name %></td><td><%= f.frequency %></td></tr>
-          <% }) %>
-        </tbody>
-      </table>
+      <section class="setup-card"><div class="setup-card-heading"><div><h2>Fee categories</h2><p>Configured charge types and schedules.</p></div><span class="setup-count"><%= feeCategories.length %> total</span></div>
+        <div class="setup-table-wrap"><table class="table setup-table">
+          <thead><tr><th>Name</th><th>Frequency</th></tr></thead>
+          <tbody>
+            <% if (feeCategories.length) { feeCategories.forEach(f => { %>
+            <tr><td><%= f.name %></td><td><%= f.frequency %></td></tr>
+            <% }) } else { %><tr><td colspan="2" class="setup-empty">No fee categories have been added yet.</td></tr><% } %>
+          </tbody>
+        </table></div>
+      </section>
     </div>
   </div>
 </div>

@@ -5,6 +5,9 @@
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
 <link rel="manifest" href="/site.webmanifest">
+  <meta name="theme-color" content="#1954a6">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="stylesheet" href="/app-install.css">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login | AAS</title>
@@ -175,8 +178,10 @@
       
       <button type="submit" id="submit">Login In</button>
     </form>
+    <div class="app-install-actions"><button class="app-install-button" type="button" data-install-app><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg><span>Install AES App</span></button></div>
   </div>
 
+  <script src="/app-install.js" defer></script>
   <script>
     function togglePassword() {
       const passwordInput = document.getElementById('password');

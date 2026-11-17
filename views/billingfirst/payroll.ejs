@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title || 'Payroll Dashboard' %></title>
+  <style>
+    :root {
+      --navy: #07152f;
+      --navy2: #0d2854;
+      --blue: #3b82f6;
+      --pale: #edf4ff;
+      --ink: #17233b;
+      --muted: #71809b;
+      --line: #e5ebf4;
+      --page: #f4f7fb;
+      --green: #159570;
+      --orange: #dc8a32;
+      --red: #d6535d;
+      --shadow: 0 14px 34px rgba(13,35,71,.08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+    .shell { min-height: 100vh; padding-left: 268px; }
+    .main { max-width: 1500px; margin: 0 auto; padding: 32px 36px 50px; }
+    .topbar { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; margin-bottom: 24px; }
+    .eyebrow { margin: 0 0 6px; color: var(--blue); font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 800; }
+    h1 { margin: 0; font-size: clamp(24px, 3vw, 34px); color: var(--navy); }
+    .subtitle { margin: 8px 0 0; color: var(--muted); }
+    .date-pill { padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: var(--muted); }
+    .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 18px; }
+    .card { background: #fff; border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); }
+    .kpi { padding: 20px 20px 18px; position: relative; min-height: 140px; }
+    .kpi-label { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .kpi-value { margin-top: 18px; font-size: 30px; font-weight: 800; color: var(--navy); }
+    .kpi-note { margin-top: 8px; color: var(--green); font-size: 11px; font-weight: 700; }
+    .kpi-icon { position: absolute; right: 18px; top: 18px; width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; background: var(--pale); color: var(--blue); font-size: 18px; }
+    .grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(340px, 0.75fr); gap: 18px; margin-bottom: 18px; }
+    .panel { padding: 20px; }
+    .panel-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+    .panel-heading h2 { margin: 0; font-size: 15px; color: var(--navy); }
+    .panel-heading span { color: var(--muted); font-size: 11px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { text-align: left; padding: 12px 10px; border-top: 1px solid var(--line); }
+    th { color: var(--muted); font-size: 10px; letter-spacing: .7px; text-transform: uppercase; }
+    .badge { display: inline-block; padding: 5px 8px; border-radius: 6px; background: #e8f8f2; color: var(--green); font-size: 10px; font-weight: 800; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 12px; font-weight: 600; }
+    input, select, button { font: inherit; }
+    input, select { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: #fff; padding: 10px 12px; }
+    button.primary { background: var(--navy2); color: #fff; border: none; border-radius: 10px; padding: 10px 16px; cursor: pointer; }
+    button.secondary { background: #eaf2ff; color: var(--navy2); border: none; border-radius: 10px; padding: 10px 16px; cursor: pointer; }
+    .actions { display: flex; gap: 10px; margin-top: 16px; }
+    .summary-box { display: grid; gap: 12px; }
+    .summary-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); }
+    .summary-row strong { color: var(--ink); }
+    .muted { color: var(--muted); }
+    @media (max-width: 1050px) { .shell { padding-left: 0; } .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid { grid-template-columns: 1fr; } }
+    @media (max-width: 560px) { .main { padding: 18px 14px 30px; } .kpis { grid-template-columns: 1fr; } .form-grid { grid-template-columns: 1fr; } .topbar { flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Finance and HR</p>
+          <h1>Payroll dashboard</h1>
+          <p class="subtitle">Attendance-aware salary preview for the selected payroll period.</p>
+        </div>
+        <form method="GET" action="/payroll" class="date-pill" style="display:flex;gap:8px;align-items:end;">
+          <div>
+            <label for="previewYear">Period year</label>
+            <input id="previewYear" name="periodYear" type="number" min="1900" max="9999" value="<%= periodYear || new Date().getFullYear() %>">
+          </div>
+          <div>
+            <label for="previewMonth">Month</label>
+            <input id="previewMonth" name="payrollMonth" type="number" min="1" max="12" value="<%= Number(payrollMonth || new Date().getMonth() + 1) %>">
+          </div>
+          <button class="secondary" type="submit">Preview</button>
+        </form>
+      </header>
+
+      <% if (typeof error !== 'undefined' && error) { %>
+        <div class="card panel" style="margin-bottom:18px; border-color: #ffc6c8; background: #fff5f5; color: #8a3036;">
+          <strong>Payroll alert:</strong> <%= error %>
+        </div>
+      <% } %>
+      <% if (attendancePolicyConfigured === false) { %>
+        <div class="card panel" style="margin-bottom:18px;border-color:#f1d49f;background:#fff9ec;color:#755014;">
+          Payroll calculation is blocked until an administrator configures the attendance salary method and required divisor.
+        </div>
+      <% } else if (attendanceIncompleteEmployees > 0) { %>
+        <div class="card panel" style="margin-bottom:18px;border-color:#ffc6c8;background:#fff5f5;color:#8a3036;">
+          Attendance is incomplete or unresolved for <strong><%= attendanceIncompleteEmployees %></strong> employee(s). Payroll generation is blocked unless an administrator approves an override with a reason.
+          <% if (attendancePolicyIncompleteEmployees > 0) { %>
+            <div style="margin-top:6px;"><strong><%= attendancePolicyIncompleteEmployees %></strong> employee(s) also need a weekly-off schedule; policy configuration cannot be bypassed with an attendance override.</div>
+          <% } %>
+        </div>
+      <% } %>
+
+      <section class="kpis">
+        <article class="card kpi">
+          <div class="kpi-icon">👥</div>
+          <div class="kpi-label">Employees</div>
+          <div class="kpi-value"><%= summary.employeeCount || 0 %></div>
+          <div class="kpi-note">Active profiles in the HR register</div>
+        </article>
+        <article class="card kpi">
+          <div class="kpi-icon">💰</div>
+          <div class="kpi-label">Gross payroll</div>
+          <div class="kpi-value">NPR <%= Number(summary.totalGross || 0).toLocaleString() %></div>
+          <div class="kpi-note">Based on latest salary records</div>
+        </article>
+        <article class="card kpi">
+          <div class="kpi-icon">➖</div>
+          <div class="kpi-label">Total deductions</div>
+          <div class="kpi-value">NPR <%= Number(summary.totalDeductions || 0).toLocaleString() %></div>
+          <div class="kpi-note">Includes tax and contributions</div>
+        </article>
+        <article class="card kpi">
+          <div class="kpi-icon">💳</div>
+          <div class="kpi-label">Net payable</div>
+          <div class="kpi-value">NPR <%= Number(summary.totalNet || 0).toLocaleString() %></div>
+          <div class="kpi-note">Employer cost: NPR <%= Number(summary.totalEmployerContribution || 0).toLocaleString() %></div>
+        </article>
+      </section>
+
+      <section class="grid">
+        <article class="card panel">
+          <div class="panel-heading">
+            <h2>Employee payroll preview</h2>
+            <span>Based on the current settings</span>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Attendance</th>
+                <th>Gross</th>
+                <th>Tax</th>
+                <th>Deduction</th>
+                <th>Net</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (!employees || !employees.length) { %>
+                <tr><td colspan="6" class="muted">No employee salary records found yet.</td></tr>
+              <% } else { %>
+                <% employees.forEach(employee => { %>
+                  <tr>
+                    <td>
+                      <%= employee.employeeName %>
+                      <% if (employee.salaryMissing) { %>
+                        <div style="font-size:12px;color:#a23a3a;">No usable salary configuration found; payroll generation is blocked.</div>
+                      <% } %>
+                    </td>
+                    <td>
+                      <details>
+                        <summary><%= employee.attendance?.presentDays || 0 %> present · <%= employee.attendance?.absentDays || 0 %> absent · <%= employee.attendance?.paidLeaveDays || 0 %> paid leave</summary>
+                        <div style="min-width:240px;padding:8px 0;">
+                          <div>Unpaid leave: <%= employee.attendance?.unpaidLeaveDays || 0 %> days</div>
+                          <div>Holidays / weekly offs: <%= employee.attendance?.holidays || 0 %> / <%= employee.attendance?.weeklyOffs || 0 %></div>
+                          <div>Recorded work hours: <%= employee.attendance?.workedHours || 0 %></div>
+                          <div>Overtime: <%= employee.attendance?.overtimeHours || 0 %> hours</div>
+                          <div>Late / early: <%= employee.attendance?.lateMinutes || 0 %> / <%= employee.attendance?.earlyDepartureMinutes || 0 %> minutes</div>
+                          <div><%= employee.attendanceExplanation || 'Attendance calculation unavailable.' %></div>
+                          <% if (employee.attendance?.dayDetails?.length) { %>
+                            <table style="margin-top:8px;font-size:12px;">
+                              <thead><tr><th>Date</th><th>Status</th><th>In</th><th>Out</th><th>Hours</th><th>OT</th><th>Late / early</th></tr></thead>
+                              <tbody>
+                                <% employee.attendance.dayDetails.forEach(day => { %>
+                                  <tr>
+                                    <td><%= day.date %> (<%= day.dateBs %>)</td>
+                                    <td><%= day.status.replace(/_/g, ' ') %></td>
+                                    <td><%= day.checkIn ? new Date(day.checkIn).toLocaleTimeString('en-GB', { timeZone: 'Asia/Kathmandu', hour: '2-digit', minute: '2-digit' }) : '-' %></td>
+                                    <td><%= day.checkOut ? new Date(day.checkOut).toLocaleTimeString('en-GB', { timeZone: 'Asia/Kathmandu', hour: '2-digit', minute: '2-digit' }) : '-' %></td>
+                                    <td><%= Number(day.workedMinutes || 0) / 60 %></td>
+                                    <td><%= day.overtimeMinutes || 0 %> min</td>
+                                    <td><%= day.lateMinutes || 0 %> / <%= day.earlyDepartureMinutes || 0 %> min</td>
+                                  </tr>
+                                <% }) %>
+                              </tbody>
+                            </table>
+                          <% } %>
+                          <% if (employee.attendanceWarnings?.length) { %>
+                            <ul style="padding-left:18px;color:#a23a3a;"><% employee.attendanceWarnings.slice(0,8).forEach(warning => { %><li><%= warning %></li><% }) %></ul>
+                          <% } %>
+                        </div>
+                      </details>
+                    </td>
+                    <td>NPR <%= Number(employee.grossSalary || 0).toLocaleString() %></td>
+                    <td>NPR <%= Number(employee.tax || 0).toLocaleString() %></td>
+                    <td>NPR <%= Number(employee.deductions || 0).toLocaleString() %></td>
+                    <td><strong>NPR <%= Number(employee.netSalary || 0).toLocaleString() %></strong></td>
+                  </tr>
+                <% }) %>
+              <% } %>
+            </tbody>
+          </table>
+        </article>
+
+        <aside class="card panel">
+          <div class="panel-heading">
+            <h2>Payroll settings</h2>
+            <span><%= settings?.payrollCycle || 'MONTHLY' %></span>
+          </div>
+          <form method="POST" action="/payroll/settings">
+            <div class="form-grid">
+              <div>
+                <label for="fiscalYear">Fiscal year</label>
+                <input id="fiscalYear" name="fiscalYear" value="<%= settings?.fiscalYear || '2082/83' %>">
+              </div>
+              <div>
+                <label for="payrollCycle">Cycle</label>
+                <select id="payrollCycle" name="payrollCycle">
+                  <option value="MONTHLY" <%= (settings?.payrollCycle || 'MONTHLY') === 'MONTHLY' ? 'selected' : '' %>>Monthly</option>
+                  <option value="BIWEEKLY" <%= settings?.payrollCycle === 'BIWEEKLY' ? 'selected' : '' %>>Biweekly</option>
+                  <option value="WEEKLY" <%= settings?.payrollCycle === 'WEEKLY' ? 'selected' : '' %>>Weekly</option>
+                </select>
+              </div>
+              <div>
+                <label for="taxRate">Tax rate (%)</label>
+                <input id="taxRate" type="number" step="any" min="0" name="taxRate" value="<%= settings?.taxRate ?? 0 %>">
+              </div>
+              <div>
+                <label for="monthlyDeduction">Fixed monthly deduction</label>
+                <input id="monthlyDeduction" type="number" step="any" min="0" name="monthlyDeduction" value="<%= settings?.monthlyDeduction ?? 0 %>">
+              </div>
+              <div>
+                <label for="employeeContributionRate">Employee contribution (%)</label>
+                <input id="employeeContributionRate" type="number" step="any" min="0" name="employeeContributionRate" value="<%= settings?.employeeContributionRate ?? 0 %>">
+              </div>
+              <div>
+                <label for="employerContributionRate">Employer contribution (%)</label>
+                <input id="employerContributionRate" type="number" step="any" min="0" name="employerContributionRate" value="<%= settings?.employerContributionRate ?? 0 %>">
+              </div>
+            </div>
+            <hr style="border:0;border-top:1px solid var(--line);margin:18px 0;">
+            <h3 style="margin:0 0 12px;color:var(--navy);font-size:14px;">Attendance salary policy</h3>
+            <div class="form-grid">
+              <div>
+                <label for="salaryDayCountMethod">Salary day-count method</label>
+                <select id="salaryDayCountMethod" name="salaryDayCountMethod" required>
+                  <option value="ACTUAL_WORKING_DAYS" <%= settings?.attendancePolicy?.salaryDayCountMethod === 'ACTUAL_WORKING_DAYS' ? 'selected' : '' %>>Actual scheduled working days</option>
+                  <option value="CALENDAR_DAYS" <%= settings?.attendancePolicy?.salaryDayCountMethod === 'CALENDAR_DAYS' ? 'selected' : '' %>>Calendar days</option>
+                  <option value="FIXED_DIVISOR" <%= settings?.attendancePolicy?.salaryDayCountMethod === 'FIXED_DIVISOR' ? 'selected' : '' %>>Configured fixed divisor</option>
+                </select>
+              </div>
+              <div>
+                <label for="fixedMonthlyDivisor">Fixed monthly divisor (required only for fixed method)</label>
+                <input id="fixedMonthlyDivisor" name="fixedMonthlyDivisor" type="number" min="0" step="any" value="<%= settings?.attendancePolicy?.fixedMonthlyDivisor ?? 0 %>">
+              </div>
+              <div>
+                <label for="overtimeHourlyRate">Configured overtime amount per hour</label>
+                <input id="overtimeHourlyRate" name="overtimeHourlyRate" type="number" min="0" step="any" value="<%= settings?.attendancePolicy?.overtimeHourlyRate ?? 0 %>">
+              </div>
+              <div>
+                <label for="latePenaltyPerMinute">Late penalty per minute</label>
+                <input id="latePenaltyPerMinute" name="latePenaltyPerMinute" type="number" min="0" step="any" value="<%= settings?.attendancePolicy?.latePenaltyPerMinute ?? 0 %>">
+              </div>
+              <div>
+                <label for="earlyPenaltyPerMinute">Early departure penalty per minute</label>
+                <input id="earlyPenaltyPerMinute" name="earlyPenaltyPerMinute" type="number" min="0" step="any" value="<%= settings?.attendancePolicy?.earlyPenaltyPerMinute ?? 0 %>">
+              </div>
+              <div style="grid-column:1/-1;">
+                <label>School weekly-off days (employee-specific schedules take precedence)</label>
+                <div style="display:flex;flex-wrap:wrap;gap:10px;">
+                  <% ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].forEach(day => { %>
+                    <label style="display:flex;align-items:center;gap:4px;margin:0;">
+                      <input type="checkbox" name="weeklyOffDays" value="<%= day %>" style="width:auto;" <%= (settings?.attendancePolicy?.weeklyOffDays || []).includes(day) ? 'checked' : '' %>>
+                      <%= day %>
+                    </label>
+                  <% }) %>
+                </div>
+              </div>
+              <div style="grid-column:1/-1;display:grid;gap:8px;">
+                <label><input type="checkbox" name="attendancePolicyConfigured" value="on" style="width:auto;" <%= settings?.attendancePolicy?.configured ? 'checked' : '' %>> I have reviewed and configured this attendance policy</label>
+                <label><input type="checkbox" name="deductUnpaidLeave" value="on" style="width:auto;" <%= settings?.attendancePolicy?.deductUnpaidLeave ? 'checked' : '' %>> Deduct approved unpaid leave using the selected divisor</label>
+                <label><input type="checkbox" name="deductUnapprovedAbsence" value="on" style="width:auto;" <%= settings?.attendancePolicy?.deductUnapprovedAbsence ? 'checked' : '' %>> Deduct unresolved absences only after administrator override</label>
+                <label><input type="checkbox" name="payRecordedOvertime" value="on" style="width:auto;" <%= settings?.attendancePolicy?.payRecordedOvertime ? 'checked' : '' %>> Pay recorded overtime using the configured hourly amount</label>
+                <label><input type="checkbox" name="applyLatePenalty" value="on" style="width:auto;" <%= settings?.attendancePolicy?.applyLatePenalty ? 'checked' : '' %>> Apply configured late-arrival penalty</label>
+                <label><input type="checkbox" name="applyEarlyDeparturePenalty" value="on" style="width:auto;" <%= settings?.attendancePolicy?.applyEarlyDeparturePenalty ? 'checked' : '' %>> Apply configured early-departure penalty</label>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="primary" type="submit">Save settings</button>
+              <a href="/payroll/structures" style="display:inline-block; text-decoration:none; padding:10px 16px; border-radius:10px; background:#edf3ff; color:#0d2854; font-weight:700;">Structures</a>
+              <a href="/payroll/components" style="display:inline-block; text-decoration:none; padding:10px 16px; border-radius:10px; background:#edf3ff; color:#0d2854; font-weight:700;">Earnings &amp; deductions</a>
+              <a href="/payroll/tax-schemes" style="display:inline-block; text-decoration:none; padding:10px 16px; border-radius:10px; background:#edf3ff; color:#0d2854; font-weight:700;">Tax schemes</a>
+              <a href="/payroll/reports" style="display:inline-block; text-decoration:none; padding:10px 16px; border-radius:10px; background:#edf3ff; color:#0d2854; font-weight:700;">Reports</a>
+            </div>
+          </form>
+        </aside>
+      </section>
+
+      <section class="grid">
+        <article class="card panel">
+          <div class="panel-heading">
+            <h2>Payroll summary</h2>
+            <span>Prepared for the current cycle</span>
+          </div>
+          <div class="summary-box">
+            <div class="summary-row"><span class="muted">Gross payroll</span><strong>NPR <%= Number(summary.totalGross || 0).toLocaleString() %></strong></div>
+            <div class="summary-row"><span class="muted">Tax collection</span><strong>NPR <%= Number(employees.reduce((sum, item) => sum + Number(item.tax || 0), 0)).toLocaleString() %></strong></div>
+            <div class="summary-row"><span class="muted">Employee contribution</span><strong>NPR <%= Number(employees.reduce((sum, item) => sum + Number(item.employeeContribution || 0), 0)).toLocaleString() %></strong></div>
+            <div class="summary-row"><span class="muted">Employer contribution</span><strong>NPR <%= Number(summary.totalEmployerContribution || 0).toLocaleString() %></strong></div>
+            <div class="summary-row"><span class="muted">Net salary payable</span><strong>NPR <%= Number(summary.totalNet || 0).toLocaleString() %></strong></div>
+          </div>
+        </article>
+
+        <article class="card panel">
+          <div class="panel-heading">
+            <h2>Generate payroll run</h2>
+            <span>Save a month snapshot</span>
+          </div>
+          <form method="POST" action="/payroll/run">
+            <div class="form-grid">
+              <div>
+                <label for="fiscalYear">Fiscal year</label>
+                <input id="fiscalYear" name="fiscalYear" value="<%= settings?.fiscalYear || '2082/83' %>">
+              </div>
+              <div>
+                <label for="payrollMonth">Payroll month</label>
+                <input id="payrollMonth" name="payrollMonth" type="number" min="1" max="12" value="<%= Number(payrollMonth || new Date().getMonth() + 1) %>">
+              </div>
+              <div>
+                <label for="periodYear">Calendar year</label>
+                <input id="periodYear" name="periodYear" type="number" min="1900" max="9999" value="<%= periodYear || new Date().getFullYear() %>">
+              </div>
+            </div>
+            <% if (currentUser?.role === 'ADMIN' && attendanceIncompleteEmployees > 0) { %>
+              <label style="display:flex;align-items:center;gap:8px;margin-top:12px;">
+                <input type="checkbox" name="attendanceOverride" value="on" style="width:auto;">
+                Approve an attendance exception override
+              </label>
+              <label for="attendanceOverrideReason" style="margin-top:8px;">Administrator override reason</label>
+              <input id="attendanceOverrideReason" name="attendanceOverrideReason" maxlength="500">
+            <% } %>
+            <div class="actions">
+              <button class="secondary" type="submit" <%= attendancePolicyConfigured && salaryIncompleteEmployees === 0 && attendancePolicyIncompleteEmployees === 0 && employees.length > 0 && (canCalculate || currentUser?.role === 'ADMIN') ? '' : 'disabled' %>>Generate run</button>
+            </div>
+          </form>
+        </article>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

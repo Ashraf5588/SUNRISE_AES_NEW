@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title || 'Earnings and deductions' %></title>
+  <style>
+    :root {
+      --navy:#10254a; --blue:#356fea; --ink:#1d2b42; --muted:#75839a;
+      --line:#e6ebf2; --page:#f4f7fb; --green:#14845f; --red:#b6434b;
+      --shadow:0 12px 30px rgba(22,40,74,.07);
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--page); color:var(--ink); font-family:"Segoe UI",Arial,sans-serif; }
+    .shell { max-width:1420px; margin:0 auto; padding:32px 28px 48px; }
+    .topbar { display:flex; justify-content:space-between; align-items:center; gap:18px; margin-bottom:22px; }
+    .eyebrow { margin:0 0 7px; color:var(--blue); font-size:11px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase; }
+    h1 { margin:0; color:var(--navy); font-size:clamp(25px,3vw,34px); }
+    .subtitle { margin:8px 0 0; color:var(--muted); font-size:14px; }
+    .top-actions { display:flex; gap:10px; align-items:center; }
+    .button, button { display:inline-flex; justify-content:center; align-items:center; gap:7px; border:0; border-radius:9px; padding:10px 15px; font:inherit; font-size:13px; font-weight:700; text-decoration:none; cursor:pointer; }
+    .button-light { color:var(--navy); background:#e9f0fd; }
+    .button-primary { color:#fff; background:var(--navy); }
+    .button-quiet { color:#51627a; background:#edf1f7; }
+    .button-danger { color:var(--red); background:#fff0f0; }
+    .card { overflow:hidden; background:#fff; border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); }
+    .form-card { margin-bottom:20px; }
+    .card-head { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; padding:20px 22px 16px; }
+    .card-head h2 { margin:0; color:var(--navy); font-size:17px; }
+    .card-head p { margin:6px 0 0; color:var(--muted); font-size:13px; line-height:1.5; }
+    .form-body { padding:0 22px 22px; }
+    .form-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:15px; }
+    .field label { display:block; margin-bottom:7px; color:#5f6e84; font-size:12px; font-weight:700; }
+    .field input, .field select, .search { width:100%; min-height:42px; border:1px solid #dce4ef; border-radius:9px; background:#fff; color:var(--ink); padding:10px 12px; font:inherit; font-size:13px; }
+    .field input:focus, .field select:focus, .search:focus { outline:3px solid rgba(53,111,234,.14); border-color:var(--blue); }
+    .hint { margin:6px 0 0; color:var(--muted); font-size:11px; }
+    .form-footer { display:flex; justify-content:space-between; align-items:center; gap:14px; margin-top:18px; padding-top:16px; border-top:1px solid var(--line); }
+    .form-footer p { margin:0; color:var(--muted); font-size:12px; }
+    .alert { margin-bottom:16px; padding:12px 15px; border:1px solid #f1c7c9; border-radius:10px; color:#913238; background:#fff5f5; font-size:13px; }
+    .alert.success { border-color:#c8e8d7; color:#176344; background:#effaf4; }
+    .list-head { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:18px 22px; }
+    .list-head h2 { margin:0; color:var(--navy); font-size:17px; }
+    .count { margin-top:5px; color:var(--muted); font-size:12px; }
+    .search { width:min(270px,100%); }
+    .table-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th { padding:12px 14px; color:#71809a; background:#f8fafd; border-top:1px solid var(--line); border-bottom:1px solid var(--line); font-size:10px; font-weight:800; letter-spacing:.7px; text-align:left; text-transform:uppercase; white-space:nowrap; }
+    td { padding:14px; border-bottom:1px solid #edf1f6; vertical-align:middle; }
+    tbody tr:last-child td { border-bottom:0; }
+    .code { color:#43536b; font-family:Consolas,"Courier New",monospace; font-size:12px; font-weight:700; }
+    .title-cell { color:var(--navy); font-weight:700; }
+    .subtext { display:block; margin-top:4px; color:var(--muted); font-size:11px; font-weight:400; }
+    .badge { display:inline-flex; align-items:center; padding:5px 8px; border-radius:20px; font-size:10px; font-weight:800; white-space:nowrap; }
+    .badge-add { color:#16734f; background:#e8f7ef; }
+    .badge-deduct { color:#a54249; background:#fff0f0; }
+    .badge-active { color:#16734f; background:#e8f7ef; }
+    .badge-inactive { color:#68768a; background:#eef1f5; }
+    .actions { display:flex; align-items:center; gap:7px; white-space:nowrap; }
+    .actions .button, .actions button { padding:8px 11px; font-size:11px; }
+    .empty { padding:40px 18px; color:var(--muted); text-align:center; }
+    @media (max-width:1000px) { .form-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+    @media (max-width:640px) {
+      .shell { padding:20px 12px 32px; }
+      .topbar, .list-head, .form-footer { align-items:stretch; flex-direction:column; }
+      .top-actions { justify-content:flex-start; }
+      .form-grid { grid-template-columns:1fr; }
+      .card-head, .form-body { padding-left:15px; padding-right:15px; }
+      .list-head { padding:16px 15px; }
+      .search { width:100%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Finance and HR / Payroll setup</p>
+        <h1>Earnings &amp; deductions</h1>
+        <p class="subtitle">Manage reusable payroll titles, calculation rules, and tax treatment.</p>
+      </div>
+      <div class="top-actions">
+        <a class="button button-light" href="/payroll">Back to payroll</a>
+      </div>
+    </header>
+
+    <% if (error) { %><div class="alert" role="alert"><strong>Could not save:</strong> <%= error %></div><% } %>
+    <% if (saved) { %><div class="alert success" role="status">Payroll component changes saved successfully.</div><% } %>
+
+    <section class="card form-card" aria-labelledby="component-form-title">
+      <div class="card-head">
+        <div>
+          <h2 id="component-form-title"><%= editing ? 'Edit payroll title' : 'Add a payroll title' %></h2>
+          <p>Set an earning or deduction title once so it can be reused consistently in payroll.</p>
+        </div>
+        <% if (editing) { %>
+          <a class="button button-quiet" href="/payroll/components">Cancel edit</a>
+        <% } %>
+      </div>
+      <form class="form-body" method="POST" action="/payroll/components">
+        <% if (editing) { %><input type="hidden" name="componentId" value="<%= editing._id %>" /><% } %>
+        <div class="form-grid">
+          <div class="field">
+            <label for="code">Code</label>
+            <input id="code" name="code" maxlength="40" pattern="[A-Za-z0-9_-]{2,40}" value="<%= editing?.code || '' %>" placeholder="e.g. HOUSE_RENT" required />
+            <p class="hint">Unique identifier; letters, numbers, hyphens, and underscores.</p>
+          </div>
+          <div class="field">
+            <label for="name">Title</label>
+            <input id="name" name="name" maxlength="100" value="<%= editing?.name || '' %>" placeholder="e.g. House rent allowance" required />
+          </div>
+          <div class="field">
+            <label for="category">Payroll type</label>
+            <select id="category" name="category" required>
+              <option value="ALLOWANCE" <%= !editing || editing.category === 'ALLOWANCE' || editing.category === 'EARNING' ? 'selected' : '' %>>Addition / earning (+)</option>
+              <option value="DEDUCTION" <%= editing?.category === 'DEDUCTION' || editing?.category === 'TAX' ? 'selected' : '' %>>Deduction (−)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="type">Calculation method</label>
+            <select id="type" name="type" required>
+              <option value="FIXED" <%= !editing || editing.type === 'FIXED' ? 'selected' : '' %>>Fixed amount</option>
+              <option value="PERCENT" <%= editing?.type === 'PERCENT' ? 'selected' : '' %>>Percentage</option>
+            </select>
+          </div>
+          <div class="field">
+            <label id="valueLabel" for="value"><%= editing?.type === 'PERCENT' ? 'Rate (%)' : 'Amount (NPR)' %></label>
+            <input
+              id="value"
+              name="value"
+              type="number"
+              min="0"
+              step="0.01"
+              value="<%= editing ? (editing.type === 'PERCENT' ? editing.rate : editing.amount) : '' %>"
+              placeholder="<%= editing?.type === 'PERCENT' ? 'e.g. 10' : 'e.g. 5000' %>"
+              required
+            />
+          </div>
+          <div class="field" id="basisField">
+            <label for="basis">Percentage based on</label>
+            <select id="basis" name="basis">
+              <option value="BASIC" <%= !editing || editing.basis === 'BASIC' ? 'selected' : '' %>>Basic salary</option>
+              <option value="GROSS" <%= editing?.basis === 'GROSS' ? 'selected' : '' %>>Gross salary</option>
+            </select>
+            <p class="hint">Used when calculation method is percentage.</p>
+          </div>
+          <div class="field">
+            <label for="taxable">Taxable</label>
+            <select id="taxable" name="taxable">
+              <option value="true" <%= !editing || editing.taxable !== false ? 'selected' : '' %>>Yes</option>
+              <option value="false" <%= editing?.taxable === false ? 'selected' : '' %>>No</option>
+            </select>
+            <p class="hint">Whether this title is included in taxable earnings.</p>
+          </div>
+        </div>
+        <div class="form-footer">
+          <p>Values are stored as a reusable payroll definition; employee-specific amounts remain in their salary structure.</p>
+          <button class="button button-primary" type="submit"><%= editing ? 'Save changes' : 'Add title' %></button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card" aria-labelledby="component-list-title">
+      <div class="list-head">
+        <div>
+          <h2 id="component-list-title">Saved payroll titles</h2>
+          <div class="count"><%= (components || []).length %> title(s) · active titles are available for payroll setup</div>
+        </div>
+        <input class="search" id="componentSearch" type="search" placeholder="Search title or code" aria-label="Search payroll titles" />
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Title</th>
+              <th>Type</th>
+              <th>Calculation</th>
+              <th>Rate / amount</th>
+              <th>Taxable</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="componentRows">
+            <% if (!components || !components.length) { %>
+              <tr><td class="empty" colspan="8">No payroll titles yet. Add your first earning or deduction above.</td></tr>
+            <% } else { %>
+              <% components.forEach(component => { %>
+                <tr data-search="<%= `${component.code || ''} ${component.name || ''} ${component.category || ''}`.toLowerCase() %>">
+                  <td class="code"><%= component.code || '—' %></td>
+                  <td class="title-cell"><%= component.name || 'Untitled' %></td>
+                  <td>
+                    <span class="badge <%= ['DEDUCTION','TAX'].includes(component.category) ? 'badge-deduct' : 'badge-add' %>">
+                      <%= ['DEDUCTION','TAX'].includes(component.category) ? 'Deduction (−)' : 'Addition (+)' %>
+                    </span>
+                  </td>
+                  <td>
+                    <%= component.type === 'PERCENT' ? 'Percentage' : 'Fixed' %>
+                    <% if (component.type === 'PERCENT') { %><span class="subtext">of <%= String(component.basis || 'BASIC').toLowerCase() %></span><% } %>
+                  </td>
+                  <td><%= component.type === 'PERCENT' ? `${Number(component.rate || 0)}%` : `NPR ${Number(component.amount || 0).toLocaleString()}` %></td>
+                  <td><%= component.taxable === false ? 'No' : 'Yes' %></td>
+                  <td><span class="badge <%= component.active === false ? 'badge-inactive' : 'badge-active' %>"><%= component.active === false ? 'Inactive' : 'Active' %></span></td>
+                  <td>
+                    <div class="actions">
+                      <a class="button button-quiet" href="/payroll/components?edit=<%= component._id %>">Edit</a>
+                      <form method="POST" action="/payroll/components/<%= component._id %>/status">
+                        <input type="hidden" name="active" value="<%= component.active === false ? 'true' : 'false' %>" />
+                        <button class="<%= component.active === false ? 'button button-light' : 'button button-danger' %>" type="submit">
+                          <%= component.active === false ? 'Activate' : 'Deactivate' %>
+                        </button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+              <% }) %>
+              <tr id="noSearchResults" hidden><td class="empty" colspan="8">No matching payroll titles found.</td></tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <script>
+    (function () {
+      const type = document.getElementById('type');
+      const valueLabel = document.getElementById('valueLabel');
+      const value = document.getElementById('value');
+      const basisField = document.getElementById('basisField');
+      const search = document.getElementById('componentSearch');
+      const noResults = document.getElementById('noSearchResults');
+
+      function updateCalculationFields() {
+        const percentage = type.value === 'PERCENT';
+        valueLabel.textContent = percentage ? 'Rate (%)' : 'Amount (NPR)';
+        value.placeholder = percentage ? 'e.g. 10' : 'e.g. 5000';
+        basisField.hidden = !percentage;
+        document.getElementById('basis').disabled = !percentage;
+      }
+
+      type.addEventListener('change', updateCalculationFields);
+      updateCalculationFields();
+
+      if (search) {
+        search.addEventListener('input', function () {
+          const query = search.value.trim().toLowerCase();
+          const rows = Array.from(document.querySelectorAll('#componentRows tr[data-search]'));
+          let visibleCount = 0;
+          rows.forEach(function (row) {
+            const visible = row.dataset.search.includes(query);
+            row.hidden = !visible;
+            if (visible) visibleCount += 1;
+          });
+          if (noResults) noResults.hidden = visibleCount > 0;
+        });
+      }
+    }());
+  </script>
+</body>
+</html>

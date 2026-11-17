@@ -1,24 +1,28 @@
-<%- include('../partials/head', { title: 'Classes' }) %>
+<%- include('../partials/head', { title: 'Classes', setupStylesheet: true }) %>
 <%- include('../partials/navbar') %>
-<div class="fee-page-shell"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container mt-4">
-  <h3>Classes</h3>
+<div class="fee-page-shell setup-page"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container">
+  <header class="setup-heading"><div class="setup-heading-copy"><p class="setup-eyebrow">Academic setup</p><h1>Classes</h1><p>Set up the class levels used across student enrollment and fee management.</p></div></header>
   <div class="row">
     <div class="col-md-5">
-      <form method="POST" action="/setup/classes" class="bg-white p-3 rounded shadow-sm">
-        <div class="mb-2"><label class="form-label">Name</label><input class="form-control" name="name" required placeholder="Class 5"></div>
-        <div class="mb-2"><label class="form-label">Sort Order</label><input type="number" class="form-control" name="order" required></div>
-        <button class="btn btn-primary">Add Class</button>
-      </form>
+      <section class="setup-card"><div class="setup-card-heading"><div><h2>Add class</h2><p>Enter a class name and its display order.</p></div></div><div class="setup-card-body">
+        <form method="POST" action="/setup/classes">
+          <div class="mb-3"><label class="form-label">Name</label><input class="form-control" name="name" required placeholder="Class 5"></div>
+          <div class="mb-3"><label class="form-label">Sort Order</label><input type="number" class="form-control" name="order" required></div>
+          <button class="btn btn-primary">Add Class</button>
+        </form>
+      </div></section>
     </div>
     <div class="col-md-7">
-      <table class="table table-bordered bg-white">
-        <thead><tr><th>Order</th><th>Name</th></tr></thead>
-        <tbody>
-          <% classes.forEach(c => { %>
-          <tr><td><%= c.order %></td><td><%= c.name %></td></tr>
-          <% }) %>
-        </tbody>
-      </table>
+      <section class="setup-card"><div class="setup-card-heading"><div><h2>Class list</h2><p>Classes currently configured for the school.</p></div><span class="setup-count"><%= classes.length %> total</span></div>
+        <div class="setup-table-wrap"><table class="table setup-table">
+          <thead><tr><th>Order</th><th>Name</th></tr></thead>
+          <tbody>
+            <% if (classes.length) { classes.forEach(c => { %>
+            <tr><td><%= c.order %></td><td><%= c.name %></td></tr>
+            <% }) } else { %><tr><td colspan="2" class="setup-empty">No classes have been added yet.</td></tr><% } %>
+          </tbody>
+        </table></div>
+      </section>
     </div>
   </div>
 </div>

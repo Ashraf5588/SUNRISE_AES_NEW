@@ -1,0 +1,167 @@
+<%- include('../partials/head', { title: 'Print Pre-bills', setupStylesheet: true }) %>
+<%- include('../partials/navbar') %>
+<div class="fee-page-shell setup-page"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container billing-workspace">
+  <header class="setup-heading print-page-heading">
+    <div class="setup-heading-copy">
+      <p class="setup-eyebrow">Billing · Print center</p>
+      <h1>Print pre-bills</h1>
+      <p>Find issued invoices by session and month, then print a class set or selected students.</p>
+    </div>
+    <a class="btn btn-outline-primary" href="/billing">Back to invoice register</a>
+  </header>
+
+  <% if (error) { %><div class="alert alert-danger" role="alert"><%= error %></div><% } %>
+  <section class="setup-card print-filter-card">
+    <div class="setup-card-heading">
+      <div><h2>Find invoices</h2><p>Choose the academic period, then optionally narrow by class or student.</p></div>
+    </div>
+    <form method="GET" action="/billing/print-invoices" class="print-filter-form">
+      <div class="print-filter-field">
+        <label for="academicSession">Academic session</label>
+        <select class="form-select" name="academicSession" id="academicSession" required>
+          <option value="">Select session</option>
+          <% sessions.forEach(session => { %>
+            <option value="<%= session._id %>" <%= filters.academicSession === String(session._id) ? 'selected' : '' %>><%= session.titleBS %><%= session.isActive ? ' · Current' : '' %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="print-filter-field">
+        <label for="billMonthBS">Billing month</label>
+        <select class="form-select" name="billMonthBS" id="billMonthBS" required>
+          <option value="">Select month</option>
+          <% months.forEach(month => { %><option value="<%= month %>" <%= filters.billMonthBS === month ? 'selected' : '' %>><%= month %></option><% }) %>
+        </select>
+      </div>
+      <div class="print-filter-field">
+        <label for="classId">Class / section <span>Optional</span></label>
+        <select class="form-select" name="classId" id="classId">
+          <option value="">All classes</option>
+          <% classes.forEach(classItem => {
+            const className = /^class\s/i.test(classItem.studentClass || '') ? classItem.studentClass : `class ${classItem.studentClass || ''}`;
+            const classLabel = classItem.section ? `${classItem.section} (${className})` : classItem.studentClass || 'Class';
+          %>
+            <option value="<%= classItem._id %>" <%= filters.classId === String(classItem._id) ? 'selected' : '' %>><%= classLabel %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="print-filter-field">
+        <label for="studentId">Student <span>Optional</span></label>
+        <select class="form-select" name="studentId" id="studentId">
+          <option value="">All students</option>
+          <% students.forEach(student => { %>
+            <option value="<%= student._id %>" <%= filters.studentId === String(student._id) ? 'selected' : '' %>><%= student.name %> · <%= student.studentCode %></option>
+          <% }) %>
+        </select>
+      </div>
+      <button class="btn btn-primary print-find-button" type="submit">Find invoices</button>
+    </form>
+  </section>
+
+  <% if (filters.academicSession && filters.billMonthBS && !error) { %>
+    <section class="setup-card print-results-card">
+      <div class="setup-card-heading">
+        <div>
+          <h2>Available invoices</h2>
+          <p><%= filters.billMonthBS %> · <%= sessions.find(item => String(item._id) === filters.academicSession)?.titleBS || '' %> · Select invoices to print.</p>
+        </div>
+        <span class="setup-count"><%= invoices.length %> invoice<%= invoices.length === 1 ? '' : 's' %></span>
+      </div>
+      <% if (invoiceLimitReached) { %>
+        <div class="alert alert-warning print-limit-alert">Showing the 1,000 most recent invoices. Narrow the search by class or student to print a smaller set.</div>
+      <% } %>
+      <form method="POST" action="/billing/print-invoices/batch" target="_blank" rel="noopener" id="printInvoiceForm">
+        <div class="print-selection-toolbar">
+          <label class="print-select-all"><input type="checkbox" id="selectAllInvoices" checked> Select all</label>
+          <span>Cancelled invoices are excluded.</span>
+          <button type="submit" class="btn btn-primary" <%= invoices.length ? '' : 'disabled' %>>Print selected pre-bills</button>
+        </div>
+        <div class="setup-table-wrap">
+          <table class="table setup-table print-invoice-table">
+            <thead><tr><th></th><th>Invoice</th><th>Student</th><th>Class / section</th><th>Billing month</th><th class="text-end">Amount</th><th></th></tr></thead>
+            <tbody>
+              <% if (!invoices.length) { %>
+                <tr><td colspan="7" class="setup-empty">No active invoices match these filters.</td></tr>
+              <% } %>
+              <% invoices.forEach(invoice => {
+                const student = invoice.student || {};
+                const classLabel = student.class
+                  ? `${student.class.section ? `${student.class.section} · ` : ''}${student.class.studentClass || student.class.name || ''}`
+                  : '-';
+              %>
+                <tr>
+                  <td><input class="print-invoice-choice" type="checkbox" name="invoiceIds" value="<%= invoice._id %>" checked aria-label="Select invoice <%= invoice.invoiceNumber %>"></td>
+                  <td><strong><%= invoice.invoiceNumber %></strong></td>
+                  <td><%= student.name || 'Student' %><small><%= student.studentCode || '' %></small></td>
+                  <td><%= classLabel %></td>
+                  <td><%= invoice.billMonthBS %></td>
+                  <td class="text-end">Rs. <%= Number(invoice.grandTotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></td>
+                  <td><a class="btn btn-sm btn-outline-primary" href="/invoice/<%= invoice._id %>" target="_blank" rel="noopener">View</a></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+        <% if (invoices.length) { %>
+          <div class="print-bottom-action"><button type="submit" class="btn btn-primary">Print selected pre-bills</button></div>
+        <% } %>
+      </form>
+    </section>
+  <% } %>
+</div></main></div>
+<style>
+  .fee-page-shell.setup-page .fee-page-main { padding-top:18px; }
+  .print-page-heading { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:16px; }
+  .print-page-heading .setup-heading-copy > p:last-child { margin-bottom:0; }
+  .print-filter-card,.print-results-card { margin-bottom:16px; }
+  .print-filter-form { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)) auto; align-items:end; gap:12px; padding:16px 18px 18px; }
+  .print-filter-field { min-width:0; }
+  .print-filter-field label { display:flex; justify-content:space-between; gap:8px; margin:0 0 6px; color:#27364a; font-size:11px; font-weight:750; }
+  .print-filter-field label span { color:#8693a4; font-size:9px; font-weight:600; }
+  .print-filter-field .form-select { min-height:39px; border-color:#d5deea; border-radius:7px; color:#172b49; font-size:12px; }
+  .print-find-button { min-height:39px; white-space:nowrap; }
+  .print-selection-toolbar { display:flex; align-items:center; gap:16px; padding:12px 18px; border-bottom:1px solid #e8edf4; }
+  .print-selection-toolbar > span { flex:1; color:#718198; font-size:10px; }
+  .print-selection-toolbar button,.print-bottom-action button { white-space:nowrap; }
+  .print-select-all { display:flex; align-items:center; gap:7px; color:#314762; font-size:11px; font-weight:750; white-space:nowrap; }
+  .print-select-all input,.print-invoice-choice { width:16px; height:16px; accent-color:#28794b; }
+  .print-invoice-table td { vertical-align:middle; }
+  .print-invoice-table td small { display:block; margin-top:3px; color:#7c899b; font-size:10px; }
+  .print-invoice-table td:first-child { width:42px; text-align:center; }
+  .print-limit-alert { margin:12px 18px 0; font-size:11px; }
+  .print-bottom-action { display:flex; justify-content:flex-end; padding:12px 18px 16px; }
+  @media(max-width:1000px) { .print-filter-form { grid-template-columns:repeat(2,minmax(0,1fr)); } .print-find-button { width:100%; } }
+  @media(max-width:600px) {
+    .print-page-heading { align-items:flex-start; flex-direction:column; }
+    .print-filter-form { grid-template-columns:1fr; }
+    .print-selection-toolbar { align-items:flex-start; flex-wrap:wrap; }
+    .print-selection-toolbar > span { flex-basis:100%; order:3; }
+    .print-selection-toolbar button { margin-left:auto; }
+    .print-invoice-table { min-width:720px; }
+  }
+  @media print { .fee-sidebar,.fee-sidebar-scrim,.fee-nav-trigger { display:none !important; } }
+</style>
+<script>
+  (() => {
+    const classSelect = document.getElementById('classId');
+    const studentSelect = document.getElementById('studentId');
+    if (classSelect && studentSelect) {
+      classSelect.addEventListener('change', () => { studentSelect.value = ''; });
+    }
+    const selectAll = document.getElementById('selectAllInvoices');
+    const choices = [...document.querySelectorAll('.print-invoice-choice')];
+    if (selectAll) {
+      selectAll.addEventListener('change', () => choices.forEach(choice => { choice.checked = selectAll.checked; }));
+      choices.forEach(choice => choice.addEventListener('change', () => {
+        selectAll.checked = choices.every(item => item.checked);
+        selectAll.indeterminate = choices.some(item => item.checked) && !selectAll.checked;
+      }));
+      document.getElementById('printInvoiceForm').addEventListener('submit', event => {
+        if (!choices.some(choice => choice.checked)) {
+          event.preventDefault();
+          window.alert('Select at least one invoice to print.');
+        }
+      });
+    }
+  })();
+</script>
+<%- include('../partials/footer') %>

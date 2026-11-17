@@ -1,33 +1,52 @@
-<%- include('../partials/head', { title: 'Invoices' }) %>
+<%- include('../partials/head', { title: 'Invoice Register', setupStylesheet: true }) %>
 <%- include('../partials/navbar') %>
-<div class="fee-page-shell"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container mt-4">
-  <div class="d-flex justify-content-between">
-    <h3>Invoices</h3>
-    <a href="/generate" class="btn btn-primary">Generate Bills</a>
-  </div>
-  <table class="table table-bordered bg-white">
-    <thead><tr><th>Invoice #</th><th>Student</th><th>Month</th><th>Total</th><th>Balance</th><th>Status</th><th></th></tr></thead>
-    <tbody>
-      <% invoices.forEach(inv => { %>
-      <% const totalAmount = Number(inv.totalAmount ?? inv.grandTotal ?? 0); %>
-      <% const paidAmount = Number(inv.paidAmount ?? 0); %>
-      <% const balanceAmount = Math.max(0, totalAmount - paidAmount); %>
-      <% const invoiceNo = inv.invoiceNo || inv.invoiceNumber || '-'; %>
-      <% const studentName = inv.studentName || (inv.student && inv.student.name) || '-'; %>
-      <% const monthLabel = inv.nepaliMonth || inv.billMonthBS || '-'; %>
-      <% const status = inv.status || 'UNPAID'; %>
-      <tr>
-        <td><%= invoiceNo %></td>
-        <td><%= studentName %></td>
-        <td><%= monthLabel %></td>
-        <td><%= totalAmount.toFixed(2) %></td>
-        <td><%= balanceAmount.toFixed(2) %></td>
-        <td><span class="badge bg-<%= status === 'PAID' ? 'success' : status === 'PARTIAL' ? 'warning' : 'danger' %>"><%= status %></span></td>
-        <td><a href="/invoice/<%= inv._id %>" target="_blank">Print</a></td>
-      </tr>
-      <% }) %>
-    </tbody>
-  </table>
+<div class="fee-page-shell setup-page"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container billing-workspace">
+  <header class="setup-heading">
+    <div class="setup-heading-copy">
+      <p class="setup-eyebrow">Billing</p>
+      <h1>Invoice register</h1>
+      <p>Review recent student invoices, payment balances, and invoice status.</p>
+    </div>
+    <div class="billing-heading-actions">
+      <a href="/billing/print-invoices" class="btn btn-outline-primary">Print pre-bills</a>
+      <a href="/generate" class="btn btn-primary billing-heading-action">Generate invoices</a>
+    </div>
+  </header>
+  <section class="setup-card billing-invoice-register">
+    <div class="setup-card-heading">
+      <div><h2>Recent invoices</h2><p>Showing the latest <%= invoices.length %> invoice(s).</p></div>
+      <span class="setup-count"><%= invoices.length %> invoices</span>
+    </div>
+    <div class="setup-table-wrap">
+      <table class="table setup-table billing-register-table">
+        <thead><tr><th>Invoice</th><th>Student</th><th>Billing month</th><th>Total</th><th>Balance</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody>
+          <% if (!invoices.length) { %>
+            <tr><td colspan="7" class="setup-empty">No invoices found. Generate an invoice to get started.</td></tr>
+          <% } %>
+          <% invoices.forEach(inv => { %>
+            <% const totalAmount = Number(inv.totalAmount ?? inv.grandTotal ?? 0); %>
+            <% const paidAmount = Number(inv.paidAmount ?? 0); %>
+            <% const balanceAmount = Math.max(0, totalAmount - paidAmount); %>
+            <% const invoiceNo = inv.invoiceNo || inv.invoiceNumber || '-'; %>
+            <% const studentName = inv.studentName || (inv.student && inv.student.name) || '-'; %>
+            <% const monthLabel = inv.nepaliMonth || inv.billMonthBS || '-'; %>
+            <% const status = inv.status || 'UNPAID'; %>
+            <% const statusClass = status === 'PAID' ? 'is-success' : status === 'PARTIAL' ? 'is-warning' : 'is-neutral'; %>
+            <tr>
+              <td><strong class="billing-invoice-number"><%= invoiceNo %></strong></td>
+              <td><%= studentName %></td>
+              <td><%= monthLabel %></td>
+              <td class="billing-register-money">Rs. <%= totalAmount.toFixed(2) %></td>
+              <td class="billing-register-money">Rs. <%= balanceAmount.toFixed(2) %></td>
+              <td><span class="billing-result-status <%= statusClass %>"><%= status %></span></td>
+              <td><a class="btn btn-sm btn-outline-primary" href="/invoice/<%= inv._id %>" target="_blank" rel="noopener">View invoice</a></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </section>
 </div>
  </main></div>
 <%- include('../partials/footer') %>

@@ -92,6 +92,16 @@
         .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
         .header h1 { font-size: 28px; color: #2c3e50; }
         .filters { display: flex; gap: 15px; flex-wrap: wrap; margin: 20px 0; padding: 20px; background: #f8f9fa; border-radius: 8px; align-items: center; }
+        .report-selection { margin: 16px 0 20px; padding: 12px 16px; border: 1px solid #d5dde5; border-radius: 6px; background: #fff; }
+        .report-selection summary { cursor: pointer; font-weight: 700; color: #153b71; }
+        .selection-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 12px; }
+        .selection-group { min-width: 0; }
+        .selection-group h3 { margin-bottom: 8px; color: #334155; font-size: 14px; }
+        .selection-actions { display: flex; gap: 8px; margin: 10px 0; }
+        .selection-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 6px 12px; max-height: 220px; overflow-y: auto; }
+        .selection-option { display: flex; align-items: flex-start; gap: 7px; margin: 0; font-size: 12px; font-weight: 400; }
+        .selection-option input { margin-top: 3px; }
+        .selection-option[hidden] { display: none !important; }
         .filter-group { display: flex; align-items: center; gap: 8px; }
         .filter-group label { font-weight: 600; color: #555; white-space: nowrap; font-size: 13px; }
         .filter-group select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; background: white; min-width: 130px; }
@@ -103,19 +113,25 @@
         .btn-print-all:hover { background: #1a252f; }
         .btn-excel { background: #27ae60; color: white; }
         .btn-excel:hover { background: #229954; }
-        .subject-section { margin-bottom: 30px; page-break-inside: avoid; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
-        .subject-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; background: #ecf0f1; border-bottom: 2px solid #3498db; flex-wrap: wrap; gap: 10px; }
-        .subject-header .title { font-size: 20px; font-weight: bold; color: #2c3e50; }
+        .subject-section { margin-bottom: 30px; border: 1px solid #222; overflow: hidden; }
+        .subject-header { position: relative; display: flex; justify-content: center; align-items: center; padding: 8px 12px; background: #9fc5e8; border-bottom: 1px solid #222; text-align: center; }
+        .subject-header .title { font-size: 18px; font-weight: bold; color: #111; }
         .subject-header .info { font-size: 13px; color: #555; }
-        .subject-header .btn-print-subject { background: #3498db; color: white; padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .subject-header .btn-print-subject { position: absolute; right: 12px; background: #3498db; color: white; padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
         .subject-header .btn-print-subject:hover { background: #2980b9; }
-        .class-section { padding: 12px 18px; border-bottom: 1px solid #eee; }
-        .class-section:last-child { border-bottom: none; }
-        .class-title { font-size: 16px; font-weight: 600; color: #34495e; margin-bottom: 8px; padding: 6px 10px; background: #f8f9fa; border-radius: 4px; border-left: 4px solid #3498db; }
+        .section-grid { column-count: 3; column-gap: 0; column-fill: balance; }
+        .class-section { display: inline-block; width: 100%; min-width: 0; padding: 0; border: 1px solid #222; page-break-inside: avoid; break-inside: avoid; vertical-align: top; }
+        .class-section[hidden], .subject-section[hidden] { display: none !important; }
+        .class-title { font-size: 15px; font-weight: 700; color: #153b71; margin: 0; padding: 5px 4px; background: #fff; text-align: center; border-bottom: 1px solid #222; }
         .fail-count { color: #e74c3c; font-weight: bold; }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        table th { background: #2c3e50; color: white; padding: 10px 8px; text-align: center; font-weight: 700; font-size: 13px; }
-        table td { padding: 8px 6px; text-align: center; border: 1px solid #333; font-size: 13px; color: #111; }
+        table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px; }
+        table th { background: #fff; color: #111; padding: 4px 3px; text-align: center; font-weight: 700; font-size: 12px; border: 1px solid #222; }
+        table td { padding: 4px 3px; text-align: center; border: 1px solid #222; font-size: 12px; color: #111; overflow-wrap: anywhere; }
+        table th:first-child, table td:first-child { width: 48%; text-align: left; }
+        table th:nth-child(2), table td:nth-child(2) { width: 24%; }
+        table th:nth-child(3), table td:nth-child(3) { width: 28%; }
+        .student-name { text-align: left; white-space: normal; }
+        .fail-mark { color: #f00; }
         table tr:nth-child(even) { background: #f8f9fa; }
         .empty-state { text-align: center; padding: 40px; color: #7f8c8d; }
         .calculation-info { font-size: 12px; color: #7f8c8d; margin-top: 5px; font-style: italic; }
@@ -125,27 +141,29 @@
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             body { background: white; padding: 0; font-size: 12px; color: #000 !important; }
             .container { box-shadow: none; padding: 10px; max-width: 100%; }
-            .filters { background: #f8f9fa; border: 1px solid #ddd; padding: 8px; margin: 8px 0; break-inside: avoid; }
-            .btn-group, .btn-print, .btn-print-all, .btn-excel, .btn-print-subject { display: none !important; }
-            .subject-section { border: 1px solid #000; margin-bottom: 12px; page-break-inside: avoid; break-inside: avoid; }
-            .subject-header { background: #ffffff !important; color: #000 !important; border-bottom: 2px solid #000; padding: 8px 12px; }
-            .subject-header .title { font-size: 16px; color: #000 !important; }
-            .class-section { padding: 8px 12px; }
-            .class-title { font-size: 13px; background: #ffffff !important; color: #000 !important; border-left: 4px solid #000; }
-            table { font-size: 12px; page-break-inside: auto; border-collapse: collapse; }
-            table th { background: #ffffff !important; color: #000000 !important; padding: 6px 5px; font-size: 12px; border: 2px solid #000 !important; }
-            table td { padding: 5px 4px; font-size: 12px; color: #000 !important; border: 1px solid #000 !important; background: #fff !important; }
-            .terminal-badge { background: #000 !important; color: #fff !important; border: 1px solid #000; }
+            .exam-side-nav, .container > .header, .filters, .report-selection, .btn-print-subject { display: none !important; }
+            .subject-section { border: 1px solid #000; margin-bottom: 10px; page-break-inside: auto; break-inside: auto; }
+            .subject-header { background: #9fc5e8 !important; color: #000 !important; border-bottom: 1px solid #000; padding: 5px; }
+            .subject-header .title { font-size: 14px; color: #000 !important; }
+            .section-grid { column-count: 3; column-gap: 0; column-fill: balance; }
+            .class-section { display: inline-block; width: 100%; border: 1px solid #000; padding: 0; }
+            .class-title { font-size: 11px; background: #fff !important; color: #153b71 !important; padding: 4px 2px; }
+            table { font-size: 10px; page-break-inside: auto; border-collapse: collapse; }
+            table th { background: #ffffff !important; color: #000000 !important; padding: 4px 2px; font-size: 10px; border: 1px solid #000 !important; }
+            table td { padding: 4px 2px; font-size: 10px; color: #000 !important; border: 1px solid #000 !important; background: #fff !important; }
+            .fail-mark { color: #f00 !important; }
             @page { size: landscape; margin: 6mm; }
         }
         
-        @media (max-width: 768px) {
+        @media screen and (max-width: 768px) {
             .filters { flex-direction: column; align-items: stretch; }
+            .selection-columns { grid-template-columns: 1fr; }
             .filter-group { flex-direction: column; align-items: stretch; }
             .btn-group { margin-left: 0; flex-direction: column; }
             .btn { width: 100%; justify-content: center; }
             .subject-header { flex-direction: column; align-items: stretch; }
             .subject-header .btn-print-subject { width: 100%; }
+            .section-grid { column-count: 1; }
             table { font-size: 10px; }
             table th, table td { padding: 3px 2px; }
         }
@@ -258,6 +276,68 @@
                 <button class="btn btn-print-all" onclick="printAll()">🖨️ All</button>
             </div>
         </div>
+
+        <% if (failStudentsData && failStudentsData.length > 0) { %>
+            <%
+                const sectionOptionsByKey = new Map();
+                const subjectOptions = new Set();
+                failStudentsData.forEach((subjectData) => {
+                    subjectOptions.add(subjectData.subject);
+                    Object.keys(subjectData.classes).forEach((className) => {
+                        Object.keys(subjectData.classes[className]).forEach((sectionName) => {
+                            const students = subjectData.classes[className][sectionName];
+                            if (!students || students.length === 0) return;
+                            const sectionKey = JSON.stringify([className, sectionName]);
+                            sectionOptionsByKey.set(sectionKey, {
+                                key: sectionKey,
+                                className,
+                                sectionName
+                            });
+                        });
+                    });
+                });
+                const sectionOptions = [...sectionOptionsByKey.values()].sort((a, b) =>
+                    getClassOrder(a.className) - getClassOrder(b.className)
+                    || a.sectionName.localeCompare(b.sectionName, undefined, { numeric: true, sensitivity: 'base' })
+                );
+                const sortedSubjectOptions = [...subjectOptions].sort((a, b) => String(a).localeCompare(String(b)));
+            %>
+            <details class="report-selection" open>
+                <summary>Select class-sections and subjects to display and print</summary>
+                <div class="selection-columns">
+                    <div class="selection-group">
+                        <h3>Class-section list</h3>
+                        <div class="selection-actions">
+                            <button type="button" class="btn btn-print" onclick="setClassSectionSelections(true)">Check all</button>
+                            <button type="button" class="btn btn-print-all" onclick="setClassSectionSelections(false)">Uncheck all</button>
+                        </div>
+                        <div class="selection-list">
+                            <% sectionOptions.forEach((option) => { %>
+                                <label class="selection-option">
+                                    <input type="checkbox" class="class-section-toggle" value="<%= option.key %>" checked>
+                                    <span><%= getClassDisplayName(option.className) %>-<%= option.sectionName %></span>
+                                </label>
+                            <% }); %>
+                        </div>
+                    </div>
+                    <div class="selection-group">
+                        <h3>Subject list</h3>
+                        <div class="selection-actions">
+                            <button type="button" class="btn btn-print" onclick="setSubjectSelections(true)">Check all</button>
+                            <button type="button" class="btn btn-print-all" onclick="setSubjectSelections(false)">Uncheck all</button>
+                        </div>
+                        <div class="selection-list">
+                            <% sortedSubjectOptions.forEach((subjectName) => { %>
+                                <label class="selection-option">
+                                    <input type="checkbox" class="subject-toggle" value="<%= subjectName %>" checked>
+                                    <span><%= subjectName %></span>
+                                </label>
+                            <% }); %>
+                        </div>
+                    </div>
+                </div>
+            </details>
+        <% } %>
         
         <% if (failStudentsData && failStudentsData.length > 0) { %>
             <% failStudentsData.forEach((subjectData) => { 
@@ -270,60 +350,48 @@
                 <div class="subject-section" id="subject-<%= subjectId %>">
                     <div class="subject-header">
                         <div>
-                            <span class="title"><%= subjectData.subject %></span>
-                            <span class="info">
-                                Total Fail: <span class="fail-count"><%= subjectData.totalFail %></span>
-                                <% if (subjectData.terminal) { %>
-                                    <span class="terminal-badge"><%= subjectData.terminal %></span>
-                                <% } %>
-                            </span>
+                            <span class="title"><%= subjectData.subject %><%= subjectData.terminal ? ` ${subjectData.terminal}` : '' %></span>
                         </div>
                         <button class="btn-print-subject" onclick="printSubject('<%= subjectId %>')">🖨️ Print</button>
                     </div>
-                    
-                    <% classes.forEach((className) => {
-                        const sections = Object.keys(subjectData.classes[className]).sort();
-                    %>
-                        <% sections.forEach((sectionName) => {
-                            const students = subjectData.classes[className][sectionName];
+
+                    <div class="section-grid">
+                        <% classes.forEach((className) => {
+                            const sections = Object.keys(subjectData.classes[className]).sort((a, b) =>
+                                subjectData.classes[className][b].length - subjectData.classes[className][a].length
+                                || a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+                            );
                         %>
-                            <div class="class-section">
-                                <div class="class-title">
-                                    Class: <%= getClassDisplayName(className) %> | Section: <%= sectionName %>
-                                    <span style="color:#e74c3c;margin-left:10px;">(Fail: <%= students.length %>)</span>
-                                    <% if (students.length > 0 && students[0].terminal) { %>
-                                        <span class="terminal-badge"><%= students[0].terminal %></span>
-                                    <% } %>
-                                </div>
+                            <% sections.forEach((sectionName) => {
+                                const students = subjectData.classes[className][sectionName];
+                                if (!students || students.length === 0) return;
+                                const fullMarks = Number(students[0].theoryFull) || 0;
+                            %>
+                            <% const sectionKey = JSON.stringify([className, sectionName]); %>
+                            <div class="class-section" data-section-key="<%= sectionKey %>" data-subject-key="<%= subjectData.subject %>">
+                                <div class="class-title"><%= getClassDisplayName(className) %>-<%= sectionName %></div>
                                 <table>
                                     <thead>
                                         <tr>
-                                            <th>Roll</th>
                                             <th>Name</th>
-                                            <th>Theory</th>
-                                            <th>Total PR</th>
-                                            <th>Terminal</th>
-                                            <th>Att</th>
-                                            <th>Reason</th>
+                                            <th>Marks (<%= fullMarks %>)</th>
+                                            <th>Att<% if (attendanceWorkingDays) { %> (<%= attendanceWorkingDays %>)<% } %></th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         <% students.forEach((student) => { %>
                                             <tr>
-                                                <td><%= student.roll %></td>
-                                                <td style="text-align:left;"><%= student.name %></td>
-                                                <td><%= student.theoryMarks %>/<%= student.theoryFull %></td>
-                                                <td><%= student.totalPractical ? student.totalPractical.toFixed(1) : '0' %></td>
-                                                <td><%= student.terminal || '-' %></td>
+                                                <td class="student-name"><%= student.roll ? `${student.roll}. ` : '' %><%= student.name %></td>
+                                                <td class="fail-mark"><%= student.theoryMarks %></td>
                                                 <td><%= student.attendance || 0 %></td>
-                                                <td style="font-size:10px;color:#e74c3c;"><%= student.failReason %></td>
                                             </tr>
                                         <% }) %>
                                     </tbody>
                                 </table>
                             </div>
+                            <% }) %>
                         <% }) %>
-                    <% }) %>
+                    </div>
                 </div>
             <% }) %>
         <% } else { %>
@@ -335,6 +403,47 @@
     <script src="/exam-report-ui.js"></script>
     <script>
         const classSectionMap = <%- JSON.stringify(classSectionMap || {}) %>;
+
+        function applyReportSelections() {
+            const selectedSections = new Set(
+                Array.from(document.querySelectorAll('.class-section-toggle:checked'), input => input.value)
+            );
+            const selectedSubjects = new Set(
+                Array.from(document.querySelectorAll('.subject-toggle:checked'), input => input.value)
+            );
+            const availableSubjects = new Set();
+            document.querySelectorAll('.class-section').forEach(classSection => {
+                if (selectedSections.has(classSection.dataset.sectionKey)) {
+                    availableSubjects.add(classSection.dataset.subjectKey);
+                }
+            });
+            document.querySelectorAll('.subject-toggle').forEach(input => {
+                input.closest('.selection-option').hidden = !availableSubjects.has(input.value);
+            });
+            document.querySelectorAll('.subject-section').forEach(subjectSection => {
+                let visibleSectionCount = 0;
+                subjectSection.querySelectorAll('.class-section').forEach(classSection => {
+                    classSection.hidden = !selectedSections.has(classSection.dataset.sectionKey)
+                        || !selectedSubjects.has(classSection.dataset.subjectKey);
+                    if (!classSection.hidden) visibleSectionCount++;
+                });
+                subjectSection.hidden = visibleSectionCount === 0;
+            });
+        }
+
+        function setClassSectionSelections(checked) {
+            document.querySelectorAll('.class-section-toggle').forEach(input => {
+                input.checked = checked;
+            });
+            applyReportSelections();
+        }
+
+        function setSubjectSelections(checked) {
+            document.querySelectorAll('.subject-toggle').forEach(input => {
+                input.checked = checked;
+            });
+            applyReportSelections();
+        }
         
         function getSectionsForClass(classValue) {
             if (classValue === 'all') {
@@ -401,24 +510,28 @@
                 <style>
                     * { box-sizing: border-box; }
                     body { font-family: Arial; padding: 20px; font-size: 12px; color: #000; }
+                    .subject-section { border: 1px solid #000; }
+                    .subject-header { position: relative; display: flex; justify-content: center; padding: 5px; background: #9fc5e8; border-bottom: 1px solid #000; text-align: center; }
+                    .subject-header .title { font-size: 14px; font-weight: bold; color: #000; }
+                    .section-grid { column-count: 3; column-gap: 0; column-fill: balance; }
+                    .class-section { display: inline-block; width: 100%; min-width: 0; border: 1px solid #000; padding: 0; break-inside: avoid; vertical-align: top; }
+                    .class-section[hidden], .subject-section[hidden] { display: none !important; }
+                    .class-title { padding: 4px 2px; border-bottom: 1px solid #000; text-align: center; font-size: 11px; font-weight: bold; color: #153b71; }
                     table { width: 100%; border-collapse: collapse; }
-                    table th { background: #fff; color: #000; padding: 6px 4px; text-align: center; font-size: 12px; border: 2px solid #000; }
-                    table td { padding: 5px 4px; text-align: center; border: 1px solid #000; font-size: 12px; color: #000; background: #fff; }
-                    .subject-header { background: #fff; padding: 10px 15px; border-bottom: 2px solid #000; }
-                    .subject-header .title { font-size: 18px; font-weight: bold; color: #000; }
-                    .class-section { padding: 8px 12px; border-bottom: 1px solid #000; }
-                    .class-title { font-size: 14px; font-weight: 600; padding: 4px 8px; background: #fff; color: #000; border-left: 4px solid #000; }
-                    .header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-                    .header h1 { font-size: 22px; color: #000; }
-                    .fail-count { color: #000; }
-                    .terminal-badge { display: inline-block; padding: 2px 10px; background: #000; color: #fff; border: 1px solid #000; border-radius: 12px; font-size: 10px; }
-                    @page { size: landscape; margin: 8mm; }
+                    table { table-layout: fixed; }
+                    table th { background: #fff; color: #000; padding: 4px 2px; text-align: center; font-size: 10px; border: 1px solid #000; }
+                    table td { padding: 4px 2px; text-align: center; border: 1px solid #000; font-size: 10px; color: #000; background: #fff; overflow-wrap: anywhere; }
+                    table th:first-child, table td:first-child { width: 48%; text-align: left; }
+                    table th:nth-child(2), table td:nth-child(2) { width: 24%; }
+                    table th:nth-child(3), table td:nth-child(3) { width: 28%; }
+                    .student-name { text-align: left; }
+                    .fail-mark { color: #f00; }
+                    .subject-header .info { font-size: 10px; }
+                    @page { size: landscape; margin: 6mm; }
                     @media print { body { padding: 0; } }
                 </style>
                 </head><body>
-                <div class="header"><h1>Subject Wise Fail Students</h1><p>${subjectId.replace(/_/g, ' ')} - Academic Year: 2083</p></div>
                 ${clone.innerHTML}
-                <p style="text-align:center;margin-top:15px;font-size:10px;color:#000;">Printed: ${new Date().toLocaleString()}</p>
                 </body></html>
             `);
             printWindow.document.close();
@@ -457,6 +570,10 @@
         }
         
         document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.class-section-toggle, .subject-toggle').forEach(input => {
+                input.addEventListener('change', applyReportSelections);
+            });
+            applyReportSelections();
             populateSections();
             const classSelect = document.getElementById('classFilter');
             if (classSelect) {

@@ -259,6 +259,33 @@
         
         .btn-primary-generate:hover {
             background: #2563eb;
+        }
+
+        .practical-subjects {
+            margin-top: 18px;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .practical-class {
+            margin-top: 12px;
+            padding: 12px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            background: #fafbfc;
+        }
+
+        .practical-class-title {
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .practical-subject-option {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin: 4px 16px 4px 0;
+            font-size: 0.85rem;
             transform: translateY(-1px);
         }
         
@@ -821,6 +848,27 @@
                         </button>
                     </div>
                 </div>
+                <% if (analysisType === 'both' && classSubjects && classSubjects.length) { %>
+                    <div class="practical-subjects">
+                        <div class="fw-semibold">Subjects counted with practical</div>
+                        <div class="text-muted-light" style="font-size:0.8rem;">
+                            Checked subjects use theory + practical; unchecked subjects use theory only.
+                        </div>
+                        <input type="hidden" name="practicalSelectionSubmitted" value="1">
+                        <% classSubjects.forEach(classData => { %>
+                            <div class="practical-class">
+                                <div class="practical-class-title">Class <%= classData.class %></div>
+                                <% classData.subjects.forEach(subject => { %>
+                                    <label class="practical-subject-option">
+                                        <input type="checkbox" name="practicalSubjects" value="<%= subject.value %>"
+                                            <%= subject.selectedForAnalysis ? 'checked' : '' %>>
+                                        <span><%= subject.subject %></span>
+                                    </label>
+                                <% }); %>
+                            </div>
+                        <% }); %>
+                    </div>
+                <% } %>
             </form>
         </div>
 

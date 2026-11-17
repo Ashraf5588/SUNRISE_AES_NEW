@@ -1,38 +1,1051 @@
-<%- include('../partials/head', { title: 'Generate Bills' }) %>
+<%- include('../partials/head', { title: 'Generate Bills', setupStylesheet: true, nepaliDatePicker: true }) %>
 <%- include('../partials/navbar') %>
-<div class="fee-page-shell"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container mt-4">
-  <h3>Generate Monthly Bills</h3>
-  <form method="POST" action="/billing/generate" class="bg-white p-4 rounded shadow-sm">
-    <div class="row g-3">
-      <div class="col-md-4">
-        <label class="form-label">Bill Month (BS)</label>
-        <input class="form-control" name="billMonthBS" placeholder="Baishakh" required>
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">Bill Date (AD)</label>
-        <input type="date" class="form-control" name="billDateAD" required>
-      </div>
-      <div class="col-md-4">
-        <label class="form-label">Bill Date (BS)</label>
-        <input class="form-control" name="billDateBS" placeholder="2082-01-01" required>
-      </div>
-      <div class="col-md-6">
-        <label class="form-label">Academic Session (used when billing ALL active students)</label>
-        <select class="form-select" name="academicSession">
-          <option value="">-- select --</option>
-          <% sessions.forEach(s => { %><option value="<%= s._id %>"><%= s.titleBS %></option><% }) %>
-        </select>
-      </div>
-      <div class="col-md-6">
-        <label class="form-label">Or generate for one student only</label>
-        <select class="form-select" name="studentId">
-          <option value="">-- all active students in session above --</option>
-          <% students.forEach(s => { %><option value="<%= s._id %>"><%= s.name %> (<%= s.studentCode %>)</option><% }) %>
-        </select>
-      </div>
+<div class="fee-page-shell setup-page"><%- include('../billingfirst/feesidenav') %><main class="fee-page-main"><div class="container billing-workspace">
+  <header class="setup-heading billing-page-heading">
+    <div class="setup-heading-copy">
+      <p class="setup-eyebrow">Billing</p>
+      <h1>Generate student invoice</h1>
+      <p>Create invoices for selected classes or an individual student.</p>
     </div>
-    <button class="btn btn-primary mt-4">Generate</button>
+    <div class="billing-heading-tools">
+      <div class="billing-date-field">
+        <label for="billDateBS">Invoice date (BS)</label>
+        <input class="form-control nepali-datepicker" type="text" name="billDateBS" id="billDateBS" value="<%= todayBS %>" placeholder="YYYY-MM-DD" autocomplete="off" form="billingGenerateForm" required>
+      </div>
+      <a class="btn btn-outline-primary billing-heading-action" href="/billing">View invoices</a>
+    </div>
+  </header>
+  <% if (error) { %><div class="alert alert-danger setup-session-alert" role="alert"><%= error %></div><% } %>
+  <form method="POST" action="/billing/generate" class="billing-generate-form" id="billingGenerateForm">
+    <input type="hidden" name="feeSelectionLoaded" id="feeSelectionLoaded" value="false">
+    <section class="setup-card billing-generate-card">
+      <div class="setup-card-body">
+        <div class="billing-method-heading">
+          <div><h2>Choose billing method</h2><p>Choose who should receive an invoice.</p></div>
+          <fieldset class="billing-mode-picker">
+          <legend class="visually-hidden">Billing method</legend>
+          <label class="billing-mode-option is-selected" for="classWiseMode">
+            <input id="classWiseMode" type="radio" name="billingMode" value="classWise" checked>
+            <span class="billing-mode-radio" aria-hidden="true"></span>
+            <span class="billing-mode-copy"><strong>Class-wise</strong></span>
+          </label>
+          <label class="billing-mode-option" for="individualMode">
+            <input id="individualMode" type="radio" name="billingMode" value="individual">
+            <span class="billing-mode-radio" aria-hidden="true"></span>
+            <span class="billing-mode-copy"><strong>Individual</strong></span>
+          </label>
+          </fieldset>
+        </div>
+
+        <div class="billing-filter-row">
+          <div class="billing-generate-field">
+            <label for="billMonthBS">Billing month (BS)</label>
+            <select class="form-select" name="billMonthBS" id="billMonthBS" required>
+              <option value="">Select month</option>
+              <% ['Baisakh','Jestha','Asar','Shrawan','Bhadra','Ashwin','Kartik','Mangsir','Poush','Magh','Falgun','Chaitra'].forEach(month => { %>
+                <option value="<%= month %>"><%= month %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="billing-generate-field">
+            <label for="academicSession">Academic session <span class="required-mark">*</span></label>
+            <select class="form-select" name="academicSession" id="academicSession" required>
+              <option value="">Select academic session</option>
+              <% sessions.forEach(s => { %><option value="<%= s._id %>" <%= s.isActive ? 'selected' : '' %>><%= s.titleBS %><%= s.isActive ? ' · Current' : '' %></option><% }) %>
+            </select>
+          </div>
+          <div class="billing-generate-field billing-individual-only" id="individualStudentField" hidden>
+            <label for="studentId">Student</label>
+            <select class="form-select" name="studentId" id="studentId" disabled>
+              <option value="">Select a student</option>
+              <% students.forEach(s => { %><option value="<%= s._id %>" data-session="<%= s.academicSession %>"><%= s.name %> (<%= s.studentCode %>)</option><% }) %>
+            </select>
+          </div>
+          <div class="billing-generate-field billing-class-only" id="classPicker" aria-labelledby="classPickerTitle">
+            <label id="classPickerTitle">Class / section</label>
+            <details class="billing-class-select" id="classSelectDropdown">
+              <summary class="billing-class-select-button">
+                <span id="classSelectLabel">Choose class or section</span>
+                <span class="billing-class-selected-count" id="selectedClassCount">0 selected</span>
+                <span class="billing-class-select-caret" aria-hidden="true"></span>
+              </summary>
+              <div class="billing-class-select-menu">
+                <div class="billing-class-select-menu-heading">
+                  <span>Choose one or more classes</span>
+                  <button type="button" class="btn btn-link" id="selectAllClasses" disabled>Select all</button>
+                </div>
+                <div class="billing-class-list" id="classOptions">
+                  <% if (classes.length) { %>
+                    <% classes.forEach(classItem => {
+                      const className = /^class\s/i.test(classItem.studentClass || '') ? classItem.studentClass : `class ${classItem.studentClass || ''}`;
+                      const classLabel = classItem.section ? `${classItem.section} (${className})` : classItem.studentClass || 'Class';
+                    %>
+                      <label class="billing-class-option" data-class-option data-class-id="<%= classItem._id %>">
+                        <input type="checkbox" class="billing-class-choice" name="selectedClassIds" value="<%= classItem._id %>" data-class-label="<%= classLabel %>" data-counts="<%= JSON.stringify(Object.fromEntries(sessions.map(session => [String(session._id), activeStudentCounts[`${session._id}:${classItem._id}`] || 0]))) %>" <%= (sessions.find(session => session.isActive) || sessions[0]) ? '' : 'disabled' %>>
+                        <span class="billing-class-option-copy"><strong><%= classLabel %></strong><small><span data-class-student-count>—</span> <span data-class-count-label>active students</span></small></span>
+                      </label>
+                    <% }) %>
+                  <% } else { %>
+                    <p class="billing-class-empty">No classes or sections are configured yet.</p>
+                  <% } %>
+                </div>
+              </div>
+            </details>
+            <p class="billing-selected-class-names" id="selectedClassNames" aria-live="polite" hidden></p>
+          </div>
+          <div class="billing-generate-field billing-class-only" id="classStudentsField">
+            <label>Students in selected classes</label>
+            <details class="billing-class-select billing-student-select" id="studentSelectDropdown">
+              <summary class="billing-class-select-button">
+                <span id="studentSelectLabel">Select classes first</span>
+                <span class="billing-class-selected-count" id="selectedStudentCount">0 selected</span>
+                <span class="billing-class-select-caret" aria-hidden="true"></span>
+              </summary>
+              <div class="billing-class-select-menu">
+                <div class="billing-class-select-menu-heading">
+                  <span>Select students to invoice</span>
+                  <button type="button" class="btn btn-link" id="selectAllStudents" disabled>Select all</button>
+                </div>
+                <div class="billing-student-options" id="studentOptions">
+                  <p class="billing-class-empty">Choose classes and month to load students.</p>
+                </div>
+              </div>
+            </details>
+          </div>
+          <button class="btn btn-primary billing-preview-button" type="button" id="previewClassFees">Generate preview</button>
+          <button class="btn btn-outline-primary billing-individual-only" type="button" id="loadFeeHeads" hidden disabled>Load applicable fee heads</button>
+          <span id="selectionHelp" class="billing-selection-help" aria-live="polite">Choose a month, session, classes, and students.</span>
+          <p class="billing-class-hint" id="classSelectionHelp">Students are selected by default. Uncheck anyone to exclude them from billing.</p>
+          </div>
+      </div>
+    </section>
+
+    <section class="setup-card billing-class-fee-preview" id="classFeePreview" aria-labelledby="classFeePreviewTitle" hidden>
+      <div class="setup-card-heading">
+        <div><h2 id="classFeePreviewTitle">Review class fees</h2><p>Set the fees to include for each class.</p></div>
+      </div>
+      <div class="billing-class-fee-cards" id="classFeeCards"></div>
+    </section>
+
+    <section class="setup-card billing-fee-selection-card billing-individual-only" id="feeSelectionCard" aria-labelledby="feeSelectionTitle" hidden>
+      <div class="setup-card-heading">
+        <div><h2 id="feeSelectionTitle">Fee head selection</h2><p>All fee heads are listed with editable invoice amounts. Scheduled fees are checked by default; changes apply to this invoice only and do not update fee setup.</p></div>
+        <span class="setup-count" id="selectedFeeCount">0 selected</span>
+      </div>
+      <div class="setup-table-wrap">
+        <table class="table setup-table billing-fee-table">
+          <thead><tr><th>Fee head</th><th>Frequency</th><th>Configured income ledger</th><th class="billing-amount-heading">Invoice amount (Rs.)</th><th class="billing-check-heading">Include</th></tr></thead>
+          <tbody id="feeHeadRows">
+            <tr><td colspan="5" class="setup-empty">Load fee heads to see applicable charges.</td></tr>
+          </tbody>
+          <tfoot>
+            <tr><th colspan="3">Selected invoice total</th><th class="billing-amount" id="selectedFeeTotal">Rs. 0.00</th><th></th></tr>
+          </tfoot>
+        </table>
+      </div>
+    </section>
+
+    <div class="billing-generate-submit">
+      <p>Selected fees are saved as invoice snapshots; the configured fee structures are not changed.</p>
+      <button class="btn btn-primary" type="submit" id="generateInvoiceButton" disabled hidden>Generate invoices</button>
+    </div>
   </form>
 </div>
  </main></div>
+<style>
+  .billing-mode-picker { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:0 0 20px; padding:0; border:0; }
+  .billing-mode-option { position:relative; display:flex; min-height:94px; align-items:flex-start; gap:12px; padding:16px; border:1px solid #dfe7f1; border-radius:12px; background:#fff; cursor:pointer; transition:border-color .15s,background .15s,box-shadow .15s; }
+  .billing-mode-option:hover { border-color:#afc8e8; }
+  .billing-mode-option.is-selected { border-color:#6f9fdf; background:#f5f9ff; box-shadow:0 0 0 2px rgba(57,121,214,.08); }
+  .billing-mode-option > input { position:absolute; width:1px; height:1px; opacity:0; }
+  .billing-mode-option > input:focus-visible + .billing-mode-radio { outline:3px solid rgba(57,121,214,.28); outline-offset:2px; }
+  .billing-mode-radio { display:grid; width:19px; height:19px; flex:0 0 19px; margin-top:1px; place-items:center; border:1.5px solid #b8c5d5; border-radius:50%; background:#fff; }
+  .billing-mode-option.is-selected .billing-mode-radio { border-color:#3979d6; }
+  .billing-mode-option.is-selected .billing-mode-radio::after { width:9px; height:9px; border-radius:50%; background:#3979d6; content:""; }
+  .billing-mode-copy { display:grid; gap:5px; }
+  .billing-mode-copy strong { color:#172b49; font-size:13px; font-weight:800; }
+  .billing-mode-copy small { max-width:440px; color:#65758a; font-size:11px; line-height:1.5; }
+  .billing-mode-default { position:absolute; top:12px; right:12px; padding:4px 7px; border-radius:12px; background:#e8f1ff; color:#356bb4; font-size:8px; font-weight:850; letter-spacing:.45px; }
+  .billing-generate-grid { margin-top:4px; }
+  .billing-class-picker { position:relative; margin-top:20px; padding:17px; border:1px solid #e1e9f3; border-radius:12px; background:#fbfdff; }
+  .billing-class-picker[hidden],.billing-individual-only[hidden] { display:none !important; }
+  .billing-class-picker-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:11px; }
+  .billing-class-picker-heading h3 { margin:0; color:#172b49; font-size:13px; font-weight:800; }
+  .billing-class-picker-heading p { margin:4px 0 0; color:#718198; font-size:10px; }
+  .billing-class-select { position:relative; max-width:520px; }
+  .billing-class-select-button { display:flex; min-height:43px; align-items:center; gap:10px; padding:8px 12px; border:1px solid #d5dfeb; border-radius:8px; background:#fff; color:#263b57; cursor:pointer; list-style:none; }
+  .billing-class-select-button::-webkit-details-marker { display:none; }
+  .billing-class-select-button > span:first-child { flex:1; font-size:12px; font-weight:700; }
+  .billing-class-select[open] .billing-class-select-button { border-color:#79a1d8; box-shadow:0 0 0 3px rgba(57,121,214,.1); }
+  .billing-class-select-caret { width:8px; height:8px; border-right:1.5px solid #61748d; border-bottom:1.5px solid #61748d; transform:rotate(45deg) translateY(-2px); transition:transform .15s; }
+  .billing-class-select[open] .billing-class-select-caret { transform:rotate(225deg) translate(-2px,-1px); }
+  .billing-class-select-menu { position:absolute; z-index:20; top:calc(100% + 5px); left:0; width:min(520px,calc(100vw - 48px)); max-height:330px; overflow:auto; padding:8px; border:1px solid #dbe4ef; border-radius:9px; background:#fff; box-shadow:0 12px 30px rgba(27,48,77,.15); }
+  .billing-class-select-menu-heading { position:sticky; top:-8px; z-index:1; display:flex; align-items:center; justify-content:space-between; margin:-8px -8px 7px; padding:9px 11px; border-bottom:1px solid #edf1f6; background:#fff; color:#61748d; font-size:10px; font-weight:700; }
+  .billing-class-selected-count { padding:5px 9px; border:1px solid #dfe9f8; border-radius:16px; background:#edf4ff; color:#315fae; font-size:9px; font-weight:800; white-space:nowrap; }
+  .billing-class-select-menu-heading .btn { padding:3px 5px; color:#326fc1; font-size:10px; font-weight:750; text-decoration:none; }
+  .billing-class-select-menu-heading .btn:disabled { color:#98a5b6; }
+  .billing-class-list { display:grid; grid-template-columns:1fr; gap:4px; }
+  .billing-class-option { display:flex; min-width:0; min-height:42px; align-items:center; gap:10px; padding:7px 9px; border:1px solid transparent; border-radius:7px; background:#fff; cursor:pointer; }
+  .billing-class-option:hover:not(.is-disabled) { border-color:#b6cbe7; }
+  .billing-class-option.is-checked { border-color:#d6e5fa; background:#f2f7ff; }
+  .billing-class-option.is-disabled { cursor:not-allowed; opacity:.58; }
+  .billing-class-choice { position:relative; display:block; width:17px; height:17px; flex:0 0 17px; margin:0 !important; appearance:auto !important; border:1px solid #aebdd0; border-radius:4px; background:#fff; cursor:pointer; opacity:1 !important; pointer-events:auto !important; }
+  .billing-class-choice:checked { accent-color:#3979d6; }
+  .billing-class-choice:focus-visible { outline:3px solid rgba(57,121,214,.28); outline-offset:2px; }
+  .billing-class-option-copy { display:grid; min-width:0; flex:1; gap:4px; }
+  .billing-class-option-copy strong { overflow:hidden; color:#263b57; font-size:11px; font-weight:750; text-overflow:ellipsis; white-space:nowrap; }
+  .billing-class-option-copy small { color:#8290a2; font-size:9px; }
+  .billing-class-hint,.billing-class-empty { margin:11px 0 0; color:#7c8ba0; font-size:10px; }
+  .billing-class-empty { padding:12px; text-align:center; }
+  .billing-class-fee-preview[hidden] { display:none !important; }
+  #classFeePreview { scroll-margin-top:16px; }
+  .billing-class-fee-cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); align-items:start; gap:10px; padding:12px; }
+  .billing-class-fee-card { overflow:hidden; border:1px solid #e1e9f3; border-radius:11px; background:#fff; color:#172b49; font-size:12px; font-weight:750; padding-left:2%}
+  .billing-class-fee-card-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:6px; padding:10px; border-bottom:1px solid #e8edf4; background:#f8faff; }
+  .billing-class-fee-card-heading h3 { margin:0; color:#1e3554; font-size:12px; font-weight:800; }
+  .billing-class-fee-card-heading small { display:block; margin-top:4px; color:#718198; font-size:9px; }
+  .billing-class-fee-status { display:inline-flex; align-items:center; padding:5px 9px; border-radius:20px; background:#e9f7ef; color:#217547; font-size:9px; font-weight:800; white-space:nowrap; }
+  .billing-class-fee-status.has-existing { background:#fff5e5; color:#94620c; }
+  .billing-class-fee-status.is-complete { background:#eaf1fa; color:#4c6484; }
+  .billing-class-invoice-alert { margin:8px; padding:7px 8px; border:1px solid #f0dfb8; border-radius:7px; background:#fffaf0; color:#795b1b; font-size:9px; line-height:1.45; }
+  .billing-class-invoice-alert.is-complete { border-color:#dbe5f0; background:#f4f7fb; color:#51647d; }
+  .billing-class-students { padding:8px 9px; border-bottom:1px solid #edf1f6; }
+  .billing-class-students summary { display:flex; align-items:center; justify-content:space-between; gap:6px; color:#405773; cursor:pointer; font-size:9px; font-weight:800; list-style:none; }
+  .billing-class-students summary::-webkit-details-marker { display:none; }
+  .billing-class-student-count { color:#718198; font-size:8px; font-weight:650; }
+  .billing-class-student-actions { display:flex; gap:8px; margin:6px 0; }
+  .billing-class-student-actions button { padding:0; border:0; background:none; color:#3979d6; cursor:pointer; font-size:8px; font-weight:750; }
+  .billing-class-student-actions button:disabled { color:#9aa7b8; cursor:not-allowed; }
+  .billing-class-student-list { display:grid; max-height:104px; gap:2px; overflow:auto; margin:0; padding:0; list-style:none; }
+  .billing-class-student-option { display:flex; align-items:center; gap:6px; min-width:0; padding:4px 3px; border-radius:4px; color:#465a74; font-size:9px; }
+  .billing-class-student-option:hover { background:#f5f8fc; }
+  .billing-class-student-option input { width:14px; height:14px; flex:0 0 14px; margin:0; accent-color:#3979d6; }
+  .billing-class-student-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .billing-class-fee-list { display:grid; gap:5px; padding:8px; }
+  .billing-class-fee-item { display:grid; grid-template-columns:minmax(0,1fr) 15px; align-items:center; gap:5px; padding:6px; border:1px solid #edf1f6; border-radius:6px; }
+  .billing-class-fee-name { overflow:hidden; color:#344a66; font-size:9px; font-weight:750; text-overflow:ellipsis; white-space:nowrap; }
+  .billing-class-fee-meta { margin-top:2px; color:#8794a5; font-size:8px; line-height:1.25; }
+  .billing-class-fee-amount { width:85%; min-height:20px; margin-top:4px; padding:4px 6px; border:1px solid #dce5ef; border-radius:5px; color:#172b49; font-size:10px; text-align:right; }
+  .billing-class-fee-amount:disabled { background:#f4f7fb; color:#64758c; }
+  .billing-class-fee-choice { width:15px; height:15px; accent-color:#3979d6; cursor:pointer; }
+  .billing-class-fee-choice:focus-visible { outline:3px solid rgba(57,121,214,.28); outline-offset:2px; }
+  .billing-class-fee-total { padding:10px 15px; border-top:1px solid #e8edf4; color:#223957; font-size:11px; font-weight:800; text-align:right; }
+  .billing-class-preview-note { padding:0 18px 17px; color:#65758a; font-size:10px; line-height:1.55; }
+  #previewClassFees { white-space:nowrap; }
+  #previewClassFees:disabled { cursor:not-allowed; }
+  .required-mark { color:#d24755; }
+  @media(max-width:1150px) { .billing-class-fee-cards { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+  @media(max-width:900px) { .billing-class-fee-cards { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media(max-width:620px) { .billing-mode-picker { grid-template-columns:1fr; } .billing-mode-option { min-height:82px; padding:13px; } .billing-class-picker { padding:13px; } .billing-class-picker-heading { align-items:flex-start; flex-direction:column; } .billing-class-fee-cards { grid-template-columns:1fr; padding:10px; } }
+  .fee-page-shell.setup-page .fee-page-main { padding-top:12px; }
+  .billing-page-heading { display:flex; align-items:center; justify-content:space-between; gap:20px; margin-bottom:12px; }
+  .billing-page-heading .setup-heading-copy > p:last-child { margin-bottom:0; }
+  .billing-heading-tools { display:flex; align-items:flex-end; gap:12px; }
+  .billing-date-field { width:164px; }
+  .billing-date-field label,.billing-generate-field > label { display:block; margin:0 0 5px; color:#27364a; font-size:11px; font-weight:750; }
+  .billing-date-field .form-control,.billing-generate-field .form-select { min-height:37px; border:1px solid #d5deea; border-radius:7px; color:#172b49; font-size:12px; }
+  .billing-method-heading { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:12px; }
+  .billing-method-heading h2 { margin:0; color:#172b49; font-size:15px; font-weight:800; }
+  .billing-method-heading p { margin:3px 0 0; color:#718198; font-size:10px; }
+  .billing-mode-picker { display:flex; gap:6px; margin:0; }
+  .billing-mode-option { display:flex; min-height:32px; align-items:center; gap:7px; padding:6px 11px; border-radius:7px; }
+  .billing-mode-radio { width:14px; height:14px; flex-basis:14px; }
+  .billing-mode-option.is-selected .billing-mode-radio::after { width:6px; height:6px; }
+  .billing-mode-copy strong { font-size:10px; }
+  .billing-filter-row { display:grid; grid-template-columns:minmax(125px,.8fr) minmax(145px,1fr) minmax(170px,1.15fr) minmax(185px,1.3fr) auto; align-items:end; gap:10px; }
+  .billing-filter-row .billing-generate-field { min-width:0; }
+  .billing-filter-row .billing-class-select { max-width:none; }
+  .billing-filter-row .billing-class-select-button { min-height:37px; padding:6px 8px; }
+  .billing-filter-row .billing-class-select-button > span:first-child { min-width:0; overflow:hidden; font-size:10px; text-overflow:ellipsis; white-space:nowrap; }
+  .billing-selected-class-names { margin:5px 0 0; color:#18834b; font-size:10px; font-weight:700; line-height:1.45; overflow-wrap:anywhere; }
+  .billing-selected-class-names[hidden] { display:none; }
+  .billing-class-selected-count { padding:4px 6px; font-size:8px; }
+  .billing-class-select-menu { width:min(440px,calc(100vw - 40px)); }
+  .billing-student-select .billing-class-select-menu { width:min(470px,calc(100vw - 40px)); }
+  .billing-student-options { display:grid; gap:7px; }
+  .billing-student-group { padding:0 4px 6px; border-bottom:1px solid #edf1f6; }
+  .billing-student-group-heading { padding:5px 3px; color:#526680; font-size:10px; font-weight:800; }
+  .billing-student-group .billing-class-student-option { min-height:32px; padding:4px 5px; border-radius:5px; cursor:pointer; }
+  .billing-class-student-option input { width:15px; height:15px; accent-color:#3979d6; }
+  .billing-class-student-option input:disabled { cursor:not-allowed; }
+  .billing-error-message { color:#b42332; }
+  .billing-preview-button { min-height:37px; padding:7px 12px; font-size:10px; font-weight:750; white-space:nowrap; }
+  .billing-selection-help { grid-column:1 / -1; margin:0; color:#718198; font-size:9px; }
+  .billing-class-hint { grid-column:1 / -1; margin:-6px 0 0; }
+  .billing-generate-card .setup-card-body { padding:14px 18px; }
+  .billing-class-fee-cards { gap:10px; padding:12px; }
+  .billing-class-fee-card-heading small { font-size:8px; }
+  .billing-class-fee-total { font-size:10px; }
+  .billing-class-fee-preview > .setup-card-heading { padding:16px 18px 10px; }
+  .billing-class-fee-preview .setup-card-heading h2 { color:#172b49; font-size:17px; }
+  .billing-class-fee-preview .setup-card-heading p { margin:3px 0 0; font-size:11px; }
+  .billing-class-fee-cards { gap:14px; padding:14px 18px 18px; }
+  .billing-class-fee-card { border-color:#dce5ef; border-radius:12px; box-shadow:0 2px 8px rgba(34,57,87,.04); }
+  .billing-class-fee-card-heading { min-height:62px; align-items:center; padding:12px 14px; }
+  .billing-class-fee-card-heading h3 { font-size:14px; line-height:1.35; }
+  .billing-class-fee-card-heading .billing-class-student-count { margin-top:4px; color:#65758a; font-size:10px; }
+  .billing-class-fee-status { padding:5px 9px; font-size:10px; }
+  .billing-class-invoice-alert { margin:9px 12px 0; padding:7px 9px; font-size:10px; }
+  .billing-class-fee-list { gap:7px; padding:12px; }
+  .billing-class-fee-item { grid-template-columns:22px minmax(0,1fr) minmax(78px,96px) 20px; gap:8px; min-height:52px; padding:8px 9px; border-color:#e8edf4; border-radius:8px; }
+  .billing-class-fee-number { color:#8492a5; font-size:10px; font-weight:750; font-variant-numeric:tabular-nums; }
+  .billing-class-fee-label { display:grid; min-width:0; gap:3px; }
+  .billing-class-fee-name { overflow:visible; color:#263b57; font-size:12px; font-weight:750; line-height:1.3; text-overflow:clip; white-space:normal; }
+  .billing-class-fee-label .billing-mapping-error { color:#b42332; font-size:9px; line-height:1.25; }
+  .billing-class-fee-amount { min-height:36px; margin:0; padding:6px 8px; border-color:#d5deea; border-radius:6px; font-size:12px; font-weight:650; }
+  .billing-class-fee-choice { width:18px; height:18px; justify-self:center; }
+  .billing-class-fee-total { padding:12px 16px; border-top:1px solid #e8edf4; color:#172b49; font-size:13px; font-weight:800; }
+  .billing-generate-submit { margin-top:10px; }
+  @media(max-width:1050px) { .billing-filter-row { grid-template-columns:repeat(3,minmax(0,1fr)); } .billing-preview-button { width:100%; } }
+  @media(max-width:700px) {
+    .billing-page-heading { align-items:flex-start; flex-direction:column; }
+    .billing-heading-tools { width:100%; justify-content:space-between; }
+    .billing-filter-row { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .billing-filter-row .billing-preview-button { grid-column:1 / -1; }
+    .billing-class-fee-cards { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  }
+  @media(max-width:500px) {
+    .billing-method-heading { align-items:flex-start; flex-direction:column; }
+    .billing-mode-option { min-height:30px; }
+    .billing-filter-row { grid-template-columns:1fr; }
+    .billing-filter-row .billing-preview-button { grid-column:auto; }
+    .billing-class-fee-cards { grid-template-columns:1fr; }
+    .billing-class-fee-item { grid-template-columns:22px minmax(0,1fr) minmax(84px,110px) 20px; }
+  }
+</style>
+<script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js"></script>
+<script>
+  (() => {
+    const form = document.querySelector('.billing-generate-form');
+    const student = document.getElementById('studentId');
+    const session = document.getElementById('academicSession');
+    const month = document.getElementById('billMonthBS');
+    const date = document.getElementById('billDateBS');
+    const rows = document.getElementById('feeHeadRows');
+    const loaded = document.getElementById('feeSelectionLoaded');
+    const loadButton = document.getElementById('loadFeeHeads');
+    const help = document.getElementById('selectionHelp');
+    const selectedCount = document.getElementById('selectedFeeCount');
+    const total = document.getElementById('selectedFeeTotal');
+    const submit = document.getElementById('generateInvoiceButton');
+    const previewClassFees = document.getElementById('previewClassFees');
+    const classFeePreview = document.getElementById('classFeePreview');
+    const classFeeCards = document.getElementById('classFeeCards');
+    const classPicker = document.getElementById('classPicker');
+    const classSelectLabel = document.getElementById('classSelectLabel');
+    const selectedClassNames = document.getElementById('selectedClassNames');
+    const studentOptions = document.getElementById('studentOptions');
+    const studentSelectLabel = document.getElementById('studentSelectLabel');
+    const selectedStudentCount = document.getElementById('selectedStudentCount');
+    const selectAllStudents = document.getElementById('selectAllStudents');
+    const individualStudentField = document.getElementById('individualStudentField');
+    const feeSelectionCard = document.getElementById('feeSelectionCard');
+    const classOptions = [...document.querySelectorAll('.billing-class-option')];
+    const classChoices = [...document.querySelectorAll('.billing-class-choice')];
+    const selectedClassCount = document.getElementById('selectedClassCount');
+    const classSelectionHelp = document.getElementById('classSelectionHelp');
+    const selectAllClasses = document.getElementById('selectAllClasses');
+    const modeInputs = [...document.querySelectorAll('input[name="billingMode"]')];
+    let previewRequest = 0;
+    let classPreviewRequest = 0;
+    let previewReady = false;
+    let classPreviewReady = false;
+    let classPreviewLoading = false;
+    let classDataLoading = false;
+    let classPreviewData = null;
+    let classPreviewDataKey = '';
+    let classDataError = '';
+    let classDataRequest = 0;
+    let classDataTimer = null;
+    const studentSelectionState = new Map();
+    let selectionHelpText = '';
+
+    const money = value => `Rs. ${Number(value || 0).toLocaleString('en-IN', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+    const billingMode = () => form.querySelector('input[name="billingMode"]:checked').value;
+    const selectedClasses = () => classChoices.filter(input => input.checked);
+    const selectedStudentChoices = () => [...studentOptions.querySelectorAll('.billing-class-student-choice:checked')];
+    const classPreviewKey = () => JSON.stringify({
+      session: session.value,
+      month: month.value,
+      date: date.value,
+      classes: selectedClasses().map(input => input.value).sort(),
+    });
+    const hasValidPeriod = () => Boolean(session.value && month.value && date.value);
+    const updateSubmitState = () => {
+      const individual = billingMode() === 'individual';
+      const selected = [...rows.querySelectorAll('.fee-head-choice:checked')];
+      const individualAmountsValid = selected.every(input => {
+        const value = input.closest('tr').querySelector('.billing-amount-input').value.trim();
+        return /^\d+(?:\.\d{1,2})?$/.test(value) && Number(value) > 0;
+      });
+      const activeClassCards = [...classFeeCards.querySelectorAll('.billing-class-fee-card')];
+      const selectedRecipientCards = activeClassCards
+        .filter(card => studentOptions.querySelector(`.billing-class-student-choice[data-class-id="${card.dataset.classId}"]:checked`));
+      const selectedClassFees = selectedRecipientCards
+        .flatMap(card => [...card.querySelectorAll('.class-fee-choice:checked')]);
+      const classSelectionsValid = selectedRecipientCards
+        .every(card => card.querySelector('.class-fee-choice:checked'));
+      const classAmountsValid = selectedClassFees.every(input => {
+        const amount = input.closest('.billing-class-fee-item').querySelector('.billing-class-fee-amount');
+        if (input.dataset.routeSpecific === 'true') return true;
+        const value = amount.value.trim();
+        return /^\d+(?:\.\d{1,2})?$/.test(value) && Number(value) > 0;
+      });
+      previewClassFees.hidden = individual;
+      previewClassFees.disabled = classPreviewLoading || classDataLoading || !selectedClasses().length;
+      previewClassFees.textContent = classPreviewLoading || classDataLoading
+        ? 'Loading preview…'
+        : classPreviewReady ? 'Refresh fee preview' : 'Generate preview';
+      submit.hidden = !individual && !classPreviewReady;
+      submit.disabled = !hasValidPeriod() || (individual
+        ? !student.value || !previewReady || selected.length === 0 || !individualAmountsValid
+        : !classPreviewReady || selectedClasses().length === 0 || selectedRecipientCards.length === 0 || selectedClassFees.length === 0
+          || !classSelectionsValid || !classAmountsValid);
+      if (!individual && classPreviewReady) {
+        help.textContent = selectedRecipientCards.length === 0
+          ? 'Select at least one student to receive an invoice.'
+          : selectedClassFees.length === 0
+            ? 'Select at least one fee head for each class with selected students.'
+            : !classSelectionsValid
+              ? 'Select at least one fee head for each class with selected students.'
+              : !classAmountsValid
+                ? 'Enter a positive amount (up to two decimal places) for every selected fee head.'
+                : 'Selected students with existing invoices will be skipped. Generate invoices when ready.';
+      } else if (!individual && !classPreviewLoading && !classDataLoading) {
+        help.textContent = !hasValidPeriod()
+          ? 'Choose an academic session, billing month, and invoice date to preview class fees.'
+          : !selectedClasses().length
+            ? 'Select one or more classes and sections to preview their fees.'
+            : classDataError || 'Ready to preview fee heads and amounts for the selected classes.';
+      }
+    };
+    const updateClassOptions = () => {
+      classChoices.forEach((input, index) => {
+        const counts = JSON.parse(input.dataset.counts || '{}');
+        const count = session.value ? Number(counts[session.value] || 0) : 0;
+        const countLabel = classOptions[index].querySelector('[data-class-student-count]');
+        const countDescription = classOptions[index].querySelector('[data-class-count-label]');
+        countLabel.textContent = session.value ? String(count) : '—';
+        const unavailable = !session.value || count === 0 || billingMode() !== 'classWise';
+        input.disabled = unavailable;
+        classOptions[index].classList.toggle('is-disabled', unavailable);
+        classOptions[index].classList.toggle('is-checked', input.checked);
+        if (!session.value) {
+          countDescription.textContent = 'choose a session';
+        } else if (count === 0) {
+          countDescription.textContent = 'no active students';
+        } else {
+          countDescription.textContent = 'active students';
+        }
+      });
+      const checkedCount = selectedClasses().length;
+      selectedClassCount.textContent = `${checkedCount} selected`;
+      const selectedNames = selectedClasses().map(input => input.dataset.classLabel);
+      classSelectLabel.textContent = 'Choose class or section';
+      selectedClassNames.textContent = selectedNames.join(', ');
+      selectedClassNames.hidden = !selectedNames.length;
+      const availableClasses = classChoices.filter(input => !input.disabled);
+      selectAllClasses.disabled = !availableClasses.length || billingMode() !== 'classWise';
+      selectAllClasses.textContent = availableClasses.length
+        && availableClasses.every(input => input.checked) ? 'Clear selection' : 'Select all';
+      scheduleClassDataLoad();
+      classSelectionHelp.textContent = !session.value
+        ? 'Select an academic session to see classes with active students.'
+        : checkedCount
+          ? `${checkedCount} class/section${checkedCount === 1 ? '' : 's'} selected. Recipients are preselected; uncheck any students you do not want to invoice.`
+          : 'Choose one or more classes to review and select students for this billing run.';
+      updateSubmitState();
+    };
+    const updateMode = () => {
+      const individual = billingMode() === 'individual';
+      invalidateClassFeePreview();
+      classPicker.hidden = individual;
+      individualStudentField.hidden = !individual;
+      feeSelectionCard.hidden = !individual;
+      loadButton.hidden = !individual;
+      document.getElementById('classStudentsField').hidden = individual;
+      document.getElementById('classSelectDropdown').closest('.billing-generate-field').hidden = individual;
+      previewClassFees.hidden = individual;
+      student.disabled = !individual;
+      student.required = individual;
+      modeInputs.forEach(input => input.closest('.billing-mode-option').classList.toggle('is-selected', input.checked));
+      updateClassOptions();
+      clearSelection(individual
+        ? 'Select a session, student, month, and date to review the individual invoice.'
+        : 'Select classes and billing dates, then preview and confirm fee heads for each class.');
+    };
+    const clearSelection = message => {
+      previewReady = false;
+      loaded.value = 'false';
+      rows.innerHTML = '<tr><td colspan="5" class="setup-empty">Load fee heads to see applicable charges.</td></tr>';
+      selectedCount.textContent = '0 selected';
+      total.textContent = money(0);
+      help.textContent = message;
+      updateSubmitState();
+    };
+    const invalidateClassFeePreview = () => {
+      classPreviewRequest += 1;
+      classDataRequest += 1;
+      studentOptions.querySelectorAll('.billing-class-student-choice').forEach(input => {
+        studentSelectionState.set(input.value, input.checked);
+      });
+      classPreviewData = null;
+      classPreviewDataKey = '';
+      classDataError = '';
+      classDataLoading = false;
+      classPreviewReady = false;
+      classPreviewLoading = false;
+      classFeePreview.hidden = true;
+      classFeeCards.replaceChildren();
+      studentOptions.replaceChildren();
+      studentOptions.innerHTML = '<p class="billing-class-empty">Choose classes and month to load students.</p>';
+      selectedStudentCount.textContent = '0 selected';
+      studentSelectLabel.textContent = 'Select classes first';
+      selectAllStudents.disabled = true;
+      updateSubmitState();
+    };
+    const updateStudentSelectionSummary = () => {
+      const choices = [...studentOptions.querySelectorAll('.billing-class-student-choice:not(:disabled)')];
+      const selected = choices.filter(input => input.checked).length;
+      selectedStudentCount.textContent = `${selected} selected`;
+      studentSelectLabel.textContent = choices.length
+        ? `${selected} of ${choices.length} eligible students`
+        : selectedClasses().length ? 'No eligible students' : 'Select classes first';
+      selectAllStudents.disabled = choices.length === 0;
+      selectAllStudents.textContent = choices.length && selected === choices.length
+        ? 'Clear selection'
+        : 'Select all';
+    };
+    const renderStudentOptions = classes => {
+      studentOptions.replaceChildren();
+      classes.forEach(classItem => {
+        const group = document.createElement('section');
+        group.className = 'billing-student-group';
+        group.dataset.classId = classItem.id;
+        const heading = document.createElement('div');
+        heading.className = 'billing-student-group-heading';
+        const className = /^class\s/i.test(classItem.name) ? classItem.name : `class ${classItem.name}`;
+        heading.textContent = classItem.section ? `${classItem.section} (${className})` : classItem.name;
+        group.appendChild(heading);
+        (classItem.students || []).forEach(studentItem => {
+          const label = document.createElement('label');
+          label.className = 'billing-class-student-option';
+          const choice = document.createElement('input');
+          choice.type = 'checkbox';
+          choice.className = 'billing-class-student-choice';
+          choice.name = `classFeeSelections[${classItem.id}][studentIds]`;
+          choice.value = studentItem.id;
+          choice.dataset.classId = classItem.id;
+          choice.checked = studentItem.alreadyBilled
+            ? false
+            : studentSelectionState.has(studentItem.id) ? studentSelectionState.get(studentItem.id) : true;
+          choice.disabled = Boolean(studentItem.alreadyBilled);
+          choice.setAttribute('aria-label', `Include ${studentItem.name}`);
+          const name = document.createElement('span');
+          name.className = 'billing-class-student-name';
+          name.textContent = studentItem.alreadyBilled
+            ? `${studentItem.name} · already billed`
+            : `${studentItem.name}${studentItem.studentCode ? ` · ${studentItem.studentCode}` : ''}`;
+          label.append(choice, name);
+          group.appendChild(label);
+        });
+        if (!classItem.students?.length) {
+          const empty = document.createElement('p');
+          empty.className = 'billing-class-empty';
+          empty.textContent = 'No active students in this class.';
+          group.appendChild(empty);
+        }
+        studentOptions.appendChild(group);
+      });
+      updateStudentSelectionSummary();
+    };
+    const loadClassPreviewData = async (forceRefresh = false) => {
+      if (!hasValidPeriod() || !selectedClasses().length || billingMode() !== 'classWise') return null;
+      const key = classPreviewKey();
+      if (!forceRefresh && classPreviewData && classPreviewDataKey === key) return classPreviewData;
+      const requestId = ++classDataRequest;
+      classDataLoading = true;
+      classDataError = '';
+      updateSubmitState();
+      try {
+        const query = new URLSearchParams({
+          academicSession: session.value,
+          billMonthBS: month.value,
+          billDateBS: date.value,
+        });
+        selectedClasses().forEach(input => query.append('classIds', input.value));
+        const response = await fetch(`/billing/class-fee-preview?${query}`, {
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+        });
+        const result = await response.json();
+        if (requestId !== classDataRequest) return null;
+        if (!response.ok) throw new Error(result.error || 'Unable to load students and class fees.');
+        if (!Array.isArray(result.classes) || result.classes.length !== selectedClasses().length) {
+          throw new Error('The selected classes changed. Please select them again.');
+        }
+        classPreviewData = result;
+        classPreviewDataKey = key;
+        classDataError = '';
+        renderStudentOptions(result.classes);
+        return result;
+      } catch (error) {
+        if (requestId === classDataRequest) {
+          classDataError = error.message;
+          studentOptions.innerHTML = '';
+          const message = document.createElement('p');
+          message.className = 'billing-class-empty billing-error-message';
+          message.textContent = error.message;
+          studentOptions.appendChild(message);
+          studentSelectLabel.textContent = 'Unable to load students';
+          selectAllStudents.disabled = true;
+          help.textContent = error.message;
+        }
+        return null;
+      } finally {
+        if (requestId === classDataRequest) {
+          classDataLoading = false;
+          updateSubmitState();
+        }
+      }
+    };
+    const scheduleClassDataLoad = () => {
+      window.clearTimeout(classDataTimer);
+      if (billingMode() !== 'classWise' || !hasValidPeriod() || !selectedClasses().length) {
+        updateStudentSelectionSummary();
+        return;
+      }
+      classDataTimer = window.setTimeout(() => {
+        loadClassPreviewData();
+      }, 180);
+    };
+    const updateTotal = () => {
+      const selected = [...rows.querySelectorAll('.fee-head-choice:checked')];
+      const amountMinor = selected.reduce((sum, input) => {
+        const value = Number(input.closest('tr').querySelector('.billing-amount-input').value);
+        return sum + (Number.isFinite(value) ? Math.round(value * 100) : 0);
+      }, 0);
+      const amountsValid = selected.every(input => {
+        const value = input.closest('tr').querySelector('.billing-amount-input').value.trim();
+        return /^\d+(?:\.\d{1,2})?$/.test(value) && Number(value) > 0;
+      });
+      selectedCount.textContent = `${selected.length} selected`;
+      total.textContent = money(amountMinor / 100);
+      updateSubmitState();
+      if (previewReady && selected.length && !amountsValid) {
+        help.textContent = 'Enter a positive amount (up to two decimal places) for every selected fee head.';
+      } else if (previewReady) {
+        help.textContent = selectionHelpText;
+      }
+    };
+    const updateClassPreviewTotals = () => {
+      classFeeCards.querySelectorAll('.billing-class-fee-card').forEach(card => {
+        let totalAmount = 0;
+        const studentChoices = [...studentOptions.querySelectorAll(`.billing-class-student-choice[data-class-id="${card.dataset.classId}"]:not(:disabled)`)];
+        const selectedStudents = studentChoices.filter(input => input.checked).length;
+        card.querySelector('.billing-class-student-count').textContent =
+          `${selectedStudents} of ${studentChoices.length} selected`;
+        card.querySelectorAll('.class-fee-choice:checked').forEach(input => {
+          if (input.dataset.routeSpecific === 'true') return;
+          const value = Number(input.closest('.billing-class-fee-item').querySelector('.billing-class-fee-amount').value);
+          if (Number.isFinite(value)) totalAmount += value;
+        });
+        card.querySelector('.billing-class-fee-total').textContent = selectedStudents === 0
+          ? 'No students selected'
+          : `${money(totalAmount)} per student`;
+      });
+      updateStudentSelectionSummary();
+      updateSubmitState();
+    };
+    const renderClassFeePreview = classes => {
+      classFeeCards.replaceChildren();
+      classes.forEach(classItem => {
+        const card = document.createElement('article');
+        card.className = 'billing-class-fee-card';
+        card.dataset.classId = classItem.id;
+        card.dataset.remainingStudents = String(classItem.remainingStudentCount);
+
+        const heading = document.createElement('header');
+        heading.className = 'billing-class-fee-card-heading';
+        const titleGroup = document.createElement('div');
+        const title = document.createElement('h3');
+        const className = /^class\s/i.test(classItem.name) ? classItem.name : `class ${classItem.name}`;
+        title.textContent = classItem.section ? `${classItem.section} (${className})` : classItem.name;
+        const studentCount = document.createElement('small');
+        studentCount.className = 'billing-class-student-count';
+        studentCount.textContent = `${classItem.studentCount} active · ${classItem.remainingStudentCount} remaining`;
+        titleGroup.append(title, studentCount);
+        const status = document.createElement('span');
+        status.className = `billing-class-fee-status${classItem.alreadyBilledCount
+          ? classItem.remainingStudentCount ? ' has-existing' : ' is-complete'
+          : ''}`;
+        status.textContent = classItem.remainingStudentCount === 0
+          ? classItem.cancelledInvoiceCount ? 'Invoice record exists' : 'Already billed'
+          : classItem.alreadyBilledCount
+            ? classItem.cancelledInvoiceCount ? 'Existing invoice records' : 'Partially billed'
+            : 'Ready';
+        heading.append(titleGroup, status);
+
+        if (classItem.alreadyBilledCount) {
+          const alert = document.createElement('div');
+          alert.className = `billing-class-invoice-alert${classItem.remainingStudentCount ? '' : ' is-complete'}`;
+          alert.textContent = classItem.remainingStudentCount
+            ? `${classItem.alreadyBilledCount} already invoiced · remaining students only`
+            : 'Already invoiced · duplicates will be skipped';
+          card.append(heading, alert);
+        } else {
+          card.appendChild(heading);
+        }
+
+        const classSelectionMarker = document.createElement('input');
+        classSelectionMarker.type = 'hidden';
+        classSelectionMarker.name = `classFeeSelections[${classItem.id}][present]`;
+        classSelectionMarker.value = 'true';
+        card.appendChild(classSelectionMarker);
+        const feeList = document.createElement('div');
+        feeList.className = 'billing-class-fee-list';
+        (classItem.feeHeads || []).forEach(item => {
+          const row = document.createElement('div');
+          row.className = 'billing-class-fee-item';
+          const number = document.createElement('span');
+          number.className = 'billing-class-fee-number';
+          number.textContent = String(feeList.children.length + 1).padStart(2, '0');
+          const name = document.createElement('div');
+          name.className = 'billing-class-fee-name';
+          name.textContent = item.feeHeadName;
+          const feeName = document.createElement('div');
+          feeName.className = 'billing-class-fee-label';
+          feeName.appendChild(name);
+          if (!item.incomeLedger?.code || !item.incomeLedger.isActive || item.incomeLedger.nature !== 'INCOME') {
+            const mappingWarning = document.createElement('small');
+            mappingWarning.className = 'billing-mapping-error';
+            mappingWarning.textContent = 'Ledger setup needed';
+            feeName.appendChild(mappingWarning);
+          }
+
+          const amount = document.createElement('input');
+          amount.type = 'text';
+          amount.inputMode = 'decimal';
+          amount.autocomplete = 'off';
+          amount.className = 'billing-class-fee-amount';
+          amount.name = `classFeeSelections[${classItem.id}][feeHeadAmounts][${item.feeCategory}]`;
+          amount.value = item.amount === null ? '' : Number(item.amount).toFixed(2);
+          amount.placeholder = item.routeSpecific ? 'Route fare' : 'Amount';
+          amount.disabled = Boolean(item.routeSpecific) || classItem.remainingStudentCount === 0;
+          amount.setAttribute('aria-label', `Invoice amount for ${item.feeHeadName} in ${classItem.name}`);
+
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.className = 'billing-class-fee-choice class-fee-choice';
+          checkbox.name = `classFeeSelections[${classItem.id}][selectedFeeHeadIds]`;
+          checkbox.value = item.feeCategory;
+          checkbox.checked = classItem.remainingStudentCount > 0 && Boolean(item.applicable);
+          checkbox.disabled = classItem.remainingStudentCount === 0;
+          checkbox.dataset.routeSpecific = String(Boolean(item.routeSpecific));
+          checkbox.setAttribute('aria-label', `Include ${item.feeHeadName} for ${classItem.name}`);
+          amount.required = checkbox.checked && !item.routeSpecific && classItem.remainingStudentCount > 0;
+          row.append(number, feeName, amount, checkbox);
+          feeList.appendChild(row);
+        });
+        if (!(classItem.feeHeads || []).length) {
+          const empty = document.createElement('p');
+          empty.className = 'billing-class-empty';
+          empty.textContent = 'No fee heads are configured.';
+          feeList.appendChild(empty);
+        }
+
+        card.appendChild(feeList);
+        const classTotal = document.createElement('div');
+        classTotal.className = 'billing-class-fee-total';
+        classTotal.textContent = money(0);
+        card.appendChild(classTotal);
+        classFeeCards.appendChild(card);
+      });
+      classFeePreview.hidden = false;
+      updateClassPreviewTotals();
+    };
+    const renderFeeHeads = feeHeads => {
+      rows.replaceChildren();
+      const applicableCount = feeHeads.filter(item => item.applicable).length;
+      if (!feeHeads.length) {
+        rows.innerHTML = '<tr><td colspan="5" class="setup-empty">No fee heads are configured in the system.</td></tr>';
+        return { applicableCount: 0, configuredCount: 0 };
+      }
+      feeHeads.forEach(item => {
+        const row = document.createElement('tr');
+        const cellName = document.createElement('td');
+        const name = document.createElement('strong');
+        name.textContent = item.feeHeadName;
+        cellName.appendChild(name);
+        if (item.isTransportFee && item.transportRouteName) {
+          const note = document.createElement('small');
+          note.className = 'billing-scheduled-note';
+          note.textContent = `Saved route: ${item.transportRouteName}`;
+          cellName.appendChild(note);
+        } else if (!item.scheduled) {
+          const note = document.createElement('small');
+          note.className = 'billing-not-applicable';
+          note.textContent = item.appliedMonths?.length
+            ? `Scheduled for ${item.appliedMonths.join(', ')}`
+            : item.frequency?.toLowerCase() === 'monthly'
+              ? 'Monthly charge'
+              : 'Not scheduled by default this month';
+          cellName.appendChild(note);
+        } else if (item.hasStructure) {
+          const note = document.createElement('small');
+          note.className = 'billing-scheduled-note';
+          note.textContent = 'Scheduled this month';
+          cellName.appendChild(note);
+        }
+        if (!item.hasStructure) {
+          const note = document.createElement('small');
+          note.className = 'billing-not-applicable';
+          note.textContent = 'No class/session default; enter an amount below';
+          cellName.appendChild(note);
+        }
+
+        const cellFrequency = document.createElement('td');
+        cellFrequency.textContent = item.frequency || 'Not specified';
+
+        const cellLedger = document.createElement('td');
+        if (item.incomeLedger?.code) {
+          cellLedger.textContent = `${item.incomeLedger.code} · ${item.incomeLedger.name}`;
+          if (!item.incomeLedger.isActive || item.incomeLedger.nature !== 'INCOME') {
+            cellLedger.className = 'billing-mapping-error';
+            cellLedger.textContent += ' (inactive or invalid mapping)';
+          }
+        } else {
+          cellLedger.className = 'billing-mapping-error';
+          cellLedger.textContent = 'Income ledger mapping required';
+        }
+
+        const cellAmount = document.createElement('td');
+        cellAmount.className = 'billing-amount';
+        const amountInput = document.createElement('input');
+        amountInput.type = 'text';
+        amountInput.inputMode = 'decimal';
+        amountInput.autocomplete = 'off';
+        amountInput.className = 'form-control billing-amount-input';
+        amountInput.name = `feeHeadAmounts[${item.feeCategory}]`;
+        amountInput.value = item.amount === null ? '' : Number(item.amount).toFixed(2);
+        amountInput.placeholder = 'Enter amount';
+        amountInput.setAttribute('aria-label', `Invoice amount for ${item.feeHeadName}`);
+        cellAmount.appendChild(amountInput);
+
+        const cellCheck = document.createElement('td');
+        cellCheck.className = 'billing-check-cell';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'form-check-input fee-head-choice';
+        checkbox.name = 'selectedFeeHeadIds';
+        checkbox.value = item.feeCategory;
+        checkbox.checked = Boolean(item.applicable);
+        checkbox.setAttribute('aria-label', `Include ${item.feeHeadName}`);
+        amountInput.required = checkbox.checked;
+        cellCheck.appendChild(checkbox);
+        row.append(cellName, cellFrequency, cellLedger, cellAmount, cellCheck);
+        rows.appendChild(row);
+      });
+      return {
+        applicableCount,
+        configuredCount: feeHeads.filter(item => item.hasStructure).length,
+      };
+    };
+
+    previewClassFees.addEventListener('click', async () => {
+      if (!session.value || !month.value || !date.value) {
+        const missingField = !session.value ? session : !month.value ? month : date;
+        help.textContent = 'Choose an academic session, billing month, and invoice date before previewing fees.';
+        missingField.focus();
+        return;
+      }
+      if (!selectedClasses().length) {
+        classSelectionHelp.textContent = 'Select at least one class and section before previewing fees.';
+        return;
+      }
+      const requestId = ++classPreviewRequest;
+      classPreviewReady = false;
+      classPreviewLoading = true;
+      classFeePreview.hidden = true;
+      classFeeCards.replaceChildren();
+      previewClassFees.disabled = true;
+      previewClassFees.textContent = 'Loading preview…';
+      help.textContent = 'Loading fee heads and amounts for the selected classes.';
+      updateSubmitState();
+      try {
+        const result = await loadClassPreviewData(true);
+        if (requestId !== classPreviewRequest) return;
+        if (!result) throw new Error(classDataError || 'Unable to load students and class fees. Try again.');
+        if (!Array.isArray(result.classes) || result.classes.length !== selectedClasses().length) {
+          throw new Error('The selected classes changed. Please select them again and reload the preview.');
+        }
+        renderClassFeePreview(result.classes);
+        classPreviewReady = true;
+        help.textContent = 'Review the fee heads and amounts for each class, then generate invoices.';
+        updateSubmitState();
+        window.requestAnimationFrame(() => {
+          classFeePreview.scrollIntoView({
+            behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+            block: 'start',
+          });
+        });
+      } catch (error) {
+        if (requestId === classPreviewRequest) {
+          help.textContent = error.message;
+          classFeePreview.hidden = true;
+        }
+      } finally {
+        if (requestId === classPreviewRequest) {
+          classPreviewLoading = false;
+          updateSubmitState();
+        }
+      }
+    });
+
+    loadButton.addEventListener('click', async () => {
+      if (!session.value || !student.value || !month.value || !date.value) {
+        clearSelection('Select an academic session, student, billing month, and valid BS date first.');
+        return;
+      }
+      const requestId = ++previewRequest;
+      loadButton.disabled = true;
+      clearSelection('Loading applicable fee heads…');
+      try {
+        const query = new URLSearchParams({
+          studentId: student.value,
+          academicSession: session.value,
+          billMonthBS: month.value,
+          billDateBS: date.value,
+        });
+        const response = await fetch(`/billing/fee-head-preview?${query}`, {
+          headers: { Accept: 'application/json' },
+        });
+        const result = await response.json();
+        if (requestId !== previewRequest) return;
+        if (!response.ok) throw new Error(result.error || 'Unable to load fee heads.');
+        const { applicableCount, configuredCount } = renderFeeHeads(result.feeHeads || []);
+        previewReady = true;
+        loaded.value = 'true';
+        selectionHelpText = applicableCount
+          ? `All fee heads are shown for ${result.student.name} (${result.student.studentCode}); ${applicableCount} scheduled and ${configuredCount} configured for this class/session.`
+          : `No configured fee is scheduled by default for ${result.student.name} (${result.student.studentCode}); select any configured fee head to include it in this invoice.`;
+        updateTotal();
+      } catch (error) {
+        if (requestId === previewRequest) clearSelection(error.message);
+      } finally {
+        if (requestId === previewRequest) loadButton.disabled = false;
+      }
+    });
+
+    student.addEventListener('change', () => {
+      clearSelection(student.value ? 'Load fee heads to choose charges for this student.' : 'Select a student to review an individual invoice.');
+    });
+    session.addEventListener('change', () => {
+      classChoices.forEach(input => { input.checked = false; });
+      invalidateClassFeePreview();
+      student.value = '';
+      [...student.options].forEach(option => {
+        if (option.value) option.hidden = Boolean(session.value && option.dataset.session !== session.value);
+      });
+      updateClassOptions();
+      clearSelection('Academic session changed. Review the class selection or choose a student.');
+    });
+    month.addEventListener('change', () => {
+      if (billingMode() === 'individual') clearSelection('Billing month changed. Reload the applicable fee heads.');
+      invalidateClassFeePreview();
+      scheduleClassDataLoad();
+      updateSubmitState();
+    });
+    date.addEventListener('change', () => {
+      if (billingMode() === 'individual') clearSelection('Invoice date changed. Reload the applicable fee heads.');
+      invalidateClassFeePreview();
+      scheduleClassDataLoad();
+      updateSubmitState();
+    });
+    classChoices.forEach(input => input.addEventListener('change', () => {
+      invalidateClassFeePreview();
+      updateClassOptions();
+    }));
+    selectAllClasses.addEventListener('click', () => {
+      const shouldSelectAll = classChoices.some(input => !input.disabled && !input.checked);
+      classChoices.forEach(input => {
+        if (!input.disabled) input.checked = shouldSelectAll;
+      });
+      invalidateClassFeePreview();
+      updateClassOptions();
+    });
+    modeInputs.forEach(input => input.addEventListener('change', updateMode));
+    rows.addEventListener('input', event => {
+      if (event.target.matches('.billing-amount-input')) updateTotal();
+    });
+    rows.addEventListener('change', event => {
+      if (event.target.matches('.fee-head-choice')) {
+        event.target.closest('tr').querySelector('.billing-amount-input').required = event.target.checked;
+        updateTotal();
+      }
+    });
+    classFeeCards.addEventListener('input', event => {
+      if (event.target.matches('.billing-class-fee-amount')) updateClassPreviewTotals();
+    });
+    studentOptions.addEventListener('change', event => {
+      if (!event.target.matches('.billing-class-student-choice')) return;
+      studentSelectionState.set(event.target.value, event.target.checked);
+      updateClassPreviewTotals();
+    });
+    selectAllStudents.addEventListener('click', () => {
+      const choices = [...studentOptions.querySelectorAll('.billing-class-student-choice:not(:disabled)')];
+      const shouldSelectAll = choices.some(input => !input.checked);
+      choices.forEach(input => {
+        input.checked = shouldSelectAll;
+        studentSelectionState.set(input.value, shouldSelectAll);
+      });
+      updateClassPreviewTotals();
+    });
+    classFeeCards.addEventListener('change', event => {
+      if (event.target.matches('.class-fee-choice')) {
+        const amount = event.target.closest('.billing-class-fee-item').querySelector('.billing-class-fee-amount');
+        amount.required = event.target.checked && event.target.dataset.routeSpecific !== 'true';
+        updateClassPreviewTotals();
+      }
+    });
+    form.addEventListener('submit', event => {
+      if (!hasValidPeriod()) {
+        event.preventDefault();
+        help.textContent = 'Select an academic session, billing month, and invoice date before generating invoices.';
+      } else if (billingMode() === 'classWise' && !selectedClasses().length) {
+        event.preventDefault();
+        classSelectionHelp.textContent = 'Select at least one class and section before generating invoices.';
+      } else if (billingMode() === 'classWise' && !classPreviewReady) {
+        event.preventDefault();
+        help.textContent = 'Preview and confirm fee heads for all selected classes before generating invoices.';
+      } else if (billingMode() === 'classWise'
+        && !selectedStudentChoices().length) {
+        event.preventDefault();
+        help.textContent = 'Select at least one student to receive an invoice.';
+      } else if (billingMode() === 'classWise'
+        && [...classFeeCards.querySelectorAll('.billing-class-fee-card')]
+          .some(card => studentOptions.querySelector(`.billing-class-student-choice[data-class-id="${card.dataset.classId}"]:checked`)
+            && !card.querySelector('.class-fee-choice:checked'))) {
+        event.preventDefault();
+        help.textContent = 'Select at least one fee head for every class with selected students.';
+      } else if (billingMode() === 'individual' && (!previewReady || !rows.querySelector('.fee-head-choice:checked'))) {
+        event.preventDefault();
+        help.textContent = previewReady
+          ? 'Select at least one fee head before generating the invoice.'
+          : 'Load and review applicable fee heads before generating this student invoice.';
+      }
+    });
+
+    [...student.options].forEach(option => {
+      if (option.value) option.hidden = Boolean(session.value && option.dataset.session !== session.value);
+    });
+    updateMode();
+    if (typeof document.getElementById('billDateBS').nepaliDatePicker === 'function') {
+      document.getElementById('billDateBS').nepaliDatePicker({ dateFormat: 'YYYY-MM-DD', language: 'en' });
+    }
+  })();
+</script>
 <%- include('../partials/footer') %>

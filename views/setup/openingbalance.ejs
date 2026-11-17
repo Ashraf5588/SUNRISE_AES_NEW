@@ -1,4 +1,4 @@
-<%- include('../partials/head', { title: 'Opening balances | FeeDesk' }) %>
+<%- include('../partials/head', { title: 'Opening balances | FeeDesk', setupStylesheet: true }) %>
 <%- include('../partials/navbar') %>
 <style>
 	.opening-page { min-height: calc(100vh - 70px); color: #18283f; background: #f3f6fa; }
@@ -37,7 +37,7 @@
 	@media (max-width: 900px) { .opening-layout { grid-template-columns: 1fr; } }
 	@media (max-width: 600px) { .opening-page .opening-content { padding: 22px 14px 32px; } .opening-heading { align-items: flex-start; flex-direction: column; } .opening-heading h1 { font-size: 25px; } .opening-panel { padding: 17px; } }
 </style>
-<div class="fee-page-shell opening-page">
+<div class="fee-page-shell setup-page opening-page">
 	<%- include('../billingfirst/feesidenav') %>
 	<main class="fee-page-main opening-content">
 		<header class="opening-heading">

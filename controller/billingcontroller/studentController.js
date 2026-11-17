@@ -5,10 +5,12 @@ const { Readable } = require('stream');
 const Student = require('../../model/billingschema/Student');
 const { classSchema } = require('../../model/adminschema');
 const AcademicSession = require('../../model/billingschema/AcademicSession');
+const Transport = require('../../model/billingschema/transport');
 const Invoice = require('../../model/billingschema/Invoice');
 const Payment = require('../../model/billingschema/Payment');
 const LedgerEntry = require('../../model/billingschema/LedgerEntry');
 const { getCurrentBalance, importOpeningBalance } = require('../../services/billingService');
+const bs = require('../../utils/bikramSambat');
 
 const ClassModel = mongoose.models.studentClass || mongoose.model('studentClass', classSchema, 'classlist');
 const upload = multer({
@@ -22,11 +24,18 @@ const studentCsvHeaders = [
 ];
 
 const loadStudentFormData = async () => {
-  const [classes, sessions] = await Promise.all([
+  const [classes, sessions, transportRoutes] = await Promise.all([
     ClassModel.find({}).sort({ studentClass: 1, section: 1 }).lean(),
     AcademicSession.find().sort({ startDateAD: -1 }).lean(),
+    Transport.find().populate('academicSession', 'titleBS').sort({ routeName: 1 }).lean(),
   ]);
-  return { classes, sessions };
+  return {
+    classes,
+    sessions,
+    transportRoutes,
+    todayBS: String(bs.ADToBS(new Date()) || '').slice(0, 10),
+    toBSDate: bs.ADToBS,
+  };
 };
 
 const parseStudentCsv = (buffer) => new Promise((resolve, reject) => {
@@ -35,13 +44,36 @@ const parseStudentCsv = (buffer) => new Promise((resolve, reject) => {
 });
 
 exports.listStudents = async (req, res) => {
-  const students = await Student.find().populate('class').sort({ name: 1 });
-  res.render('students/list', { students });
+  try {
+    const [students, formData] = await Promise.all([
+      Student.find().populate('class').populate('transportRoute', 'routeName').sort({ name: 1 }).lean(),
+      loadStudentFormData(),
+    ]);
+    res.render('students/list', {
+      students,
+      ...formData,
+      studentCounts: {
+        total: students.length,
+        active: students.filter(student => student.status === 'ACTIVE').length,
+        inactive: students.filter(student => student.status === 'INACTIVE').length,
+        busUsers: students.filter(student => student.usesSchoolBus && student.transportRoute).length,
+      },
+    });
+  } catch (error) {
+    console.error('Error loading student register:', error);
+    res.status(500).send('Unable to load student register.');
+  }
 };
 
 exports.newStudentForm = async (req, res) => {
   try {
-    res.render('students/form', { student: null, importResult: null, ...(await loadStudentFormData()) });
+    res.render('students/form', {
+      student: null,
+      importResult: null,
+      fieldErrors: {},
+      formValues: {},
+      ...(await loadStudentFormData()),
+    });
   } catch (error) {
     console.error('Error loading student form:', error);
     res.status(500).send('Internal Server Error');
@@ -97,6 +129,8 @@ exports.importStudentsCsv = [upload.single('studentCsv'), async (req, res) => {
           guardianPhone: String(row.guardianPhone || '').trim(),
           admissionDateAD: admissionDate,
           academicSession: sessionMap.get(sessionName),
+          usesSchoolBus: false,
+          transportRoute: null,
           status: ['ACTIVE', 'INACTIVE', 'TRANSFERRED'].includes(String(row.status || 'ACTIVE').toUpperCase())
             ? String(row.status || 'ACTIVE').toUpperCase()
             : 'ACTIVE',
@@ -117,39 +151,121 @@ exports.importStudentsCsv = [upload.single('studentCsv'), async (req, res) => {
 }];
 
 exports.createStudent = async (req, res) => {
-  const {
-    studentCode, name, class: classId, section, guardianName, guardianPhone,
-    admissionDateAD, academicSession, migratedFromOldSystem,
-    openingDueAmount, openingDueAsOfDate, openingDueNote,
-  } = req.body;
+  try {
+    const {
+      studentCode, name, class: classId, section, guardianName, guardianPhone,
+      admissionDateAD, admissionDateBS, academicSession, migratedFromOldSystem,
+      openingDueAmount, openingDueAsOfDate, openingDueNote,
+    } = req.body;
+    const usesSchoolBus = req.body.usesSchoolBus === 'on';
+    const fieldErrors = {};
+    const normalizedCode = String(studentCode || '').trim();
+    const normalizedName = String(name || '').trim();
+    const convertedAdmissionDateAD = admissionDateBS
+      ? bs.BSToAD(admissionDateBS)
+      : String(admissionDateAD || '').slice(0, 10);
+    const admissionDate = convertedAdmissionDateAD ? new Date(convertedAdmissionDateAD) : null;
 
-  const student = await Student.create({
-    studentCode,
-    name,
-    class: classId,
-    section,
-    guardianName,
-    guardianPhone,
-    admissionDateAD,
-    academicSession,
-    migratedFromOldSystem: migratedFromOldSystem === 'on',
-    status: 'ACTIVE',
-  });
+    if (!normalizedCode) fieldErrors.studentCode = 'Enter the student code.';
+    if (!normalizedName) fieldErrors.name = 'Enter the student name.';
+    if (!mongoose.isValidObjectId(classId) || !await ClassModel.exists({ _id: classId })) {
+      fieldErrors.class = 'Choose a valid class.';
+    }
+    if (!mongoose.isValidObjectId(academicSession) || !await AcademicSession.exists({ _id: academicSession })) {
+      fieldErrors.academicSession = 'Choose a valid academic session.';
+    }
+    if (!admissionDate || Number.isNaN(admissionDate.getTime())) {
+      fieldErrors.admissionDateBS = 'Enter a valid Nepali admission date.';
+    }
+    if (normalizedCode && await Student.exists({ studentCode: normalizedCode })) {
+      fieldErrors.studentCode = 'This student code is already in use.';
+    }
+    let transportRoute = null;
+    if (usesSchoolBus) {
+      if (!mongoose.isValidObjectId(req.body.transportRoute)) {
+        fieldErrors.transportRoute = 'Choose a transport route or switch off school bus.';
+      } else {
+        transportRoute = await Transport.findOne({
+          _id: req.body.transportRoute,
+          academicSession,
+        }).select('_id transportFee').lean();
+        if (!transportRoute) {
+          fieldErrors.transportRoute = 'Choose a route for the selected academic session.';
+        } else if (!Number.isFinite(Number(transportRoute.transportFee)) || Number(transportRoute.transportFee) <= 0) {
+          fieldErrors.transportRoute = 'The selected route does not have a valid transport fee.';
+        }
+      }
+    }
 
-  // If this student is carrying a due from the old software, import it as
-  // a one-time opening balance so it shows up as previousDue on their
-  // very first invoice from this system.
-  if (migratedFromOldSystem === 'on' && Number(openingDueAmount) > 0) {
-    await importOpeningBalance({
-      studentId: student._id,
-      amount: Number(openingDueAmount),
-      asOfDateAD: openingDueAsOfDate || new Date(),
-      sourceNote: openingDueNote || 'Migrated from previous billing software',
-      enteredBy: req.body.enteredBy || 'admin',
+    if (Object.keys(fieldErrors).length) {
+      if (req.accepts('json')) {
+        return res.status(400).json({ success: false, fieldErrors });
+      }
+      return res.status(400).render('students/form', {
+        student: null,
+        importResult: null,
+        fieldErrors,
+        formValues: req.body,
+        ...(await loadStudentFormData()),
+      });
+    }
+
+    const student = await Student.create({
+      studentCode: normalizedCode,
+      name: normalizedName,
+      class: classId,
+      section,
+      guardianName,
+      guardianPhone,
+      admissionDateAD: admissionDate,
+      academicSession,
+      usesSchoolBus,
+      transportRoute: usesSchoolBus ? transportRoute._id : null,
+      migratedFromOldSystem: migratedFromOldSystem === 'on',
+      status: 'ACTIVE',
     });
-  }
 
-  res.redirect(`/students/${student._id}`);
+    if (migratedFromOldSystem === 'on' && Number(openingDueAmount) > 0) {
+      await importOpeningBalance({
+        studentId: student._id,
+        amount: Number(openingDueAmount),
+        asOfDateAD: openingDueAsOfDate || new Date(),
+        sourceNote: openingDueNote || 'Migrated from previous billing software',
+        enteredBy: req.body.enteredBy || 'admin',
+      });
+    }
+
+    if (req.accepts('json')) {
+      return res.status(201).json({ success: true, studentId: String(student._id) });
+    }
+    return res.redirect(`/students/${student._id}`);
+  } catch (error) {
+    console.error('Error creating student:', error);
+    if (error.code === 11000) {
+      if (req.accepts('json')) {
+        return res.status(400).json({
+          success: false,
+          fieldErrors: { studentCode: 'This student code is already in use.' },
+        });
+      }
+      try {
+        return res.status(400).render('students/form', {
+          student: null,
+          importResult: null,
+          fieldErrors: { studentCode: 'This student code is already in use.' },
+          formValues: req.body,
+          ...(await loadStudentFormData()),
+        });
+      } catch (renderError) {
+        console.error('Error reloading student form after duplicate code:', renderError);
+        return res.status(500).send('Unable to reload student form.');
+      }
+    }
+    if (req.accepts('json')) {
+      return res.status(500).json({ success: false, error: 'Unable to save the student.' });
+    }
+    return res.status(500).send('Unable to save student.');
+  }
 };
 
 exports.editStudentForm = async (req, res) => {
@@ -158,8 +274,19 @@ exports.editStudentForm = async (req, res) => {
       return res.status(404).send('Student not found');
     }
 
-    const student = await Student.findById(req.params.id).lean();
-    res.render('students/form', { student, importResult: null, ...(await loadStudentFormData()) });
+    const student = await Student.findById(req.params.id)
+      .populate('class', 'studentClass section')
+      .populate('academicSession', 'titleBS')
+      .populate('transportRoute', 'routeName transportFee academicSession')
+      .lean();
+    if (!student) return res.status(404).send('Student not found');
+    res.render('students/form', {
+      student,
+      importResult: null,
+      fieldErrors: {},
+      formValues: {},
+      ...(await loadStudentFormData()),
+    });
   } catch (error) {
     console.error('Error loading student edit form:', error);
     res.status(500).send('Internal Server Error');
@@ -171,17 +298,62 @@ exports.updateStudent = async (req, res) => {
     return res.status(404).send('Student not found');
   }
 
-  const {
-    studentCode, name, class: classId, section, guardianName,
-    guardianPhone, admissionDateAD, academicSession, status,
-  } = req.body;
+  try {
+    const {
+      studentCode, name, class: classId, section, guardianName,
+      guardianPhone, admissionDateAD, admissionDateBS, academicSession, status,
+    } = req.body;
+    const usesSchoolBus = req.body.usesSchoolBus === 'on';
+    const fieldErrors = {};
+    const convertedAdmissionDateAD = admissionDateBS
+      ? bs.BSToAD(admissionDateBS)
+      : String(admissionDateAD || '').slice(0, 10);
+    const admissionDate = convertedAdmissionDateAD ? new Date(convertedAdmissionDateAD) : null;
+    if (!admissionDate || Number.isNaN(admissionDate.getTime())) {
+      fieldErrors.admissionDateBS = 'Enter a valid Nepali admission date.';
+    }
+    let transportRoute = null;
+    if (usesSchoolBus) {
+      if (!mongoose.isValidObjectId(req.body.transportRoute)) {
+        fieldErrors.transportRoute = 'Choose a transport route or switch off school bus.';
+      } else {
+        transportRoute = await Transport.findOne({
+          _id: req.body.transportRoute,
+          academicSession,
+        }).select('_id transportFee').lean();
+        if (!transportRoute) {
+          fieldErrors.transportRoute = 'Choose a route for the selected academic session.';
+        } else if (!Number.isFinite(Number(transportRoute.transportFee)) || Number(transportRoute.transportFee) <= 0) {
+          fieldErrors.transportRoute = 'The selected route does not have a valid transport fee.';
+        }
+      }
+    }
+    if (Object.keys(fieldErrors).length) {
+      const [student, formData] = await Promise.all([
+        Student.findById(req.params.id).lean(),
+        loadStudentFormData(),
+      ]);
+      return res.status(400).render('students/form', {
+        student,
+        importResult: null,
+        fieldErrors,
+        formValues: req.body,
+        ...formData,
+      });
+    }
 
-  await Student.findByIdAndUpdate(req.params.id, {
-    studentCode, name, class: classId, section, guardianName,
-    guardianPhone, admissionDateAD, academicSession, status,
-  });
+    await Student.findByIdAndUpdate(req.params.id, {
+      studentCode, name, class: classId, section, guardianName,
+      guardianPhone, admissionDateAD: admissionDate, academicSession, status,
+      usesSchoolBus,
+      transportRoute: usesSchoolBus ? transportRoute._id : null,
+    }, { runValidators: true });
 
-  res.redirect(`/students/${req.params.id}`);
+    return res.redirect(`/students/${req.params.id}`);
+  } catch (error) {
+    console.error('Error updating student:', error);
+    return res.status(500).send('Unable to update student.');
+  }
 };
 
 exports.viewStudentProfile = async (req, res) => {
@@ -191,7 +363,8 @@ exports.viewStudentProfile = async (req, res) => {
 
   const student = await Student.findById(req.params.id)
     .populate('class')
-    .populate('academicSession');
+    .populate('academicSession')
+    .populate('transportRoute');
 
   if (!student) {
     return res.status(404).send('Student not found');
