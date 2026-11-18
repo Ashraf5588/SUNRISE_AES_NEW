@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Temporary device user diagnostic</title>
+    <style>
+        :root { font-family: Arial, sans-serif; color: #20342e; background: #f2f4f3; }
+        * { box-sizing: border-box; }
+        body { margin: 0; }
+        main { width: min(1200px, calc(100% - 32px)); margin: 28px auto; }
+        section { margin: 16px 0; padding: 18px; border: 1px solid #d5ded8; border-radius: 8px; background: #fff; }
+        h1, h2 { margin: 0 0 12px; }
+        h1 { font-size: 1.6rem; }
+        h2 { font-size: 1.05rem; }
+        p { line-height: 1.5; }
+        .target { padding: 12px; background: #f1f5f2; font-weight: 700; }
+        .warning { border-left: 4px solid #cf7a13; background: #fff8e9; padding: 10px 12px; }
+        fieldset { border: 0; padding: 0; margin: 14px 0; }
+        label { display: block; margin: 9px 0; }
+        button, .button { display: inline-block; padding: 10px 14px; border: 0; border-radius: 5px; background: #123b77; color: white; font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; }
+        button:disabled { opacity: .5; cursor: not-allowed; }
+        .status { font-size: 1.1rem; font-weight: 700; }
+        .counts { display: flex; gap: 20px; flex-wrap: wrap; }
+        .table-wrap { max-height: 60vh; overflow: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 9px; border-bottom: 1px solid #e1e7e3; text-align: left; vertical-align: top; }
+        th { position: sticky; top: 0; background: #eaf0ec; }
+        td { overflow-wrap: anywhere; }
+        pre { max-height: 360px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; background: #f5f6f6; padding: 12px; }
+        .muted { color: #667871; }
+        .hidden { display: none; }
+        @media (max-width: 650px) { main { width: calc(100% - 16px); margin: 12px auto; } section { padding: 12px; } }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Temporary device user diagnostic</h1>
+        <p class="target">Target device serial: <%= serialNumber %> · Organization: aes<br>Device: <%= deviceName %></p>
+
+        <section>
+            <h2>Read-only query</h2>
+            <p class="warning">This requests user information only. It does not create, update, or delete device users, fingerprints, employee records, or attendance. Results are captured temporarily and are not imported or matched to employee records.</p>
+            <% if (!query) { %>
+                <form method="post" action="/employeeattendance/device-users/query">
+                    <input type="hidden" name="csrfToken" value="<%= csrfToken %>">
+                    <fieldset>
+                        <legend>Select the protocol verified for this exact device and firmware:</legend>
+                        <label><input type="radio" name="protocol" value="legacy" required> Legacy ADMS USERINFO query</label>
+                        <label><input type="radio" name="protocol" value="push" required> Newer PUSH tabledata query</label>
+                    </fieldset>
+                    <label><input type="checkbox" name="confirmProtocol" value="true" required> I verified that this protocol is supported by this exact device/firmware and want to send one query.</label>
+                    <label><input type="checkbox" name="confirmReadOnly" value="true" required> I understand this is read-only and the application will not automatically retry.</label>
+                    <button type="submit">Retrieve Device Users</button>
+                </form>
+            <% } else { %>
+                <p class="status">Query status: <span id="query-status"><%= query.status %></span></p>
+                <p>Protocol: <strong><%= query.protocol %></strong> · Command ID: <strong><%= query.commandId %></strong></p>
+                <p class="muted"><%= query.failureReason || (query.sentAt ? `Sent ${new Date(query.sentAt).toLocaleString()}` : `Requested ${new Date(query.requestedAt).toLocaleString()}`) %></p>
+                <a class="button" href="/employeeattendance/device-users/export">Export CSV</a>
+                <p class="muted">This device can be queried only once through this temporary feature. A sent command is never resent automatically.</p>
+            <% } %>
+        </section>
+
+        <section>
+            <h2>Retrieved device users</h2>
+            <div class="counts" aria-live="polite">
+                <span>Total users received: <strong id="received-count"><%= totalUsersReceived %></strong></span>
+                <span>Total unique PINs: <strong id="unique-count"><%= uniquePins %></strong></span>
+                <span>Duplicate entries: <strong id="duplicate-count"><%= duplicateEntries %></strong></span>
+                <span>Packets received: <strong id="packet-count"><%= packetCount %></strong></span>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>PIN / User ID</th><th>Name</th><th>Privilege</th><th>Card Number</th><th>Other device information</th></tr></thead>
+                    <tbody id="users">
+                        <% users.forEach(user => { %>
+                            <tr><td><%= user.pin %></td><td><%= user.name %></td><td><%= user.privilege %></td><td><%= user.cardNumber %></td><td><%= JSON.stringify(user.other || {}) %></td></tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+                <p id="empty-users" class="<%= users.length ? 'hidden' : '' %> muted">No user rows have been received yet.</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>Raw response payloads</h2>
+            <div id="raw-payloads">
+                <% rawPayloads.forEach(packet => { %>
+                    <details>
+                        <summary>Packet <%= packet.displayIndex %> · index <%= packet.packetIndex ?? 'not supplied' %> · received <%= new Date(packet.receivedAt).toLocaleString() %></summary>
+                        <pre><%= packet.rawPayload %></pre>
+                    </details>
+                <% }) %>
+            </div>
+            <p id="no-payloads" class="<%= rawPayloads.length ? 'hidden' : '' %> muted">No raw payloads captured.</p>
+        </section>
+    </main>
+    <% if (query && ['PENDING', 'SENT', 'RECEIVING'].includes(query.status)) { %>
+        <script>
+            const refreshDiagnostic = async () => {
+                try {
+                    const response = await fetch('/employeeattendance/device-users/status', { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+                    if (!response.ok) return;
+                    const data = await response.json();
+                    const query = data.query;
+                    document.getElementById('query-status').textContent = query ? query.status : 'Not started';
+                    document.getElementById('received-count').textContent = data.totalUsersReceived;
+                    document.getElementById('unique-count').textContent = data.uniquePins;
+                    document.getElementById('duplicate-count').textContent = data.duplicateEntries;
+                    document.getElementById('packet-count').textContent = data.packetCount;
+
+                    const users = document.getElementById('users');
+                    users.replaceChildren();
+                    data.users.forEach(user => {
+                        const row = document.createElement('tr');
+                        [user.pin, user.name, user.privilege, user.cardNumber, JSON.stringify(user.other || {})].forEach(value => {
+                            const cell = document.createElement('td');
+                            cell.textContent = value || '';
+                            row.appendChild(cell);
+                        });
+                        users.appendChild(row);
+                    });
+                    document.getElementById('empty-users').classList.toggle('hidden', data.users.length > 0);
+
+                    const payloads = document.getElementById('raw-payloads');
+                    payloads.replaceChildren();
+                    data.rawPayloads.forEach(packet => {
+                        const details = document.createElement('details');
+                        const summary = document.createElement('summary');
+                        summary.textContent = `Packet ${packet.displayIndex} · index ${packet.packetIndex ?? 'not supplied'} · received ${new Date(packet.receivedAt).toLocaleString()}`;
+                        const raw = document.createElement('pre');
+                        raw.textContent = packet.rawPayload;
+                        details.append(summary, raw);
+                        payloads.appendChild(details);
+                    });
+                    document.getElementById('no-payloads').classList.toggle('hidden', data.rawPayloads.length > 0);
+                    if (!['PENDING', 'SENT', 'RECEIVING'].includes(query?.status)) clearInterval(pollTimer);
+                } catch (error) {
+                    console.error('Unable to refresh the device-user diagnostic status.');
+                }
+            };
+            const pollTimer = setInterval(refreshDiagnostic, 3000);
+            refreshDiagnostic();
+        </script>
+    <% } %>
+</body>
+</html>

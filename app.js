@@ -119,7 +119,19 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/iclock/cdata', express.text({
   type: ['text/plain', 'application/octet-stream', 'application/x-www-form-urlencoded']
 }));
-app.use(express.json())
+app.use('/iclock/cdata', (req, res, next) => {
+  if (req.headers['content-type']) return next();
+  return express.raw({ type: () => true, limit: '1mb' })(req, res, next);
+});
+app.use('/iclock/querydata', express.text({
+  type: () => true,
+  limit: '128kb'
+}));
+app.use(express.json({
+  verify: (req, res, buffer) => {
+    if (req.path === '/iclock/cdata') req.rawBody = Buffer.from(buffer);
+  }
+}));
 app.use(cookieParser());
 app.use(express.urlencoded({
   extended: true,

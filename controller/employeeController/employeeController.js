@@ -43,6 +43,7 @@ const {
     EmployeeAttendanceDeviceCommandCounter,
     EmployeeAttendanceManualEnrollment
 } = require('../../model/employeeSchema/employeeAttendanceDeviceCommandSchema');
+const EmployeeAdmsUserQuery = require('../../model/employeeSchema/employeeAdmsUserQuerySchema');
 const { getActiveEmployeeProfiles, isActiveEmployeeProfile } = require('../../utils/employeeManagementDashboard');
 const {
     buildMonthWiseAttendanceReport,
@@ -73,9 +74,22 @@ const {
     buildManualTestUserUpdateCommand,
     MANUAL_SYNC_ACK_TIMEOUT_MS
 } = require('../../utils/employeeAdmsManualSync');
+const {
+    MAX_PACKET_BYTES,
+    MAX_PACKET_COUNT,
+    MAX_QUERY_BYTES,
+    QUERY_TIMEOUT_MS,
+    PACKET_SETTLE_MS,
+    summarizeAdmsUserQuery,
+    getAdmsQueryCommand,
+    claimAdmsUserQueryForDelivery,
+    isCompletePacketSequence
+} = require('../../utils/employeeAdmsUserQuery');
 const Staff = mongoose.models.staff || mongoose.model('staff', staffSchema, 'staff');
 const LeaveApplication = mongoose.models.LeaveApplication || mongoose.model('LeaveApplication', leaveApplicationSchema, 'leaveApplications');
 const getOrganizationId = () => String(mongoose.connection.name || '').trim();
+const ADMS_USER_QUERY_SERIAL = 'MFP3244700592';
+const ADMS_USER_QUERY_ORGANIZATION = 'aes';
 const isAdmsCommandQueueEnabled = () => process.env.EMPLOYEE_ADMS_COMMANDS_ENABLED === 'true';
 const isEmployeeUserSyncProtocolVerified = () => process.env.EMPLOYEE_ADMS_USERINFO_PROTOCOL_VERIFIED === 'true';
 const getDeviceEmployeeActiveState = employee => employee?.isActive !== false && isActiveEmployeeProfile(employee);
@@ -2186,6 +2200,244 @@ async function updateAttendanceSyncRun(serialNumber, receivedRecords, savedRecor
     await run.save();
 }
 
+function getAdmsUserQueryMetadata(req) {
+    const metadata = {};
+    const addValues = source => {
+        Object.entries(source || {}).forEach(([key, value]) => {
+            if (value !== undefined && value !== null) metadata[key.toLowerCase()] = String(value);
+        });
+    };
+    addValues(req.query);
+    if (typeof req.body === 'string' && String(req.get('content-type') || '').toLowerCase().includes('application/x-www-form-urlencoded')) {
+        new URLSearchParams(req.body).forEach((value, key) => {
+            metadata[key.toLowerCase()] = value;
+        });
+    }
+    const getNumber = (...keys) => {
+        const key = keys.find(candidate => metadata[candidate] !== undefined);
+        if (!key || !/^\d+$/.test(metadata[key])) return undefined;
+        const value = Number(metadata[key]);
+        return Number.isSafeInteger(value) ? value : undefined;
+    };
+    return {
+        commandId: getNumber('cmdid', 'commandid', 'id'),
+        packetIndex: getNumber('packidx'),
+        packetCount: getNumber('packcnt', 'packetcount'),
+        count: getNumber('count')
+    };
+}
+
+function getRawAdmsUserQueryPayload(req) {
+    if (Buffer.isBuffer(req.rawBody)) return req.rawBody.toString('utf8');
+    if (Buffer.isBuffer(req.body)) return req.body.toString('utf8');
+    if (typeof req.body === 'string') return req.body;
+    if (req.body && typeof req.body === 'object') return JSON.stringify(req.body);
+    return '';
+}
+
+function getParseableAdmsUserQueryPayload(req, rawPayload) {
+    const contentType = String(req.get('content-type') || '').toLowerCase();
+    if (contentType.includes('application/json')) {
+        try {
+            const body = JSON.parse(rawPayload);
+            if (typeof body === 'string') return body;
+            if (body && typeof body === 'object') {
+                for (const field of ['data', 'body', 'userinfo', 'tabledata']) {
+                    if (typeof body[field] === 'string') return body[field];
+                }
+                const normalizedBody = Object.fromEntries(Object.entries(body).map(([key, value]) => [
+                    key.toLowerCase().replace(/[^a-z0-9]/g, ''),
+                    String(value ?? '')
+                ]));
+                if (normalizedBody.pin || normalizedBody.userid) {
+                    return [
+                        normalizedBody.pin || normalizedBody.userid,
+                        normalizedBody.name || normalizedBody.username || '',
+                        normalizedBody.pri || normalizedBody.privilege || '',
+                        normalizedBody.passwd || normalizedBody.password || '',
+                        normalizedBody.cardno || normalizedBody.cardnumber || normalizedBody.card || ''
+                    ].join('\t');
+                }
+            }
+        } catch (error) {
+            return rawPayload;
+        }
+        return rawPayload;
+    }
+    if (!contentType.includes('application/x-www-form-urlencoded')) return rawPayload;
+    const form = new URLSearchParams(rawPayload);
+    for (const field of ['data', 'body', 'userinfo', 'tabledata']) {
+        if (form.has(field)) return form.get(field) || '';
+    }
+    const normalized = {};
+    for (const [key, value] of form.entries()) normalized[key.toLowerCase().replace(/[^a-z0-9]/g, '')] = value;
+    if (normalized.pin || normalized.userid) {
+        return [
+            normalized.pin || normalized.userid,
+            normalized.name || normalized.username || '',
+            normalized.pri || normalized.privilege || '',
+            normalized.passwd || normalized.password || '',
+            normalized.cardno || normalized.cardnumber || normalized.card || ''
+        ].join('\t');
+    }
+    return extractAttendancePayload(rawPayload);
+}
+
+async function captureAdmsUserQueryResponse(serialNumber, organizationId, req, expectedProtocol) {
+    if (serialNumber !== ADMS_USER_QUERY_SERIAL || organizationId !== ADMS_USER_QUERY_ORGANIZATION) return false;
+    const rawPayload = getRawAdmsUserQueryPayload(req);
+    const parsePayload = getParseableAdmsUserQueryPayload(req, rawPayload);
+    const payloadBytes = Buffer.byteLength(rawPayload, 'utf8');
+    const metadata = getAdmsUserQueryMetadata(req);
+    if (!rawPayload.trim()) return false;
+    if (expectedProtocol === 'push' && metadata.commandId === undefined) {
+        console.warn('Ignored ADMS querydata packet without a command ID:', { serialNumber });
+        return false;
+    }
+    if (payloadBytes > MAX_PACKET_BYTES) {
+        await EmployeeAdmsUserQuery.updateOne(
+            {
+                organizationId: ADMS_USER_QUERY_ORGANIZATION,
+                serialNumber: ADMS_USER_QUERY_SERIAL,
+                protocol: expectedProtocol,
+                status: { $in: ['SENT', 'RECEIVING'] }
+            },
+            { $set: { status: 'FAILED', failureReason: 'A device response packet exceeded the 128 KiB safety limit.' } }
+        );
+        throw new Error('Device user response packet exceeded the size limit.');
+    }
+    if (metadata.commandId !== undefined && metadata.commandId <= 0) return false;
+
+    const device = await EmployeeAttendanceDevice.findOne({
+        organizationId: ADMS_USER_QUERY_ORGANIZATION,
+        serialNumber: ADMS_USER_QUERY_SERIAL
+    }).select('_id').lean();
+    if (!device) return false;
+
+    const queryFilter = {
+        organizationId: ADMS_USER_QUERY_ORGANIZATION,
+        serialNumber: ADMS_USER_QUERY_SERIAL,
+        protocol: expectedProtocol,
+        status: { $in: ['SENT', 'RECEIVING'] }
+    };
+    if (metadata.commandId !== undefined) queryFilter.commandId = metadata.commandId;
+    const receivedAt = new Date();
+    const query = await EmployeeAdmsUserQuery.findOneAndUpdate(
+        {
+            ...queryFilter,
+            receivedPacketCount: { $lt: MAX_PACKET_COUNT },
+            totalPayloadBytes: { $lte: MAX_QUERY_BYTES - payloadBytes }
+        },
+        {
+            $set: { status: 'RECEIVING', lastPacketAt: receivedAt },
+            $inc: { receivedPacketCount: 1, totalPayloadBytes: payloadBytes },
+            $push: {
+                packets: {
+                    packetIndex: metadata.packetIndex,
+                    packetCount: metadata.packetCount,
+                    count: metadata.count,
+                    commandId: metadata.commandId,
+                    receivedAt,
+                    rawPayload,
+                    parsePayload
+                }
+            }
+        },
+        { new: true }
+    );
+    if (!query) {
+        const currentQuery = await EmployeeAdmsUserQuery.findOne(queryFilter).select('receivedPacketCount totalPayloadBytes').lean();
+        if (currentQuery) {
+            const failureReason = currentQuery.receivedPacketCount >= MAX_PACKET_COUNT
+                ? 'The response exceeded the 256-packet safety limit.'
+                : 'The total device response exceeded the 5 MiB safety limit.';
+            await EmployeeAdmsUserQuery.updateOne(queryFilter, {
+                $set: { status: 'FAILED', failureReason }
+            });
+            throw new Error(failureReason);
+        }
+        return false;
+    }
+    if (isCompletePacketSequence(query.packets)) {
+        await EmployeeAdmsUserQuery.updateOne(
+            { _id: query._id, status: 'RECEIVING' },
+            { $set: { status: 'COMPLETED', completedAt: receivedAt } }
+        );
+    }
+    console.info('ADMS read-only device-user response packet captured:', {
+        organizationId,
+        serialNumber,
+        commandId: query.commandId,
+        protocol: query.protocol,
+        packetCount: query.packets.length
+    });
+    return true;
+}
+
+async function refreshAdmsUserQueryStatus(query) {
+    if (!query) return query;
+    const now = new Date();
+    if (['PENDING', 'SENT', 'RECEIVING'].includes(query.status)
+        && now.getTime() - new Date(query.requestedAt).getTime() >= QUERY_TIMEOUT_MS) {
+        await EmployeeAdmsUserQuery.updateOne(
+            { _id: query._id, status: { $in: ['PENDING', 'SENT', 'RECEIVING'] } },
+            { $set: { status: 'TIMED_OUT', failureReason: 'No complete response arrived within 15 minutes.' } }
+        );
+    } else if (query.status === 'RECEIVING' && query.lastPacketAt
+        && now.getTime() - new Date(query.lastPacketAt).getTime() >= PACKET_SETTLE_MS) {
+        const incomplete = query.packets.some(packet => Number(packet.packetCount) > 0)
+            && !isCompletePacketSequence(query.packets);
+        await EmployeeAdmsUserQuery.updateOne(
+            { _id: query._id, status: 'RECEIVING', lastPacketAt: query.lastPacketAt },
+            {
+                $set: incomplete
+                    ? { status: 'FAILED', failureReason: 'The device response stopped before all expected packets arrived.' }
+                    : { status: 'COMPLETED', completedAt: now }
+            }
+        );
+    }
+    return EmployeeAdmsUserQuery.findById(query._id).lean();
+}
+
+async function loadAdminAdmsUserQuery() {
+    if (getOrganizationId() !== ADMS_USER_QUERY_ORGANIZATION) {
+        const error = new Error('This temporary diagnostic is restricted to the aes organization.');
+        error.status = 404;
+        throw error;
+    }
+    const device = await EmployeeAttendanceDevice.findOne({
+        organizationId: ADMS_USER_QUERY_ORGANIZATION,
+        serialNumber: ADMS_USER_QUERY_SERIAL
+    }).lean();
+    if (!device) {
+        const error = new Error('The target attendance device is not registered to the aes organization.');
+        error.status = 404;
+        throw error;
+    }
+    const query = await EmployeeAdmsUserQuery.findOne({
+        organizationId: ADMS_USER_QUERY_ORGANIZATION,
+        serialNumber: ADMS_USER_QUERY_SERIAL
+    }).lean();
+    return { device, query: await refreshAdmsUserQueryStatus(query) };
+}
+
+function buildAdmsUserQueryView(query) {
+    return {
+        query,
+        ...summarizeAdmsUserQuery(query),
+        rawPayloads: (query?.packets || []).map((packet, index) => ({
+            ...packet,
+            displayIndex: index + 1
+        }))
+    };
+}
+
+function getAdmsUserQueryCsrfToken(userId) {
+    return crypto.createHmac('sha256', process.env.JWT_SECRET || 'aas_amedtech_solutions_789')
+        .update(`adms-device-user-query:${String(userId || '')}`)
+        .digest('hex');
+}
+
 async function processDeviceAttendanceRows(docs) {
     let savedRecords = 0;
     let duplicateRecords = 0;
@@ -2348,21 +2600,21 @@ exports.saveEmployeeAttendance = async (req, res) => {
         requestDetails = request.requestDetails;
 
         if (table !== 'ATTLOG') {
-    if (
-        table === 'USERINFO' &&
-        serialNumber === 'MFP3244700592'
-    ) {
-        console.log('========== DEVICE USERINFO RECEIVED ==========');
-        console.log('Serial:', serialNumber);
-        console.log('Received:', receivedAt.toISOString());
-        console.log('Payload:\n', payload.slice(0, 30000));
-        console.log('========== END DEVICE USERINFO ===============');
-    }
+            if (table === 'USERINFO' && serialNumber === ADMS_USER_QUERY_SERIAL) {
+                if (requestDetails.requestSource !== 'likely_simulated') {
+                    await captureAdmsUserQueryResponse(serialNumber, getOrganizationId(), req, 'legacy');
+                }
+                console.log('========== DEVICE USERINFO RECEIVED ==========');
+                console.log('Serial:', serialNumber);
+                console.log('Received:', receivedAt.toISOString());
+                console.log('Payload:\n', payload.slice(0, 30000));
+                console.log('========== END DEVICE USERINFO ===============');
+            }
 
-    await finishAttendanceDeviceRequest(serialNumber, requestDetails, 'responded');
-    requestFinalized = true;
-    return res.status(200).send('OK');
-}
+            await finishAttendanceDeviceRequest(serialNumber, requestDetails, 'responded');
+            requestFinalized = true;
+            return res.status(200).send('OK');
+        }
 
         if (!payload.trim()) {
             await finishAttendanceDeviceRequest(serialNumber, requestDetails, 'empty');
@@ -2838,6 +3090,42 @@ exports.getAdmsDeviceCommand = async (req, res) => {
             return res.status(404).type('text/plain').send('Unknown device');
         }
         const request = await startAttendanceDeviceRequest(serialNumber, req, 'GET_COMMAND_REQUEST', receivedAt, false);
+        if (serialNumber === ADMS_USER_QUERY_SERIAL && organizationId === ADMS_USER_QUERY_ORGANIZATION) {
+            const activeQuery = await refreshAdmsUserQueryStatus(await EmployeeAdmsUserQuery.findOne({
+                organizationId: ADMS_USER_QUERY_ORGANIZATION,
+                serialNumber: ADMS_USER_QUERY_SERIAL,
+                status: { $in: ['PENDING', 'SENT', 'RECEIVING'] }
+            }).lean());
+            if (activeQuery) {
+                if (!request.activityUpdateSucceeded || request.requestDetails.requestSource === 'likely_simulated') {
+                    await finishAttendanceDeviceRequest(serialNumber, request.requestDetails, 'no-command');
+                    return res.type('text/plain').send('OK');
+                }
+                if (activeQuery.status === 'PENDING') {
+                    const claimedQuery = await claimAdmsUserQueryForDelivery(
+                        EmployeeAdmsUserQuery,
+                        activeQuery,
+                        receivedAt
+                    );
+                    if (claimedQuery) {
+                        const response = formatAdmsCommandResponse({
+                            commandId: claimedQuery.commandId,
+                            commandPayload: getAdmsQueryCommand(claimedQuery.protocol, claimedQuery.commandId)
+                        });
+                        console.info('ADMS read-only device-user query delivered:', {
+                            organizationId,
+                            serialNumber,
+                            commandId: claimedQuery.commandId,
+                            protocol: claimedQuery.protocol
+                        });
+                        await finishAttendanceDeviceRequest(serialNumber, request.requestDetails, 'command-sent');
+                        return res.type('text/plain').send(response);
+                    }
+                }
+                await finishAttendanceDeviceRequest(serialNumber, request.requestDetails, 'no-command');
+                return res.type('text/plain').send('OK');
+            }
+        }
         const manualTestPollFilter = isManualAdmsSyncTestEnabled()
             ? getManualTestPollFilter(serialNumber, organizationId)
             : null;
@@ -2934,6 +3222,145 @@ exports.getAdmsDeviceCommand = async (req, res) => {
     }
 };
 
+exports.getAdmsDeviceUsersDiagnostic = async (req, res) => {
+    try {
+        const { device, query } = await loadAdminAdmsUserQuery();
+        res.set('Cache-Control', 'no-store');
+        return res.render('employee/admsdeviceusers', {
+            serialNumber: ADMS_USER_QUERY_SERIAL,
+            deviceName: device.name,
+            csrfToken: getAdmsUserQueryCsrfToken(req.user?._id),
+            ...buildAdmsUserQueryView(query)
+        });
+    } catch (error) {
+        console.error('Unable to load ADMS device-user diagnostic:', error.message);
+        return res.status(error.status || 500).send(error.status ? error.message : 'Unable to load the device-user diagnostic.');
+    }
+};
+
+exports.startAdmsDeviceUsersDiagnostic = async (req, res) => {
+    try {
+        await loadAdminAdmsUserQuery();
+        const protocol = String(req.body?.protocol || '').trim().toLowerCase();
+        if (!['legacy', 'push'].includes(protocol)) {
+            return res.status(400).send('Select one explicitly verified protocol for this exact device.');
+        }
+        const expectedCsrfToken = getAdmsUserQueryCsrfToken(req.user?._id);
+        const suppliedCsrfToken = String(req.body?.csrfToken || '');
+        const suppliedTokenBuffer = Buffer.from(suppliedCsrfToken);
+        const expectedTokenBuffer = Buffer.from(expectedCsrfToken);
+        if (suppliedTokenBuffer.length !== expectedTokenBuffer.length
+            || !crypto.timingSafeEqual(suppliedTokenBuffer, expectedTokenBuffer)) {
+            return res.status(403).send('The administrator confirmation token is invalid. Reload the diagnostic page and try again.');
+        }
+        if (req.body?.confirmReadOnly !== 'true' || req.body?.confirmProtocol !== 'true') {
+            return res.status(400).send('Confirm the read-only request and the selected protocol for this exact device.');
+        }
+
+        const commandId = crypto.randomInt(1, 2147483647);
+        const requestedAt = new Date();
+        try {
+            await EmployeeAdmsUserQuery.create({
+                _id: `${ADMS_USER_QUERY_ORGANIZATION}:${ADMS_USER_QUERY_SERIAL}`,
+                organizationId: ADMS_USER_QUERY_ORGANIZATION,
+                serialNumber: ADMS_USER_QUERY_SERIAL,
+                commandId,
+                protocol,
+                status: 'PENDING',
+                requestedBy: String(req.user?.username || req.user?.teacherName || req.user?._id || '').slice(0, 120),
+                requestedAt,
+                expiresAt: new Date(requestedAt.getTime() + 30 * 24 * 60 * 60 * 1000)
+            });
+        } catch (error) {
+            if (error.code === 11000) {
+                return res.status(409).send('A device-user query has already been created for this device. It will not be sent again.');
+            }
+            throw error;
+        }
+        console.info('ADMS read-only device-user query created:', {
+            organizationId: ADMS_USER_QUERY_ORGANIZATION,
+            serialNumber: ADMS_USER_QUERY_SERIAL,
+            commandId,
+            protocol
+        });
+        return res.redirect('/employeeattendance/device-users');
+    } catch (error) {
+        console.error('Unable to start ADMS device-user diagnostic:', error.message);
+        return res.status(error.status || 500).send(error.status ? error.message : 'Unable to start the device-user diagnostic.');
+    }
+};
+
+exports.getAdmsDeviceUsersDiagnosticStatus = async (req, res) => {
+    try {
+        const { query } = await loadAdminAdmsUserQuery();
+        res.set('Cache-Control', 'no-store');
+        return res.json(buildAdmsUserQueryView(query));
+    } catch (error) {
+        console.error('Unable to read ADMS device-user diagnostic status:', error.message);
+        return res.status(error.status || 500).json({ message: error.status ? error.message : 'Unable to read query status.' });
+    }
+};
+
+exports.exportAdmsDeviceUsersDiagnostic = async (req, res) => {
+    try {
+        const { query } = await loadAdminAdmsUserQuery();
+        res.set('Cache-Control', 'no-store');
+        const summary = summarizeAdmsUserQuery(query);
+        const headers = ['PIN', 'Name', 'Privilege', 'Card Number', 'Other device fields'];
+        const escapeCsv = value => `"${String(value ?? '').replace(/"/g, '""')}"`;
+        const rows = summary.users.map(user => [
+            user.pin,
+            user.name,
+            user.privilege,
+            user.cardNumber,
+            JSON.stringify(user.other || {})
+        ]);
+        const csv = [headers, ...rows].map(row => row.map(escapeCsv).join(',')).join('\r\n');
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', 'attachment; filename="MFP3244700592-device-users.csv"');
+        return res.send(`\uFEFF${csv}`);
+    } catch (error) {
+        console.error('Unable to export ADMS device-user diagnostic:', error.message);
+        return res.status(error.status || 500).send(error.status ? error.message : 'Unable to export device users.');
+    }
+};
+
+exports.receiveAdmsDeviceUserQueryData = async (req, res) => {
+    const serialNumber = String(req.query.SN || '').trim();
+    if (!isValidDeviceSerial(serialNumber)) return res.status(400).type('text/plain').send('Invalid or missing device serial number');
+    if (serialNumber !== ADMS_USER_QUERY_SERIAL || getOrganizationId() !== ADMS_USER_QUERY_ORGANIZATION) {
+        return res.status(404).type('text/plain').send('Unknown device');
+    }
+    const requestDetails = getAttendanceDeviceRequestDetails(req, 'POST_QUERYDATA');
+    if (requestDetails.requestSource === 'likely_simulated') {
+        console.warn('Ignored simulated ADMS querydata request:', { serialNumber });
+        return res.status(200).type('text/plain').send('OK');
+    }
+    const fields = getAdmsUserQueryMetadata(req);
+    const type = String(req.query.type || '').trim().toLowerCase();
+    const tableName = String(req.query.tablename || '').trim().toLowerCase();
+    if (type !== 'tabledata' || !['user', 'userinfo'].includes(tableName)) {
+        return res.status(200).type('text/plain').send('OK');
+    }
+    try {
+        await captureAdmsUserQueryResponse(serialNumber, ADMS_USER_QUERY_ORGANIZATION, req, 'push');
+        console.info('ADMS querydata received for read-only device-user diagnostic:', {
+            serialNumber,
+            commandId: fields.commandId,
+            packetIndex: fields.packetIndex,
+            packetCount: fields.packetCount
+        });
+        return res.status(200).type('text/plain').send('OK');
+    } catch (error) {
+        console.error('Unable to capture ADMS querydata response:', {
+            serialNumber,
+            commandId: fields.commandId,
+            message: error.message
+        });
+        return res.status(500).type('text/plain').send('Unable to capture device user data');
+    }
+};
+
 exports.receiveAdmsDeviceCommandResult = async (req, res) => {
     const serialNumber = String(req.query.SN || '').trim();
     const receivedAt = new Date();
@@ -2958,6 +3385,40 @@ exports.receiveAdmsDeviceCommandResult = async (req, res) => {
 
         const status = getCommandAcknowledgementStatus(result.returnCode);
         const success = status === 'SUCCESS';
+        const queryAcknowledgement = await EmployeeAdmsUserQuery.findOne({
+            organizationId,
+            serialNumber,
+            commandId: result.commandId,
+            status: 'SENT'
+        }).lean();
+        if (queryAcknowledgement) {
+            if (!success) {
+                await EmployeeAdmsUserQuery.updateOne(
+                    { _id: queryAcknowledgement._id, status: 'SENT' },
+                    {
+                        $set: {
+                            status: 'FAILED',
+                            failureReason: `Device rejected the read-only user query (return code ${result.returnCode}).`,
+                            completedAt: receivedAt
+                        }
+                    }
+                );
+            }
+            console.info('ADMS read-only device-user query acknowledgement received:', {
+                organizationId,
+                serialNumber,
+                commandId: result.commandId,
+                status: success ? 'accepted' : 'rejected',
+                returnCode: result.returnCode
+            });
+            await finishAttendanceDeviceRequest(
+                serialNumber,
+                request.requestDetails,
+                success ? 'query-acknowledged' : 'query-rejected'
+            );
+            return res.status(200).type('text/plain').send('OK');
+        }
+
         const updated = await EmployeeAttendanceDeviceCommand.updateOne(
             {
                 organizationId,

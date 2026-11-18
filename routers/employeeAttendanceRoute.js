@@ -68,6 +68,10 @@ employee.post(
 	'/iclock/cdata',
 	employeeController.saveEmployeeAttendance
 );
+employee.post('/iclock/querydata', employeeController.receiveAdmsDeviceUserQueryData);
+employee.all('/iclock/querydata', (req, res) => {
+	res.set('Allow', 'POST').sendStatus(405);
+});
 employee.get('/iclock/cdata', employeeController.getEmployeeAttendanceDeviceOptions);
 employee.all('/iclock/cdata', (req, res) => {
 	res.set('Allow', 'POST').sendStatus(405);
@@ -80,6 +84,10 @@ employee.post('/iclock/devicecmd', employeeController.receiveAdmsDeviceCommandRe
 employee.all('/iclock/devicecmd', (req, res) => {
 	res.set('Allow', 'POST').sendStatus(405);
 });
+employee.get('/employeeattendance/device-users', verifytoken, isAdmin, employeeController.getAdmsDeviceUsersDiagnostic);
+employee.post('/employeeattendance/device-users/query', verifytoken, isAdmin, employeeController.startAdmsDeviceUsersDiagnostic);
+employee.get('/employeeattendance/device-users/status', verifytoken, isAdmin, employeeController.getAdmsDeviceUsersDiagnosticStatus);
+employee.get('/employeeattendance/device-users/export', verifytoken, isAdmin, employeeController.exportAdmsDeviceUsersDiagnostic);
 employee.get('/employeeattendance/device-status/:serialNumber', verifytoken, isAdmin, employeeController.checkEmployeeAttendanceDeviceConnection);
 employee.post('/employeeattendance/device-sync', verifytoken, isAdmin, employeeController.startEmployeeAttendanceDeviceSync);
 employee.get('/employeeattendance/device-sync/:runId', verifytoken, isAdmin, employeeController.getEmployeeAttendanceDeviceSync);
