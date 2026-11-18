@@ -2348,10 +2348,21 @@ exports.saveEmployeeAttendance = async (req, res) => {
         requestDetails = request.requestDetails;
 
         if (table !== 'ATTLOG') {
-            await finishAttendanceDeviceRequest(serialNumber, requestDetails, 'responded');
-            requestFinalized = true;
-            return res.status(200).send('OK');
-        }
+    if (
+        table === 'USERINFO' &&
+        serialNumber === 'MFP3244700592'
+    ) {
+        console.log('========== DEVICE USERINFO RECEIVED ==========');
+        console.log('Serial:', serialNumber);
+        console.log('Received:', receivedAt.toISOString());
+        console.log('Payload:\n', payload.slice(0, 30000));
+        console.log('========== END DEVICE USERINFO ===============');
+    }
+
+    await finishAttendanceDeviceRequest(serialNumber, requestDetails, 'responded');
+    requestFinalized = true;
+    return res.status(200).send('OK');
+}
 
         if (!payload.trim()) {
             await finishAttendanceDeviceRequest(serialNumber, requestDetails, 'empty');
