@@ -149,7 +149,7 @@
 							</div>
 							<div class="device-meta">Last activity<br><strong data-role="last-communication"><%= device.lastActivity ? new Date(device.lastActivity).toLocaleString() : device.lastCommunicationAt ? new Date(device.lastCommunicationAt).toLocaleString() : 'Not recorded' %></strong><br>Last attendance <span data-role="last-attendance"><%= device.lastAttendanceReceived ? new Date(device.lastAttendanceReceived).toLocaleString() : 'None received' %></span></div>
 							<div class="device-meta">Last successfully processed batch<br><strong data-role="last-batch"><%= device.lastSuccessfulBatchAt ? new Date(device.lastSuccessfulBatchAt).toLocaleString() : 'None recorded' %></strong></div>
-							<div class="device-meta">Request<br><strong data-role="request-type"><%= device.lastRequestType || 'None' %></strong> · <span data-role="request-status"><%= device.lastRequestStatus || 'No request status' %></span><br>Source: <span data-role="request-source"><%= device.lastRequestSource.replace(/_/g, ' ') %></span><br>Records received / inserted: <span data-role="device-totals"><%= device.totalReceivedRecords %> / <%= device.totalInsertedRecords %></span></div>
+							<div class="device-meta">Request<br><strong data-role="request-type"><%= device.lastRequestType || 'None' %></strong> · <span data-role="request-status"><%= device.lastRequestStatus || 'No request status' %></span><br>Source (User-Agent classification): <span title="Unverified means the request origin is not independently authenticated. Device serial and organization checks are separate." data-role="request-source"><%= device.lastRequestSource.replace(/_/g, ' ') %></span><br>Records received / inserted: <span data-role="device-totals"><%= device.totalReceivedRecords %> / <%= device.totalInsertedRecords %></span></div>
 							<div class="device-meta">Last successful synchronization<br><strong>Not verifiable from ADMS</strong></div>
 							<div class="sync-result" data-role="result" aria-live="polite">
 								<% if (device.run) { %>
@@ -169,13 +169,14 @@
 								<div class="device-user-actions">
 									<button class="button button-secondary fetch-device-users-button" type="button">Fetch Users from Device</button>
 									<button class="button button-secondary refresh-device-users-button" type="button">Refresh Pending Users</button>
+									<button class="button button-secondary toggle-all-device-users-button" type="button" aria-pressed="false">Show All Device Users</button>
 									<span class="device-user-status" aria-live="polite">Device users not fetched.</span>
 								</div>
 								<div class="device-user-list hidden">
 									<p class="device-user-count">No pending device users.</p>
 									<div class="table-wrap">
 										<table>
-											<thead><tr><th scope="col">Select</th><th scope="col">PIN</th><th scope="col">Name</th></tr></thead>
+											<thead><tr><th scope="col">Select</th><th scope="col">PIN</th><th scope="col">Device Name</th><th scope="col">Status</th></tr></thead>
 											<tbody></tbody>
 										</table>
 									</div>
@@ -327,11 +328,32 @@
 		}));
 		document.querySelectorAll('.refresh-device-users-button').forEach(button => button.addEventListener('click', async () => {
 			const card = button.closest('.device-card');
+			card.dataset.includeImported = 'false';
+			const toggleButton = card.querySelector('.toggle-all-device-users-button');
+			toggleButton.textContent = 'Show All Device Users';
+			toggleButton.setAttribute('aria-pressed', 'false');
 			button.disabled = true;
 			try {
-				const data = await fetchPendingDeviceUsers(card);
-				renderPendingDeviceUsers(card, data);
+				const data = await refreshDeviceUsers(card, undefined, false);
 				card.querySelector('.device-user-status').textContent = `Showing ${data.count} pending user${data.count === 1 ? '' : 's'}.`;
+			} catch (error) {
+				card.querySelector('.device-user-status').textContent = error.message;
+			} finally {
+				button.disabled = false;
+			}
+		}));
+		document.querySelectorAll('.toggle-all-device-users-button').forEach(button => button.addEventListener('click', async () => {
+			const card = button.closest('.device-card');
+			const includeImported = card.dataset.includeImported !== 'true';
+			card.dataset.includeImported = String(includeImported);
+			button.textContent = includeImported ? 'Show Pending Users' : 'Show All Device Users';
+			button.setAttribute('aria-pressed', String(includeImported));
+			button.disabled = true;
+			try {
+				const data = await refreshDeviceUsers(card, undefined, includeImported);
+				card.querySelector('.device-user-status').textContent = includeImported
+					? `Showing ${data.totalCount} device user(s), including ${data.pendingCount} pending.`
+					: `Showing ${data.pendingCount} pending user${data.pendingCount === 1 ? '' : 's'}.`;
 			} catch (error) {
 				card.querySelector('.device-user-status').textContent = error.message;
 			} finally {
@@ -368,18 +390,21 @@
 			}
 		}));
 
-		async function fetchPendingDeviceUsers(card, commandId) {
-			const query = commandId ? `?cmd_id=${encodeURIComponent(commandId)}` : '';
+		async function fetchPendingDeviceUsers(card, commandId, includeImported = card.dataset.includeImported === 'true') {
+			const params = new URLSearchParams();
+			if (commandId) params.set('cmd_id', commandId);
+			if (includeImported) params.set('includeImported', 'true');
+			const query = params.toString() ? `?${params.toString()}` : '';
 			const response = await fetch(`/api/devices/${encodeURIComponent(card.dataset.serial)}/pending-users${query}`, {
 				credentials: 'same-origin',
 				headers: { Accept: 'application/json' }
 			});
 			const data = await response.json();
-			if (!response.ok) throw new Error(data.message || 'Unable to load pending device users.');
+			if (!response.ok) throw new Error(data.message || 'Unable to load device users.');
 			return data;
 		}
 
-		function renderPendingDeviceUsers(card, data) {
+		function renderPendingDeviceUsers(card, data, includeImported = card.dataset.includeImported === 'true') {
 			const panel = card.querySelector('.device-user-list');
 			const tbody = panel.querySelector('tbody');
 			const importButton = panel.querySelector('.import-device-users-button');
@@ -387,28 +412,36 @@
 			(data.users || []).forEach(user => {
 				const row = document.createElement('tr');
 				const selectCell = document.createElement('td');
-				const checkbox = document.createElement('input');
-				checkbox.type = 'checkbox';
-				checkbox.className = 'device-user-checkbox';
-				checkbox.value = user.pin;
-				checkbox.setAttribute('aria-label', `Select ${user.name}, PIN ${user.pin}`);
-				selectCell.appendChild(checkbox);
+				if (user.status === 'pending') {
+					const checkbox = document.createElement('input');
+					checkbox.type = 'checkbox';
+					checkbox.className = 'device-user-checkbox';
+					checkbox.value = user.pin;
+					checkbox.setAttribute('aria-label', `Select ${user.name}, PIN ${user.pin}`);
+					selectCell.appendChild(checkbox);
+				} else {
+					selectCell.textContent = '—';
+				}
 				row.appendChild(selectCell);
-				[user.pin, user.name].forEach(value => {
+				[user.pin, user.name, user.status === 'imported' ? 'Imported' : 'Pending'].forEach(value => {
 					const cell = document.createElement('td');
 					cell.textContent = value || '';
 					row.appendChild(cell);
 				});
 				tbody.appendChild(row);
 			});
-			panel.querySelector('.device-user-count').textContent = `${data.count} pending device user${data.count === 1 ? '' : 's'}.`;
+			const pendingCount = Number(data.pendingCount ?? data.count ?? 0);
+			const totalCount = Number(data.totalCount ?? data.users?.length ?? 0);
+			panel.querySelector('.device-user-count').textContent = includeImported
+				? `${totalCount} device user(s) total; ${pendingCount} pending and available to import.`
+				: `${pendingCount} pending device user${pendingCount === 1 ? '' : 's'}.`;
 			panel.classList.remove('hidden');
-			importButton.disabled = data.count === 0;
+			importButton.disabled = pendingCount === 0;
 		}
 
-		async function refreshDeviceUsers(card, commandId) {
-			const data = await fetchPendingDeviceUsers(card, commandId);
-			renderPendingDeviceUsers(card, data);
+		async function refreshDeviceUsers(card, commandId, includeImported = card.dataset.includeImported === 'true') {
+			const data = await fetchPendingDeviceUsers(card, commandId, includeImported);
+			renderPendingDeviceUsers(card, data, includeImported);
 			return data;
 		}
 

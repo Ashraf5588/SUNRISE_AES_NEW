@@ -98,6 +98,7 @@ employee.get('/employeeattendance/device-users/export', verifytoken, isAdmin, em
 employee.post('/api/devices/:sn/sync-users', verifytokenApi, requireAdminApi, employeeController.verifyDeviceUsersCsrf, employeeController.queueDeviceUserSync);
 employee.get('/api/devices/:sn/pending-users', verifytokenApi, requireAdminApi, employeeController.getPendingDeviceUsers);
 employee.post('/api/devices/:sn/import-users', verifytokenApi, requireAdminApi, employeeController.verifyDeviceUsersCsrf, employeeController.importSelectedDeviceUsers);
+employee.post('/api/devices/:sn/push-user', verifytokenApi, requireAdminApi, employeeController.verifyDeviceUsersCsrf, employeeController.pushStaffUserToDevice);
 employee.get('/employeeattendance/device-status/:serialNumber', verifytoken, isAdmin, employeeController.checkEmployeeAttendanceDeviceConnection);
 employee.post('/employeeattendance/device-sync', verifytoken, isAdmin, employeeController.startEmployeeAttendanceDeviceSync);
 employee.get('/employeeattendance/device-sync/:runId', verifytoken, isAdmin, employeeController.getEmployeeAttendanceDeviceSync);
@@ -106,7 +107,7 @@ employee.get('/employeeattendance/staff/:employeeId/commands', verifytoken, isAd
 employee.post('/employeeattendance/device-command/:commandId/retry', verifytoken, isAdmin, employeeController.retryEmployeeAttendanceDeviceCommand);
 employee.post('/employeeattendance/device/:serialNumber/command/:commandId/cancel', verifytoken, isAdmin, employeeController.cancelEmployeeAttendanceDeviceCommand);
 employee.post('/employeeattendance/staff/:employeeId/manual-fingerprint-enrollment', verifytoken, isAdmin, employeeController.confirmManualEmployeeFingerprintEnrollment);
-employee.post('/employeeattendance/device/:serialNumber/capabilities', verifytoken, isAdmin, employeeController.configureEmployeeAttendanceDeviceCapabilities);
+employee.post('/employeeattendance/device/:serialNumber/capabilities', verifytoken, isAdmin, employeeController.verifyDeviceUsersCsrf, employeeController.configureEmployeeAttendanceDeviceCapabilities);
 employee.get('/employeeattendance/report', verifytoken, isAdmin, employeeController.showEmployeeAttendanceRangeReport);
 employee.get('/employeeattendance/statistics', verifytoken, isAdmin, employeeController.showEmployeeAttendanceStatistics);
 employee.get('/employeeattendance/monthly-report', verifytoken, isAdmin, employeeController.showMonthWiseAttendanceReport);
