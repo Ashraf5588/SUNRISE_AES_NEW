@@ -66,6 +66,14 @@
 		.sync-result strong { color: var(--ink); }
 		.device-check { display: grid; justify-items: start; gap: 7px; }
 		.sync-note { margin: 0 0 12px; padding: 10px 12px; border: 1px solid #ead8a8; border-radius: 5px; background: #fff9e8; color: #705814; font-size: .82rem; line-height: 1.5; }
+		.device-user-tools { grid-column: 1 / -1; padding-top: 12px; border-top: 1px solid #e9efea; }
+		.device-user-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+		.device-user-status { min-height: 1.2em; color: var(--muted); font-size: .82rem; }
+		.device-user-list { margin-top: 12px; }
+		.device-user-list.hidden { display: none; }
+		.device-user-list table { white-space: normal; }
+		.device-user-list th { position: static; padding: 8px; }
+		.device-user-list td { padding: 8px; }
 		@media (max-width: 1000px) { .device-card { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 		@media (max-width: 700px) {
 			.page-shell { width: calc(100% - 24px); padding-top: 22px; }
@@ -126,7 +134,7 @@
 			<% if (deviceSN) { %><span class="count">Device SN: <%= deviceSN %></span><% } %>
 			<a class="button button-secondary" href="/employeeattendance/device-users">Temporary device-user diagnostic</a>
 		</header>
-		<section class="panel sync-panel" aria-labelledby="deviceSyncHeading">
+		<section class="panel sync-panel" aria-labelledby="deviceSyncHeading" data-csrf-token="<%= csrfToken %>">
 			<h2 id="deviceSyncHeading">Device attendance synchronization</h2>
 			<p class="sync-intro">Use Check Connection to refresh the latest request recorded by the attendance server. Recent contact (five minutes by default) shows the terminal can reach the server; this checks server-received activity, not a direct ping or physical device identity. Saved attendance remains in MongoDB even when a device later shows offline.</p>
 			<p class="sync-note">This ADMS connection receives data pushed by the terminal. The monitor button below watches for incoming records and saves valid records to MongoDB; it cannot read unsent records stored only on the terminal. Historical replay requires the exact device model and firmware protocol. Do not clear device records until exported or received records are checked.</p>
@@ -157,6 +165,23 @@
 								<span class="device-meta" data-role="connection-check" aria-live="polite">Refresh server-observed status after updating device network settings.</span>
 							</div>
 							<button class="button button-primary sync-device-button" type="button">Monitor Incoming Device Records</button>
+							<div class="device-user-tools">
+								<div class="device-user-actions">
+									<button class="button button-secondary fetch-device-users-button" type="button">Fetch Users from Device</button>
+									<button class="button button-secondary refresh-device-users-button" type="button">Refresh Pending Users</button>
+									<span class="device-user-status" aria-live="polite">Device users not fetched.</span>
+								</div>
+								<div class="device-user-list hidden">
+									<p class="device-user-count">No pending device users.</p>
+									<div class="table-wrap">
+										<table>
+											<thead><tr><th scope="col">Select</th><th scope="col">PIN</th><th scope="col">Name</th></tr></thead>
+											<tbody></tbody>
+										</table>
+									</div>
+									<button class="button button-primary import-device-users-button" type="button" disabled>Import Selected to Staff</button>
+								</div>
+							</div>
 						</article>
 					<% }) %>
 				</div>
@@ -276,6 +301,144 @@
 				button.disabled = false;
 			}
 		}));
+		const userSyncCsrfToken = document.querySelector('.sync-panel').dataset.csrfToken;
+		document.querySelectorAll('.fetch-device-users-button').forEach(button => button.addEventListener('click', async () => {
+			const card = button.closest('.device-card');
+			const serialNumber = card.dataset.serial;
+			const status = card.querySelector('.device-user-status');
+			button.disabled = true;
+			status.textContent = 'Queueing a read-only user query…';
+			try {
+				const response = await fetch(`/api/devices/${encodeURIComponent(serialNumber)}/sync-users`, {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': userSyncCsrfToken },
+					body: JSON.stringify({})
+				});
+				const data = await response.json();
+				if (!response.ok && response.status !== 409) throw new Error(data.message || 'Unable to queue the device-user query.');
+				if (!data.commandId) throw new Error(data.message || 'No device-user query command was queued.');
+				status.textContent = `${data.message} Command ${data.commandId}.`;
+				pollDeviceUsers(card, data.commandId);
+			} catch (error) {
+				status.textContent = error.message;
+				button.disabled = false;
+			}
+		}));
+		document.querySelectorAll('.refresh-device-users-button').forEach(button => button.addEventListener('click', async () => {
+			const card = button.closest('.device-card');
+			button.disabled = true;
+			try {
+				const data = await fetchPendingDeviceUsers(card);
+				renderPendingDeviceUsers(card, data);
+				card.querySelector('.device-user-status').textContent = `Showing ${data.count} pending user${data.count === 1 ? '' : 's'}.`;
+			} catch (error) {
+				card.querySelector('.device-user-status').textContent = error.message;
+			} finally {
+				button.disabled = false;
+			}
+		}));
+		document.querySelectorAll('.import-device-users-button').forEach(button => button.addEventListener('click', async () => {
+			const card = button.closest('.device-card');
+			const selectedPins = Array.from(card.querySelectorAll('.device-user-checkbox:checked'), checkbox => checkbox.value);
+			if (!selectedPins.length) {
+				card.querySelector('.device-user-status').textContent = 'Select at least one device user to import.';
+				return;
+			}
+			if (!window.confirm(`Create staff records for ${selectedPins.length} selected device user(s)? Unselected users will remain pending.`)) return;
+			button.disabled = true;
+			const status = card.querySelector('.device-user-status');
+			status.textContent = 'Importing selected users…';
+			try {
+				const response = await fetch(`/api/devices/${encodeURIComponent(card.dataset.serial)}/import-users`, {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': userSyncCsrfToken },
+					body: JSON.stringify({ pins: selectedPins })
+				});
+				const data = await response.json();
+				if (!response.ok) throw new Error(data.message || 'Unable to import selected users.');
+				const failures = (data.results || []).filter(result => ['conflict', 'created_not_staged', 'not_pending'].includes(result.status));
+				status.textContent = `${data.importedCount} staff record(s) created; ${data.alreadyExistsCount} already existed.${failures.length ? ` ${failures.length} conflict(s) need review.` : ''}`;
+				await refreshDeviceUsers(card);
+			} catch (error) {
+				status.textContent = error.message;
+			} finally {
+				button.disabled = false;
+			}
+		}));
+
+		async function fetchPendingDeviceUsers(card, commandId) {
+			const query = commandId ? `?cmd_id=${encodeURIComponent(commandId)}` : '';
+			const response = await fetch(`/api/devices/${encodeURIComponent(card.dataset.serial)}/pending-users${query}`, {
+				credentials: 'same-origin',
+				headers: { Accept: 'application/json' }
+			});
+			const data = await response.json();
+			if (!response.ok) throw new Error(data.message || 'Unable to load pending device users.');
+			return data;
+		}
+
+		function renderPendingDeviceUsers(card, data) {
+			const panel = card.querySelector('.device-user-list');
+			const tbody = panel.querySelector('tbody');
+			const importButton = panel.querySelector('.import-device-users-button');
+			tbody.replaceChildren();
+			(data.users || []).forEach(user => {
+				const row = document.createElement('tr');
+				const selectCell = document.createElement('td');
+				const checkbox = document.createElement('input');
+				checkbox.type = 'checkbox';
+				checkbox.className = 'device-user-checkbox';
+				checkbox.value = user.pin;
+				checkbox.setAttribute('aria-label', `Select ${user.name}, PIN ${user.pin}`);
+				selectCell.appendChild(checkbox);
+				row.appendChild(selectCell);
+				[user.pin, user.name].forEach(value => {
+					const cell = document.createElement('td');
+					cell.textContent = value || '';
+					row.appendChild(cell);
+				});
+				tbody.appendChild(row);
+			});
+			panel.querySelector('.device-user-count').textContent = `${data.count} pending device user${data.count === 1 ? '' : 's'}.`;
+			panel.classList.remove('hidden');
+			importButton.disabled = data.count === 0;
+		}
+
+		async function refreshDeviceUsers(card, commandId) {
+			const data = await fetchPendingDeviceUsers(card, commandId);
+			renderPendingDeviceUsers(card, data);
+			return data;
+		}
+
+		async function pollDeviceUsers(card, commandId) {
+			const status = card.querySelector('.device-user-status');
+			const fetchButton = card.querySelector('.fetch-device-users-button');
+			let attempts = 0;
+			let previousCount = -1;
+			let quietCompletedPolls = 0;
+			while (attempts < 120) {
+				attempts += 1;
+				try {
+					const data = await refreshDeviceUsers(card, commandId);
+					const count = data.count || 0;
+					const commandStatus = data.command?.status || 'pending';
+					status.textContent = `Device query ${commandStatus}; ${count} pending user${count === 1 ? '' : 's'} received.`;
+					if (commandStatus === 'completed') {
+						quietCompletedPolls = count === previousCount ? quietCompletedPolls + 1 : 0;
+					}
+					previousCount = count;
+					if (commandStatus === 'completed' && quietCompletedPolls >= 5) break;
+					await new Promise(resolve => setTimeout(resolve, 3000));
+				} catch (error) {
+					status.textContent = error.message;
+					break;
+				}
+			}
+			if (attempts >= 120) status.textContent = 'Polling stopped after 6 minutes. Use Refresh Pending Users to check for delayed results.';
+			fetchButton.disabled = false;
+		}
 
 		function updateSyncCard(card, data) {
 			const run = data.run;

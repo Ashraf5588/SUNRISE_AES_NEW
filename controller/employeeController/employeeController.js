@@ -43,6 +43,8 @@ const {
     EmployeeAttendanceDeviceCommandCounter,
     EmployeeAttendanceManualEnrollment
 } = require('../../model/employeeSchema/employeeAttendanceDeviceCommandSchema');
+const { DeviceCommand } = require('../../model/employeeSchema/deviceCommandSchema');
+const DeviceUser = require('../../model/employeeSchema/deviceUserSchema');
 const EmployeeAdmsUserQuery = require('../../model/employeeSchema/employeeAdmsUserQuerySchema');
 const { getActiveEmployeeProfiles, isActiveEmployeeProfile } = require('../../utils/employeeManagementDashboard');
 const {
@@ -85,6 +87,14 @@ const {
     claimAdmsUserQueryForDelivery,
     isCompletePacketSequence
 } = require('../../utils/employeeAdmsUserQuery');
+const {
+    DEVICE_USER_QUERY_COMMAND,
+    MAX_IMPORT_PINS,
+    normalizePin,
+    pinMatchesExactCaseInsensitive,
+    parseDeviceUserLines,
+    normalizeSelectedPins
+} = require('../../utils/deviceUserSync');
 const Staff = mongoose.models.staff || mongoose.model('staff', staffSchema, 'staff');
 const LeaveApplication = mongoose.models.LeaveApplication || mongoose.model('LeaveApplication', leaveApplicationSchema, 'leaveApplications');
 const getOrganizationId = () => String(mongoose.connection.name || '').trim();
@@ -94,6 +104,20 @@ const isAdmsCommandQueueEnabled = () => process.env.EMPLOYEE_ADMS_COMMANDS_ENABL
 const isEmployeeUserSyncProtocolVerified = () => process.env.EMPLOYEE_ADMS_USERINFO_PROTOCOL_VERIFIED === 'true';
 const getDeviceEmployeeActiveState = employee => employee?.isActive !== false && isActiveEmployeeProfile(employee);
 let activeEmployeeCommandIndexPromise;
+let activeDeviceCommandIndexPromise;
+
+function ensureActiveDeviceCommandIndex() {
+    if (!activeDeviceCommandIndexPromise) {
+        activeDeviceCommandIndexPromise = DeviceCommand.collection.createIndex(
+            { active_key: 1 },
+            { unique: true, sparse: true }
+        ).catch(error => {
+            activeDeviceCommandIndexPromise = null;
+            throw error;
+        });
+    }
+    return activeDeviceCommandIndexPromise;
+}
 
 function ensureActiveEmployeeCommandIndex() {
     if (!activeEmployeeCommandIndexPromise) {
@@ -126,6 +150,24 @@ async function allocateAdmsCommandId(organizationId, serialNumber) {
         if (!counter) throw new Error('Unable to allocate an ADMS command ID.');
         return counter.sequence;
     }
+}
+
+async function allocateDeviceCommandId(organizationId, serialNumber) {
+    return allocateAdmsCommandId(organizationId, serialNumber);
+}
+
+async function loadRegisteredUserSyncDevice(serialNumber) {
+    const organizationId = getOrganizationId();
+    if (!isValidDeviceSerial(serialNumber) || !organizationId) return null;
+    const device = await EmployeeAttendanceDevice.findOne({
+        serialNumber,
+        organizationId
+    }).select('organizationId serialNumber name').lean();
+    return device || null;
+}
+
+function isDuplicateKeyError(error) {
+    return error && error.code === 11000;
 }
 
 async function queueAdmsEmployeeCommand(device, employee, command, requestedBy = '', options = {}) {
@@ -2200,6 +2242,53 @@ async function updateAttendanceSyncRun(serialNumber, receivedRecords, savedRecor
     await run.save();
 }
 
+async function stageDeviceUsersFromPayload(serialNumber, organizationId, payload) {
+    const users = parseDeviceUserLines(payload);
+    if (!users.length) return 0;
+    const device = await EmployeeAttendanceDevice.findOne({ serialNumber, organizationId }).select('_id').lean();
+    if (!device) return 0;
+
+    const staffCodes = users.map(user => pinMatchesExactCaseInsensitive(user.pin));
+    const staff = await Staff.find({ employeeCode: { $in: staffCodes } })
+        .select('employeeCode')
+        .lean();
+    const knownCodes = new Set(staff.map(employee => String(employee.employeeCode || '').toUpperCase()));
+    const syncedAt = new Date();
+    const operations = users.map(user => ({
+        updateOne: {
+            filter: {
+                organization_id: organizationId,
+                device_sn: serialNumber,
+                pin: user.pin
+            },
+            update: {
+                $set: {
+                    organization_id: organizationId,
+                    device_sn: serialNumber,
+                    pin: user.pin,
+                    name: user.name,
+                    status: knownCodes.has(user.pin.toUpperCase()) ? 'imported' : 'pending',
+                    synced_at: syncedAt
+                }
+            },
+            upsert: true
+        }
+    }));
+    try {
+        await DeviceUser.bulkWrite(operations, { ordered: true });
+    } catch (error) {
+        if (!isDuplicateKeyError(error)) throw error;
+        await DeviceUser.bulkWrite(operations, { ordered: true });
+    }
+    console.info('ADMS device users staged:', {
+        organizationId,
+        serialNumber,
+        usersReceived: users.length,
+        alreadyInStaff: users.filter(user => knownCodes.has(user.pin.toUpperCase())).length
+    });
+    return users.length;
+}
+
 function getAdmsUserQueryMetadata(req) {
     const metadata = {};
     const addValues = source => {
@@ -2438,6 +2527,15 @@ function getAdmsUserQueryCsrfToken(userId) {
         .digest('hex');
 }
 
+exports.verifyDeviceUsersCsrf = (req, res, next) => {
+    const expectedToken = Buffer.from(getAdmsUserQueryCsrfToken(req.user?._id));
+    const suppliedToken = Buffer.from(String(req.get('x-csrf-token') || ''));
+    if (expectedToken.length !== suppliedToken.length || !crypto.timingSafeEqual(expectedToken, suppliedToken)) {
+        return res.status(403).json({ message: 'Invalid CSRF token. Reload the attendance page and try again.' });
+    }
+    return next();
+};
+
 async function processDeviceAttendanceRows(docs) {
     let savedRecords = 0;
     let duplicateRecords = 0;
@@ -2562,6 +2660,7 @@ async function processDeviceAttendanceRows(docs) {
 exports.saveEmployeeAttendance = async (req, res) => {
     const receivedAt = new Date();
     let serialNumber = '';
+    let table = '';
     let lines = [];
     let receivedRecords = 0;
     let savedRecords = 0;
@@ -2574,7 +2673,7 @@ exports.saveEmployeeAttendance = async (req, res) => {
     try {
         const fields = req.body && typeof req.body === 'object' ? req.body : {};
         serialNumber = String(req.query.SN || '').trim();
-        const table = String(req.query.table || fields.table || '').trim().toUpperCase();
+        table = String(req.query.table || fields.table || '').trim().toUpperCase();
         const payload = extractAttendancePayload(req.body);
 
         if (!isValidDeviceSerial(serialNumber)) {
@@ -2600,9 +2699,29 @@ exports.saveEmployeeAttendance = async (req, res) => {
         requestDetails = request.requestDetails;
 
         if (table !== 'ATTLOG') {
+            if (['OPERLOG', 'USERINFO'].includes(table)) {
+                if (requestDetails.requestSource !== 'likely_simulated') {
+                    try {
+                        await stageDeviceUsersFromPayload(serialNumber, getOrganizationId(), payload);
+                    } catch (error) {
+                        console.error('Unable to stage ADMS device users:', {
+                            serialNumber,
+                            table,
+                            message: error.message
+                        });
+                    }
+                }
+            }
             if (table === 'USERINFO' && serialNumber === ADMS_USER_QUERY_SERIAL) {
                 if (requestDetails.requestSource !== 'likely_simulated') {
-                    await captureAdmsUserQueryResponse(serialNumber, getOrganizationId(), req, 'legacy');
+                    try {
+                        await captureAdmsUserQueryResponse(serialNumber, getOrganizationId(), req, 'legacy');
+                    } catch (error) {
+                        console.error('Unable to capture legacy ADMS USERINFO diagnostic payload:', {
+                            serialNumber,
+                            message: error.message
+                        });
+                    }
                 }
                 console.log('========== DEVICE USERINFO RECEIVED ==========');
                 console.log('Serial:', serialNumber);
@@ -2613,7 +2732,7 @@ exports.saveEmployeeAttendance = async (req, res) => {
 
             await finishAttendanceDeviceRequest(serialNumber, requestDetails, 'responded');
             requestFinalized = true;
-            return res.status(200).send('OK');
+            return res.status(200).type('text/plain').send('OK');
         }
 
         if (!payload.trim()) {
@@ -2710,6 +2829,9 @@ exports.saveEmployeeAttendance = async (req, res) => {
             errorDetails: errors.slice(0, 10),
             message: error.message
         });
+        if (['OPERLOG', 'USERINFO'].includes(table)) {
+            return res.status(200).type('text/plain').send('OK');
+        }
         if (requestDetails && !requestFinalized) {
             await finishAttendanceDeviceRequest(
                 serialNumber,
@@ -3090,8 +3212,61 @@ exports.getAdmsDeviceCommand = async (req, res) => {
             return res.status(404).type('text/plain').send('Unknown device');
         }
         const request = await startAttendanceDeviceRequest(serialNumber, req, 'GET_COMMAND_REQUEST', receivedAt, false);
+        const activeDiagnosticQuery = serialNumber === ADMS_USER_QUERY_SERIAL
+            && organizationId === ADMS_USER_QUERY_ORGANIZATION
+            && request.activityUpdateSucceeded
+            && request.requestDetails.requestSource !== 'likely_simulated'
+            ? await refreshAdmsUserQueryStatus(await EmployeeAdmsUserQuery.findOne({
+                organizationId: ADMS_USER_QUERY_ORGANIZATION,
+                serialNumber: ADMS_USER_QUERY_SERIAL,
+                status: { $in: ['PENDING', 'SENT', 'RECEIVING'] }
+            }).lean())
+            : null;
+        if (
+            request.activityUpdateSucceeded
+            && request.requestDetails.requestSource !== 'likely_simulated'
+            && !activeDiagnosticQuery
+        ) {
+            const queuedDeviceCommand = await DeviceCommand.findOneAndUpdate(
+                {
+                    organization_id: organizationId,
+                    device_sn: serialNumber,
+                    status: 'pending'
+                },
+                {
+                    $set: {
+                        status: 'sent',
+                        sent_at: receivedAt
+                    }
+                },
+                { sort: { created_at: 1, cmd_id: 1 }, new: true }
+            ).lean();
+            if (queuedDeviceCommand) {
+                const response = formatAdmsCommandResponse({
+                    commandId: queuedDeviceCommand.cmd_id,
+                    commandPayload: queuedDeviceCommand.command
+                });
+                console.info('ADMS device command delivered:', {
+                    organizationId,
+                    serialNumber,
+                    commandId: queuedDeviceCommand.cmd_id,
+                    command: queuedDeviceCommand.command
+                });
+                await finishAttendanceDeviceRequest(serialNumber, request.requestDetails, 'command-sent');
+                return res.type('text/plain').send(response);
+            }
+            const awaitingDeviceCommand = await DeviceCommand.findOne({
+                organization_id: organizationId,
+                device_sn: serialNumber,
+                status: 'sent'
+            }).select('cmd_id').lean();
+            if (awaitingDeviceCommand) {
+                await finishAttendanceDeviceRequest(serialNumber, request.requestDetails, 'no-command');
+                return res.type('text/plain').send('OK');
+            }
+        }
         if (serialNumber === ADMS_USER_QUERY_SERIAL && organizationId === ADMS_USER_QUERY_ORGANIZATION) {
-            const activeQuery = await refreshAdmsUserQueryStatus(await EmployeeAdmsUserQuery.findOne({
+            const activeQuery = activeDiagnosticQuery || await refreshAdmsUserQueryStatus(await EmployeeAdmsUserQuery.findOne({
                 organizationId: ADMS_USER_QUERY_ORGANIZATION,
                 serialNumber: ADMS_USER_QUERY_SERIAL,
                 status: { $in: ['PENDING', 'SENT', 'RECEIVING'] }
@@ -3257,7 +3432,10 @@ exports.startAdmsDeviceUsersDiagnostic = async (req, res) => {
             return res.status(400).send('Confirm the read-only request and the selected protocol for this exact device.');
         }
 
-        const commandId = crypto.randomInt(1, 2147483647);
+        const commandId = await allocateAdmsCommandId(
+            ADMS_USER_QUERY_ORGANIZATION,
+            ADMS_USER_QUERY_SERIAL
+        );
         const requestedAt = new Date();
         try {
             await EmployeeAdmsUserQuery.create({
@@ -3325,6 +3503,235 @@ exports.exportAdmsDeviceUsersDiagnostic = async (req, res) => {
     }
 };
 
+exports.queueDeviceUserSync = async (req, res) => {
+    const serialNumber = String(req.params.sn || '').trim();
+    if (!isValidDeviceSerial(serialNumber)) {
+        return res.status(400).json({ message: 'Invalid device serial number.' });
+    }
+    try {
+        const device = await loadRegisteredUserSyncDevice(serialNumber);
+        if (!device) return res.status(404).json({ message: 'Device not found in this organization.' });
+        await ensureActiveDeviceCommandIndex();
+        const organizationId = getOrganizationId();
+        const activeCommand = await DeviceCommand.findOne({
+            organization_id: organizationId,
+            device_sn: serialNumber,
+            status: { $in: ['pending', 'sent'] }
+        }).sort({ created_at: 1, cmd_id: 1 }).lean();
+        if (activeCommand) {
+            return res.status(409).json({
+                message: 'A device-user query is already pending or awaiting a device acknowledgement.',
+                commandId: activeCommand.cmd_id,
+                status: activeCommand.status
+            });
+        }
+
+        const commandId = await allocateDeviceCommandId(organizationId, serialNumber);
+        const queuedAt = new Date();
+        const command = await DeviceCommand.create({
+            organization_id: organizationId,
+            device_sn: serialNumber,
+            cmd_id: commandId,
+            command: DEVICE_USER_QUERY_COMMAND,
+            active_key: `${organizationId}:${serialNumber}`,
+            status: 'pending',
+            created_at: queuedAt
+        });
+        console.info('ADMS device-user sync command queued:', {
+            organizationId,
+            serialNumber,
+            commandId: command.cmd_id
+        });
+        return res.status(201).json({
+            message: 'Device-user query queued. The device will receive it on its next ADMS poll.',
+            commandId: command.cmd_id,
+            status: command.status
+        });
+    } catch (error) {
+        if (isDuplicateKeyError(error)) {
+            try {
+                const activeCommand = await DeviceCommand.findOne({
+                    organization_id: getOrganizationId(),
+                    device_sn: serialNumber,
+                    status: { $in: ['pending', 'sent'] }
+                }).sort({ created_at: 1, cmd_id: 1 }).lean();
+                return res.status(409).json({
+                    message: 'A device-user query is already pending or awaiting a device acknowledgement.',
+                    commandId: activeCommand?.cmd_id,
+                    status: activeCommand?.status
+                });
+            } catch (lookupError) {
+                console.error('Unable to inspect duplicate device-user sync command:', {
+                    serialNumber,
+                    message: lookupError.message
+                });
+                return res.status(500).json({ message: 'Unable to inspect the existing device-user query.' });
+            }
+        }
+        console.error('Unable to queue ADMS device-user sync:', { serialNumber, message: error.message });
+        return res.status(500).json({ message: 'Unable to queue device-user query.' });
+    }
+};
+
+exports.getPendingDeviceUsers = async (req, res) => {
+    const serialNumber = String(req.params.sn || '').trim();
+    if (!isValidDeviceSerial(serialNumber)) {
+        return res.status(400).json({ message: 'Invalid device serial number.' });
+    }
+    try {
+        const device = await loadRegisteredUserSyncDevice(serialNumber);
+        if (!device) return res.status(404).json({ message: 'Device not found in this organization.' });
+        const organizationId = getOrganizationId();
+        const commandIdText = String(req.query.cmd_id || '').trim();
+        let commandFilter = {
+            organization_id: organizationId,
+            device_sn: serialNumber
+        };
+        if (commandIdText) {
+            if (!/^\d+$/.test(commandIdText) || !Number.isSafeInteger(Number(commandIdText))) {
+                return res.status(400).json({ message: 'Invalid device command ID.' });
+            }
+            commandFilter.cmd_id = Number(commandIdText);
+        }
+        const [users, command] = await Promise.all([
+            DeviceUser.find({
+                organization_id: organizationId,
+                device_sn: serialNumber,
+                status: 'pending'
+            }).select('device_sn pin name status synced_at').sort({ synced_at: -1, pin: 1 }).lean(),
+            DeviceCommand.findOne(commandFilter).sort({ created_at: -1, cmd_id: -1 }).select('cmd_id status created_at sent_at completed_at').lean()
+        ]);
+        res.set('Cache-Control', 'no-store');
+        return res.json({ deviceSN: serialNumber, users, count: users.length, command });
+    } catch (error) {
+        console.error('Unable to load pending device users:', { serialNumber, message: error.message });
+        return res.status(500).json({ message: 'Unable to load pending device users.' });
+    }
+};
+
+exports.importSelectedDeviceUsers = async (req, res) => {
+    const serialNumber = String(req.params.sn || '').trim();
+    if (!isValidDeviceSerial(serialNumber)) {
+        return res.status(400).json({ message: 'Invalid device serial number.' });
+    }
+    const pins = normalizeSelectedPins(req.body?.pins);
+    if (!pins) {
+        return res.status(400).json({
+            message: `Choose between 1 and ${MAX_IMPORT_PINS} valid device PINs.`
+        });
+    }
+
+    try {
+        const device = await loadRegisteredUserSyncDevice(serialNumber);
+        if (!device) return res.status(404).json({ message: 'Device not found in this organization.' });
+        const organizationId = getOrganizationId();
+        const stagedUsers = await DeviceUser.find({
+            organization_id: organizationId,
+            device_sn: serialNumber,
+            pin: { $in: pins },
+            status: 'pending'
+        }).lean();
+        const stagedByPin = new Map(stagedUsers.map(user => [user.pin, user]));
+        const results = [];
+
+        for (const pin of pins) {
+            const stagedUser = stagedByPin.get(pin);
+            if (!stagedUser) {
+                results.push({ pin, status: 'not_pending', message: 'No pending staged user matched this PIN.' });
+                continue;
+            }
+            const pinPattern = pinMatchesExactCaseInsensitive(pin);
+            const existingEmployee = await Staff.findOne({ employeeCode: pinPattern })
+                .select('_id employeeCode')
+                .lean();
+            if (existingEmployee) {
+                await DeviceUser.updateOne(
+                    {
+                        organization_id: organizationId,
+                        device_sn: serialNumber,
+                        pin,
+                        status: 'pending'
+                    },
+                    { $set: { status: 'imported' } }
+                );
+                results.push({ pin, status: 'already_exists', message: 'Matching staff employee code already exists; no staff record was changed.' });
+                continue;
+            }
+
+            const deviceCodeOwner = await Staff.findOne({ deviceCode: pinPattern })
+                .select('_id employeeCode')
+                .lean();
+            if (deviceCodeOwner) {
+                results.push({ pin, status: 'conflict', message: 'This device PIN is already assigned as another staff device code.' });
+                continue;
+            }
+
+            try {
+                await Staff.create({
+                    employeeCode: pin,
+                    deviceCode: pin,
+                    staffName: stagedUser.name,
+                    employmentStatus: 'Active',
+                    jobStatus: 'Active',
+                    isActive: true,
+                    isManager: false
+                });
+            } catch (error) {
+                if (!isDuplicateKeyError(error)) throw error;
+                const employeeExists = await Staff.exists({ employeeCode: pinPattern });
+                if (employeeExists) {
+                    await DeviceUser.updateOne(
+                        {
+                            organization_id: organizationId,
+                            device_sn: serialNumber,
+                            pin,
+                            status: 'pending'
+                        },
+                        { $set: { status: 'imported' } }
+                    );
+                    results.push({ pin, status: 'already_exists', message: 'Matching staff employee code already exists; no staff record was changed.' });
+                    continue;
+                }
+                results.push({ pin, status: 'conflict', message: 'The employee code or device code is already in use.' });
+                continue;
+            }
+
+            const updated = await DeviceUser.updateOne(
+                {
+                    organization_id: organizationId,
+                    device_sn: serialNumber,
+                    pin,
+                    status: 'pending'
+                },
+                { $set: { status: 'imported' } }
+            );
+            if (!updated.matchedCount) {
+                results.push({ pin, status: 'created_not_staged', message: 'Staff was created, but the staging record changed before it could be marked imported.' });
+                continue;
+            }
+            results.push({ pin, status: 'imported', message: 'Staff record created.' });
+        }
+
+        const importedCount = results.filter(result => result.status === 'imported').length;
+        const alreadyExistsCount = results.filter(result => result.status === 'already_exists').length;
+        console.info('Selected ADMS device users processed for staff import:', {
+            organizationId,
+            serialNumber,
+            selectedCount: pins.length,
+            importedCount,
+            alreadyExistsCount,
+            conflictCount: results.filter(result => ['conflict', 'created_not_staged'].includes(result.status)).length
+        });
+        return res.json({ importedCount, alreadyExistsCount, results });
+    } catch (error) {
+        console.error('Unable to import selected device users:', {
+            serialNumber,
+            message: error.message
+        });
+        return res.status(500).json({ message: 'Unable to import selected device users.' });
+    }
+};
+
 exports.receiveAdmsDeviceUserQueryData = async (req, res) => {
     const serialNumber = String(req.query.SN || '').trim();
     if (!isValidDeviceSerial(serialNumber)) return res.status(400).type('text/plain').send('Invalid or missing device serial number');
@@ -3380,6 +3787,34 @@ exports.receiveAdmsDeviceCommandResult = async (req, res) => {
         if (!request.activityUpdateSucceeded) return res.status(500).type('text/plain').send('Unable to record device communication');
         if (request.requestDetails.requestSource === 'likely_simulated') {
             await finishAttendanceDeviceRequest(serialNumber, request.requestDetails, 'simulated-result-ignored');
+            return res.status(200).type('text/plain').send('OK');
+        }
+
+        const deviceCommand = await DeviceCommand.findOne({
+            organization_id: organizationId,
+            device_sn: serialNumber,
+            cmd_id: result.commandId
+        }).lean();
+        if (deviceCommand) {
+            if (deviceCommand.status === 'sent') {
+                await DeviceCommand.updateOne(
+                    {
+                        organization_id: organizationId,
+                        device_sn: serialNumber,
+                        cmd_id: result.commandId,
+                        status: 'sent'
+                    },
+                    {
+                        $set: {
+                            status: 'completed',
+                            completed_at: receivedAt,
+                            return_code: result.returnCode
+                        },
+                        $unset: { active_key: '' }
+                    }
+                );
+            }
+            await finishAttendanceDeviceRequest(serialNumber, request.requestDetails, 'device-command-result');
             return res.status(200).type('text/plain').send('OK');
         }
 
@@ -4113,6 +4548,7 @@ exports.getEmployeeAttendance = async (req, res) => {
         return res.render('employee/employeeattendance', {
             ...report,
             deviceSN: req.query.SN || '',
+            csrfToken: getAdmsUserQueryCsrfToken(req.user?._id),
             attendanceDevices,
             importMessage: req.query.imported
                 ? `${req.query.importRows || 0} rows processed; ${req.query.imported} new attendance punches saved.`

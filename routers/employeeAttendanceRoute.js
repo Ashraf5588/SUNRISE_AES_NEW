@@ -4,6 +4,13 @@ const employee = express.Router();
 const employeeController = require('../controller/employeeController/employeeController');
 const { verifytoken, verifytokenApi, isAdmin } = require('../middleware/auth');
 
+const requireAdminApi = (req, res, next) => {
+	if (String(req.user?.role || '').toUpperCase() !== 'ADMIN') {
+		return res.status(403).json({ message: 'Administrator access is required.' });
+	}
+	return next();
+};
+
 employee.use('/iclock', (req, res, next) => {
 	const requestTimestamp = new Date().toISOString();
 	const queryParameterNames = Object.keys(req.query || {});
@@ -88,6 +95,9 @@ employee.get('/employeeattendance/device-users', verifytoken, isAdmin, employeeC
 employee.post('/employeeattendance/device-users/query', verifytoken, isAdmin, employeeController.startAdmsDeviceUsersDiagnostic);
 employee.get('/employeeattendance/device-users/status', verifytoken, isAdmin, employeeController.getAdmsDeviceUsersDiagnosticStatus);
 employee.get('/employeeattendance/device-users/export', verifytoken, isAdmin, employeeController.exportAdmsDeviceUsersDiagnostic);
+employee.post('/api/devices/:sn/sync-users', verifytokenApi, requireAdminApi, employeeController.verifyDeviceUsersCsrf, employeeController.queueDeviceUserSync);
+employee.get('/api/devices/:sn/pending-users', verifytokenApi, requireAdminApi, employeeController.getPendingDeviceUsers);
+employee.post('/api/devices/:sn/import-users', verifytokenApi, requireAdminApi, employeeController.verifyDeviceUsersCsrf, employeeController.importSelectedDeviceUsers);
 employee.get('/employeeattendance/device-status/:serialNumber', verifytoken, isAdmin, employeeController.checkEmployeeAttendanceDeviceConnection);
 employee.post('/employeeattendance/device-sync', verifytoken, isAdmin, employeeController.startEmployeeAttendanceDeviceSync);
 employee.get('/employeeattendance/device-sync/:runId', verifytoken, isAdmin, employeeController.getEmployeeAttendanceDeviceSync);
