@@ -1872,19 +1872,20 @@ exports.generateInventoryMonthlyReport = async (req, res) => {
       InventoryProduct.find({
         entryDateNepali: { $gte: `${academicYear}-01-01`, $lt: `${nextAcademicYear}-01-01` }
       })
-        .select('entryDateNepali buyQuantity quantity conversionFactor')
+        .select('entryDateNepali buyQuantity quantity conversionFactor price sku name')
         .lean(),
       InventoryPurchase.find({
         status: 'posted',
         purchaseNepaliDate: { $gte: `${academicYear}-01-01`, $lt: `${nextAcademicYear}-01-01` }
       })
-        .select('purchaseNepaliDate baseQuantity')
+        .select('purchaseNepaliDate baseQuantity totalCost product productName sku')
         .lean(),
       InventoryTransaction.find({
         status: { $ne: 'pending' },
         assignedNepaliDate: { $gte: `${academicYear}-01-01`, $lt: `${nextAcademicYear}-01-01` }
       })
-        .select('assignedNepaliDate items.quantity')
+        .select('assignedNepaliDate items.quantity items.product items.productName items.sku')
+        .populate({ path: 'items.product', select: 'price conversionFactor' })
         .lean()
     ]);
     const report = buildInventoryMonthlyReport({ academicYear, months, openingProducts, purchases, sales });

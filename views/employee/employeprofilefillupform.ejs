@@ -121,6 +121,7 @@
 			<div class="form-actions"><button class="save-button" type="submit"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Save my profile</button></div>
 		</form>
 	</main>
+	<% if (isNurse) { %><%- include('../nurse/nursebottomnav') %><% } %>
 	<dialog class="preview-dialog" id="profilePreviewDialog" aria-label="Document preview"><button class="preview-close" type="button" aria-label="Close preview">&times;</button><img id="profilePreviewImage" alt="" hidden><iframe id="profilePreviewFrame" title="Document preview" hidden></iframe></dialog>
 	<script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js"></script>
 	<script>

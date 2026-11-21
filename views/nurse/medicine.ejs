@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="/health-record.css">
 </head>
 <body class="hm-body">
-  <button class="hm-menu-toggle" type="button" aria-controls="hmSidebar" aria-expanded="false">Menu</button>
+  <button class="hm-menu-toggle" type="button" aria-label="Toggle nurse navigation" aria-controls="hmSidebar" aria-expanded="false"><span></span><span></span><span></span></button>
   <div class="hm-backdrop" id="hmBackdrop" hidden></div>
   <div class="hm-shell">
     <aside class="hm-sidenav" id="hmSidebar" aria-label="Nurse tools navigation">
@@ -97,5 +97,6 @@
 
   <script src="https://nepalidatepicker.sajanmaharjan.com.np/v5/nepali.datepicker/js/nepali.datepicker.v5.0.6.min.js" type="text/javascript"></script>
   <script src="/nurse-medicine.js"></script>
+  <%- include('nursebottomnav') %>
 </body>
 </html>

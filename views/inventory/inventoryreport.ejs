@@ -7,6 +7,7 @@
 	<link rel="stylesheet" href="/inventory.css">
 	<style>
 		.report-actions { display:flex; justify-content:flex-end; }
+		.report-table { min-width:780px; }
 		.report-table th:last-child,.report-table td:last-child { text-align:right; }
 		.report-table tfoot th { border-top:2px solid var(--line); color:var(--ink); }
 		.report-error { margin:0 0 12px; color:#a61b1b; font-size:12px; font-weight:700; }
@@ -52,15 +53,15 @@
 		</header>
 		<section class="panel">
 			<div class="panel-heading">
-				<div><h2 id="reportTitle">Monthly purchase and sales</h2><p id="reportSummary">Select an academic year and months to generate a report.</p><p class="cell-secondary">Purchase totals include opening purchase quantities and posted purchase receipts, converted to base units.</p></div>
+				<div><h2 id="reportTitle">Monthly purchase and sales</h2><p id="reportSummary">Select an academic year and months to generate a report.</p><p class="cell-secondary">Qty is shown in base units; amounts are in Rs. Sales amounts use the product’s current stored price.</p></div>
 			</div>
 			<p class="report-error" id="reportError" role="alert" hidden></p>
 			<div class="report-empty" id="reportEmpty"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i>Generate a monthly report to see totals.</div>
 			<div class="table-wrap" id="reportTableWrap" hidden>
 				<table class="report-table" id="monthlyInventoryReport">
-					<thead><tr><th>Month</th><th>Total item purchase</th><th>Total item sales</th></tr></thead>
+					<thead><tr><th>Month</th><th>Purchase Varieties</th><th>Purchase Qty</th><th>Purchase Amount</th><th>Sales Varieties</th><th>Sales Qty</th><th>Sales Amount</th></tr></thead>
 					<tbody></tbody>
-					<tfoot><tr><th>Total</th><th id="purchaseGrandTotal">0</th><th id="salesGrandTotal">0</th></tr></tfoot>
+					<tfoot><tr><th>Total</th><th id="purchaseVarietiesTotal">0</th><th id="purchaseQtyTotal">0</th><th id="purchaseAmountTotal">0</th><th id="salesVarietiesTotal">0</th><th id="salesQtyTotal">0</th><th id="salesAmountTotal">0</th></tr></tfoot>
 				</table>
 			</div>
 		</section>
@@ -102,6 +103,7 @@
 	const form = document.getElementById('monthlyReportForm');
 	const modalError = document.getElementById('modalError');
 	const formatQuantity = value => Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 6 });
+	const formatAmount = value => Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
 	document.getElementById('openMonthlyReport').addEventListener('click', () => {
 		modalError.textContent = '';
@@ -123,17 +125,29 @@
 		const body = document.querySelector('#monthlyInventoryReport tbody');
 		body.replaceChildren();
 		report.months.forEach(month => {
-			const totals = report.monthlyTotals[month] || { purchase: 0, sales: 0 };
+			const totals = report.monthlyTotals[month] || {};
 			const row = document.createElement('tr');
-			[month, formatQuantity(totals.purchase), formatQuantity(totals.sales)].forEach(value => {
+			[
+				month,
+				formatQuantity(totals.purchaseVarieties),
+				formatQuantity(totals.purchaseQty),
+				formatAmount(totals.purchaseAmount),
+				formatQuantity(totals.salesVarieties),
+				formatQuantity(totals.salesQty),
+				formatAmount(totals.salesAmount)
+			].forEach(value => {
 				const cell = document.createElement('td');
 				cell.textContent = value;
 				row.appendChild(cell);
 			});
 			body.appendChild(row);
 		});
-		document.getElementById('purchaseGrandTotal').textContent = formatQuantity(report.totals.purchase);
-		document.getElementById('salesGrandTotal').textContent = formatQuantity(report.totals.sales);
+		document.getElementById('purchaseVarietiesTotal').textContent = formatQuantity(report.totals.purchaseVarieties);
+		document.getElementById('purchaseQtyTotal').textContent = formatQuantity(report.totals.purchaseQty);
+		document.getElementById('purchaseAmountTotal').textContent = formatAmount(report.totals.purchaseAmount);
+		document.getElementById('salesVarietiesTotal').textContent = formatQuantity(report.totals.salesVarieties);
+		document.getElementById('salesQtyTotal').textContent = formatQuantity(report.totals.salesQty);
+		document.getElementById('salesAmountTotal').textContent = formatAmount(report.totals.salesAmount);
 		document.getElementById('reportSummary').textContent = `Academic year ${report.academicYear} · ${report.months.length} month${report.months.length === 1 ? '' : 's'}`;
 		document.getElementById('reportTitle').textContent = 'Monthly purchase and sales totals';
 		document.getElementById('reportEmpty').hidden = true;

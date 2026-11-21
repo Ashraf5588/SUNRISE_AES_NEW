@@ -103,12 +103,25 @@ app.engine('ejs', (filePath, options, callback) => {
 
     const bodyCloseIndex = html.toLowerCase().lastIndexOf('</body>');
     const isAdminLoginPage = path.resolve(filePath) === path.join(__dirname, 'views', 'admin', 'login.ejs');
-    if (isAdminLoginPage || bodyCloseIndex === -1 || html.includes('class="mobile-bottom-nav"')) {
+    const isNurse = options.isNurse === true || String(options.employeeRole || '').toUpperCase() === 'NURSE';
+    const hasNurseBottomNav = html.includes('class="nurse-bottom-nav"');
+    const hasMobileBottomNav = html.includes('class="mobile-bottom-nav"');
+    if (
+      isAdminLoginPage
+      || bodyCloseIndex === -1
+      || hasNurseBottomNav
+      || (hasMobileBottomNav && !isNurse)
+    ) {
       return callback(null, html);
     }
 
-    const mobileNavPath = path.join(__dirname, 'views', 'partials', 'mobile-bottom-nav.ejs');
-    renderEjs(mobileNavPath, options, (navError, mobileNav) => {
+    const navPath = path.join(
+      __dirname,
+      'views',
+      isNurse ? 'nurse' : 'partials',
+      isNurse ? 'nursebottomnav.ejs' : 'mobile-bottom-nav.ejs'
+    );
+    renderEjs(navPath, options, (navError, mobileNav) => {
       if (navError) return callback(navError);
 
       callback(null, `${html.slice(0, bodyCloseIndex)}${mobileNav}\n${html.slice(bodyCloseIndex)}`);

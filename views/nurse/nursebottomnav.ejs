@@ -1,0 +1,95 @@
+<style>
+	.nurse-bottom-nav { display:none; }
+	@media(max-width:768px) {
+		body { padding-bottom:calc(82px + env(safe-area-inset-bottom)); }
+		.nurse-bottom-nav {
+			position:fixed;
+			z-index:20;
+			right:0;
+			bottom:0;
+			left:0;
+			display:grid;
+			grid-template-columns:repeat(5,minmax(0,1fr));
+			align-items:end;
+			width:min(100%,680px);
+			min-height:68px;
+			margin:0 auto;
+			padding:7px 8px calc(7px + env(safe-area-inset-bottom));
+			border-top:1px solid rgba(148,163,184,.28);
+			background:rgba(255,255,255,.97);
+			box-shadow:0 -8px 26px rgba(15,23,42,.12);
+			backdrop-filter:blur(14px);
+		}
+		.nurse-bottom-nav a {
+			display:flex;
+			min-width:0;
+			min-height:48px;
+			flex-direction:column;
+			align-items:center;
+			justify-content:center;
+			gap:4px;
+			border-radius:9px;
+			color:#71808a;
+			font:700 9px/1.1 "Space Grotesk",sans-serif;
+			text-align:center;
+			text-decoration:none;
+			-webkit-tap-highlight-color:transparent;
+		}
+		.nurse-bottom-nav svg { width:20px; height:20px; fill:none; stroke:currentColor; stroke-linecap:round; stroke-linejoin:round; stroke-width:1.8; }
+		.nurse-bottom-nav a.is-active { color:#087d70; background:#eaf8f5; }
+		.nurse-bottom-nav a:focus-visible { outline:2px solid #087d70; outline-offset:2px; }
+		.nurse-bottom-nav a:active { color:#075c53; }
+		.nurse-bottom-nav a.nurse-home-link { position:relative; gap:2px; color:#087d70; }
+		.nurse-bottom-nav .nurse-home-icon {
+			display:grid;
+			width:54px;
+			height:54px;
+			margin-top:-29px;
+			place-items:center;
+			border:4px solid #fff;
+			border-radius:50%;
+			color:#fff;
+			background:linear-gradient(145deg,#11a892,#075c53);
+			box-shadow:0 6px 0 rgba(7,92,83,.18),0 12px 20px rgba(8,125,112,.25);
+		}
+		.nurse-bottom-nav .nurse-home-icon svg { width:23px; height:23px; fill:currentColor; stroke:none; }
+		@media(prefers-reduced-motion:no-preference) {
+			.nurse-bottom-nav .nurse-home-icon { transition:transform .16s ease,box-shadow .16s ease; }
+			.nurse-bottom-nav .nurse-home-link:active .nurse-home-icon { transform:translateY(2px); box-shadow:0 3px 9px rgba(8,125,112,.22); }
+		}
+	}
+	@media print { .nurse-bottom-nav { display:none !important; } }
+</style>
+<nav class="nurse-bottom-nav" aria-label="Nurse navigation">
+	<a href="/leave" data-nurse-nav="/leave">
+		<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M16 3v4M8 3v4M3 10h18M12 13v5M9.5 15.5h5"></path></svg>
+		<span>Leave form</span>
+	</a>
+	<a href="/myattendance" data-nurse-nav="/myattendance">
+		<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M16 3v4M8 3v4M3 10h18l3 5-6 5-3-3-3 3"></path></svg>
+		<span>My attendance</span>
+	</a>
+	<a class="nurse-home-link" href="/healthrecord" data-nurse-nav="/healthrecord">
+		<span class="nurse-home-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"></path><path d="M12 10v5M9.5 12.5h5"></path></svg></span>
+		<span>Home</span>
+	</a>
+	<a href="/manualpunch" data-nurse-nav="/manualpunch">
+		<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a7 7 0 0 0-7 7v2M12 6a4 4 0 0 0-4 4v3M12 9a1 1 0 0 0-1 1v5a4 4 0 0 0 8 0v-4a7 7 0 0 0-7-8"></path><path d="M8 17a4 4 0 0 0 8 0"></path></svg>
+		<span>Manual punch</span>
+	</a>
+	<a href="/employeeprofile" data-nurse-nav="/employeeprofile">
+		<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>
+		<span>My profile</span>
+	</a>
+</nav>
+<script>
+	(() => {
+		const currentPath = window.location.pathname;
+		document.querySelectorAll('[data-nurse-nav]').forEach(link => {
+			if (link.dataset.nurseNav === currentPath) {
+				link.classList.add('is-active');
+				link.setAttribute('aria-current', 'page');
+			}
+		});
+	})();
+</script>

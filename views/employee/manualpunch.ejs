@@ -185,5 +185,6 @@
 		});
 		if (punchDialog && punchDialog.dataset.hasError === 'true') punchDialog.showModal();
 	</script>
+	<% if (isNurse) { %><%- include('../nurse/nursebottomnav') %><% } %>
 </body>
 </html>

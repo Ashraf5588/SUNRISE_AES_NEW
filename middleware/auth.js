@@ -46,6 +46,8 @@ const verifytoken = async (req, res, next) => {
 
     // Use the fresh user data from database instead of decoded token data
     req.user = user;
+    res.locals.isNurse = user.role === "NURSE";
+    res.locals.employeeRole = user.role;
     next();
 
    

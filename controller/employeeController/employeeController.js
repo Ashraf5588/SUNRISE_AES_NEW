@@ -804,6 +804,7 @@ const renderManualPunchPage = async (req, res, options = {}) => {
         employees,
         requests,
         isAdmin: isAdminUser,
+        isNurse: req.user?.role === 'NURSE',
         currentPage: 'manual-punch',
         selectedEmployee: null,
         todayBs,
@@ -5228,6 +5229,7 @@ exports.showMyAttendance = async (req, res) => {
             lateCount,
             leaveDays,
             earlyOutCount,
+            isNurse: req.user?.role === 'NURSE',
             currentPage: 'my-attendance',
             selectedEmployee: null
         });
@@ -5265,6 +5267,7 @@ const renderTeacherProfileFillup = async (req, res, options = {}) => {
     });
     return res.status(options.status || 200).render('employee/employeprofilefillupform', {
         employee: employeeForView,
+        isNurse: req.user?.role === 'NURSE',
         formData,
         error: options.error || '',
         saved: options.saved || false

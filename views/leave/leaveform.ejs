@@ -10,6 +10,7 @@
 </head>
 <body>
 	<% const isUserAdmin = typeof isAdmin !== 'undefined' ? Boolean(isAdmin) : false; %>
+	<% const isNurse = String(employeeRole || '').toUpperCase() === 'NURSE'; %>
 	<% const isLeaveEditor = isUserAdmin || Boolean(editingApplication); %>
 	<% if (isUserAdmin) { %><%- include('../employee/employeesidenav', { currentPage: 'leave', selectedEmployee: null, isAdmin: true }) %><% } %>
 	<div class="leave-shell">
@@ -515,5 +516,6 @@
 			});
 		}
 	</script>
+	<% if (isNurse) { %><%- include('../nurse/nursebottomnav') %><% } %>
 </body>
 </html>

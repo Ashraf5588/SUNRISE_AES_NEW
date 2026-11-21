@@ -15,6 +15,8 @@ const recordDate = document.getElementById('recordDate');
 const recordDateBs = document.getElementById('recordDateBs');
 const recordFilterBtn = document.getElementById('recordFilterBtn');
 const recordsTableBody = document.getElementById('recordsTableBody');
+const recordsCardView = document.getElementById('recordsCardView');
+const healthRecordsSection = document.getElementById('healthRecordsSection');
 const DEFAULT_RANGE = 'today';
 const referSaveTimers = new Map();
 const REFER_SAVE_DELAY = 600;
@@ -277,43 +279,102 @@ const renderRecords = (records) => {
 
   if (!Array.isArray(records) || records.length === 0) {
     recordsTableBody.innerHTML = '<tr><td colspan="10" class="hm-empty">No records found.</td></tr>';
+    if (recordsCardView) {
+      recordsCardView.innerHTML = '<article class="hm-record-card hm-record-card-state">No records found.</article>';
+    }
     return;
   }
 
-  recordsTableBody.innerHTML = records.map((record, index) => {
-    const contact = record.contact || '-';
-    const callAction = record.dialNumber
-      ? `<a class="hm-call-link" href="tel:${record.dialNumber}">Call</a>`
-      : '<span class="hm-muted">N/A</span>';
+  const renderReferralControls = (record, isReferred) => `
+    <div class="hm-refer" data-refer-wrap>
+      <button type="button" class="hm-refer-toggle" data-refer-toggle data-id="${escapeHtml(record._id)}" data-referred="${isReferred}">
+        ${isReferred ? 'Referred' : 'Not referred'}
+      </button>
+      <textarea
+        class="hm-refer-note${isReferred ? '' : ' is-hidden'}"
+        data-refer-note
+        data-id="${escapeHtml(record._id)}"
+        placeholder="Referral note">${escapeHtml(record.referNote || '')}</textarea>
+      <span class="hm-refer-status" data-refer-status></span>
+    </div>
+  `;
 
+  recordsTableBody.innerHTML = records.map((record, index) => {
+    const contact = escapeHtml(record.contact || '-');
+    const dialNumber = escapeHtml(record.dialNumber || '');
+    const callAction = record.dialNumber
+      ? `<a class="hm-call-link" href="tel:${dialNumber}">Call</a>`
+      : '<span class="hm-muted">N/A</span>';
     const isReferred = Boolean(record.referred) || Boolean(String(record.referNote || '').trim());
+    const safeDate = escapeHtml(formatRecordDate(record.createdAt, record.nepaliDate));
+    const studentName = escapeHtml(record.name || '-');
+    const classSection = `${escapeHtml(record.studentClass || '-')} - ${escapeHtml(record.section || '-')}`;
+    const diagnosis = escapeHtml(record.diagnosis || '-');
+    const treatment = escapeHtml(record.treatment || '-');
+    const remarks = escapeHtml(record.remarks || '-');
+
     return `
       <tr>
         <td>${index + 1}</td>
-        <td>${formatRecordDate(record.createdAt, record.nepaliDate)}</td>
-        <td>${record.name || '-'}</td>
-        <td>${record.studentClass || '-'}-${record.section || '-'}</td>
-        <td>${record.diagnosis || '-'}</td>
-        <td>${record.treatment || '-'}</td>
-        <td>${record.remarks || '-'}</td>
-        <td>
-          <div class="hm-refer" data-refer-wrap>
-            <button type="button" class="hm-refer-toggle" data-refer-toggle data-id="${record._id}" data-referred="${isReferred}">
-              ${isReferred ? 'Referred' : 'Not referred'}
-            </button>
-            <textarea
-              class="hm-refer-note${isReferred ? '' : ' is-hidden'}"
-              data-refer-note
-              data-id="${record._id}"
-              placeholder="Referral note">${escapeHtml(record.referNote || '')}</textarea>
-            <span class="hm-refer-status" data-refer-status></span>
-          </div>
-        </td>
+        <td>${safeDate}</td>
+        <td>${studentName}</td>
+        <td>${classSection}</td>
+        <td>${diagnosis}</td>
+        <td>${treatment}</td>
+        <td>${remarks}</td>
+        <td>${renderReferralControls(record, isReferred)}</td>
         <td>${contact}</td>
         <td>${callAction}</td>
       </tr>
     `;
   }).join('');
+
+  if (recordsCardView) {
+    recordsCardView.innerHTML = records.map((record, index) => {
+      const isReferred = Boolean(record.referred) || Boolean(String(record.referNote || '').trim());
+      const studentName = escapeHtml(record.name || '-');
+      const classSection = `${escapeHtml(record.studentClass || '-')} - ${escapeHtml(record.section || '-')}`;
+      const roll = escapeHtml(record.roll || '-');
+      const date = escapeHtml(formatRecordDate(record.createdAt, record.nepaliDate) || '-');
+      const contact = escapeHtml(record.contact || '-');
+      const dialNumber = escapeHtml(record.dialNumber || '');
+      const callAction = record.dialNumber
+        ? `<a class="hm-call-link" href="tel:${dialNumber}">Call parent</a>`
+        : '<span class="hm-muted">No phone number</span>';
+
+      return `
+        <article class="hm-record-card">
+          <header class="hm-record-card-header">
+            <div>
+              <h3>${studentName}</h3>
+              <span class="hm-record-card-meta">Roll ${roll} | ${classSection} | Record ${index + 1}</span>
+            </div>
+            <span class="hm-record-card-date">${date}</span>
+          </header>
+          <div class="hm-record-card-section">
+            <strong>Diagnosis</strong>
+            <p>${escapeHtml(record.diagnosis || '-')}</p>
+          </div>
+          <div class="hm-record-card-section">
+            <strong>Treatment</strong>
+            <p>${escapeHtml(record.treatment || '-')}</p>
+          </div>
+          <div class="hm-record-card-section">
+            <strong>Remarks</strong>
+            <p>${escapeHtml(record.remarks || '-')}</p>
+          </div>
+          <div class="hm-record-card-section">
+            <strong>Referral</strong>
+            ${renderReferralControls(record, isReferred)}
+          </div>
+          <footer class="hm-record-card-contact">
+            <span>Contact: ${contact}</span>
+            ${callAction}
+          </footer>
+        </article>
+      `;
+    }).join('');
+  }
 };
 
 const saveReferral = async (recordId, referred, referNote, statusEl) => {
@@ -372,6 +433,9 @@ const loadRecords = async () => {
   }
 
   recordsTableBody.innerHTML = '<tr><td colspan="10" class="hm-empty">Loading records...</td></tr>';
+  if (recordsCardView) {
+    recordsCardView.innerHTML = '<article class="hm-record-card hm-record-card-state">Loading records...</article>';
+  }
 
   const params = new URLSearchParams();
   if (recordRange && recordRange.value) {
@@ -407,7 +471,11 @@ const loadRecords = async () => {
     renderRecords(records);
   } catch (error) {
     const safeMessage = (error && error.message) ? error.message : 'Failed to load records.';
-    recordsTableBody.innerHTML = `<tr><td colspan="10" class="hm-empty">${safeMessage}</td></tr>`;
+    const escapedMessage = escapeHtml(safeMessage);
+    recordsTableBody.innerHTML = `<tr><td colspan="10" class="hm-empty">${escapedMessage}</td></tr>`;
+    if (recordsCardView) {
+      recordsCardView.innerHTML = `<article class="hm-record-card hm-record-card-state">${escapedMessage}</article>`;
+    }
   }
 };
 
@@ -553,8 +621,8 @@ if (recordDate && !recordDateBs) {
   recordDate.addEventListener('change', loadRecords);
 }
 
-if (recordsTableBody) {
-  recordsTableBody.addEventListener('click', (event) => {
+if (healthRecordsSection) {
+  healthRecordsSection.addEventListener('click', (event) => {
     const toggle = event.target.closest('[data-refer-toggle]');
     if (!toggle) {
       return;
@@ -583,7 +651,7 @@ if (recordsTableBody) {
     scheduleReferralSave(recordId, nextReferred, note ? note.value.trim() : '', statusEl);
   });
 
-  recordsTableBody.addEventListener('input', (event) => {
+  healthRecordsSection.addEventListener('input', (event) => {
     const note = event.target.closest('[data-refer-note]');
     if (!note) {
       return;
