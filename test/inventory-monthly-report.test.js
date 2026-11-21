@@ -6,6 +6,12 @@ test('builds selected-month purchase and sales totals for the academic year', ()
     const report = buildInventoryMonthlyReport({
         academicYear: '2083',
         months: ['Baisakh', 'Jestha', 'Asar'],
+        openingProducts: [
+            { entryDateNepali: '2083-01-02', buyQuantity: 25, quantity: 25, conversionFactor: 1 },
+            { entryDateNepali: '2083-03-08', buyQuantity: 2, quantity: 24, conversionFactor: 12 },
+            { entryDateNepali: '2082-01-02', buyQuantity: 99, conversionFactor: 1 },
+            { entryDateNepali: '2083-04-04', buyQuantity: 100, conversionFactor: 1 }
+        ],
         purchases: [
             { purchaseNepaliDate: '2083-01-03', baseQuantity: 12 },
             { purchaseNepaliDate: '2083-03-15', baseQuantity: 2.5 },
@@ -29,9 +35,9 @@ test('builds selected-month purchase and sales totals for the academic year', ()
     });
 
     assert.deepEqual(report.monthlyTotals, {
-        Baisakh: { purchase: 12, sales: 5 },
+        Baisakh: { purchase: 37, sales: 5 },
         Jestha: { purchase: 0, sales: 0 },
-        Asar: { purchase: 2.5, sales: 1.5 }
+        Asar: { purchase: 26.5, sales: 1.5 }
     });
-    assert.deepEqual(report.totals, { purchase: 14.5, sales: 6.5 });
+    assert.deepEqual(report.totals, { purchase: 63.5, sales: 6.5 });
 });

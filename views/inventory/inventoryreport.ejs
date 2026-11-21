@@ -8,6 +8,7 @@
 	<style>
 		.report-actions { display:flex; justify-content:flex-end; }
 		.report-table th:last-child,.report-table td:last-child { text-align:right; }
+		.report-table tfoot th { border-top:2px solid var(--line); color:var(--ink); }
 		.report-error { margin:0 0 12px; color:#a61b1b; font-size:12px; font-weight:700; }
 		.report-summary { color:var(--muted); font-size:12px; }
 		dialog { width:min(600px,calc(100% - 24px)); max-height:90vh; padding:0; border:1px solid var(--line); border-radius:10px; color:var(--ink); box-shadow:0 24px 80px rgba(12,28,52,.28); }
@@ -51,7 +52,7 @@
 		</header>
 		<section class="panel">
 			<div class="panel-heading">
-				<div><h2 id="reportTitle">Monthly purchase and sales</h2><p id="reportSummary">Select an academic year and months to generate a report.</p></div>
+				<div><h2 id="reportTitle">Monthly purchase and sales</h2><p id="reportSummary">Select an academic year and months to generate a report.</p><p class="cell-secondary">Purchase totals include opening purchase quantities and posted purchase receipts, converted to base units.</p></div>
 			</div>
 			<p class="report-error" id="reportError" role="alert" hidden></p>
 			<div class="report-empty" id="reportEmpty"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i>Generate a monthly report to see totals.</div>

@@ -25,10 +25,18 @@ const addQuantity = (totals, month, type, quantity) => {
     if (month && Number.isFinite(value) && value > 0) totals[month][type] += value;
 };
 
-function buildInventoryMonthlyReport({ academicYear, months, purchases, sales }) {
+function buildInventoryMonthlyReport({ academicYear, months, openingProducts = [], purchases, sales }) {
     const selectedMonths = new Set(months);
     const monthlyTotals = Object.fromEntries(months.map(month => [month, { purchase: 0, sales: 0 }]));
 
+    openingProducts.forEach(product => {
+        const month = getMonthForDate(product.entryDateNepali, academicYear, selectedMonths);
+        const purchaseQuantity = product.buyQuantity === undefined || product.buyQuantity === null
+            ? Number(product.quantity) || 0
+            : Number(product.buyQuantity);
+        const conversionFactor = Number(product.conversionFactor) || 1;
+        addQuantity(monthlyTotals, month, 'purchase', purchaseQuantity * conversionFactor);
+    });
     purchases.forEach(purchase => {
         const month = getMonthForDate(purchase.purchaseNepaliDate, academicYear, selectedMonths);
         addQuantity(monthlyTotals, month, 'purchase', purchase.baseQuantity);

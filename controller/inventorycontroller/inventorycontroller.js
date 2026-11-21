@@ -1822,19 +1822,21 @@ exports.analyticsPage = async (req, res) => {
 exports.inventoryReportPage = async (req, res) => {
   try {
     const currentAcademicYear = String(bs.ADToBS(new Date()) || '').trim().slice(0, 4);
-    const getAcademicYears = (Model, dateField, statusFilter) => Model.aggregate([
+    const getAcademicYears = (Model, dateField, statusFilter = {}) => Model.aggregate([
       { $match: { ...statusFilter, [dateField]: /^\d{4}-\d{2}-\d{2}$/ } },
       { $project: { academicYear: { $substrBytes: [`$${dateField}`, 0, 4] } } },
       { $match: { academicYear: /^\d{4}$/ } },
       { $group: { _id: '$academicYear' } },
       { $sort: { _id: -1 } }
     ]);
-    const [purchaseYears, salesYears] = await Promise.all([
+    const [openingPurchaseYears, purchaseYears, salesYears] = await Promise.all([
+      getAcademicYears(InventoryProduct, 'entryDateNepali'),
       getAcademicYears(InventoryPurchase, 'purchaseNepaliDate', { status: 'posted' }),
       getAcademicYears(InventoryTransaction, 'assignedNepaliDate', { status: { $ne: 'pending' } })
     ]);
     const academicYears = [...new Set([
       currentAcademicYear,
+      ...openingPurchaseYears.map(row => row._id),
       ...purchaseYears.map(row => row._id),
       ...salesYears.map(row => row._id)
     ])].filter(year => /^\d{4}$/.test(year)).sort((a, b) => Number(b) - Number(a));
@@ -1866,7 +1868,12 @@ exports.generateInventoryMonthlyReport = async (req, res) => {
 
   try {
     const nextAcademicYear = String(Number(academicYear) + 1).padStart(4, '0');
-    const [purchases, sales] = await Promise.all([
+    const [openingProducts, purchases, sales] = await Promise.all([
+      InventoryProduct.find({
+        entryDateNepali: { $gte: `${academicYear}-01-01`, $lt: `${nextAcademicYear}-01-01` }
+      })
+        .select('entryDateNepali buyQuantity quantity conversionFactor')
+        .lean(),
       InventoryPurchase.find({
         status: 'posted',
         purchaseNepaliDate: { $gte: `${academicYear}-01-01`, $lt: `${nextAcademicYear}-01-01` }
@@ -1880,7 +1887,7 @@ exports.generateInventoryMonthlyReport = async (req, res) => {
         .select('assignedNepaliDate items.quantity')
         .lean()
     ]);
-    const report = buildInventoryMonthlyReport({ academicYear, months, purchases, sales });
+    const report = buildInventoryMonthlyReport({ academicYear, months, openingProducts, purchases, sales });
     return res.set('Cache-Control', 'no-store').json(report);
   } catch (error) {
     console.error('Unable to generate inventory monthly report:', error);
