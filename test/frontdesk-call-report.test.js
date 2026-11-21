@@ -33,6 +33,14 @@ test('builds selected student/month call counts with reasons and parent response
                         callLoggedAt: '2026-06-18T09:00:00.000Z'
                     },
                     {
+                        academicYear: '2083',
+                        month: 'Asar',
+                        day: '6',
+                        status: 'absent',
+                        reason: 'Family emergency',
+                        savedAt: '2026-06-19T08:30:00.000Z'
+                    },
+                    {
                         academicYear: '2082',
                         month: 'Baisakh',
                         day: '2',
@@ -64,12 +72,15 @@ test('builds selected student/month call counts with reasons and parent response
     });
 
     assert.equal(report.totalStudents, 2);
-    assert.equal(report.totalCalls, 2);
+    assert.equal(report.totalCalls, 3);
     assert.equal(report.students[0].months.Baisakh.count, 1);
     assert.equal(report.students[0].months.Baisakh.calls[0].callReason, 'Sick');
     assert.equal(report.students[0].months.Baisakh.calls[0].parentResponse, 'Will rest at home');
-    assert.equal(report.students[0].months.Asar.count, 1);
+    assert.equal(report.students[0].months.Asar.count, 2);
     assert.equal(report.students[0].months.Asar.calls[0].callReason, 'No answer');
+    assert.equal(report.students[0].months.Asar.calls[1].callReason, 'Absent');
+    assert.equal(report.students[0].months.Asar.calls[1].parentResponse, 'Family emergency');
+    assert.equal(report.students[0].months.Asar.calls[1].callLoggedAt, '2026-06-19T08:30:00.000Z');
     assert.equal(report.students[1].months.Baisakh.count, 0);
     assert.deepEqual(report.months, ['Baisakh', 'Asar']);
 });

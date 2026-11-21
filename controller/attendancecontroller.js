@@ -527,6 +527,7 @@ exports.saveFrontdeskReason = async (req, res) => {
     const monthRegex = monthVariants.length > 0
       ? new RegExp(`^(${monthVariants.map((variant) => escapeRegex(variant)).join('|')})$`, 'i')
       : new RegExp(`^${escapeRegex(month)}$`, 'i');
+    const reasonLoggedAt = new Date().toISOString();
 
     const updateResult = await onlineAttendance.updateOne(
       {
@@ -537,7 +538,8 @@ exports.saveFrontdeskReason = async (req, res) => {
       },
       {
         $set: {
-          'attendance.$[entry].reason': trimmedReason
+          'attendance.$[entry].reason': trimmedReason,
+          'attendance.$[entry].reasonLoggedAt': reasonLoggedAt
         }
       },
       {

@@ -27,15 +27,31 @@ function buildStudentCallReport({ regs, months, academicYear, selectedStudents, 
         if (!attendanceByReg.has(reg)) attendanceByReg.set(reg, doc);
         (Array.isArray(doc.attendance) ? doc.attendance : []).forEach(entry => {
             if (String(entry?.academicYear || '').trim() !== academicYear) return;
-            if (!entry || !(entry.callReason || entry.parentResponse || entry.callLoggedAt)) return;
+            if (!entry) return;
+            const absentReason = String(entry.reason || '').trim();
+            const isAbsentReason = ['absent', 'a', 'false'].includes(
+                String(entry.status || '').trim().toLowerCase()
+            ) && Boolean(absentReason);
+            const hasCallLog = Boolean(entry.callReason || entry.parentResponse || entry.callLoggedAt);
+            if (!isAbsentReason && !hasCallLog) return;
             const month = monthAliases.get(normalizeMonth(entry.month));
             if (!month) return;
-            monthlyEntries.get(month).push({
-                day: String(entry.day || ''),
-                callReason: String(entry.callReason || ''),
-                parentResponse: String(entry.parentResponse || ''),
-                callLoggedAt: String(entry.callLoggedAt || '')
-            });
+            if (isAbsentReason) {
+                monthlyEntries.get(month).push({
+                    day: String(entry.day || ''),
+                    callReason: 'Absent',
+                    parentResponse: absentReason,
+                    callLoggedAt: String(entry.reasonLoggedAt || entry.savedAt || '')
+                });
+            }
+            if (hasCallLog) {
+                monthlyEntries.get(month).push({
+                    day: String(entry.day || ''),
+                    callReason: String(entry.callReason || ''),
+                    parentResponse: String(entry.parentResponse || ''),
+                    callLoggedAt: String(entry.callLoggedAt || '')
+                });
+            }
         });
     });
 
