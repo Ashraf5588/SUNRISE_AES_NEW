@@ -1,0 +1,292 @@
+<style>
+	:root { --frontdesk-nav-width: 258px; }
+	body.frontdesk-nav-active { padding: 0; }
+	.frontdesk-sidenav {
+		position: fixed;
+		inset: 0 auto 0 0;
+		z-index: 1200;
+		display: flex;
+		flex-direction: column;
+		width: var(--frontdesk-nav-width);
+		padding: 18px 14px;
+		border-right: 1px solid rgba(255,255,255,.08);
+		background: linear-gradient(180deg,#10264a 0%,#0b1730 100%);
+		color: #eef4ff;
+		box-shadow: 8px 0 28px rgba(11,23,48,.12);
+		transition: width .18s ease, transform .2s ease;
+	}
+	.frontdesk-nav-brand {
+		display: flex;
+		align-items: center;
+		min-height: 58px;
+		padding: 8px 10px 16px;
+		border-bottom: 1px solid rgba(226,237,255,.14);
+	}
+	.frontdesk-nav-home {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		min-width: 0;
+		color: #fff;
+		text-decoration: none;
+	}
+	.frontdesk-nav-logo {
+		display: grid;
+		flex: 0 0 40px;
+		width: 40px;
+		height: 40px;
+		place-items: center;
+		border-radius: 12px;
+		background: linear-gradient(145deg,#5fa7ff,#3479de);
+		color: #fff;
+		font-size: 17px;
+		box-shadow: 0 6px 16px rgba(52,121,222,.28);
+	}
+	.frontdesk-nav-brand-text { display: grid; gap: 2px; min-width: 0; }
+	.frontdesk-nav-brand-text strong { font-size: .96rem; letter-spacing: .01em; }
+	.frontdesk-nav-brand-text small { color: #a9bad5; font-size: .7rem; }
+	.frontdesk-nav-toggle {
+		display: grid;
+		flex: 0 0 34px;
+		width: 34px;
+		height: 34px;
+		margin-left: auto;
+		place-items: center;
+		border: 1px solid rgba(226,237,255,.18);
+		border-radius: 9px;
+		background: rgba(255,255,255,.06);
+		color: #dce8fa;
+		cursor: pointer;
+	}
+	.frontdesk-nav-toggle:hover { background: rgba(255,255,255,.14); color: #fff; }
+	.frontdesk-nav-caption {
+		margin: 24px 10px 10px;
+		color: #8fa4c5;
+		font-size: .66rem;
+		font-weight: 800;
+		letter-spacing: .14em;
+		text-transform: uppercase;
+	}
+	.frontdesk-nav-links { display: grid; gap: 6px; align-content: start; }
+	.frontdesk-nav-link {
+		position: relative;
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		min-height: 46px;
+		padding: 0 12px;
+		border: 1px solid transparent;
+		border-radius: 10px;
+		color: #c3d0e4;
+		font-size: .84rem;
+		font-weight: 650;
+		text-decoration: none;
+		transition: background .15s ease, color .15s ease, border-color .15s ease;
+	}
+	.frontdesk-nav-link i {
+		display: grid;
+		flex: 0 0 20px;
+		width: 20px;
+		place-items: center;
+		color: #9eb4d5;
+		font-size: .95rem;
+	}
+	.frontdesk-nav-link:hover { background: rgba(255,255,255,.08); color: #fff; }
+	.frontdesk-nav-link:hover i { color: #fff; }
+	.frontdesk-nav-link[aria-current="page"] {
+		border-color: rgba(113,169,255,.2);
+		background: linear-gradient(100deg,rgba(60,126,222,.28),rgba(60,126,222,.1));
+		color: #fff;
+		box-shadow: inset 3px 0 #67a6ff;
+	}
+	.frontdesk-nav-link[aria-current="page"] i { color: #8bbaff; }
+	.frontdesk-nav-link[aria-disabled="true"] { color: #7e8da5; cursor: not-allowed; }
+	.frontdesk-nav-link[aria-disabled="true"] i { color: #7889a3; }
+	.frontdesk-nav-soon {
+		margin-left: auto;
+		padding: 3px 7px;
+		border: 1px solid rgba(199,213,235,.16);
+		border-radius: 999px;
+		color: #9eafc9;
+		font-size: .6rem;
+		font-weight: 800;
+		letter-spacing: .04em;
+		text-transform: uppercase;
+	}
+	.frontdesk-nav-footer {
+		margin-top: auto;
+		padding: 14px 10px 2px;
+		border-top: 1px solid rgba(226,237,255,.12);
+		color: #8fa4c5;
+		font-size: .7rem;
+		line-height: 1.5;
+	}
+	.frontdesk-mobile-nav-toggle { display: none; }
+	body.frontdesk-nav-active .container,
+	body.frontdesk-nav-active .call-report-shell {
+		width: calc(100% - var(--frontdesk-nav-width) - 48px);
+		max-width: 1440px;
+		margin: 0 auto 0 calc(var(--frontdesk-nav-width) + 24px);
+		padding: 26px 0 44px;
+	}
+	body.frontdesk-nav-collapsed { --frontdesk-nav-width: 76px; }
+	body.frontdesk-nav-collapsed .frontdesk-sidenav { padding-inline: 12px; }
+	body.frontdesk-nav-collapsed 	.frontdesk-nav-brand { justify-content: center; padding-inline: 0; }
+	body.frontdesk-nav-collapsed .frontdesk-nav-home { justify-content: center; }
+	body.frontdesk-nav-collapsed .frontdesk-nav-brand-text,
+	body.frontdesk-nav-collapsed .frontdesk-nav-caption,
+	body.frontdesk-nav-collapsed .frontdesk-nav-label,
+	body.frontdesk-nav-collapsed .frontdesk-nav-soon,
+	body.frontdesk-nav-collapsed .frontdesk-nav-footer { display: none; }
+	body.frontdesk-nav-collapsed .frontdesk-nav-toggle { margin: 0; }
+	body.frontdesk-nav-collapsed .frontdesk-nav-link { justify-content: center; padding: 0; }
+	body.frontdesk-nav-collapsed .frontdesk-nav-link i { flex-basis: auto; }
+	@media (max-width: 760px) {
+		body.frontdesk-nav-active .container,
+		body.frontdesk-nav-active .call-report-shell {
+			width: 100%;
+			margin: 0;
+			padding: 76px 12px 30px;
+		}
+		.frontdesk-sidenav {
+			width: min(300px,calc(100vw - 48px));
+			padding: 18px 14px;
+			transform: translateX(-105%);
+			box-shadow: 8px 0 28px rgba(11,23,48,.3);
+		}
+		body.frontdesk-nav-open { overflow: hidden; }
+		body.frontdesk-nav-open .frontdesk-sidenav { transform: translateX(0); }
+		body.frontdesk-nav-collapsed .frontdesk-sidenav { padding-inline: 14px; }
+		body.frontdesk-nav-collapsed .frontdesk-nav-brand { justify-content: space-between; padding: 8px 10px 16px; }
+		body.frontdesk-nav-collapsed .frontdesk-nav-home { justify-content: flex-start; }
+		body.frontdesk-nav-collapsed .frontdesk-nav-brand-text,
+		body.frontdesk-nav-collapsed .frontdesk-nav-caption,
+		body.frontdesk-nav-collapsed .frontdesk-nav-label,
+		body.frontdesk-nav-collapsed .frontdesk-nav-soon,
+		body.frontdesk-nav-collapsed .frontdesk-nav-footer { display: initial; }
+		body.frontdesk-nav-collapsed .frontdesk-nav-toggle { margin-left: auto; }
+		body.frontdesk-nav-collapsed .frontdesk-nav-link { justify-content: flex-start; padding: 0 12px; }
+		body.frontdesk-nav-collapsed .frontdesk-nav-link i { flex-basis: 20px; }
+		.frontdesk-mobile-nav-toggle {
+			position: fixed;
+			top: 14px;
+			left: 14px;
+			z-index: 1202;
+			display: grid;
+			width: 44px;
+			height: 44px;
+			place-items: center;
+			border: 1px solid #d5deeb;
+			border-radius: 11px;
+			background: #fff;
+			color: #17345e;
+			font-size: 17px;
+			box-shadow: 0 4px 14px rgba(17,39,73,.14);
+			cursor: pointer;
+		}
+		.frontdesk-nav-backdrop {
+			position: fixed;
+			inset: 0;
+			z-index: 1199;
+			border: 0;
+			background: rgba(8,19,39,.48);
+		}
+		.frontdesk-nav-backdrop[hidden] { display: none; }
+	}
+	@media (min-width: 761px) {
+		.frontdesk-mobile-nav-toggle,
+		.frontdesk-nav-backdrop { display: none !important; }
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.frontdesk-sidenav,
+		.frontdesk-nav-link { transition: none; }
+	}
+</style>
+<button class="frontdesk-mobile-nav-toggle" id="frontdeskMobileNavToggle" type="button" aria-label="Open front desk navigation" aria-controls="frontdeskSidenav" aria-expanded="false"><i class="fa-solid fa-bars" aria-hidden="true"></i></button>
+<button class="frontdesk-nav-backdrop" id="frontdeskNavBackdrop" type="button" aria-label="Close front desk navigation" hidden></button>
+<% const isFrontdeskCallReportPage = typeof frontdeskCurrentPage !== 'undefined' && frontdeskCurrentPage === 'call-report'; %>
+<aside class="frontdesk-sidenav" id="frontdeskSidenav" aria-label="Front desk navigation">
+	<div class="frontdesk-nav-brand">
+		<a class="frontdesk-nav-home" href="/frontdesk" title="Front Desk">
+			<span class="frontdesk-nav-logo"><i class="fa-solid fa-building-columns" aria-hidden="true"></i></span>
+			<span class="frontdesk-nav-brand-text"><strong>Front Desk</strong><small>Staff workspace</small></span>
+		</a>
+		<button class="frontdesk-nav-toggle" id="frontdeskNavToggle" type="button" aria-label="Collapse navigation" title="Collapse navigation"><i class="fa-solid fa-angles-left" aria-hidden="true"></i></button>
+	</div>
+	<p class="frontdesk-nav-caption">Workspace</p>
+	<nav class="frontdesk-nav-links">
+		<a class="frontdesk-nav-link" href="/frontdesk" aria-current="<%= isFrontdeskCallReportPage ? 'false' : 'page' %>" title="Front desk home"><i class="fa-solid fa-house" aria-hidden="true"></i><span class="frontdesk-nav-label">Front desk home</span></a>
+		<a class="frontdesk-nav-link" href="/myattendance" title="My attendance"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i><span class="frontdesk-nav-label">My attendance</span></a>
+		<a class="frontdesk-nav-link" href="/leave" title="Leave form"><i class="fa-solid fa-file-circle-plus" aria-hidden="true"></i><span class="frontdesk-nav-label">Leave form</span></a>
+		<a class="frontdesk-nav-link" href="/employeeprofile" title="My profile"><i class="fa-regular fa-id-card" aria-hidden="true"></i><span class="frontdesk-nav-label">My profile</span></a>
+		<a class="frontdesk-nav-link" href="/manualpunch" title="Manual punch request"><i class="fa-solid fa-fingerprint" aria-hidden="true"></i><span class="frontdesk-nav-label">Manual punch request</span></a>
+		<a class="frontdesk-nav-link" href="/frontdesk/call-report" aria-current="<%= isFrontdeskCallReportPage ? 'page' : 'false' %>" title="Call report"><i class="fa-solid fa-phone-volume" aria-hidden="true"></i><span class="frontdesk-nav-label">Call report</span></a>
+	</nav>
+	<div class="frontdesk-nav-footer">Quick access to your attendance, leave, and profile tools.</div>
+</aside>
+<script>
+	(() => {
+		const body = document.body;
+		const sidebar = document.getElementById('frontdeskSidenav');
+		const desktopToggle = document.getElementById('frontdeskNavToggle');
+		const mobileToggle = document.getElementById('frontdeskMobileNavToggle');
+		const backdrop = document.getElementById('frontdeskNavBackdrop');
+		body.classList.add('frontdesk-nav-active');
+		const isMobile = () => window.matchMedia('(max-width: 760px)').matches;
+		try {
+			if (localStorage.getItem('frontdesk-nav-collapsed') === 'true') body.classList.add('frontdesk-nav-collapsed');
+		} catch (error) {}
+		const closeMobileNav = (restoreFocus = false) => {
+			body.classList.remove('frontdesk-nav-open');
+			backdrop.hidden = true;
+			mobileToggle.setAttribute('aria-expanded', 'false');
+			mobileToggle.setAttribute('aria-label', 'Open front desk navigation');
+			sidebar.inert = isMobile();
+			if (restoreFocus) mobileToggle.focus();
+		};
+		const openMobileNav = () => {
+			body.classList.add('frontdesk-nav-open');
+			backdrop.hidden = false;
+			mobileToggle.setAttribute('aria-expanded', 'true');
+			mobileToggle.setAttribute('aria-label', 'Close front desk navigation');
+			sidebar.inert = false;
+			sidebar.querySelector('a')?.focus();
+		};
+		sidebar.inert = isMobile();
+		desktopToggle.addEventListener('click', event => {
+			event.preventDefault();
+			event.stopPropagation();
+			if (isMobile()) {
+				if (body.classList.contains('frontdesk-nav-open')) closeMobileNav(true);
+				else openMobileNav();
+				return;
+			}
+			body.classList.toggle('frontdesk-nav-collapsed');
+			const collapsed = body.classList.contains('frontdesk-nav-collapsed');
+			desktopToggle.setAttribute('aria-label', collapsed ? 'Expand navigation' : 'Collapse navigation');
+			desktopToggle.title = collapsed ? 'Expand navigation' : 'Collapse navigation';
+			try { localStorage.setItem('frontdesk-nav-collapsed', String(collapsed)); } catch (error) {}
+		});
+		mobileToggle.addEventListener('click', () => {
+			if (body.classList.contains('frontdesk-nav-open')) closeMobileNav(true);
+			else openMobileNav();
+		});
+		backdrop.addEventListener('click', () => closeMobileNav(true));
+		sidebar.querySelectorAll('a[href]:not([aria-disabled="true"])').forEach(link => {
+			link.addEventListener('click', () => {
+				if (isMobile()) closeMobileNav();
+			});
+		});
+		document.addEventListener('keydown', event => {
+			if (event.key === 'Escape' && body.classList.contains('frontdesk-nav-open')) closeMobileNav(true);
+		});
+		window.addEventListener('resize', () => {
+			if (!isMobile()) {
+				closeMobileNav();
+				sidebar.inert = false;
+			} else if (!body.classList.contains('frontdesk-nav-open')) {
+				sidebar.inert = true;
+			}
+		});
+	})();
+</script>

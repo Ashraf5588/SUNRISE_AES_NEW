@@ -27,6 +27,7 @@ app.set("view", path.join(rootDir, "views"));
 const newsubject = mongoose.model("newsubject", newsubjectSchema, "newsubject");
 const {onlineAttendanceSchema} = require("../model/onlineattendanceschema");
 const onlineAttendance = mongoose.model("onlineAttendance", onlineAttendanceSchema, "onlineAttendance");
+const { buildStudentCallReport } = require("../utils/frontdeskCallReport");
 const {holidaySchema} = require("../model/holidayschema");
 const holiday = mongoose.model("holiday", holidaySchema, "holiday");
 const { inventoryProductRequestSchema } = require("../model/inventoryschema/inventorySchema");
@@ -1020,6 +1021,107 @@ exports.getFrontdeskAbsentRecordsExport = async (req, res) => {
   } catch (error) {
     console.error('Error loading frontdesk absent records export:', error);
     return res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+exports.frontdeskCallReportPage = async (req, res) => {
+  try {
+    const currentBsDate = getCurrentAttendanceBsDate();
+    const currentAcademicYear = String(currentBsDate.split('-')[0] || '').trim();
+    const currentMonthNumber = Number.parseInt(currentBsDate.split('-')[1], 10);
+    const currentMonth = BS_MONTH_NAMES[currentMonthNumber] || '';
+    const storedYears = await onlineAttendance.distinct('academicYear');
+    const academicYears = [...new Set([
+      currentAcademicYear,
+      ...(Array.isArray(storedYears) ? storedYears.map(year => String(year || '').trim()) : [])
+    ].filter(year => /^\d{4}$/.test(year)))].sort((a, b) => Number(b) - Number(a));
+    return res.render('./frontdesk/callreport', {
+      academicYears,
+      currentAcademicYear,
+      currentMonth,
+      months: Object.values(BS_MONTH_NAMES),
+      frontdeskCurrentPage: 'call-report'
+    });
+  } catch (error) {
+    console.error('Error loading frontdesk call report:', error);
+    return res.status(500).send('Unable to load the frontdesk call report.');
+  }
+};
+
+exports.searchFrontdeskCallReportStudents = async (req, res) => {
+  const query = String(req.query.q || '').trim();
+  if (!query || query.length > 80) return res.json([]);
+  try {
+    const results = await studentRecord.find({
+      name: { $regex: escapeRegex(query), $options: 'i' }
+    })
+      .select('reg name studentClass section roll')
+      .sort({ name: 1, studentClass: 1, section: 1, roll: 1 })
+      .limit(40)
+      .lean();
+    return res.set('Cache-Control', 'no-store').json(results.map(student => ({
+      reg: String(student.reg || ''),
+      name: String(student.name || ''),
+      studentClass: String(student.studentClass || ''),
+      section: String(student.section || ''),
+      roll: student.roll === undefined || student.roll === null ? '' : String(student.roll)
+    })).filter(student => student.reg));
+  } catch (error) {
+    console.error('Error searching call report students:', error);
+    return res.status(500).json({ message: 'Unable to search students.' });
+  }
+};
+
+exports.generateFrontdeskStudentCallReport = async (req, res) => {
+  const academicYear = String(req.body?.academicYear || '').trim();
+  const requestedRegs = req.body?.regs;
+  const requestedMonths = req.body?.months;
+  if (!/^\d{4}$/.test(academicYear)) {
+    return res.status(400).json({ message: 'Select a valid academic year.' });
+  }
+  if (!Array.isArray(requestedRegs) || requestedRegs.length < 1 || requestedRegs.length > 200) {
+    return res.status(400).json({ message: 'Select between 1 and 200 students.' });
+  }
+  if (!Array.isArray(requestedMonths) || requestedMonths.length < 1 || requestedMonths.length > 12) {
+    return res.status(400).json({ message: 'Select at least one month.' });
+  }
+  const regs = [...new Set(requestedRegs.map(reg => String(reg || '').trim()))];
+  if (regs.some(reg => !reg || reg.length > 100)) {
+    return res.status(400).json({ message: 'One or more selected students are invalid.' });
+  }
+
+  const months = [...new Set(requestedMonths.map(month => String(month || '').trim()))];
+  const knownMonths = new Set(Object.values(BS_MONTH_NAMES));
+  if (months.some(month => !knownMonths.has(month))) {
+    return res.status(400).json({ message: 'One or more selected months are invalid.' });
+  }
+
+  try {
+    const [selectedStudents, attendanceDocs] = await Promise.all([
+      studentRecord.find({ reg: { $in: regs } })
+        .select('reg name studentClass section roll')
+        .lean(),
+      onlineAttendance.find({
+        reg: { $in: regs },
+        $or: [
+          { academicYear },
+          { 'attendance.academicYear': academicYear }
+        ]
+      })
+        .select('reg name studentClass section roll attendance')
+        .lean()
+    ]);
+    const report = buildStudentCallReport({
+      regs,
+      months,
+      academicYear,
+      selectedStudents,
+      attendanceDocs
+    });
+    return res.set('Cache-Control', 'no-store').json(report);
+  } catch (error) {
+    console.error('Error generating student-wise call report:', error);
+    return res.status(500).json({ message: 'Unable to generate the student-wise call report.' });
   }
 };
 
