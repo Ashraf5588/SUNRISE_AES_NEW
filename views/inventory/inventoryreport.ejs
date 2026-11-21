@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Inventory report</title>
+	<link rel="stylesheet" href="/inventory.css">
+	<style>
+		.report-actions { display:flex; justify-content:flex-end; }
+		.report-table th:last-child,.report-table td:last-child { text-align:right; }
+		.report-error { margin:0 0 12px; color:#a61b1b; font-size:12px; font-weight:700; }
+		.report-summary { color:var(--muted); font-size:12px; }
+		dialog { width:min(600px,calc(100% - 24px)); max-height:90vh; padding:0; border:1px solid var(--line); border-radius:10px; color:var(--ink); box-shadow:0 24px 80px rgba(12,28,52,.28); }
+		dialog::backdrop { background:rgba(14,29,52,.52); backdrop-filter:blur(2px); }
+		.report-modal { display:flex; max-height:90vh; flex-direction:column; }
+		.modal-header,.modal-body,.modal-footer { padding:18px 20px; }
+		.modal-header { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; border-bottom:1px solid var(--line); }
+		.modal-header h2 { margin:0; font-size:18px; }
+		.modal-header p { margin:5px 0 0; color:var(--muted); font-size:12px; }
+		.modal-body { display:grid; gap:18px; overflow:auto; }
+		.modal-footer { display:flex; align-items:center; justify-content:space-between; gap:12px; border-top:1px solid var(--line); background:#fbfcfe; }
+		.close-button { display:grid; flex:0 0 34px; width:34px; height:34px; place-items:center; border:1px solid var(--line); border-radius:7px; background:#fff; cursor:pointer; }
+		.field-label { display:block; margin-bottom:7px; color:#3d4a46; font-size:12px; font-weight:700; }
+		.year-select { width:100%; min-height:40px; padding:8px 10px; border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--ink); }
+		.month-actions { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+		.month-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+		.month-option { display:flex; align-items:center; gap:7px; min-height:38px; padding:7px 9px; border:1px solid var(--line); border-radius:6px; color:#45514e; font-size:12px; cursor:pointer; }
+		.month-option:has(input:checked) { border-color:#8bb5a1; background:#f0f7f3; color:var(--green); }
+		.month-option input { accent-color:var(--green); }
+		.text-button { padding:3px 2px; border:0; background:transparent; color:var(--green); font-size:11px; font-weight:700; text-decoration:underline; cursor:pointer; }
+		.modal-error { min-height:1.2em; color:#a61b1b; font-size:11px; }
+		.report-empty { padding:38px 12px; color:var(--muted); text-align:center; }
+		.report-empty i { display:block; margin-bottom:9px; color:#82998d; font-size:24px; }
+		[hidden] { display:none !important; }
+		@media(max-width:600px) {
+			.month-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+			.modal-header,.modal-body,.modal-footer { padding-right:14px; padding-left:14px; }
+			.modal-footer { align-items:stretch; flex-direction:column; }
+			.modal-footer .button { width:100%; }
+		}
+		@media(max-width:400px) { .month-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+	</style>
+</head>
+<body>
+<div class="inventory-shell">
+	<%- include('inventorynav', { currentPath }) %>
+	<main class="inventory-main">
+		<header class="page-header">
+			<div><p class="eyebrow">Stock control / Reporting</p><h1>Inventory report</h1><p class="page-subtitle">Compare item purchase and sales quantities by Bikram Sambat month.</p></div>
+			<div class="report-actions"><button class="button" id="openMonthlyReport" type="button"><i class="fa-solid fa-chart-column" aria-hidden="true"></i>&ensp;Monthly report</button></div>
+		</header>
+		<section class="panel">
+			<div class="panel-heading">
+				<div><h2 id="reportTitle">Monthly purchase and sales</h2><p id="reportSummary">Select an academic year and months to generate a report.</p></div>
+			</div>
+			<p class="report-error" id="reportError" role="alert" hidden></p>
+			<div class="report-empty" id="reportEmpty"><i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i>Generate a monthly report to see totals.</div>
+			<div class="table-wrap" id="reportTableWrap" hidden>
+				<table class="report-table" id="monthlyInventoryReport">
+					<thead><tr><th>Month</th><th>Total item purchase</th><th>Total item sales</th></tr></thead>
+					<tbody></tbody>
+					<tfoot><tr><th>Total</th><th id="purchaseGrandTotal">0</th><th id="salesGrandTotal">0</th></tr></tfoot>
+				</table>
+			</div>
+		</section>
+	</main>
+</div>
+
+<dialog id="monthlyReportModal" aria-labelledby="modalTitle">
+	<form class="report-modal" id="monthlyReportForm">
+		<div class="modal-header">
+			<div><h2 id="modalTitle">Generate monthly report</h2><p>All months are selected by default. Choose an academic year and the months to include.</p></div>
+			<button class="close-button" id="closeMonthlyReport" type="button" aria-label="Close dialog"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+		</div>
+		<div class="modal-body">
+			<div>
+				<label class="field-label" for="academicYear">Academic year</label>
+				<select class="year-select" id="academicYear" required>
+					<% academicYears.forEach(year => { %><option value="<%= year %>" <%= String(year) === String(currentAcademicYear) ? 'selected' : '' %>><%= year %></option><% }) %>
+				</select>
+			</div>
+			<div>
+				<div class="month-actions">
+					<span class="field-label">Months</span>
+					<div><button class="text-button" id="selectAllMonths" type="button">Select all</button><button class="text-button" id="clearMonths" type="button">Clear</button></div>
+				</div>
+				<div class="month-grid" id="monthOptions">
+					<% months.forEach(month => { %><label class="month-option"><input type="checkbox" name="months" value="<%= month %>" checked><span><%= month %></span></label><% }) %>
+				</div>
+			</div>
+		</div>
+		<div class="modal-footer">
+			<span class="modal-error" id="modalError" role="status" aria-live="polite"></span>
+			<div><button class="button secondary" id="cancelMonthlyReport" type="button">Cancel</button> <button class="button" id="generateReport" type="submit">Generate report</button></div>
+		</div>
+	</form>
+</dialog>
+
+<script>
+	const modal = document.getElementById('monthlyReportModal');
+	const form = document.getElementById('monthlyReportForm');
+	const modalError = document.getElementById('modalError');
+	const formatQuantity = value => Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 6 });
+
+	document.getElementById('openMonthlyReport').addEventListener('click', () => {
+		modalError.textContent = '';
+		modal.showModal();
+	});
+	document.getElementById('closeMonthlyReport').addEventListener('click', () => modal.close());
+	document.getElementById('cancelMonthlyReport').addEventListener('click', () => modal.close());
+	modal.addEventListener('click', event => {
+		if (event.target === modal) modal.close();
+	});
+	document.getElementById('selectAllMonths').addEventListener('click', () => {
+		document.querySelectorAll('#monthOptions input').forEach(input => { input.checked = true; });
+	});
+	document.getElementById('clearMonths').addEventListener('click', () => {
+		document.querySelectorAll('#monthOptions input').forEach(input => { input.checked = false; });
+	});
+
+	const renderReport = report => {
+		const body = document.querySelector('#monthlyInventoryReport tbody');
+		body.replaceChildren();
+		report.months.forEach(month => {
+			const totals = report.monthlyTotals[month] || { purchase: 0, sales: 0 };
+			const row = document.createElement('tr');
+			[month, formatQuantity(totals.purchase), formatQuantity(totals.sales)].forEach(value => {
+				const cell = document.createElement('td');
+				cell.textContent = value;
+				row.appendChild(cell);
+			});
+			body.appendChild(row);
+		});
+		document.getElementById('purchaseGrandTotal').textContent = formatQuantity(report.totals.purchase);
+		document.getElementById('salesGrandTotal').textContent = formatQuantity(report.totals.sales);
+		document.getElementById('reportSummary').textContent = `Academic year ${report.academicYear} · ${report.months.length} month${report.months.length === 1 ? '' : 's'}`;
+		document.getElementById('reportTitle').textContent = 'Monthly purchase and sales totals';
+		document.getElementById('reportEmpty').hidden = true;
+		document.getElementById('reportError').hidden = true;
+		document.getElementById('reportTableWrap').hidden = false;
+	};
+
+	form.addEventListener('submit', async event => {
+		event.preventDefault();
+		modalError.textContent = '';
+		const months = Array.from(document.querySelectorAll('#monthOptions input:checked'), input => input.value);
+		if (!months.length) {
+			modalError.textContent = 'Select at least one month.';
+			return;
+		}
+		const button = document.getElementById('generateReport');
+		button.disabled = true;
+		button.textContent = 'Generating…';
+		try {
+			const response = await fetch('/inventory/report/monthly', {
+				method: 'POST',
+				credentials: 'same-origin',
+				headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+				body: JSON.stringify({
+					academicYear: document.getElementById('academicYear').value,
+					months
+				})
+			});
+			const data = await response.json();
+			if (!response.ok) throw new Error(data.message || 'Unable to generate the report.');
+			renderReport(data);
+			modal.close();
+		} catch (error) {
+			modalError.textContent = error.message;
+		} finally {
+			button.disabled = false;
+			button.textContent = 'Generate report';
+		}
+	});
+</script>
+</body>
+</html>

@@ -22,6 +22,7 @@ const {
 const { inventorySupplierSchema } = require('../../model/inventoryschema/supplierSchema');
 const { teacherSchema } = require('../../model/admin');
 const { studentrecordschema } = require('../../model/adminschema');
+const { BS_MONTH_NAMES, buildInventoryMonthlyReport } = require('../../utils/inventoryMonthlyReport');
 
 const InventoryCategory = mongoose.models.inventoryCategory || mongoose.model('inventoryCategory', inventoryCategorySchema, 'inventoryCategories');
 const InventoryQuantityType = mongoose.models.inventoryQuantityType || mongoose.model('inventoryQuantityType', inventoryQuantityTypeSchema, 'inventoryQuantityTypes');
@@ -1815,6 +1816,75 @@ exports.analyticsPage = async (req, res) => {
   } catch (error) {
     console.error('Unable to load inventory analytics:', error);
     res.status(500).send('Unable to load inventory analytics');
+  }
+};
+
+exports.inventoryReportPage = async (req, res) => {
+  try {
+    const currentAcademicYear = String(bs.ADToBS(new Date()) || '').trim().slice(0, 4);
+    const getAcademicYears = (Model, dateField, statusFilter) => Model.aggregate([
+      { $match: { ...statusFilter, [dateField]: /^\d{4}-\d{2}-\d{2}$/ } },
+      { $project: { academicYear: { $substrBytes: [`$${dateField}`, 0, 4] } } },
+      { $match: { academicYear: /^\d{4}$/ } },
+      { $group: { _id: '$academicYear' } },
+      { $sort: { _id: -1 } }
+    ]);
+    const [purchaseYears, salesYears] = await Promise.all([
+      getAcademicYears(InventoryPurchase, 'purchaseNepaliDate', { status: 'posted' }),
+      getAcademicYears(InventoryTransaction, 'assignedNepaliDate', { status: { $ne: 'pending' } })
+    ]);
+    const academicYears = [...new Set([
+      currentAcademicYear,
+      ...purchaseYears.map(row => row._id),
+      ...salesYears.map(row => row._id)
+    ])].filter(year => /^\d{4}$/.test(year)).sort((a, b) => Number(b) - Number(a));
+    return renderPage(res, 'inventoryreport', {
+      academicYears,
+      currentAcademicYear,
+      months: BS_MONTH_NAMES
+    });
+  } catch (error) {
+    console.error('Unable to load inventory report:', error);
+    return res.status(500).send('Unable to load inventory report.');
+  }
+};
+
+exports.generateInventoryMonthlyReport = async (req, res) => {
+  const academicYear = String(req.body?.academicYear || '').trim();
+  const requestedMonths = req.body?.months;
+  if (!/^\d{4}$/.test(academicYear)) {
+    return res.status(400).json({ message: 'Select a valid academic year.' });
+  }
+  if (!Array.isArray(requestedMonths) || requestedMonths.length < 1 || requestedMonths.length > 12) {
+    return res.status(400).json({ message: 'Select at least one month.' });
+  }
+
+  const months = [...new Set(requestedMonths.map(month => String(month || '').trim()))];
+  if (months.some(month => !BS_MONTH_NAMES.includes(month))) {
+    return res.status(400).json({ message: 'One or more selected months are invalid.' });
+  }
+
+  try {
+    const nextAcademicYear = String(Number(academicYear) + 1).padStart(4, '0');
+    const [purchases, sales] = await Promise.all([
+      InventoryPurchase.find({
+        status: 'posted',
+        purchaseNepaliDate: { $gte: `${academicYear}-01-01`, $lt: `${nextAcademicYear}-01-01` }
+      })
+        .select('purchaseNepaliDate baseQuantity')
+        .lean(),
+      InventoryTransaction.find({
+        status: { $ne: 'pending' },
+        assignedNepaliDate: { $gte: `${academicYear}-01-01`, $lt: `${nextAcademicYear}-01-01` }
+      })
+        .select('assignedNepaliDate items.quantity')
+        .lean()
+    ]);
+    const report = buildInventoryMonthlyReport({ academicYear, months, purchases, sales });
+    return res.set('Cache-Control', 'no-store').json(report);
+  } catch (error) {
+    console.error('Unable to generate inventory monthly report:', error);
+    return res.status(500).json({ message: 'Unable to generate the inventory monthly report.' });
   }
 };
 

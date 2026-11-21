@@ -4,6 +4,8 @@ const inventoryController = require('../controller/inventorycontroller/inventory
 const { verifytoken,isFrontdesk,isAdmin } = require('../middleware/auth');
 
 inventory.get('/', verifytoken,isFrontdesk,inventoryController.dashboard);
+inventory.get('/report', verifytoken, isFrontdesk, inventoryController.inventoryReportPage);
+inventory.post('/report/monthly', verifytoken, isFrontdesk, inventoryController.generateInventoryMonthlyReport);
 inventory.get('/products',verifytoken,isFrontdesk, inventoryController.productsPage);
 inventory.get('/unit-conversions', verifytoken, isFrontdesk, inventoryController.unitConversionsPage);
 inventory.post('/unit-conversions/:productId', verifytoken, isFrontdesk, inventoryController.saveUnitConversion);
