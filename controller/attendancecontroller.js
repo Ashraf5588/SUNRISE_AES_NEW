@@ -27,7 +27,7 @@ app.set("view", path.join(rootDir, "views"));
 const newsubject = mongoose.model("newsubject", newsubjectSchema, "newsubject");
 const {onlineAttendanceSchema} = require("../model/onlineattendanceschema");
 const onlineAttendance = mongoose.model("onlineAttendance", onlineAttendanceSchema, "onlineAttendance");
-const { buildStudentCallReport } = require("../utils/frontdeskCallReport");
+const { buildMonthlyTotalCallReport, buildStudentCallReport } = require("../utils/frontdeskCallReport");
 const {holidaySchema} = require("../model/holidayschema");
 const holiday = mongoose.model("holiday", holidaySchema, "holiday");
 const { inventoryProductRequestSchema } = require("../model/inventoryschema/inventorySchema");
@@ -1124,6 +1124,43 @@ exports.generateFrontdeskStudentCallReport = async (req, res) => {
   } catch (error) {
     console.error('Error generating student-wise call report:', error);
     return res.status(500).json({ message: 'Unable to generate the student-wise call report.' });
+  }
+};
+
+exports.generateFrontdeskMonthlyTotalCallReport = async (req, res) => {
+  const academicYear = String(req.body?.academicYear || '').trim();
+  const requestedMonths = req.body?.months;
+  if (!/^\d{4}$/.test(academicYear)) {
+    return res.status(400).json({ message: 'Select a valid academic year.' });
+  }
+  if (!Array.isArray(requestedMonths) || requestedMonths.length < 1 || requestedMonths.length > 12) {
+    return res.status(400).json({ message: 'Select at least one month.' });
+  }
+
+  const months = [...new Set(requestedMonths.map(month => String(month || '').trim()))];
+  const knownMonths = new Set(Object.values(BS_MONTH_NAMES));
+  if (months.some(month => !knownMonths.has(month))) {
+    return res.status(400).json({ message: 'One or more selected months are invalid.' });
+  }
+
+  try {
+    const attendanceDocs = await onlineAttendance.find({
+      $or: [
+        { academicYear },
+        { 'attendance.academicYear': academicYear }
+      ]
+    })
+      .select('attendance')
+      .lean();
+    const report = buildMonthlyTotalCallReport({
+      months,
+      academicYear,
+      attendanceDocs
+    });
+    return res.set('Cache-Control', 'no-store').json(report);
+  } catch (error) {
+    console.error('Error generating frontdesk monthly total call report:', error);
+    return res.status(500).json({ message: 'Unable to generate the monthly total call report.' });
   }
 };
 

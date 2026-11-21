@@ -15,6 +15,7 @@
 		button,input,select { font:inherit; }
 		.call-report-shell { width:min(1440px,calc(100% - 44px)); margin:0 auto; padding:32px 0 52px; }
 		.report-header { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; margin-bottom:22px; }
+		.report-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:9px; }
 		.eyebrow { margin:0 0 6px; color:var(--blue); font-size:.7rem; font-weight:800; letter-spacing:.12em; text-transform:uppercase; }
 		h1,h2 { font-family:'Manrope',sans-serif; }
 		h1 { margin:0; font-size:clamp(1.45rem,3vw,2rem); }
@@ -91,7 +92,8 @@
 		@media(max-width:760px) {
 			.call-report-shell { width:calc(100% - 24px); padding-top:14px; }
 			.report-header { flex-direction:column; }
-			.report-header .primary-button { width:100%; }
+			.report-header .report-actions { width:100%; justify-content:flex-start; }
+			.report-header .report-actions button { flex:1; }
 			.student-picker { grid-template-columns:1fr; }
 			.month-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
 			.panel-heading { align-items:flex-start; flex-direction:column; }
@@ -104,7 +106,7 @@
 		}
 		@media print {
 			body { background:#fff; }
-			.frontdesk-sidenav,.frontdesk-mobile-nav-toggle,.frontdesk-nav-backdrop,.report-header .primary-button { display:none !important; }
+			.frontdesk-sidenav,.frontdesk-mobile-nav-toggle,.frontdesk-nav-backdrop,.report-header .report-actions { display:none !important; }
 			body.frontdesk-nav-active .call-report-shell { width:100%; margin:0; padding:0; }
 			.report-panel { border:0; box-shadow:none; }
 			.table-wrap { max-height:none; overflow:visible; }
@@ -121,7 +123,10 @@
 				<h1>Student-wise call report</h1>
 				<p class="intro">Review who was contacted, when each call was made, why the call was placed, and the response received from the parent.</p>
 			</div>
-			<button class="primary-button" id="openReportModal" type="button"><i class="fa-solid fa-file-circle-plus" aria-hidden="true"></i> Generate student-wise call record</button>
+			<div class="report-actions">
+				<button class="primary-button" id="openReportModal" type="button"><i class="fa-solid fa-file-circle-plus" aria-hidden="true"></i> Generate student-wise call record</button>
+				<button class="secondary-button" id="openTotalReportModal" type="button"><i class="fa-solid fa-chart-pie" aria-hidden="true"></i> Total call record</button>
+			</div>
 		</header>
 
 		<section class="panel report-panel" aria-labelledby="reportTitle">
@@ -137,6 +142,12 @@
 			<p id="reportError" class="report-error" role="alert" hidden></p>
 			<div class="table-wrap" id="reportTableWrap" hidden>
 				<table class="report-table" id="studentCallReport">
+					<thead></thead>
+					<tbody></tbody>
+				</table>
+			</div>
+			<div class="table-wrap" id="totalTableWrap" hidden>
+				<table class="report-table" id="monthlyTotalReport">
 					<thead></thead>
 					<tbody></tbody>
 				</table>
@@ -186,9 +197,41 @@
 		</form>
 	</dialog>
 
+	<dialog id="totalReportModal" aria-labelledby="totalReportModalTitle">
+		<form class="modal-content" id="totalReportForm">
+			<div class="modal-header">
+				<div><h2 id="totalReportModalTitle">Build monthly total call report</h2><p>Choose the academic year and months to count all recorded calls, including saved absence reasons.</p></div>
+				<button class="close-button" id="closeTotalReportModal" type="button" aria-label="Close dialog"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+			</div>
+			<div class="modal-body">
+				<div>
+					<label class="field-label" for="totalAcademicYear">Academic year</label>
+					<select class="year-select" id="totalAcademicYear" required>
+						<% academicYears.forEach(year => { %><option value="<%= year %>" <%= String(year) === String(currentAcademicYear) ? 'selected' : '' %>><%= year %></option><% }) %>
+					</select>
+				</div>
+				<div>
+					<div class="month-actions">
+						<span class="field-label">Months (current year is selected through the current month)</span>
+						<div><button class="text-button" id="selectAllTotalMonths" type="button">Select all</button><button class="text-button" id="clearTotalMonths" type="button">Clear</button></div>
+					</div>
+					<div class="month-grid" id="totalMonthOptions">
+						<% months.forEach((month, index) => { %><label class="month-option"><input type="checkbox" name="totalMonths" value="<%= month %>" <%= index <= months.indexOf(currentMonth) ? 'checked' : '' %>><span><%= month %></span></label><% }) %>
+					</div>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<span class="modal-error" id="totalModalError" role="status" aria-live="polite"></span>
+				<div><button class="secondary-button" id="cancelTotalReport" type="button">Cancel</button> <button class="primary-button" id="generateTotalReport" type="submit"><i class="fa-solid fa-chart-pie" aria-hidden="true"></i> Generate totals</button></div>
+			</div>
+		</form>
+	</dialog>
+
 	<script>
 		const reportModal = document.getElementById('reportModal');
 		const reportForm = document.getElementById('reportForm');
+		const totalReportModal = document.getElementById('totalReportModal');
+		const totalReportForm = document.getElementById('totalReportForm');
 		const studentSearch = document.getElementById('studentSearch');
 		const studentResults = document.getElementById('studentResults');
 		const selectedStudentsContainer = document.getElementById('selectedStudents');
@@ -204,16 +247,31 @@
 			reportModal.showModal();
 			studentSearch.focus();
 		});
+		document.getElementById('openTotalReportModal').addEventListener('click', () => {
+			document.getElementById('totalModalError').textContent = '';
+			totalReportModal.showModal();
+		});
 		document.getElementById('closeReportModal').addEventListener('click', () => reportModal.close());
 		document.getElementById('cancelReport').addEventListener('click', () => reportModal.close());
+		document.getElementById('closeTotalReportModal').addEventListener('click', () => totalReportModal.close());
+		document.getElementById('cancelTotalReport').addEventListener('click', () => totalReportModal.close());
 		reportModal.addEventListener('click', event => {
 			if (event.target === reportModal) reportModal.close();
+		});
+		totalReportModal.addEventListener('click', event => {
+			if (event.target === totalReportModal) totalReportModal.close();
 		});
 		document.getElementById('selectAllMonths').addEventListener('click', () => {
 			document.querySelectorAll('#monthOptions input').forEach(input => { input.checked = true; });
 		});
 		document.getElementById('clearMonths').addEventListener('click', () => {
 			document.querySelectorAll('#monthOptions input').forEach(input => { input.checked = false; });
+		});
+		document.getElementById('selectAllTotalMonths').addEventListener('click', () => {
+			document.querySelectorAll('#totalMonthOptions input').forEach(input => { input.checked = true; });
+		});
+		document.getElementById('clearTotalMonths').addEventListener('click', () => {
+			document.querySelectorAll('#totalMonthOptions input').forEach(input => { input.checked = false; });
 		});
 
 		const showSearchMessage = message => {
@@ -328,12 +386,14 @@
 			const body = table.querySelector('tbody');
 			head.replaceChildren();
 			body.replaceChildren();
+			document.getElementById('totalTableWrap').hidden = true;
+			document.getElementById('reportTitle').textContent = 'Student-wise call report';
 			const monthTotals = Object.fromEntries(data.months.map(month => [month, 0]));
 			data.students.forEach(student => data.months.forEach(month => {
 				monthTotals[month] += student.months[month].count;
 			}));
 			const headerRow = document.createElement('tr');
-			['SN', 'Name', 'Roll', 'Class', 'Section'].forEach(label => {
+			['SN', 'Student'].forEach(label => {
 				const cell = document.createElement('th');
 				cell.scope = 'col';
 				cell.textContent = label;
@@ -359,9 +419,11 @@
 				addTextCell(row, student.sn);
 				const nameCell = addTextCell(row, student.name);
 				nameCell.className = 'student-name';
-				addTextCell(row, student.roll);
-				addTextCell(row, student.studentClass);
-				addTextCell(row, student.section);
+				const studentMeta = document.createElement('span');
+				studentMeta.className = 'student-meta';
+				const classAndSection = [student.studentClass, student.section].filter(Boolean).join('-');
+				studentMeta.textContent = `${student.roll || '-'} | ${classAndSection || '-'}`;
+				nameCell.appendChild(studentMeta);
 				data.months.forEach(month => {
 					const report = student.months[month];
 					const cell = document.createElement('td');
@@ -414,6 +476,35 @@
 			document.getElementById('reportTableWrap').hidden = false;
 		};
 
+		const renderTotalReport = data => {
+			const table = document.getElementById('monthlyTotalReport');
+			const head = table.querySelector('thead');
+			const body = table.querySelector('tbody');
+			head.replaceChildren();
+			body.replaceChildren();
+			const headerRow = document.createElement('tr');
+			['Month', 'Total call'].forEach(label => {
+				const cell = document.createElement('th');
+				cell.scope = 'col';
+				cell.textContent = label;
+				headerRow.appendChild(cell);
+			});
+			head.appendChild(headerRow);
+			data.months.forEach(month => {
+				const row = document.createElement('tr');
+				addTextCell(row, month);
+				addTextCell(row, String(data.monthTotals[month] || 0));
+				body.appendChild(row);
+			});
+			document.getElementById('reportTitle').textContent = 'Monthly total call record';
+			document.getElementById('reportSummary').textContent =
+				`${data.totalCalls} total calls · Academic year ${data.academicYear}`;
+			document.getElementById('reportEmpty').hidden = true;
+			document.getElementById('reportError').hidden = true;
+			document.getElementById('reportTableWrap').hidden = true;
+			document.getElementById('totalTableWrap').hidden = false;
+		};
+
 		reportForm.addEventListener('submit', async event => {
 			event.preventDefault();
 			modalError.textContent = '';
@@ -449,6 +540,41 @@
 			} finally {
 				generateButton.disabled = false;
 				generateButton.innerHTML = '<i class="fa-solid fa-chart-column" aria-hidden="true"></i> Generate report';
+			}
+		});
+
+		totalReportForm.addEventListener('submit', async event => {
+			event.preventDefault();
+			const errorMessage = document.getElementById('totalModalError');
+			const generateTotalButton = document.getElementById('generateTotalReport');
+			errorMessage.textContent = '';
+			const months = Array.from(document.querySelectorAll('#totalMonthOptions input:checked'), input => input.value);
+			if (!months.length) {
+				errorMessage.textContent = 'Select at least one month.';
+				return;
+			}
+			generateTotalButton.disabled = true;
+			generateTotalButton.textContent = 'Generating…';
+			try {
+				const response = await fetch('/frontdesk/call-report/monthly-totals', {
+					method: 'POST',
+					credentials: 'same-origin',
+					headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+					body: JSON.stringify({
+						months,
+						academicYear: document.getElementById('totalAcademicYear').value
+					})
+				});
+				const data = await response.json();
+				if (!response.ok) throw new Error(data.message || 'Unable to generate monthly totals.');
+				renderTotalReport(data);
+				totalReportModal.close();
+				document.getElementById('reportTitle').scrollIntoView({ behavior: 'smooth', block: 'start' });
+			} catch (error) {
+				errorMessage.textContent = error.message;
+			} finally {
+				generateTotalButton.disabled = false;
+				generateTotalButton.innerHTML = '<i class="fa-solid fa-chart-pie" aria-hidden="true"></i> Generate totals';
 			}
 		});
 	</script>

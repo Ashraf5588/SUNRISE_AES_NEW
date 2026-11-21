@@ -9,14 +9,29 @@ const normalizeMonth = value => {
     return MONTH_ALIASES[month] || month;
 };
 
-function buildStudentCallReport({ regs, months, academicYear, selectedStudents, attendanceDocs }) {
-    const studentByReg = new Map(selectedStudents.map(student => [String(student.reg || '').trim(), student]));
+const isAbsentReason = entry =>
+    ['absent', 'a', 'false'].includes(String(entry?.status || '').trim().toLowerCase()) &&
+    Boolean(String(entry?.reason || '').trim());
+
+const hasCallLog = entry =>
+    Boolean(entry?.callReason || entry?.parentResponse || entry?.callLoggedAt);
+
+const countReportableCalls = entry =>
+    Number(isAbsentReason(entry)) + Number(hasCallLog(entry));
+
+function createMonthAliases(months) {
     const monthAliases = new Map();
     months.forEach(month => monthAliases.set(normalizeMonth(month), month));
     if (months.includes('Asar')) {
         ['ashar', 'ashadh'].forEach(alias => monthAliases.set(alias, 'Asar'));
     }
     if (months.includes('Ashwin')) monthAliases.set('ashoj', 'Ashwin');
+    return monthAliases;
+}
+
+function buildStudentCallReport({ regs, months, academicYear, selectedStudents, attendanceDocs }) {
+    const studentByReg = new Map(selectedStudents.map(student => [String(student.reg || '').trim(), student]));
+    const monthAliases = createMonthAliases(months);
     const entriesByReg = new Map(regs.map(reg => [reg, new Map(months.map(month => [month, []]))]));
     const attendanceByReg = new Map();
 
@@ -29,14 +44,12 @@ function buildStudentCallReport({ regs, months, academicYear, selectedStudents, 
             if (String(entry?.academicYear || '').trim() !== academicYear) return;
             if (!entry) return;
             const absentReason = String(entry.reason || '').trim();
-            const isAbsentReason = ['absent', 'a', 'false'].includes(
-                String(entry.status || '').trim().toLowerCase()
-            ) && Boolean(absentReason);
-            const hasCallLog = Boolean(entry.callReason || entry.parentResponse || entry.callLoggedAt);
-            if (!isAbsentReason && !hasCallLog) return;
+            const includesAbsentReason = isAbsentReason(entry);
+            const includesCallLog = hasCallLog(entry);
+            if (!includesAbsentReason && !includesCallLog) return;
             const month = monthAliases.get(normalizeMonth(entry.month));
             if (!month) return;
-            if (isAbsentReason) {
+            if (includesAbsentReason) {
                 monthlyEntries.get(month).push({
                     day: String(entry.day || ''),
                     callReason: 'Absent',
@@ -44,7 +57,7 @@ function buildStudentCallReport({ regs, months, academicYear, selectedStudents, 
                     callLoggedAt: String(entry.reasonLoggedAt || entry.savedAt || '')
                 });
             }
-            if (hasCallLog) {
+            if (includesCallLog) {
                 monthlyEntries.get(month).push({
                     day: String(entry.day || ''),
                     callReason: String(entry.callReason || ''),
@@ -94,4 +107,24 @@ function buildStudentCallReport({ regs, months, academicYear, selectedStudents, 
     };
 }
 
-module.exports = { buildStudentCallReport };
+function buildMonthlyTotalCallReport({ months, academicYear, attendanceDocs }) {
+    const monthAliases = createMonthAliases(months);
+    const monthTotals = Object.fromEntries(months.map(month => [month, 0]));
+
+    attendanceDocs.forEach(doc => {
+        (Array.isArray(doc.attendance) ? doc.attendance : []).forEach(entry => {
+            if (String(entry?.academicYear || '').trim() !== academicYear) return;
+            const month = monthAliases.get(normalizeMonth(entry?.month));
+            if (month) monthTotals[month] += countReportableCalls(entry);
+        });
+    });
+
+    return {
+        academicYear,
+        months,
+        monthTotals,
+        totalCalls: Object.values(monthTotals).reduce((total, count) => total + count, 0)
+    };
+}
+
+module.exports = { buildStudentCallReport, buildMonthlyTotalCallReport };

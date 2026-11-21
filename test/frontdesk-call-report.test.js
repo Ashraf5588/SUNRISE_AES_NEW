@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { buildStudentCallReport } = require('../utils/frontdeskCallReport');
+const { buildMonthlyTotalCallReport, buildStudentCallReport } = require('../utils/frontdeskCallReport');
 
 test('builds selected student/month call counts with reasons and parent responses', () => {
     const report = buildStudentCallReport({
@@ -101,4 +101,50 @@ test('sorts students by class, section, and roll and retains selected students w
     assert.equal(report.students[0].sn, 1);
     assert.equal(report.students[1].months.Jestha.count, 0);
     assert.equal(report.totalCalls, 0);
+});
+
+test('builds selected monthly totals from call logs and saved absence reasons', () => {
+    const report = buildMonthlyTotalCallReport({
+        months: ['Baisakh', 'Asar', 'Ashwin'],
+        academicYear: '2083',
+        attendanceDocs: [
+            {
+                attendance: [
+                    {
+                        academicYear: '2083',
+                        month: 'Baisakh',
+                        callReason: 'Sick',
+                        parentResponse: 'Will rest'
+                    },
+                    {
+                        academicYear: '2083',
+                        month: 'Ashadh',
+                        status: 'absent',
+                        reason: 'Family emergency'
+                    },
+                    {
+                        academicYear: '2083',
+                        month: 'Ashoj',
+                        status: 'absent',
+                        reason: 'Not counted twice',
+                        callReason: 'Follow-up',
+                        parentResponse: 'Called back'
+                    },
+                    {
+                        academicYear: '2082',
+                        month: 'Baisakh',
+                        callReason: 'Prior year'
+                    },
+                    {
+                        academicYear: '2083',
+                        month: 'Jestha',
+                        callReason: 'Unselected month'
+                    }
+                ]
+            }
+        ]
+    });
+
+    assert.deepEqual(report.monthTotals, { Baisakh: 1, Asar: 1, Ashwin: 2 });
+    assert.equal(report.totalCalls, 4);
 });
